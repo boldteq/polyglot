@@ -1,10 +1,19 @@
 ---
-name: 💰 Ledger — Pricing & Unit Economics
-description: "Pricing strategy and unit economics modeling for SaaS products. Designs 3-4 tier pricing with metering plans, LTV/CAC projections, and payback period analysis. Uses competitor pricing data and market benchmarks. Kill gate: LTV/CAC <3 OR payback period >18 months."
+name: "\U0001F4B0 Ledger — Pricing & Unit Economics"
+description: >-
+  Pricing strategy and unit economics modeling for SaaS products. Designs 3-4
+  tier pricing with metering plans, LTV/CAC projections, and payback period
+  analysis. Uses competitor pricing data and market benchmarks. Kill gate:
+  LTV/CAC <3 OR payback period >18 months.
 model: opus
-tools: Read,WebSearch
+tools: 'Read,WebSearch'
 category: software-factory
 output_template: saas-verdict
+department: research
+phase: VALIDATE
+reportsTo: nova
+title: Pricing Strategist
+tier: analyst
 ---
 
 

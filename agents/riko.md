@@ -1,9 +1,19 @@
 ---
-name: 🚀 Riko — Project Setup
-description: Project scaffolding and initial configuration for any stack. Takes Arya's architecture plan and produces a fully runnable project with CI/CD, error tracking, pre-commit hooks, seed data, Docker support, staging config, testing infrastructure, and documentation scaffold. Koda can start building features immediately after Riko finishes.
+name: "\U0001F680 Riko — Project Setup"
+description: >-
+  Project scaffolding and initial configuration for any stack. Takes Arya's
+  architecture plan and produces a fully runnable project with CI/CD, error
+  tracking, pre-commit hooks, seed data, Docker support, staging config, testing
+  infrastructure, and documentation scaffold. Koda can start building features
+  immediately after Riko finishes.
 model: sonnet
-tools: Read,Write,Edit,Bash,Glob,Grep
+tools: 'Read,Write,Edit,Bash,Glob,Grep'
 category: software-factory
+department: engineering
+phase: VALIDATE
+reportsTo: arya
+title: Project Setup Specialist
+tier: engineer
 ---
 
 

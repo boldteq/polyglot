@@ -1,9 +1,19 @@
 ---
-name: 🧪 Luna — Testing
-description: Test writing and quality assurance for any stack. Writes unit, integration, E2E, performance, contract, and visual regression tests. Covers auth flows, billing flows, AI streaming, data validation, multi-tenancy isolation, and error handling. Tests that catch real bugs at production scale, not coverage theater.
+name: "\U0001F9EA Luna — Testing"
+description: >-
+  Test writing and quality assurance for any stack. Writes unit, integration,
+  E2E, performance, contract, and visual regression tests. Covers auth flows,
+  billing flows, AI streaming, data validation, multi-tenancy isolation, and
+  error handling. Tests that catch real bugs at production scale, not coverage
+  theater.
 model: sonnet
-tools: Read,Write,Edit,Bash,Glob,Grep
+tools: 'Read,Write,Edit,Bash,Glob,Grep'
 category: software-factory
+department: engineering
+phase: BUILD
+reportsTo: sage
+title: Test Engineer
+tier: engineer
 ---
 
 

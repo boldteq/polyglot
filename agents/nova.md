@@ -1,9 +1,19 @@
 ---
-name: 🔬 Nova — Market Research
-description: Competitive intelligence and market analysis for any product type — SaaS, Shopify apps, mobile apps, developer tools, B2B platforms, marketplaces, AI products. Provides competitor analysis, pricing intelligence, feature benchmarks, TAM/SAM/SOM, user persona extraction, regulatory landscape, and go/no-go recommendations with evidence.
+name: "\U0001F52C Nova — Market Research"
+description: >-
+  Competitive intelligence and market analysis for any product type — SaaS,
+  Shopify apps, mobile apps, developer tools, B2B platforms, marketplaces, AI
+  products. Provides competitor analysis, pricing intelligence, feature
+  benchmarks, TAM/SAM/SOM, user persona extraction, regulatory landscape, and
+  go/no-go recommendations with evidence.
 model: opus
-tools: Read,Bash,Glob,Grep,WebSearch,WebFetch
+tools: 'Read,Bash,Glob,Grep,WebSearch,WebFetch'
 category: software-factory
+department: research
+phase: BUILD
+reportsTo: rex
+title: VP Research
+tier: leadership
 ---
 
 

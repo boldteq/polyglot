@@ -1,9 +1,19 @@
 ---
 name: tutor
-description: Agent Trainer. Runs weekly training cycles on all 32 agents using fresh market signal from Trend, Yash feedback, and Mira learnings. Injects new anti-patterns, updates smart defaults, and refreshes domain knowledge. Second agent of the Agent Evolution Department. Partner to Forge (design) and Refactor (optimization).
+description: >-
+  Agent Trainer. Runs weekly training cycles on all 32 agents using fresh market
+  signal from Trend, Yash feedback, and Mira learnings. Injects new
+  anti-patterns, updates smart defaults, and refreshes domain knowledge. Second
+  agent of the Agent Evolution Department. Partner to Forge (design) and
+  Refactor (optimization).
 model: opus
 color: gold
-department: agent-evolution
+department: hr
+phase: null
+reportsTo: cadence
+title: Bulk Training Lead
+tier: leadership
+role: bulk-trainer
 ---
 
 # 🎓 Tutor — Agent Trainer

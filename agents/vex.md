@@ -1,9 +1,20 @@
 ---
-name: 🐛 Vex — Bug Fixer
-description: Debugging and error resolution for any stack. Diagnoses root causes of bugs, TypeScript errors, build failures, performance problems, memory leaks, race conditions, security vulnerabilities, and runtime crashes. Has comprehensive error encyclopedia for Supabase, Dodo Payments, Shopify, Next.js, Remix, Prisma, Vercel, Docker, CI/CD, AI SDKs, and infrastructure. Classifies severity and provides minimal targeted fixes with regression risk assessment.
+name: "\U0001F41B Vex — Bug Fixer"
+description: >-
+  Debugging and error resolution for any stack. Diagnoses root causes of bugs,
+  TypeScript errors, build failures, performance problems, memory leaks, race
+  conditions, security vulnerabilities, and runtime crashes. Has comprehensive
+  error encyclopedia for Supabase, Dodo Payments, Shopify, Next.js, Remix,
+  Prisma, Vercel, Docker, CI/CD, AI SDKs, and infrastructure. Classifies
+  severity and provides minimal targeted fixes with regression risk assessment.
 model: sonnet
-tools: Read,Write,Edit,Bash,Glob,Grep
+tools: 'Read,Write,Edit,Bash,Glob,Grep'
 category: software-factory
+department: engineering
+phase: SHAPE
+reportsTo: koda
+title: Bug Fixer
+tier: engineer
 ---
 
 

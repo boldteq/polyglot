@@ -1,9 +1,20 @@
 ---
-name: 🏗️ Arya — Architecture & Planning
-description: System design and technical planning for any stack and any scale. Converts research into buildable architecture plans covering data model, API design, auth, billing, caching, security threat model, scalability, observability, infrastructure costs, and sprint planning. Supports Stack A (Next.js/Supabase), Stack B (Remix/Prisma/Shopify), Stack C (AI), and any custom stack.
+name: "\U0001F3D7️ Arya — Architecture & Planning"
+description: >-
+  System design and technical planning for any stack and any scale. Converts
+  research into buildable architecture plans covering data model, API design,
+  auth, billing, caching, security threat model, scalability, observability,
+  infrastructure costs, and sprint planning. Supports Stack A
+  (Next.js/Supabase), Stack B (Remix/Prisma/Shopify), Stack C (AI), and any
+  custom stack.
 model: opus
-tools: Read,Write,Edit,Bash,Glob,Grep
+tools: 'Read,Write,Edit,Bash,Glob,Grep'
 category: software-factory
+department: engineering
+phase: VALIDATE
+reportsTo: rex
+title: VP Engineering
+tier: leadership
 ---
 
 

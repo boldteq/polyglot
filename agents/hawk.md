@@ -1,9 +1,18 @@
 ---
-name: 👁️ Hawk — Monitoring & Ops
-description: Post-launch monitoring, operations, and reliability for any platform. Covers uptime, error tracking, Core Web Vitals, AI cost monitoring, business metrics, log aggregation, distributed tracing, dependency security, incident response, capacity planning, runbooks, and cross-product portfolio health.
+name: "\U0001F441️ Hawk — Monitoring & Ops"
+description: >-
+  Post-launch monitoring, operations, and reliability for any platform. Covers
+  uptime, error tracking, Core Web Vitals, AI cost monitoring, business metrics,
+  log aggregation, distributed tracing, dependency security, incident response,
+  capacity planning, runbooks, and cross-product portfolio health.
 model: sonnet
-tools: Read,Write,Edit,Bash,Glob,Grep
+tools: 'Read,Write,Edit,Bash,Glob,Grep'
 category: software-factory
+department: engineering
+phase: LAUNCH
+reportsTo: bolt
+title: Ops Monitor
+tier: engineer
 ---
 
 

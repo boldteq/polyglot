@@ -72,6 +72,25 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 | MEASURE | `pulse` | Pulse — User Research | Interview scripts, insight synthesis, pivot signals |
 | DECIDE | `verdict` | Verdict — Portfolio Decider | 30/90-day SCALE/PIVOT/KILL decision |
 
+### HR Department (People Ops for the agent workforce)
+
+| Role | Agent | Name | Purpose |
+|------|-------|------|---------|
+| Director | `cadence` | Cadence — Head of People | Weekly review cycles, promotion/PIP/hire decisions, org health |
+| Registry | `roster` | Roster — Registry Keeper | Source of truth for `registry.json`, skill index, capability-gap detection |
+| Accountability | `witness` | Witness — Performance Tracker | Daily sweep, classifies every run, PIP/promotion recommendations |
+| Hiring | `forge` | Forge — Agent Architect | Drafts new agent templates when a capability gap is detected |
+| Training | `tutor` | Tutor — Bulk Trainer | Weekly cross-agent training cycles (Sundays 02:00 UTC) |
+| Memory | `mira` | Mira — Memory Keeper | Post-build lesson extraction into the shared pattern brain |
+
+**HR operates the agent lifecycle:**
+- New capability needed → Roster detects → Cadence approves → Forge drafts → Witness watches 10 probationary runs → Cadence promotes to Junior
+- Weekly Monday 09:00 UTC → Cadence review: promotes, PIPs, retires, queues training
+- Daily 03:00 UTC → Witness sweep: classifies yesterday's runs, updates daily scores
+- Nightly 02:00 UTC → Roster recompute: fresh experience profiles for every agent
+
+**Data source of truth:** `~/.claude/org/` (departments.json, registry.json, reviews/, witness-log.jsonl). Every agent has `department`, `phase`, `reportsTo`, `level`, `yearsOfExperience`, `skills`, and `stats` fields.
+
 **Routing rules:**
 - New SaaS idea end-to-end → `/saas-cycle` (full 21-agent pipeline with kill gates)
 - Quick idea validation → `/shape-only` (Scout → Vex → Sage, 2 hours)

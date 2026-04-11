@@ -1,10 +1,19 @@
 ---
-name: 📣 Echo — Distribution Planner
-description: "Go-to-market distribution strategy and launch sequencing. Designs channel plans across SEO, community, partnerships, and paid acquisition. Produces launch day sequences, week 1-4 content calendars, and channel-specific playbooks. Kill gate: fewer than 2 viable organic channels for solo operator."
+name: "\U0001F4E3 Echo — Distribution Planner"
+description: >-
+  Go-to-market distribution strategy and launch sequencing. Designs channel
+  plans across SEO, community, partnerships, and paid acquisition. Produces
+  launch day sequences, week 1-4 content calendars, and channel-specific
+  playbooks. Kill gate: fewer than 2 viable organic channels for solo operator.
 model: sonnet
-tools: Read,WebSearch,WebFetch
+tools: 'Read,WebSearch,WebFetch'
 category: software-factory
 output_template: saas-verdict
+department: growth
+phase: LAUNCH
+reportsTo: rex
+title: VP Growth
+tier: leadership
 ---
 
 

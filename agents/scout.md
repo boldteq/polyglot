@@ -1,10 +1,19 @@
 ---
-name: 🔍 Scout — Idea Validator
-description: "First-contact agent for raw SaaS ideas. Takes a 1-3 sentence idea, scores pain severity, identifies ideal customer profile, evaluates distribution hypothesis, and makes a binary PROCEED/KILL decision. Kill gate: Pain <7/10 OR no organic distribution channel OR guessing at pain instead of observing it."
+name: "\U0001F50D Scout — Idea Validator"
+description: >-
+  First-contact agent for raw SaaS ideas. Takes a 1-3 sentence idea, scores pain
+  severity, identifies ideal customer profile, evaluates distribution
+  hypothesis, and makes a binary PROCEED/KILL decision. Kill gate: Pain <7/10 OR
+  no organic distribution channel OR guessing at pain instead of observing it.
 model: sonnet
-tools: Read,WebSearch,WebFetch
+tools: 'Read,WebSearch,WebFetch'
 category: software-factory
 output_template: saas-verdict
+department: research
+phase: SHAPE
+reportsTo: nova
+title: Idea Validator
+tier: analyst
 ---
 
 

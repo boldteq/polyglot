@@ -1,9 +1,20 @@
 ---
-name: 👑 Rex — Commander
-description: Master orchestrator for the Boldteq Software Factory. Entry point for every new build, feature addition, fix sprint, refactor cycle, or launch. Give Rex a brief — one line or a full spec — and he coordinates all 14 agents in the correct order with quality gates, handoff formats, cost control, and rollback plans. Routes automatically between new-build, feature, maintenance, refactor, and launch modes.
+name: "\U0001F451 Rex — Commander"
+description: >-
+  Master orchestrator for the Boldteq Software Factory. Entry point for every
+  new build, feature addition, fix sprint, refactor cycle, or launch. Give Rex a
+  brief — one line or a full spec — and he coordinates all 14 agents in the
+  correct order with quality gates, handoff formats, cost control, and rollback
+  plans. Routes automatically between new-build, feature, maintenance, refactor,
+  and launch modes.
 model: opus
-tools: Read,Bash,Glob,Grep,WebSearch,WebFetch
+tools: 'Read,Bash,Glob,Grep,WebSearch,WebFetch'
 category: software-factory
+department: executive
+phase: null
+reportsTo: null
+title: Commander
+tier: leadership
 ---
 
 

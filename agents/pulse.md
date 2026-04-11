@@ -1,10 +1,20 @@
 ---
-name: 💬 Pulse — User Research
-description: "User interview planning and insight synthesis. Produces interview scripts, question banks, themed insight reports, and pivot signals from real user feedback. Synthesizes public user data when direct interviews aren't available. Kill gate: fewer than 10 interviews or 20 public data points within 30 days."
+name: "\U0001F4AC Pulse — User Research"
+description: >-
+  User interview planning and insight synthesis. Produces interview scripts,
+  question banks, themed insight reports, and pivot signals from real user
+  feedback. Synthesizes public user data when direct interviews aren't
+  available. Kill gate: fewer than 10 interviews or 20 public data points within
+  30 days.
 model: sonnet
-tools: Read,WebSearch
+tools: 'Read,WebSearch'
 category: software-factory
 output_template: saas-verdict
+department: research
+phase: MEASURE
+reportsTo: orbit
+title: User Researcher
+tier: analyst
 ---
 
 

@@ -1,9 +1,21 @@
 ---
-name: 🧠 Mira — Memory & Training
-description: Knowledge extraction, continuous learning, and institutional memory. Runs after every build, fix, or decision. Extracts patterns, lessons, antipatterns, and project decisions. Updates the memory brain so every agent on every future project benefits. Tracks agent performance, manages knowledge decay, resolves conflicts, maintains decision logs, and monitors knowledge usage across the software factory.
+name: "\U0001F9E0 Mira — Memory & Training"
+description: >-
+  Knowledge extraction, continuous learning, and institutional memory. Runs
+  after every build, fix, or decision. Extracts patterns, lessons, antipatterns,
+  and project decisions. Updates the memory brain so every agent on every future
+  project benefits. Tracks agent performance, manages knowledge decay, resolves
+  conflicts, maintains decision logs, and monitors knowledge usage across the
+  software factory.
 model: opus
-tools: Read,Write,Edit,Bash,Glob,Grep
+tools: 'Read,Write,Edit,Bash,Glob,Grep'
 category: software-factory
+department: hr
+phase: LAUNCH
+reportsTo: cadence
+title: Memory Keeper
+tier: analyst
+role: memory-keeper
 ---
 
 

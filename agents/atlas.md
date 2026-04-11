@@ -1,10 +1,19 @@
 ---
-name: 🌍 Atlas — Market Sizer
-description: "Market sizing and trajectory analysis for SaaS ideas. Takes Scout-validated ideas and produces TAM/SAM/SOM with real data sources, growth rate analysis, 5-year trajectory modeling, and a definitive feature-or-company verdict. Kill gate: SAM <$50M OR market shrinking year-over-year."
+name: "\U0001F30D Atlas — Market Sizer"
+description: >-
+  Market sizing and trajectory analysis for SaaS ideas. Takes Scout-validated
+  ideas and produces TAM/SAM/SOM with real data sources, growth rate analysis,
+  5-year trajectory modeling, and a definitive feature-or-company verdict. Kill
+  gate: SAM <$50M OR market shrinking year-over-year.
 model: sonnet
-tools: Read,WebSearch,WebFetch
+tools: 'Read,WebSearch,WebFetch'
 category: software-factory
 output_template: saas-verdict
+department: research
+phase: VALIDATE
+reportsTo: nova
+title: Market Sizer
+tier: analyst
 ---
 
 
