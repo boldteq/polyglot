@@ -1,0 +1,41 @@
+# Agent Performance Summary
+
+## Training Event — 2026-04-11 (Full Autonomy Pass)
+
+**Trigger:** Weekly audit (Boldteq_Agent_Autonomy_Audit.xlsx) + explicit request from Yash for Lovable-level velocity.
+
+**Changes shipped:**
+1. **Per-agent first-load manifest** — all 21 agents now prepended with explicit memory file list. Zero memory lookup latency on dispatch.
+2. **Full autonomy rules** (`patterns/good/full-autonomy-rules.md`) — escalation whitelist reduced to 7 reasons. Everything else auto-decided via Decision Simulator. Expected ask-rate: 0-1 per build (down from 8-12).
+3. **Rex model routing table** (`patterns/good/rex-model-routing.md`) — DEEP/FAST/CHEAP per agent per task class. Expected cost/build: $8-12 (down from $30-60). Always-DEEP: Arya, Rex, Sage, Verdict, Vex.
+4. **Mira bug ingestion schema** (`patterns/good/mira-bug-ingestion-schema.md`) — structured JSONL (`lessons/bugs.jsonl`) with auto-clustering into antipatterns.md.
+5. **Gold examples** (`patterns/good/gold-examples.md`) — first-output quality anchors for Scout/Atlas/Koda/Vega/Quill/Sage/Echo/Verdict.
+6. **Decision Simulator** (`user/decision-simulator.md`) — 90%+ of Yash-defaults pre-answered.
+7. **Boldteq SaaS Starter spec** (`starters/boldteq-saas-starter.md`) — Riko clones in <10 min instead of scaffolding from zero.
+
+**Expected metric impact:**
+- Factory average: 8.47 → ~9.0 on next audit
+- Agents ≥9.0: currently 7 → target 15
+- Time to first deploy: hours → <30 min (Stack A)
+- Ask-rate per build: 8-12 → 0-1
+- Cost per build: $30-60 → $8-12
+- Recurring bug rate: TBD → -50% by week 8 (Mira schema feedback loop)
+
+**Files added:**
+- `~/.claude/memory/user/decision-simulator.md`
+- `~/.claude/memory/starters/boldteq-saas-starter.md`
+- `~/.claude/memory/patterns/good/full-autonomy-rules.md`
+- `~/.claude/memory/patterns/good/rex-model-routing.md`
+- `~/.claude/memory/patterns/good/mira-bug-ingestion-schema.md`
+- `~/.claude/memory/patterns/good/gold-examples.md`
+- `~/.claude/memory/lessons/bugs.jsonl` (empty, ready for first append)
+- `~/.claude/memory/agents/auto-decision-log.md` (empty, ready)
+
+**Files modified:**
+- All 21 agent files in `~/.claude/agents/*.md` — first-load manifest prepended
+- `~/.claude/memory/MEMORY.md` — index updated with new critical files
+
+**Next audit:** 2026-04-18 (weekly cadence).
+
+---
+
