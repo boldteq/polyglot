@@ -1,0 +1,1020 @@
+     1→import { useState, useEffect } from "react";
+     2→import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+     3→import { supabase } from "@/integrations/supabase/client";
+     4→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+     5→import { Switch } from "@/components/ui/switch";
+     6→import { Label } from "@/components/ui/label";
+     7→import { Input } from "@/components/ui/input";
+     8→import { Button } from "@/components/ui/button";
+     9→import { Textarea } from "@/components/ui/textarea";
+    10→import { Badge } from "@/components/ui/badge";
+    11→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    12→import { toast } from "sonner";
+    13→import {
+    14→  Copy, Mail, Globe, Link2, Info, Inbox, Send, Key,
+    15→  CheckCircle2, AlertCircle, Save, FileText, Search,
+    16→  Zap, Bell, Shield, Eye, EyeOff, ExternalLink,
+    17→  ArrowRight, Plug, Settings2, TestTube, Loader2,
+    18→  AlertTriangle, XCircle, RefreshCw
+    19→} from "lucide-react";
+    20→import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
+    21→import EmailIngestLogsCard from "./EmailIngestLogsCard";
+    22→
+    23→const WEBHOOK_URL = "https://zkzontawprihrzpayeam.supabase.co/functions/v1/email-ingest";
+    24→
+    25→async function adminCall(body: any) {
+    26→  const { data: { session } } = await supabase.auth.getSession();
+    27→  const res = await supabase.functions.invoke("admin-users", {
+    28→    headers: { Authorization: `Bearer ${session?.access_token}` },
+    29→    body,
+    30→  });
+    31→  if (res.error) throw new Error(res.error.message || "Admin call failed");
+    32→  const data = res.data as any;
+    33→  if (data?.error) throw new Error(data.error);
+    34→  return data;
+    35→}
+    36→
+    37→// ─── Postmark health state ───
+    38→interface PostmarkHealth {
+    39→  tokenValid: boolean;
+    40→  senderVerified: boolean;
+    41→  accountApproved: boolean;
+    42→  serverName: string;
+    43→  fromEmail: string;
+    44→  totalSenders: number;
+    45→  accountMessage?: string;
+    46→}
+    47→
+    48→// ─── Step indicator for setup wizard ───
+    49→function SetupStep({ step, title, done, active }: { step: number; title: string; done: boolean; active: boolean }) {
+    50→  return (
+    51→    <div className="flex items-center gap-3">
+    52→      <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
+    53→        done ? "bg-green-500 text-white" : active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+    54→      }`}>
+    55→        {done ? <CheckCircle2 className="h-4 w-4" /> : step}
+    56→      </div>
+    57→      <span className={`text-sm font-medium ${done ? "text-green-600 dark:text-green-400" : active ? "text-foreground" : "text-muted-foreground"}`}>
+    58→        {title}
+    59→      </span>
+    60→    </div>
+    61→  );
+    62→}
+    63→
+    64→// ─── Toggle row component ───
+    65→function ToggleRow({
+    66→  icon: Icon, label, description, checked, onToggle, disabled = false
+    67→}: {
+    68→  icon: React.ElementType; label: string; description: string;
+    69→  checked: boolean; onToggle: (v: boolean) => void; disabled?: boolean;
+    70→}) {
+    71→  return (
+    72→    <div className="flex items-center justify-between rounded-xl border border-border p-4 hover:bg-muted/30 transition-colors">
+    73→      <div className="flex items-center gap-3">
+    74→        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+    75→          <Icon className="h-4 w-4 text-primary" />
+    76→        </div>
+    77→        <div className="space-y-0.5">
+    78→          <Label className="text-sm font-medium cursor-pointer">{label}</Label>
+    79→          <p className="text-xs text-muted-foreground">{description}</p>
+    80→        </div>
+    81→      </div>
+    82→      <Switch checked={checked} onCheckedChange={onToggle} disabled={disabled} />
+    83→    </div>
+    84→  );
+    85→}
+    86→
+    87→// ─── Health Alert Banner ───
+    88→function HealthBanner({ health, loading, onVerify }: {
+    89→  health: PostmarkHealth | null;
+    90→  loading: boolean;
+    91→  onVerify: () => void;
+    92→}) {
+    93→  if (loading) {
+    94→    return (
+    95→      <div className="rounded-lg border border-border bg-muted/30 p-4 flex items-center gap-3">
+    96→        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+    97→        <span className="text-sm text-muted-foreground">Checking Postmark connection...</span>
+    98→      </div>
+    99→    );
+   100→  }
+   101→
+   102→  if (!health) return null;
+   103→
+   104→  const issues: { icon: React.ElementType; text: string; severity: "error" | "warning" }[] = [];
+   105→
+   106→  if (!health.tokenValid) {
+   107→    issues.push({ icon: XCircle, text: "API token is invalid or not configured", severity: "error" });
+   108→  }
+   109→  if (health.tokenValid && !health.senderVerified) {
+   110→    issues.push({
+   111→      icon: AlertTriangle,
+   112→      text: `Sender "${health.fromEmail}" is not verified in Postmark. Emails will fail.`,
+   113→      severity: "warning",
+   114→    });
+   115→  }
+   116→  if (health.tokenValid && !health.accountApproved) {
+   117→    issues.push({
+   118→      icon: AlertTriangle,
+   119→      text: health.accountMessage || "Postmark account is pending approval — can only send to same-domain recipients.",
+   120→      severity: "warning",
+   121→    });
+   122→  }
+   123→
+   124→  if (issues.length === 0 && health.tokenValid) {
+   125→    return (
+   126→      <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/50 p-4 space-y-2">
+   127→        <div className="flex items-center justify-between">
+   128→          <div className="flex items-center gap-2">
+   129→            <CheckCircle2 className="h-4 w-4 text-green-600" />
+   130→            <span className="text-sm font-medium text-green-700 dark:text-green-400">
+   131→              Postmark Connected{health.serverName ? ` — ${health.serverName}` : ""}
+   132→            </span>
+   133→          </div>
+   134→          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={onVerify}>
+   135→            <RefreshCw className="h-3 w-3" /> Recheck
+   136→          </Button>
+   137→        </div>
+   138→        <div className="flex gap-3 text-xs text-green-600 dark:text-green-500">
+   139→          <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Token valid</span>
+   140→          <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Sender verified</span>
+   141→          <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Account approved</span>
+   142→        </div>
+   143→      </div>
+   144→    );
+   145→  }
+   146→
+   147→  return (
+   148→    <div className="space-y-2">
+   149→      {issues.map((issue, i) => (
+   150→        <div
+   151→          key={i}
+   152→          className={`rounded-lg border p-3 flex items-start gap-2 ${
+   153→            issue.severity === "error"
+   154→              ? "border-destructive/50 bg-destructive/10 text-destructive"
+   155→              : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 text-amber-700 dark:text-amber-400"
+   156→          }`}
+   157→        >
+   158→          <issue.icon className="h-4 w-4 shrink-0 mt-0.5" />
+   159→          <p className="text-xs">{issue.text}</p>
+   160→        </div>
+   161→      ))}
+   162→      <div className="flex justify-end">
+   163→        <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs" onClick={onVerify}>
+   164→          <RefreshCw className="h-3 w-3" /> Recheck
+   165→        </Button>
+   166→      </div>
+   167→    </div>
+   168→  );
+   169→}
+   170→
+   171→const EmailSettingsTab = () => {
+   172→  const qc = useQueryClient();
+   173→  const [search, setSearch] = useState("");
+   174→  const [testEmailTo, setTestEmailTo] = useState("");
+   175→  const [sendingTest, setSendingTest] = useState(false);
+   176→  const [showToken, setShowToken] = useState(false);
+   177→  const [regeneratingUser, setRegeneratingUser] = useState<string | null>(null);
+   178→  const [dnsChecking, setDnsChecking] = useState(false);
+   179→  const [dnsResult, setDnsResult] = useState<{
+   180→    status: string;
+   181→    mx_records: { exchange: string; priority: number }[];
+   182→    points_to_postmark: boolean;
+   183→  } | null>(null);
+   184→
+   185→  const [pmApiToken, setPmApiToken] = useState("");
+   186→  const [pmFromAddress, setPmFromAddress] = useState("");
+   187→  const [pmFromName, setPmFromName] = useState("");
+   188→  const [inboundDomain, setInboundDomain] = useState("");
+   189→  const [configLoaded, setConfigLoaded] = useState(false);
+   190→
+   191→  // Postmark health state
+   192→  const [postmarkHealth, setPostmarkHealth] = useState<PostmarkHealth | null>(null);
+   193→  const [healthLoading, setHealthLoading] = useState(false);
+   194→
+   195→  const { data: config } = useQuery({
+   196→    queryKey: ["admin_config"],
+   197→    queryFn: () => adminCall({ action: "get_config" }),
+   198→  });
+   199→
+   200→  useEffect(() => {
+   201→    if (config && !configLoaded) {
+   202→      setPmApiToken(config.postmark_api_token_masked || "");
+   203→      setPmFromAddress(config.email_from_address || "noreply@rankora.co");
+   204→      setPmFromName(config.email_from_name || "Rankora");
+   205→      setInboundDomain(config.inbound_email_domain || "inbound.rankora.co");
+   206→      setConfigLoaded(true);
+   207→    }
+   208→  }, [config, configLoaded]);
+   209→
+   210→  // Auto-check health when config loads and token exists
+   211→  useEffect(() => {
+   212→    if (config?.has_postmark_token && !postmarkHealth && !healthLoading) {
+   213→      verifyPostmarkConnection();
+   214→    }
+   215→  }, [config?.has_postmark_token]);
+   216→
+   217→  const { data: templates = [] } = useQuery({
+   218→    queryKey: ["email_templates"],
+   219→    queryFn: () => adminCall({ action: "get_templates" }),
+   220→  });
+   221→
+   222→  const { data: users = [] } = useQuery({
+   223→    queryKey: ["admin_users_email"],
+   224→    queryFn: async () => {
+   225→      const { data: { session } } = await supabase.auth.getSession();
+   226→      const res = await supabase.functions.invoke("admin-users", {
+   227→        headers: { Authorization: `Bearer ${session?.access_token}` },
+   228→      });
+   229→      if (res.error) throw res.error;
+   230→      return res.data as Array<{
+   231→        id: string; email: string; inbox_email: string | null;
+   232→        email_enabled: boolean; credits: number; plan: string;
+   233→      }>;
+   234→    },
+   235→  });
+   236→
+   237→  // ─── Verify Postmark Connection ───
+   238→  const verifyPostmarkConnection = async () => {
+   239→    setHealthLoading(true);
+   240→    try {
+   241→      const { data, error } = await supabase.functions.invoke("admin-test-integration", {
+   242→        body: { key_name: "POSTMARK_API_TOKEN" },
+   243→      });
+   244→      if (error) throw error;
+   245→
+   246→      const d = data.details || {};
+   247→      setPostmarkHealth({
+   248→        tokenValid: d.tokenValid ?? false,
+   249→        senderVerified: d.senderVerified ?? false,
+   250→        accountApproved: d.accountApproved ?? true,
+   251→        serverName: d.serverName || "",
+   252→        fromEmail: d.fromEmail || "",
+   253→        totalSenders: d.totalSenders || 0,
+   254→        accountMessage: d.accountMessage,
+   255→      });
+   256→
+   257→      // Also refresh the integrations query
+   258→      qc.invalidateQueries({ queryKey: ["admin_integrations"] });
+   259→    } catch (e: any) {
+   260→      toast.error("Failed to verify connection: " + e.message);
+   261→      setPostmarkHealth({
+   262→        tokenValid: false,
+   263→        senderVerified: false,
+   264→        accountApproved: false,
+   265→        serverName: "",
+   266→        fromEmail: "",
+   267→        totalSenders: 0,
+   268→      });
+   269→    } finally {
+   270→      setHealthLoading(false);
+   271→    }
+   272→  };
+   273→
+   274→  // ─── Mutations ───
+   275→  const updateConfig = useMutation({
+   276→    mutationFn: (updates: Record<string, any>) => adminCall({ action: "update_config", updates }),
+   277→    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin_config"] }),
+   278→    onError: (e: any) => toast.error(e.message),
+   279→  });
+   280→
+   281→  const toggleOutbound = useMutation({
+   282→    mutationFn: (enabled: boolean) => adminCall({ action: "update_config", updates: { outbound_email_enabled: enabled } }),
+   283→    onSuccess: () => { toast.success("Outbound email updated"); qc.invalidateQueries({ queryKey: ["admin_config"] }); },
+   284→    onError: (e: any) => toast.error(e.message),
+   285→  });
+   286→
+   287→  const toggleGlobal = useMutation({
+   288→    mutationFn: (enabled: boolean) => adminCall({ action: "update_config", updates: { email_ingestion_enabled: enabled } }),
+   289→    onSuccess: () => { toast.success("Email ingestion updated"); qc.invalidateQueries({ queryKey: ["admin_config"] }); },
+   290→    onError: (e: any) => toast.error(e.message),
+   291→  });
+   292→
+   293→  const toggleNotification = useMutation({
+   294→    mutationFn: ({ field, enabled }: { field: string; enabled: boolean }) =>
+   295→      adminCall({ action: "update_config", updates: { [field]: enabled } }),
+   296→    onSuccess: () => { toast.success("Notification updated"); qc.invalidateQueries({ queryKey: ["admin_config"] }); },
+   297→    onError: (e: any) => toast.error(e.message),
+   298→  });
+   299→
+   300→  const savePostmarkConfig = useMutation({
+   301→    mutationFn: async () => {
+   302→      const updates: Record<string, any> = {
+   303→        email_from_address: pmFromAddress,
+   304→        email_from_name: pmFromName,
+   305→      };
+   306→      if (pmApiToken && !pmApiToken.includes("***")) {
+   307→        updates.postmark_api_token = pmApiToken;
+   308→      }
+   309→      return adminCall({ action: "update_config", updates });
+   310→    },
+   311→    onSuccess: () => {
+   312→      toast.success("Postmark settings saved!");
+   313→      qc.invalidateQueries({ queryKey: ["admin_config"] });
+   314→      // Re-verify connection after saving
+   315→      setTimeout(() => verifyPostmarkConnection(), 500);
+   316→    },
+   317→    onError: (e: any) => toast.error(e.message),
+   318→  });
+   319→
+   320→  const updateTemplate = useMutation({
+   321→    mutationFn: ({ id, subject, body_html }: { id: string; subject: string; body_html: string }) =>
+   322→      adminCall({ action: "update_template", template_id: id, subject, body_html }),
+   323→    onSuccess: () => { toast.success("Template saved"); qc.invalidateQueries({ queryKey: ["email_templates"] }); },
+   324→    onError: (e: any) => toast.error(e.message),
+   325→  });
+   326→
+   327→  const toggleUser = useMutation({
+   328→    mutationFn: async ({ userId, enabled }: { userId: string; enabled: boolean }) => {
+   329→      const { data: { session } } = await supabase.auth.getSession();
+   330→      const res = await supabase.functions.invoke("admin-users", {
+   331→        method: "POST",
+   332→        headers: { Authorization: `Bearer ${session?.access_token}` },
+   333→        body: { user_id: userId, email_enabled: enabled },
+   334→      });
+   335→      if (res.error) throw res.error;
+   336→    },
+   337→    onSuccess: () => { toast.success("User email updated"); qc.invalidateQueries({ queryKey: ["admin_users_email"] }); },
+   338→    onError: (e: any) => toast.error(e.message),
+   339→  });
+   340→
+   341→  const handleSendTestEmail = async () => {
+   342→    if (!testEmailTo) { toast.error("Enter a recipient email"); return; }
+   343→    setSendingTest(true);
+   344→    try {
+   345→      const res = await supabase.functions.invoke("send-email", {
+   346→        body: {
+   347→          to: testEmailTo,
+   348→          template_key: "ranking_complete",
+   349→          variables: { user_name: "Admin", job_title: "Test Job", resume_count: "5", job_id: "test", app_url: window.location.origin },
+   350→        },
+   351→      });
+   352→      if (res.error) throw new Error(res.error.message);
+   353→      const data = res.data as any;
+   354→      if (data?.error) {
+   355→        // Show friendly Postmark error
+   356→        if (data.postmark_error_code === 412) {
+   357→          toast.error(data.error, { duration: 8000 });
+   358→        } else {
+   359→          toast.error(data.error);
+   360→        }
+   361→      } else if (data?.skipped) {
+   362→        toast.error("Email skipped — check outbound is enabled");
+   363→      } else {
+   364→        toast.success(`Test email sent to ${testEmailTo}`);
+   365→      }
+   366→    } catch (e: any) { toast.error(e.message); }
+   367→    finally { setSendingTest(false); }
+   368→  };
+   369→
+   370→  const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copied!"); };
+   371→
+   372→  const filtered = users.filter(
+   373→    (u) => u.email?.toLowerCase().includes(search.toLowerCase()) || u.inbox_email?.toLowerCase().includes(search.toLowerCase())
+   374→  );
+   375→
+   376→  const globalEnabled = config?.email_ingestion_enabled ?? true;
+   377→  const outboundEnabled = config?.outbound_email_enabled ?? false;
+   378→  const notifyRankingComplete = config?.email_notify_ranking_complete ?? true;
+   379→  const notifyResumeReceived = config?.email_notify_resume_received ?? true;
+   380→  const hasApiToken = !!config?.has_postmark_token;
+   381→  const maskedToken = hasApiToken && !pmApiToken ? "***hidden***" : pmApiToken;
+   382→
+   383→  // Wizard step states
+   384→  const step1Done = hasApiToken;
+   385→  const step2Done = hasApiToken && !!pmFromAddress;
+   386→  const step3Done = step2Done && outboundEnabled;
+   387→
+   388→  return (
+   389→    <div className="space-y-6">
+   390→      <div className="flex items-center justify-between">
+   391→        <div>
+   392→          <h2 className="text-xl font-semibold">Email Settings</h2>
+   393→          <p className="text-sm text-muted-foreground">Manage email sending, receiving, and templates</p>
+   394→        </div>
+   395→        <Badge variant={hasApiToken && outboundEnabled ? "default" : "secondary"} className={`gap-1.5 px-3 py-1 ${hasApiToken && outboundEnabled ? "bg-green-600 hover:bg-green-700" : ""}`}>
+   396→          {hasApiToken && outboundEnabled ? <><CheckCircle2 className="h-3 w-3" /> Connected</> : <><AlertCircle className="h-3 w-3" /> Not Connected</>}
+   397→        </Badge>
+   398→      </div>
+   399→
+   400→      <Tabs defaultValue="connect" className="w-full">
+   401→        <TabsList className="grid w-full grid-cols-4 h-11">
+   402→          <TabsTrigger value="connect" className="gap-1.5"><Plug className="h-3.5 w-3.5" /> Connect</TabsTrigger>
+   403→          <TabsTrigger value="notifications" className="gap-1.5"><Bell className="h-3.5 w-3.5" /> Notifications</TabsTrigger>
+   404→          <TabsTrigger value="templates" className="gap-1.5"><FileText className="h-3.5 w-3.5" /> Templates</TabsTrigger>
+   405→          <TabsTrigger value="inbound" className="gap-1.5"><Inbox className="h-3.5 w-3.5" /> Inbound</TabsTrigger>
+   406→        </TabsList>
+   407→
+   408→        {/* ─── Connect Tab ─── */}
+   409→        <TabsContent value="connect" className="space-y-5 mt-5">
+   410→          {/* Health Banner — shows at top when token exists */}
+   411→          {hasApiToken && (
+   412→            <HealthBanner health={postmarkHealth} loading={healthLoading} onVerify={verifyPostmarkConnection} />
+   413→          )}
+   414→
+   415→          {/* Setup Wizard */}
+   416→          <Card>
+   417→            <CardHeader className="pb-4">
+   418→              <CardTitle className="text-base flex items-center gap-2">
+   419→                <Zap className="h-4 w-4 text-amber-500" /> Quick Setup
+   420→              </CardTitle>
+   421→              <CardDescription>Follow these 3 steps to start sending emails</CardDescription>
+   422→            </CardHeader>
+   423→            <CardContent>
+   424→              <div className="flex items-center gap-2 mb-5">
+   425→                <SetupStep step={1} title="Add API Token" done={step1Done} active={!step1Done} />
+   426→                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+   427→                <SetupStep step={2} title="Set Sender" done={step2Done} active={step1Done && !step2Done} />
+   428→                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+   429→                <SetupStep step={3} title="Enable & Test" done={step3Done} active={step2Done && !step3Done} />
+   430→              </div>
+   431→
+   432→              {!step1Done && (
+   433→                <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 space-y-2">
+   434→                  <p className="text-sm font-medium text-foreground">👋 Let's get started!</p>
+   435→                  <p className="text-xs text-muted-foreground">
+   436→                    You need a Postmark account to send emails. It's free for up to 100 emails/month.
+   437→                  </p>
+   438→                  <Button variant="outline" size="sm" className="gap-1.5" asChild>
+   439→                    <a href="https://account.postmarkapp.com/sign_up" target="_blank" rel="noopener noreferrer">
+   440→                      <ExternalLink className="h-3 w-3" /> Create Postmark Account
+   441→                    </a>
+   442→                  </Button>
+   443→                </div>
+   444→              )}
+   445→            </CardContent>
+   446→          </Card>
+   447→
+   448→          {/* Postmark Credentials Card */}
+   449→          <Card>
+   450→            <CardHeader className="pb-3">
+   451→              <CardTitle className="text-base flex items-center gap-2">
+   452→                <Key className="h-4 w-4" /> Postmark Credentials
+   453→              </CardTitle>
+   454→            </CardHeader>
+   455→            <CardContent className="space-y-4">
+   456→              <div className="space-y-2">
+   457→                <Label className="text-sm font-medium">Server API Token</Label>
+   458→                <div className="flex gap-2">
+   459→                  <div className="relative flex-1">
+   460→                    <Input
+   461→                      type={showToken ? "text" : "password"}
+   462→                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+   463→                      value={configLoaded ? maskedToken : ""}
+   464→                      onChange={(e) => setPmApiToken(e.target.value)}
+   465→                      className="font-mono text-sm pr-10"
+   466→                    />
+   467→                    <Button
+   468→                      type="button"
+   469→                      variant="ghost"
+   470→                      size="icon"
+   471→                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+   472→                      onClick={() => setShowToken(!showToken)}
+   473→                    >
+   474→                      {showToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+   475→                    </Button>
+   476→                  </div>
+   477→                </div>
+   478→                <p className="text-xs text-muted-foreground">
+   479→                  Find it at{" "}
+   480→                  <a href="https://account.postmarkapp.com/servers" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+   481→                    Postmark → Servers → API Tokens
+   482→                  </a>
+   483→                </p>
+   484→              </div>
+   485→
+   486→              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   487→                <div className="space-y-2">
+   488→                  <div className="flex items-center gap-2">
+   489→                    <Label className="text-sm font-medium">From Email</Label>
+   490→                    {postmarkHealth && hasApiToken && (
+   491→                      postmarkHealth.senderVerified ? (
+   492→                        <Badge variant="default" className="gap-1 text-[10px] px-1.5 py-0 bg-green-600">
+   493→                          <CheckCircle2 className="h-2.5 w-2.5" /> Verified
+   494→                        </Badge>
+   495→                      ) : (
+   496→                        <Badge variant="destructive" className="gap-1 text-[10px] px-1.5 py-0">
+   497→                          <XCircle className="h-2.5 w-2.5" /> Not Verified
+   498→                        </Badge>
+   499→                      )
+   500→                    )}
+   501→                  </div>
+   502→                  <Input
+   503→                    type="email"
+   504→                    placeholder="noreply@yourdomain.com"
+   505→                    value={pmFromAddress}
+   506→                    onChange={(e) => setPmFromAddress(e.target.value)}
+   507→                  />
+   508→                  <p className="text-xs text-muted-foreground">Must be verified in Postmark</p>
+   509→                </div>
+   510→                <div className="space-y-2">
+   511→                  <Label className="text-sm font-medium">From Name</Label>
+   512→                  <Input
+   513→                    placeholder="Rankora"
+   514→                    value={pmFromName}
+   515→                    onChange={(e) => setPmFromName(e.target.value)}
+   516→                  />
+   517→                </div>
+   518→              </div>
+   519→
+   520→              <div className="flex gap-2">
+   521→                <Button onClick={() => savePostmarkConfig.mutate()} disabled={savePostmarkConfig.isPending} className="gap-2">
+   522→                  <Save className="h-4 w-4" />
+   523→                  {savePostmarkConfig.isPending ? "Saving..." : "Save Credentials"}
+   524→                </Button>
+   525→                {hasApiToken && (
+   526→                  <Button
+   527→                    variant="outline"
+   528→                    onClick={verifyPostmarkConnection}
+   529→                    disabled={healthLoading}
+   530→                    className="gap-2"
+   531→                  >
+   532→                    {healthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+   533→                    Verify Connection
+   534→                  </Button>
+   535→                )}
+   536→              </div>
+   537→            </CardContent>
+   538→          </Card>
+   539→
+   540→          {/* Master Toggle + Test */}
+   541→          <Card>
+   542→            <CardHeader className="pb-3">
+   543→              <CardTitle className="text-base flex items-center gap-2">
+   544→                <Settings2 className="h-4 w-4" /> Email Sending
+   545→              </CardTitle>
+   546→            </CardHeader>
+   547→            <CardContent className="space-y-4">
+   548→              <ToggleRow
+   549→                icon={Send}
+   550→                label="Enable Outbound Emails"
+   551→                description="Turn on email sending to users via Postmark"
+   552→                checked={outboundEnabled}
+   553→                onToggle={(v) => toggleOutbound.mutate(v)}
+   554→              />
+   555→
+   556→              {/* Account pending warning */}
+   557→              {hasApiToken && outboundEnabled && postmarkHealth && !postmarkHealth.accountApproved && (
+   558→                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 p-3 flex items-start gap-2">
+   559→                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+   560→                  <div className="space-y-1">
+   561→                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+   562→                      Postmark Account Pending Approval
+   563→                    </p>
+   564→                    <p className="text-xs text-amber-600 dark:text-amber-500">
+   565→                      While your account is under review, you can only send emails to recipients at <strong>@{pmFromAddress.split("@")[1] || "yourdomain.com"}</strong>.
+   566→                      External recipients (Gmail, Outlook, etc.) will be rejected. Request approval in your{" "}
+   567→                      <a href="https://account.postmarkapp.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+   568→                        Postmark Dashboard
+   569→                      </a>.
+   570→                    </p>
+   571→                  </div>
+   572→                </div>
+   573→              )}
+   574→
+   575→              {/* Sender not verified warning */}
+   576→              {hasApiToken && outboundEnabled && postmarkHealth && !postmarkHealth.senderVerified && postmarkHealth.tokenValid && (
+   577→                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 p-3 flex items-start gap-2">
+   578→                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+   579→                  <div className="space-y-1">
+   580→                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+   581→                      Sender Not Verified
+   582→                    </p>
+   583→                    <p className="text-xs text-amber-600 dark:text-amber-500">
+   584→                      <strong>{pmFromAddress}</strong> is not verified in Postmark. Emails will fail until this sender is added and confirmed.{" "}
+   585→                      <a href="https://account.postmarkapp.com/signature_domains" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+   586→                        Verify in Postmark
+   587→                      </a>
+   588→                    </p>
+   589→                  </div>
+   590→                </div>
+   591→              )}
+   592→
+   593→              {/* Test Email — only show when connected */}
+   594→              {hasApiToken && outboundEnabled && (
+   595→                <div className="rounded-xl border border-dashed border-green-300 dark:border-green-800 bg-green-50/50 dark:bg-green-950/30 p-4 space-y-3">
+   596→                  <div className="flex items-center gap-2">
+   597→                    <TestTube className="h-4 w-4 text-green-600" />
+   598→                    <span className="text-sm font-medium text-green-700 dark:text-green-400">Send a Test Email</span>
+   599→                  </div>
+   600→                  {postmarkHealth && !postmarkHealth.accountApproved && (
+   601→                    <p className="text-xs text-amber-600 dark:text-amber-500">
+   602→                      ⚠️ Account pending — use a <strong>@{pmFromAddress.split("@")[1] || "yourdomain.com"}</strong> recipient address
+   603→                    </p>
+   604→                  )}
+   605→                  <div className="flex gap-2">
+   606→                    <Input
+   607→                      type="email"
+   608→                      placeholder="your@email.com"
+   609→                      value={testEmailTo}
+   610→                      onChange={(e) => setTestEmailTo(e.target.value)}
+   611→                      className="flex-1"
+   612→                    />
+   613→                    <Button onClick={handleSendTestEmail} disabled={sendingTest} variant="outline" className="gap-1.5 shrink-0 border-green-300 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900">
+   614→                      <Send className="h-3.5 w-3.5" />
+   615→                      {sendingTest ? "Sending..." : "Send Test"}
+   616→                    </Button>
+   617→                  </div>
+   618→                </div>
+   619→              )}
+   620→            </CardContent>
+   621→          </Card>
+   622→        </TabsContent>
+   623→
+   624→        {/* ─── Notifications Tab ─── */}
+   625→        <TabsContent value="notifications" className="space-y-5 mt-5">
+   626→          <Card>
+   627→            <CardHeader className="pb-3">
+   628→              <CardTitle className="text-base flex items-center gap-2">
+   629→                <Bell className="h-4 w-4" /> Email Notifications
+   630→              </CardTitle>
+   631→              <CardDescription>Choose which events trigger email notifications to users</CardDescription>
+   632→            </CardHeader>
+   633→            <CardContent className="space-y-3">
+   634→              {!outboundEnabled && (
+   635→                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 p-3 flex items-center gap-2 mb-2">
+   636→                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+   637→                  <p className="text-xs text-amber-700 dark:text-amber-400">
+   638→                    Outbound email is disabled. Enable it in the <strong>Connect</strong> tab first.
+   639→                  </p>
+   640→                </div>
+   641→              )}
+   642→
+   643→              <ToggleRow
+   644→                icon={CheckCircle2}
+   645→                label="Ranking Complete"
+   646→                description="Notify when job ranking finishes"
+   647→                checked={notifyRankingComplete}
+   648→                onToggle={(v) => toggleNotification.mutate({ field: "email_notify_ranking_complete", enabled: v })}
+   649→                disabled={!outboundEnabled}
+   650→              />
+   651→              <ToggleRow
+   652→                icon={Mail}
+   653→                label="Resume Received"
+   654→                description="Confirm when resumes arrive via email"
+   655→                checked={notifyResumeReceived}
+   656→                onToggle={(v) => toggleNotification.mutate({ field: "email_notify_resume_received", enabled: v })}
+   657→                disabled={!outboundEnabled}
+   658→              />
+   659→            </CardContent>
+   660→          </Card>
+   661→        </TabsContent>
+   662→
+   663→        {/* ─── Templates Tab ─── */}
+   664→        <TabsContent value="templates" className="space-y-5 mt-5">
+   665→          {templates.length === 0 ? (
+   666→            <Card>
+   667→              <CardContent className="py-12 text-center space-y-2">
+   668→                <FileText className="h-10 w-10 mx-auto text-muted-foreground/50" />
+   669→                <p className="text-sm text-muted-foreground">No email templates found</p>
+   670→                <p className="text-xs text-muted-foreground">Run the database migration to create default templates.</p>
+   671→              </CardContent>
+   672→            </Card>
+   673→          ) : (
+   674→            templates.map((tpl: any) => (
+   675→              <TemplateEditor
+   676→                key={tpl.id}
+   677→                template={tpl}
+   678→                onSave={(subject, body_html) => updateTemplate.mutate({ id: tpl.id, subject, body_html })}
+   679→                saving={updateTemplate.isPending}
+   680→              />
+   681→            ))
+   682→          )}
+   683→        </TabsContent>
+   684→
+   685→        {/* ─── Inbound Tab ─── */}
+   686→        <TabsContent value="inbound" className="space-y-5 mt-5">
+   687→          <Card>
+   688→            <CardHeader className="pb-3">
+   689→              <CardTitle className="text-base flex items-center gap-2">
+   690→                <Inbox className="h-4 w-4" /> Inbound Email Ingestion
+   691→              </CardTitle>
+   692→              <CardDescription>Receive resumes via email and auto-add them to jobs</CardDescription>
+   693→            </CardHeader>
+   694→            <CardContent className="space-y-4">
+   695→              <ToggleRow
+   696→                icon={Shield}
+   697→                label="Global Email Ingestion"
+   698→                description="Enable or disable email ingestion for all users"
+   699→                checked={globalEnabled}
+   700→                onToggle={(v) => toggleGlobal.mutate(v)}
+   701→              />
+   702→
+   703→              {/* Configurable inbound domain */}
+   704→              <div className="space-y-2">
+   705→                <Label className="text-sm font-medium">Inbound Domain</Label>
+   706→                <div className="flex gap-2">
+   707→                  <Input
+   708→                    placeholder="inbound.rankora.co"
+   709→                    value={inboundDomain}
+   710→                    onChange={(e) => setInboundDomain(e.target.value)}
+   711→                    className="flex-1"
+   712→                  />
+   713→                  <Button
+   714→                    variant="outline"
+   715→                    onClick={() => {
+   716→                      updateConfig.mutate({ inbound_email_domain: inboundDomain });
+   717→                      toast.success("Inbound domain saved");
+   718→                    }}
+   719→                    disabled={updateConfig.isPending}
+   720→                    className="gap-1.5"
+   721→                  >
+   722→                    <Save className="h-3.5 w-3.5" /> Save
+   723→                  </Button>
+   724→                </div>
+   725→                <p className="text-xs text-muted-foreground">
+   726→                  All user and job inbox emails use this domain. Changing it will apply to newly generated addresses.
+   727→                </p>
+   728→              </div>
+   729→
+   730→              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+   731→                <CopyableField icon={Globe} label="Inbound Domain" value={`@${inboundDomain || "inbound.rankora.co"}`} onCopy={copyToClipboard} />
+   732→                <CopyableField icon={Link2} label="Webhook URL" value={WEBHOOK_URL} onCopy={copyToClipboard} small />
+   733→              </div>
+   734→
+   735→              <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+   736→                <div className="flex items-center gap-2 text-sm font-medium">
+   737→                  <Info className="h-4 w-4 text-muted-foreground" /> Postmark Inbound Setup
+   738→                </div>
+   739→                <div className="grid gap-2">
+   740→                  {[
+   741→                    { step: "1", text: "Go to Postmark → Your Server → Inbound" },
+   742→                    { step: "2", text: `Set inbound domain to ${inboundDomain || "inbound.rankora.co"}` },
+   743→                    { step: "3", text: "Paste the Webhook URL above" },
+   744→                    { step: "4", text: "Add MX record pointing to inbound.postmarkapp.com" },
+   745→                  ].map(({ step, text }) => (
+   746→                    <div key={step} className="flex items-start gap-2.5">
+   747→                      <span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+   748→                        {step}
+   749→                      </span>
+   750→                      <span className="text-xs text-muted-foreground">{text}</span>
+   751→                    </div>
+   752→                  ))}
+   753→                </div>
+   754→              </div>
+   755→
+   756→              {/* DNS Health Check */}
+   757→              <div className="space-y-3">
+   758→                <div className="flex items-center gap-2">
+   759→                  <Button
+   760→                    variant="outline"
+   761→                    size="sm"
+   762→                    className="gap-1.5"
+   763→                    disabled={dnsChecking}
+   764→                    onClick={async () => {
+   765→                      setDnsChecking(true);
+   766→                      try {
+   767→                        const { data, error } = await supabase.functions.invoke("admin-test-integration", {
+   768→                          body: { key_name: "DNS_MX_CHECK", domain: inboundDomain || "inbound.rankora.co" },
+   769→                        });
+   770→                        if (error) throw error;
+   771→                        setDnsResult(data as any);
+   772→                      } catch (e: any) {
+   773→                        toast.error("DNS check failed: " + e.message);
+   774→                      } finally {
+   775→                        setDnsChecking(false);
+   776→                      }
+   777→                    }}
+   778→                  >
+   779→                    {dnsChecking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shield className="h-3.5 w-3.5" />}
+   780→                    Check MX Records
+   781→                  </Button>
+   782→                </div>
+   783→
+   784→                {dnsResult && (
+   785→                  <div className={`rounded-lg border p-3 space-y-2 ${
+   786→                    dnsResult.points_to_postmark
+   787→                      ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/50"
+   788→                      : dnsResult.mx_records?.length > 0
+   789→                        ? "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950"
+   790→                        : "border-destructive/50 bg-destructive/10"
+   791→                  }`}>
+   792→                    <div className="flex items-center gap-2">
+   793→                      {dnsResult.points_to_postmark ? (
+   794→                        <>
+   795→                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+   796→                          <span className="text-sm font-medium text-green-700 dark:text-green-400">MX records correctly point to Postmark</span>
+   797→                        </>
+   798→                      ) : dnsResult.mx_records?.length > 0 ? (
+   799→                        <>
+   800→                          <AlertTriangle className="h-4 w-4 text-amber-600" />
+   801→                          <span className="text-sm font-medium text-amber-700 dark:text-amber-400">MX records found but not pointing to Postmark</span>
+   802→                        </>
+   803→                      ) : (
+   804→                        <>
+   805→                          <XCircle className="h-4 w-4 text-destructive" />
+   806→                          <span className="text-sm font-medium text-destructive">No MX records found for {inboundDomain}</span>
+   807→                        </>
+   808→                      )}
+   809→                    </div>
+   810→                    {dnsResult.mx_records?.length > 0 && (
+   811→                      <div className="space-y-1">
+   812→                        {dnsResult.mx_records.map((mx, i) => (
+   813→                          <div key={i} className="text-xs text-muted-foreground font-mono">
+   814→                            Priority {mx.priority}: {mx.exchange}
+   815→                          </div>
+   816→                        ))}
+   817→                      </div>
+   818→                    )}
+   819→                    {!dnsResult.points_to_postmark && (
+   820→                      <p className="text-xs text-muted-foreground">
+   821→                        Expected: MX record pointing to <code className="bg-muted px-1 rounded">inbound.postmarkapp.com</code>
+   822→                      </p>
+   823→                    )}
+   824→                  </div>
+   825→                )}
+   826→              </div>
+   827→            </CardContent>
+   828→          </Card>
+   829→
+   830→          {/* User Inbox Directory */}
+   831→          <Card>
+   832→            <CardHeader className="pb-3">
+   833→              <CardTitle className="text-base flex items-center gap-2">
+   834→                <Inbox className="h-4 w-4" /> User Inboxes
+   835→              </CardTitle>
+   836→              <CardDescription>Manage per-user inbound email addresses</CardDescription>
+   837→            </CardHeader>
+   838→            <CardContent className="space-y-4">
+   839→              <div className="relative max-w-sm">
+   840→                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   841→                <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+   842→              </div>
+   843→
+   844→              <div className="rounded-md border">
+   845→                <Table>
+   846→                  <TableHeader>
+   847→                    <TableRow>
+   848→                      <TableHead>User</TableHead>
+   849→                      <TableHead>Inbox</TableHead>
+   850→                      <TableHead>Status</TableHead>
+   851→                      <TableHead className="w-[120px]">Actions</TableHead>
+   852→                    </TableRow>
+   853→                  </TableHeader>
+   854→                  <TableBody>
+   855→                    {filtered.length === 0 ? (
+   856→                      <TableRow>
+   857→                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">No users found</TableCell>
+   858→                      </TableRow>
+   859→                    ) : (
+   860→                      filtered.map((u) => (
+   861→                        <TableRow key={u.id}>
+   862→                          <TableCell className="font-medium text-sm">{u.email}</TableCell>
+   863→                          <TableCell>
+   864→                            <div className="flex items-center gap-1.5">
+   865→                              <code className="text-xs bg-muted px-1.5 py-0.5 rounded truncate max-w-[220px]">{u.inbox_email || "—"}</code>
+   866→                              {u.inbox_email && (
+   867→                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => copyToClipboard(u.inbox_email!)}>
+   868→                                  <Copy className="h-3 w-3" />
+   869→                                </Button>
+   870→                              )}
+   871→                            </div>
+   872→                          </TableCell>
+   873→                          <TableCell>
+   874→                            <Badge variant={u.email_enabled ? "default" : "secondary"} className="text-xs">
+   875→                              {u.email_enabled ? "Active" : "Off"}
+   876→                            </Badge>
+   877→                          </TableCell>
+   878→                          <TableCell>
+   879→                            <div className="flex items-center gap-1">
+   880→                              <Switch checked={u.email_enabled} onCheckedChange={(v) => toggleUser.mutate({ userId: u.id, enabled: v })} disabled={!globalEnabled} />
+   881→                              <Button
+   882→                                size="icon"
+   883→                                variant="ghost"
+   884→                                className="h-7 w-7"
+   885→                                title="Regenerate inbox email"
+   886→                                disabled={regeneratingUser === u.id}
+   887→                                onClick={async () => {
+   888→                                  setRegeneratingUser(u.id);
+   889→                                  try {
+   890→                                    await adminCall({ action: "regenerate_inbox", user_id: u.id });
+   891→                                    toast.success("Inbox regenerated");
+   892→                                    qc.invalidateQueries({ queryKey: ["admin_users_email"] });
+   893→                                  } catch (e: any) {
+   894→                                    toast.error(e.message);
+   895→                                  } finally {
+   896→                                    setRegeneratingUser(null);
+   897→                                  }
+   898→                                }}
+   899→                              >
+   900→                                {regeneratingUser === u.id ? (
+   901→                                  <Loader2 className="h-3 w-3 animate-spin" />
+   902→                                ) : (
+   903→                                  <RefreshCw className="h-3 w-3" />
+   904→                                )}
+   905→                              </Button>
+   906→                            </div>
+   907→                          </TableCell>
+   908→                        </TableRow>
+   909→                      ))
+   910→                    )}
+   911→                  </TableBody>
+   912→                </Table>
+   913→              </div>
+   914→            </CardContent>
+   915→          </Card>
+   916→
+   917→          {/* Logs */}
+   918→          <EmailIngestLogsCard />
+   919→        </TabsContent>
+   920→      </Tabs>
+   921→    </div>
+   922→  );
+   923→};
+   924→
+   925→// ─── Copyable field widget ───
+   926→function CopyableField({ icon: Icon, label, value, onCopy, small = false }: {
+   927→  icon: React.ElementType; label: string; value: string; onCopy: (v: string) => void; small?: boolean;
+   928→}) {
+   929→  return (
+   930→    <div className="rounded-xl border border-border p-3 space-y-1.5">
+   931→      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+   932→        <Icon className="h-3.5 w-3.5" /> {label}
+   933→      </div>
+   934→      <div className="flex items-center gap-2">
+   935→        <code className={`bg-muted px-2 py-1 rounded flex-1 ${small ? "text-[11px] truncate" : "text-sm"}`}>{value}</code>
+   936→        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => onCopy(value)}>
+   937→          <Copy className="h-3 w-3" />
+   938→        </Button>
+   939→      </div>
+   940→    </div>
+   941→  );
+   942→}
+   943→
+   944→// ─── Template editor with preview ───
+   945→function TemplateEditor({
+   946→  template, onSave, saving
+   947→}: {
+   948→  template: { id: string; template_key: string; subject: string; body_html: string; description: string | null };
+   949→  onSave: (subject: string, body_html: string) => void;
+   950→  saving: boolean;
+   951→}) {
+   952→  const [subject, setSubject] = useState(template.subject);
+   953→  const [bodyHtml, setBodyHtml] = useState(template.body_html);
+   954→  const [showPreview, setShowPreview] = useState(false);
+   955→  const dirty = subject !== template.subject || bodyHtml !== template.body_html;
+   956→
+   957→  const variableHints: Record<string, string[]> = {
+   958→    ranking_complete: ["user_name", "job_title", "resume_count", "job_id", "app_url"],
+   959→    resume_received: ["user_name", "job_title", "attachment_count", "filename", "job_id", "app_url"],
+   960→  };
+   961→  const vars = variableHints[template.template_key] || [];
+   962→
+   963→  const prettyName = template.template_key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+   964→
+   965→  return (
+   966→    <Card>
+   967→      <CardHeader className="pb-3">
+   968→        <div className="flex items-center justify-between">
+   969→          <CardTitle className="text-base flex items-center gap-2">
+   970→            <FileText className="h-4 w-4" /> {prettyName}
+   971→          </CardTitle>
+   972→          <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setShowPreview(!showPreview)}>
+   973→            <Eye className="h-3 w-3" /> {showPreview ? "Edit" : "Preview"}
+   974→          </Button>
+   975→        </div>
+   976→        {template.description && <CardDescription>{template.description}</CardDescription>}
+   977→      </CardHeader>
+   978→      <CardContent className="space-y-4">
+   979→        {vars.length > 0 && (
+   980→          <div className="flex flex-wrap gap-1.5">
+   981→            <span className="text-xs text-muted-foreground">Variables:</span>
+   982→            {vars.map((v) => (
+   983→              <Badge key={v} variant="outline" className="text-[11px] font-mono px-1.5 py-0">{`{{${v}}}`}</Badge>
+   984→            ))}
+   985→          </div>
+   986→        )}
+   987→
+   988→        {showPreview ? (
+   989→          <div className="rounded-lg border bg-white dark:bg-background p-4">
+   990→            <p className="text-xs text-muted-foreground mb-2">Subject: <strong>{subject}</strong></p>
+   991→            <div className="border rounded p-3 text-sm" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+   992→          </div>
+   993→        ) : (
+   994→          <>
+   995→            <div className="space-y-2">
+   996→              <Label className="text-sm font-medium">Subject Line</Label>
+   997→              <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+   998→            </div>
+   999→            <div className="space-y-2">
+  1000→              <Label className="text-sm font-medium">Email Body (HTML)</Label>
+  1001→              <Textarea value={bodyHtml} onChange={(e) => setBodyHtml(e.target.value)} className="font-mono text-xs min-h-[180px]" />
+  1002→            </div>
+  1003→          </>
+  1004→        )}
+  1005→
+  1006→        <Button onClick={() => onSave(subject, bodyHtml)} disabled={!dirty || saving} className="gap-2">
+  1007→          <Save className="h-4 w-4" />
+  1008→          {saving ? "Saving..." : "Save Template"}
+  1009→        </Button>
+  1010→      </CardContent>
+  1011→    </Card>
+  1012→  );
+  1013→}
+  1014→
+  1015→export default EmailSettingsTab;
+  1016→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

@@ -1,0 +1,995 @@
+     1→import { useState, useCallback, useRef, useEffect } from "react";
+     2→import { useAuth } from "@/hooks/useAuth";
+     3→import { usePlatformConfig } from "@/hooks/usePlatformConfig";
+     4→import { supabase } from "@/integrations/supabase/client";
+     5→import { Button } from "@/components/ui/button";
+     6→import { Textarea } from "@/components/ui/textarea";
+     7→import { Checkbox } from "@/components/ui/checkbox";
+     8→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     9→import { Badge } from "@/components/ui/badge";
+    10→import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+    11→import { Progress } from "@/components/ui/progress";
+    12→import {
+    13→  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    14→  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+    15→} from "@/components/ui/alert-dialog";
+    16→import { toast } from "sonner";
+    17→import {
+    18→  Upload, Copy, Loader2, FileText,
+    19→  AlertTriangle, X, Trash2, RefreshCw, CheckCircle2, FileSpreadsheet,
+    20→  Brain, ListChecks, BarChart2, ArrowRight, Sparkles, Clock, Users, Star, Mail, Zap
+    21→} from "lucide-react";
+    22→import { exportToCSV } from "@/lib/csvExport";
+    23→import CandidateRow from "@/components/CandidateRow";
+    24→import type { PastJob, Result, ExistingResume } from "@/pages/Index";
+    25→
+    26→interface JobDetailViewProps {
+    27→  selectedJobId: string | null;
+    28→  selectedJob: PastJob | null;
+    29→  results: Result[];
+    30→  setResults: (results: Result[] | ((prev: Result[]) => Result[])) => void;
+    31→  existingResumes: ExistingResume[];
+    32→  setExistingResumes: (resumes: ExistingResume[] | ((prev: ExistingResume[]) => ExistingResume[])) => void;
+    33→  onJobCreated: (job: PastJob) => void;
+    34→  onAuthRequired: () => void;
+    35→  onJobUpdated?: (jobId: string, updates: Partial<PastJob>) => void;
+    36→  isAuthenticated?: boolean;
+    37→}
+    38→
+    39→interface UploadedFile {
+    40→  file: File;
+    41→  name: string;
+    42→}
+    43→
+    44→const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    45→
+    46→const JobDetailView = ({
+    47→  selectedJobId,
+    48→  selectedJob,
+    49→  results,
+    50→  setResults,
+    51→  existingResumes,
+    52→  setExistingResumes,
+    53→  onJobCreated,
+    54→  onAuthRequired,
+    55→  onJobUpdated,
+    56→  isAuthenticated = true,
+    57→}: JobDetailViewProps) => {
+    58→  const { user, profile, refreshProfile } = useAuth();
+    59→  const { data: config } = usePlatformConfig();
+    60→
+    61→  const [jobDescription, setJobDescription] = useState("");
+    62→  const [files, setFiles] = useState<UploadedFile[]>([]);
+    63→  const [ranking, setRanking] = useState(false);
+    64→  const [rankingProgress, setRankingProgress] = useState(0);
+    65→  const [scoredCount, setScoredCount] = useState(0);
+    66→  const [totalToScore, setTotalToScore] = useState(0);
+    67→  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    68→  const [dragOver, setDragOver] = useState(false);
+    69→  const [rankingError, setRankingError] = useState<{ type: "credits" | "rate_limit" | "generic"; message: string } | null>(null);
+    70→  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    71→  const [selectedResumes, setSelectedResumes] = useState<Set<string>>(new Set());
+    72→  const [deleteConfirm, setDeleteConfirm] = useState<{type: "single" | "bulk"; resumeId?: string; filePath?: string | null;} | null>(null);
+    73→  const [deleting, setDeleting] = useState(false);
+    74→  const [analyzingJd, setAnalyzingJd] = useState(false);
+    75→  const [dismissedResumes, setDismissedResumes] = useState<Set<string>>(() => new Set());
+    76→
+    77→  const resultsRef = useRef<HTMLDivElement>(null);
+    78→  const rankingFilesRef = useRef<Set<string>>(new Set());
+    79→  const maxResumes = config?.max_resumes_per_job ?? 10;
+    80→  const maxFileSizeMb = config?.max_file_size_mb ?? 5;
+    81→
+    82→  const isNewJobMode = selectedJobId === null;
+    83→  const isExistingJob = selectedJobId !== null && selectedJob !== null;
+    84→
+    85→  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    86→  const formatCandidateName = (filename: string) => {
+    87→    const name = filename.replace(/\.\w+$/, "");
+    88→    if (UUID_REGEX.test(name)) return `Candidate`;
+    89→    return name.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    90→  };
+    91→
+    92→  // Merge unranked resumes
+    93→  const resultResumeIds = new Set(results.map((r) => r.resume_id));
+    94→  const pendingResumes: Result[] = existingResumes
+    95→    .filter((r) => !resultResumeIds.has(r.id))
+    96→    .map((r) => ({
+    97→      id: `pending-${r.id}`,
+    98→      resume_id: r.id,
+    99→      overall_score: 0,
+   100→      missing_skills: [], summary: null, interview_questions: null,
+   101→      filename: r.filename, file_path: r.file_path, candidate_name: r.candidate_name,
+   102→      pending: true,
+   103→    }));
+   104→  const allResults = [...results, ...pendingResumes];
+   105→
+   106→  // Selection helpers
+   107→  const toggleSelectResume = (resumeId: string) => {
+   108→    setSelectedResumes((prev) => {
+   109→      const next = new Set(prev);
+   110→      if (next.has(resumeId)) next.delete(resumeId); else next.add(resumeId);
+   111→      return next;
+   112→    });
+   113→  };
+   114→  const toggleSelectAll = () => {
+   115→    if (selectedResumes.size === allResults.length) setSelectedResumes(new Set());
+   116→    else setSelectedResumes(new Set(allResults.map((r) => r.resume_id)));
+   117→  };
+   118→
+   119→  // Delete logic
+   120→  const deleteResume = async (resumeId: string, filePath: string | null) => {
+   121→    if (filePath) await supabase.storage.from("resumes").remove([filePath]);
+   122→    await supabase.from("results").delete().eq("resume_id", resumeId);
+   123→    await supabase.from("resumes").delete().eq("id", resumeId);
+   124→    setResults((prev: Result[]) => prev.filter((r) => r.resume_id !== resumeId));
+   125→    setExistingResumes((prev: ExistingResume[]) => prev.filter((r) => r.id !== resumeId));
+   126→    setSelectedResumes((prev) => { const next = new Set(prev); next.delete(resumeId); return next; });
+   127→  };
+   128→
+   129→  const handleDeleteConfirm = async () => {
+   130→    if (!deleteConfirm) return;
+   131→    setDeleting(true);
+   132→    try {
+   133→      if (deleteConfirm.type === "single" && deleteConfirm.resumeId) {
+   134→        await deleteResume(deleteConfirm.resumeId, deleteConfirm.filePath ?? null);
+   135→        toast.success("Resume deleted");
+   136→      } else if (deleteConfirm.type === "bulk") {
+   137→        const toDelete = allResults.filter((r) => selectedResumes.has(r.resume_id));
+   138→        for (const r of toDelete) await deleteResume(r.resume_id, r.file_path);
+   139→        toast.success(`${toDelete.length} resume(s) deleted`);
+   140→      }
+   141→    } catch { toast.error("Failed to delete"); }
+   142→    finally { setDeleting(false); setDeleteConfirm(null); }
+   143→  };
+   144→
+   145→  // File handling
+   146→  const handleFileDrop = useCallback((e: React.DragEvent) => {
+   147→    e.preventDefault(); setDragOver(false);
+   148→    const dropped = Array.from(e.dataTransfer.files).filter(
+   149→      (f) => f.type === "application/pdf" || f.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+   150→    );
+   151→    addFiles(dropped);
+   152→  }, [files, maxResumes, maxFileSizeMb]);
+   153→
+   154→  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+   155→    if (e.target.files) addFiles(Array.from(e.target.files));
+   156→  };
+   157→
+   158→  const addFiles = (newFiles: File[]) => {
+   159→    const currentCount = isExistingJob ? existingResumes.length + files.length : files.length;
+   160→    const valid = newFiles.filter((f) => {
+   161→      if (f.size > maxFileSizeMb * 1024 * 1024) { toast.error(`${f.name} exceeds ${maxFileSizeMb}MB limit`); return false; }
+   162→      return true;
+   163→    });
+   164→    const remaining = maxResumes - currentCount;
+   165→    if (valid.length > remaining) toast.error(`Max ${maxResumes} resumes per job`);
+   166→    const toAdd = valid.slice(0, Math.max(0, remaining)).map((f) => ({ file: f, name: f.name }));
+   167→    setFiles((prev) => [...prev, ...toAdd]);
+   168→  };
+   169→
+   170→  const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
+   171→  const toggleRow = (id: string) => {
+   172→    setExpandedRows((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+   173→  };
+   174→
+   175→  const copyInboxEmail = () => {
+   176→    if (profile?.inbox_email) { navigator.clipboard.writeText(profile.inbox_email); toast.success("Inbox email copied!"); }
+   177→  };
+   178→
+   179→  const validate = (): string[] => {
+   180→    const errors: string[] = [];
+   181→    if (isNewJobMode && !jobDescription.trim()) errors.push("Job description is required.");
+   182→    const filesToCheck = files.filter(f => !rankingFilesRef.current.has(f.name));
+   183→    if (filesToCheck.length === 0) errors.push("Upload at least one resume.");
+   184→    if (user && (profile?.credits ?? 0) < Math.min(filesToCheck.length, 20)) {
+   185→      errors.push(`Not enough credits. You need ${Math.min(filesToCheck.length, 20)} but have ${profile?.credits ?? 0}.`);
+   186→    }
+   187→    return errors;
+   188→  };
+   189→
+   190→  // ── Analyze JD ──────────────────────────────────────────────
+   191→  const analyzeJd = async (jobId: string) => {
+   192→    setAnalyzingJd(true);
+   193→    try {
+   194→      const response = await fetch(
+   195→        `https://zkzontawprihrzpayeam.supabase.co/functions/v1/analyze-jd`,
+   196→        {
+   197→          method: "POST",
+   198→          headers: {
+   199→            "Content-Type": "application/json",
+   200→            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+   201→          },
+   202→          body: JSON.stringify({ job_id: jobId }),
+   203→        }
+   204→      );
+   205→      if (!response.ok) {
+   206→        const err = await response.json().catch(() => ({}));
+   207→        throw new Error(err.error || "JD analysis failed");
+   208→      }
+   209→      const data = await response.json();
+   210→      if (onJobUpdated) {
+   211→        onJobUpdated(jobId, {
+   212→          jd_analysis_json: data.jd_analysis,
+   213→          dynamic_weights_json: data.dynamic_weights,
+   214→        });
+   215→      }
+   216→      return data;
+   217→    } catch (err: any) {
+   218→      toast.error(err.message || "JD analysis failed");
+   219→      throw err;
+   220→    } finally {
+   221→      setAnalyzingJd(false);
+   222→    }
+   223→  };
+   224→
+   225→  // ── Load dismissed resumes from localStorage when job changes ──
+   226→  useEffect(() => {
+   227→    if (selectedJobId) {
+   228→      try {
+   229→        const stored = localStorage.getItem(`dismissed_${selectedJobId}`);
+   230→        if (stored) {
+   231→          setDismissedResumes(new Set(JSON.parse(stored) as string[]));
+   232→        } else {
+   233→          setDismissedResumes(new Set());
+   234→        }
+   235→      } catch {
+   236→        setDismissedResumes(new Set());
+   237→      }
+   238→    } else {
+   239→      setDismissedResumes(new Set());
+   240→    }
+   241→  }, [selectedJobId]);
+   242→
+   243→  // ── Auto-rank ───────────────────────────────────────────────
+   244→  const autoRankTriggered = useRef(false);
+   245→  useEffect(() => {
+   246→    const unrankedFiles = files.filter(f => !rankingFilesRef.current.has(f.name));
+   247→    if (unrankedFiles.length > 0 && !ranking && !autoRankTriggered.current) {
+   248→      if (isNewJobMode && !jobDescription.trim()) return;
+   249→      autoRankTriggered.current = true;
+   250→      handleRankClick();
+   251→    }
+   252→    if (files.length === 0 && !ranking) autoRankTriggered.current = false;
+   253→  }, [files, ranking, isNewJobMode, jobDescription]);
+   254→
+   255→  const handleRankingError = (err: any) => {
+   256→    const msg: string = err?.message || "Ranking failed.";
+   257→    if (msg.includes("Insufficient credits") || err?.status === 402) {
+   258→      setRankingError({ type: "credits", message: "You don't have enough credits to rank these resumes." });
+   259→    } else if (msg.includes("Rate limit") || err?.status === 429) {
+   260→      setRankingError({ type: "rate_limit", message: "Too many jobs in a short time. Please wait a minute and try again." });
+   261→    } else {
+   262→      setRankingError({ type: "generic", message: msg });
+   263→      toast.error(msg);
+   264→    }
+   265→  };
+   266→
+   267→  const handleRankClick = () => {
+   268→    if (!user) { onAuthRequired(); return; }
+   269→    setRankingError(null);
+   270→    const errors = validate();
+   271→    setValidationErrors(errors);
+   272→    if (errors.length > 0) return;
+   273→    if (isExistingJob) handleRankExisting(); else handleRankNew();
+   274→  };
+   275→
+   276→  const handleRankNew = async () => {
+   277→    if (!user) return;
+   278→    const filesToRank = [...files];
+   279→    rankingFilesRef.current = new Set(filesToRank.map(f => f.name));
+   280→    setRanking(true); setResults([]); setRankingError(null);
+   281→    setRankingProgress(5); setScoredCount(0); setTotalToScore(filesToRank.length);
+   282→
+   283→    try {
+   284→      const autoTitle = (() => {
+   285→        const firstLine = jobDescription.trim().split("\n")[0].trim();
+   286→        return firstLine.slice(0, 50).trim() || `Job - ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+   287→      })();
+   288→
+   289→      const { data: job, error: jobError } = await supabase
+   290→        .from("jobs")
+   291→        .insert({ user_id: user.id, job_description: jobDescription, status: "pending", title: autoTitle } as any)
+   292→        .select("id, inbox_email")
+   293→        .single();
+   294→      if (jobError || !job) throw new Error(jobError?.message || "Failed to create job");
+   295→      setRankingProgress(10);
+   296→
+   297→      const analysisData = await analyzeJd(job.id);
+   298→      setRankingProgress(25);
+   299→
+   300→      onJobCreated({
+   301→        id: job.id,
+   302→        title: autoTitle,
+   303→        job_description: jobDescription,
+   304→        status: "processing",
+   305→        created_at: new Date().toISOString(),
+   306→        resume_count: filesToRank.length,
+   307→        jd_analysis_json: analysisData.jd_analysis,
+   308→        dynamic_weights_json: analysisData.dynamic_weights,
+   309→        inbox_email: job.inbox_email ?? null,
+   310→      });
+   311→
+   312→      const resumeIds = await uploadFilesFromSnapshot(job.id, filesToRank);
+   313→      setRankingProgress(40);
+   314→
+   315→      await rankAndPoll(job.id, resumeIds);
+   316→
+   317→      setJobDescription("");
+   318→      setFiles(prev => prev.filter(f => !rankingFilesRef.current.has(f.name)));
+   319→      toast.success("Candidates ranked!");
+   320→    } catch (err: any) {
+   321→      handleRankingError(err);
+   322→    } finally {
+   323→      rankingFilesRef.current = new Set();
+   324→      setRanking(false); setRankingProgress(0); setScoredCount(0); setTotalToScore(0);
+   325→      autoRankTriggered.current = false;
+   326→    }
+   327→  };
+   328→
+   329→  const handleRankExisting = async () => {
+   330→    if (!user || !selectedJobId) return;
+   331→    const filesToRank = [...files];
+   332→    rankingFilesRef.current = new Set(filesToRank.map(f => f.name));
+   333→    setRanking(true); setRankingError(null);
+   334→    setRankingProgress(10); setScoredCount(0); setTotalToScore(filesToRank.length);
+   335→
+   336→    try {
+   337→      if (!selectedJob?.jd_analysis_json) {
+   338→        await analyzeJd(selectedJobId);
+   339→        setRankingProgress(25);
+   340→      }
+   341→
+   342→      const resumeIds = await uploadFilesFromSnapshot(selectedJobId, filesToRank);
+   343→      setRankingProgress(40);
+   344→
+   345→      await rankAndPoll(selectedJobId, resumeIds);
+   346→
+   347→      const { data: allResumes } = await supabase
+   348→        .from("resumes")
+   349→        .select("id, filename, file_path, candidate_name, created_at")
+   350→        .eq("job_id", selectedJobId)
+   351→        .order("created_at", { ascending: false });
+   352→      if (allResumes) setExistingResumes(allResumes);
+   353→
+   354→      setFiles(prev => prev.filter(f => !rankingFilesRef.current.has(f.name)));
+   355→      toast.success("New resumes ranked!");
+   356→    } catch (err: any) {
+   357→      handleRankingError(err);
+   358→    } finally {
+   359→      rankingFilesRef.current = new Set();
+   360→      setRanking(false); setRankingProgress(0); setScoredCount(0); setTotalToScore(0);
+   361→      autoRankTriggered.current = false;
+   362→    }
+   363→  };
+   364→
+   365→  const uploadFilesFromSnapshot = async (jobId: string, filesToUpload: UploadedFile[]): Promise<string[]> => {
+   366→    if (!user) return [];
+   367→    const resumeIds: string[] = [];
+   368→    for (const { file, name } of filesToUpload) {
+   369→      const filePath = `${user.id}/${jobId}/${Date.now()}_${name}`;
+   370→      const { error: uploadError } = await supabase.storage.from("resumes").upload(filePath, file);
+   371→      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+   372→      const { data: resume, error: resumeError } = await supabase
+   373→        .from("resumes")
+   374→        .insert({ job_id: jobId, filename: name, file_path: filePath })
+   375→        .select("id")
+   376→        .single();
+   377→      if (resumeError || !resume) throw new Error(resumeError?.message || "Failed to save resume");
+   378→      resumeIds.push(resume.id);
+   379→    }
+   380→    return resumeIds;
+   381→  };
+   382→
+   383→  const rankAndPoll = async (jobId: string, resumeIds: string[]) => {
+   384→    const response = await fetch(
+   385→      `https://zkzontawprihrzpayeam.supabase.co/functions/v1/rank-resumes`,
+   386→      {
+   387→        method: "POST",
+   388→        headers: {
+   389→          "Content-Type": "application/json",
+   390→          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+   391→        },
+   392→        body: JSON.stringify({ job_id: jobId, resume_ids: resumeIds }),
+   393→      }
+   394→    );
+   395→
+   396→    if (!response.ok) {
+   397→      const errBody = await response.json().catch(() => ({}));
+   398→      const err: any = new Error(errBody.error || "Ranking failed");
+   399→      err.status = response.status;
+   400→      throw err;
+   401→    }
+   402→    setRankingProgress(60);
+   403→
+   404→    for (let i = 0; i < 150; i++) {
+   405→      await new Promise((r) => setTimeout(r, 2000));
+   406→      const { data: resumeProgress } = await supabase.from("resumes").select("id, status").in("id", resumeIds);
+   407→      if (resumeProgress) {
+   408→        const done = resumeProgress.filter((r: any) => r.status === "done" || r.status === "failed").length;
+   409→        setScoredCount(done);
+   410→        const pct = resumeIds.length > 0 ? Math.round((done / resumeIds.length) * 35) : 0;
+   411→        setRankingProgress(Math.min(60 + pct, 95));
+   412→      }
+   413→
+   414→      const { data: jobData } = await supabase.from("jobs").select("status").eq("id", jobId).single();
+   415→      if (jobData?.status === "completed") {
+   416→         const { data: allResumes } = await supabase.from("resumes").select("id, filename, file_path, candidate_name, parsed_json").eq("job_id", jobId);
+   417→         if (allResumes) {
+   418→           const allResumeIds = allResumes.map((r: any) => r.id);
+   419→            const { data: resultData } = await supabase
+   420→              .from("results")
+   421→              .select("id, resume_id, overall_score, missing_skills, summary, interview_questions, hard_fit, category_scores_json, confidence, strengths_json, gaps_json, explanation_json, matched_must_haves, missing_must_haves, scoring_version")
+   422→              .in("resume_id", allResumeIds);
+   423→
+   424→            const resumeMap = new Map(allResumes.map((r: any) => [r.id, r]));
+   425→            const merged: Result[] = (resultData ?? []).map((r: any) => {
+   426→              const resume = resumeMap.get(r.resume_id);
+   427→              const parsed = resume?.parsed_json as any;
+   428→              return {
+   429→                ...r,
+   430→                overall_score: r.overall_score ?? 0,
+   431→                missing_skills: r.missing_skills ?? [],
+   432→                filename: resume?.filename ?? "Unknown",
+   433→                file_path: resume?.file_path ?? null,
+   434→                candidate_name: resume?.candidate_name ?? null,
+   435→                candidate_email: parsed?.email ?? parsed?.contact?.email ?? null,
+   436→                candidate_phone: parsed?.phone ?? parsed?.contact?.phone ?? null,
+   437→                candidate_location: parsed?.location ?? parsed?.contact?.location ?? null,
+   438→              };
+   439→            });
+   440→          merged.sort((a, b) => b.overall_score - a.overall_score);
+   441→          setResults(merged);
+   442→        }
+   443→        setRankingProgress(100);
+   444→        await refreshProfile();
+   445→        setTimeout(() => { resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 200);
+   446→        return;
+   447→      }
+   448→      if (jobData?.status === "failed") throw new Error("Ranking failed on server");
+   449→    }
+   450→    throw new Error("Ranking timed out");
+   451→  };
+   452→
+   453→  const handleRerank = async () => {
+   454→    if (!user || !selectedJobId || existingResumes.length === 0) return;
+   455→    setRanking(true); setRankingProgress(10);
+   456→    try {
+   457→      if (!selectedJob?.jd_analysis_json) {
+   458→        await analyzeJd(selectedJobId);
+   459→        setRankingProgress(20);
+   460→      }
+   461→      const resumeIds = existingResumes.map((r) => r.id);
+   462→      await supabase.from("results").delete().in("resume_id", resumeIds);
+   463→      for (const rid of resumeIds) {
+   464→        await supabase.from("resumes").update({ parsed_text: null, parsed_json: null } as any).eq("id", rid);
+   465→      }
+   466→      setResults([]); setRankingProgress(30);
+   467→      await supabase.from("jobs").update({ status: "processing" }).eq("id", selectedJobId);
+   468→      await rankAndPoll(selectedJobId, resumeIds);
+   469→      const { data: allResumes } = await supabase
+   470→        .from("resumes")
+   471→        .select("id, filename, file_path, candidate_name, created_at")
+   472→        .eq("job_id", selectedJobId)
+   473→        .order("created_at", { ascending: false });
+   474→      if (allResumes) setExistingResumes(allResumes);
+   475→      toast.success("All candidates re-ranked!");
+   476→    } catch (err: any) { toast.error(err.message || "Re-ranking failed."); }
+   477→    finally { setRanking(false); setRankingProgress(0); }
+   478→  };
+   479→
+   480→  const downloadResume = async (filePath: string, filename: string) => {
+   481→    const { data, error } = await supabase.storage.from("resumes").download(filePath);
+   482→    if (error || !data) { toast.error("Download failed"); return; }
+   483→    const url = URL.createObjectURL(data);
+   484→    const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
+   485→    URL.revokeObjectURL(url);
+   486→  };
+   487→
+   488→  const deleteCount = deleteConfirm?.type === "bulk" ? selectedResumes.size : 1;
+   489→
+   490→  const handleDismiss = (resumeId: string) => {
+   491→    setDismissedResumes((prev) => {
+   492→      const next = new Set(prev).add(resumeId);
+   493→      if (selectedJobId) {
+   494→        try {
+   495→          localStorage.setItem(`dismissed_${selectedJobId}`, JSON.stringify(Array.from(next)));
+   496→        } catch { /* ignore storage errors */ }
+   497→      }
+   498→      return next;
+   499→    });
+   500→    toast.success("Candidate dismissed");
+   501→  };
+   502→
+   503→  const visibleResults = allResults.filter((r) => !dismissedResumes.has(r.resume_id));
+   504→
+   505→  return (
+   506→    <div className="flex-1 overflow-auto">
+   507→      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+   508→
+   509→        {/* Hero — only for new job / unauthenticated state */}
+   510→        {!isExistingJob && allResults.length === 0 && (
+   511→          <div className="text-center pt-2 pb-2">
+   512→            <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full mb-4">
+   513→              <Sparkles className="h-3.5 w-3.5" />
+   514→              Powered by GPT-4o
+   515→            </div>
+   516→            <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight leading-tight mb-3">
+   517→              Rank resumes in{" "}
+   518→              <span className="text-primary">under 2 minutes</span>
+   519→            </h1>
+   520→            <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
+   521→              Paste a job description, upload up to 20 resumes — AI scores every candidate with strengths, gaps, and interview questions. No setup needed.
+   522→            </p>
+   523→          </div>
+   524→        )}
+   525→
+   526→        {/* Two-column: JD (left) + Right column (upload + inbox) */}
+   527→        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
+   528→          {/* LEFT — JD card stretches to match right column height via self-stretch */}
+   529→          <Card className="flex flex-col md:self-stretch">
+   530→            <CardHeader className="pb-3 shrink-0">
+   531→              <div className="flex items-center justify-between">
+   532→                <CardTitle className="text-lg">
+   533→                  {isExistingJob ? "Job Description" : "Paste Job Description"}
+   534→                </CardTitle>
+   535→                {isExistingJob && selectedJob?.jd_analysis_json && (
+   536→                  <Badge variant="secondary" className="gap-1 text-[10px]">
+   537→                    <Zap className="h-2.5 w-2.5 text-primary" />
+   538→                    AI analyzed
+   539→                  </Badge>
+   540→                )}
+   541→              </div>
+   542→            </CardHeader>
+   543→            <CardContent className="flex flex-col flex-1 pb-4">
+   544→              {isExistingJob ? (
+   545→                <div className="bg-muted/50 rounded-md p-4 text-sm whitespace-pre-wrap overflow-y-auto leading-relaxed flex-1 max-h-[400px]">
+   546→                  {selectedJob?.job_description}
+   547→                </div>
+   548→              ) : (
+   549→                <textarea
+   550→                  placeholder="Paste the full job description here…"
+   551→                  value={jobDescription}
+   552→                  onFocus={() => { if (!isAuthenticated) { onAuthRequired(); } }}
+   553→                  onChange={(e) => { if (!isAuthenticated) { onAuthRequired(); return; } setJobDescription(e.target.value); }}
+   554→                  className="flex-1 min-h-[240px] w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+   555→                />
+   556→              )}
+   557→            </CardContent>
+   558→          </Card>
+   559→
+   560→          {/* RIGHT column — upload card + inbox email card, drives the row height */}
+   561→          <div className="flex flex-col gap-4">
+   562→
+   563→            {/* Upload card */}
+   564→            <Card>
+   565→              <CardHeader className="pb-3">
+   566→                <div className="flex items-center justify-between">
+   567→                  <CardTitle className="text-lg">
+   568→                    {isExistingJob ? "Add More Resumes" : "Upload Resumes"}
+   569→                  </CardTitle>
+   570→                  {isExistingJob && existingResumes.length > 0 && (
+   571→                    <Badge variant="secondary" className="text-[10px]">
+   572→                      {existingResumes.length} uploaded
+   573→                    </Badge>
+   574→                  )}
+   575→                </div>
+   576→              </CardHeader>
+   577→              <CardContent className="space-y-3">
+   578→                <div
+   579→                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center ${
+   580→                    dragOver ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-primary/[0.02]"
+   581→                  }`}
+   582→                  onDragOver={(e) => { e.preventDefault(); if (!isAuthenticated) return; setDragOver(true); }}
+   583→                  onDragLeave={() => setDragOver(false)}
+   584→                  onDrop={(e) => { if (!isAuthenticated) { e.preventDefault(); onAuthRequired(); return; } handleFileDrop(e); }}
+   585→                  onClick={() => { if (!isAuthenticated) { onAuthRequired(); return; } document.getElementById("file-input")?.click(); }}
+   586→                >
+   587→                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-2.5">
+   588→                    <Upload className="h-5 w-5 text-primary" />
+   589→                  </div>
+   590→                  <p className="text-sm font-medium text-foreground mb-1">Drop resumes here</p>
+   591→                  <p className="text-xs text-muted-foreground">PDF or DOCX · Max {maxResumes} files · {maxFileSizeMb}MB each</p>
+   592→                  <input id="file-input" type="file" className="hidden" multiple accept=".pdf,.docx" onChange={handleFileSelect} />
+   593→                </div>
+   594→                {files.length > 0 && (
+   595→                  <div className="space-y-1.5">
+   596→                    {files.map((f, i) => {
+   597→                      const isProcessing = rankingFilesRef.current.has(f.name) && ranking;
+   598→                      return (
+   599→                        <div key={i} className="flex items-center justify-between bg-secondary/50 rounded-md px-3 py-2 animate-fade-in">
+   600→                          <div className="flex items-center gap-2 text-sm">
+   601→                            {isProcessing ? <Loader2 className="h-4 w-4 text-primary animate-spin" /> : <FileText className="h-4 w-4 text-muted-foreground" />}
+   602→                            <span className={isProcessing ? "text-muted-foreground" : ""}>{f.name}</span>
+   603→                            {!isProcessing && ranking && <Badge variant="outline" className="text-xs">Queued</Badge>}
+   604→                          </div>
+   605→                          {!isProcessing && (
+   606→                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(i)}>
+   607→                              <X className="h-3.5 w-3.5" />
+   608→                            </Button>
+   609→                          )}
+   610→                        </div>
+   611→                      );
+   612→                    })}
+   613→                  </div>
+   614→                )}
+   615→              </CardContent>
+   616→            </Card>
+   617→
+   618→            {/* Resume Inbox Email card — shown whenever user has an inbox email */}
+   619→            {user && profile?.inbox_email && (
+   620→              <Card className="border-primary/20 bg-gradient-to-br from-primary/[0.04] to-transparent">
+   621→                <CardContent className="pt-5 pb-5 space-y-4">
+   622→                  {/* Header */}
+   623→                  <div className="flex items-start gap-3">
+   624→                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+   625→                      <Mail className="h-4.5 w-4.5 text-primary h-[18px] w-[18px]" />
+   626→                    </div>
+   627→                    <div>
+   628→                      <div className="flex items-center gap-2 flex-wrap">
+   629→                        <p className="text-sm font-semibold text-foreground">Resume Inbox</p>
+   630→                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary bg-primary/5">Auto-collect</Badge>
+   631→                      </div>
+   632→                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+   633→                        Skip the upload step — forward resumes straight to this address and they'll appear here automatically.
+   634→                      </p>
+   635→                    </div>
+   636→                  </div>
+   637→
+   638→                  {/* Email address box */}
+   639→                  <div className="rounded-lg bg-muted/60 border border-border px-3 py-2.5 flex items-center gap-2">
+   640→                    <code className="flex-1 text-xs font-mono text-foreground truncate">
+   641→                      {isExistingJob && selectedJob?.inbox_email
+   642→                        ? selectedJob!.inbox_email
+   643→                        : profile.inbox_email}
+   644→                    </code>
+   645→                    <Button
+   646→                      variant="ghost"
+   647→                      size="sm"
+   648→                      className="h-6 px-2 gap-1 text-xs text-primary hover:text-primary hover:bg-primary/10 shrink-0"
+   649→                      onClick={() => {
+   650→                        const email = isExistingJob && selectedJob?.inbox_email
+   651→                          ? selectedJob!.inbox_email
+   652→                          : profile.inbox_email!;
+   653→                        navigator.clipboard.writeText(email);
+   654→                        toast.success("Inbox email copied!");
+   655→                      }}
+   656→                    >
+   657→                      <Copy className="h-3 w-3" />
+   658→                      Copy
+   659→                    </Button>
+   660→                  </div>
+   661→
+   662→                  {/* How it works — 3 steps */}
+   663→                  <div className="space-y-2">
+   664→                    {[
+   665→                      { n: "1", text: "Forward any resume email to this address" },
+   666→                      { n: "2", text: "We extract the resume attachment automatically" },
+   667→                      { n: "3", text: "It appears in your active job ready to rank" },
+   668→                    ].map((step) => (
+   669→                      <div key={step.n} className="flex items-start gap-2.5">
+   670→                        <span className="w-4 h-4 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+   671→                          {step.n}
+   672→                        </span>
+   673→                        <p className="text-[11px] text-muted-foreground leading-relaxed">{step.text}</p>
+   674→                      </div>
+   675→                    ))}
+   676→                  </div>
+   677→                </CardContent>
+   678→              </Card>
+   679→            )}
+   680→          </div>
+   681→        </div>
+   682→
+   683→        {/* Landing — How It Works */}
+   684→        {!isExistingJob && allResults.length === 0 && (
+   685→          <div className="space-y-10 py-4">
+   686→
+   687→            {/* Step-by-step pipeline */}
+   688→            <div>
+   689→              <div className="flex items-center gap-2 mb-6">
+   690→                <div className="h-px flex-1 bg-border" />
+   691→                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-3">How It Works</span>
+   692→                <div className="h-px flex-1 bg-border" />
+   693→              </div>
+   694→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   695→                {[
+   696→                  {
+   697→                    step: "01",
+   698→                    icon: Brain,
+   699→                    title: "AI Reads the Job",
+   700→                    desc: "Paste any job description. GPT-4o extracts must-haves, nice-to-haves, seniority level, and builds a custom scoring rubric — automatically.",
+   701→                    detail: "No templates. No setup.",
+   702→                  },
+   703→                  {
+   704→                    step: "02",
+   705→                    icon: Upload,
+   706→                    title: "Drop the Resumes",
+   707→                    desc: "Upload up to 20 PDF or DOCX files at once. The AI parses every resume, extracts skills, experience, and education in seconds.",
+   708→                    detail: "PDF & DOCX supported.",
+   709→                  },
+   710→                  {
+   711→                    step: "03",
+   712→                    icon: BarChart2,
+   713→                    title: "Get Ranked Results",
+   714→                    desc: "Every candidate gets an overall match score, confidence rating, strengths, skill gaps, and ready-to-use interview questions.",
+   715→                    detail: "Ranked best to worst.",
+   716→                  },
+   717→                ].map((item, i) => (
+   718→                  <div key={i} className="relative rounded-xl border border-border bg-card p-5 flex flex-col gap-3">
+   719→                    <div className="flex items-start justify-between">
+   720→                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+   721→                        <item.icon className="h-4.5 w-4.5 text-primary h-[18px] w-[18px]" />
+   722→                      </div>
+   723→                      <span className="text-3xl font-black text-muted-foreground/15 leading-none select-none">{item.step}</span>
+   724→                    </div>
+   725→                    <div>
+   726→                      <h3 className="text-sm font-semibold text-foreground mb-1">{item.title}</h3>
+   727→                      <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+   728→                    </div>
+   729→                    <span className="mt-auto inline-flex items-center gap-1 text-[10px] font-medium text-primary/70 uppercase tracking-wide">
+   730→                      <CheckCircle2 className="h-3 w-3" /> {item.detail}
+   731→                    </span>
+   732→                  </div>
+   733→                ))}
+   734→              </div>
+   735→            </div>
+   736→
+   737→            {/* What the AI scores */}
+   738→            <div className="rounded-xl border border-border bg-card overflow-hidden">
+   739→              <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+   740→                <Sparkles className="h-4 w-4 text-primary" />
+   741→                <span className="text-sm font-semibold text-foreground">What the AI scores for every candidate</span>
+   742→              </div>
+   743→              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border">
+   744→                {[
+   745→                  { label: "Overall Match", sub: "Weighted score across all dimensions" },
+   746→                  { label: "Skill Fit", sub: "Must-haves matched vs missing" },
+   747→                  { label: "Confidence", sub: "How certain the AI is in its score" },
+   748→                  { label: "JD Alignment", sub: "Critical requirements coverage" },
+   749→                ].map((s, i) => (
+   750→                  <div key={i} className="px-4 py-4">
+   751→                    <p className="text-xs font-semibold text-foreground mb-0.5">{s.label}</p>
+   752→                    <p className="text-[11px] text-muted-foreground leading-relaxed">{s.sub}</p>
+   753→                  </div>
+   754→                ))}
+   755→              </div>
+   756→              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y divide-border border-t border-border">
+   757→                {[
+   758→                  { label: "Strengths", sub: "Top reasons to hire" },
+   759→                  { label: "Skill Gaps", sub: "Missing skills to probe" },
+   760→                  { label: "Interview Qs", sub: "AI-generated per candidate" },
+   761→                  { label: "Hard Fit Flag", sub: "Meets minimum bar or not" },
+   762→                ].map((s, i) => (
+   763→                  <div key={i} className="px-4 py-4">
+   764→                    <p className="text-xs font-semibold text-foreground mb-0.5">{s.label}</p>
+   765→                    <p className="text-[11px] text-muted-foreground leading-relaxed">{s.sub}</p>
+   766→                  </div>
+   767→                ))}
+   768→              </div>
+   769→            </div>
+   770→
+   771→            {/* Social proof / stats row */}
+   772→            <div className="grid grid-cols-3 gap-4">
+   773→              {[
+   774→                { icon: Clock, stat: "< 2 min", label: "to rank 10 resumes" },
+   775→                { icon: ListChecks, stat: "20+", label: "scoring dimensions" },
+   776→                { icon: Users, label: "Built for recruiters, founders & hiring managers", stat: "For teams" },
+   777→              ].map((item, i) => (
+   778→                <div key={i} className="rounded-xl border border-border bg-card px-4 py-4 flex items-center gap-3">
+   779→                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+   780→                    <item.icon className="h-4 w-4 text-primary" />
+   781→                  </div>
+   782→                  <div>
+   783→                    <p className="text-sm font-bold text-foreground leading-tight">{item.stat}</p>
+   784→                    <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{item.label}</p>
+   785→                  </div>
+   786→                </div>
+   787→              ))}
+   788→            </div>
+   789→
+   790→            {/* CTA for unauthenticated */}
+   791→            {!isAuthenticated && (
+   792→              <div className="rounded-xl border border-primary/20 bg-primary/5 px-6 py-5 flex items-center justify-between gap-4 flex-wrap">
+   793→                <div>
+   794→                  <div className="flex items-center gap-1.5 mb-1">
+   795→                    <Star className="h-3.5 w-3.5 text-primary" />
+   796→                    <span className="text-xs font-semibold text-primary uppercase tracking-wide">Free to start</span>
+   797→                  </div>
+   798→                  <p className="text-sm font-semibold text-foreground">Sign up and rank your first batch free.</p>
+   799→                  <p className="text-xs text-muted-foreground mt-0.5">No credit card. No setup. Results in under 2 minutes.</p>
+   800→                </div>
+   801→                <button
+   802→                  onClick={onAuthRequired}
+   803→                  className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shrink-0"
+   804→                >
+   805→                  Get started free <ArrowRight className="h-4 w-4" />
+   806→                </button>
+   807→              </div>
+   808→            )}
+   809→
+   810→          </div>
+   811→        )}
+   812→
+   813→        {/* Analyzing JD indicator */}
+   814→        {analyzingJd && (
+   815→          <div className="flex items-center gap-2 text-sm text-primary font-medium animate-fade-in">
+   816→            <Loader2 className="h-4 w-4 animate-spin" />
+   817→            Analyzing job description…
+   818→          </div>
+   819→        )}
+   820→
+   821→        {/* Status & Progress */}
+   822→        <div className="space-y-3">
+   823→          {validationErrors.length > 0 && (
+   824→            <div className="text-sm text-destructive space-y-1">
+   825→              {validationErrors.map((err, i) => <p key={i}>• {err}</p>)}
+   826→            </div>
+   827→          )}
+   828→          {rankingError && (
+   829→            <div className={`rounded-lg border p-4 flex items-start gap-3 animate-fade-in ${
+   830→              rankingError.type === "credits" ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/50"
+   831→            }`}>
+   832→              <AlertTriangle className={`h-5 w-5 mt-0.5 shrink-0 ${rankingError.type === "credits" ? "text-destructive" : "text-muted-foreground"}`} />
+   833→              <div>
+   834→                <p className="text-sm font-medium">
+   835→                  {rankingError.type === "credits" ? "Not enough credits" : rankingError.type === "rate_limit" ? "Too many requests" : "Ranking failed"}
+   836→                </p>
+   837→                <p className="text-sm text-muted-foreground mt-0.5">{rankingError.message}</p>
+   838→              </div>
+   839→            </div>
+   840→          )}
+   841→          {ranking && (
+   842→            <div className="space-y-2 animate-fade-in">
+   843→              <div className="flex items-center justify-between">
+   844→                <div className="flex items-center gap-2 text-sm text-primary font-medium">
+   845→                  <Loader2 className="h-4 w-4 animate-spin" />
+   846→                  {rankingProgress < 25 ? "Analyzing job…" : rankingProgress < 40 ? "Uploading…" : rankingProgress < 60 ? "Parsing resumes…" : totalToScore > 0 ? `Scoring ${scoredCount}/${totalToScore}…` : "Scoring…"}
+   847→                </div>
+   848→              </div>
+   849→              <Progress value={rankingProgress} className="h-2" />
+   850→            </div>
+   851→          )}
+   852→        </div>
+   853→
+   854→        {/* Results Table */}
+   855→        {visibleResults.length > 0 && (
+   856→          <div ref={resultsRef}>
+   857→            <Card>
+   858→              <CardHeader className="pb-3">
+   859→                <div className="flex items-center justify-between flex-wrap gap-2">
+   860→                  <CardTitle className="text-lg">
+   861→                    Results ({visibleResults.length})
+   862→                    {dismissedResumes.size > 0 && (
+   863→                      <Button variant="link" size="sm" className="ml-2 text-xs" onClick={() => {
+   864→                        setDismissedResumes(new Set());
+   865→                        if (selectedJobId) {
+   866→                          try { localStorage.removeItem(`dismissed_${selectedJobId}`); } catch { /* ignore */ }
+   867→                        }
+   868→                      }}>
+   869→                        Show {dismissedResumes.size} dismissed
+   870→                      </Button>
+   871→                    )}
+   872→                  </CardTitle>
+   873→                  <div className="flex items-center gap-2">
+   874→                    {selectedResumes.size > 0 && (
+   875→                      <>
+   876→                        <span className="text-sm text-muted-foreground">{selectedResumes.size} selected</span>
+   877→                        <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDeleteConfirm({ type: "bulk" })}>
+   878→                          <Trash2 className="h-3.5 w-3.5" /> Delete
+   879→                        </Button>
+   880→                        <Button variant="ghost" size="sm" onClick={() => setSelectedResumes(new Set())}>Clear</Button>
+   881→                      </>
+   882→                    )}
+   883→                    {visibleResults.length > 0 && (
+   884→                      <Button
+   885→                        variant="outline"
+   886→                        size="sm"
+   887→                        className="gap-1.5"
+   888→                        onClick={() => {
+   889→                          const formatCandidateNameLocal = (filename: string) => {
+   890→                            const name = filename.replace(/\.\w+$/, "");
+   891→                            if (UUID_REGEX.test(name)) return "Candidate";
+   892→                            return name.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+   893→                          };
+   894→                          const rows = visibleResults.filter((r) => !r.pending).map((r, i) => {
+   895→                            const matched = Array.isArray(r.matched_must_haves) ? r.matched_must_haves.length : 0;
+   896→                            const missing = Array.isArray(r.missing_must_haves) ? r.missing_must_haves.length : 0;
+   897→                            const total = matched + missing;
+   898→                            const jdAlignment = total > 0 ? Math.round((matched / total) * 100) : 0;
+   899→                            return {
+   900→                              "Rank": i + 1,
+   901→                              "Candidate Name": r.candidate_name || formatCandidateNameLocal(r.filename),
+   902→                              "Overall Score": r.overall_score?.toFixed(0) ?? "0",
+   903→                              "Confidence": (r.confidence ?? 0).toFixed(0),
+   904→                              "Hard Fit": r.hard_fit ? "Yes" : "No",
+   905→                              "JD Alignment %": jdAlignment,
+   906→                              "Strengths": (r.strengths_json ?? []).join("; "),
+   907→                              "Gaps": (r.gaps_json ?? []).join("; "),
+   908→                              "Missing Skills": (r.missing_skills ?? []).join("; "),
+   909→                            };
+   910→                          });
+   911→                          exportToCSV(rows, selectedJob?.title || "results");
+   912→                        }}
+   913→                      >
+   914→                        <FileSpreadsheet className="h-3.5 w-3.5" />
+   915→                        Export CSV
+   916→                      </Button>
+   917→                    )}
+   918→                    {isExistingJob && existingResumes.length > 0 && (
+   919→                      <Button variant="outline" size="sm" className="gap-1.5" disabled={ranking} onClick={handleRerank}>
+   920→                        {ranking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+   921→                        Re-rank
+   922→                      </Button>
+   923→                    )}
+   924→                  </div>
+   925→                </div>
+   926→              </CardHeader>
+   927→              <CardContent className="p-0">
+   928→                <div className="overflow-x-auto">
+   929→                  <Table>
+   930→                    <TableHeader className="sticky top-0 bg-card z-10">
+   931→                      <TableRow>
+   932→                        <TableHead className="w-10">
+   933→                          <Checkbox checked={visibleResults.length > 0 && selectedResumes.size === visibleResults.length} onCheckedChange={toggleSelectAll} />
+   934→                        </TableHead>
+   935→                        <TableHead className="w-14 text-center">#</TableHead>
+   936→                        <TableHead>Candidate</TableHead>
+   937→                        <TableHead className="w-32">Match</TableHead>
+   938→                        <TableHead className="w-20">Strength</TableHead>
+   939→                        <TableHead className="w-36"></TableHead>
+   940→                      </TableRow>
+   941→                    </TableHeader>
+   942→                    <TableBody>
+   943→                      {visibleResults.map((r, index) => (
+   944→                        <CandidateRow
+   945→                          key={r.id}
+   946→                          result={r}
+   947→                          index={index}
+   948→                          isExpanded={expandedRows.has(r.id)}
+   949→                          isSelected={selectedResumes.has(r.resume_id)}
+   950→                          jobTitle={selectedJob?.title}
+   951→                          onToggleRow={toggleRow}
+   952→                          onToggleSelect={toggleSelectResume}
+   953→                          onDownload={downloadResume}
+   954→                          onDelete={(resumeId, filePath) => setDeleteConfirm({ type: "single", resumeId, filePath })}
+   955→                          onDismiss={handleDismiss}
+   956→                          formatCandidateName={formatCandidateName}
+   957→                        />
+   958→                      ))}
+   959→                    </TableBody>
+   960→                  </Table>
+   961→                </div>
+   962→              </CardContent>
+   963→            </Card>
+   964→          </div>
+   965→        )}
+   966→      </div>
+   967→
+   968→      {/* Delete Confirmation */}
+   969→      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+   970→        <AlertDialogContent>
+   971→          <AlertDialogHeader>
+   972→            <AlertDialogTitle>Delete {deleteCount} resume{deleteCount > 1 ? "s" : ""}?</AlertDialogTitle>
+   973→            <AlertDialogDescription>
+   974→              This will permanently delete the resume{deleteCount > 1 ? "s" : ""} and any associated results.
+   975→            </AlertDialogDescription>
+   976→          </AlertDialogHeader>
+   977→          <AlertDialogFooter>
+   978→            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+   979→            <AlertDialogAction onClick={handleDeleteConfirm} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+   980→              {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+   981→              Delete
+   982→            </AlertDialogAction>
+   983→          </AlertDialogFooter>
+   984→        </AlertDialogContent>
+   985→      </AlertDialog>
+   986→    </div>
+   987→  );
+   988→};
+   989→
+   990→export default JobDetailView;
+   991→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

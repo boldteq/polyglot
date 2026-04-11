@@ -1,0 +1,1261 @@
+     1→import { useState, useCallback, useEffect } from "react";
+     2→import type {
+     3→  ActionFunctionArgs,
+     4→  HeadersFunction,
+     5→  LoaderFunctionArgs,
+     6→} from "react-router";
+     7→import { useFetcher, useLoaderData, useNavigate, useRouteError } from "react-router";
+     8→import { useAppBridge } from "@shopify/app-bridge-react";
+     9→import { authenticate } from "../shopify.server";
+    10→import { boundary } from "@shopify/shopify-app-react-router/server";
+    11→import db from "../db.server";
+    12→import { getShopSubscription } from "../billing.server";
+    13→import { PLAN_LIMITS } from "../plans";
+    14→import type { PlanTier } from "../plans";
+    15→import {
+    16→  Page,
+    17→  Layout,
+    18→  Card,
+    19→  BlockStack,
+    20→  InlineStack,
+    21→  InlineGrid,
+    22→  Text,
+    23→  Button,
+    24→  TextField,
+    25→  Select,
+    26→  Checkbox,
+    27→  Divider,
+    28→  Box,
+    29→  Banner,
+    30→  Badge,
+    31→} from "@shopify/polaris";
+    32→
+    33→export const loader = async ({ request }: LoaderFunctionArgs) => {
+    34→  const { session, admin } = await authenticate.admin(request);
+    35→  const shop = session.shop;
+    36→
+    37→  let config = await db.widgetConfig.findUnique({ where: { shop } });
+    38→
+    39→  if (!config) {
+    40→    config = await db.widgetConfig.create({ data: { shop } });
+    41→  }
+    42→
+    43→  const subscription = await getShopSubscription(shop);
+    44→
+    45→  return { config, subscription };
+    46→};
+    47→
+    48→// Helper: sync widget config to an App Installation metafield so the
+    49→// storefront Liquid block can read it via app.metafields.zip_checker.widget_config.value
+    50→//
+    51→// IMPORTANT: ownerId MUST be the App Installation GID (not the Shop GID).
+    52→// app.metafields in Liquid only surfaces metafields owned by the App Installation.
+    53→// Using the Shop GID writes to shop metafields which are invisible to app.metafields.
+    54→async function syncConfigMetafield(
+    55→  admin: Awaited<ReturnType<typeof authenticate.admin>>["admin"],
+    56→  configData: Record<string, unknown>,
+    57→) {
+    58→  try {
+    59→    // Step 1: get the App Installation GID
+    60→    const installResponse = await admin.graphql(
+    61→      `query { currentAppInstallation { id } }`,
+    62→    );
+    63→    const installJson = (await installResponse.json()) as {
+    64→      data: { currentAppInstallation: { id: string } };
+    65→    };
+    66→    const appInstallationGid = installJson.data.currentAppInstallation.id;
+    67→
+    68→    // Step 2: write the metafield to the App Installation
+    69→    // Namespace must be plain "zip_checker" (no "$app:" prefix) for App Installation metafields.
+    70→    // The Liquid block reads: app.metafields.zip_checker.widget_config.value
+    71→    const metaResponse = await admin.graphql(
+    72→      `mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
+    73→        metafieldsSet(metafields: $metafields) {
+    74→          metafields { id namespace key }
+    75→          userErrors { field message }
+    76→        }
+    77→      }`,
+    78→      {
+    79→        variables: {
+    80→          metafields: [
+    81→            {
+    82→              ownerId: appInstallationGid,
+    83→              namespace: "zip_checker",
+    84→              key: "widget_config",
+    85→              type: "json",
+    86→              value: JSON.stringify(configData),
+    87→            },
+    88→          ],
+    89→        },
+    90→      },
+    91→    );
+    92→    const metaJson = (await metaResponse.json()) as {
+    93→      data: {
+    94→        metafieldsSet: {
+    95→          metafields: { id: string; namespace: string; key: string }[];
+    96→          userErrors: { field: string; message: string }[];
+    97→        };
+    98→      };
+    99→    };
+   100→
+   101→    // userErrors are non-fatal — the API fallback still works
+   102→  } catch {
+   103→    // Non-fatal — the API fallback still works
+   104→  }
+   105→}
+   106→
+   107→export const action = async ({ request }: ActionFunctionArgs) => {
+   108→  const { session, admin } = await authenticate.admin(request);
+   109→  const shop = session.shop;
+   110→  const formData = await request.formData();
+   111→  const intent = formData.get("intent");
+   112→
+   113→  if (intent === "save") {
+   114→    const data = {
+   115→      position: String(formData.get("position") || "inline"),
+   116→      primaryColor: String(formData.get("primaryColor") || "#008060"),
+   117→      successColor: String(formData.get("successColor") || "#008060"),
+   118→      errorColor: String(formData.get("errorColor") || "#D72C0D"),
+   119→      backgroundColor: String(formData.get("backgroundColor") || "#FFFFFF"),
+   120→      textColor: String(formData.get("textColor") || "#202223"),
+   121→      heading: String(formData.get("heading") || "Check Delivery Availability"),
+   122→      placeholder: String(formData.get("placeholder") || "Enter your zip code"),
+   123→      buttonText: String(formData.get("buttonText") || "Check"),
+   124→      successMessage: String(
+   125→        formData.get("successMessage") ||
+   126→          "Great news! We deliver to your area.",
+   127→      ),
+   128→      errorMessage: String(
+   129→        formData.get("errorMessage") ||
+   130→          "Sorry, we don't deliver to this area yet.",
+   131→      ),
+   132→      notFoundMessage: String(
+   133→        formData.get("notFoundMessage") ||
+   134→          "We currently do not ship to this ZIP code.",
+   135→      ),
+   136→      showEta: formData.get("showEta") === "true",
+   137→      showZone: formData.get("showZone") === "true",
+   138→      showWaitlistOnFailure: formData.get("showWaitlistOnFailure") === "true",
+   139→      showCod: formData.get("showCod") === "true",
+   140→      showReturnPolicy: formData.get("showReturnPolicy") === "true",
+   141→      showCutoffTime: formData.get("showCutoffTime") === "true",
+   142→      showDeliveryDays: formData.get("showDeliveryDays") === "true",
+   143→      blockCartOnInvalid: formData.get("blockCartOnInvalid") === "true",
+   144→      blockCheckoutInCart: formData.get("blockCheckoutInCart") === "true",
+   145→      showSocialProof: formData.get("showSocialProof") === "true",
+   146→      borderRadius: String(formData.get("borderRadius") || "8"),
+   147→      customCss: String(formData.get("customCss") || "") || null,
+   148→    };
+   149→
+   150→    await db.widgetConfig.upsert({
+   151→      where: { shop },
+   152→      create: { shop, ...data },
+   153→      update: data,
+   154→    });
+   155→
+   156→    await syncConfigMetafield(admin, data);
+   157→
+   158→    return { success: true };
+   159→  }
+   160→
+   161→  if (intent === "reset") {
+   162→    const resetData = {
+   163→      position: "inline",
+   164→      primaryColor: "#008060",
+   165→      successColor: "#008060",
+   166→      errorColor: "#D72C0D",
+   167→      backgroundColor: "#FFFFFF",
+   168→      textColor: "#202223",
+   169→      heading: "Check Delivery Availability",
+   170→      placeholder: "Enter your zip code",
+   171→      buttonText: "Check",
+   172→      successMessage: "Great news! We deliver to your area.",
+   173→      errorMessage: "Sorry, we don't deliver to this area yet.",
+   174→      notFoundMessage: "We currently do not ship to this ZIP code.",
+   175→      showEta: true,
+   176→      showZone: false,
+   177→      showWaitlistOnFailure: false,
+   178→      showCod: true,
+   179→      showReturnPolicy: true,
+   180→      showCutoffTime: true,
+   181→      showDeliveryDays: true,
+   182→      blockCartOnInvalid: false,
+   183→      blockCheckoutInCart: false,
+   184→      showSocialProof: true,
+   185→      borderRadius: "8",
+   186→      customCss: null,
+   187→    };
+   188→
+   189→    await db.widgetConfig.upsert({
+   190→      where: { shop },
+   191→      create: { shop },
+   192→      update: resetData,
+   193→    });
+   194→
+   195→    await syncConfigMetafield(admin, resetData);
+   196→
+   197→    return { success: true, action: "reset" };
+   198→  }
+   199→
+   200→  return null;
+   201→};
+   202→
+   203→type WidgetConfig = {
+   204→  position: string;
+   205→  primaryColor: string;
+   206→  successColor: string;
+   207→  errorColor: string;
+   208→  backgroundColor: string;
+   209→  textColor: string;
+   210→  heading: string;
+   211→  placeholder: string;
+   212→  buttonText: string;
+   213→  successMessage: string;
+   214→  errorMessage: string;
+   215→  notFoundMessage: string;
+   216→  showEta: boolean;
+   217→  showZone: boolean;
+   218→  showWaitlistOnFailure: boolean;
+   219→  showCod: boolean;
+   220→  showReturnPolicy: boolean;
+   221→  showCutoffTime: boolean;
+   222→  showDeliveryDays: boolean;
+   223→  blockCartOnInvalid: boolean;
+   224→  blockCheckoutInCart: boolean;
+   225→  showSocialProof: boolean;
+   226→  borderRadius: string;
+   227→  customCss: string | null;
+   228→};
+   229→
+   230→// ── Default widget configuration values ─────────────────────────────────────
+   231→const DEFAULTS = {
+   232→  position: "inline",
+   233→  primaryColor: "#008060",
+   234→  successColor: "#008060",
+   235→  errorColor: "#D72C0D",
+   236→  backgroundColor: "#FFFFFF",
+   237→  textColor: "#202223",
+   238→  heading: "Check Delivery Availability",
+   239→  placeholder: "Enter your zip code",
+   240→  buttonText: "Check",
+   241→  successMessage: "Great news! We deliver to your area.",
+   242→  errorMessage: "Sorry, we don't deliver to this area yet.",
+   243→  notFoundMessage: "We currently do not ship to this ZIP code.",
+   244→  showEta: true,
+   245→  showZone: false,
+   246→  showWaitlistOnFailure: false,
+   247→  showCod: true,
+   248→  showReturnPolicy: true,
+   249→  showCutoffTime: true,
+   250→  showDeliveryDays: true,
+   251→  blockCartOnInvalid: false,
+   252→  blockCheckoutInCart: false,
+   253→  showSocialProof: true,
+   254→  borderRadius: "8",
+   255→  customCss: "",
+   256→};
+   257→
+   258→// ── CSS generator — mirrors the Liquid block CSS exactly ────────────────────
+   259→function buildWidgetCss(wid: string, cfg: WidgetConfig): string {
+   260→  const rad = cfg.borderRadius + "px";
+   261→  return (
+   262→    "#" + wid + "{" +
+   263→      "background:" + cfg.backgroundColor + ";" +
+   264→      "color:" + cfg.textColor + ";" +
+   265→      "border-radius:" + rad + ";" +
+   266→      "padding:24px;" +
+   267→      "border:1px solid #e1e3e5;" +
+   268→      "max-width:400px;" +
+   269→      "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
+   270→      "box-sizing:border-box;" +
+   271→    "}" +
+   272→    "#" + wid + " *{box-sizing:border-box}" +
+   273→    "#" + wid + " .zcc-heading{font-size:16px;font-weight:600;margin:0 0 16px;color:" + cfg.textColor + "}" +
+   274→    "#" + wid + " .zcc-row{display:flex;gap:8px;margin-bottom:0}" +
+   275→    "#" + wid + " .zcc-input{" +
+   276→      "flex:1;padding:10px 12px;border:1px solid #c9cccf;" +
+   277→      "border-radius:" + rad + ";font-size:14px;outline:none;" +
+   278→      "background:#fafbfb;color:" + cfg.textColor + ";min-width:0" +
+   279→    "}" +
+   280→    "#" + wid + " .zcc-input:focus{border-color:" + cfg.primaryColor + ";box-shadow:0 0 0 2px " + cfg.primaryColor + "22}" +
+   281→    "#" + wid + " .zcc-btn{" +
+   282→      "background:" + cfg.primaryColor + ";color:#fff;border:none;" +
+   283→      "border-radius:" + rad + ";padding:10px 20px;font-size:14px;" +
+   284→      "font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0" +
+   285→    "}" +
+   286→    "#" + wid + " .zcc-btn:hover{opacity:.9}" +
+   287→    "#" + wid + " .zcc-result{margin-top:12px;padding:12px;border-radius:" + rad + ";font-size:14px;line-height:1.4}" +
+   288→    "#" + wid + " .zcc-result.ok{background:" + cfg.successColor + "15;border-left:3px solid " + cfg.successColor + ";color:" + cfg.successColor + "}" +
+   289→    "#" + wid + " .zcc-result.fail{background:" + cfg.errorColor + "15;border-left:3px solid " + cfg.errorColor + ";color:" + cfg.errorColor + "}" +
+   290→    "#" + wid + " .zcc-meta{margin-top:4px;font-size:13px;opacity:.8}" +
+   291→    "#" + wid + " .zcc-cutoff{margin-top:4px;font-size:0.85em;color:#6d7175}" +
+   292→    "#" + wid + " .zcc-days{margin-top:4px;font-size:0.85em;color:#6d7175}" +
+   293→    "#" + wid + " .zcc-cod{margin-top:4px;font-size:0.85em;font-weight:500}" +
+   294→    "#" + wid + " .zcc-cod--available{color:#008060}" +
+   295→    "#" + wid + " .zcc-cod--unavailable{color:#d72c0d}" +
+   296→    "#" + wid + " .zcc-return-policy{margin-top:4px;font-size:0.85em;color:#6d7175}" +
+   297→    "#" + wid + " .zcc-wl{margin-top:10px}" +
+   298→    "#" + wid + " .zcc-wl-input{" +
+   299→      "width:100%;padding:8px 10px;border:1px solid " + cfg.errorColor + "40;" +
+   300→      "border-radius:" + rad + ";font-size:13px;margin-bottom:6px;display:block" +
+   301→    "}" +
+   302→    "#" + wid + " .zcc-wl-btn{" +
+   303→      "background:" + cfg.errorColor + ";color:#fff;border:none;" +
+   304→      "border-radius:" + rad + ";padding:8px 16px;font-size:13px;" +
+   305→      "cursor:pointer;width:100%;font-weight:600" +
+   306→    "}" +
+   307→    // Sanitize customCss: strip </style> close tags to prevent injection into <style> elements
+   308→    (cfg.customCss ? cfg.customCss.replace(/<\/style>/gi, "") : "")
+   309→  );
+   310→}
+   311→
+   312→// ── Live Preview component (defined outside WidgetPage to avoid remounting) ─
+   313→function WidgetPreview({
+   314→  cfg,
+   315→  previewState,
+   316→}: {
+   317→  cfg: WidgetConfig;
+   318→  previewState: "idle" | "success" | "error" | "notfound";
+   319→}) {
+   320→  const wid = "zcc-admin-preview";
+   321→  const css = buildWidgetCss(wid, cfg);
+   322→
+   323→  const resultClass =
+   324→    previewState === "success" ? "ok" :
+   325→    (previewState === "error" || previewState === "notfound") ? "fail" : "";
+   326→
+   327→  const resultMessage =
+   328→    previewState === "success" ? cfg.successMessage :
+   329→    previewState === "error" ? cfg.errorMessage :
+   330→    previewState === "notfound" ? cfg.notFoundMessage : null;
+   331→
+   332→  const widgetHtml = (
+   333→    <div id={wid}>
+   334→      <p className="zcc-heading">{cfg.heading}</p>
+   335→      <div className="zcc-row">
+   336→        <input
+   337→          className="zcc-input"
+   338→          type="text"
+   339→          placeholder={cfg.placeholder}
+   340→          readOnly
+   341→        />
+   342→        <button className="zcc-btn" type="button">
+   343→          {cfg.buttonText}
+   344→        </button>
+   345→      </div>
+   346→      {resultMessage && (
+   347→        <div className={`zcc-result ${resultClass}`}>
+   348→          {resultMessage}
+   349→          {previewState === "success" && cfg.showEta && (
+   350→            <div className="zcc-meta">Estimated delivery: 2–3 business days</div>
+   351→          )}
+   352→          {previewState === "success" && cfg.showZone && (
+   353→            <div className="zcc-meta">Zone: Manhattan</div>
+   354→          )}
+   355→          {previewState === "success" && cfg.showDeliveryDays && (
+   356→            <div className="zcc-meta zcc-days">Delivers: Mon &middot; Tue &middot; Wed &middot; Thu &middot; Fri</div>
+   357→          )}
+   358→          {previewState === "success" && cfg.showCutoffTime && (
+   359→            <div className="zcc-meta zcc-cutoff">Order by 2:00 PM for same-day delivery</div>
+   360→          )}
+   361→          {previewState === "success" && cfg.showCod && (
+   362→            <div className="zcc-cod zcc-cod--available">Cash on Delivery Available</div>
+   363→          )}
+   364→          {previewState === "success" && cfg.showReturnPolicy && (
+   365→            <div className="zcc-return-policy">30-day returns accepted. Exchange within 7 days.</div>
+   366→          )}
+   367→          {(previewState === "error" || previewState === "notfound") &&
+   368→            cfg.showWaitlistOnFailure && (
+   369→              <div className="zcc-wl">
+   370→                <input
+   371→                  className="zcc-wl-input"
+   372→                  type="email"
+   373→                  placeholder="Enter email to join waitlist"
+   374→                  readOnly
+   375→                />
+   376→                <button className="zcc-wl-btn" type="button">
+   377→                  Join Waitlist
+   378→                </button>
+   379→              </div>
+   380→            )}
+   381→        </div>
+   382→      )}
+   383→    </div>
+   384→  );
+   385→
+   386→  // Floating position: show mock fixed button + collapsible panel concept
+   387→  if (cfg.position === "floating") {
+   388→    return (
+   389→      <>
+   390→        {/* eslint-disable-next-line react/no-danger */}
+   391→        <style dangerouslySetInnerHTML={{ __html: css }} />
+   392→        <div
+   393→          style={{
+   394→            position: "relative",
+   395→            minHeight: "120px",
+   396→            background: "#f6f6f7",
+   397→            borderRadius: "8px",
+   398→            padding: "12px",
+   399→          }}
+   400→        >
+   401→          <Text as="p" variant="bodySm" tone="subdued">
+   402→            The widget will appear as a fixed button in the bottom-right corner of your storefront.
+   403→          </Text>
+   404→          <div
+   405→            style={{
+   406→              position: "absolute",
+   407→              bottom: "12px",
+   408→              right: "12px",
+   409→              display: "flex",
+   410→              flexDirection: "column",
+   411→              alignItems: "flex-end",
+   412→              gap: "8px",
+   413→            }}
+   414→          >
+   415→            <div id={wid} style={{ maxWidth: "300px" }}>
+   416→              <p className="zcc-heading" style={{ marginBottom: "12px" }}>
+   417→                {cfg.heading}
+   418→              </p>
+   419→              <div className="zcc-row">
+   420→                <input
+   421→                  className="zcc-input"
+   422→                  type="text"
+   423→                  placeholder={cfg.placeholder}
+   424→                  readOnly
+   425→                />
+   426→                <button className="zcc-btn" type="button">
+   427→                  {cfg.buttonText}
+   428→                </button>
+   429→              </div>
+   430→            </div>
+   431→            <button
+   432→              type="button"
+   433→              style={{
+   434→                background: cfg.primaryColor,
+   435→                color: "#fff",
+   436→                border: "none",
+   437→                borderRadius: "50px",
+   438→                padding: "10px 18px",
+   439→                fontSize: "13px",
+   440→                fontWeight: 600,
+   441→                cursor: "pointer",
+   442→                boxShadow: "0 4px 12px rgba(0,0,0,.2)",
+   443→              }}
+   444→            >
+   445→              📍 Check Delivery
+   446→            </button>
+   447→          </div>
+   448→        </div>
+   449→      </>
+   450→    );
+   451→  }
+   452→
+   453→  // Popup position: show trigger button + hint of overlay
+   454→  if (cfg.position === "popup") {
+   455→    return (
+   456→      <>
+   457→        {/* eslint-disable-next-line react/no-danger */}
+   458→        <style dangerouslySetInnerHTML={{ __html: css }} />
+   459→        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+   460→          <Text as="p" variant="bodySm" tone="subdued">
+   461→            A trigger button will appear in the section. Clicking it opens a centered popup.
+   462→          </Text>
+   463→          <div>
+   464→            <button
+   465→              type="button"
+   466→              style={{
+   467→                background: cfg.primaryColor,
+   468→                color: "#fff",
+   469→                border: "none",
+   470→                borderRadius: cfg.borderRadius + "px",
+   471→                padding: "10px 24px",
+   472→                fontSize: "14px",
+   473→                fontWeight: 600,
+   474→                cursor: "pointer",
+   475→              }}
+   476→            >
+   477→              Check Delivery Availability
+   478→            </button>
+   479→          </div>
+   480→          <div
+   481→            style={{
+   482→              background: "rgba(0,0,0,.06)",
+   483→              borderRadius: "8px",
+   484→              padding: "12px",
+   485→              border: "2px dashed #c9cccf",
+   486→            }}
+   487→          >
+   488→            <Text as="p" variant="bodySm" tone="subdued">
+   489→              Popup content preview:
+   490→            </Text>
+   491→            <div style={{ marginTop: "8px" }}>{widgetHtml}</div>
+   492→          </div>
+   493→        </div>
+   494→      </>
+   495→    );
+   496→  }
+   497→
+   498→  // Inline (default)
+   499→  return (
+   500→    <>
+   501→      {/* eslint-disable-next-line react/no-danger */}
+   502→      <style dangerouslySetInnerHTML={{ __html: css }} />
+   503→      {widgetHtml}
+   504→    </>
+   505→  );
+   506→}
+   507→
+   508→// ── Page component ───────────────────────────────────────────────────────────
+   509→export default function WidgetPage() {
+   510→  const { config, subscription } = useLoaderData<typeof loader>();
+   511→  const fetcher = useFetcher<typeof action>();
+   512→  const shopify = useAppBridge();
+   513→  const navigate = useNavigate();
+   514→
+   515→  const c = config as unknown as WidgetConfig;
+   516→
+   517→  const limits = PLAN_LIMITS[subscription.planTier as PlanTier];
+   518→
+   519→  // Form state initialized from DB
+   520→  const [position, setPosition] = useState(c.position);
+   521→  const [primaryColor, setPrimaryColor] = useState(c.primaryColor);
+   522→  const [successColor, setSuccessColor] = useState(c.successColor);
+   523→  const [errorColor, setErrorColor] = useState(c.errorColor);
+   524→  const [backgroundColor, setBackgroundColor] = useState(c.backgroundColor);
+   525→  const [textColor, setTextColor] = useState(c.textColor);
+   526→  const [heading, setHeading] = useState(c.heading);
+   527→  const [placeholder, setPlaceholder] = useState(c.placeholder);
+   528→  const [buttonText, setButtonText] = useState(c.buttonText);
+   529→  const [successMessage, setSuccessMessage] = useState(c.successMessage);
+   530→  const [errorMessage, setErrorMessage] = useState(c.errorMessage);
+   531→  const [notFoundMessage, setNotFoundMessage] = useState(c.notFoundMessage);
+   532→  const [showEta, setShowEta] = useState(c.showEta);
+   533→  const [showZone, setShowZone] = useState(c.showZone);
+   534→  const [showWaitlistOnFailure, setShowWaitlistOnFailure] = useState(
+   535→    c.showWaitlistOnFailure,
+   536→  );
+   537→  const [showCod, setShowCod] = useState(c.showCod ?? true);
+   538→  const [showReturnPolicy, setShowReturnPolicy] = useState(c.showReturnPolicy ?? true);
+   539→  const [showCutoffTime, setShowCutoffTime] = useState(c.showCutoffTime ?? true);
+   540→  const [showDeliveryDays, setShowDeliveryDays] = useState(c.showDeliveryDays ?? true);
+   541→  const [blockCartOnInvalid, setBlockCartOnInvalid] = useState(c.blockCartOnInvalid ?? false);
+   542→  const [blockCheckoutInCart, setBlockCheckoutInCart] = useState(c.blockCheckoutInCart ?? false);
+   543→  const [showSocialProof, setShowSocialProof] = useState(c.showSocialProof ?? true);
+   544→  const [borderRadius, setBorderRadius] = useState(c.borderRadius);
+   545→  const [customCss, setCustomCss] = useState(c.customCss || "");
+   546→
+   547→  // Unsaved changes tracking
+   548→  const [isDirty, setIsDirty] = useState(false);
+   549→
+   550→  // Preview state
+   551→  const [previewState, setPreviewState] = useState<
+   552→    "idle" | "success" | "error" | "notfound"
+   553→  >("idle");
+   554→
+   555→  const isSaving =
+   556→    fetcher.state !== "idle" && fetcher.formData?.get("intent") === "save";
+   557→
+   558→  // Clear dirty flag after successful save
+   559→  useEffect(() => {
+   560→    if (
+   561→      fetcher.state === "idle" &&
+   562→      fetcher.data &&
+   563→      "success" in fetcher.data &&
+   564→      fetcher.data.success
+   565→    ) {
+   566→      setIsDirty(false);
+   567→    }
+   568→  }, [fetcher.state, fetcher.data]);
+   569→
+   570→  // (Save bar managed via Page primaryAction)
+   571→
+   572→  // Dirty-aware setters
+   573→  const mark = useCallback(() => setIsDirty(true), []);
+   574→  const handlePositionChange = useCallback((v: string) => { setPosition(v); mark(); }, [mark]);
+   575→  const handlePrimaryColorChange = useCallback((v: string) => { setPrimaryColor(v); mark(); }, [mark]);
+   576→  const handleSuccessColorChange = useCallback((v: string) => { setSuccessColor(v); mark(); }, [mark]);
+   577→  const handleErrorColorChange = useCallback((v: string) => { setErrorColor(v); mark(); }, [mark]);
+   578→  const handleBackgroundColorChange = useCallback((v: string) => { setBackgroundColor(v); mark(); }, [mark]);
+   579→  const handleTextColorChange = useCallback((v: string) => { setTextColor(v); mark(); }, [mark]);
+   580→  const handleHeadingChange = useCallback((v: string) => { setHeading(v); mark(); }, [mark]);
+   581→  const handlePlaceholderChange = useCallback((v: string) => { setPlaceholder(v); mark(); }, [mark]);
+   582→  const handleButtonTextChange = useCallback((v: string) => { setButtonText(v); mark(); }, [mark]);
+   583→  const handleSuccessMessageChange = useCallback((v: string) => { setSuccessMessage(v); mark(); }, [mark]);
+   584→  const handleErrorMessageChange = useCallback((v: string) => { setErrorMessage(v); mark(); }, [mark]);
+   585→  const handleNotFoundMessageChange = useCallback((v: string) => { setNotFoundMessage(v); mark(); }, [mark]);
+   586→  const handleShowEtaChange = useCallback((v: boolean) => { setShowEta(v); mark(); }, [mark]);
+   587→  const handleShowZoneChange = useCallback((v: boolean) => { setShowZone(v); mark(); }, [mark]);
+   588→  const handleShowWaitlistChange = useCallback((v: boolean) => { setShowWaitlistOnFailure(v); mark(); }, [mark]);
+   589→  const handleShowCodChange = useCallback((v: boolean) => { setShowCod(v); mark(); }, [mark]);
+   590→  const handleShowReturnPolicyChange = useCallback((v: boolean) => { setShowReturnPolicy(v); mark(); }, [mark]);
+   591→  const handleShowCutoffTimeChange = useCallback((v: boolean) => { setShowCutoffTime(v); mark(); }, [mark]);
+   592→  const handleShowDeliveryDaysChange = useCallback((v: boolean) => { setShowDeliveryDays(v); mark(); }, [mark]);
+   593→  const handleBlockCartOnInvalidChange = useCallback((v: boolean) => { setBlockCartOnInvalid(v); mark(); }, [mark]);
+   594→  const handleBlockCheckoutInCartChange = useCallback((v: boolean) => { setBlockCheckoutInCart(v); mark(); }, [mark]);
+   595→  const handleShowSocialProofChange = useCallback((v: boolean) => { setShowSocialProof(v); mark(); }, [mark]);
+   596→  const handleBorderRadiusChange = useCallback((v: string) => { setBorderRadius(v); mark(); }, [mark]);
+   597→  const handleCustomCssChange = useCallback((v: string) => { setCustomCss(v); mark(); }, [mark]);
+   598→
+   599→  const handleSave = useCallback(() => {
+   600→    const fd = new FormData();
+   601→    fd.set("intent", "save");
+   602→    fd.set("position", position);
+   603→    fd.set("primaryColor", primaryColor);
+   604→    fd.set("successColor", successColor);
+   605→    fd.set("errorColor", errorColor);
+   606→    fd.set("backgroundColor", backgroundColor);
+   607→    fd.set("textColor", textColor);
+   608→    fd.set("heading", heading);
+   609→    fd.set("placeholder", placeholder);
+   610→    fd.set("buttonText", buttonText);
+   611→    fd.set("successMessage", successMessage);
+   612→    fd.set("errorMessage", errorMessage);
+   613→    fd.set("notFoundMessage", notFoundMessage);
+   614→    fd.set("showEta", String(showEta));
+   615→    fd.set("showZone", String(showZone));
+   616→    fd.set("showWaitlistOnFailure", String(showWaitlistOnFailure));
+   617→    fd.set("showCod", String(showCod));
+   618→    fd.set("showReturnPolicy", String(showReturnPolicy));
+   619→    fd.set("showCutoffTime", String(showCutoffTime));
+   620→    fd.set("showDeliveryDays", String(showDeliveryDays));
+   621→    fd.set("blockCartOnInvalid", String(blockCartOnInvalid));
+   622→    fd.set("blockCheckoutInCart", String(blockCheckoutInCart));
+   623→    fd.set("showSocialProof", String(showSocialProof));
+   624→    fd.set("borderRadius", borderRadius);
+   625→    fd.set("customCss", customCss);
+   626→    fetcher.submit(fd, { method: "POST" });
+   627→    shopify.toast.show("Widget settings saved");
+   628→  }, [
+   629→    position, primaryColor, successColor, errorColor, backgroundColor,
+   630→    textColor, heading, placeholder, buttonText, successMessage, errorMessage,
+   631→    notFoundMessage, showEta, showZone, showWaitlistOnFailure, showCod,
+   632→    showReturnPolicy, showCutoffTime, showDeliveryDays, blockCartOnInvalid,
+   633→    blockCheckoutInCart, showSocialProof, borderRadius, customCss,
+   634→    fetcher, shopify,
+   635→  ]);
+   636→
+   637→  const handleReset = useCallback(() => {
+   638→    const fd = new FormData();
+   639→    fd.set("intent", "reset");
+   640→    fetcher.submit(fd, { method: "POST" });
+   641→    setPosition(DEFAULTS.position);
+   642→    setPrimaryColor(DEFAULTS.primaryColor);
+   643→    setSuccessColor(DEFAULTS.successColor);
+   644→    setErrorColor(DEFAULTS.errorColor);
+   645→    setBackgroundColor(DEFAULTS.backgroundColor);
+   646→    setTextColor(DEFAULTS.textColor);
+   647→    setHeading(DEFAULTS.heading);
+   648→    setPlaceholder(DEFAULTS.placeholder);
+   649→    setButtonText(DEFAULTS.buttonText);
+   650→    setSuccessMessage(DEFAULTS.successMessage);
+   651→    setErrorMessage(DEFAULTS.errorMessage);
+   652→    setNotFoundMessage(DEFAULTS.notFoundMessage);
+   653→    setShowEta(DEFAULTS.showEta);
+   654→    setShowZone(DEFAULTS.showZone);
+   655→    setShowWaitlistOnFailure(DEFAULTS.showWaitlistOnFailure);
+   656→    setShowCod(DEFAULTS.showCod);
+   657→    setShowReturnPolicy(DEFAULTS.showReturnPolicy);
+   658→    setShowCutoffTime(DEFAULTS.showCutoffTime);
+   659→    setShowDeliveryDays(DEFAULTS.showDeliveryDays);
+   660→    setBlockCartOnInvalid(DEFAULTS.blockCartOnInvalid);
+   661→    setBlockCheckoutInCart(DEFAULTS.blockCheckoutInCart);
+   662→    setShowSocialProof(DEFAULTS.showSocialProof);
+   663→    setBorderRadius(DEFAULTS.borderRadius);
+   664→    setCustomCss(DEFAULTS.customCss);
+   665→    setPreviewState("idle");
+   666→    setIsDirty(false);
+   667→    shopify.toast.show("Widget settings reset to defaults");
+   668→  }, [fetcher, shopify]);
+   669→
+   670→  const positionOptions = [
+   671→    { label: "Inline — embedded directly in the section", value: "inline" },
+   672→    { label: "Floating — fixed button in the corner", value: "floating" },
+   673→    { label: "Popup — trigger button opens a modal", value: "popup" },
+   674→  ];
+   675→
+   676→  // Current config snapshot for the preview
+   677→  const previewCfg: WidgetConfig = {
+   678→    position, primaryColor, successColor, errorColor, backgroundColor,
+   679→    textColor, heading, placeholder, buttonText, successMessage, errorMessage,
+   680→    notFoundMessage, showEta, showZone, showWaitlistOnFailure, showCod,
+   681→    showReturnPolicy, showCutoffTime, showDeliveryDays, blockCartOnInvalid,
+   682→    blockCheckoutInCart, showSocialProof, borderRadius, customCss,
+   683→  };
+   684→
+   685→  const handleDiscard = useCallback(() => {
+   686→    setPosition(c.position);
+   687→    setPrimaryColor(c.primaryColor);
+   688→    setSuccessColor(c.successColor);
+   689→    setErrorColor(c.errorColor);
+   690→    setBackgroundColor(c.backgroundColor);
+   691→    setTextColor(c.textColor);
+   692→    setHeading(c.heading);
+   693→    setPlaceholder(c.placeholder);
+   694→    setButtonText(c.buttonText);
+   695→    setSuccessMessage(c.successMessage);
+   696→    setErrorMessage(c.errorMessage);
+   697→    setNotFoundMessage(c.notFoundMessage);
+   698→    setShowEta(c.showEta);
+   699→    setShowZone(c.showZone);
+   700→    setShowWaitlistOnFailure(c.showWaitlistOnFailure);
+   701→    setShowCod(c.showCod ?? true);
+   702→    setShowReturnPolicy(c.showReturnPolicy ?? true);
+   703→    setShowCutoffTime(c.showCutoffTime ?? true);
+   704→    setShowDeliveryDays(c.showDeliveryDays ?? true);
+   705→    setBlockCartOnInvalid(c.blockCartOnInvalid ?? false);
+   706→    setBlockCheckoutInCart(c.blockCheckoutInCart ?? false);
+   707→    setShowSocialProof(c.showSocialProof ?? true);
+   708→    setBorderRadius(c.borderRadius);
+   709→    setCustomCss(c.customCss || "");
+   710→    setIsDirty(false);
+   711→    setPreviewState("idle");
+   712→  }, [c]);
+   713→
+   714→  return (
+   715→    <Page
+   716→      title="Widget Customization"
+   717→      subtitle="Customize how the zip code checker looks on your storefront"
+   718→      backAction={{ onAction: () => navigate("/app") }}
+   719→      primaryAction={isDirty ? {
+   720→        content: "Save Changes",
+   721→        onAction: handleSave,
+   722→        loading: isSaving,
+   723→      } : undefined}
+   724→      secondaryActions={[
+   725→        ...(isDirty ? [{
+   726→          content: "Discard",
+   727→          onAction: handleDiscard,
+   728→        }] : []),
+   729→        {
+   730→          content: "Reset to Defaults",
+   731→          onAction: handleReset,
+   732→        },
+   733→      ]}
+   734→    >
+   735→      <Box paddingBlockEnd="1600">
+   736→        <Layout>
+   737→
+   738→          {/* Settings + Preview */}
+   739→          <Layout.Section>
+   740→            <InlineGrid columns={{ xs: 1, md: 2 }} gap="400" alignItems="start">
+   741→              {/* ── Settings Column ── */}
+   742→              <BlockStack gap="400">
+   743→                {/* Layout */}
+   744→                <Card>
+   745→                  <BlockStack gap="400">
+   746→                    <InlineStack align="space-between" blockAlign="center">
+   747→                      <Text as="h2" variant="headingMd">
+   748→                        Layout
+   749→                      </Text>
+   750→                      {!limits.widgetFullCustom && (
+   751→                        <Badge tone="info">Starter+</Badge>
+   752→                      )}
+   753→                    </InlineStack>
+   754→                    <Select
+   755→                      label="Widget Position"
+   756→                      options={positionOptions}
+   757→                      value={position}
+   758→                      onChange={handlePositionChange}
+   759→                      disabled={!limits.widgetFullCustom}
+   760→                      helpText={
+   761→                        position === "floating"
+   762→                          ? "Widget appears as a fixed button in the bottom-right corner of every page."
+   763→                          : position === "popup"
+   764→                          ? "A trigger button shows in the block. Clicking it opens a centered popup overlay."
+   765→                          : "Widget renders directly where you place the block in the Theme Editor."
+   766→                      }
+   767→                    />
+   768→                    <TextField
+   769→                      label="Border Radius (px)"
+   770→                      type="number"
+   771→                      value={borderRadius}
+   772→                      onChange={handleBorderRadiusChange}
+   773→                      autoComplete="off"
+   774→                      disabled={!limits.widgetFullCustom}
+   775→                      helpText="Roundness of corners. 0 = square, 16 = very rounded."
+   776→                    />
+   777→                    {!limits.widgetFullCustom && (
+   778→                      <Banner tone="info">
+   779→                        <Text as="p" variant="bodySm">
+   780→                          Upgrade to Starter to customize widget position and layout.{" "}
+   781→                          <Button
+   782→                            variant="plain"
+   783→                            onClick={() => navigate("/app/pricing")}
+   784→                          >
+   785→                            View plans
+   786→                          </Button>
+   787→                        </Text>
+   788→                      </Banner>
+   789→                    )}
+   790→                  </BlockStack>
+   791→                </Card>
+   792→
+   793→                {/* Colors */}
+   794→                <Card>
+   795→                  <BlockStack gap="400">
+   796→                    <InlineStack align="space-between" blockAlign="center">
+   797→                      <Text as="h2" variant="headingMd">
+   798→                        Colors
+   799→                      </Text>
+   800→                      {!limits.widgetFullCustom && (
+   801→                        <Badge tone="info">Starter+</Badge>
+   802→                      )}
+   803→                    </InlineStack>
+   804→                    <InlineStack gap="300" wrap>
+   805→                      <div style={{ flex: 1, minWidth: "140px" }}>
+   806→                        <BlockStack gap="100">
+   807→                          <Text as="p" variant="bodySm">
+   808→                            Button Color
+   809→                          </Text>
+   810→                          <InlineStack gap="200" blockAlign="center">
+   811→                            <input
+   812→                              type="color"
+   813→                              value={primaryColor}
+   814→                              onChange={(e) => handlePrimaryColorChange(e.target.value)}
+   815→                              disabled={!limits.widgetFullCustom}
+   816→                              style={{
+   817→                                width: "36px",
+   818→                                height: "36px",
+   819→                                border: "1px solid #ccc",
+   820→                                borderRadius: "6px",
+   821→                                cursor: limits.widgetFullCustom ? "pointer" : "not-allowed",
+   822→                                padding: "2px",
+   823→                                opacity: limits.widgetFullCustom ? 1 : 0.5,
+   824→                              }}
+   825→                            />
+   826→                            <TextField
+   827→                              label="Button"
+   828→                              labelHidden
+   829→                              value={primaryColor}
+   830→                              onChange={handlePrimaryColorChange}
+   831→                              autoComplete="off"
+   832→                              disabled={!limits.widgetFullCustom}
+   833→                            />
+   834→                          </InlineStack>
+   835→                        </BlockStack>
+   836→                      </div>
+   837→                      <div style={{ flex: 1, minWidth: "140px" }}>
+   838→                        <BlockStack gap="100">
+   839→                          <Text as="p" variant="bodySm">
+   840→                            Success Color
+   841→                          </Text>
+   842→                          <InlineStack gap="200" blockAlign="center">
+   843→                            <input
+   844→                              type="color"
+   845→                              value={successColor}
+   846→                              onChange={(e) => handleSuccessColorChange(e.target.value)}
+   847→                              disabled={!limits.widgetFullCustom}
+   848→                              style={{
+   849→                                width: "36px",
+   850→                                height: "36px",
+   851→                                border: "1px solid #ccc",
+   852→                                borderRadius: "6px",
+   853→                                cursor: limits.widgetFullCustom ? "pointer" : "not-allowed",
+   854→                                padding: "2px",
+   855→                                opacity: limits.widgetFullCustom ? 1 : 0.5,
+   856→                              }}
+   857→                            />
+   858→                            <TextField
+   859→                              label="Success"
+   860→                              labelHidden
+   861→                              value={successColor}
+   862→                              onChange={handleSuccessColorChange}
+   863→                              autoComplete="off"
+   864→                              disabled={!limits.widgetFullCustom}
+   865→                            />
+   866→                          </InlineStack>
+   867→                        </BlockStack>
+   868→                      </div>
+   869→                    </InlineStack>
+   870→                    <InlineStack gap="300" wrap>
+   871→                      <div style={{ flex: 1, minWidth: "140px" }}>
+   872→                        <BlockStack gap="100">
+   873→                          <Text as="p" variant="bodySm">
+   874→                            Error Color
+   875→                          </Text>
+   876→                          <InlineStack gap="200" blockAlign="center">
+   877→                            <input
+   878→                              type="color"
+   879→                              value={errorColor}
+   880→                              onChange={(e) => handleErrorColorChange(e.target.value)}
+   881→                              disabled={!limits.widgetFullCustom}
+   882→                              style={{
+   883→                                width: "36px",
+   884→                                height: "36px",
+   885→                                border: "1px solid #ccc",
+   886→                                borderRadius: "6px",
+   887→                                cursor: limits.widgetFullCustom ? "pointer" : "not-allowed",
+   888→                                padding: "2px",
+   889→                                opacity: limits.widgetFullCustom ? 1 : 0.5,
+   890→                              }}
+   891→                            />
+   892→                            <TextField
+   893→                              label="Error"
+   894→                              labelHidden
+   895→                              value={errorColor}
+   896→                              onChange={handleErrorColorChange}
+   897→                              autoComplete="off"
+   898→                              disabled={!limits.widgetFullCustom}
+   899→                            />
+   900→                          </InlineStack>
+   901→                        </BlockStack>
+   902→                      </div>
+   903→                      <div style={{ flex: 1, minWidth: "140px" }}>
+   904→                        <BlockStack gap="100">
+   905→                          <Text as="p" variant="bodySm">
+   906→                            Background
+   907→                          </Text>
+   908→                          <InlineStack gap="200" blockAlign="center">
+   909→                            <input
+   910→                              type="color"
+   911→                              value={backgroundColor}
+   912→                              onChange={(e) => handleBackgroundColorChange(e.target.value)}
+   913→                              disabled={!limits.widgetFullCustom}
+   914→                              style={{
+   915→                                width: "36px",
+   916→                                height: "36px",
+   917→                                border: "1px solid #ccc",
+   918→                                borderRadius: "6px",
+   919→                                cursor: limits.widgetFullCustom ? "pointer" : "not-allowed",
+   920→                                padding: "2px",
+   921→                                opacity: limits.widgetFullCustom ? 1 : 0.5,
+   922→                              }}
+   923→                            />
+   924→                            <TextField
+   925→                              label="BG"
+   926→                              labelHidden
+   927→                              value={backgroundColor}
+   928→                              onChange={handleBackgroundColorChange}
+   929→                              autoComplete="off"
+   930→                              disabled={!limits.widgetFullCustom}
+   931→                            />
+   932→                          </InlineStack>
+   933→                        </BlockStack>
+   934→                      </div>
+   935→                    </InlineStack>
+   936→                    <BlockStack gap="100">
+   937→                      <Text as="p" variant="bodySm">
+   938→                        Text Color
+   939→                      </Text>
+   940→                      <InlineStack gap="200" blockAlign="center">
+   941→                        <input
+   942→                          type="color"
+   943→                          value={textColor}
+   944→                          onChange={(e) => handleTextColorChange(e.target.value)}
+   945→                          disabled={!limits.widgetFullCustom}
+   946→                          style={{
+   947→                            width: "36px",
+   948→                            height: "36px",
+   949→                            border: "1px solid #ccc",
+   950→                            borderRadius: "6px",
+   951→                            cursor: limits.widgetFullCustom ? "pointer" : "not-allowed",
+   952→                            padding: "2px",
+   953→                            opacity: limits.widgetFullCustom ? 1 : 0.5,
+   954→                          }}
+   955→                        />
+   956→                        <TextField
+   957→                          label="Text"
+   958→                          labelHidden
+   959→                          value={textColor}
+   960→                          onChange={handleTextColorChange}
+   961→                          autoComplete="off"
+   962→                          disabled={!limits.widgetFullCustom}
+   963→                        />
+   964→                      </InlineStack>
+   965→                    </BlockStack>
+   966→                    {!limits.widgetFullCustom && (
+   967→                      <Banner tone="info">
+   968→                        <Text as="p" variant="bodySm">
+   969→                          Upgrade to Starter to customize widget colors.{" "}
+   970→                          <Button
+   971→                            variant="plain"
+   972→                            onClick={() => navigate("/app/pricing")}
+   973→                          >
+   974→                            View plans
+   975→                          </Button>
+   976→                        </Text>
+   977→                      </Banner>
+   978→                    )}
+   979→                  </BlockStack>
+   980→                </Card>
+   981→
+   982→                {/* Text Content */}
+   983→                <Card>
+   984→                  <BlockStack gap="400">
+   985→                    <Text as="h2" variant="headingMd">
+   986→                      Text Content
+   987→                    </Text>
+   988→                    <TextField
+   989→                      label="Heading"
+   990→                      value={heading}
+   991→                      onChange={handleHeadingChange}
+   992→                      autoComplete="off"
+   993→                    />
+   994→                    <InlineStack gap="300">
+   995→                      <div style={{ flex: 1 }}>
+   996→                        <TextField
+   997→                          label="Placeholder"
+   998→                          value={placeholder}
+   999→                          onChange={handlePlaceholderChange}
+  1000→                          autoComplete="off"
+  1001→                        />
+  1002→                      </div>
+  1003→                      <div style={{ flex: 1 }}>
+  1004→                        <TextField
+  1005→                          label="Button Text"
+  1006→                          value={buttonText}
+  1007→                          onChange={handleButtonTextChange}
+  1008→                          autoComplete="off"
+  1009→                        />
+  1010→                      </div>
+  1011→                    </InlineStack>
+  1012→                    <TextField
+  1013→                      label="Success Message"
+  1014→                      value={successMessage}
+  1015→                      onChange={handleSuccessMessageChange}
+  1016→                      autoComplete="off"
+  1017→                      multiline={2}
+  1018→                    />
+  1019→                    <TextField
+  1020→                      label="Error Message (blocked)"
+  1021→                      value={errorMessage}
+  1022→                      onChange={handleErrorMessageChange}
+  1023→                      autoComplete="off"
+  1024→                      multiline={2}
+  1025→                    />
+  1026→                    <TextField
+  1027→                      label="Not Found Message"
+  1028→                      value={notFoundMessage}
+  1029→                      onChange={handleNotFoundMessageChange}
+  1030→                      autoComplete="off"
+  1031→                      multiline={2}
+  1032→                    />
+  1033→                  </BlockStack>
+  1034→                </Card>
+  1035→
+  1036→                {/* Display Options */}
+  1037→                <Card>
+  1038→                  <BlockStack gap="400">
+  1039→                    <InlineStack align="space-between" blockAlign="center">
+  1040→                      <Text as="h2" variant="headingMd">
+  1041→                        Display Options
+  1042→                      </Text>
+  1043→                      {!limits.showEtaCodReturn && (
+  1044→                        <Badge tone="info">Starter+</Badge>
+  1045→                      )}
+  1046→                    </InlineStack>
+  1047→                    <Checkbox
+  1048→                      label="Show estimated delivery time (ETA)"
+  1049→                      checked={showEta}
+  1050→                      onChange={handleShowEtaChange}
+  1051→                      disabled={!limits.showEtaCodReturn}
+  1052→                      helpText="Display the ETA below the success message when available."
+  1053→                    />
+  1054→                    <Checkbox
+  1055→                      label="Show delivery zone name"
+  1056→                      checked={showZone}
+  1057→                      onChange={handleShowZoneChange}
+  1058→                      helpText="Display the zone name in the success message."
+  1059→                    />
+  1060→                    <Checkbox
+  1061→                      label="Show waitlist form on blocked/not-found zip codes"
+  1062→                      checked={showWaitlistOnFailure}
+  1063→                      onChange={handleShowWaitlistChange}
+  1064→                      helpText="Let customers enter their email to join a waitlist when their zip code isn't available."
+  1065→                    />
+  1066→                    <Checkbox
+  1067→                      label="Show cutoff time"
+  1068→                      checked={showCutoffTime}
+  1069→                      onChange={handleShowCutoffTimeChange}
+  1070→                      helpText="Display order cutoff time for same-day delivery (from the matched delivery rule)."
+  1071→                    />
+  1072→                    <Checkbox
+  1073→                      label="Show delivery days"
+  1074→                      checked={showDeliveryDays}
+  1075→                      onChange={handleShowDeliveryDaysChange}
+  1076→                      helpText="Display which days of the week delivery is available (from the matched delivery rule)."
+  1077→                    />
+  1078→                    <Checkbox
+  1079→                      label="Show COD (Cash on Delivery) availability"
+  1080→                      checked={showCod}
+  1081→                      onChange={handleShowCodChange}
+  1082→                      disabled={!limits.showEtaCodReturn}
+  1083→                      helpText="Display whether cash on delivery is available for the entered zip code."
+  1084→                    />
+  1085→                    <Checkbox
+  1086→                      label="Show return / exchange policy"
+  1087→                      checked={showReturnPolicy}
+  1088→                      onChange={handleShowReturnPolicyChange}
+  1089→                      disabled={!limits.showEtaCodReturn}
+  1090→                      helpText="Display the return and exchange policy associated with the entered zip code."
+  1091→                    />
+  1092→                    {!limits.showEtaCodReturn && (
+  1093→                      <Banner tone="info">
+  1094→                        <Text as="p" variant="bodySm">
+  1095→                          Upgrade to Starter to enable ETA, COD, and return policy toggles.{" "}
+  1096→                          <Button
+  1097→                            variant="plain"
+  1098→                            onClick={() => navigate("/app/pricing")}
+  1099→                          >
+  1100→                            View plans
+  1101→                          </Button>
+  1102→                        </Text>
+  1103→                      </Banner>
+  1104→                    )}
+  1105→                    <Divider />
+  1106→                    <InlineStack align="space-between" blockAlign="center">
+  1107→                      <Text variant="headingMd" as="h3">Purchase Protection</Text>
+  1108→                      {!limits.cartBlocking && (
+  1109→                        <Badge tone="info">Pro+</Badge>
+  1110→                      )}
+  1111→                    </InlineStack>
+  1112→                    <Checkbox
+  1113→                      label="Block Add to Cart for unserviceable ZIP codes"
+  1114→                      helpText="Disables the Add to Cart and Buy Now buttons when a customer enters an invalid ZIP code. Buttons re-enable on a valid check."
+  1115→                      checked={blockCartOnInvalid}
+  1116→                      onChange={handleBlockCartOnInvalidChange}
+  1117→                      disabled={!limits.cartBlocking}
+  1118→                    />
+  1119→                    <Checkbox
+  1120→                      label="Block checkout in cart for unserviceable ZIP codes"
+  1121→                      helpText="Shows a warning and hides the checkout button on the cart page if the last checked ZIP was unserviceable. Requires the Cart Validator block on your cart page."
+  1122→                      checked={blockCheckoutInCart}
+  1123→                      onChange={handleBlockCheckoutInCartChange}
+  1124→                      disabled={!limits.cartBlocking}
+  1125→                    />
+  1126→                    {!limits.cartBlocking && (
+  1127→                      <Banner tone="info">
+  1128→                        <Text as="p" variant="bodySm">
+  1129→                          Upgrade to Pro to enable cart and checkout blocking for unserviceable ZIP codes.{" "}
+  1130→                          <Button
+  1131→                            variant="plain"
+  1132→                            onClick={() => navigate("/app/pricing")}
+  1133→                          >
+  1134→                            View plans
+  1135→                          </Button>
+  1136→                        </Text>
+  1137→                      </Banner>
+  1138→                    )}
+  1139→                    <Divider />
+  1140→                    <Text variant="headingMd" as="h3">Waitlist Engagement</Text>
+  1141→                    <Checkbox
+  1142→                      label="Show social proof on waitlist form"
+  1143→                      helpText="Displays how many other customers are waiting for delivery to the same ZIP code. Example: 'Join 23 others waiting for delivery to your area.'"
+  1144→                      checked={showSocialProof}
+  1145→                      onChange={handleShowSocialProofChange}
+  1146→                    />
+  1147→                  </BlockStack>
+  1148→                </Card>
+  1149→
+  1150→                {/* Custom CSS */}
+  1151→                <Card>
+  1152→                  <BlockStack gap="400">
+  1153→                    <InlineStack align="space-between" blockAlign="center">
+  1154→                      <Text as="h2" variant="headingMd">
+  1155→                        Custom CSS
+  1156→                      </Text>
+  1157→                      {!limits.customCss && (
+  1158→                        <Badge tone="info">Ultimate</Badge>
+  1159→                      )}
+  1160→                    </InlineStack>
+  1161→                    <TextField
+  1162→                      label="Custom CSS"
+  1163→                      labelHidden
+  1164→                      value={customCss}
+  1165→                      onChange={handleCustomCssChange}
+  1166→                      multiline={4}
+  1167→                      placeholder=".zcc-heading { font-size: 18px; } .zcc-btn { border-radius: 4px; }"
+  1168→                      autoComplete="off"
+  1169→                      disabled={!limits.customCss}
+  1170→                      helpText="Target .zcc-heading, .zcc-btn, .zcc-input, .zcc-result, .zcc-meta classes."
+  1171→                    />
+  1172→                    {!limits.customCss && (
+  1173→                      <Banner tone="info">
+  1174→                        <Text as="p" variant="bodySm">
+  1175→                          Upgrade to Ultimate to add custom CSS overrides.{" "}
+  1176→                          <Button
+  1177→                            variant="plain"
+  1178→                            onClick={() => navigate("/app/pricing")}
+  1179→                          >
+  1180→                            View plans
+  1181→                          </Button>
+  1182→                        </Text>
+  1183→                      </Banner>
+  1184→                    )}
+  1185→                  </BlockStack>
+  1186→                </Card>
+  1187→              </BlockStack>
+  1188→
+  1189→              {/* ── Live Preview Column ── */}
+  1190→              <div style={{ position: "sticky", top: "16px", alignSelf: "start" }}>
+  1191→                <Card>
+  1192→                  <BlockStack gap="400">
+  1193→                    <Text as="h2" variant="headingMd">
+  1194→                      Live Preview
+  1195→                    </Text>
+  1196→                    <Divider />
+  1197→
+  1198→                    {/* Preview toggle buttons */}
+  1199→                    <InlineStack gap="200" wrap>
+  1200→                      <Button
+  1201→                        size="slim"
+  1202→                        pressed={previewState === "idle"}
+  1203→                        onClick={() => setPreviewState("idle")}
+  1204→                      >
+  1205→                        Default
+  1206→                      </Button>
+  1207→                      <Button
+  1208→                        size="slim"
+  1209→                        pressed={previewState === "success"}
+  1210→                        onClick={() => setPreviewState("success")}
+  1211→                      >
+  1212→                        Success
+  1213→                      </Button>
+  1214→                      <Button
+  1215→                        size="slim"
+  1216→                        pressed={previewState === "error"}
+  1217→                        onClick={() => setPreviewState("error")}
+  1218→                      >
+  1219→                        Blocked
+  1220→                      </Button>
+  1221→                      <Button
+  1222→                        size="slim"
+  1223→                        pressed={previewState === "notfound"}
+  1224→                        onClick={() => setPreviewState("notfound")}
+  1225→                      >
+  1226→                        Not Found
+  1227→                      </Button>
+  1228→                    </InlineStack>
+  1229→
+  1230→                    {/* Preview widget */}
+  1231→                    <Box
+  1232→                      padding="400"
+  1233→                      background="bg-surface-secondary"
+  1234→                      borderRadius="200"
+  1235→                    >
+  1236→                      <WidgetPreview cfg={previewCfg} previewState={previewState} />
+  1237→                    </Box>
+  1238→
+  1239→                    <Text as="p" tone="subdued" variant="bodySm">
+  1240→                      Preview reflects all current settings including custom CSS.
+  1241→                      Click state buttons above to see different scenarios.
+  1242→                    </Text>
+  1243→                  </BlockStack>
+  1244→                </Card>
+  1245→              </div>
+  1246→            </InlineGrid>
+  1247→          </Layout.Section>
+  1248→        </Layout>
+  1249→      </Box>
+  1250→    </Page>
+  1251→  );
+  1252→}
+  1253→
+  1254→export function ErrorBoundary() {
+  1255→  return boundary.error(useRouteError());
+  1256→}
+  1257→
+  1258→export const headers: HeadersFunction = (headersArgs) => {
+  1259→  return boundary.headers(headersArgs);
+  1260→};
+  1261→

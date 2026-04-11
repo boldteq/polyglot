@@ -1,0 +1,1630 @@
+     1→     1→import { useEffect, useRef, useState } from "react";
+     2→     2→import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
+     3→     3→import { useLoaderData, useFetcher, redirect } from "react-router";
+     4→     4→import { useAppBridge } from "@shopify/app-bridge-react";
+     5→     5→import { authenticate } from "../shopify.server";
+     6→     6→import db from "../db.server";
+     7→     7→
+     8→     8→// ---------------------------------------------------------------------------
+     9→     9→// Types
+    10→    10→// ---------------------------------------------------------------------------
+    11→    11→
+    12→    12→interface DisplaySettings {
+    13→    13→  priority: number;
+    14→    14→  countries: "all" | "selected";
+    15→    15→  selectedCountries: string;
+    16→    16→  buttonPosition: "floating" | "above_desc" | "below_desc";
+    17→    17→}
+    18→    18→
+    19→    19→interface ChartData {
+    20→    20→  headers: string[];
+    21→    21→  units: { default: string; available: string[] };
+    22→    22→  rows: Record<string, string>[];
+    23→    23→  displaySettings?: DisplaySettings;
+    24→    24→  recommendationEnabled?: boolean;
+    25→    25→}
+    26→    26→
+    27→    27→interface Assignment {
+    28→    28→  id: string;
+    29→    29→  assignmentType: string;
+    30→    30→  assignmentValue: string;
+    31→    31→}
+    32→    32→
+    33→    33→// ---------------------------------------------------------------------------
+    34→    34→// Loader
+    35→    35→// ---------------------------------------------------------------------------
+    36→    36→
+    37→    37→export const loader = async ({ request, params }: LoaderFunctionArgs) => {
+    38→    38→  const { session } = await authenticate.admin(request);
+    39→    39→  const shop = session.shop;
+    40→    40→  const id = params.id;
+    41→    41→
+    42→    42→  if (!id) throw new Response("Not found", { status: 404 });
+    43→    43→
+    44→    44→  if (id === "new") {
+    45→    45→    return {
+    46→    46→      chart: null as null,
+    47→    47→      assignments: [] as Assignment[],
+    48→    48→      isNew: true,
+    49→    49→    };
+    50→    50→  }
+    51→    51→
+    52→    52→  const chart = await db.sizeChart.findFirst({
+    53→    53→    where: { id, shop },
+    54→    54→    include: { assignments: true },
+    55→    55→  });
+    56→    56→
+    57→    57→  if (!chart) {
+    58→    58→    throw new Response("Not found", { status: 404 });
+    59→    59→  }
+    60→    60→
+    61→    61→  return {
+    62→    62→    chart: {
+    63→    63→      id: chart.id,
+    64→    64→      name: chart.name,
+    65→    65→      category: chart.category,
+    66→    66→      status: chart.status,
+    67→    67→      data: chart.data,
+    68→    68→      createdAt: chart.createdAt.toISOString(),
+    69→    69→      updatedAt: chart.updatedAt.toISOString(),
+    70→    70→    },
+    71→    71→    assignments: chart.assignments.map((a) => ({
+    72→    72→      id: a.id,
+    73→    73→      assignmentType: a.assignmentType,
+    74→    74→      assignmentValue: a.assignmentValue,
+    75→    75→    })),
+    76→    76→    isNew: false,
+    77→    77→  };
+    78→    78→};
+    79→    79→
+    80→    80→// ---------------------------------------------------------------------------
+    81→    81→// Action
+    82→    82→// ---------------------------------------------------------------------------
+    83→    83→
+    84→    84→export const action = async ({ request, params }: ActionFunctionArgs) => {
+    85→    85→  const { session } = await authenticate.admin(request);
+    86→    86→  const shop = session.shop;
+    87→    87→  const id = params.id;
+    88→    88→  if (!id) return { error: "Missing chart ID" };
+    89→    89→  const formData = await request.formData();
+    90→    90→  const intent = formData.get("intent") as string;
+    91→    91→
+    92→    92→  try {
+    93→    93→    switch (intent) {
+    94→    94→      case "save": {
+    95→    95→        const name = formData.get("name") as string;
+    96→    96→        const category = formData.get("category") as string;
+    97→    97→        const status = formData.get("status") as string;
+    98→    98→        const dataRaw = formData.get("data") as string;
+    99→    99→
+   100→   100→        if (!name?.trim()) return { error: "Chart name is required" };
+   101→   101→
+   102→   102→        let parsedData: ChartData;
+   103→   103→        try {
+   104→   104→          parsedData = JSON.parse(dataRaw) as ChartData;
+   105→   105→        } catch {
+   106→   106→          return { error: "Invalid chart data. Please try again." };
+   107→   107→        }
+   108→   108→
+   109→   109→        if (id === "new") {
+   110→   110→          const chart = await db.sizeChart.create({
+   111→   111→            data: {
+   112→   112→              shop,
+   113→   113→              name: name.trim(),
+   114→   114→              category,
+   115→   115→              status,
+   116→   116→              data: JSON.stringify(parsedData),
+   117→   117→            },
+   118→   118→          });
+   119→   119→          return redirect(`/app/size-charts/${chart.id}?saved=1`);
+   120→   120→        }
+   121→   121→
+   122→   122→        const existing = await db.sizeChart.findFirst({ where: { id, shop } });
+   123→   123→        if (!existing) return { error: "Chart not found" };
+   124→   124→
+   125→   125→        await db.sizeChart.update({
+   126→   126→          where: { id },
+   127→   127→          data: {
+   128→   128→            name: name.trim(),
+   129→   129→            category,
+   130→   130→            status,
+   131→   131→            data: JSON.stringify(parsedData),
+   132→   132→          },
+   133→   133→        });
+   134→   134→        return { ok: true, message: "Chart saved successfully" };
+   135→   135→      }
+   136→   136→
+   137→   137→      case "toggle-status": {
+   138→   138→        const chart = await db.sizeChart.findFirst({ where: { id, shop } });
+   139→   139→        if (!chart) return { error: "Chart not found" };
+   140→   140→        const newStatus = chart.status === "active" ? "draft" : "active";
+   141→   141→        await db.sizeChart.update({ where: { id }, data: { status: newStatus } });
+   142→   142→        return {
+   143→   143→          ok: true,
+   144→   144→          message: newStatus === "active" ? "Chart published" : "Chart unpublished",
+   145→   145→          newStatus,
+   146→   146→        };
+   147→   147→      }
+   148→   148→
+   149→   149→      case "add-assignment": {
+   150→   150→        const assignmentType = formData.get("assignmentType") as string;
+   151→   151→        const assignmentValue = formData.get("assignmentValue") as string;
+   152→   152→
+   153→   153→        if (!assignmentValue?.trim()) {
+   154→   154→          return { error: "Assignment value is required" };
+   155→   155→        }
+   156→   156→
+   157→   157→        await db.chartAssignment.upsert({
+   158→   158→          where: {
+   159→   159→            shop_sizeChartId_assignmentType_assignmentValue: {
+   160→   160→              shop,
+   161→   161→              sizeChartId: id,
+   162→   162→              assignmentType,
+   163→   163→              assignmentValue: assignmentValue.trim(),
+   164→   164→            },
+   165→   165→          },
+   166→   166→          create: {
+   167→   167→            shop,
+   168→   168→            sizeChartId: id,
+   169→   169→            assignmentType,
+   170→   170→            assignmentValue: assignmentValue.trim(),
+   171→   171→          },
+   172→   172→          update: {},
+   173→   173→        });
+   174→   174→        return { ok: true, message: "Assignment added" };
+   175→   175→      }
+   176→   176→
+   177→   177→      case "remove-assignment": {
+   178→   178→        const assignmentId = formData.get("assignmentId") as string;
+   179→   179→        await db.chartAssignment.deleteMany({
+   180→   180→          where: { id: assignmentId, shop },
+   181→   181→        });
+   182→   182→        return { ok: true, message: "Assignment removed" };
+   183→   183→      }
+   184→   184→
+   185→   185→      case "delete": {
+   186→   186→        await db.sizeChart.deleteMany({ where: { id, shop } });
+   187→   187→        return redirect("/app/size-charts");
+   188→   188→      }
+   189→   189→
+   190→   190→      default:
+   191→   191→        return { error: "Unknown action" };
+   192→   192→    }
+   193→   193→  } catch (error) {
+   194→   194→    const message =
+   195→   195→      error instanceof Error ? error.message : "An unexpected error occurred";
+   196→   196→    if (message.includes("Unique constraint")) {
+   197→   197→      return { error: "A chart with this name already exists." };
+   198→   198→    }
+   199→   199→    return { error: message };
+   200→   200→  }
+   201→   201→};
+   202→   202→
+   203→   203→// ---------------------------------------------------------------------------
+   204→   204→// Constants
+   205→   205→// ---------------------------------------------------------------------------
+   206→   206→
+   207→   207→const CATEGORIES = [
+   208→   208→  { value: "general", label: "General" },
+   209→   209→  { value: "tops", label: "Tops" },
+   210→   210→  { value: "bottoms", label: "Bottoms" },
+   211→   211→  { value: "dresses", label: "Dresses" },
+   212→   212→  { value: "shoes", label: "Shoes" },
+   213→   213→  { value: "kids", label: "Kids" },
+   214→   214→  { value: "rings", label: "Rings" },
+   215→   215→  { value: "sportswear", label: "Sportswear" },
+   216→   216→];
+   217→   217→
+   218→   218→const ASSIGNMENT_TYPES = [
+   219→   219→  { value: "product", label: "Product ID" },
+   220→   220→  { value: "collection", label: "Collection ID" },
+   221→   221→  { value: "tag", label: "Product Tag" },
+   222→   222→  { value: "product_type", label: "Product Type" },
+   223→   223→  { value: "all", label: "All Products" },
+   224→   224→];
+   225→   225→
+   226→   226→function formatDate(iso: string): string {
+   227→   227→  return new Date(iso).toLocaleDateString("en-US", {
+   228→   228→    month: "short",
+   229→   229→    day: "numeric",
+   230→   230→    year: "numeric",
+   231→   231→    hour: "2-digit",
+   232→   232→    minute: "2-digit",
+   233→   233→  });
+   234→   234→}
+   235→   235→
+   236→   236→function makeDefaultData(): ChartData {
+   237→   237→  return {
+   238→   238→    headers: ["Size", "Chest", "Waist", "Hips"],
+   239→   239→    units: { default: "in", available: ["in", "cm"] },
+   240→   240→    rows: [
+   241→   241→      { Size: "S", Chest: "", Waist: "", Hips: "" },
+   242→   242→      { Size: "M", Chest: "", Waist: "", Hips: "" },
+   243→   243→      { Size: "L", Chest: "", Waist: "", Hips: "" },
+   244→   244→    ],
+   245→   245→  };
+   246→   246→}
+   247→   247→
+   248→   248→function parseChartData(raw: string): ChartData {
+   249→   249→  try {
+   250→   250→    const parsed = JSON.parse(raw) as ChartData;
+   251→   251→    if (
+   252→   252→      Array.isArray(parsed.headers) &&
+   253→   253→      parsed.units &&
+   254→   254→      Array.isArray(parsed.rows)
+   255→   255→    ) {
+   256→   256→      return parsed;
+   257→   257→    }
+   258→   258→  } catch {
+   259→   259→    // fall through
+   260→   260→  }
+   261→   261→  return makeDefaultData();
+   262→   262→}
+   263→   263→
+   264→   264→// ---------------------------------------------------------------------------
+   265→   265→// Design language constants
+   266→   266→// ---------------------------------------------------------------------------
+   267→   267→
+   268→   268→// ---------------------------------------------------------------------------
+   269→   269→// Table Editor Component
+   270→   270→// ---------------------------------------------------------------------------
+   271→   271→
+   272→   272→interface TableEditorProps {
+   273→   273→  data: ChartData;
+   274→   274→  onChange: (data: ChartData) => void;
+   275→   275→}
+   276→   276→
+   277→   277→function TableEditor({ data, onChange }: TableEditorProps) {
+   278→   278→  const headerInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+   279→   279→
+   280→   280→  const updateCell = (rowIndex: number, header: string, value: string) => {
+   281→   281→    const newRows = data.rows.map((row, i) => {
+   282→   282→      if (i !== rowIndex) return row;
+   283→   283→      return { ...row, [header]: value };
+   284→   284→    });
+   285→   285→    onChange({ ...data, rows: newRows });
+   286→   286→  };
+   287→   287→
+   288→   288→  const updateHeader = (headerIndex: number, value: string) => {
+   289→   289→    const oldHeader = data.headers[headerIndex];
+   290→   290→    const newHeaders = data.headers.map((h, i) =>
+   291→   291→      i === headerIndex ? value : h,
+   292→   292→    );
+   293→   293→    const newRows = data.rows.map((row) => {
+   294→   294→      const newRow: Record<string, string> = {};
+   295→   295→      data.headers.forEach((h, i) => {
+   296→   296→        const key = i === headerIndex ? value : h;
+   297→   297→        newRow[key] = row[h] ?? "";
+   298→   298→      });
+   299→   299→      return newRow;
+   300→   300→    });
+   301→   301→    onChange({ ...data, headers: newHeaders, rows: newRows });
+   302→   302→    void oldHeader;
+   303→   303→  };
+   304→   304→
+   305→   305→  const addRow = () => {
+   306→   306→    const emptyRow: Record<string, string> = {};
+   307→   307→    data.headers.forEach((h) => {
+   308→   308→      emptyRow[h] = "";
+   309→   309→    });
+   310→   310→    onChange({ ...data, rows: [...data.rows, emptyRow] });
+   311→   311→  };
+   312→   312→
+   313→   313→  const removeRow = (rowIndex: number) => {
+   314→   314→    onChange({ ...data, rows: data.rows.filter((_, i) => i !== rowIndex) });
+   315→   315→  };
+   316→   316→
+   317→   317→  const addColumn = () => {
+   318→   318→    const newHeader = `Column ${data.headers.length + 1}`;
+   319→   319→    const newHeaders = [...data.headers, newHeader];
+   320→   320→    const newRows = data.rows.map((row) => ({ ...row, [newHeader]: "" }));
+   321→   321→    onChange({ ...data, headers: newHeaders, rows: newRows });
+   322→   322→  };
+   323→   323→
+   324→   324→  const removeColumn = (headerIndex: number) => {
+   325→   325→    if (data.headers.length <= 1) return;
+   326→   326→    const removedHeader = data.headers[headerIndex];
+   327→   327→    const newHeaders = data.headers.filter((_, i) => i !== headerIndex);
+   328→   328→    const newRows = data.rows.map((row) => {
+   329→   329→      const newRow: Record<string, string> = {};
+   330→   330→      newHeaders.forEach((h) => {
+   331→   331→        newRow[h] = row[h] ?? "";
+   332→   332→      });
+   333→   333→      return newRow;
+   334→   334→    });
+   335→   335→    onChange({ ...data, headers: newHeaders, rows: newRows });
+   336→   336→    void removedHeader;
+   337→   337→  };
+   338→   338→
+   339→   339→  const toggleUnit = (unit: string) => {
+   340→   340→    onChange({ ...data, units: { ...data.units, default: unit } });
+   341→   341→  };
+   342→   342→
+   343→   343→  return (
+   344→   344→    <div>
+   345→   345→      {/* Toolbar — unit toggle + row/col count */}
+   346→   346→      <div
+   347→   347→        style={{
+   348→   348→          display: "flex",
+   349→   349→          alignItems: "center",
+   350→   350→          gap: "8px",
+   351→   351→          marginBottom: "10px",
+   352→   352→        }}
+   353→   353→      >
+   354→   354→        <span
+   355→   355→          style={{
+   356→   356→            fontSize: "12px",
+   357→   357→            fontWeight: 600,
+   358→   358→            color: "#6d7175",
+   359→   359→            textTransform: "uppercase",
+   360→   360→            letterSpacing: "0.04em",
+   361→   361→          }}
+   362→   362→        >
+   363→   363→          Units
+   364→   364→        </span>
+   365→   365→        <div
+   366→   366→          style={{
+   367→   367→            display: "flex",
+   368→   368→            gap: "4px",
+   369→   369→            background: "#f6f6f7",
+   370→   370→            borderRadius: "20px",
+   371→   371→            padding: "3px",
+   372→   372→            border: "1px solid #e1e3e5",
+   373→   373→          }}
+   374→   374→        >
+   375→   375→          {data.units.available.map((unit) => (
+   376→   376→            <button
+   377→   377→              key={unit}
+   378→   378→              type="button"
+   379→   379→              onClick={() => toggleUnit(unit)}
+   380→   380→              style={{
+   381→   381→                padding: "3px 14px",
+   382→   382→                borderRadius: "16px",
+   383→   383→                border: "none",
+   384→   384→                background:
+   385→   385→                  data.units.default === unit ? "#2c6ecb" : "transparent",
+   386→   386→                color: data.units.default === unit ? "#ffffff" : "#6d7175",
+   387→   387→                fontWeight: data.units.default === unit ? 700 : 500,
+   388→   388→                cursor: "pointer",
+   389→   389→                fontSize: "12px",
+   390→   390→                lineHeight: "20px",
+   391→   391→                transition: "all 0.12s ease",
+   392→   392→                fontFamily: "inherit",
+   393→   393→              }}
+   394→   394→            >
+   395→   395→              {unit}
+   396→   396→            </button>
+   397→   397→          ))}
+   398→   398→        </div>
+   399→   399→        <div
+   400→   400→          style={{
+   401→   401→            marginLeft: "auto",
+   402→   402→            fontSize: "12px",
+   403→   403→            color: "#8c9196",
+   404→   404→            fontWeight: 500,
+   405→   405→            background: "#f6f6f7",
+   406→   406→            border: "1px solid #e1e3e5",
+   407→   407→            borderRadius: "6px",
+   408→   408→            padding: "3px 10px",
+   409→   409→          }}
+   410→   410→        >
+   411→   411→          {data.rows.length} rows &middot; {data.headers.length} cols
+   412→   412→        </div>
+   413→   413→      </div>
+   414→   414→
+   415→   415→      {/* Table */}
+   416→   416→      <div
+   417→   417→        style={{
+   418→   418→          border: "1px solid #e1e3e5",
+   419→   419→          borderRadius: "8px",
+   420→   420→          overflow: "hidden",
+   421→   421→          overflowX: "auto",
+   422→   422→        }}
+   423→   423→      >
+   424→   424→        <table
+   425→   425→          style={{
+   426→   426→            width: "100%",
+   427→   427→            borderCollapse: "collapse",
+   428→   428→            fontSize: "13px",
+   429→   429→            tableLayout: "auto",
+   430→   430→          }}
+   431→   431→        >
+   432→   432→          <thead>
+   433→   433→            <tr>
+   434→   434→              {data.headers.map((header, hi) => (
+   435→   435→                <th
+   436→   436→                  key={hi}
+   437→   437→                  style={{
+   438→   438→                    background: "#f6f6f7",
+   439→   439→                    borderBottom: "2px solid #e1e3e5",
+   440→   440→                    borderRight:
+   441→   441→                      hi < data.headers.length - 1
+   442→   442→                        ? "1px solid #e1e3e5"
+   443→   443→                        : "none",
+   444→   444→                    padding: "0",
+   445→   445→                    position: "relative",
+   446→   446→                    minWidth: "110px",
+   447→   447→                  }}
+   448→   448→                >
+   449→   449→                  <div
+   450→   450→                    style={{
+   451→   451→                      display: "flex",
+   452→   452→                      alignItems: "center",
+   453→   453→                      padding: "2px 6px 2px 10px",
+   454→   454→                    }}
+   455→   455→                  >
+   456→   456→                    <input
+   457→   457→                      ref={(el) => {
+   458→   458→                        headerInputRefs.current[hi] = el;
+   459→   459→                      }}
+   460→   460→                      value={header}
+   461→   461→                      onChange={(e) =>
+   462→   462→                        updateHeader(hi, (e.target as HTMLInputElement).value)
+   463→   463→                      }
+   464→   464→                      style={{
+   465→   465→                        flex: 1,
+   466→   466→                        border: "none",
+   467→   467→                        background: "transparent",
+   468→   468→                        fontWeight: 700,
+   469→   469→                        fontSize: "12px",
+   470→   470→                        color: "#202223",
+   471→   471→                        padding: "8px 4px",
+   472→   472→                        outline: "none",
+   473→   473→                        minWidth: "60px",
+   474→   474→                        textTransform: "uppercase",
+   475→   475→                        letterSpacing: "0.04em",
+   476→   476→                        fontFamily: "inherit",
+   477→   477→                      }}
+   478→   478→                      placeholder={`Col ${hi + 1}`}
+   479→   479→                    />
+   480→   480→                    {data.headers.length > 1 && (
+   481→   481→                      <button
+   482→   482→                        type="button"
+   483→   483→                        onClick={() => removeColumn(hi)}
+   484→   484→                        title="Remove column"
+   485→   485→                        style={{
+   486→   486→                          background: "none",
+   487→   487→                          border: "none",
+   488→   488→                          cursor: "pointer",
+   489→   489→                          color: "#c9cccf",
+   490→   490→                          padding: "2px 4px",
+   491→   491→                          borderRadius: "4px",
+   492→   492→                          fontSize: "15px",
+   493→   493→                          lineHeight: 1,
+   494→   494→                          flexShrink: 0,
+   495→   495→                          transition: "color 0.1s, background 0.1s",
+   496→   496→                          fontFamily: "inherit",
+   497→   497→                        }}
+   498→   498→                        onMouseEnter={(e) => {
+   499→   499→                          (e.currentTarget as HTMLButtonElement).style.color =
+   500→   500→                            "#d82c0d";
+   501→   501→                          (
+   502→   502→                            e.currentTarget as HTMLButtonElement
+   503→   503→                          ).style.background = "#fee2e2";
+   504→   504→                        }}
+   505→   505→                        onMouseLeave={(e) => {
+   506→   506→                          (e.currentTarget as HTMLButtonElement).style.color =
+   507→   507→                            "#c9cccf";
+   508→   508→                          (
+   509→   509→                            e.currentTarget as HTMLButtonElement
+   510→   510→                          ).style.background = "none";
+   511→   511→                        }}
+   512→   512→                      >
+   513→   513→                        &times;
+   514→   514→                      </button>
+   515→   515→                    )}
+   516→   516→                  </div>
+   517→   517→                </th>
+   518→   518→              ))}
+   519→   519→
+   520→   520→              {/* Add column header cell */}
+   521→   521→              <th
+   522→   522→                style={{
+   523→   523→                  background: "#f6f6f7",
+   524→   524→                  borderBottom: "2px solid #e1e3e5",
+   525→   525→                  padding: "0",
+   526→   526→                  width: "40px",
+   527→   527→                  minWidth: "40px",
+   528→   528→                }}
+   529→   529→              >
+   530→   530→                <button
+   531→   531→                  type="button"
+   532→   532→                  onClick={addColumn}
+   533→   533→                  title="Add column"
+   534→   534→                  style={{
+   535→   535→                    display: "flex",
+   536→   536→                    alignItems: "center",
+   537→   537→                    justifyContent: "center",
+   538→   538→                    width: "100%",
+   539→   539→                    height: "100%",
+   540→   540→                    minHeight: "38px",
+   541→   541→                    background: "none",
+   542→   542→                    border: "none",
+   543→   543→                    cursor: "pointer",
+   544→   544→                    color: "#2c6ecb",
+   545→   545→                    fontSize: "20px",
+   546→   546→                    lineHeight: 1,
+   547→   547→                    padding: "0",
+   548→   548→                    transition: "background 0.1s",
+   549→   549→                    fontFamily: "inherit",
+   550→   550→                  }}
+   551→   551→                  onMouseEnter={(e) => {
+   552→   552→                    (e.currentTarget as HTMLButtonElement).style.background =
+   553→   553→                      "#e8f0fe";
+   554→   554→                  }}
+   555→   555→                  onMouseLeave={(e) => {
+   556→   556→                    (e.currentTarget as HTMLButtonElement).style.background =
+   557→   557→                      "none";
+   558→   558→                  }}
+   559→   559→                >
+   560→   560→                  +
+   561→   561→                </button>
+   562→   562→              </th>
+   563→   563→
+   564→   564→              {/* Row actions header spacer */}
+   565→   565→              <th
+   566→   566→                style={{
+   567→   567→                  background: "#f6f6f7",
+   568→   568→                  borderBottom: "2px solid #e1e3e5",
+   569→   569→                  width: "36px",
+   570→   570→                  minWidth: "36px",
+   571→   571→                }}
+   572→   572→              />
+   573→   573→            </tr>
+   574→   574→          </thead>
+   575→   575→          <tbody>
+   576→   576→            {data.rows.map((row, ri) => (
+   577→   577→              <tr
+   578→   578→                key={ri}
+   579→   579→                style={{
+   580→   580→                  background: ri % 2 === 0 ? "#ffffff" : "#fafbfb",
+   581→   581→                  transition: "background 0.1s",
+   582→   582→                }}
+   583→   583→                onMouseEnter={(e) => {
+   584→   584→                  (e.currentTarget as HTMLTableRowElement).style.background =
+   585→   585→                    "#f0f5ff";
+   586→   586→                }}
+   587→   587→                onMouseLeave={(e) => {
+   588→   588→                  (e.currentTarget as HTMLTableRowElement).style.background =
+   589→   589→                    ri % 2 === 0 ? "#ffffff" : "#fafbfb";
+   590→   590→                }}
+   591→   591→              >
+   592→   592→                {data.headers.map((header, hi) => (
+   593→   593→                  <td
+   594→   594→                    key={hi}
+   595→   595→                    style={{
+   596→   596→                      borderBottom:
+   597→   597→                        ri < data.rows.length - 1
+   598→   598→                          ? "1px solid #e1e3e5"
+   599→   599→                          : "none",
+   600→   600→                      borderRight:
+   601→   601→                        hi < data.headers.length - 1
+   602→   602→                          ? "1px solid #e1e3e5"
+   603→   603→                          : "none",
+   604→   604→                      padding: "0",
+   605→   605→                    }}
+   606→   606→                  >
+   607→   607→                    <input
+   608→   608→                      value={row[header] ?? ""}
+   609→   609→                      onChange={(e) =>
+   610→   610→                        updateCell(
+   611→   611→                          ri,
+   612→   612→                          header,
+   613→   613→                          (e.target as HTMLInputElement).value,
+   614→   614→                        )
+   615→   615→                      }
+   616→   616→                      style={{
+   617→   617→                        width: "100%",
+   618→   618→                        border: "none",
+   619→   619→                        background: "transparent",
+   620→   620→                        padding: "9px 10px",
+   621→   621→                        fontSize: "13px",
+   622→   622→                        color: "#202223",
+   623→   623→                        outline: "none",
+   624→   624→                        boxSizing: "border-box",
+   625→   625→                        fontFamily: "inherit",
+   626→   626→                      }}
+   627→   627→                      onFocus={(e) => {
+   628→   628→                        (
+   629→   629→                          e.target as HTMLInputElement
+   630→   630→                        ).parentElement!.style.boxShadow =
+   631→   631→                          "inset 0 0 0 2px #2c6ecb";
+   632→   632→                        (
+   633→   633→                          e.target as HTMLInputElement
+   634→   634→                        ).parentElement!.style.background = "#f0f5ff";
+   635→   635→                      }}
+   636→   636→                      onBlur={(e) => {
+   637→   637→                        (
+   638→   638→                          e.target as HTMLInputElement
+   639→   639→                        ).parentElement!.style.boxShadow = "none";
+   640→   640→                        (
+   641→   641→                          e.target as HTMLInputElement
+   642→   642→                        ).parentElement!.style.background = "transparent";
+   643→   643→                      }}
+   644→   644→                      placeholder="—"
+   645→   645→                    />
+   646→   646→                  </td>
+   647→   647→                ))}
+   648→   648→
+   649→   649→                {/* Column spacer — aligns under add column button */}
+   650→   650→                <td
+   651→   651→                  style={{
+   652→   652→                    borderBottom:
+   653→   653→                      ri < data.rows.length - 1 ? "1px solid #e1e3e5" : "none",
+   654→   654→                    borderRight: "1px solid #e1e3e5",
+   655→   655→                    width: "40px",
+   656→   656→                    background: "transparent",
+   657→   657→                  }}
+   658→   658→                />
+   659→   659→
+   660→   660→                {/* Remove row button */}
+   661→   661→                <td
+   662→   662→                  style={{
+   663→   663→                    borderBottom:
+   664→   664→                      ri < data.rows.length - 1 ? "1px solid #e1e3e5" : "none",
+   665→   665→                    padding: "0",
+   666→   666→                    textAlign: "center",
+   667→   667→                    width: "36px",
+   668→   668→                    background: "transparent",
+   669→   669→                  }}
+   670→   670→                >
+   671→   671→                  <button
+   672→   672→                    type="button"
+   673→   673→                    onClick={() => removeRow(ri)}
+   674→   674→                    title="Remove row"
+   675→   675→                    style={{
+   676→   676→                      background: "none",
+   677→   677→                      border: "none",
+   678→   678→                      cursor: "pointer",
+   679→   679→                      color: "#c9cccf",
+   680→   680→                      fontSize: "16px",
+   681→   681→                      lineHeight: 1,
+   682→   682→                      padding: "4px 8px",
+   683→   683→                      borderRadius: "4px",
+   684→   684→                      transition: "color 0.1s, background 0.1s",
+   685→   685→                      fontFamily: "inherit",
+   686→   686→                    }}
+   687→   687→                    onMouseEnter={(e) => {
+   688→   688→                      (e.currentTarget as HTMLButtonElement).style.color =
+   689→   689→                        "#d82c0d";
+   690→   690→                      (e.currentTarget as HTMLButtonElement).style.background =
+   691→   691→                        "#fee2e2";
+   692→   692→                    }}
+   693→   693→                    onMouseLeave={(e) => {
+   694→   694→                      (e.currentTarget as HTMLButtonElement).style.color =
+   695→   695→                        "#c9cccf";
+   696→   696→                      (e.currentTarget as HTMLButtonElement).style.background =
+   697→   697→                        "none";
+   698→   698→                    }}
+   699→   699→                  >
+   700→   700→                    &times;
+   701→   701→                  </button>
+   702→   702→                </td>
+   703→   703→              </tr>
+   704→   704→            ))}
+   705→   705→
+   706→   706→            {/* Add row footer */}
+   707→   707→            <tr>
+   708→   708→              <td
+   709→   709→                colSpan={data.headers.length + 2}
+   710→   710→                style={{
+   711→   711→                  padding: "0",
+   712→   712→                  background: "#f6f6f7",
+   713→   713→                  borderTop: "1px solid #e1e3e5",
+   714→   714→                }}
+   715→   715→              >
+   716→   716→                <button
+   717→   717→                  type="button"
+   718→   718→                  onClick={addRow}
+   719→   719→                  style={{
+   720→   720→                    display: "block",
+   721→   721→                    width: "100%",
+   722→   722→                    background: "none",
+   723→   723→                    border: "none",
+   724→   724→                    cursor: "pointer",
+   725→   725→                    color: "#2c6ecb",
+   726→   726→                    fontSize: "13px",
+   727→   727→                    fontWeight: 600,
+   728→   728→                    padding: "10px 14px",
+   729→   729→                    textAlign: "left",
+   730→   730→                    transition: "background 0.1s",
+   731→   731→                    fontFamily: "inherit",
+   732→   732→                  }}
+   733→   733→                  onMouseEnter={(e) => {
+   734→   734→                    (e.currentTarget as HTMLButtonElement).style.background =
+   735→   735→                      "#e8f0fe";
+   736→   736→                  }}
+   737→   737→                  onMouseLeave={(e) => {
+   738→   738→                    (e.currentTarget as HTMLButtonElement).style.background =
+   739→   739→                      "none";
+   740→   740→                  }}
+   741→   741→                >
+   742→   742→                  + Add row
+   743→   743→                </button>
+   744→   744→              </td>
+   745→   745→            </tr>
+   746→   746→          </tbody>
+   747→   747→        </table>
+   748→   748→      </div>
+   749→   749→    </div>
+   750→   750→  );
+   751→   751→}
+   752→   752→
+   753→   753→// ---------------------------------------------------------------------------
+   754→   754→// Chart Preview Component — Realistic storefront widget mockup
+   755→   755→// ---------------------------------------------------------------------------
+   756→   756→
+   757→   757→interface ChartPreviewProps {
+   758→   758→  data: ChartData;
+   759→   759→  name: string;
+   760→   760→  status: string;
+   761→   761→}
+   762→   762→
+   763→   763→function ChartPreview({ data, name, status }: ChartPreviewProps) {
+   764→   764→  return (
+   765→   765→    <div
+   766→   766→      style={{
+   767→   767→        border: "1px solid #e3e3e3",
+   768→   768→        borderRadius: "12px",
+   769→   769→        overflow: "hidden",
+   770→   770→        background: "#fff",
+   771→   771→        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+   772→   772→        fontSize: "13px",
+   773→   773→      }}
+   774→   774→    >
+   775→   775→      {/* Widget header bar */}
+   776→   776→      <div
+   777→   777→        style={{
+   778→   778→          background: "#1a1a1a",
+   779→   779→          padding: "12px 16px",
+   780→   780→          display: "flex",
+   781→   781→          alignItems: "center",
+   782→   782→          justifyContent: "space-between",
+   783→   783→        }}
+   784→   784→      >
+   785→   785→        <span
+   786→   786→          style={{
+   787→   787→            fontWeight: 700,
+   788→   788→            fontSize: "13px",
+   789→   789→            color: "#ffffff",
+   790→   790→            letterSpacing: "0.01em",
+   791→   791→          }}
+   792→   792→        >
+   793→   793→          {name || "Size Guide"}
+   794→   794→        </span>
+   795→   795→        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+   796→   796→          <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+   797→   797→            <div
+   798→   798→              style={{
+   799→   799→                width: "6px",
+   800→   800→                height: "6px",
+   801→   801→                borderRadius: "50%",
+   802→   802→                background: status === "active" ? "#24c57b" : "#8c9196",
+   803→   803→              }}
+   804→   804→            />
+   805→   805→            <span
+   806→   806→              style={{
+   807→   807→                fontSize: "10px",
+   808→   808→                color: status === "active" ? "#24c57b" : "#8c9196",
+   809→   809→                fontWeight: 600,
+   810→   810→              }}
+   811→   811→            >
+   812→   812→              {status === "active" ? "Live" : "Draft"}
+   813→   813→            </span>
+   814→   814→          </div>
+   815→   815→          <span
+   816→   816→            style={{
+   817→   817→              fontSize: "16px",
+   818→   818→              color: "#6d7175",
+   819→   819→              lineHeight: 1,
+   820→   820→              cursor: "default",
+   821→   821→            }}
+   822→   822→          >
+   823→   823→            &times;
+   824→   824→          </span>
+   825→   825→        </div>
+   826→   826→      </div>
+   827→   827→
+   828→   828→      {/* Unit tab strip */}
+   829→   829→      <div
+   830→   830→        style={{
+   831→   831→          background: "#f6f6f7",
+   832→   832→          borderBottom: "1px solid #e1e3e5",
+   833→   833→          padding: "6px 16px",
+   834→   834→          display: "flex",
+   835→   835→          gap: "4px",
+   836→   836→        }}
+   837→   837→      >
+   838→   838→        {data.units.available.map((unit) => (
+   839→   839→          <span
+   840→   840→            key={unit}
+   841→   841→            style={{
+   842→   842→              padding: "2px 10px",
+   843→   843→              borderRadius: "12px",
+   844→   844→              fontSize: "11px",
+   845→   845→              fontWeight: 600,
+   846→   846→              background:
+   847→   847→                unit === data.units.default ? "#202223" : "transparent",
+   848→   848→              color: unit === data.units.default ? "#ffffff" : "#8c9196",
+   849→   849→              cursor: "default",
+   850→   850→            }}
+   851→   851→          >
+   852→   852→            {unit}
+   853→   853→          </span>
+   854→   854→        ))}
+   855→   855→      </div>
+   856→   856→
+   857→   857→      {/* Preview table */}
+   858→   858→      <div style={{ overflowX: "auto" }}>
+   859→   859→        <table
+   860→   860→          style={{
+   861→   861→            width: "100%",
+   862→   862→            borderCollapse: "collapse",
+   863→   863→            fontSize: "12px",
+   864→   864→          }}
+   865→   865→        >
+   866→   866→          <thead>
+   867→   867→            <tr>
+   868→   868→              {data.headers.map((h, i) => (
+   869→   869→                <th
+   870→   870→                  key={i}
+   871→   871→                  style={{
+   872→   872→                    background: "#f6f6f7",
+   873→   873→                    padding: "8px 12px",
+   874→   874→                    textAlign: "left",
+   875→   875→                    fontWeight: 700,
+   876→   876→                    fontSize: "11px",
+   877→   877→                    textTransform: "uppercase",
+   878→   878→                    letterSpacing: "0.05em",
+   879→   879→                    color: "#6d7175",
+   880→   880→                    borderBottom: "1px solid #e1e3e5",
+   881→   881→                    borderRight:
+   882→   882→                      i < data.headers.length - 1
+   883→   883→                        ? "1px solid #e1e3e5"
+   884→   884→                        : "none",
+   885→   885→                    whiteSpace: "nowrap",
+   886→   886→                  }}
+   887→   887→                >
+   888→   888→                  {h}
+   889→   889→                </th>
+   890→   890→              ))}
+   891→   891→            </tr>
+   892→   892→          </thead>
+   893→   893→          <tbody>
+   894→   894→            {data.rows.map((row, ri) => (
+   895→   895→              <tr
+   896→   896→                key={ri}
+   897→   897→                style={{ background: ri % 2 === 0 ? "#fff" : "#fafbfb" }}
+   898→   898→              >
+   899→   899→                {data.headers.map((h, hi) => (
+   900→   900→                  <td
+   901→   901→                    key={hi}
+   902→   902→                    style={{
+   903→   903→                      padding: "8px 12px",
+   904→   904→                      borderBottom:
+   905→   905→                        ri < data.rows.length - 1
+   906→   906→                          ? "1px solid #e1e3e5"
+   907→   907→                          : "none",
+   908→   908→                      borderRight:
+   909→   909→                        hi < data.headers.length - 1
+   910→   910→                          ? "1px solid #e1e3e5"
+   911→   911→                          : "none",
+   912→   912→                      color: row[h] ? "#202223" : "#c9cccf",
+   913→   913→                      fontWeight: hi === 0 ? 600 : 400,
+   914→   914→                    }}
+   915→   915→                  >
+   916→   916→                    {row[h] || "—"}
+   917→   917→                  </td>
+   918→   918→                ))}
+   919→   919→              </tr>
+   920→   920→            ))}
+   921→   921→          </tbody>
+   922→   922→        </table>
+   923→   923→      </div>
+   924→   924→
+   925→   925→      {/* Footer */}
+   926→   926→      <div
+   927→   927→        style={{
+   928→   928→          padding: "8px 16px",
+   929→   929→          background: "#f6f6f7",
+   930→   930→          borderTop: "1px solid #e1e3e5",
+   931→   931→          display: "flex",
+   932→   932→          alignItems: "center",
+   933→   933→          justifyContent: "space-between",
+   934→   934→        }}
+   935→   935→      >
+   936→   936→        <span style={{ fontSize: "11px", color: "#8c9196" }}>
+   937→   937→          Measurements in {data.units.default}
+   938→   938→        </span>
+   939→   939→        <span style={{ fontSize: "11px", color: "#8c9196", fontWeight: 600 }}>
+   940→   940→          {data.rows.length} sizes available
+   941→   941→        </span>
+   942→   942→      </div>
+   943→   943→    </div>
+   944→   944→  );
+   945→   945→}
+   946→   946→
+   947→   947→// ---------------------------------------------------------------------------
+   948→   948→// Main Component
+   949→   949→// ---------------------------------------------------------------------------
+   950→   950→
+   951→   951→type LoaderData = Awaited<ReturnType<typeof loader>>;
+   952→   952→type ActiveTab = "chart" | "assignments" | "position" | "recommendation" | "settings";
+   953→   953→
+   954→   954→export default function SizeChartEditor() {
+   955→   955→  const loaderData = useLoaderData<typeof loader>() as LoaderData;
+   956→   956→  const { chart, assignments: initialAssignments, isNew } = loaderData;
+   957→   957→
+   958→   958→  const saveFetcher = useFetcher<typeof action>();
+   959→   959→  const statusFetcher = useFetcher<typeof action>();
+   960→   960→  const assignmentFetcher = useFetcher<typeof action>();
+   961→   961→  const shopify = useAppBridge();
+   962→   962→
+   963→   963→  const [activeTab, setActiveTab] = useState<ActiveTab>("chart");
+   964→   964→  const [name, setName] = useState(chart?.name ?? "Untitled Size Chart");
+   965→   965→  const [category, setCategory] = useState(chart?.category ?? "general");
+   966→   966→  const [status, setStatus] = useState(chart?.status ?? "draft");
+   967→   967→  const [chartData, setChartData] = useState<ChartData>(
+   968→   968→    chart ? parseChartData(chart.data) : makeDefaultData(),
+   969→   969→  );
+   970→   970→  const [assignments, setAssignments] =
+   971→   971→    useState<Assignment[]>(initialAssignments);
+   972→   972→  const [newAssignmentType, setNewAssignmentType] = useState("product");
+   973→   973→  const [newAssignmentValue, setNewAssignmentValue] = useState("");
+   974→   974→
+   975→   975→  // Position settings (stored in chartData.displaySettings)
+   976→   976→  const _parsedSettings = chart ? parseChartData(chart.data).displaySettings : undefined;
+   977→   977→  const [priority, setPriority] = useState(_parsedSettings?.priority ?? 1);
+   978→   978→  const [countries, setCountries] = useState<"all" | "selected">(_parsedSettings?.countries ?? "all");
+   979→   979→  const [selectedCountries, setSelectedCountries] = useState(_parsedSettings?.selectedCountries ?? "");
+   980→   980→  const [buttonPosition, setButtonPosition] = useState<"floating" | "above_desc" | "below_desc">(_parsedSettings?.buttonPosition ?? "floating");
+   981→   981→  const [recommendationEnabled, setRecommendationEnabled] = useState(
+   982→   982→    chart ? (parseChartData(chart.data).recommendationEnabled ?? false) : false,
+   983→   983→  );
+   984→   984→
+   985→   985→  const isSaving = saveFetcher.state !== "idle";
+   986→   986→  const isTogglingStatus = statusFetcher.state !== "idle";
+   987→   987→
+   988→   988→  // Check for ?saved=1 on mount (after redirect from new chart creation)
+   989→   989→  useEffect(() => {
+   990→   990→    if (typeof window !== "undefined") {
+   991→   991→      const url = new URL(window.location.href);
+   992→   992→      if (url.searchParams.get("saved") === "1") {
+   993→   993→        shopify.toast.show("Chart created successfully");
+   994→   994→        url.searchParams.delete("saved");
+   995→   995→        window.history.replaceState({}, "", url.toString());
+   996→   996→      }
+   997→   997→    }
+   998→   998→  }, [shopify]);
+   999→   999→
+  1000→  1000→  // Save feedback
+  1001→  1001→  useEffect(() => {
+  1002→  1002→    if (!saveFetcher.data) return;
+  1003→  1003→    const data = saveFetcher.data;
+  1004→  1004→    if ("ok" in data && data.ok) {
+  1005→  1005→      shopify.toast.show(data.message ?? "Saved");
+  1006→  1006→    } else if ("error" in data) {
+  1007→  1007→      shopify.toast.show(data.error ?? "An error occurred", { isError: true });
+  1008→  1008→    }
+  1009→  1009→  }, [saveFetcher.data, shopify]);
+  1010→  1010→
+  1011→  1011→  // Status toggle feedback
+  1012→  1012→  useEffect(() => {
+  1013→  1013→    if (!statusFetcher.data) return;
+  1014→  1014→    const data = statusFetcher.data;
+  1015→  1015→    if ("ok" in data && data.ok) {
+  1016→  1016→      shopify.toast.show(data.message ?? "Status updated");
+  1017→  1017→      if ("newStatus" in data && typeof data.newStatus === "string") {
+  1018→  1018→        setStatus(data.newStatus);
+  1019→  1019→      }
+  1020→  1020→    } else if ("error" in data) {
+  1021→  1021→      shopify.toast.show(data.error ?? "An error occurred", { isError: true });
+  1022→  1022→    }
+  1023→  1023→  }, [statusFetcher.data, shopify]);
+  1024→  1024→
+  1025→  1025→  // Assignment feedback
+  1026→  1026→  useEffect(() => {
+  1027→  1027→    if (!assignmentFetcher.data) return;
+  1028→  1028→    const data = assignmentFetcher.data;
+  1029→  1029→    if ("ok" in data && data.ok) {
+  1030→  1030→      shopify.toast.show(data.message ?? "Done");
+  1031→  1031→      setNewAssignmentValue("");
+  1032→  1032→    } else if ("error" in data) {
+  1033→  1033→      shopify.toast.show(data.error ?? "An error occurred", { isError: true });
+  1034→  1034→    }
+  1035→  1035→  }, [assignmentFetcher.data, shopify]);
+  1036→  1036→
+  1037→  1037→  const handleSave = () => {
+  1038→  1038→    const formData = new FormData();
+  1039→  1039→    formData.set("intent", "save");
+  1040→  1040→    formData.set("name", name);
+  1041→  1041→    formData.set("category", category);
+  1042→  1042→    formData.set("status", status);
+  1043→  1043→    const fullData: ChartData = {
+  1044→  1044→      ...chartData,
+  1045→  1045→      displaySettings: { priority, countries, selectedCountries, buttonPosition },
+  1046→  1046→      recommendationEnabled,
+  1047→  1047→    };
+  1048→  1048→    formData.set("data", JSON.stringify(fullData));
+  1049→  1049→    saveFetcher.submit(formData, { method: "post" });
+  1050→  1050→  };
+  1051→  1051→
+  1052→  1052→  const handleToggleStatus = () => {
+  1053→  1053→    const formData = new FormData();
+  1054→  1054→    formData.set("intent", "toggle-status");
+  1055→  1055→    statusFetcher.submit(formData, { method: "post" });
+  1056→  1056→  };
+  1057→  1057→
+  1058→  1058→  const handleAddAssignment = () => {
+  1059→  1059→    if (!newAssignmentValue.trim() && newAssignmentType !== "all") return;
+  1060→  1060→    const formData = new FormData();
+  1061→  1061→    formData.set("intent", "add-assignment");
+  1062→  1062→    formData.set("assignmentType", newAssignmentType);
+  1063→  1063→    formData.set(
+  1064→  1064→      "assignmentValue",
+  1065→  1065→      newAssignmentType === "all" ? "*" : newAssignmentValue.trim(),
+  1066→  1066→    );
+  1067→  1067→    assignmentFetcher.submit(formData, { method: "post" });
+  1068→  1068→    setAssignments((prev) => [
+  1069→  1069→      ...prev,
+  1070→  1070→      {
+  1071→  1071→        id: `temp-${Date.now()}`,
+  1072→  1072→        assignmentType: newAssignmentType,
+  1073→  1073→        assignmentValue:
+  1074→  1074→          newAssignmentType === "all" ? "*" : newAssignmentValue.trim(),
+  1075→  1075→      },
+  1076→  1076→    ]);
+  1077→  1077→  };
+  1078→  1078→
+  1079→  1079→  const handleRemoveAssignment = (assignmentId: string) => {
+  1080→  1080→    const formData = new FormData();
+  1081→  1081→    formData.set("intent", "remove-assignment");
+  1082→  1082→    formData.set("assignmentId", assignmentId);
+  1083→  1083→    assignmentFetcher.submit(formData, { method: "post" });
+  1084→  1084→    setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+  1085→  1085→  };
+  1086→  1086→
+  1087→  1087→  const assignmentTypeLabel = (type: string) =>
+  1088→  1088→    ASSIGNMENT_TYPES.find((t) => t.value === type)?.label ?? type;
+  1089→  1089→
+  1090→  1090→  return (
+  1091→  1091→    <s-page
+  1092→  1092→      heading={isNew ? "New Size Chart" : name}
+  1093→  1093→      back-action-url="/app/size-charts"
+  1094→  1094→    >
+  1095→  1095→      <s-button
+  1096→  1096→        slot="primary-action"
+  1097→  1097→        variant="primary"
+  1098→  1098→        onClick={handleSave}
+  1099→  1099→        loading={isSaving}
+  1100→  1100→        disabled={isSaving}
+  1101→  1101→      >
+  1102→  1102→        {isSaving ? "Saving..." : "Save"}
+  1103→  1103→      </s-button>
+  1104→  1104→
+  1105→  1105→      <s-button
+  1106→  1106→        slot="secondary-action"
+  1107→  1107→        onClick={handleToggleStatus}
+  1108→  1108→        loading={isTogglingStatus}
+  1109→  1109→        disabled={isNew || isTogglingStatus}
+  1110→  1110→      >
+  1111→  1111→        {status === "active" ? "Unpublish" : "Publish"}
+  1112→  1112→      </s-button>
+  1113→  1113→
+  1114→  1114→      {/* ================================================================ */}
+  1115→  1115→      {/* Tab navigation                                                     */}
+  1116→  1116→      {/* ================================================================ */}
+  1117→  1117→      <s-section>
+  1118→  1118→        <div style={{ borderBottom: "1px solid #e1e3e5", marginBottom: "4px" }}>
+  1119→  1119→          <s-button-group>
+  1120→  1120→            {(
+  1121→  1121→              [
+  1122→  1122→                { id: "chart" as const, label: "Size Chart" },
+  1123→  1123→                { id: "assignments" as const, label: "Assignments" },
+  1124→  1124→                { id: "position" as const, label: "Position" },
+  1125→  1125→                { id: "recommendation" as const, label: "AI Recommendation" },
+  1126→  1126→                { id: "settings" as const, label: "Settings" },
+  1127→  1127→              ] satisfies { id: ActiveTab; label: string }[]
+  1128→  1128→            ).map((tab) => (
+  1129→  1129→              <s-button
+  1130→  1130→                key={tab.id}
+  1131→  1131→                variant={activeTab === tab.id ? "primary" : "tertiary"}
+  1132→  1132→                onClick={() => setActiveTab(tab.id)}
+  1133→  1133→              >
+  1134→  1134→                {tab.label}
+  1135→  1135→                {tab.id === "assignments" && assignments.length > 0 && (
+  1136→  1136→                  <s-badge tone="neutral">{String(assignments.length)}</s-badge>
+  1137→  1137→                )}
+  1138→  1138→              </s-button>
+  1139→  1139→            ))}
+  1140→  1140→          </s-button-group>
+  1141→  1141→        </div>
+  1142→  1142→
+  1143→  1143→        {/* ============================================================== */}
+  1144→  1144→        {/* TAB: Size Chart                                                 */}
+  1145→  1145→        {/* ============================================================== */}
+  1146→  1146→        <div style={{ display: activeTab === "chart" ? "block" : "none" }}>
+  1147→  1147→          {/* General Settings card */}
+  1148→  1148→          <div style={{ marginBottom: "16px" }}>
+  1149→  1149→            <s-box padding="base" borderWidth="base" borderRadius="base">
+  1150→  1150→              <s-stack direction="block" gap="base">
+  1151→  1151→                <s-stack direction="inline" gap="base">
+  1152→  1152→                  <s-heading>General Settings</s-heading>
+  1153→  1153→                  <s-badge tone={status === "active" ? "success" : "neutral"}>
+  1154→  1154→                    {status === "active" ? "Published" : "Draft"}
+  1155→  1155→                  </s-badge>
+  1156→  1156→                </s-stack>
+  1157→  1157→                <s-text-field
+  1158→  1158→                  label="Chart name"
+  1159→  1159→                  value={name}
+  1160→  1160→                  onInput={(e: Event) => setName((e.target as HTMLInputElement).value)}
+  1161→  1161→                  placeholder="e.g. Women's Tops Size Chart"
+  1162→  1162→                />
+  1163→  1163→                <s-select
+  1164→  1164→                  label="Category"
+  1165→  1165→                  value={category}
+  1166→  1166→                  onChange={(e: Event) => setCategory((e.target as HTMLSelectElement).value)}
+  1167→  1167→                >
+  1168→  1168→                  {CATEGORIES.map((c) => (
+  1169→  1169→                    <s-option key={c.value} value={c.value}>{c.label}</s-option>
+  1170→  1170→                  ))}
+  1171→  1171→                </s-select>
+  1172→  1172→              </s-stack>
+  1173→  1173→            </s-box>
+  1174→  1174→          </div>
+  1175→  1175→
+  1176→  1176→          {/* Size Table card */}
+  1177→  1177→          <s-box padding="base" borderWidth="base" borderRadius="base">
+  1178→  1178→            <s-stack direction="block" gap="base">
+  1179→  1179→              <div>
+  1180→  1180→                <s-heading>Size Table</s-heading>
+  1181→  1181→                <s-text color="subdued">Click any cell to edit. Click a column header to rename it. Use the + buttons to add rows or columns.</s-text>
+  1182→  1182→              </div>
+  1183→  1183→              <TableEditor data={chartData} onChange={setChartData} />
+  1184→  1184→            </s-stack>
+  1185→  1185→          </s-box>
+  1186→  1186→        </div>
+  1187→  1187→
+  1188→  1188→        {/* ============================================================== */}
+  1189→  1189→        {/* TAB: Assignments                                                */}
+  1190→  1190→        {/* ============================================================== */}
+  1191→  1191→        <div
+  1192→  1192→          style={{ display: activeTab === "assignments" ? "block" : "none" }}
+  1193→  1193→        >
+  1194→  1194→          {/* Current Assignments card */}
+  1195→  1195→          <div style={{ marginBottom: "16px" }}>
+  1196→  1196→          <s-box padding="base" borderWidth="base" borderRadius="base">
+  1197→  1197→            <s-stack direction="block" gap="base">
+  1198→  1198→              <div>
+  1199→  1199→                <s-heading>Current Assignments</s-heading>
+  1200→  1200→                <s-text color="subdued">This chart will appear on matching product pages.</s-text>
+  1201→  1201→              </div>
+  1202→  1202→
+  1203→  1203→              {/* New chart info banner */}
+  1204→  1204→              {isNew && (
+  1205→  1205→                <s-banner tone="info">Save the chart first to add product assignments.</s-banner>
+  1206→  1206→              )}
+  1207→  1207→
+  1208→  1208→              {/* Existing assignments list */}
+  1209→  1209→              {assignments.length > 0 && (
+  1210→  1210→                <div
+  1211→  1211→                  style={{
+  1212→  1212→                    border: "1px solid #e3e3e3",
+  1213→  1213→                    borderRadius: "8px",
+  1214→  1214→                    overflow: "hidden",
+  1215→  1215→                  }}
+  1216→  1216→                >
+  1217→  1217→                  {assignments.map((assignment, i) => (
+  1218→  1218→                    <div
+  1219→  1219→                      key={assignment.id}
+  1220→  1220→                      style={{
+  1221→  1221→                        display: "flex",
+  1222→  1222→                        alignItems: "center",
+  1223→  1223→                        gap: "12px",
+  1224→  1224→                        padding: "11px 14px",
+  1225→  1225→                        background: i % 2 === 0 ? "#ffffff" : "#fafbfb",
+  1226→  1226→                        borderBottom:
+  1227→  1227→                          i < assignments.length - 1
+  1228→  1228→                            ? "1px solid #e3e3e3"
+  1229→  1229→                            : "none",
+  1230→  1230→                      }}
+  1231→  1231→                    >
+  1232→  1232→                      <s-badge tone="info">
+  1233→  1233→                        {assignmentTypeLabel(assignment.assignmentType)}
+  1234→  1234→                      </s-badge>
+  1235→  1235→                      <span
+  1236→  1236→                        style={{
+  1237→  1237→                          flex: 1,
+  1238→  1238→                          fontSize: "13px",
+  1239→  1239→                          color: "#202223",
+  1240→  1240→                          fontWeight: 500,
+  1241→  1241→                          fontFamily: "monospace",
+  1242→  1242→                        }}
+  1243→  1243→                      >
+  1244→  1244→                        {assignment.assignmentValue === "*"
+  1245→  1245→                          ? "All products"
+  1246→  1246→                          : assignment.assignmentValue}
+  1247→  1247→                      </span>
+  1248→  1248→                      <s-button
+  1249→  1249→                        tone="critical"
+  1250→  1250→                        variant="tertiary"
+  1251→  1251→                        onClick={() => handleRemoveAssignment(assignment.id)}
+  1252→  1252→                      >
+  1253→  1253→                        Remove
+  1254→  1254→                      </s-button>
+  1255→  1255→                    </div>
+  1256→  1256→                  ))}
+  1257→  1257→                </div>
+  1258→  1258→              )}
+  1259→  1259→
+  1260→  1260→              {/* Empty state */}
+  1261→  1261→              {assignments.length === 0 && !isNew && (
+  1262→  1262→                <div
+  1263→  1263→                  style={{
+  1264→  1264→                    border: "1.5px dashed #c9cccf",
+  1265→  1265→                    borderRadius: "8px",
+  1266→  1266→                    padding: "28px 16px",
+  1267→  1267→                    textAlign: "center",
+  1268→  1268→                    background: "#fafbfb",
+  1269→  1269→                  }}
+  1270→  1270→                >
+  1271→  1271→                  <div style={{ fontSize: "28px", marginBottom: "8px", lineHeight: 1 }}>
+  1272→  1272→                    &#128205;
+  1273→  1273→                  </div>
+  1274→  1274→                  <s-text>No assignments yet</s-text>
+  1275→  1275→                  <s-text color="subdued">Add an assignment below to show this chart on product pages.</s-text>
+  1276→  1276→                </div>
+  1277→  1277→              )}
+  1278→  1278→            </s-stack>
+  1279→  1279→          </s-box>
+  1280→  1280→          </div>
+  1281→  1281→
+  1282→  1282→          {/* Add Assignment card */}
+  1283→  1283→          {!isNew && (
+  1284→  1284→            <s-box padding="base" borderWidth="base" borderRadius="base">
+  1285→  1285→              <s-stack direction="block" gap="base">
+  1286→  1286→                <div>
+  1287→  1287→                  <s-heading>Add Assignment</s-heading>
+  1288→  1288→                  <s-text color="subdued">Target by product, collection, tag, or product type.</s-text>
+  1289→  1289→                </div>
+  1290→  1290→                <s-stack direction="inline" gap="base">
+  1291→  1291→                  <s-select
+  1292→  1292→                    label="Type"
+  1293→  1293→                    value={newAssignmentType}
+  1294→  1294→                    onChange={(e: Event) => setNewAssignmentType((e.target as HTMLSelectElement).value)}
+  1295→  1295→                  >
+  1296→  1296→                    {ASSIGNMENT_TYPES.map((t) => (
+  1297→  1297→                      <s-option key={t.value} value={t.value}>{t.label}</s-option>
+  1298→  1298→                    ))}
+  1299→  1299→                  </s-select>
+  1300→  1300→                  {newAssignmentType !== "all" && (
+  1301→  1301→                    <div
+  1302→  1302→                      onKeyDown={(e: React.KeyboardEvent) => {
+  1303→  1303→                        if (e.key === "Enter") {
+  1304→  1304→                          e.preventDefault();
+  1305→  1305→                          handleAddAssignment();
+  1306→  1306→                        }
+  1307→  1307→                      }}
+  1308→  1308→                    >
+  1309→  1309→                      <s-text-field
+  1310→  1310→                        label="Value"
+  1311→  1311→                        value={newAssignmentValue}
+  1312→  1312→                        onInput={(e: Event) => setNewAssignmentValue((e.target as HTMLInputElement).value)}
+  1313→  1313→                        placeholder={
+  1314→  1314→                          newAssignmentType === "tag"
+  1315→  1315→                            ? "e.g. summer-sale"
+  1316→  1316→                            : newAssignmentType === "product_type"
+  1317→  1317→                              ? "e.g. T-Shirts"
+  1318→  1318→                              : newAssignmentType === "collection"
+  1319→  1319→                                ? "e.g. gid://shopify/Collection/123"
+  1320→  1320→                                : "e.g. gid://shopify/Product/123"
+  1321→  1321→                        }
+  1322→  1322→                      />
+  1323→  1323→                    </div>
+  1324→  1324→                  )}
+  1325→  1325→                  <div style={{ alignSelf: "flex-end" }}>
+  1326→  1326→                    <s-button
+  1327→  1327→                      variant="primary"
+  1328→  1328→                      onClick={handleAddAssignment}
+  1329→  1329→                      loading={assignmentFetcher.state !== "idle"}
+  1330→  1330→                    >
+  1331→  1331→                      Add
+  1332→  1332→                    </s-button>
+  1333→  1333→                  </div>
+  1334→  1334→                </s-stack>
+  1335→  1335→              </s-stack>
+  1336→  1336→            </s-box>
+  1337→  1337→          )}
+  1338→  1338→        </div>
+  1339→  1339→
+  1340→  1340→        {/* ============================================================== */}
+  1341→  1341→        {/* TAB: Position                                                   */}
+  1342→  1342→        {/* ============================================================== */}
+  1343→  1343→        <div style={{ display: activeTab === "position" ? "block" : "none" }}>
+  1344→  1344→          {/* Priority card */}
+  1345→  1345→          <div style={{ marginBottom: "16px" }}>
+  1346→  1346→            <s-box padding="base" borderWidth="base" borderRadius="base">
+  1347→  1347→              <s-stack direction="block" gap="base">
+  1348→  1348→                <div>
+  1349→  1349→                  <s-heading>Display Priority</s-heading>
+  1350→  1350→                  <s-text color="subdued">When multiple charts match a product, the one with the lowest priority number is shown first.</s-text>
+  1351→  1351→                </div>
+  1352→  1352→                <s-stack direction="inline" gap="base">
+  1353→  1353→                  <s-number-field
+  1354→  1354→                    label="Priority level"
+  1355→  1355→                    value={String(priority)}
+  1356→  1356→                    min={1}
+  1357→  1357→                    max={100}
+  1358→  1358→                    onChange={(e: Event) => setPriority(Math.max(1, Math.min(100, parseInt((e.target as HTMLInputElement).value, 10) || 1)))}
+  1359→  1359→                  />
+  1360→  1360→                  <div style={{ alignSelf: "flex-end", paddingBottom: "8px" }}>
+  1361→  1361→                    <s-text color="subdued">
+  1362→  1362→                      {priority === 1 ? "Highest priority" : priority <= 5 ? "High priority" : priority <= 20 ? "Medium priority" : "Low priority"}
+  1363→  1363→                    </s-text>
+  1364→  1364→                  </div>
+  1365→  1365→                </s-stack>
+  1366→  1366→              </s-stack>
+  1367→  1367→            </s-box>
+  1368→  1368→          </div>
+  1369→  1369→
+  1370→  1370→          {/* Display Position card */}
+  1371→  1371→          <div style={{ marginBottom: "16px" }}>
+  1372→  1372→            <s-box padding="base" borderWidth="base" borderRadius="base">
+  1373→  1373→              <s-stack direction="block" gap="base">
+  1374→  1374→                <div>
+  1375→  1375→                  <s-heading>Widget Button Position</s-heading>
+  1376→  1376→                  <s-text color="subdued">Choose where the "Size Guide" button appears on your product pages.</s-text>
+  1377→  1377→                </div>
+  1378→  1378→                <s-stack direction="block" gap="base">
+  1379→  1379→                  {(
+  1380→  1380→                    [
+  1381→  1381→                      { value: "floating" as const, label: "Floating button", desc: "A floating button appears near the size selector — highest visibility" },
+  1382→  1382→                      { value: "above_desc" as const, label: "Above description", desc: "Shown above the product description section" },
+  1383→  1383→                      { value: "below_desc" as const, label: "Below description", desc: "Shown below the product description section" },
+  1384→  1384→                    ] satisfies { value: "floating" | "above_desc" | "below_desc"; label: string; desc: string }[]
+  1385→  1385→                  ).map((opt) => (
+  1386→  1386→                    <label key={opt.value} style={{ cursor: "pointer", display: "block" }}>
+  1387→  1387→                      <s-box
+  1388→  1388→                        padding="base"
+  1389→  1389→                        borderWidth={buttonPosition === opt.value ? "large" : "base"}
+  1390→  1390→                        borderRadius="base"
+  1391→  1391→                        background={buttonPosition === opt.value ? "base" : "transparent"}
+  1392→  1392→                      >
+  1393→  1393→                        <s-stack direction="inline" gap="base">
+  1394→  1394→                          <input
+  1395→  1395→                            type="radio"
+  1396→  1396→                            name="buttonPosition"
+  1397→  1397→                            value={opt.value}
+  1398→  1398→                            checked={buttonPosition === opt.value}
+  1399→  1399→                            onChange={() => setButtonPosition(opt.value)}
+  1400→  1400→                            style={{ flexShrink: 0 }}
+  1401→  1401→                          />
+  1402→  1402→                          <s-stack direction="block" gap="small-200">
+  1403→  1403→                            <s-text>{opt.label}</s-text>
+  1404→  1404→                            <s-text tone="neutral">{opt.desc}</s-text>
+  1405→  1405→                          </s-stack>
+  1406→  1406→                        </s-stack>
+  1407→  1407→                      </s-box>
+  1408→  1408→                    </label>
+  1409→  1409→                  ))}
+  1410→  1410→                </s-stack>
+  1411→  1411→              </s-stack>
+  1412→  1412→            </s-box>
+  1413→  1413→          </div>
+  1414→  1414→
+  1415→  1415→          {/* Country Targeting card */}
+  1416→  1416→          <s-box padding="base" borderWidth="base" borderRadius="base">
+  1417→  1417→            <s-stack direction="block" gap="base">
+  1418→  1418→              <div>
+  1419→  1419→                <s-heading>Country Targeting</s-heading>
+  1420→  1420→                <s-text color="subdued">Limit this chart to customers in specific countries (e.g. show EU sizing only in Europe).</s-text>
+  1421→  1421→              </div>
+  1422→  1422→              <s-stack direction="block" gap="base">
+  1423→  1423→                {(
+  1424→  1424→                  [
+  1425→  1425→                    { value: "all" as const, label: "All countries", desc: "Show this chart to all visitors regardless of location" },
+  1426→  1426→                    { value: "selected" as const, label: "Specific countries", desc: "Restrict to selected country codes (e.g. US, GB, DE)" },
+  1427→  1427→                  ] satisfies { value: "all" | "selected"; label: string; desc: string }[]
+  1428→  1428→                ).map((opt) => (
+  1429→  1429→                  <label key={opt.value} style={{ cursor: "pointer", display: "block" }}>
+  1430→  1430→                    <s-box
+  1431→  1431→                      padding="base"
+  1432→  1432→                      borderWidth={countries === opt.value ? "large" : "base"}
+  1433→  1433→                      borderRadius="base"
+  1434→  1434→                      background={countries === opt.value ? "base" : "transparent"}
+  1435→  1435→                    >
+  1436→  1436→                      <s-stack direction="inline" gap="base">
+  1437→  1437→                        <input
+  1438→  1438→                          type="radio"
+  1439→  1439→                          name="countries"
+  1440→  1440→                          value={opt.value}
+  1441→  1441→                          checked={countries === opt.value}
+  1442→  1442→                          onChange={() => setCountries(opt.value)}
+  1443→  1443→                          style={{ flexShrink: 0 }}
+  1444→  1444→                        />
+  1445→  1445→                        <s-stack direction="block" gap="small-200">
+  1446→  1446→                          <s-text>{opt.label}</s-text>
+  1447→  1447→                          <s-text tone="neutral">{opt.desc}</s-text>
+  1448→  1448→                        </s-stack>
+  1449→  1449→                      </s-stack>
+  1450→  1450→                    </s-box>
+  1451→  1451→                  </label>
+  1452→  1452→                ))}
+  1453→  1453→              </s-stack>
+  1454→  1454→              {countries === "selected" && (
+  1455→  1455→                <div>
+  1456→  1456→                  <s-text-field
+  1457→  1457→                    label="Country codes"
+  1458→  1458→                    value={selectedCountries}
+  1459→  1459→                    onInput={(e: Event) => setSelectedCountries((e.target as HTMLInputElement).value)}
+  1460→  1460→                    placeholder="e.g. US, GB, DE, FR, CA"
+  1461→  1461→                  />
+  1462→  1462→                  <s-text color="subdued">Comma-separated ISO 3166-1 alpha-2 codes. Leave blank to match all countries.</s-text>
+  1463→  1463→                </div>
+  1464→  1464→              )}
+  1465→  1465→            </s-stack>
+  1466→  1466→          </s-box>
+  1467→  1467→        </div>
+  1468→  1468→
+  1469→  1469→        {/* ============================================================== */}
+  1470→  1470→        {/* TAB: AI Recommendation                                          */}
+  1471→  1471→        {/* ============================================================== */}
+  1472→  1472→        <div style={{ display: activeTab === "recommendation" ? "block" : "none" }}>
+  1473→  1473→          {/* Enable toggle card */}
+  1474→  1474→          <div style={{ marginBottom: "16px" }}>
+  1475→  1475→            <s-box padding="base" borderWidth="base" borderRadius="base">
+  1476→  1476→              <s-stack direction="block" gap="base">
+  1477→  1477→                <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
+  1478→  1478→                  <div style={{ flex: 1 }}>
+  1479→  1479→                    <s-heading>AI Size Recommendation</s-heading>
+  1480→  1480→                    <s-text color="subdued">When enabled, customers can enter their height, weight, and body type to get a personalized size recommendation for this chart. Recommendations use your size data to predict the best fit.</s-text>
+  1481→  1481→                  </div>
+  1482→  1482→                  <s-switch
+  1483→  1483→                    checked={recommendationEnabled}
+  1484→  1484→                    onChange={(e: Event) => setRecommendationEnabled((e.target as HTMLInputElement).checked)}
+  1485→  1485→                  />
+  1486→  1486→                </div>
+  1487→  1487→                {recommendationEnabled && (
+  1488→  1488→                  <s-banner tone="success">
+  1489→  1489→                    Customers will see a "Find My Size" button on your product page. Make sure your chart has at least 3 size rows with chest and waist data for best accuracy.
+  1490→  1490→                  </s-banner>
+  1491→  1491→                )}
+  1492→  1492→              </s-stack>
+  1493→  1493→            </s-box>
+  1494→  1494→          </div>
+  1495→  1495→
+  1496→  1496→          {/* How it works card */}
+  1497→  1497→          <div style={{ marginBottom: "16px" }}>
+  1498→  1498→            <s-box padding="base" borderWidth="base" borderRadius="base">
+  1499→  1499→              <s-stack direction="block" gap="base">
+  1500→  1500→                <s-heading>How AI Recommendations Work</s-heading>
+  1501→  1501→                <s-stack direction="block" gap="base">
+  1502→  1502→                  {[
+  1503→  1503→                    { step: "1", title: "Customer enters measurements", desc: "Height, weight, and body type are collected via a short form shown next to your size chart." },
+  1504→  1504→                    { step: "2", title: "AI matches to your size data", desc: "Our algorithm cross-references the inputs with your chart rows to find the closest fit, weighted by body type." },
+  1505→  1505→                    { step: "3", title: "Personalized recommendation shown", desc: "The recommended size is highlighted in the chart with a confidence indicator (high/medium/low)." },
+  1506→  1506→                  ].map((item) => (
+  1507→  1507→                    <s-stack key={item.step} direction="inline" gap="base">
+  1508→  1508→                      <div
+  1509→  1509→                        style={{
+  1510→  1510→                          width: "28px",
+  1511→  1511→                          height: "28px",
+  1512→  1512→                          borderRadius: "50%",
+  1513→  1513→                          background: "#2c6ecb",
+  1514→  1514→                          color: "#fff",
+  1515→  1515→                          display: "flex",
+  1516→  1516→                          alignItems: "center",
+  1517→  1517→                          justifyContent: "center",
+  1518→  1518→                          fontSize: "13px",
+  1519→  1519→                          fontWeight: 700,
+  1520→  1520→                          flexShrink: 0,
+  1521→  1521→                        }}
+  1522→  1522→                      >
+  1523→  1523→                        {item.step}
+  1524→  1524→                      </div>
+  1525→  1525→                      <s-stack direction="block" gap="small-200">
+  1526→  1526→                        <s-text>{item.title}</s-text>
+  1527→  1527→                        <s-text color="subdued">{item.desc}</s-text>
+  1528→  1528→                      </s-stack>
+  1529→  1529→                    </s-stack>
+  1530→  1530→                  ))}
+  1531→  1531→                </s-stack>
+  1532→  1532→              </s-stack>
+  1533→  1533→            </s-box>
+  1534→  1534→          </div>
+  1535→  1535→
+  1536→  1536→          {/* Requirements card */}
+  1537→  1537→          <s-box padding="base" borderWidth="base" borderRadius="base">
+  1538→  1538→            <s-stack direction="block" gap="base">
+  1539→  1539→              <s-heading>Requirements for Best Accuracy</s-heading>
+  1540→  1540→              <s-unordered-list>
+  1541→  1541→                <s-list-item>At least 3 size rows (S, M, L or numeric sizes)</s-list-item>
+  1542→  1542→                <s-list-item>Chest and/or waist measurements in your chart columns</s-list-item>
+  1543→  1543→                <s-list-item>AI Recommender enabled in Recommender settings</s-list-item>
+  1544→  1544→                <s-list-item>Starter plan or above</s-list-item>
+  1545→  1545→              </s-unordered-list>
+  1546→  1546→              <s-button href="/app/recommender">Configure Recommender Settings</s-button>
+  1547→  1547→            </s-stack>
+  1548→  1548→          </s-box>
+  1549→  1549→        </div>
+  1550→  1550→
+  1551→  1551→        {/* ============================================================== */}
+  1552→  1552→        {/* TAB: Settings                                                   */}
+  1553→  1553→        {/* ============================================================== */}
+  1554→  1554→        <div style={{ display: activeTab === "settings" ? "block" : "none" }}>
+  1555→  1555→          {/* How to Measure card */}
+  1556→  1556→          <div style={{ marginBottom: "16px" }}>
+  1557→  1557→            <s-box padding="base" borderWidth="base" borderRadius="base">
+  1558→  1558→              <s-stack direction="block" gap="base">
+  1559→  1559→                <div>
+  1560→  1560→                  <s-heading>How to Measure</s-heading>
+  1561→  1561→                  <s-text color="subdued">This guide is shown alongside your size chart to help customers measure correctly.</s-text>
+  1562→  1562→                </div>
+  1563→  1563→                <s-box padding="base" borderWidth="base" borderRadius="base">
+  1564→  1564→                  <s-stack direction="block" gap="base">
+  1565→  1565→                    <s-text>Measurement Instructions</s-text>
+  1566→  1566→                    <s-unordered-list>
+  1567→  1567→                      <s-list-item>
+  1568→  1568→                        <strong>Chest:</strong> Measure around the fullest part of your chest, keeping the tape parallel to the floor.
+  1569→  1569→                      </s-list-item>
+  1570→  1570→                      <s-list-item>
+  1571→  1571→                        <strong>Waist:</strong> Measure around the narrowest part of your waist, typically 1 inch above the navel.
+  1572→  1572→                      </s-list-item>
+  1573→  1573→                      <s-list-item>
+  1574→  1574→                        <strong>Hips:</strong> Measure around the fullest part of your hips, approximately 8 inches below the waist.
+  1575→  1575→                      </s-list-item>
+  1576→  1576→                      <s-list-item>
+  1577→  1577→                        <strong>Inseam:</strong> Measure from the crotch seam down to the ankle bone along the inside of the leg.
+  1578→  1578→                      </s-list-item>
+  1579→  1579→                    </s-unordered-list>
+  1580→  1580→                    <s-text color="subdued">Tip: Use a soft measuring tape and measure directly on the skin or over light clothing for the most accurate fit.</s-text>
+  1581→  1581→                  </s-stack>
+  1582→  1582→                </s-box>
+  1583→  1583→              </s-stack>
+  1584→  1584→            </s-box>
+  1585→  1585→          </div>
+  1586→  1586→
+  1587→  1587→          {/* Danger Zone card */}
+  1588→  1588→          {!isNew && (
+  1589→  1589→            <s-banner tone="critical" heading="Danger Zone">
+  1590→  1590→              <s-stack direction="block" gap="base">
+  1591→  1591→                <s-text>Permanently deletes this chart and all its product assignments. This action cannot be undone.</s-text>
+  1592→  1592→                <assignmentFetcher.Form method="post">
+  1593→  1593→                  <input type="hidden" name="intent" value="delete" />
+  1594→  1594→                  <s-button type="submit" variant="primary" tone="critical">
+  1595→  1595→                    Delete Chart Permanently
+  1596→  1596→                  </s-button>
+  1597→  1597→                </assignmentFetcher.Form>
+  1598→  1598→              </s-stack>
+  1599→  1599→            </s-banner>
+  1600→  1600→          )}
+  1601→  1601→        </div>
+  1602→  1602→      </s-section>
+  1603→  1603→
+  1604→  1604→      {/* ================================================================ */}
+  1605→  1605→      {/* CHART INFO BAR (compact, inline for saved charts)                  */}
+  1606→  1606→      {/* ================================================================ */}
+  1607→  1607→      {!isNew && chart && (
+  1608→  1608→        <s-section>
+  1609→  1609→          <s-box padding="base" borderWidth="base" borderRadius="base">
+  1610→  1610→            <s-stack direction="inline" gap="base">
+  1611→  1611→              {[
+  1612→  1612→                { label: "Created", value: formatDate(chart.createdAt) },
+  1613→  1613→                { label: "Updated", value: formatDate(chart.updatedAt) },
+  1614→  1614→                { label: "Assignments", value: String(assignments.length) },
+  1615→  1615→                { label: "Rows", value: String(chartData.rows.length) },
+  1616→  1616→                { label: "Columns", value: String(chartData.headers.length) },
+  1617→  1617→              ].map((item) => (
+  1618→  1618→                <s-stack key={item.label} direction="block" gap="small-100">
+  1619→  1619→                  <s-text color="subdued">{item.label}</s-text>
+  1620→  1620→                  <s-text>{item.value}</s-text>
+  1621→  1621→                </s-stack>
+  1622→  1622→              ))}
+  1623→  1623→            </s-stack>
+  1624→  1624→          </s-box>
+  1625→  1625→        </s-section>
+  1626→  1626→      )}
+  1627→  1627→    </s-page>
+  1628→  1628→  );
+  1629→  1629→}
+  1630→  1630→

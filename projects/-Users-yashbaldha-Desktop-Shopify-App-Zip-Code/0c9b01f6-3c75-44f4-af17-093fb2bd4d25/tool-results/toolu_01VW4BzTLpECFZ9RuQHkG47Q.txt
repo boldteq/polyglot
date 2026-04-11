@@ -1,0 +1,1378 @@
+     1→     1→import { useState, useCallback, useMemo } from "react";
+     2→     2→import type {
+     3→     3→  ActionFunctionArgs,
+     4→     4→  HeadersFunction,
+     5→     5→  LoaderFunctionArgs,
+     6→     6→} from "react-router";
+     7→     7→import { useFetcher, useLoaderData, useNavigate } from "react-router";
+     8→     8→import { useAppBridge } from "@shopify/app-bridge-react";
+     9→     9→import { authenticate } from "../shopify.server";
+    10→    10→import { boundary } from "@shopify/shopify-app-react-router/server";
+    11→    11→import db from "../db.server";
+    12→    12→import { getShopSubscription } from "../billing.server";
+    13→    13→import { PLAN_LIMITS } from "../plans";
+    14→    14→import {
+    15→    15→  Page,
+    16→    16→  Layout,
+    17→    17→  Card,
+    18→    18→  TextField,
+    19→    19→  Button,
+    20→    20→  Banner,
+    21→    21→  BlockStack,
+    22→    22→  InlineStack,
+    23→    23→  InlineGrid,
+    24→    24→  Text,
+    25→    25→  Badge,
+    26→    26→  DataTable,
+    27→    27→  Modal,
+    28→    28→  Select,
+    29→    29→  Divider,
+    30→    30→  EmptyState,
+    31→    31→  Box,
+    32→    32→  Icon,
+    33→    33→  Tooltip,
+    34→    34→  DropZone,
+    35→    35→  Pagination,
+    36→    36→} from "@shopify/polaris";
+    37→    37→import {
+    38→    38→  SearchIcon,
+    39→    39→  DeleteIcon,
+    40→    40→  EditIcon,
+    41→    41→  PlusIcon,
+    42→    42→  StarIcon,
+    43→    43→  ImportIcon,
+    44→    44→  ExportIcon,
+    45→    45→} from "@shopify/polaris-icons";
+    46→    46→
+    47→    47→const PAGE_SIZE = 10;
+    48→    48→
+    49→    49→export const loader = async ({ request }: LoaderFunctionArgs) => {
+    50→    50→  const { session } = await authenticate.admin(request);
+    51→    51→  const shop = session.shop;
+    52→    52→
+    53→    53→  const [zipCodes, subscription] = await Promise.all([
+    54→    54→    db.zipCode.findMany({
+    55→    55→      where: { shop },
+    56→    56→      orderBy: { createdAt: "desc" },
+    57→    57→    }),
+    58→    58→    getShopSubscription(shop),
+    59→    59→  ]);
+    60→    60→
+    61→    61→  const stats = {
+    62→    62→    total: zipCodes.length,
+    63→    63→    allowed: zipCodes.filter((z) => z.type === "allowed").length,
+    64→    64→    blocked: zipCodes.filter((z) => z.type === "blocked").length,
+    65→    65→    active: zipCodes.filter((z) => z.isActive).length,
+    66→    66→  };
+    67→    67→
+    68→    68→  return { zipCodes, stats, subscription };
+    69→    69→};
+    70→    70→
+    71→    71→export const action = async ({ request }: ActionFunctionArgs) => {
+    72→    72→  const { session } = await authenticate.admin(request);
+    73→    73→  const shop = session.shop;
+    74→    74→  const formData = await request.formData();
+    75→    75→  const intent = formData.get("intent");
+    76→    76→
+    77→    77→  if (intent === "add") {
+    78→    78→    const zipCode = String(formData.get("zipCode")).trim().toUpperCase();
+    79→    79→    const label = String(formData.get("label") || "").trim();
+    80→    80→    const zone = String(formData.get("zone") || "").trim();
+    81→    81→    const message = String(formData.get("message") || "").trim();
+    82→    82→    const eta = String(formData.get("eta") || "").trim();
+    83→    83→    const type = String(formData.get("type") || "allowed");
+    84→    84→
+    85→    85→    if (!zipCode) return { error: "Zip code is required." };
+    86→    86→
+    87→    87→    const subscription = await getShopSubscription(shop);
+    88→    88→    const limits = PLAN_LIMITS[subscription.planTier];
+    89→    89→
+    90→    90→    if (type === "blocked" && !limits.allowBlocked) {
+    91→    91→      return {
+    92→    92→        error:
+    93→    93→          "Blocked zip codes are not available on the Free plan. Upgrade to Pro or Ultimate.",
+    94→    94→        upgradeRequired: true,
+    95→    95→      };
+    96→    96→    }
+    97→    97→
+    98→    98→    const currentCount = await db.zipCode.count({ where: { shop } });
+    99→    99→    if (limits.maxZipCodes !== Infinity && currentCount >= limits.maxZipCodes) {
+   100→   100→      return {
+   101→   101→        error: `You have reached the ${limits.maxZipCodes} zip code limit for the Free plan. Upgrade to Pro for unlimited zip codes.`,
+   102→   102→        upgradeRequired: true,
+   103→   103→      };
+   104→   104→    }
+   105→   105→
+   106→   106→    try {
+   107→   107→      await db.zipCode.create({
+   108→   108→        data: {
+   109→   109→          shop,
+   110→   110→          zipCode,
+   111→   111→          label: label || null,
+   112→   112→          zone: zone || null,
+   113→   113→          message: message || null,
+   114→   114→          eta: eta || null,
+   115→   115→          type,
+   116→   116→        },
+   117→   117→      });
+   118→   118→      return { success: true, action: "added", zipCode };
+   119→   119→    } catch {
+   120→   120→      return { error: `Zip code "${zipCode}" already exists.` };
+   121→   121→    }
+   122→   122→  }
+   123→   123→
+   124→   124→  if (intent === "delete") {
+   125→   125→    const id = String(formData.get("id"));
+   126→   126→    try {
+   127→   127→      await db.zipCode.delete({ where: { id } });
+   128→   128→      return { success: true, action: "deleted" };
+   129→   129→    } catch {
+   130→   130→      return { error: "Failed to delete zip code." };
+   131→   131→    }
+   132→   132→  }
+   133→   133→
+   134→   134→  if (intent === "update") {
+   135→   135→    const id = String(formData.get("id"));
+   136→   136→    const zipCode = String(formData.get("zipCode")).trim().toUpperCase();
+   137→   137→    const label = String(formData.get("label") || "").trim();
+   138→   138→    const zone = String(formData.get("zone") || "").trim();
+   139→   139→    const message = String(formData.get("message") || "").trim();
+   140→   140→    const eta = String(formData.get("eta") || "").trim();
+   141→   141→    const type = String(formData.get("type") || "allowed");
+   142→   142→    const isActive = formData.get("isActive") === "true";
+   143→   143→
+   144→   144→    if (!zipCode) return { error: "Zip code is required." };
+   145→   145→
+   146→   146→    try {
+   147→   147→      await db.zipCode.update({
+   148→   148→        where: { id },
+   149→   149→        data: {
+   150→   150→          zipCode,
+   151→   151→          label: label || null,
+   152→   152→          zone: zone || null,
+   153→   153→          message: message || null,
+   154→   154→          eta: eta || null,
+   155→   155→          type,
+   156→   156→          isActive,
+   157→   157→        },
+   158→   158→      });
+   159→   159→      return { success: true, action: "updated", zipCode };
+   160→   160→    } catch {
+   161→   161→      return { error: `Failed to update zip code "${zipCode}". It may already exist.` };
+   162→   162→    }
+   163→   163→  }
+   164→   164→
+   165→   165→  if (intent === "toggle") {
+   166→   166→    const id = String(formData.get("id"));
+   167→   167→    const isActive = formData.get("isActive") === "true";
+   168→   168→    try {
+   169→   169→      await db.zipCode.update({
+   170→   170→        where: { id },
+   171→   171→        data: { isActive: !isActive },
+   172→   172→      });
+   173→   173→      return { success: true, action: "toggled" };
+   174→   174→    } catch {
+   175→   175→      return { error: "Failed to toggle zip code status." };
+   176→   176→    }
+   177→   177→  }
+   178→   178→
+   179→   179→  if (intent === "check") {
+   180→   180→    const zipCode = String(formData.get("checkZip")).trim().toUpperCase();
+   181→   181→    try {
+   182→   182→      const found = await db.zipCode.findUnique({
+   183→   183→        where: { shop_zipCode: { shop, zipCode } },
+   184→   184→      });
+   185→   185→      if (!found) return { checkResult: { found: false, zipCode } };
+   186→   186→      return { checkResult: { found: true, zipCode, record: found } };
+   187→   187→    } catch {
+   188→   188→      return { error: "Failed to check zip code." };
+   189→   189→    }
+   190→   190→  }
+   191→   191→
+   192→   192→  if (intent === "bulk-import") {
+   193→   193→    const csvData = String(formData.get("csvData") || "");
+   194→   194→    if (!csvData.trim()) return { error: "No CSV data provided." };
+   195→   195→
+   196→   196→    const subscription = await getShopSubscription(shop);
+   197→   197→    const limits = PLAN_LIMITS[subscription.planTier];
+   198→   198→
+   199→   199→    const lines = csvData
+   200→   200→      .split("\n")
+   201→   201→      .map((l) => l.trim())
+   202→   202→      .filter((l) => l.length > 0);
+   203→   203→
+   204→   204→    // Skip header row if present
+   205→   205→    const startIdx =
+   206→   206→      lines.length > 0 &&
+   207→   207→      lines[0].toLowerCase().includes("zip")
+   208→   208→        ? 1
+   209→   209→        : 0;
+   210→   210→
+   211→   211→    const currentCount = await db.zipCode.count({ where: { shop } });
+   212→   212→    let imported = 0;
+   213→   213→    let skipped = 0;
+   214→   214→    const errors: string[] = [];
+   215→   215→
+   216→   216→    for (let i = startIdx; i < lines.length; i++) {
+   217→   217→      const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+   218→   218→      const zipCode = (cols[0] || "").toUpperCase();
+   219→   219→      if (!zipCode) continue;
+   220→   220→
+   221→   221→      const zone = cols[1] || null;
+   222→   222→      const type = (cols[2] || "allowed").toLowerCase() === "blocked" ? "blocked" : "allowed";
+   223→   223→      const message = cols[3] || null;
+   224→   224→      const eta = cols[4] || null;
+   225→   225→
+   226→   226→      if (type === "blocked" && !limits.allowBlocked) {
+   227→   227→        skipped++;
+   228→   228→        continue;
+   229→   229→      }
+   230→   230→
+   231→   231→      if (
+   232→   232→        limits.maxZipCodes !== Infinity &&
+   233→   233→        currentCount + imported >= limits.maxZipCodes
+   234→   234→      ) {
+   235→   235→        errors.push(
+   236→   236→          `Reached the ${limits.maxZipCodes} zip code limit. ${lines.length - startIdx - imported - skipped} zip codes were not imported.`,
+   237→   237→        );
+   238→   238→        break;
+   239→   239→      }
+   240→   240→
+   241→   241→      try {
+   242→   242→        await db.zipCode.upsert({
+   243→   243→          where: { shop_zipCode: { shop, zipCode } },
+   244→   244→          create: {
+   245→   245→            shop,
+   246→   246→            zipCode,
+   247→   247→            zone,
+   248→   248→            type,
+   249→   249→            message,
+   250→   250→            eta,
+   251→   251→          },
+   252→   252→          update: {
+   253→   253→            zone: zone ?? undefined,
+   254→   254→            type,
+   255→   255→            message: message ?? undefined,
+   256→   256→            eta: eta ?? undefined,
+   257→   257→          },
+   258→   258→        });
+   259→   259→        imported++;
+   260→   260→      } catch {
+   261→   261→        skipped++;
+   262→   262→      }
+   263→   263→    }
+   264→   264→
+   265→   265→    return {
+   266→   266→      success: true,
+   267→   267→      action: "bulk-import",
+   268→   268→      imported,
+   269→   269→      skipped,
+   270→   270→      errors,
+   271→   271→    };
+   272→   272→  }
+   273→   273→
+   274→   274→  if (intent === "export") {
+   275→   275→    try {
+   276→   276→      const zipCodes = await db.zipCode.findMany({
+   277→   277→        where: { shop },
+   278→   278→        orderBy: { createdAt: "desc" },
+   279→   279→      });
+   280→   280→
+   281→   281→      const header = "Zip Code,Zone,Status,Message,ETA,Active";
+   282→   282→      const rows = zipCodes.map(
+   283→   283→        (z) =>
+   284→   284→          `"${z.zipCode}","${z.zone || ""}","${z.type}","${z.message || ""}","${z.eta || ""}","${z.isActive ? "Yes" : "No"}"`,
+   285→   285→      );
+   286→   286→      const csv = [header, ...rows].join("\n");
+   287→   287→
+   288→   288→      return { success: true, action: "export", csv };
+   289→   289→    } catch {
+   290→   290→      return { error: "Failed to export zip codes." };
+   291→   291→    }
+   292→   292→  }
+   293→   293→
+   294→   294→  return null;
+   295→   295→};
+   296→   296→
+   297→   297→type ZipCodeRecord = {
+   298→   298→  id: string;
+   299→   299→  zipCode: string;
+   300→   300→  label: string | null;
+   301→   301→  zone: string | null;
+   302→   302→  message: string | null;
+   303→   303→  eta: string | null;
+   304→   304→  type: string;
+   305→   305→  isActive: boolean;
+   306→   306→  createdAt: string | Date;
+   307→   307→};
+   308→   308→
+   309→   309→export default function ZipCodeCheckerPage() {
+   310→   310→  const { zipCodes, stats, subscription } = useLoaderData<typeof loader>();
+   311→   311→  const fetcher = useFetcher<typeof action>();
+   312→   312→  const shopify = useAppBridge();
+   313→   313→  const navigate = useNavigate();
+   314→   314→
+   315→   315→  const limits = PLAN_LIMITS[subscription.planTier];
+   316→   316→  const isFreePlan = subscription.planTier === "free";
+   317→   317→  const atZipLimit =
+   318→   318→    limits.maxZipCodes !== Infinity && stats.total >= limits.maxZipCodes;
+   319→   319→
+   320→   320→  // Search & filter state
+   321→   321→  const [searchQuery, setSearchQuery] = useState("");
+   322→   322→  const [statusFilter, setStatusFilter] = useState("all");
+   323→   323→  const [currentPage, setCurrentPage] = useState(1);
+   324→   324→
+   325→   325→  // Check zip code state
+   326→   326→  const [checkZip, setCheckZip] = useState("");
+   327→   327→
+   328→   328→  // Add modal state
+   329→   329→  const [addModalOpen, setAddModalOpen] = useState(false);
+   330→   330→  const [newZip, setNewZip] = useState("");
+   331→   331→  const [newLabel, setNewLabel] = useState("");
+   332→   332→  const [newZone, setNewZone] = useState("");
+   333→   333→  const [newMessage, setNewMessage] = useState("");
+   334→   334→  const [newEta, setNewEta] = useState("");
+   335→   335→  const [newType, setNewType] = useState("allowed");
+   336→   336→
+   337→   337→  // Edit modal state
+   338→   338→  const [editModalOpen, setEditModalOpen] = useState(false);
+   339→   339→  const [editId, setEditId] = useState("");
+   340→   340→  const [editZip, setEditZip] = useState("");
+   341→   341→  const [editLabel, setEditLabel] = useState("");
+   342→   342→  const [editZone, setEditZone] = useState("");
+   343→   343→  const [editMessage, setEditMessage] = useState("");
+   344→   344→  const [editEta, setEditEta] = useState("");
+   345→   345→  const [editType, setEditType] = useState("allowed");
+   346→   346→  const [editIsActive, setEditIsActive] = useState(true);
+   347→   347→
+   348→   348→  // Import modal state
+   349→   349→  const [importModalOpen, setImportModalOpen] = useState(false);
+   350→   350→  const [csvText, setCsvText] = useState("");
+   351→   351→  const [importFile, setImportFile] = useState<File | null>(null);
+   352→   352→
+   353→   353→  const isCheckLoading =
+   354→   354→    fetcher.state !== "idle" && fetcher.formData?.get("intent") === "check";
+   355→   355→  const isAddLoading =
+   356→   356→    fetcher.state !== "idle" && fetcher.formData?.get("intent") === "add";
+   357→   357→  const isEditLoading =
+   358→   358→    fetcher.state !== "idle" && fetcher.formData?.get("intent") === "update";
+   359→   359→  const isImportLoading =
+   360→   360→    fetcher.state !== "idle" &&
+   361→   361→    fetcher.formData?.get("intent") === "bulk-import";
+   362→   362→
+   363→   363→  const checkResult =
+   364→   364→    fetcher.data && "checkResult" in fetcher.data
+   365→   365→      ? fetcher.data.checkResult
+   366→   366→      : null;
+   367→   367→  const actionError =
+   368→   368→    fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+   369→   369→  const upgradeRequired =
+   370→   370→    fetcher.data && "upgradeRequired" in fetcher.data
+   371→   371→      ? fetcher.data.upgradeRequired
+   372→   372→      : false;
+   373→   373→  const importResult =
+   374→   374→    fetcher.data &&
+   375→   375→    "action" in fetcher.data &&
+   376→   376→    fetcher.data.action === "bulk-import"
+   377→   377→      ? fetcher.data
+   378→   378→      : null;
+   379→   379→
+   380→   380→  // Filtered zip codes
+   381→   381→  const filteredZipCodes = useMemo(() => {
+   382→   382→    let filtered = zipCodes as ZipCodeRecord[];
+   383→   383→
+   384→   384→    if (searchQuery.trim()) {
+   385→   385→      const q = searchQuery.trim().toLowerCase();
+   386→   386→      filtered = filtered.filter(
+   387→   387→        (z) =>
+   388→   388→          z.zipCode.toLowerCase().includes(q) ||
+   389→   389→          (z.zone && z.zone.toLowerCase().includes(q)) ||
+   390→   390→          (z.label && z.label.toLowerCase().includes(q)) ||
+   391→   391→          (z.message && z.message.toLowerCase().includes(q)),
+   392→   392→      );
+   393→   393→    }
+   394→   394→
+   395→   395→    if (statusFilter === "allowed") {
+   396→   396→      filtered = filtered.filter((z) => z.type === "allowed");
+   397→   397→    } else if (statusFilter === "blocked") {
+   398→   398→      filtered = filtered.filter((z) => z.type === "blocked");
+   399→   399→    }
+   400→   400→
+   401→   401→    return filtered;
+   402→   402→  }, [zipCodes, searchQuery, statusFilter]);
+   403→   403→
+   404→   404→  // Pagination
+   405→   405→  const totalPages = Math.max(1, Math.ceil(filteredZipCodes.length / PAGE_SIZE));
+   406→   406→  const paginatedZipCodes = useMemo(() => {
+   407→   407→    const start = (currentPage - 1) * PAGE_SIZE;
+   408→   408→    return filteredZipCodes.slice(start, start + PAGE_SIZE);
+   409→   409→  }, [filteredZipCodes, currentPage]);
+   410→   410→
+   411→   411→  // Reset to page 1 when search/filter changes
+   412→   412→  const handleSearchChange = useCallback((val: string) => {
+   413→   413→    setSearchQuery(val);
+   414→   414→    setCurrentPage(1);
+   415→   415→  }, []);
+   416→   416→
+   417→   417→  const handleFilterChange = useCallback((val: string) => {
+   418→   418→    setStatusFilter(val);
+   419→   419→    setCurrentPage(1);
+   420→   420→  }, []);
+   421→   421→
+   422→   422→  const handleCheck = useCallback(() => {
+   423→   423→    if (!checkZip.trim()) return;
+   424→   424→    const fd = new FormData();
+   425→   425→    fd.set("intent", "check");
+   426→   426→    fd.set("checkZip", checkZip);
+   427→   427→    fetcher.submit(fd, { method: "POST" });
+   428→   428→  }, [checkZip, fetcher]);
+   429→   429→
+   430→   430→  const handleAdd = useCallback(() => {
+   431→   431→    if (!newZip.trim()) return;
+   432→   432→    const fd = new FormData();
+   433→   433→    fd.set("intent", "add");
+   434→   434→    fd.set("zipCode", newZip);
+   435→   435→    fd.set("label", newLabel);
+   436→   436→    fd.set("zone", newZone);
+   437→   437→    fd.set("message", newMessage);
+   438→   438→    fd.set("eta", newEta);
+   439→   439→    fd.set("type", newType);
+   440→   440→    fetcher.submit(fd, { method: "POST" });
+   441→   441→    if (!actionError) {
+   442→   442→      setNewZip("");
+   443→   443→      setNewLabel("");
+   444→   444→      setNewZone("");
+   445→   445→      setNewMessage("");
+   446→   446→      setNewEta("");
+   447→   447→      setNewType("allowed");
+   448→   448→      setAddModalOpen(false);
+   449→   449→    }
+   450→   450→  }, [newZip, newLabel, newZone, newMessage, newEta, newType, fetcher, actionError]);
+   451→   451→
+   452→   452→  const handleDelete = useCallback(
+   453→   453→    (id: string) => {
+   454→   454→      const fd = new FormData();
+   455→   455→      fd.set("intent", "delete");
+   456→   456→      fd.set("id", id);
+   457→   457→      fetcher.submit(fd, { method: "POST" });
+   458→   458→      shopify.toast.show("Zip code removed");
+   459→   459→    },
+   460→   460→    [fetcher, shopify],
+   461→   461→  );
+   462→   462→
+   463→   463→  const handleOpenEdit = useCallback((z: ZipCodeRecord) => {
+   464→   464→    setEditId(z.id);
+   465→   465→    setEditZip(z.zipCode);
+   466→   466→    setEditLabel(z.label || "");
+   467→   467→    setEditZone(z.zone || "");
+   468→   468→    setEditMessage(z.message || "");
+   469→   469→    setEditEta(z.eta || "");
+   470→   470→    setEditType(z.type);
+   471→   471→    setEditIsActive(z.isActive);
+   472→   472→    setEditModalOpen(true);
+   473→   473→  }, []);
+   474→   474→
+   475→   475→  const handleUpdate = useCallback(() => {
+   476→   476→    if (!editZip.trim()) return;
+   477→   477→    const fd = new FormData();
+   478→   478→    fd.set("intent", "update");
+   479→   479→    fd.set("id", editId);
+   480→   480→    fd.set("zipCode", editZip);
+   481→   481→    fd.set("label", editLabel);
+   482→   482→    fd.set("zone", editZone);
+   483→   483→    fd.set("message", editMessage);
+   484→   484→    fd.set("eta", editEta);
+   485→   485→    fd.set("type", editType);
+   486→   486→    fd.set("isActive", String(editIsActive));
+   487→   487→    fetcher.submit(fd, { method: "POST" });
+   488→   488→    setEditModalOpen(false);
+   489→   489→    shopify.toast.show("Zip code updated");
+   490→   490→  }, [editId, editZip, editLabel, editZone, editMessage, editEta, editType, editIsActive, fetcher, shopify]);
+   491→   491→
+   492→   492→  const handleToggle = useCallback(
+   493→   493→    (id: string, isActive: boolean) => {
+   494→   494→      const fd = new FormData();
+   495→   495→      fd.set("intent", "toggle");
+   496→   496→      fd.set("id", id);
+   497→   497→      fd.set("isActive", String(isActive));
+   498→   498→      fetcher.submit(fd, { method: "POST" });
+   499→   499→    },
+   500→   500→    [fetcher],
+   501→   501→  );
+   502→   502→
+   503→   503→  const handleImport = useCallback(() => {
+   504→   504→    const dataToImport = csvText.trim();
+   505→   505→    if (!dataToImport) return;
+   506→   506→    const fd = new FormData();
+   507→   507→    fd.set("intent", "bulk-import");
+   508→   508→    fd.set("csvData", dataToImport);
+   509→   509→    fetcher.submit(fd, { method: "POST" });
+   510→   510→  }, [csvText, fetcher]);
+   511→   511→
+   512→   512→  const handleFileUpload = useCallback(
+   513→   513→    (_files: File[], acceptedFiles: File[]) => {
+   514→   514→      if (acceptedFiles.length > 0) {
+   515→   515→        const file = acceptedFiles[0];
+   516→   516→        setImportFile(file);
+   517→   517→        const reader = new FileReader();
+   518→   518→        reader.onload = (e) => {
+   519→   519→          const text = e.target?.result;
+   520→   520→          if (typeof text === "string") {
+   521→   521→            setCsvText(text);
+   522→   522→          }
+   523→   523→        };
+   524→   524→        reader.readAsText(file);
+   525→   525→      }
+   526→   526→    },
+   527→   527→    [],
+   528→   528→  );
+   529→   529→
+   530→   530→  const handleExport = useCallback(() => {
+   531→   531→    const fd = new FormData();
+   532→   532→    fd.set("intent", "export");
+   533→   533→    fetcher.submit(fd, { method: "POST" });
+   534→   534→  }, [fetcher]);
+   535→   535→
+   536→   536→  // Trigger download when export data arrives
+   537→   537→  const exportCsv =
+   538→   538→    fetcher.data &&
+   539→   539→    "action" in fetcher.data &&
+   540→   540→    fetcher.data.action === "export" &&
+   541→   541→    "csv" in fetcher.data
+   542→   542→      ? (fetcher.data.csv as string)
+   543→   543→      : null;
+   544→   544→
+   545→   545→  if (exportCsv) {
+   546→   546→    const blob = new Blob([exportCsv], { type: "text/csv" });
+   547→   547→    const url = URL.createObjectURL(blob);
+   548→   548→    const a = document.createElement("a");
+   549→   549→    a.href = url;
+   550→   550→    a.download = "zip-codes.csv";
+   551→   551→    a.click();
+   552→   552→    URL.revokeObjectURL(url);
+   553→   553→  }
+   554→   554→
+   555→   555→  const typeOptions = [
+   556→   556→    { label: "Allowed — permit this zip code", value: "allowed" },
+   557→   557→    ...(limits.allowBlocked
+   558→   558→      ? [{ label: "Blocked — deny this zip code", value: "blocked" }]
+   559→   559→      : []),
+   560→   560→  ];
+   561→   561→
+   562→   562→  const filterOptions = [
+   563→   563→    { label: "All", value: "all" },
+   564→   564→    { label: "Allowed", value: "allowed" },
+   565→   565→    { label: "Blocked", value: "blocked" },
+   566→   566→  ];
+   567→   567→
+   568→   568→  const tableRows = paginatedZipCodes.map((z) => [
+   569→   569→    <Text as="span" fontWeight="bold" key={`zip-${z.id}`}>
+   570→   570→      {z.zipCode}
+   571→   571→    </Text>,
+   572→   572→    z.zone || (
+   573→   573→      <Text as="span" tone="subdued">
+   574→   574→        —
+   575→   575→      </Text>
+   576→   576→    ),
+   577→   577→    <InlineStack gap="300" blockAlign="center" key={`status-${z.id}`}>
+   578→   578→      <Tooltip content={z.isActive ? "Click to deactivate" : "Click to activate"}>
+   579→   579→        <Button
+   580→   580→          variant="plain"
+   581→   581→          tone={z.isActive ? "success" : undefined}
+   582→   582→          onClick={() => handleToggle(z.id, z.isActive)}
+   583→   583→          accessibilityLabel={z.isActive ? "Deactivate zip code" : "Activate zip code"}
+   584→   584→        >
+   585→   585→          {z.isActive ? "Active" : "Inactive"}
+   586→   586→        </Button>
+   587→   587→      </Tooltip>
+   588→   588→      <Badge tone={z.type === "allowed" ? "success" : "critical"}>
+   589→   589→        {z.type === "allowed" ? "Allow" : "Block"}
+   590→   590→      </Badge>
+   591→   591→    </InlineStack>,
+   592→   592→    z.message || (
+   593→   593→      <Text as="span" tone="subdued">
+   594→   594→        —
+   595→   595→      </Text>
+   596→   596→    ),
+   597→   597→    z.eta || (
+   598→   598→      <Text as="span" tone="subdued">
+   599→   599→        —
+   600→   600→      </Text>
+   601→   601→    ),
+   602→   602→    <InlineStack gap="200" blockAlign="center" key={`actions-${z.id}`}>
+   603→   603→      <Tooltip content="Edit zip code">
+   604→   604→        <Button
+   605→   605→          size="slim"
+   606→   606→          variant="tertiary"
+   607→   607→          onClick={() => handleOpenEdit(z)}
+   608→   608→          icon={EditIcon}
+   609→   609→          accessibilityLabel="Edit"
+   610→   610→        />
+   611→   611→      </Tooltip>
+   612→   612→      <Tooltip content="Delete zip code">
+   613→   613→        <Button
+   614→   614→          size="slim"
+   615→   615→          tone="critical"
+   616→   616→          variant="tertiary"
+   617→   617→          onClick={() => handleDelete(z.id)}
+   618→   618→          icon={DeleteIcon}
+   619→   619→          accessibilityLabel="Delete"
+   620→   620→        />
+   621→   621→      </Tooltip>
+   622→   622→    </InlineStack>,
+   623→   623→  ]);
+   624→   624→
+   625→   625→  return (
+   626→   626→    <Page
+   627→   627→      title="Zip Code Checker"
+   628→   628→      subtitle="Manage allowed and blocked zip codes for your store"
+   629→   629→      primaryAction={
+   630→   630→        atZipLimit
+   631→   631→          ? {
+   632→   632→              content: "Upgrade Plan",
+   633→   633→              icon: StarIcon,
+   634→   634→              onAction: () => navigate("/app/pricing"),
+   635→   635→            }
+   636→   636→          : {
+   637→   637→              content: "Add Zip Code",
+   638→   638→              icon: PlusIcon,
+   639→   639→              onAction: () => setAddModalOpen(true),
+   640→   640→            }
+   641→   641→      }
+   642→   642→    >
+   643→   643→      <Box paddingBlockEnd="1600">
+   644→   644→      <Layout>
+   645→   645→        {/* Upgrade banner for free plan */}
+   646→   646→        {isFreePlan && (
+   647→   647→          <Layout.Section>
+   648→   648→            <Banner
+   649→   649→              title="Unlock unlimited zip codes & blocked zones"
+   650→   650→              tone="info"
+   651→   651→              action={{
+   652→   652→                content: "Upgrade to Pro",
+   653→   653→                onAction: () => navigate("/app/pricing"),
+   654→   654→              }}
+   655→   655→              secondaryAction={{
+   656→   656→                content: "See all plans",
+   657→   657→                onAction: () => navigate("/app/pricing"),
+   658→   658→              }}
+   659→   659→            >
+   660→   660→              <Text as="p" variant="bodyMd">
+   661→   661→                You&apos;re on the Free plan — limited to{" "}
+   662→   662→                {limits.maxZipCodes} allowed zip codes only. Pro unlocks
+   663→   663→                unlimited zip codes, blocked zones, delivery rules, and more.
+   664→   664→              </Text>
+   665→   665→            </Banner>
+   666→   666→          </Layout.Section>
+   667→   667→        )}
+   668→   668→
+   669→   669→        {/* Zip limit warning */}
+   670→   670→        {atZipLimit && (
+   671→   671→          <Layout.Section>
+   672→   672→            <Banner
+   673→   673→              title="Zip code limit reached"
+   674→   674→              tone="warning"
+   675→   675→              action={{
+   676→   676→                content: "Upgrade to Pro",
+   677→   677→                onAction: () => navigate("/app/pricing"),
+   678→   678→              }}
+   679→   679→            >
+   680→   680→              You have reached the {limits.maxZipCodes} zip code limit for the
+   681→   681→              Free plan. Upgrade to Pro for unlimited zip codes.
+   682→   682→            </Banner>
+   683→   683→          </Layout.Section>
+   684→   684→        )}
+   685→   685→
+   686→   686→        {/* Stats Row */}
+   687→   687→        <Layout.Section>
+   688→   688→          <InlineGrid columns={{ xs: 2, sm: 3, md: 5 }} gap="400">
+   689→   689→            {/* Total */}
+   690→   690→            <Card padding="400">
+   691→   691→              <BlockStack gap="150">
+   692→   692→                <Text as="p" tone="subdued" variant="bodySm">
+   693→   693→                  Total Zip Codes
+   694→   694→                </Text>
+   695→   695→                <InlineStack gap="150" blockAlign="center">
+   696→   696→                  <Text as="p" variant="headingXl" fontWeight="bold">
+   697→   697→                    {stats.total}
+   698→   698→                  </Text>
+   699→   699→                  {limits.maxZipCodes !== Infinity && (
+   700→   700→                    <Text as="p" tone="subdued" variant="bodySm">
+   701→   701→                      / {limits.maxZipCodes}
+   702→   702→                    </Text>
+   703→   703→                  )}
+   704→   704→                </InlineStack>
+   705→   705→              </BlockStack>
+   706→   706→            </Card>
+   707→   707→
+   708→   708→            {/* Allowed */}
+   709→   709→            <Card padding="400">
+   710→   710→              <BlockStack gap="150">
+   711→   711→                <Text as="p" tone="success" variant="bodySm">
+   712→   712→                  Allowed
+   713→   713→                </Text>
+   714→   714→                <Text as="p" variant="headingXl" fontWeight="bold" tone="success">
+   715→   715→                  {stats.allowed}
+   716→   716→                </Text>
+   717→   717→              </BlockStack>
+   718→   718→            </Card>
+   719→   719→
+   720→   720→            {/* Blocked */}
+   721→   721→            <Card padding="400">
+   722→   722→              <BlockStack gap="150">
+   723→   723→                <InlineStack gap="150" blockAlign="center">
+   724→   724→                  <Text
+   725→   725→                    as="p"
+   726→   726→                    tone={isFreePlan ? "subdued" : "critical"}
+   727→   727→                    variant="bodySm"
+   728→   728→                  >
+   729→   729→                    Blocked
+   730→   730→                  </Text>
+   731→   731→                  {isFreePlan && <Badge tone="attention">Pro+</Badge>}
+   732→   732→                </InlineStack>
+   733→   733→                <Text
+   734→   734→                  as="p"
+   735→   735→                  variant="headingXl"
+   736→   736→                  fontWeight="bold"
+   737→   737→                  tone={isFreePlan ? "subdued" : "critical"}
+   738→   738→                >
+   739→   739→                  {stats.blocked}
+   740→   740→                </Text>
+   741→   741→              </BlockStack>
+   742→   742→            </Card>
+   743→   743→
+   744→   744→            {/* Active */}
+   745→   745→            <Card padding="400">
+   746→   746→              <BlockStack gap="150">
+   747→   747→                <Text as="p" tone="subdued" variant="bodySm">
+   748→   748→                  Active
+   749→   749→                </Text>
+   750→   750→                <Text as="p" variant="headingXl" fontWeight="bold">
+   751→   751→                  {stats.active}
+   752→   752→                </Text>
+   753→   753→              </BlockStack>
+   754→   754→            </Card>
+   755→   755→
+   756→   756→            {/* Current Plan */}
+   757→   757→            <Card padding="400">
+   758→   758→              <BlockStack gap="150">
+   759→   759→                <Text as="p" tone="subdued" variant="bodySm">
+   760→   760→                  Current Plan
+   761→   761→                </Text>
+   762→   762→                {subscription.planTier === "ultimate" ? (
+   763→   763→                  <Badge tone="success">Ultimate</Badge>
+   764→   764→                ) : subscription.planTier === "pro" ? (
+   765→   765→                  <Badge tone="info">Pro</Badge>
+   766→   766→                ) : (
+   767→   767→                  <Badge tone="new">Free</Badge>
+   768→   768→                )}
+   769→   769→                {isFreePlan && (
+   770→   770→                  <Button
+   771→   771→                    variant="plain"
+   772→   772→                    size="slim"
+   773→   773→                    tone="success"
+   774→   774→                    onClick={() => navigate("/app/pricing")}
+   775→   775→                  >
+   776→   776→                    Upgrade
+   777→   777→                  </Button>
+   778→   778→                )}
+   779→   779→              </BlockStack>
+   780→   780→            </Card>
+   781→   781→          </InlineGrid>
+   782→   782→        </Layout.Section>
+   783→   783→
+   784→   784→        {/* Zip Code Checker Tool */}
+   785→   785→        <Layout.Section>
+   786→   786→          <Card>
+   787→   787→            <BlockStack gap="400">
+   788→   788→              <BlockStack gap="100">
+   789→   789→                <Text as="h2" variant="headingMd">
+   790→   790→                  Check a Zip Code
+   791→   791→                </Text>
+   792→   792→                <Text as="p" tone="subdued" variant="bodyMd">
+   793→   793→                  Enter a zip code to instantly see if it&apos;s allowed or
+   794→   794→                  blocked.
+   795→   795→                </Text>
+   796→   796→              </BlockStack>
+   797→   797→
+   798→   798→              <InlineStack gap="300" blockAlign="end">
+   799→   799→                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+   800→   800→                <div
+   801→   801→                  style={{ flex: 1 }}
+   802→   802→                  role="search"
+   803→   803→                  onKeyDown={(e: React.KeyboardEvent) => {
+   804→   804→                    if (e.key === "Enter") handleCheck();
+   805→   805→                  }}
+   806→   806→                >
+   807→   807→                  <TextField
+   808→   808→                    label="Zip code"
+   809→   809→                    value={checkZip}
+   810→   810→                    onChange={setCheckZip}
+   811→   811→                    placeholder="e.g. 90210"
+   812→   812→                    autoComplete="off"
+   813→   813→                    labelHidden
+   814→   814→                    prefix={<Icon source={SearchIcon} />}
+   815→   815→                    connectedRight={
+   816→   816→                      <Button
+   817→   817→                        onClick={handleCheck}
+   818→   818→                        loading={isCheckLoading}
+   819→   819→                        variant="primary"
+   820→   820→                      >
+   821→   821→                        Check
+   822→   822→                      </Button>
+   823→   823→                    }
+   824→   824→                  />
+   825→   825→                </div>
+   826→   826→              </InlineStack>
+   827→   827→
+   828→   828→              {checkResult && (
+   829→   829→                <Banner
+   830→   830→                  tone={
+   831→   831→                    !checkResult.found
+   832→   832→                      ? "warning"
+   833→   833→                      : checkResult.record?.type === "allowed"
+   834→   834→                        ? "success"
+   835→   835→                        : "critical"
+   836→   836→                  }
+   837→   837→                >
+   838→   838→                  {!checkResult.found ? (
+   839→   839→                    <Text as="p">
+   840→   840→                      <strong>{checkResult.zipCode}</strong> is{" "}
+   841→   841→                      <strong>not found</strong> in your zip code list.
+   842→   842→                    </Text>
+   843→   843→                  ) : checkResult.record?.type === "allowed" ? (
+   844→   844→                    <Text as="p">
+   845→   845→                      <strong>{checkResult.zipCode}</strong> is{" "}
+   846→   846→                      <strong>allowed</strong>
+   847→   847→                      {checkResult.record.zone
+   848→   848→                        ? ` — Zone: ${checkResult.record.zone}`
+   849→   849→                        : ""}
+   850→   850→                      {checkResult.record.message
+   851→   851→                        ? ` — ${checkResult.record.message}`
+   852→   852→                        : ""}
+   853→   853→                      {checkResult.record.eta
+   854→   854→                        ? ` (ETA: ${checkResult.record.eta})`
+   855→   855→                        : ""}
+   856→   856→                      .{" "}
+   857→   857→                      {!checkResult.record.isActive && (
+   858→   858→                        <em>(Currently inactive)</em>
+   859→   859→                      )}
+   860→   860→                    </Text>
+   861→   861→                  ) : (
+   862→   862→                    <Text as="p">
+   863→   863→                      <strong>{checkResult.zipCode}</strong> is{" "}
+   864→   864→                      <strong>blocked</strong>
+   865→   865→                      {checkResult.record?.zone
+   866→   866→                        ? ` — Zone: ${checkResult.record.zone}`
+   867→   867→                        : ""}
+   868→   868→                      {checkResult.record?.message
+   869→   869→                        ? ` — ${checkResult.record.message}`
+   870→   870→                        : ""}
+   871→   871→                      .{" "}
+   872→   872→                      {!checkResult.record?.isActive && (
+   873→   873→                        <em>(Currently inactive)</em>
+   874→   874→                      )}
+   875→   875→                    </Text>
+   876→   876→                  )}
+   877→   877→                </Banner>
+   878→   878→              )}
+   879→   879→            </BlockStack>
+   880→   880→          </Card>
+   881→   881→        </Layout.Section>
+   882→   882→
+   883→   883→        {/* Zip Code List */}
+   884→   884→        <Layout.Section>
+   885→   885→          <Card padding="0">
+   886→   886→            {/* Toolbar: Search, Filter, Import, Export, Add */}
+   887→   887→            <Box padding="400">
+   888→   888→              <InlineStack gap="300" align="space-between" blockAlign="center" wrap>
+   889→   889→                <InlineStack gap="300" blockAlign="center" wrap>
+   890→   890→                  <div style={{ minWidth: "260px" }}>
+   891→   891→                    <TextField
+   892→   892→                      label="Search zip codes"
+   893→   893→                      labelHidden
+   894→   894→                      value={searchQuery}
+   895→   895→                      onChange={handleSearchChange}
+   896→   896→                      placeholder="Search zip codes..."
+   897→   897→                      autoComplete="off"
+   898→   898→                      prefix={<Icon source={SearchIcon} />}
+   899→   899→                      clearButton
+   900→   900→                      onClearButtonClick={() => handleSearchChange("")}
+   901→   901→                    />
+   902→   902→                  </div>
+   903→   903→                  <div style={{ minWidth: "120px" }}>
+   904→   904→                    <Select
+   905→   905→                      label="Filter"
+   906→   906→                      labelHidden
+   907→   907→                      options={filterOptions}
+   908→   908→                      value={statusFilter}
+   909→   909→                      onChange={handleFilterChange}
+   910→   910→                    />
+   911→   911→                  </div>
+   912→   912→                </InlineStack>
+   913→   913→                <InlineStack gap="200">
+   914→   914→                  <Button
+   915→   915→                    icon={ImportIcon}
+   916→   916→                    onClick={() => setImportModalOpen(true)}
+   917→   917→                  >
+   918→   918→                    Import CSV
+   919→   919→                  </Button>
+   920→   920→                  <Button icon={ExportIcon} onClick={handleExport}>
+   921→   921→                    Export
+   922→   922→                  </Button>
+   923→   923→                  {!atZipLimit && (
+   924→   924→                    <Button
+   925→   925→                      icon={PlusIcon}
+   926→   926→                      onClick={() => setAddModalOpen(true)}
+   927→   927→                    >
+   928→   928→                      Add Zip Code
+   929→   929→                    </Button>
+   930→   930→                  )}
+   931→   931→                </InlineStack>
+   932→   932→              </InlineStack>
+   933→   933→            </Box>
+   934→   934→            <Divider />
+   935→   935→
+   936→   936→            {(zipCodes as ZipCodeRecord[]).length === 0 ? (
+   937→   937→              <EmptyState
+   938→   938→                heading="No zip codes added yet"
+   939→   939→                image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+   940→   940→                action={{
+   941→   941→                  content: "Add your first zip code",
+   942→   942→                  onAction: () => setAddModalOpen(true),
+   943→   943→                }}
+   944→   944→                secondaryAction={{
+   945→   945→                  content: "Import from CSV",
+   946→   946→                  onAction: () => setImportModalOpen(true),
+   947→   947→                }}
+   948→   948→              >
+   949→   949→                <p>
+   950→   950→                  Add zip codes to control which areas are allowed or blocked
+   951→   951→                  for your store. You can add them one by one or import a CSV
+   952→   952→                  file.
+   953→   953→                </p>
+   954→   954→              </EmptyState>
+   955→   955→            ) : filteredZipCodes.length === 0 ? (
+   956→   956→              <Box padding="600">
+   957→   957→                <BlockStack gap="200" inlineAlign="center">
+   958→   958→                  <Text as="p" tone="subdued" alignment="center">
+   959→   959→                    No zip codes match your search.
+   960→   960→                  </Text>
+   961→   961→                  <Button
+   962→   962→                    variant="plain"
+   963→   963→                    onClick={() => {
+   964→   964→                      setSearchQuery("");
+   965→   965→                      setStatusFilter("all");
+   966→   966→                    }}
+   967→   967→                  >
+   968→   968→                    Clear filters
+   969→   969→                  </Button>
+   970→   970→                </BlockStack>
+   971→   971→              </Box>
+   972→   972→            ) : (
+   973→   973→              <>
+   974→   974→                <DataTable
+   975→   975→                  columnContentTypes={[
+   976→   976→                    "text",
+   977→   977→                    "text",
+   978→   978→                    "text",
+   979→   979→                    "text",
+   980→   980→                    "text",
+   981→   981→                    "text",
+   982→   982→                  ]}
+   983→   983→                  headings={[
+   984→   984→                    "Zip Code",
+   985→   985→                    "Zone",
+   986→   986→                    "Status",
+   987→   987→                    "Message",
+   988→   988→                    "ETA",
+   989→   989→                    "Actions",
+   990→   990→                  ]}
+   991→   991→                  rows={tableRows}
+   992→   992→                  hoverable
+   993→   993→                />
+   994→   994→                {totalPages > 1 && (
+   995→   995→                  <Box padding="400">
+   996→   996→                    <InlineStack align="center" blockAlign="center" gap="300">
+   997→   997→                      <Pagination
+   998→   998→                        hasPrevious={currentPage > 1}
+   999→   999→                        onPrevious={() =>
+  1000→  1000→                          setCurrentPage((p) => Math.max(1, p - 1))
+  1001→  1001→                        }
+  1002→  1002→                        hasNext={currentPage < totalPages}
+  1003→  1003→                        onNext={() =>
+  1004→  1004→                          setCurrentPage((p) => Math.min(totalPages, p + 1))
+  1005→  1005→                        }
+  1006→  1006→                      />
+  1007→  1007→                      <Text as="span" tone="subdued" variant="bodySm">
+  1008→  1008→                        Page {currentPage} of {totalPages} ({filteredZipCodes.length} results)
+  1009→  1009→                      </Text>
+  1010→  1010→                    </InlineStack>
+  1011→  1011→                  </Box>
+  1012→  1012→                )}
+  1013→  1013→              </>
+  1014→  1014→            )}
+  1015→  1015→          </Card>
+  1016→  1016→        </Layout.Section>
+  1017→  1017→      </Layout>
+  1018→  1018→      </Box>
+  1019→  1019→
+  1020→  1020→      {/* Add Zip Code Modal */}
+  1021→  1021→      <Modal
+  1022→  1022→        open={addModalOpen}
+  1023→  1023→        onClose={() => {
+  1024→  1024→          setAddModalOpen(false);
+  1025→  1025→          setNewZip("");
+  1026→  1026→          setNewLabel("");
+  1027→  1027→          setNewZone("");
+  1028→  1028→          setNewMessage("");
+  1029→  1029→          setNewEta("");
+  1030→  1030→          setNewType("allowed");
+  1031→  1031→        }}
+  1032→  1032→        title="Add Zip Code"
+  1033→  1033→        primaryAction={{
+  1034→  1034→          content: "Add Zip Code",
+  1035→  1035→          onAction: handleAdd,
+  1036→  1036→          loading: isAddLoading,
+  1037→  1037→        }}
+  1038→  1038→        secondaryActions={[
+  1039→  1039→          {
+  1040→  1040→            content: "Cancel",
+  1041→  1041→            onAction: () => {
+  1042→  1042→              setAddModalOpen(false);
+  1043→  1043→              setNewZip("");
+  1044→  1044→              setNewLabel("");
+  1045→  1045→              setNewZone("");
+  1046→  1046→              setNewMessage("");
+  1047→  1047→              setNewEta("");
+  1048→  1048→              setNewType("allowed");
+  1049→  1049→            },
+  1050→  1050→          },
+  1051→  1051→        ]}
+  1052→  1052→      >
+  1053→  1053→        <Modal.Section>
+  1054→  1054→          <BlockStack gap="400">
+  1055→  1055→            {actionError && (
+  1056→  1056→              <Banner
+  1057→  1057→                tone="critical"
+  1058→  1058→                action={
+  1059→  1059→                  upgradeRequired
+  1060→  1060→                    ? {
+  1061→  1061→                        content: "View Pricing Plans",
+  1062→  1062→                        onAction: () => {
+  1063→  1063→                          setAddModalOpen(false);
+  1064→  1064→                          navigate("/app/pricing");
+  1065→  1065→                        },
+  1066→  1066→                      }
+  1067→  1067→                    : undefined
+  1068→  1068→                }
+  1069→  1069→              >
+  1070→  1070→                {actionError}
+  1071→  1071→              </Banner>
+  1072→  1072→            )}
+  1073→  1073→            <TextField
+  1074→  1074→              label="Zip Code"
+  1075→  1075→              value={newZip}
+  1076→  1076→              onChange={setNewZip}
+  1077→  1077→              placeholder="e.g. 90210"
+  1078→  1078→              autoComplete="off"
+  1079→  1079→              helpText="Enter a 5-digit US zip code or postal code."
+  1080→  1080→            />
+  1081→  1081→            <InlineStack gap="300">
+  1082→  1082→              <div style={{ flex: 1 }}>
+  1083→  1083→                <TextField
+  1084→  1084→                  label="Zone"
+  1085→  1085→                  value={newZone}
+  1086→  1086→                  onChange={setNewZone}
+  1087→  1087→                  placeholder="e.g. Manhattan, Beverly Hills"
+  1088→  1088→                  autoComplete="off"
+  1089→  1089→                  helpText="The delivery zone or area name."
+  1090→  1090→                />
+  1091→  1091→              </div>
+  1092→  1092→              <div style={{ flex: 1 }}>
+  1093→  1093→                <Select
+  1094→  1094→                  label="Status"
+  1095→  1095→                  options={typeOptions}
+  1096→  1096→                  value={newType}
+  1097→  1097→                  onChange={setNewType}
+  1098→  1098→                  helpText={
+  1099→  1099→                    isFreePlan && !limits.allowBlocked
+  1100→  1100→                      ? "Blocked zip codes require Pro or Ultimate plan."
+  1101→  1101→                      : "Allow or block this zip code."
+  1102→  1102→                  }
+  1103→  1103→                />
+  1104→  1104→              </div>
+  1105→  1105→            </InlineStack>
+  1106→  1106→            <TextField
+  1107→  1107→              label="Message"
+  1108→  1108→              value={newMessage}
+  1109→  1109→              onChange={setNewMessage}
+  1110→  1110→              placeholder="e.g. Delivery available!, Sorry we don't deliver here"
+  1111→  1111→              autoComplete="off"
+  1112→  1112→              helpText="Custom message shown to customers for this zip code."
+  1113→  1113→            />
+  1114→  1114→            <InlineStack gap="300">
+  1115→  1115→              <div style={{ flex: 1 }}>
+  1116→  1116→                <TextField
+  1117→  1117→                  label="ETA"
+  1118→  1118→                  value={newEta}
+  1119→  1119→                  onChange={setNewEta}
+  1120→  1120→                  placeholder="e.g. 2-3 days"
+  1121→  1121→                  autoComplete="off"
+  1122→  1122→                  helpText="Estimated delivery time."
+  1123→  1123→                />
+  1124→  1124→              </div>
+  1125→  1125→              <div style={{ flex: 1 }}>
+  1126→  1126→                <TextField
+  1127→  1127→                  label="Label (optional)"
+  1128→  1128→                  value={newLabel}
+  1129→  1129→                  onChange={setNewLabel}
+  1130→  1130→                  placeholder="e.g. Downtown LA"
+  1131→  1131→                  autoComplete="off"
+  1132→  1132→                  helpText="Internal label for your reference."
+  1133→  1133→                />
+  1134→  1134→              </div>
+  1135→  1135→            </InlineStack>
+  1136→  1136→            {isFreePlan && !limits.allowBlocked && (
+  1137→  1137→              <Banner tone="info">
+  1138→  1138→                <InlineStack gap="200" blockAlign="center">
+  1139→  1139→                  <Text as="span" variant="bodySm">
+  1140→  1140→                    Want to block zip codes?{" "}
+  1141→  1141→                  </Text>
+  1142→  1142→                  <Button
+  1143→  1143→                    variant="plain"
+  1144→  1144→                    onClick={() => {
+  1145→  1145→                      setAddModalOpen(false);
+  1146→  1146→                      navigate("/app/pricing");
+  1147→  1147→                    }}
+  1148→  1148→                  >
+  1149→  1149→                    Upgrade to Pro
+  1150→  1150→                  </Button>
+  1151→  1151→                </InlineStack>
+  1152→  1152→              </Banner>
+  1153→  1153→            )}
+  1154→  1154→          </BlockStack>
+  1155→  1155→        </Modal.Section>
+  1156→  1156→      </Modal>
+  1157→  1157→
+  1158→  1158→      {/* Edit Zip Code Modal */}
+  1159→  1159→      <Modal
+  1160→  1160→        open={editModalOpen}
+  1161→  1161→        onClose={() => setEditModalOpen(false)}
+  1162→  1162→        title="Edit Zip Code"
+  1163→  1163→        primaryAction={{
+  1164→  1164→          content: "Save Changes",
+  1165→  1165→          onAction: handleUpdate,
+  1166→  1166→          loading: isEditLoading,
+  1167→  1167→        }}
+  1168→  1168→        secondaryActions={[
+  1169→  1169→          {
+  1170→  1170→            content: "Cancel",
+  1171→  1171→            onAction: () => setEditModalOpen(false),
+  1172→  1172→          },
+  1173→  1173→        ]}
+  1174→  1174→      >
+  1175→  1175→        <Modal.Section>
+  1176→  1176→          <BlockStack gap="400">
+  1177→  1177→            {actionError && (
+  1178→  1178→              <Banner tone="critical">{actionError}</Banner>
+  1179→  1179→            )}
+  1180→  1180→            <TextField
+  1181→  1181→              label="Zip Code"
+  1182→  1182→              value={editZip}
+  1183→  1183→              onChange={setEditZip}
+  1184→  1184→              placeholder="e.g. 90210"
+  1185→  1185→              autoComplete="off"
+  1186→  1186→              helpText="Enter a 5-digit US zip code or postal code."
+  1187→  1187→            />
+  1188→  1188→            <InlineStack gap="300">
+  1189→  1189→              <div style={{ flex: 1 }}>
+  1190→  1190→                <TextField
+  1191→  1191→                  label="Zone"
+  1192→  1192→                  value={editZone}
+  1193→  1193→                  onChange={setEditZone}
+  1194→  1194→                  placeholder="e.g. Manhattan, Beverly Hills"
+  1195→  1195→                  autoComplete="off"
+  1196→  1196→                  helpText="The delivery zone or area name."
+  1197→  1197→                />
+  1198→  1198→              </div>
+  1199→  1199→              <div style={{ flex: 1 }}>
+  1200→  1200→                <Select
+  1201→  1201→                  label="Status"
+  1202→  1202→                  options={typeOptions}
+  1203→  1203→                  value={editType}
+  1204→  1204→                  onChange={setEditType}
+  1205→  1205→                  helpText={
+  1206→  1206→                    isFreePlan && !limits.allowBlocked
+  1207→  1207→                      ? "Blocked zip codes require Pro or Ultimate plan."
+  1208→  1208→                      : "Allow or block this zip code."
+  1209→  1209→                  }
+  1210→  1210→                />
+  1211→  1211→              </div>
+  1212→  1212→            </InlineStack>
+  1213→  1213→            <TextField
+  1214→  1214→              label="Message"
+  1215→  1215→              value={editMessage}
+  1216→  1216→              onChange={setEditMessage}
+  1217→  1217→              placeholder="e.g. Delivery available!, Sorry we don't deliver here"
+  1218→  1218→              autoComplete="off"
+  1219→  1219→              helpText="Custom message shown to customers for this zip code."
+  1220→  1220→            />
+  1221→  1221→            <InlineStack gap="300">
+  1222→  1222→              <div style={{ flex: 1 }}>
+  1223→  1223→                <TextField
+  1224→  1224→                  label="ETA"
+  1225→  1225→                  value={editEta}
+  1226→  1226→                  onChange={setEditEta}
+  1227→  1227→                  placeholder="e.g. 2-3 days"
+  1228→  1228→                  autoComplete="off"
+  1229→  1229→                  helpText="Estimated delivery time."
+  1230→  1230→                />
+  1231→  1231→              </div>
+  1232→  1232→              <div style={{ flex: 1 }}>
+  1233→  1233→                <TextField
+  1234→  1234→                  label="Label (optional)"
+  1235→  1235→                  value={editLabel}
+  1236→  1236→                  onChange={setEditLabel}
+  1237→  1237→                  placeholder="e.g. Downtown LA"
+  1238→  1238→                  autoComplete="off"
+  1239→  1239→                  helpText="Internal label for your reference."
+  1240→  1240→                />
+  1241→  1241→              </div>
+  1242→  1242→            </InlineStack>
+  1243→  1243→            <Select
+  1244→  1244→              label="Active"
+  1245→  1245→              options={[
+  1246→  1246→                { label: "Active — zip code is enabled", value: "true" },
+  1247→  1247→                { label: "Inactive — zip code is disabled", value: "false" },
+  1248→  1248→              ]}
+  1249→  1249→              value={String(editIsActive)}
+  1250→  1250→              onChange={(val) => setEditIsActive(val === "true")}
+  1251→  1251→              helpText="Inactive zip codes are ignored by the widget."
+  1252→  1252→            />
+  1253→  1253→          </BlockStack>
+  1254→  1254→        </Modal.Section>
+  1255→  1255→      </Modal>
+  1256→  1256→
+  1257→  1257→      {/* Import CSV Modal */}
+  1258→  1258→      <Modal
+  1259→  1259→        open={importModalOpen}
+  1260→  1260→        onClose={() => {
+  1261→  1261→          setImportModalOpen(false);
+  1262→  1262→          setCsvText("");
+  1263→  1263→          setImportFile(null);
+  1264→  1264→        }}
+  1265→  1265→        title="Import Zip Codes from CSV"
+  1266→  1266→        primaryAction={{
+  1267→  1267→          content: isImportLoading ? "Importing..." : "Import",
+  1268→  1268→          onAction: handleImport,
+  1269→  1269→          loading: isImportLoading,
+  1270→  1270→          disabled: !csvText.trim(),
+  1271→  1271→        }}
+  1272→  1272→        secondaryActions={[
+  1273→  1273→          {
+  1274→  1274→            content: "Cancel",
+  1275→  1275→            onAction: () => {
+  1276→  1276→              setImportModalOpen(false);
+  1277→  1277→              setCsvText("");
+  1278→  1278→              setImportFile(null);
+  1279→  1279→            },
+  1280→  1280→          },
+  1281→  1281→        ]}
+  1282→  1282→      >
+  1283→  1283→        <Modal.Section>
+  1284→  1284→          <BlockStack gap="400">
+  1285→  1285→            {importResult && (
+  1286→  1286→              <Banner
+  1287→  1287→                tone={
+  1288→  1288→                  importResult.errors && (importResult.errors as string[]).length > 0
+  1289→  1289→                    ? "warning"
+  1290→  1290→                    : "success"
+  1291→  1291→                }
+  1292→  1292→              >
+  1293→  1293→                <Text as="p">
+  1294→  1294→                  Imported <strong>{importResult.imported as number}</strong> zip
+  1295→  1295→                  codes.
+  1296→  1296→                  {(importResult.skipped as number) > 0 &&
+  1297→  1297→                    ` Skipped ${importResult.skipped} entries.`}
+  1298→  1298→                </Text>
+  1299→  1299→                {importResult.errors &&
+  1300→  1300→                  (importResult.errors as string[]).map((e, i) => (
+  1301→  1301→                    <Text as="p" key={i} tone="critical">
+  1302→  1302→                      {e}
+  1303→  1303→                    </Text>
+  1304→  1304→                  ))}
+  1305→  1305→              </Banner>
+  1306→  1306→            )}
+  1307→  1307→
+  1308→  1308→            <Text as="p" variant="bodyMd">
+  1309→  1309→              Upload a CSV file or paste CSV data below. The expected format is:
+  1310→  1310→            </Text>
+  1311→  1311→            <Box
+  1312→  1312→              padding="300"
+  1313→  1313→              background="bg-surface-secondary"
+  1314→  1314→              borderRadius="200"
+  1315→  1315→            >
+  1316→  1316→              <Text as="p" variant="bodySm" fontWeight="semibold">
+  1317→  1317→                Zip Code, Zone, Status, Message, ETA
+  1318→  1318→              </Text>
+  1319→  1319→              <Text as="p" variant="bodySm" tone="subdued">
+  1320→  1320→                10001, Manhattan, allowed, Delivery available!, 2-3 days
+  1321→  1321→              </Text>
+  1322→  1322→              <Text as="p" variant="bodySm" tone="subdued">
+  1323→  1323→                33101, Miami, blocked, Sorry we don&apos;t deliver here,
+  1324→  1324→              </Text>
+  1325→  1325→            </Box>
+  1326→  1326→
+  1327→  1327→            <DropZone
+  1328→  1328→              accept=".csv,text/csv"
+  1329→  1329→              type="file"
+  1330→  1330→              onDrop={handleFileUpload}
+  1331→  1331→              allowMultiple={false}
+  1332→  1332→            >
+  1333→  1333→              {importFile ? (
+  1334→  1334→                <Box padding="400">
+  1335→  1335→                  <InlineStack gap="200" blockAlign="center" align="center">
+  1336→  1336→                    <Text as="p" variant="bodyMd" fontWeight="semibold">
+  1337→  1337→                      {importFile.name}
+  1338→  1338→                    </Text>
+  1339→  1339→                    <Badge tone="success">Ready</Badge>
+  1340→  1340→                  </InlineStack>
+  1341→  1341→                </Box>
+  1342→  1342→              ) : (
+  1343→  1343→                <DropZone.FileUpload actionHint="Accepts .csv files" />
+  1344→  1344→              )}
+  1345→  1345→            </DropZone>
+  1346→  1346→
+  1347→  1347→            <Text as="p" variant="bodySm" tone="subdued">
+  1348→  1348→              Or paste your CSV data directly:
+  1349→  1349→            </Text>
+  1350→  1350→            <TextField
+  1351→  1351→              label="CSV data"
+  1352→  1352→              labelHidden
+  1353→  1353→              value={csvText}
+  1354→  1354→              onChange={setCsvText}
+  1355→  1355→              multiline={6}
+  1356→  1356→              placeholder="10001, Manhattan, allowed, Delivery available!, 2-3 days"
+  1357→  1357→              autoComplete="off"
+  1358→  1358→            />
+  1359→  1359→          </BlockStack>
+  1360→  1360→        </Modal.Section>
+  1361→  1361→      </Modal>
+  1362→  1362→    </Page>
+  1363→  1363→  );
+  1364→  1364→}
+  1365→  1365→
+  1366→  1366→export const headers: HeadersFunction = (headersArgs) => {
+  1367→  1367→  return boundary.headers(headersArgs);
+  1368→  1368→};
+  1369→  1369→
+  1370→
+  1371→<system-reminder>
+  1372→Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+  1373→</system-reminder>
+  1374→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

@@ -1,0 +1,382 @@
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/pages/Index.tsx-143-        const parsed = resume?.parsed_json as any;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/pages/Index.tsx-144-        return {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/pages/Index.tsx-145-          ...r,
+src/pages/Index.tsx:146:          overall_score: r.overall_score ?? 0,
+src/pages/Index.tsx-147-          missing_skills: r.missing_skills ?? [],
+src/pages/Index.tsx-148-          filename: resume?.filename ?? "Unknown",
+src/pages/Index.tsx-149-          file_path: resume?.file_path ?? null,
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-8-
+src/components/ScoreSummaryCards.tsx-9-const ScoreSummaryCards = ({ results }: ScoreSummaryCardsProps) => {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-10-  const scored = results.filter((r) => !r.pending);
+src/components/ScoreSummaryCards.tsx:11:  if (scored.length === 0) return null;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-12-
+src/components/ScoreSummaryCards.tsx-13-  const avg = (fn: (r: Result) => number) =>
+src/components/ScoreSummaryCards.tsx:14:    Math.round(scored.reduce((sum, r) => sum + fn(r), 0) / scored.length);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-15-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-16-  // Compute avg category score from category_scores_json (the actual dynamic scores)
+src/components/ScoreSummaryCards.tsx-17-  const avgCategoryScore = (r: Result): number => {
+src/components/ScoreSummaryCards.tsx:18:    if (!r.category_scores_json || typeof r.category_scores_json !== "object") return 0;
+src/components/ScoreSummaryCards.tsx-19-    const entries = Object.values(r.category_scores_json as Record<string, { score: number }>);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-20-    if (entries.length === 0) return 0;
+src/components/ScoreSummaryCards.tsx:21:    return entries.reduce((sum, e) => sum + (e.score ?? 0), 0) / entries.length;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-22-  };
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-23-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-24-  // Compute JD match % from matched vs total must-haves
+--
+src/components/ScoreSummaryCards.tsx-37-      icon: Target,
+src/components/ScoreSummaryCards.tsx-38-      color: "bg-score-overall",
+src/components/ScoreSummaryCards.tsx-39-      textColor: "text-score-overall",
+src/components/ScoreSummaryCards.tsx:40:      bgLight: "bg-score-overall/10",
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-41-    },
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-42-    {
+src/components/ScoreSummaryCards.tsx-43-      label: "Avg Skill Score",
+--
+src/components/ScoreSummaryCards.tsx-45-      icon: BarChart3,
+src/components/ScoreSummaryCards.tsx-46-      color: "bg-score-skills",
+src/components/ScoreSummaryCards.tsx-47-      textColor: "text-score-skills",
+src/components/ScoreSummaryCards.tsx:48:      bgLight: "bg-score-skills/10",
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-49-    },
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-50-    {
+src/components/ScoreSummaryCards.tsx-51-      label: "Confidence",
+--
+src/components/ScoreSummaryCards.tsx-53-      icon: TrendingUp,
+src/components/ScoreSummaryCards.tsx-54-      color: "bg-score-education",
+src/components/ScoreSummaryCards.tsx-55-      textColor: "text-score-education",
+src/components/ScoreSummaryCards.tsx:56:      bgLight: "bg-score-education/10",
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-57-    },
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-58-    {
+src/components/ScoreSummaryCards.tsx-59-      label: "JD Alignment",
+--
+src/components/ScoreSummaryCards.tsx-61-      icon: ShieldCheck,
+src/components/ScoreSummaryCards.tsx-62-      color: "bg-score-jd",
+src/components/ScoreSummaryCards.tsx-63-      textColor: "text-score-jd",
+src/components/ScoreSummaryCards.tsx:64:      bgLight: "bg-score-jd/10",
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-65-    },
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-66-  ];
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ScoreSummaryCards.tsx-67-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/stageFilter.test.ts-60-// ---------------------------------------------------------------------------
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/stageFilter.test.ts-61-function makeResult(
+src/test/stageFilter.test.ts-62-  resume_id: string,
+src/test/stageFilter.test.ts:63:  overall_score = 80,
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/stageFilter.test.ts-64-  pending = false
+src/test/stageFilter.test.ts-65-): Result {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/stageFilter.test.ts-66-  return { resume_id, overall_score, pending };
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-44-];
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-45-
+src/components/JDRewriteDialog.tsx-46-function scoreColor(score: number): string {
+src/components/JDRewriteDialog.tsx:47:  if (score >= 75) return "bg-green-500";
+src/components/JDRewriteDialog.tsx:48:  if (score >= 50) return "bg-yellow-500";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-49-  return "bg-red-500";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-50-}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-51-
+src/components/JDRewriteDialog.tsx-52-function scoreTextColor(score: number): string {
+src/components/JDRewriteDialog.tsx:53:  if (score >= 75) return "text-green-600";
+src/components/JDRewriteDialog.tsx:54:  if (score >= 50) return "text-yellow-600";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-55-  return "text-red-600";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-56-}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-57-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-168-                <div className="flex items-center justify-between">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-169-                  <p className="text-sm font-semibold">Quality Score (Original)</p>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-170-                  <span className={cn("text-sm font-bold", scoreTextColor(result.quality_score.overall))}>
+src/components/JDRewriteDialog.tsx:171:                    {result.quality_score.overall}/100
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-172-                  </span>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JDRewriteDialog.tsx-173-                </div>
+src/components/JDRewriteDialog.tsx-174-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-340-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-341-      if (shortlistedResumes) {
+supabase/functions/rank-resumes/index.ts-342-        const scored = shortlistedResumes.map((r: any) => {
+supabase/functions/rank-resumes/index.ts:343:          let score = 0;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-344-          const mustHaves = jdAnalysis.critical_must_haves || [];
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-345-          const tools = jdAnalysis.tools || [];
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-346-          const allResumeTerms = extractResumeTerms(r.parsed_json);
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-366-        });
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-367-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-368-        scored.sort((a, b) => b.score - a.score);
+supabase/functions/rank-resumes/index.ts:369:        top20Ids = scored.slice(0, 20).map((s) => s.id);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-370-      }
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-371-    }
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-372-
+supabase/functions/rank-resumes/index.ts:373:    // ─── STEP 5: Deep score top 20 ───────────────────────────────
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-374-    console.log(`Deep scoring ${top20Ids.length} resumes...`);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-375-    const dimensions = jdAnalysis.evaluation_dimensions || [];
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-376-    let successCount = 0;
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-401-          );
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-402-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-403-          // Compute overall score deterministically with fuzzy key matching
+supabase/functions/rank-resumes/index.ts:404:          let overallScore = 0;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-405-          const categoryScores = deepResult.category_scores || {};
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-406-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-407-          // Build a normalized key lookup for GPT response (handles case/underscore mismatches)
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-417-            totalWeight += weight;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-418-            // Try exact key first, then normalized key match
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-419-            const scoreEntry = categoryScores[dim.key] || scoreKeyMap.get(normalizeKey(dim.key));
+supabase/functions/rank-resumes/index.ts:420:            const dimScore = scoreEntry?.score ?? 0;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-421-            overallScore += dimScore * weight;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-422-          }
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-423-
+supabase/functions/rank-resumes/index.ts-424-          / Fallback: if no dimensions matched (all 0), try averaging all returned scores
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-425-          if (overallScore === 0 && Object.keys(categoryScores).length > 0) {
+supabase/functions/rank-resumes/index.ts:426:            const allScores = Object.values(categoryScores).map((v: any) => v?.score ?? 0).filter((s: number) => s > 0);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-427-            if (allScores.length > 0) {
+supabase/functions/rank-resumes/index.ts-428-              overallScore = allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-429-            }
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-498-            await supabase.from("results").insert({
+supabase/functions/rank-resumes/index.ts-499-              resume_id: rid,
+supabase/functions/rank-resumes/index.ts-500-              job_id: job_id,
+supabase/functions/rank-resumes/index.ts:501:              overall_score: 0,
+supabase/functions/rank-resumes/index.ts-502-              hard_fit: false,
+supabase/functions/rank-resumes/index.ts-503-              confidence: 0,
+supabase/functions/rank-resumes/index.ts-504-              category_scores_json: {},
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-514-    }
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-515-
+supabase/functions/rank-resumes/index.ts-516-    / ─── STEP 6: Heuristic score remaining resumes ─────────────
+supabase/functions/rank-resumes/index.ts:517:    const unscoredIds = targetResumeIds.filter((id) => !top20Ids.includes(id));
+supabase/functions/rank-resumes/index.ts:518:    if (unscoredIds.length > 0) {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-519-      console.log(`Heuristic scoring ${unscoredIds.length} remaining resumes...`);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-520-
+supabase/functions/rank-resumes/index.ts:521:      // Get all similarity scores (covering all resumes, not just top 50)
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-522-      let similarityMap = new Map<string, number>();
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-523-      if (jdEmbedding) {
+supabase/functions/rank-resumes/index.ts-524-        const { data: allSimilar } = await supabase.rpc("match_resumes_by_embedding", {
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-545-      for (const resume of (unscoredResumes || [])) {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-546-        const allResumeTerms = extractResumeTerms(resume.parsed_json);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-547-
+supabase/functions/rank-resumes/index.ts:548:        // Keyword overlap score (0-100)
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-549-        const totalKeywords = mustHaves.length + jdTools.length;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-550-        let matchedCount = 0;
+supabase/functions/rank-resumes/index.ts-551-        const matchedSkills: string[] = [];
+--
+supabase/functions/rank-resumes/index.ts-760-- missing_critical_must_haves: string[] (which critical must-haves are missing)
+supabase/functions/rank-resumes/index.ts-761-- matched_preferred_must_haves: string[]
+supabase/functions/rank-resumes/index.ts-762-- missing_preferred_must_haves: string[]
+supabase/functions/rank-resumes/index.ts:763:- category_scores: object where each key is a dimension key, value is {score: 0-100, evidence: [{snippet: string, section: string}], notes: string}
+supabase/functions/rank-resumes/index.ts-764-- strengths: string[] (top 3 strengths for this specific role)
+supabase/functions/rank-resumes/index.ts-765-- gaps: string[] (top 2 gaps/weaknesses for this specific role)
+supabase/functions/rank-resumes/index.ts-766-- interview_questions: string[] (${cfg.num_interview_questions} questions targeting gaps)
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-799-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-800-  if (!response.ok) {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-801-    const errBody = await response.text();
+supabase/functions/rank-resumes/index.ts:802:    throw new Error(`OpenAI score error ${response.status}: ${errBody.slice(0, 200)}`);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-803-  }
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-804-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rank-resumes/index.ts-805-  const data = await response.json();
+--
+src/components/ConfidenceReport.tsx-36-const ConfidenceReport = ({ results }: ConfidenceReportProps) => {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-37-  const [open, setOpen] = useState(false);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-38-
+src/components/ConfidenceReport.tsx:39:  const scored = results.filter((r) => !r.pending && r.overall_score > 0);
+src/components/ConfidenceReport.tsx:40:  if (scored.length === 0) return null;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-41-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-42-  // 1. Overall AI Confidence
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-43-  const avgConfidence = Math.round(
+src/components/ConfidenceReport.tsx:44:    scored.reduce((sum, r) => sum + (r.confidence ?? 0), 0) / scored.length
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-45-  );
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-46-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-47-  // 2. Per-Dimension averages from category_scores_json
+--
+src/components/ConfidenceReport.tsx-52-      r.category_scores_json as Record<string, { score: number }>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-53-    )) {
+src/components/ConfidenceReport.tsx-54-      if (!dimensionTotals[key]) dimensionTotals[key] = { total: 0, count: 0 };
+src/components/ConfidenceReport.tsx:55:      dimensionTotals[key].total += val.score ?? 0;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-56-      dimensionTotals[key].count += 1;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-57-    }
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/ConfidenceReport.tsx-58-  }
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-77-  describe("CSV structure", () => {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-78-    it("should build the correct header row from object keys", () => {
+src/test/csvExport.test.ts-79-      / Note: exportToCSV joins headers with plain commas (no quoting on the header row)
+src/test/csvExport.test.ts:80:      const data = [{ name: "Alice", score: 90 }];
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-81-      exportToCSV(data, "test");
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-82-      const lines = lastBlobContent.split("\n");
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-83-      expect(lines[0]).toBe("name,score");
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-85-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-86-    it("should write one data row per record after the header", () => {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-87-      const data = [
+src/test/csvExport.test.ts:88:        { name: "Alice", score: 90 },
+src/test/csvExport.test.ts:89:        { name: "Bob", score: 80 },
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-90-      ];
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-91-      exportToCSV(data, "test");
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-92-      const lines = lastBlobContent.split("\n");
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-95-    });
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-96-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-97-    it("should quote all values in the data rows", () => {
+src/test/csvExport.test.ts:98:      const data = [{ name: "Alice", score: 90 }];
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-99-      exportToCSV(data, "test");
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-100-      const lines = lastBlobContent.split("\n");
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/test/csvExport.test.ts-101-      const dataRow = lines[1];
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-67-  const [files, setFiles] = useState<UploadedFile[]>([]);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-68-  const [ranking, setRanking] = useState(false);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-69-  const [rankingProgress, setRankingProgress] = useState(0);
+src/components/JobDetailView.tsx:70:  const [scoredCount, setScoredCount] = useState(0);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-71-  const [totalToScore, setTotalToScore] = useState(0);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-72-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-73-  const [dragOver, setDragOver] = useState(false);
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-120-    .map((r) => ({
+src/components/JobDetailView.tsx-121-      id: `pending-${r.id}`,
+src/components/JobDetailView.tsx-122-      resume_id: r.id,
+src/components/JobDetailView.tsx:123:      overall_score: 0,
+src/components/JobDetailView.tsx-124-      missing_skills: [], summary: null, interview_questions: null,
+src/components/JobDetailView.tsx-125-      filename: r.filename, file_path: r.file_path, candidate_name: r.candidate_name,
+src/components/JobDetailView.tsx-126-      pending: true,
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-455-              const parsed = resume?.parsed_json as any;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-456-              return {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-457-                ...r,
+src/components/JobDetailView.tsx:458:                overall_score: r.overall_score ?? 0,
+src/components/JobDetailView.tsx-459-                missing_skills: r.missing_skills ?? [],
+src/components/JobDetailView.tsx-460-                filename: resume?.filename ?? "Unknown",
+src/components/JobDetailView.tsx-461-                file_path: resume?.file_path ?? null,
+--
+src/components/JobDetailView.tsx-1031-                              "Phone": r.candidate_phone ?? "",
+src/components/JobDetailView.tsx-1032-                              "Location": r.candidate_location ?? "",
+src/components/JobDetailView.tsx-1033-                              "Stage": stage.charAt(0).toUpperCase() + stage.slice(1),
+src/components/JobDetailView.tsx:1034:                              "Overall Score": r.overall_score?.toFixed(0) ?? "0",
+src/components/JobDetailView.tsx-1035-                              "Confidence": (r.confidence ?? 0).toFixed(0),
+src/components/JobDetailView.tsx-1036-                              "Hard Fit": r.hard_fit ? "Yes" : "No",
+src/components/JobDetailView.tsx-1037-                              "JD Alignment %": jdAlignment,
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1135-                      </TableHeader>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1136-                      <TableBody>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1137-                        {archivedResults.map((r, index) => {
+src/components/JobDetailView.tsx:1138:                          const scoreColor = r.overall_score >= 70 ? "text-score-skills" : r.overall_score >= 40 ? "text-warning" : "text-destructive";
+src/components/JobDetailView.tsx:1139:                          const strengthLabel = r.overall_score >= 70 ? "Strong" : r.overall_score >= 40 ? "Good" : "Weak";
+src/components/JobDetailView.tsx:1140:                          const strengthVariant = r.overall_score >= 70 ? "success" : r.overall_score >= 40 ? "warning" : "destructive";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1141-                          return (
+src/components/JobDetailView.tsx-1142-                            <TableRow key={r.id} className="opacity-60 hover:opacity-100 transition-opacity">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1143-                              <TableCell className="text-center text-sm text-muted-foreground pl-4">{index + 1}</TableCell>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1149-                                  <div className="flex items-center gap-2">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1150-                                    <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden max-w-[80px]">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1151-                                      <div
+src/components/JobDetailView.tsx:1152:                                        className={`h-full rounded-full transition-all ${r.overall_score >= 70 ? "bg-score-skills" : r.overall_score >= 40 ? "bg-warning" : "bg-destructive"}`}
+src/components/JobDetailView.tsx:1153:                                        style={{ width: `${Math.min(r.overall_score, 100)}%` }}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1154-                                      />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1155-                                    </div>
+src/components/JobDetailView.tsx:1156:                                    <span className={`text-sm font-semibold tabular-nums ${scoreColor}`}>{r.overall_score?.toFixed(0)}%</span>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1157-                                  </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1158-                                )}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/JobDetailView.tsx-1159-                              </TableCell>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-43-}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-44-
+src/components/CandidateRow.tsx-45-const getScoreColor = (score: number) => {
+src/components/CandidateRow.tsx:46:  if (score >= 70) return "bg-score-skills";
+src/components/CandidateRow.tsx:47:  if (score >= 40) return "bg-warning";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-48-  return "bg-destructive";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-49-};
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-50-
+src/components/CandidateRow.tsx-51-const getScoreTextColor = (score: number) => {
+src/components/CandidateRow.tsx:52:  if (score >= 70) return "text-score-skills";
+src/components/CandidateRow.tsx:53:  if (score >= 40) return "text-warning";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-54-  return "text-destructive";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-55-};
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-56-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-64-};
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-65-
+src/components/CandidateRow.tsx-66-const getStrengthLabel = (score: number): { label: string; variant: "success" | "warning" | "destructive" } => {
+src/components/CandidateRow.tsx:67:  if (score >= 70) return { label: "Strong", variant: "success" };
+src/components/CandidateRow.tsx:68:  if (score >= 40) return { label: "Good", variant: "warning" };
+src/components/CandidateRow.tsx-69-  return { label: "Weak", variant: "destructive" };
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-70-};
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-71-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-149-                <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden max-w-[100px]">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-150-                  <div
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-151-                    className={`h-full rounded-full transition-all ${getScoreColor(r.overall_score)}`}
+src/components/CandidateRow.tsx:152:                    style={{ width: `${Math.min(r.overall_score, 100)}%` }}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-153-                  />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-154-                </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-155-                <span className={`text-sm font-semibold tabular-nums min-w-[3ch] ${getScoreTextColor(r.overall_score)}`}>
+src/components/CandidateRow.tsx:156:                  {r.overall_score?.toFixed(0)}%
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-157-                </span>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-158-              </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-159-            )}
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-337-        candidateName={r.candidate_name || r.filename}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-338-        candidateEmail={r.candidate_email}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-339-        jobTitle={jobTitle || "Open Position"}
+src/components/CandidateRow.tsx:340:        matchScore={Math.round(r.overall_score ?? 0)}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-341-        resumeId={r.resume_id}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-342-        jobId={r.id}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/CandidateRow.tsx-343-      />
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rewrite-jd/index.ts-72-- Preserve all original requirements — do not add or remove skills/qualifications.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rewrite-jd/index.ts-73-- Keep the same general tone (technical, professional, etc.) as the original.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/rewrite-jd/index.ts-74-
+supabase/functions/rewrite-jd/index.ts:75:SCORING GUIDELINES (score the ORIGINAL JD, 0–100 each):
+supabase/functions/rewrite-jd/index.ts-76-- clarity: How clearly written and structured is the JD? (0=incomprehensible, 100=extremely clear)
+supabase/functions/rewrite-jd/index.ts-77-- keywords: How well does the JD include relevant industry keywords for ATS? (0=almost none, 100=comprehensive)
+supabase/functions/rewrite-jd/index.ts-78-- ats_fit: How well formatted is the JD for ATS systems? (0=very poor, 100=excellent)
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/EducationPanel.tsx-48-  return (
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/EducationPanel.tsx-49-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/EducationPanel.tsx-50-      <div className="flex items-center gap-2 mb-1">
+src/components/candidate/EducationPanel.tsx:51:        <div className="w-6 h-6 rounded bg-score-education/10 flex items-center justify-center">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/EducationPanel.tsx-52-          <GraduationCap className="h-3.5 w-3.5 text-score-education" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/EducationPanel.tsx-53-        </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/EducationPanel.tsx-54-        <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide">Education</h4>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-7-}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-8-
+src/components/candidate/SkillsDetailPanel.tsx-9-const getSkillLevel = (score: number): { label: string; color: string } => {
+src/components/candidate/SkillsDetailPanel.tsx:10:  if (score >= 90) return { label: "Expert", color: "bg-emerald-500/10 text-emerald-600 border-emerald-200" };
+src/components/candidate/SkillsDetailPanel.tsx:11:  if (score >= 70) return { label: "Adv", color: "bg-blue-500/10 text-blue-600 border-blue-200" };
+src/components/candidate/SkillsDetailPanel.tsx:12:  if (score >= 50) return { label: "Mid", color: "bg-yellow-500/10 text-yellow-700 border-yellow-200" };
+src/components/candidate/SkillsDetailPanel.tsx:13:  if (score >= 25) return { label: "Low", color: "bg-orange-500/10 text-orange-600 border-orange-200" };
+src/components/candidate/SkillsDetailPanel.tsx-14-  return { label: "Gap", color: "bg-red-500/10 text-red-600 border-red-200" };
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-15-};
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-16-
+src/components/candidate/SkillsDetailPanel.tsx-17-const SkillsDetailPanel = ({ result: r }: SkillsDetailPanelProps) => {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-18-  const scores = r.category_scores_json;
+src/components/candidate/SkillsDetailPanel.tsx:19:  const skillCount = scores ? Object.keys(scores).length : 0;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-20-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-21-  return (
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-22-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-23-      <div className="flex items-center gap-2 mb-1">
+src/components/candidate/SkillsDetailPanel.tsx:24:        <div className="w-6 h-6 rounded bg-score-skills/10 flex items-center justify-center">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-25-          <Cpu className="h-3.5 w-3.5 text-score-skills" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-26-        </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-27-        <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide">Skills Detail</h4>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-33-      {scores && typeof scores === "object" ? (
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-34-        <div className="space-y-2">
+src/components/candidate/SkillsDetailPanel.tsx-35-          {Object.entries(scores as Record<string, { score: number; notes?: string }>).map(([skill, data]) => {
+src/components/candidate/SkillsDetailPanel.tsx:36:            const clampedScore = Math.max(0, Math.min(data.score ?? 0, 100));
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-37-            const level = getSkillLevel(clampedScore);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-38-            return (
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/SkillsDetailPanel.tsx-39-              <div key={skill} className="space-y-0.5">
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-24-  return (
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-25-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-26-      <div className="flex items-center gap-2 mb-1">
+src/components/candidate/JDAlignedPanel.tsx:27:        <div className="w-6 h-6 rounded bg-score-jd/10 flex items-center justify-center">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-28-          <FileCheck className="h-3.5 w-3.5 text-score-jd" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-29-        </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-30-        <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide">JD Aligned</h4>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-82-        {r.explanation_json?.why_ranked_here && (
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-83-          <div className="space-y-1.5">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-84-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">AI Insight</span>
+src/components/candidate/JDAlignedPanel.tsx:85:            <div className="p-2 rounded bg-score-overall/5 border border-score-overall/20">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-86-              <div className="flex items-start gap-1.5">
+src/components/candidate/JDAlignedPanel.tsx:87:                <Lightbulb className="h-3.5 w-3.5 text-score-overall shrink-0 mt-0.5" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-88-                <p className="text-[11px] text-muted-foreground leading-relaxed">{r.explanation_json.why_ranked_here}</p>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-89-              </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/candidate/JDAlignedPanel.tsx-90-            </div>

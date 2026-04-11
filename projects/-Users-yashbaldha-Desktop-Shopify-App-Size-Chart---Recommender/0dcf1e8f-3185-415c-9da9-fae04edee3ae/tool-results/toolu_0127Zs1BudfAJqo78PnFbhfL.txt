@@ -1,0 +1,1855 @@
+     1→import { useEffect, useRef, useState } from "react";
+     2→import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
+     3→import { useLoaderData, useFetcher, redirect } from "react-router";
+     4→import { useAppBridge } from "@shopify/app-bridge-react";
+     5→import { authenticate } from "../shopify.server";
+     6→import db from "../db.server";
+     7→
+     8→// ---------------------------------------------------------------------------
+     9→// Types
+    10→// ---------------------------------------------------------------------------
+    11→
+    12→interface ChartData {
+    13→  headers: string[];
+    14→  units: { default: string; available: string[] };
+    15→  rows: Record<string, string>[];
+    16→}
+    17→
+    18→interface Assignment {
+    19→  id: string;
+    20→  assignmentType: string;
+    21→  assignmentValue: string;
+    22→}
+    23→
+    24→// ---------------------------------------------------------------------------
+    25→// Loader
+    26→// ---------------------------------------------------------------------------
+    27→
+    28→export const loader = async ({ request, params }: LoaderFunctionArgs) => {
+    29→  const { session } = await authenticate.admin(request);
+    30→  const shop = session.shop;
+    31→  const id = params.id;
+    32→
+    33→  if (!id) throw new Response("Not found", { status: 404 });
+    34→
+    35→  if (id === "new") {
+    36→    return {
+    37→      chart: null as null,
+    38→      assignments: [] as Assignment[],
+    39→      isNew: true,
+    40→    };
+    41→  }
+    42→
+    43→  const chart = await db.sizeChart.findFirst({
+    44→    where: { id, shop },
+    45→    include: { assignments: true },
+    46→  });
+    47→
+    48→  if (!chart) {
+    49→    throw new Response("Not found", { status: 404 });
+    50→  }
+    51→
+    52→  return {
+    53→    chart: {
+    54→      id: chart.id,
+    55→      name: chart.name,
+    56→      category: chart.category,
+    57→      status: chart.status,
+    58→      data: chart.data,
+    59→      createdAt: chart.createdAt.toISOString(),
+    60→      updatedAt: chart.updatedAt.toISOString(),
+    61→    },
+    62→    assignments: chart.assignments.map((a) => ({
+    63→      id: a.id,
+    64→      assignmentType: a.assignmentType,
+    65→      assignmentValue: a.assignmentValue,
+    66→    })),
+    67→    isNew: false,
+    68→  };
+    69→};
+    70→
+    71→// ---------------------------------------------------------------------------
+    72→// Action
+    73→// ---------------------------------------------------------------------------
+    74→
+    75→export const action = async ({ request, params }: ActionFunctionArgs) => {
+    76→  const { session } = await authenticate.admin(request);
+    77→  const shop = session.shop;
+    78→  const id = params.id;
+    79→  if (!id) return { error: "Missing chart ID" };
+    80→  const formData = await request.formData();
+    81→  const intent = formData.get("intent") as string;
+    82→
+    83→  try {
+    84→    switch (intent) {
+    85→      case "save": {
+    86→        const name = formData.get("name") as string;
+    87→        const category = formData.get("category") as string;
+    88→        const status = formData.get("status") as string;
+    89→        const dataRaw = formData.get("data") as string;
+    90→
+    91→        if (!name?.trim()) return { error: "Chart name is required" };
+    92→
+    93→        let parsedData: ChartData;
+    94→        try {
+    95→          parsedData = JSON.parse(dataRaw) as ChartData;
+    96→        } catch {
+    97→          return { error: "Invalid chart data. Please try again." };
+    98→        }
+    99→
+   100→        if (id === "new") {
+   101→          const chart = await db.sizeChart.create({
+   102→            data: {
+   103→              shop,
+   104→              name: name.trim(),
+   105→              category,
+   106→              status,
+   107→              data: JSON.stringify(parsedData),
+   108→            },
+   109→          });
+   110→          return redirect(`/app/size-charts/${chart.id}?saved=1`);
+   111→        }
+   112→
+   113→        const existing = await db.sizeChart.findFirst({ where: { id, shop } });
+   114→        if (!existing) return { error: "Chart not found" };
+   115→
+   116→        await db.sizeChart.update({
+   117→          where: { id },
+   118→          data: {
+   119→            name: name.trim(),
+   120→            category,
+   121→            status,
+   122→            data: JSON.stringify(parsedData),
+   123→          },
+   124→        });
+   125→        return { ok: true, message: "Chart saved successfully" };
+   126→      }
+   127→
+   128→      case "toggle-status": {
+   129→        const chart = await db.sizeChart.findFirst({ where: { id, shop } });
+   130→        if (!chart) return { error: "Chart not found" };
+   131→        const newStatus = chart.status === "active" ? "draft" : "active";
+   132→        await db.sizeChart.update({ where: { id }, data: { status: newStatus } });
+   133→        return {
+   134→          ok: true,
+   135→          message: newStatus === "active" ? "Chart published" : "Chart unpublished",
+   136→          newStatus,
+   137→        };
+   138→      }
+   139→
+   140→      case "add-assignment": {
+   141→        const assignmentType = formData.get("assignmentType") as string;
+   142→        const assignmentValue = formData.get("assignmentValue") as string;
+   143→
+   144→        if (!assignmentValue?.trim()) {
+   145→          return { error: "Assignment value is required" };
+   146→        }
+   147→
+   148→        await db.chartAssignment.upsert({
+   149→          where: {
+   150→            shop_sizeChartId_assignmentType_assignmentValue: {
+   151→              shop,
+   152→              sizeChartId: id,
+   153→              assignmentType,
+   154→              assignmentValue: assignmentValue.trim(),
+   155→            },
+   156→          },
+   157→          create: {
+   158→            shop,
+   159→            sizeChartId: id,
+   160→            assignmentType,
+   161→            assignmentValue: assignmentValue.trim(),
+   162→          },
+   163→          update: {},
+   164→        });
+   165→        return { ok: true, message: "Assignment added" };
+   166→      }
+   167→
+   168→      case "remove-assignment": {
+   169→        const assignmentId = formData.get("assignmentId") as string;
+   170→        await db.chartAssignment.deleteMany({
+   171→          where: { id: assignmentId, shop },
+   172→        });
+   173→        return { ok: true, message: "Assignment removed" };
+   174→      }
+   175→
+   176→      case "delete": {
+   177→        await db.sizeChart.deleteMany({ where: { id, shop } });
+   178→        return redirect("/app/size-charts");
+   179→      }
+   180→
+   181→      default:
+   182→        return { error: "Unknown action" };
+   183→    }
+   184→  } catch (error) {
+   185→    const message =
+   186→      error instanceof Error ? error.message : "An unexpected error occurred";
+   187→    if (message.includes("Unique constraint")) {
+   188→      return { error: "A chart with this name already exists." };
+   189→    }
+   190→    return { error: message };
+   191→  }
+   192→};
+   193→
+   194→// ---------------------------------------------------------------------------
+   195→// Constants
+   196→// ---------------------------------------------------------------------------
+   197→
+   198→const CATEGORIES = [
+   199→  { value: "general", label: "General" },
+   200→  { value: "tops", label: "Tops" },
+   201→  { value: "bottoms", label: "Bottoms" },
+   202→  { value: "dresses", label: "Dresses" },
+   203→  { value: "shoes", label: "Shoes" },
+   204→  { value: "kids", label: "Kids" },
+   205→  { value: "rings", label: "Rings" },
+   206→  { value: "sportswear", label: "Sportswear" },
+   207→];
+   208→
+   209→const ASSIGNMENT_TYPES = [
+   210→  { value: "product", label: "Product ID" },
+   211→  { value: "collection", label: "Collection ID" },
+   212→  { value: "tag", label: "Product Tag" },
+   213→  { value: "product_type", label: "Product Type" },
+   214→  { value: "all", label: "All Products" },
+   215→];
+   216→
+   217→function formatDate(iso: string): string {
+   218→  return new Date(iso).toLocaleDateString("en-US", {
+   219→    month: "short",
+   220→    day: "numeric",
+   221→    year: "numeric",
+   222→    hour: "2-digit",
+   223→    minute: "2-digit",
+   224→  });
+   225→}
+   226→
+   227→function makeDefaultData(): ChartData {
+   228→  return {
+   229→    headers: ["Size", "Chest", "Waist", "Hips"],
+   230→    units: { default: "in", available: ["in", "cm"] },
+   231→    rows: [
+   232→      { Size: "S", Chest: "", Waist: "", Hips: "" },
+   233→      { Size: "M", Chest: "", Waist: "", Hips: "" },
+   234→      { Size: "L", Chest: "", Waist: "", Hips: "" },
+   235→    ],
+   236→  };
+   237→}
+   238→
+   239→function parseChartData(raw: string): ChartData {
+   240→  try {
+   241→    const parsed = JSON.parse(raw) as ChartData;
+   242→    if (
+   243→      Array.isArray(parsed.headers) &&
+   244→      parsed.units &&
+   245→      Array.isArray(parsed.rows)
+   246→    ) {
+   247→      return parsed;
+   248→    }
+   249→  } catch {
+   250→    // fall through
+   251→  }
+   252→  return makeDefaultData();
+   253→}
+   254→
+   255→// ---------------------------------------------------------------------------
+   256→// Design language constants
+   257→// ---------------------------------------------------------------------------
+   258→
+   259→const cardStyle: React.CSSProperties = {
+   260→  background: "#ffffff",
+   261→  border: "1px solid #e3e3e3",
+   262→  borderRadius: "12px",
+   263→  padding: "20px",
+   264→};
+   265→
+   266→const sectionTitle: React.CSSProperties = {
+   267→  fontSize: "15px",
+   268→  fontWeight: 650,
+   269→  color: "#202223",
+   270→  margin: 0,
+   271→};
+   272→
+   273→const inputStyle: React.CSSProperties = {
+   274→  width: "100%",
+   275→  border: "1px solid #c9cccf",
+   276→  borderRadius: "8px",
+   277→  padding: "8px 12px",
+   278→  fontSize: "14px",
+   279→  color: "#202223",
+   280→  background: "#fff",
+   281→  boxSizing: "border-box" as const,
+   282→  outline: "none",
+   283→  fontFamily: "inherit",
+   284→};
+   285→
+   286→const labelStyle: React.CSSProperties = {
+   287→  fontWeight: 600,
+   288→  fontSize: "13px",
+   289→  color: "#202223",
+   290→  display: "block",
+   291→  marginBottom: "4px",
+   292→};
+   293→
+   294→const badgeStyle = (
+   295→  tone: "success" | "neutral" | "info" | "critical",
+   296→): React.CSSProperties => ({
+   297→  display: "inline-block",
+   298→  padding: "2px 8px",
+   299→  borderRadius: "10px",
+   300→  fontSize: "11px",
+   301→  fontWeight: 600,
+   302→  lineHeight: "18px",
+   303→  background:
+   304→    tone === "success"
+   305→      ? "#c8f9e8"
+   306→      : tone === "info"
+   307→        ? "#e4e5f7"
+   308→        : tone === "critical"
+   309→          ? "#fee2e2"
+   310→          : "#e4e5e7",
+   311→  color:
+   312→    tone === "success"
+   313→      ? "#0d6832"
+   314→      : tone === "info"
+   315→        ? "#3b3f8c"
+   316→        : tone === "critical"
+   317→          ? "#d82c0d"
+   318→          : "#6d7175",
+   319→});
+   320→
+   321→const tabStyle = (active: boolean): React.CSSProperties => ({
+   322→  padding: "8px 16px",
+   323→  fontSize: "14px",
+   324→  fontWeight: active ? 600 : 400,
+   325→  color: active ? "#202223" : "#6d7175",
+   326→  background: "none",
+   327→  border: "none",
+   328→  borderBottom: active ? "2px solid #202223" : "2px solid transparent",
+   329→  cursor: "pointer",
+   330→  transition: "all 0.15s",
+   331→  fontFamily: "inherit",
+   332→});
+   333→
+   334→function focusInput(
+   335→  el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+   336→) {
+   337→  el.style.borderColor = "#2c6ecb";
+   338→  el.style.boxShadow = "0 0 0 3px rgba(44,110,203,0.15)";
+   339→}
+   340→
+   341→function blurInput(
+   342→  el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+   343→) {
+   344→  el.style.borderColor = "#c9cccf";
+   345→  el.style.boxShadow = "none";
+   346→}
+   347→
+   348→// ---------------------------------------------------------------------------
+   349→// Table Editor Component
+   350→// ---------------------------------------------------------------------------
+   351→
+   352→interface TableEditorProps {
+   353→  data: ChartData;
+   354→  onChange: (data: ChartData) => void;
+   355→}
+   356→
+   357→function TableEditor({ data, onChange }: TableEditorProps) {
+   358→  const headerInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+   359→
+   360→  const updateCell = (rowIndex: number, header: string, value: string) => {
+   361→    const newRows = data.rows.map((row, i) => {
+   362→      if (i !== rowIndex) return row;
+   363→      return { ...row, [header]: value };
+   364→    });
+   365→    onChange({ ...data, rows: newRows });
+   366→  };
+   367→
+   368→  const updateHeader = (headerIndex: number, value: string) => {
+   369→    const oldHeader = data.headers[headerIndex];
+   370→    const newHeaders = data.headers.map((h, i) =>
+   371→      i === headerIndex ? value : h,
+   372→    );
+   373→    const newRows = data.rows.map((row) => {
+   374→      const newRow: Record<string, string> = {};
+   375→      data.headers.forEach((h, i) => {
+   376→        const key = i === headerIndex ? value : h;
+   377→        newRow[key] = row[h] ?? "";
+   378→      });
+   379→      return newRow;
+   380→    });
+   381→    onChange({ ...data, headers: newHeaders, rows: newRows });
+   382→    void oldHeader;
+   383→  };
+   384→
+   385→  const addRow = () => {
+   386→    const emptyRow: Record<string, string> = {};
+   387→    data.headers.forEach((h) => {
+   388→      emptyRow[h] = "";
+   389→    });
+   390→    onChange({ ...data, rows: [...data.rows, emptyRow] });
+   391→  };
+   392→
+   393→  const removeRow = (rowIndex: number) => {
+   394→    onChange({ ...data, rows: data.rows.filter((_, i) => i !== rowIndex) });
+   395→  };
+   396→
+   397→  const addColumn = () => {
+   398→    const newHeader = `Column ${data.headers.length + 1}`;
+   399→    const newHeaders = [...data.headers, newHeader];
+   400→    const newRows = data.rows.map((row) => ({ ...row, [newHeader]: "" }));
+   401→    onChange({ ...data, headers: newHeaders, rows: newRows });
+   402→  };
+   403→
+   404→  const removeColumn = (headerIndex: number) => {
+   405→    if (data.headers.length <= 1) return;
+   406→    const removedHeader = data.headers[headerIndex];
+   407→    const newHeaders = data.headers.filter((_, i) => i !== headerIndex);
+   408→    const newRows = data.rows.map((row) => {
+   409→      const newRow: Record<string, string> = {};
+   410→      newHeaders.forEach((h) => {
+   411→        newRow[h] = row[h] ?? "";
+   412→      });
+   413→      return newRow;
+   414→    });
+   415→    onChange({ ...data, headers: newHeaders, rows: newRows });
+   416→    void removedHeader;
+   417→  };
+   418→
+   419→  const toggleUnit = (unit: string) => {
+   420→    onChange({ ...data, units: { ...data.units, default: unit } });
+   421→  };
+   422→
+   423→  return (
+   424→    <div>
+   425→      {/* Toolbar — unit toggle + row/col count */}
+   426→      <div
+   427→        style={{
+   428→          display: "flex",
+   429→          alignItems: "center",
+   430→          gap: "8px",
+   431→          marginBottom: "10px",
+   432→        }}
+   433→      >
+   434→        <span
+   435→          style={{
+   436→            fontSize: "12px",
+   437→            fontWeight: 600,
+   438→            color: "#6d7175",
+   439→            textTransform: "uppercase",
+   440→            letterSpacing: "0.04em",
+   441→          }}
+   442→        >
+   443→          Units
+   444→        </span>
+   445→        <div
+   446→          style={{
+   447→            display: "flex",
+   448→            gap: "4px",
+   449→            background: "#f6f6f7",
+   450→            borderRadius: "20px",
+   451→            padding: "3px",
+   452→            border: "1px solid #e1e3e5",
+   453→          }}
+   454→        >
+   455→          {data.units.available.map((unit) => (
+   456→            <button
+   457→              key={unit}
+   458→              type="button"
+   459→              onClick={() => toggleUnit(unit)}
+   460→              style={{
+   461→                padding: "3px 14px",
+   462→                borderRadius: "16px",
+   463→                border: "none",
+   464→                background:
+   465→                  data.units.default === unit ? "#2c6ecb" : "transparent",
+   466→                color: data.units.default === unit ? "#ffffff" : "#6d7175",
+   467→                fontWeight: data.units.default === unit ? 700 : 500,
+   468→                cursor: "pointer",
+   469→                fontSize: "12px",
+   470→                lineHeight: "20px",
+   471→                transition: "all 0.12s ease",
+   472→                fontFamily: "inherit",
+   473→              }}
+   474→            >
+   475→              {unit}
+   476→            </button>
+   477→          ))}
+   478→        </div>
+   479→        <div
+   480→          style={{
+   481→            marginLeft: "auto",
+   482→            fontSize: "12px",
+   483→            color: "#8c9196",
+   484→            fontWeight: 500,
+   485→            background: "#f6f6f7",
+   486→            border: "1px solid #e1e3e5",
+   487→            borderRadius: "6px",
+   488→            padding: "3px 10px",
+   489→          }}
+   490→        >
+   491→          {data.rows.length} rows &middot; {data.headers.length} cols
+   492→        </div>
+   493→      </div>
+   494→
+   495→      {/* Table */}
+   496→      <div
+   497→        style={{
+   498→          border: "1px solid #e1e3e5",
+   499→          borderRadius: "8px",
+   500→          overflow: "hidden",
+   501→          overflowX: "auto",
+   502→        }}
+   503→      >
+   504→        <table
+   505→          style={{
+   506→            width: "100%",
+   507→            borderCollapse: "collapse",
+   508→            fontSize: "13px",
+   509→            tableLayout: "auto",
+   510→          }}
+   511→        >
+   512→          <thead>
+   513→            <tr>
+   514→              {data.headers.map((header, hi) => (
+   515→                <th
+   516→                  key={hi}
+   517→                  style={{
+   518→                    background: "#f6f6f7",
+   519→                    borderBottom: "2px solid #e1e3e5",
+   520→                    borderRight:
+   521→                      hi < data.headers.length - 1
+   522→                        ? "1px solid #e1e3e5"
+   523→                        : "none",
+   524→                    padding: "0",
+   525→                    position: "relative",
+   526→                    minWidth: "110px",
+   527→                  }}
+   528→                >
+   529→                  <div
+   530→                    style={{
+   531→                      display: "flex",
+   532→                      alignItems: "center",
+   533→                      padding: "2px 6px 2px 10px",
+   534→                    }}
+   535→                  >
+   536→                    <input
+   537→                      ref={(el) => {
+   538→                        headerInputRefs.current[hi] = el;
+   539→                      }}
+   540→                      value={header}
+   541→                      onChange={(e) =>
+   542→                        updateHeader(hi, (e.target as HTMLInputElement).value)
+   543→                      }
+   544→                      style={{
+   545→                        flex: 1,
+   546→                        border: "none",
+   547→                        background: "transparent",
+   548→                        fontWeight: 700,
+   549→                        fontSize: "12px",
+   550→                        color: "#202223",
+   551→                        padding: "8px 4px",
+   552→                        outline: "none",
+   553→                        minWidth: "60px",
+   554→                        textTransform: "uppercase",
+   555→                        letterSpacing: "0.04em",
+   556→                        fontFamily: "inherit",
+   557→                      }}
+   558→                      placeholder={`Col ${hi + 1}`}
+   559→                    />
+   560→                    {data.headers.length > 1 && (
+   561→                      <button
+   562→                        type="button"
+   563→                        onClick={() => removeColumn(hi)}
+   564→                        title="Remove column"
+   565→                        style={{
+   566→                          background: "none",
+   567→                          border: "none",
+   568→                          cursor: "pointer",
+   569→                          color: "#c9cccf",
+   570→                          padding: "2px 4px",
+   571→                          borderRadius: "4px",
+   572→                          fontSize: "15px",
+   573→                          lineHeight: 1,
+   574→                          flexShrink: 0,
+   575→                          transition: "color 0.1s, background 0.1s",
+   576→                          fontFamily: "inherit",
+   577→                        }}
+   578→                        onMouseEnter={(e) => {
+   579→                          (e.currentTarget as HTMLButtonElement).style.color =
+   580→                            "#d82c0d";
+   581→                          (
+   582→                            e.currentTarget as HTMLButtonElement
+   583→                          ).style.background = "#fee2e2";
+   584→                        }}
+   585→                        onMouseLeave={(e) => {
+   586→                          (e.currentTarget as HTMLButtonElement).style.color =
+   587→                            "#c9cccf";
+   588→                          (
+   589→                            e.currentTarget as HTMLButtonElement
+   590→                          ).style.background = "none";
+   591→                        }}
+   592→                      >
+   593→                        &times;
+   594→                      </button>
+   595→                    )}
+   596→                  </div>
+   597→                </th>
+   598→              ))}
+   599→
+   600→              {/* Add column header cell */}
+   601→              <th
+   602→                style={{
+   603→                  background: "#f6f6f7",
+   604→                  borderBottom: "2px solid #e1e3e5",
+   605→                  padding: "0",
+   606→                  width: "40px",
+   607→                  minWidth: "40px",
+   608→                }}
+   609→              >
+   610→                <button
+   611→                  type="button"
+   612→                  onClick={addColumn}
+   613→                  title="Add column"
+   614→                  style={{
+   615→                    display: "flex",
+   616→                    alignItems: "center",
+   617→                    justifyContent: "center",
+   618→                    width: "100%",
+   619→                    height: "100%",
+   620→                    minHeight: "38px",
+   621→                    background: "none",
+   622→                    border: "none",
+   623→                    cursor: "pointer",
+   624→                    color: "#2c6ecb",
+   625→                    fontSize: "20px",
+   626→                    lineHeight: 1,
+   627→                    padding: "0",
+   628→                    transition: "background 0.1s",
+   629→                    fontFamily: "inherit",
+   630→                  }}
+   631→                  onMouseEnter={(e) => {
+   632→                    (e.currentTarget as HTMLButtonElement).style.background =
+   633→                      "#e8f0fe";
+   634→                  }}
+   635→                  onMouseLeave={(e) => {
+   636→                    (e.currentTarget as HTMLButtonElement).style.background =
+   637→                      "none";
+   638→                  }}
+   639→                >
+   640→                  +
+   641→                </button>
+   642→              </th>
+   643→
+   644→              {/* Row actions header spacer */}
+   645→              <th
+   646→                style={{
+   647→                  background: "#f6f6f7",
+   648→                  borderBottom: "2px solid #e1e3e5",
+   649→                  width: "36px",
+   650→                  minWidth: "36px",
+   651→                }}
+   652→              />
+   653→            </tr>
+   654→          </thead>
+   655→          <tbody>
+   656→            {data.rows.map((row, ri) => (
+   657→              <tr
+   658→                key={ri}
+   659→                style={{
+   660→                  background: ri % 2 === 0 ? "#ffffff" : "#fafbfb",
+   661→                  transition: "background 0.1s",
+   662→                }}
+   663→                onMouseEnter={(e) => {
+   664→                  (e.currentTarget as HTMLTableRowElement).style.background =
+   665→                    "#f0f5ff";
+   666→                }}
+   667→                onMouseLeave={(e) => {
+   668→                  (e.currentTarget as HTMLTableRowElement).style.background =
+   669→                    ri % 2 === 0 ? "#ffffff" : "#fafbfb";
+   670→                }}
+   671→              >
+   672→                {data.headers.map((header, hi) => (
+   673→                  <td
+   674→                    key={hi}
+   675→                    style={{
+   676→                      borderBottom:
+   677→                        ri < data.rows.length - 1
+   678→                          ? "1px solid #e1e3e5"
+   679→                          : "none",
+   680→                      borderRight:
+   681→                        hi < data.headers.length - 1
+   682→                          ? "1px solid #e1e3e5"
+   683→                          : "none",
+   684→                      padding: "0",
+   685→                    }}
+   686→                  >
+   687→                    <input
+   688→                      value={row[header] ?? ""}
+   689→                      onChange={(e) =>
+   690→                        updateCell(
+   691→                          ri,
+   692→                          header,
+   693→                          (e.target as HTMLInputElement).value,
+   694→                        )
+   695→                      }
+   696→                      style={{
+   697→                        width: "100%",
+   698→                        border: "none",
+   699→                        background: "transparent",
+   700→                        padding: "9px 10px",
+   701→                        fontSize: "13px",
+   702→                        color: "#202223",
+   703→                        outline: "none",
+   704→                        boxSizing: "border-box",
+   705→                        fontFamily: "inherit",
+   706→                      }}
+   707→                      onFocus={(e) => {
+   708→                        (
+   709→                          e.target as HTMLInputElement
+   710→                        ).parentElement!.style.boxShadow =
+   711→                          "inset 0 0 0 2px #2c6ecb";
+   712→                        (
+   713→                          e.target as HTMLInputElement
+   714→                        ).parentElement!.style.background = "#f0f5ff";
+   715→                      }}
+   716→                      onBlur={(e) => {
+   717→                        (
+   718→                          e.target as HTMLInputElement
+   719→                        ).parentElement!.style.boxShadow = "none";
+   720→                        (
+   721→                          e.target as HTMLInputElement
+   722→                        ).parentElement!.style.background = "transparent";
+   723→                      }}
+   724→                      placeholder="—"
+   725→                    />
+   726→                  </td>
+   727→                ))}
+   728→
+   729→                {/* Column spacer — aligns under add column button */}
+   730→                <td
+   731→                  style={{
+   732→                    borderBottom:
+   733→                      ri < data.rows.length - 1 ? "1px solid #e1e3e5" : "none",
+   734→                    borderRight: "1px solid #e1e3e5",
+   735→                    width: "40px",
+   736→                    background: "transparent",
+   737→                  }}
+   738→                />
+   739→
+   740→                {/* Remove row button */}
+   741→                <td
+   742→                  style={{
+   743→                    borderBottom:
+   744→                      ri < data.rows.length - 1 ? "1px solid #e1e3e5" : "none",
+   745→                    padding: "0",
+   746→                    textAlign: "center",
+   747→                    width: "36px",
+   748→                    background: "transparent",
+   749→                  }}
+   750→                >
+   751→                  <button
+   752→                    type="button"
+   753→                    onClick={() => removeRow(ri)}
+   754→                    title="Remove row"
+   755→                    style={{
+   756→                      background: "none",
+   757→                      border: "none",
+   758→                      cursor: "pointer",
+   759→                      color: "#c9cccf",
+   760→                      fontSize: "16px",
+   761→                      lineHeight: 1,
+   762→                      padding: "4px 8px",
+   763→                      borderRadius: "4px",
+   764→                      transition: "color 0.1s, background 0.1s",
+   765→                      fontFamily: "inherit",
+   766→                    }}
+   767→                    onMouseEnter={(e) => {
+   768→                      (e.currentTarget as HTMLButtonElement).style.color =
+   769→                        "#d82c0d";
+   770→                      (e.currentTarget as HTMLButtonElement).style.background =
+   771→                        "#fee2e2";
+   772→                    }}
+   773→                    onMouseLeave={(e) => {
+   774→                      (e.currentTarget as HTMLButtonElement).style.color =
+   775→                        "#c9cccf";
+   776→                      (e.currentTarget as HTMLButtonElement).style.background =
+   777→                        "none";
+   778→                    }}
+   779→                  >
+   780→                    &times;
+   781→                  </button>
+   782→                </td>
+   783→              </tr>
+   784→            ))}
+   785→
+   786→            {/* Add row footer */}
+   787→            <tr>
+   788→              <td
+   789→                colSpan={data.headers.length + 2}
+   790→                style={{
+   791→                  padding: "0",
+   792→                  background: "#f6f6f7",
+   793→                  borderTop: "1px solid #e1e3e5",
+   794→                }}
+   795→              >
+   796→                <button
+   797→                  type="button"
+   798→                  onClick={addRow}
+   799→                  style={{
+   800→                    display: "block",
+   801→                    width: "100%",
+   802→                    background: "none",
+   803→                    border: "none",
+   804→                    cursor: "pointer",
+   805→                    color: "#2c6ecb",
+   806→                    fontSize: "13px",
+   807→                    fontWeight: 600,
+   808→                    padding: "10px 14px",
+   809→                    textAlign: "left",
+   810→                    transition: "background 0.1s",
+   811→                    fontFamily: "inherit",
+   812→                  }}
+   813→                  onMouseEnter={(e) => {
+   814→                    (e.currentTarget as HTMLButtonElement).style.background =
+   815→                      "#e8f0fe";
+   816→                  }}
+   817→                  onMouseLeave={(e) => {
+   818→                    (e.currentTarget as HTMLButtonElement).style.background =
+   819→                      "none";
+   820→                  }}
+   821→                >
+   822→                  + Add row
+   823→                </button>
+   824→              </td>
+   825→            </tr>
+   826→          </tbody>
+   827→        </table>
+   828→      </div>
+   829→    </div>
+   830→  );
+   831→}
+   832→
+   833→// ---------------------------------------------------------------------------
+   834→// Chart Preview Component — Realistic storefront widget mockup
+   835→// ---------------------------------------------------------------------------
+   836→
+   837→interface ChartPreviewProps {
+   838→  data: ChartData;
+   839→  name: string;
+   840→  status: string;
+   841→}
+   842→
+   843→function ChartPreview({ data, name, status }: ChartPreviewProps) {
+   844→  return (
+   845→    <div
+   846→      style={{
+   847→        border: "1px solid #e3e3e3",
+   848→        borderRadius: "12px",
+   849→        overflow: "hidden",
+   850→        background: "#fff",
+   851→        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+   852→        fontSize: "13px",
+   853→      }}
+   854→    >
+   855→      {/* Widget header bar */}
+   856→      <div
+   857→        style={{
+   858→          background: "#1a1a1a",
+   859→          padding: "12px 16px",
+   860→          display: "flex",
+   861→          alignItems: "center",
+   862→          justifyContent: "space-between",
+   863→        }}
+   864→      >
+   865→        <span
+   866→          style={{
+   867→            fontWeight: 700,
+   868→            fontSize: "13px",
+   869→            color: "#ffffff",
+   870→            letterSpacing: "0.01em",
+   871→          }}
+   872→        >
+   873→          {name || "Size Guide"}
+   874→        </span>
+   875→        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+   876→          <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+   877→            <div
+   878→              style={{
+   879→                width: "6px",
+   880→                height: "6px",
+   881→                borderRadius: "50%",
+   882→                background: status === "active" ? "#24c57b" : "#8c9196",
+   883→              }}
+   884→            />
+   885→            <span
+   886→              style={{
+   887→                fontSize: "10px",
+   888→                color: status === "active" ? "#24c57b" : "#8c9196",
+   889→                fontWeight: 600,
+   890→              }}
+   891→            >
+   892→              {status === "active" ? "Live" : "Draft"}
+   893→            </span>
+   894→          </div>
+   895→          <span
+   896→            style={{
+   897→              fontSize: "16px",
+   898→              color: "#6d7175",
+   899→              lineHeight: 1,
+   900→              cursor: "default",
+   901→            }}
+   902→          >
+   903→            &times;
+   904→          </span>
+   905→        </div>
+   906→      </div>
+   907→
+   908→      {/* Unit tab strip */}
+   909→      <div
+   910→        style={{
+   911→          background: "#f6f6f7",
+   912→          borderBottom: "1px solid #e1e3e5",
+   913→          padding: "6px 16px",
+   914→          display: "flex",
+   915→          gap: "4px",
+   916→        }}
+   917→      >
+   918→        {data.units.available.map((unit) => (
+   919→          <span
+   920→            key={unit}
+   921→            style={{
+   922→              padding: "2px 10px",
+   923→              borderRadius: "12px",
+   924→              fontSize: "11px",
+   925→              fontWeight: 600,
+   926→              background:
+   927→                unit === data.units.default ? "#202223" : "transparent",
+   928→              color: unit === data.units.default ? "#ffffff" : "#8c9196",
+   929→              cursor: "default",
+   930→            }}
+   931→          >
+   932→            {unit}
+   933→          </span>
+   934→        ))}
+   935→      </div>
+   936→
+   937→      {/* Preview table */}
+   938→      <div style={{ overflowX: "auto" }}>
+   939→        <table
+   940→          style={{
+   941→            width: "100%",
+   942→            borderCollapse: "collapse",
+   943→            fontSize: "12px",
+   944→          }}
+   945→        >
+   946→          <thead>
+   947→            <tr>
+   948→              {data.headers.map((h, i) => (
+   949→                <th
+   950→                  key={i}
+   951→                  style={{
+   952→                    background: "#f6f6f7",
+   953→                    padding: "8px 12px",
+   954→                    textAlign: "left",
+   955→                    fontWeight: 700,
+   956→                    fontSize: "11px",
+   957→                    textTransform: "uppercase",
+   958→                    letterSpacing: "0.05em",
+   959→                    color: "#6d7175",
+   960→                    borderBottom: "1px solid #e1e3e5",
+   961→                    borderRight:
+   962→                      i < data.headers.length - 1
+   963→                        ? "1px solid #e1e3e5"
+   964→                        : "none",
+   965→                    whiteSpace: "nowrap",
+   966→                  }}
+   967→                >
+   968→                  {h}
+   969→                </th>
+   970→              ))}
+   971→            </tr>
+   972→          </thead>
+   973→          <tbody>
+   974→            {data.rows.map((row, ri) => (
+   975→              <tr
+   976→                key={ri}
+   977→                style={{ background: ri % 2 === 0 ? "#fff" : "#fafbfb" }}
+   978→              >
+   979→                {data.headers.map((h, hi) => (
+   980→                  <td
+   981→                    key={hi}
+   982→                    style={{
+   983→                      padding: "8px 12px",
+   984→                      borderBottom:
+   985→                        ri < data.rows.length - 1
+   986→                          ? "1px solid #e1e3e5"
+   987→                          : "none",
+   988→                      borderRight:
+   989→                        hi < data.headers.length - 1
+   990→                          ? "1px solid #e1e3e5"
+   991→                          : "none",
+   992→                      color: row[h] ? "#202223" : "#c9cccf",
+   993→                      fontWeight: hi === 0 ? 600 : 400,
+   994→                    }}
+   995→                  >
+   996→                    {row[h] || "—"}
+   997→                  </td>
+   998→                ))}
+   999→              </tr>
+  1000→            ))}
+  1001→          </tbody>
+  1002→        </table>
+  1003→      </div>
+  1004→
+  1005→      {/* Footer */}
+  1006→      <div
+  1007→        style={{
+  1008→          padding: "8px 16px",
+  1009→          background: "#f6f6f7",
+  1010→          borderTop: "1px solid #e1e3e5",
+  1011→          display: "flex",
+  1012→          alignItems: "center",
+  1013→          justifyContent: "space-between",
+  1014→        }}
+  1015→      >
+  1016→        <span style={{ fontSize: "11px", color: "#8c9196" }}>
+  1017→          Measurements in {data.units.default}
+  1018→        </span>
+  1019→        <span style={{ fontSize: "11px", color: "#8c9196", fontWeight: 600 }}>
+  1020→          {data.rows.length} sizes available
+  1021→        </span>
+  1022→      </div>
+  1023→    </div>
+  1024→  );
+  1025→}
+  1026→
+  1027→// ---------------------------------------------------------------------------
+  1028→// Main Component
+  1029→// ---------------------------------------------------------------------------
+  1030→
+  1031→type LoaderData = Awaited<ReturnType<typeof loader>>;
+  1032→type ActiveTab = "chart" | "assignments" | "settings";
+  1033→
+  1034→export default function SizeChartEditor() {
+  1035→  const loaderData = useLoaderData<typeof loader>() as LoaderData;
+  1036→  const { chart, assignments: initialAssignments, isNew } = loaderData;
+  1037→
+  1038→  const saveFetcher = useFetcher<typeof action>();
+  1039→  const statusFetcher = useFetcher<typeof action>();
+  1040→  const assignmentFetcher = useFetcher<typeof action>();
+  1041→  const shopify = useAppBridge();
+  1042→
+  1043→  const [activeTab, setActiveTab] = useState<ActiveTab>("chart");
+  1044→  const [name, setName] = useState(chart?.name ?? "Untitled Size Chart");
+  1045→  const [category, setCategory] = useState(chart?.category ?? "general");
+  1046→  const [status, setStatus] = useState(chart?.status ?? "draft");
+  1047→  const [chartData, setChartData] = useState<ChartData>(
+  1048→    chart ? parseChartData(chart.data) : makeDefaultData(),
+  1049→  );
+  1050→  const [assignments, setAssignments] =
+  1051→    useState<Assignment[]>(initialAssignments);
+  1052→  const [newAssignmentType, setNewAssignmentType] = useState("product");
+  1053→  const [newAssignmentValue, setNewAssignmentValue] = useState("");
+  1054→
+  1055→  const isSaving = saveFetcher.state !== "idle";
+  1056→  const isTogglingStatus = statusFetcher.state !== "idle";
+  1057→
+  1058→  // Check for ?saved=1 on mount (after redirect from new chart creation)
+  1059→  useEffect(() => {
+  1060→    if (typeof window !== "undefined") {
+  1061→      const url = new URL(window.location.href);
+  1062→      if (url.searchParams.get("saved") === "1") {
+  1063→        shopify.toast.show("Chart created successfully");
+  1064→        url.searchParams.delete("saved");
+  1065→        window.history.replaceState({}, "", url.toString());
+  1066→      }
+  1067→    }
+  1068→  }, [shopify]);
+  1069→
+  1070→  // Save feedback
+  1071→  useEffect(() => {
+  1072→    if (!saveFetcher.data) return;
+  1073→    const data = saveFetcher.data;
+  1074→    if ("ok" in data && data.ok) {
+  1075→      shopify.toast.show(data.message ?? "Saved");
+  1076→    } else if ("error" in data) {
+  1077→      shopify.toast.show(data.error ?? "An error occurred", { isError: true });
+  1078→    }
+  1079→  }, [saveFetcher.data, shopify]);
+  1080→
+  1081→  // Status toggle feedback
+  1082→  useEffect(() => {
+  1083→    if (!statusFetcher.data) return;
+  1084→    const data = statusFetcher.data;
+  1085→    if ("ok" in data && data.ok) {
+  1086→      shopify.toast.show(data.message ?? "Status updated");
+  1087→      if ("newStatus" in data && typeof data.newStatus === "string") {
+  1088→        setStatus(data.newStatus);
+  1089→      }
+  1090→    } else if ("error" in data) {
+  1091→      shopify.toast.show(data.error ?? "An error occurred", { isError: true });
+  1092→    }
+  1093→  }, [statusFetcher.data, shopify]);
+  1094→
+  1095→  // Assignment feedback
+  1096→  useEffect(() => {
+  1097→    if (!assignmentFetcher.data) return;
+  1098→    const data = assignmentFetcher.data;
+  1099→    if ("ok" in data && data.ok) {
+  1100→      shopify.toast.show(data.message ?? "Done");
+  1101→      setNewAssignmentValue("");
+  1102→    } else if ("error" in data) {
+  1103→      shopify.toast.show(data.error ?? "An error occurred", { isError: true });
+  1104→    }
+  1105→  }, [assignmentFetcher.data, shopify]);
+  1106→
+  1107→  const handleSave = () => {
+  1108→    const formData = new FormData();
+  1109→    formData.set("intent", "save");
+  1110→    formData.set("name", name);
+  1111→    formData.set("category", category);
+  1112→    formData.set("status", status);
+  1113→    formData.set("data", JSON.stringify(chartData));
+  1114→    saveFetcher.submit(formData, { method: "post" });
+  1115→  };
+  1116→
+  1117→  const handleToggleStatus = () => {
+  1118→    const formData = new FormData();
+  1119→    formData.set("intent", "toggle-status");
+  1120→    statusFetcher.submit(formData, { method: "post" });
+  1121→  };
+  1122→
+  1123→  const handleAddAssignment = () => {
+  1124→    if (!newAssignmentValue.trim() && newAssignmentType !== "all") return;
+  1125→    const formData = new FormData();
+  1126→    formData.set("intent", "add-assignment");
+  1127→    formData.set("assignmentType", newAssignmentType);
+  1128→    formData.set(
+  1129→      "assignmentValue",
+  1130→      newAssignmentType === "all" ? "*" : newAssignmentValue.trim(),
+  1131→    );
+  1132→    assignmentFetcher.submit(formData, { method: "post" });
+  1133→    setAssignments((prev) => [
+  1134→      ...prev,
+  1135→      {
+  1136→        id: `temp-${Date.now()}`,
+  1137→        assignmentType: newAssignmentType,
+  1138→        assignmentValue:
+  1139→          newAssignmentType === "all" ? "*" : newAssignmentValue.trim(),
+  1140→      },
+  1141→    ]);
+  1142→  };
+  1143→
+  1144→  const handleRemoveAssignment = (assignmentId: string) => {
+  1145→    const formData = new FormData();
+  1146→    formData.set("intent", "remove-assignment");
+  1147→    formData.set("assignmentId", assignmentId);
+  1148→    assignmentFetcher.submit(formData, { method: "post" });
+  1149→    setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+  1150→  };
+  1151→
+  1152→  const assignmentTypeLabel = (type: string) =>
+  1153→    ASSIGNMENT_TYPES.find((t) => t.value === type)?.label ?? type;
+  1154→
+  1155→  return (
+  1156→    <s-page
+  1157→      heading={isNew ? "New Size Chart" : name}
+  1158→      back-action-url="/app/size-charts"
+  1159→    >
+  1160→      <s-button
+  1161→        slot="primary-action"
+  1162→        variant="primary"
+  1163→        onClick={handleSave}
+  1164→        loading={isSaving}
+  1165→        disabled={isSaving}
+  1166→      >
+  1167→        {isSaving ? "Saving..." : "Save"}
+  1168→      </s-button>
+  1169→
+  1170→      <s-button
+  1171→        slot="secondary-action"
+  1172→        onClick={handleToggleStatus}
+  1173→        loading={isTogglingStatus}
+  1174→        disabled={isNew || isTogglingStatus}
+  1175→      >
+  1176→        {status === "active" ? "Unpublish" : "Publish"}
+  1177→      </s-button>
+  1178→
+  1179→      {/* ================================================================ */}
+  1180→      {/* Tab navigation                                                     */}
+  1181→      {/* ================================================================ */}
+  1182→      <s-section>
+  1183→        <div
+  1184→          style={{
+  1185→            display: "flex",
+  1186→            gap: "0",
+  1187→            borderBottom: "1px solid #e1e3e5",
+  1188→            marginBottom: "4px",
+  1189→          }}
+  1190→        >
+  1191→          {(
+  1192→            [
+  1193→              { id: "chart" as const, label: "Size Chart" },
+  1194→              { id: "assignments" as const, label: "Assignments" },
+  1195→              { id: "settings" as const, label: "Settings" },
+  1196→            ] satisfies { id: ActiveTab; label: string }[]
+  1197→          ).map((tab) => (
+  1198→            <button
+  1199→              key={tab.id}
+  1200→              type="button"
+  1201→              onClick={() => setActiveTab(tab.id)}
+  1202→              style={tabStyle(activeTab === tab.id)}
+  1203→            >
+  1204→              {tab.label}
+  1205→              {tab.id === "assignments" && assignments.length > 0 && (
+  1206→                <span
+  1207→                  style={{
+  1208→                    marginLeft: "6px",
+  1209→                    background:
+  1210→                      activeTab === "assignments" ? "#202223" : "#e4e5e7",
+  1211→                    color:
+  1212→                      activeTab === "assignments" ? "#ffffff" : "#6d7175",
+  1213→                    borderRadius: "10px",
+  1214→                    fontSize: "11px",
+  1215→                    fontWeight: 700,
+  1216→                    padding: "1px 6px",
+  1217→                    lineHeight: "16px",
+  1218→                    display: "inline-block",
+  1219→                    verticalAlign: "middle",
+  1220→                  }}
+  1221→                >
+  1222→                  {assignments.length}
+  1223→                </span>
+  1224→              )}
+  1225→            </button>
+  1226→          ))}
+  1227→        </div>
+  1228→
+  1229→        {/* ============================================================== */}
+  1230→        {/* TAB: Size Chart                                                 */}
+  1231→        {/* ============================================================== */}
+  1232→        <div style={{ display: activeTab === "chart" ? "block" : "none" }}>
+  1233→          {/* General Settings card */}
+  1234→          <div style={{ ...cardStyle, marginBottom: "16px" }}>
+  1235→            <div
+  1236→              style={{
+  1237→                display: "flex",
+  1238→                alignItems: "center",
+  1239→                justifyContent: "space-between",
+  1240→                marginBottom: "16px",
+  1241→              }}
+  1242→            >
+  1243→              <p style={sectionTitle}>General Settings</p>
+  1244→              <span
+  1245→                style={badgeStyle(status === "active" ? "success" : "neutral")}
+  1246→              >
+  1247→                {status === "active" ? "Published" : "Draft"}
+  1248→              </span>
+  1249→            </div>
+  1250→
+  1251→            {/* Name field */}
+  1252→            <div style={{ marginBottom: "16px" }}>
+  1253→              <label style={labelStyle} htmlFor="chart-name">
+  1254→                Chart name
+  1255→              </label>
+  1256→              <input
+  1257→                id="chart-name"
+  1258→                value={name}
+  1259→                onChange={(e) => setName((e.target as HTMLInputElement).value)}
+  1260→                placeholder="e.g. Women's Tops Size Chart"
+  1261→                style={inputStyle}
+  1262→                onFocus={(e) => focusInput(e.target as HTMLInputElement)}
+  1263→                onBlur={(e) => blurInput(e.target as HTMLInputElement)}
+  1264→              />
+  1265→            </div>
+  1266→
+  1267→            {/* Category + Status row */}
+  1268→            <div
+  1269→              style={{ display: "flex", gap: "16px", alignItems: "flex-end" }}
+  1270→            >
+  1271→              <div style={{ flex: 1 }}>
+  1272→                <label style={labelStyle} htmlFor="chart-category">
+  1273→                  Category
+  1274→                </label>
+  1275→                <select
+  1276→                  id="chart-category"
+  1277→                  value={category}
+  1278→                  onChange={(e) =>
+  1279→                    setCategory((e.target as HTMLSelectElement).value)
+  1280→                  }
+  1281→                  style={{
+  1282→                    ...inputStyle,
+  1283→                    cursor: "pointer",
+  1284→                    appearance: "auto",
+  1285→                  }}
+  1286→                  onFocus={(e) => focusInput(e.target as HTMLSelectElement)}
+  1287→                  onBlur={(e) => blurInput(e.target as HTMLSelectElement)}
+  1288→                >
+  1289→                  {CATEGORIES.map((c) => (
+  1290→                    <option key={c.value} value={c.value}>
+  1291→                      {c.label}
+  1292→                    </option>
+  1293→                  ))}
+  1294→                </select>
+  1295→              </div>
+  1296→
+  1297→              <div>
+  1298→                <label style={{ ...labelStyle, color: "#6d7175" }}>
+  1299→                  Status
+  1300→                </label>
+  1301→                <div style={{ paddingBottom: "9px" }}>
+  1302→                  <span
+  1303→                    style={{
+  1304→                      ...badgeStyle(
+  1305→                        status === "active" ? "success" : "neutral",
+  1306→                      ),
+  1307→                      fontSize: "12px",
+  1308→                      padding: "4px 10px",
+  1309→                    }}
+  1310→                  >
+  1311→                    {status === "active" ? "Published" : "Draft"}
+  1312→                  </span>
+  1313→                </div>
+  1314→              </div>
+  1315→            </div>
+  1316→          </div>
+  1317→
+  1318→          {/* Size Table card */}
+  1319→          <div style={cardStyle}>
+  1320→            <div style={{ marginBottom: "14px" }}>
+  1321→              <p style={sectionTitle}>Size Table</p>
+  1322→              <p
+  1323→                style={{
+  1324→                  fontSize: "13px",
+  1325→                  color: "#6d7175",
+  1326→                  margin: "4px 0 0",
+  1327→                }}
+  1328→              >
+  1329→                Click any cell to edit. Click a column header to rename it. Use
+  1330→                the + buttons to add rows or columns.
+  1331→              </p>
+  1332→            </div>
+  1333→            <TableEditor data={chartData} onChange={setChartData} />
+  1334→          </div>
+  1335→        </div>
+  1336→
+  1337→        {/* ============================================================== */}
+  1338→        {/* TAB: Assignments                                                */}
+  1339→        {/* ============================================================== */}
+  1340→        <div
+  1341→          style={{ display: activeTab === "assignments" ? "block" : "none" }}
+  1342→        >
+  1343→          {/* Current Assignments card */}
+  1344→          <div style={{ ...cardStyle, marginBottom: "16px" }}>
+  1345→            <div style={{ marginBottom: "16px" }}>
+  1346→              <p style={sectionTitle}>Current Assignments</p>
+  1347→              <p
+  1348→                style={{
+  1349→                  fontSize: "13px",
+  1350→                  color: "#6d7175",
+  1351→                  margin: "4px 0 0",
+  1352→                }}
+  1353→              >
+  1354→                This chart will appear on matching product pages.
+  1355→              </p>
+  1356→            </div>
+  1357→
+  1358→            {/* New chart info banner */}
+  1359→            {isNew && (
+  1360→              <div
+  1361→                style={{
+  1362→                  background: "#e8f0fe",
+  1363→                  border: "1px solid #c5d8f6",
+  1364→                  borderRadius: "8px",
+  1365→                  padding: "12px 14px",
+  1366→                  display: "flex",
+  1367→                  alignItems: "flex-start",
+  1368→                  gap: "10px",
+  1369→                }}
+  1370→              >
+  1371→                <span
+  1372→                  style={{
+  1373→                    fontSize: "16px",
+  1374→                    lineHeight: 1,
+  1375→                    marginTop: "1px",
+  1376→                  }}
+  1377→                >
+  1378→                  &#9432;
+  1379→                </span>
+  1380→                <p
+  1381→                  style={{
+  1382→                    margin: 0,
+  1383→                    fontSize: "13px",
+  1384→                    color: "#3b3f8c",
+  1385→                    fontWeight: 500,
+  1386→                  }}
+  1387→                >
+  1388→                  Save the chart first to add product assignments.
+  1389→                </p>
+  1390→              </div>
+  1391→            )}
+  1392→
+  1393→            {/* Existing assignments list */}
+  1394→            {assignments.length > 0 && (
+  1395→              <div
+  1396→                style={{
+  1397→                  border: "1px solid #e3e3e3",
+  1398→                  borderRadius: "8px",
+  1399→                  overflow: "hidden",
+  1400→                }}
+  1401→              >
+  1402→                {assignments.map((assignment, i) => (
+  1403→                  <div
+  1404→                    key={assignment.id}
+  1405→                    style={{
+  1406→                      display: "flex",
+  1407→                      alignItems: "center",
+  1408→                      gap: "12px",
+  1409→                      padding: "11px 14px",
+  1410→                      background: i % 2 === 0 ? "#ffffff" : "#fafbfb",
+  1411→                      borderBottom:
+  1412→                        i < assignments.length - 1
+  1413→                          ? "1px solid #e3e3e3"
+  1414→                          : "none",
+  1415→                    }}
+  1416→                  >
+  1417→                    <span style={badgeStyle("info")}>
+  1418→                      {assignmentTypeLabel(assignment.assignmentType)}
+  1419→                    </span>
+  1420→                    <span
+  1421→                      style={{
+  1422→                        flex: 1,
+  1423→                        fontSize: "13px",
+  1424→                        color: "#202223",
+  1425→                        fontWeight: 500,
+  1426→                        fontFamily: "monospace",
+  1427→                      }}
+  1428→                    >
+  1429→                      {assignment.assignmentValue === "*"
+  1430→                        ? "All products"
+  1431→                        : assignment.assignmentValue}
+  1432→                    </span>
+  1433→                    <button
+  1434→                      type="button"
+  1435→                      onClick={() => handleRemoveAssignment(assignment.id)}
+  1436→                      style={{
+  1437→                        background: "none",
+  1438→                        border: "none",
+  1439→                        cursor: "pointer",
+  1440→                        color: "#8c9196",
+  1441→                        fontSize: "12px",
+  1442→                        fontWeight: 600,
+  1443→                        padding: "4px 8px",
+  1444→                        borderRadius: "4px",
+  1445→                        transition: "color 0.1s, background 0.1s",
+  1446→                        fontFamily: "inherit",
+  1447→                      }}
+  1448→                      onMouseEnter={(e) => {
+  1449→                        (e.currentTarget as HTMLButtonElement).style.color =
+  1450→                          "#d82c0d";
+  1451→                        (
+  1452→                          e.currentTarget as HTMLButtonElement
+  1453→                        ).style.background = "#fee2e2";
+  1454→                      }}
+  1455→                      onMouseLeave={(e) => {
+  1456→                        (e.currentTarget as HTMLButtonElement).style.color =
+  1457→                          "#8c9196";
+  1458→                        (
+  1459→                          e.currentTarget as HTMLButtonElement
+  1460→                        ).style.background = "none";
+  1461→                      }}
+  1462→                    >
+  1463→                      Remove
+  1464→                    </button>
+  1465→                  </div>
+  1466→                ))}
+  1467→              </div>
+  1468→            )}
+  1469→
+  1470→            {/* Empty state */}
+  1471→            {assignments.length === 0 && !isNew && (
+  1472→              <div
+  1473→                style={{
+  1474→                  border: "1.5px dashed #c9cccf",
+  1475→                  borderRadius: "8px",
+  1476→                  padding: "28px 16px",
+  1477→                  textAlign: "center",
+  1478→                  background: "#fafbfb",
+  1479→                }}
+  1480→              >
+  1481→                <div
+  1482→                  style={{
+  1483→                    fontSize: "28px",
+  1484→                    marginBottom: "8px",
+  1485→                    lineHeight: 1,
+  1486→                  }}
+  1487→                >
+  1488→                  &#128205;
+  1489→                </div>
+  1490→                <p
+  1491→                  style={{
+  1492→                    margin: 0,
+  1493→                    fontSize: "14px",
+  1494→                    color: "#202223",
+  1495→                    fontWeight: 600,
+  1496→                  }}
+  1497→                >
+  1498→                  No assignments yet
+  1499→                </p>
+  1500→                <p
+  1501→                  style={{
+  1502→                    margin: "4px 0 0",
+  1503→                    fontSize: "13px",
+  1504→                    color: "#8c9196",
+  1505→                  }}
+  1506→                >
+  1507→                  Add an assignment below to show this chart on product pages.
+  1508→                </p>
+  1509→              </div>
+  1510→            )}
+  1511→          </div>
+  1512→
+  1513→          {/* Add Assignment card */}
+  1514→          {!isNew && (
+  1515→            <div style={cardStyle}>
+  1516→              <div style={{ marginBottom: "14px" }}>
+  1517→                <p style={sectionTitle}>Add Assignment</p>
+  1518→                <p
+  1519→                  style={{
+  1520→                    fontSize: "13px",
+  1521→                    color: "#6d7175",
+  1522→                    margin: "4px 0 0",
+  1523→                  }}
+  1524→                >
+  1525→                  Target by product, collection, tag, or product type.
+  1526→                </p>
+  1527→              </div>
+  1528→
+  1529→              <div
+  1530→                style={{
+  1531→                  display: "flex",
+  1532→                  gap: "10px",
+  1533→                  alignItems: "flex-end",
+  1534→                }}
+  1535→              >
+  1536→                {/* Type select */}
+  1537→                <div style={{ flexShrink: 0 }}>
+  1538→                  <label style={labelStyle} htmlFor="assignment-type">
+  1539→                    Type
+  1540→                  </label>
+  1541→                  <select
+  1542→                    id="assignment-type"
+  1543→                    value={newAssignmentType}
+  1544→                    onChange={(e) =>
+  1545→                      setNewAssignmentType(
+  1546→                        (e.target as HTMLSelectElement).value,
+  1547→                      )
+  1548→                    }
+  1549→                    style={{
+  1550→                      border: "1px solid #c9cccf",
+  1551→                      borderRadius: "8px",
+  1552→                      padding: "8px 10px",
+  1553→                      fontSize: "13px",
+  1554→                      background: "#fff",
+  1555→                      cursor: "pointer",
+  1556→                      outline: "none",
+  1557→                      fontFamily: "inherit",
+  1558→                      color: "#202223",
+  1559→                    }}
+  1560→                    onFocus={(e) => focusInput(e.target as HTMLSelectElement)}
+  1561→                    onBlur={(e) => blurInput(e.target as HTMLSelectElement)}
+  1562→                  >
+  1563→                    {ASSIGNMENT_TYPES.map((t) => (
+  1564→                      <option key={t.value} value={t.value}>
+  1565→                        {t.label}
+  1566→                      </option>
+  1567→                    ))}
+  1568→                  </select>
+  1569→                </div>
+  1570→
+  1571→                {/* Value input — hidden for "all" type */}
+  1572→                {newAssignmentType !== "all" && (
+  1573→                  <div style={{ flex: 1 }}>
+  1574→                    <label style={labelStyle} htmlFor="assignment-value">
+  1575→                      Value
+  1576→                    </label>
+  1577→                    <input
+  1578→                      id="assignment-value"
+  1579→                      value={newAssignmentValue}
+  1580→                      onChange={(e) =>
+  1581→                        setNewAssignmentValue(
+  1582→                          (e.target as HTMLInputElement).value,
+  1583→                        )
+  1584→                      }
+  1585→                      placeholder={
+  1586→                        newAssignmentType === "tag"
+  1587→                          ? "e.g. summer-sale"
+  1588→                          : newAssignmentType === "product_type"
+  1589→                            ? "e.g. T-Shirts"
+  1590→                            : newAssignmentType === "collection"
+  1591→                              ? "e.g. gid://shopify/Collection/123"
+  1592→                              : "e.g. gid://shopify/Product/123"
+  1593→                      }
+  1594→                      style={inputStyle}
+  1595→                      onFocus={(e) => focusInput(e.target as HTMLInputElement)}
+  1596→                      onBlur={(e) => blurInput(e.target as HTMLInputElement)}
+  1597→                      onKeyDown={(e) => {
+  1598→                        if (e.key === "Enter") {
+  1599→                          e.preventDefault();
+  1600→                          handleAddAssignment();
+  1601→                        }
+  1602→                      }}
+  1603→                    />
+  1604→                  </div>
+  1605→                )}
+  1606→
+  1607→                <div style={{ flexShrink: 0, paddingBottom: "1px" }}>
+  1608→                  <s-button
+  1609→                    variant="primary"
+  1610→                    onClick={handleAddAssignment}
+  1611→                    loading={assignmentFetcher.state !== "idle"}
+  1612→                  >
+  1613→                    Add
+  1614→                  </s-button>
+  1615→                </div>
+  1616→              </div>
+  1617→            </div>
+  1618→          )}
+  1619→        </div>
+  1620→
+  1621→        {/* ============================================================== */}
+  1622→        {/* TAB: Settings                                                   */}
+  1623→        {/* ============================================================== */}
+  1624→        <div style={{ display: activeTab === "settings" ? "block" : "none" }}>
+  1625→          {/* How to Measure card */}
+  1626→          <div style={{ ...cardStyle, marginBottom: "16px" }}>
+  1627→            <div style={{ marginBottom: "14px" }}>
+  1628→              <p style={sectionTitle}>How to Measure</p>
+  1629→              <p
+  1630→                style={{
+  1631→                  fontSize: "13px",
+  1632→                  color: "#6d7175",
+  1633→                  margin: "4px 0 0",
+  1634→                }}
+  1635→              >
+  1636→                This guide is shown alongside your size chart to help customers
+  1637→                measure correctly.
+  1638→              </p>
+  1639→            </div>
+  1640→            <div
+  1641→              style={{
+  1642→                background: "#f9fafb",
+  1643→                border: "1px solid #e1e3e5",
+  1644→                borderRadius: "8px",
+  1645→                padding: "16px 18px",
+  1646→              }}
+  1647→            >
+  1648→              <p
+  1649→                style={{
+  1650→                  margin: "0 0 10px",
+  1651→                  fontSize: "13px",
+  1652→                  fontWeight: 700,
+  1653→                  color: "#202223",
+  1654→                }}
+  1655→              >
+  1656→                Measurement Instructions
+  1657→              </p>
+  1658→              <ul
+  1659→                style={{
+  1660→                  margin: 0,
+  1661→                  padding: "0 0 0 18px",
+  1662→                  listStyleType: "disc",
+  1663→                }}
+  1664→              >
+  1665→                {[
+  1666→                  {
+  1667→                    label: "Chest",
+  1668→                    desc: "Measure around the fullest part of your chest, keeping the tape parallel to the floor.",
+  1669→                  },
+  1670→                  {
+  1671→                    label: "Waist",
+  1672→                    desc: "Measure around the narrowest part of your waist, typically 1 inch above the navel.",
+  1673→                  },
+  1674→                  {
+  1675→                    label: "Hips",
+  1676→                    desc: "Measure around the fullest part of your hips, approximately 8 inches below the waist.",
+  1677→                  },
+  1678→                  {
+  1679→                    label: "Inseam",
+  1680→                    desc: "Measure from the crotch seam down to the ankle bone along the inside of the leg.",
+  1681→                  },
+  1682→                ].map((item) => (
+  1683→                  <li
+  1684→                    key={item.label}
+  1685→                    style={{
+  1686→                      fontSize: "13px",
+  1687→                      color: "#202223",
+  1688→                      lineHeight: 1.6,
+  1689→                      marginBottom: "6px",
+  1690→                    }}
+  1691→                  >
+  1692→                    <strong style={{ color: "#202223" }}>{item.label}:</strong>{" "}
+  1693→                    <span style={{ color: "#6d7175" }}>{item.desc}</span>
+  1694→                  </li>
+  1695→                ))}
+  1696→              </ul>
+  1697→              <p
+  1698→                style={{
+  1699→                  margin: "12px 0 0",
+  1700→                  fontSize: "12px",
+  1701→                  color: "#8c9196",
+  1702→                  fontStyle: "italic",
+  1703→                }}
+  1704→              >
+  1705→                Tip: Use a soft measuring tape and measure directly on the skin
+  1706→                or over light clothing for the most accurate fit.
+  1707→              </p>
+  1708→            </div>
+  1709→          </div>
+  1710→
+  1711→          {/* Danger Zone card */}
+  1712→          {!isNew && (
+  1713→            <div
+  1714→              style={{
+  1715→                background: "#fff8f8",
+  1716→                border: "1px solid #fcd4d1",
+  1717→                borderRadius: "12px",
+  1718→                padding: "20px",
+  1719→              }}
+  1720→            >
+  1721→              <p
+  1722→                style={{
+  1723→                  margin: "0 0 4px",
+  1724→                  fontSize: "15px",
+  1725→                  fontWeight: 650,
+  1726→                  color: "#d82c0d",
+  1727→                }}
+  1728→              >
+  1729→                Danger Zone
+  1730→              </p>
+  1731→              <p
+  1732→                style={{
+  1733→                  margin: "0 0 16px",
+  1734→                  fontSize: "13px",
+  1735→                  color: "#6d7175",
+  1736→                  lineHeight: 1.5,
+  1737→                }}
+  1738→              >
+  1739→                Permanently deletes this chart and all its product assignments.
+  1740→                This action cannot be undone.
+  1741→              </p>
+  1742→              <assignmentFetcher.Form method="post">
+  1743→                <input type="hidden" name="intent" value="delete" />
+  1744→                <button
+  1745→                  type="submit"
+  1746→                  style={{
+  1747→                    background: "#d82c0d",
+  1748→                    border: "none",
+  1749→                    borderRadius: "8px",
+  1750→                    padding: "8px 16px",
+  1751→                    fontSize: "13px",
+  1752→                    fontWeight: 600,
+  1753→                    color: "#fff",
+  1754→                    cursor: "pointer",
+  1755→                    fontFamily: "inherit",
+  1756→                    transition: "background 0.1s",
+  1757→                  }}
+  1758→                  onMouseEnter={(e) => {
+  1759→                    (e.currentTarget as HTMLButtonElement).style.background =
+  1760→                      "#b52b0c";
+  1761→                  }}
+  1762→                  onMouseLeave={(e) => {
+  1763→                    (e.currentTarget as HTMLButtonElement).style.background =
+  1764→                      "#d82c0d";
+  1765→                  }}
+  1766→                >
+  1767→                  Delete Chart Permanently
+  1768→                </button>
+  1769→              </assignmentFetcher.Form>
+  1770→            </div>
+  1771→          )}
+  1772→        </div>
+  1773→      </s-section>
+  1774→
+  1775→      {/* ================================================================ */}
+  1776→      {/* ASIDE — Live Widget Preview (always visible)                       */}
+  1777→      {/* ================================================================ */}
+  1778→      <s-section slot="aside" heading="Widget Preview">
+  1779→        <ChartPreview data={chartData} name={name} status={status} />
+  1780→        <p
+  1781→          style={{
+  1782→            fontSize: "12px",
+  1783→            color: "#8c9196",
+  1784→            marginTop: "10px",
+  1785→            marginBottom: 0,
+  1786→            textAlign: "center",
+  1787→          }}
+  1788→        >
+  1789→          Live preview — reflects your edits instantly.
+  1790→        </p>
+  1791→      </s-section>
+  1792→
+  1793→      {/* ================================================================ */}
+  1794→      {/* ASIDE — Chart Info (always visible for saved charts)              */}
+  1795→      {/* ================================================================ */}
+  1796→      {!isNew && chart && (
+  1797→        <s-section slot="aside" heading="Chart Info">
+  1798→          <div
+  1799→            style={{
+  1800→              display: "flex",
+  1801→              flexDirection: "column",
+  1802→              gap: "0",
+  1803→            }}
+  1804→          >
+  1805→            {[
+  1806→              { label: "Created", value: formatDate(chart.createdAt) },
+  1807→              { label: "Last updated", value: formatDate(chart.updatedAt) },
+  1808→              { label: "Assignments", value: String(assignments.length) },
+  1809→              { label: "Sizes (rows)", value: String(chartData.rows.length) },
+  1810→              { label: "Columns", value: String(chartData.headers.length) },
+  1811→            ].map((item, idx, arr) => (
+  1812→              <div
+  1813→                key={item.label}
+  1814→                style={{
+  1815→                  display: "flex",
+  1816→                  justifyContent: "space-between",
+  1817→                  alignItems: "baseline",
+  1818→                  padding: "8px 0",
+  1819→                  borderBottom:
+  1820→                    idx < arr.length - 1 ? "1px solid #f1f1f1" : "none",
+  1821→                }}
+  1822→              >
+  1823→                <span
+  1824→                  style={{
+  1825→                    fontSize: "12px",
+  1826→                    color: "#8c9196",
+  1827→                    fontWeight: 500,
+  1828→                  }}
+  1829→                >
+  1830→                  {item.label}
+  1831→                </span>
+  1832→                <span
+  1833→                  style={{
+  1834→                    fontSize: "13px",
+  1835→                    color: "#202223",
+  1836→                    fontWeight: 600,
+  1837→                    textAlign: "right",
+  1838→                    maxWidth: "55%",
+  1839→                  }}
+  1840→                >
+  1841→                  {item.value}
+  1842→                </span>
+  1843→              </div>
+  1844→            ))}
+  1845→          </div>
+  1846→        </s-section>
+  1847→      )}
+  1848→    </s-page>
+  1849→  );
+  1850→}
+  1851→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

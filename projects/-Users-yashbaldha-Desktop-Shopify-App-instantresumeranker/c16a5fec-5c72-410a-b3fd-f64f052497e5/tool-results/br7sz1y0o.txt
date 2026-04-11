@@ -1,0 +1,707 @@
+iggered.current = false;
+   388→   388→    }
+   389→   389→  };
+   390→   390→
+   391→   391→  const uploadFilesFromSnapshot = async (jobId: string, filesToUpload: UploadedFile[]): Promise<string[]> => {
+   392→   392→    if (!user) return [];
+   393→   393→    const resumeIds: string[] = [];
+   394→   394→    for (const { file, name } of filesToUpload) {
+   395→   395→      const filePath = `${user.id}/${jobId}/${Date.now()}_${name}`;
+   396→   396→      const { error: uploadError } = await supabase.storage.from("resumes").upload(filePath, file);
+   397→   397→      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+   398→   398→      const { data: resume, error: resumeError } = await supabase
+   399→   399→        .from("resumes")
+   400→   400→        .insert({ job_id: jobId, filename: name, file_path: filePath })
+   401→   401→        .select("id")
+   402→   402→        .single();
+   403→   403→      if (resumeError || !resume) throw new Error(resumeError?.message || "Failed to save resume");
+   404→   404→      resumeIds.push(resume.id);
+   405→   405→    }
+   406→   406→    return resumeIds;
+   407→   407→  };
+   408→   408→
+   409→   409→  const rankAndPoll = async (jobId: string, resumeIds: string[]) => {
+   410→   410→    const response = await fetch(
+   411→   411→      `https://zkzontawprihrzpayeam.supabase.co/functions/v1/rank-resumes`,
+   412→   412→      {
+   413→   413→        method: "POST",
+   414→   414→        headers: {
+   415→   415→          "Content-Type": "application/json",
+   416→   416→          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+   417→   417→        },
+   418→   418→        body: JSON.stringify({ job_id: jobId, resume_ids: resumeIds }),
+   419→   419→      }
+   420→   420→    );
+   421→   421→
+   422→   422→    if (!response.ok) {
+   423→   423→      const errBody = await response.json().catch(() => ({}));
+   424→   424→      const err: any = new Error(errBody.error || "Ranking failed");
+   425→   425→      err.status = response.status;
+   426→   426→      throw err;
+   427→   427→    }
+   428→   428→    setRankingProgress(60);
+   429→   429→
+   430→   430→    for (let i = 0; i < 150; i++) {
+   431→   431→      await new Promise((r) => setTimeout(r, 2000));
+   432→   432→      const { data: resumeProgress } = await supabase.from("resumes").select("id, status").in("id", resumeIds);
+   433→   433→      if (resumeProgress) {
+   434→   434→        const done = resumeProgress.filter((r: any) => r.status === "done" || r.status === "failed").length;
+   435→   435→        setScoredCount(done);
+   436→   436→        const pct = resumeIds.length > 0 ? Math.round((done / resumeIds.length) * 35) : 0;
+   437→   437→        setRankingProgress(Math.min(60 + pct, 95));
+   438→   438→      }
+   439→   439→
+   440→   440→      const { data: jobData } = await supabase.from("jobs").select("status").eq("id", jobId).single();
+   441→   441→      if (jobData?.status === "completed") {
+   442→   442→         const { data: allResumes } = await supabase.from("resumes").select("id, filename, file_path, candidate_name, parsed_json").eq("job_id", jobId);
+   443→   443→         if (allResumes) {
+   444→   444→           const allResumeIds = allResumes.map((r: any) => r.id);
+   445→   445→            const { data: resultData } = await supabase
+   446→   446→              .from("results")
+   447→   447→              .select("id, resume_id, overall_score, missing_skills, summary, interview_questions, hard_fit, category_scores_json, confidence, strengths_json, gaps_json, explanation_json, matched_must_haves, missing_must_haves, scoring_version")
+   448→   448→              .in("resume_id", allResumeIds);
+   449→   449→
+   450→   450→            const resumeMap = new Map(allResumes.map((r: any) => [r.id, r]));
+   451→   451→            const merged: Result[] = (resultData ?? []).map((r: any) => {
+   452→   452→              const resume = resumeMap.get(r.resume_id);
+   453→   453→              const parsed = resume?.parsed_json as any;
+   454→   454→              return {
+   455→   455→                ...r,
+   456→   456→                overall_score: r.overall_score ?? 0,
+   457→   457→                missing_skills: r.missing_skills ?? [],
+   458→   458→                filename: resume?.filename ?? "Unknown",
+   459→   459→                file_path: resume?.file_path ?? null,
+   460→   460→                candidate_name: resume?.candidate_name ?? null,
+   461→   461→                candidate_email: parsed?.email ?? parsed?.contact?.email ?? null,
+   462→   462→                candidate_phone: parsed?.phone ?? parsed?.contact?.phone ?? null,
+   463→   463→                candidate_location: parsed?.location ?? parsed?.contact?.location ?? null,
+   464→   464→                parsed_json: resume?.parsed_json ?? null,
+   465→   465→              };
+   466→   466→            });
+   467→   467→          merged.sort((a, b) => b.overall_score - a.overall_score);
+   468→   468→          setResults(merged);
+   469→   469→        }
+   470→   470→        setRankingProgress(100);
+   471→   471→        await refreshProfile();
+   472→   472→        setTimeout(() => { resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 200);
+   473→   473→        return;
+   474→   474→      }
+   475→   475→      if (jobData?.status === "failed") throw new Error("Ranking failed on server");
+   476→   476→    }
+   477→   477→    throw new Error("Ranking timed out");
+   478→   478→  };
+   479→   479→
+   480→   480→  const handleRerank = async () => {
+   481→   481→    if (!user || !selectedJobId || existingResumes.length === 0) return;
+   482→   482→    setRanking(true); setRankingProgress(10);
+   483→   483→    try {
+   484→   484→      if (!selectedJob?.jd_analysis_json) {
+   485→   485→        await analyzeJd(selectedJobId);
+   486→   486→        setRankingProgress(20);
+   487→   487→      }
+   488→   488→      const resumeIds = existingResumes.map((r) => r.id);
+   489→   489→      await supabase.from("results").delete().in("resume_id", resumeIds);
+   490→   490→      for (const rid of resumeIds) {
+   491→   491→        await supabase.from("resumes").update({ parsed_text: null, parsed_json: null } as any).eq("id", rid);
+   492→   492→      }
+   493→   493→      setResults([]); setRankingProgress(30);
+   494→   494→      await supabase.from("jobs").update({ status: "processing" }).eq("id", selectedJobId);
+   495→   495→      await rankAndPoll(selectedJobId, resumeIds);
+   496→   496→      const { data: allResumes } = await supabase
+   497→   497→        .from("resumes")
+   498→   498→        .select("id, filename, file_path, candidate_name, created_at")
+   499→   499→        .eq("job_id", selectedJobId)
+   500→   500→        .order("created_at", { ascending: false });
+   501→   501→      if (allResumes) setExistingResumes(allResumes);
+   502→   502→      toast.success("All candidates re-ranked!");
+   503→   503→    } catch (err: any) { toast.error(err.message || "Re-ranking failed."); }
+   504→   504→    finally { setRanking(false); setRankingProgress(0); }
+   505→   505→  };
+   506→   506→
+   507→   507→  const downloadResume = async (filePath: string, filename: string) => {
+   508→   508→    const { data, error } = await supabase.storage.from("resumes").download(filePath);
+   509→   509→    if (error || !data) { toast.error("Download failed"); return; }
+   510→   510→    const url = URL.createObjectURL(data);
+   511→   511→    const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
+   512→   512→    URL.revokeObjectURL(url);
+   513→   513→  };
+   514→   514→
+   515→   515→  const deleteCount = deleteConfirm?.type === "bulk" ? selectedResumes.size : 1;
+   516→   516→
+   517→   517→  const handleDismiss = (resumeId: string) => {
+   518→   518→    setDismissedResumes((prev) => {
+   519→   519→      const next = new Set(prev).add(resumeId);
+   520→   520→      if (selectedJobId) {
+   521→   521→        try {
+   522→   522→          localStorage.setItem(`dismissed_${selectedJobId}`, JSON.stringify(Array.from(next)));
+   523→   523→        } catch { /* ignore storage errors */ }
+   524→   524→      }
+   525→   525→      return next;
+   526→   526→    });
+   527→   527→    toast.success("Candidate archived");
+   528→   528→  };
+   529→   529→
+   530→   530→  const handleUnarchive = (resumeId: string) => {
+   531→   531→    setDismissedResumes((prev) => {
+   532→   532→      const next = new Set(prev);
+   533→   533→      next.delete(resumeId);
+   534→   534→      if (selectedJobId) {
+   535→   535→        try {
+   536→   536→          if (next.size === 0) {
+   537→   537→            localStorage.removeItem(`dismissed_${selectedJobId}`);
+   538→   538→          } else {
+   539→   539→            localStorage.setItem(`dismissed_${selectedJobId}`, JSON.stringify(Array.from(next)));
+   540→   540→          }
+   541→   541→        } catch { /* ignore storage errors */ }
+   542→   542→      }
+   543→   543→      if (next.size === 0) setShowArchived(false);
+   544→   544→      return next;
+   545→   545→    });
+   546→   546→    toast.success("Candidate restored");
+   547→   547→  };
+   548→   548→
+   549→   549→  const visibleResults = allResults.filter((r) => !dismissedResumes.has(r.resume_id));
+   550→   550→  const archivedResults = allResults.filter((r) => dismissedResumes.has(r.resume_id));
+   551→   551→
+   552→   552→  return (
+   553→   553→    <div className="flex-1 overflow-auto">
+   554→   554→      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+   555→   555→
+   556→   556→        {/* Hero — only for new job / unauthenticated state */}
+   557→   557→        {!isExistingJob && allResults.length === 0 && (
+   558→   558→          <div className="text-center pt-2 pb-2">
+   559→   559→            <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full mb-4">
+   560→   560→              <Sparkles className="h-3.5 w-3.5" />
+   561→   561→              Powered by GPT-4o
+   562→   562→            </div>
+   563→   563→            <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight leading-tight mb-3">
+   564→   564→              Rank resumes in{" "}
+   565→   565→              <span className="text-primary">under 2 minutes</span>
+   566→   566→            </h1>
+   567→   567→            <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
+   568→   568→              Paste a job description, upload up to 20 resumes — AI scores every candidate with strengths, gaps, and interview questions. No setup needed.
+   569→   569→            </p>
+   570→   570→          </div>
+   571→   571→        )}
+   572→   572→
+   573→   573→        {/* Two-column: JD (left) + Right column (upload + inbox) */}
+   574→   574→        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:items-start">
+   575→   575→          {/* LEFT — JD card stretches to match right column height via self-stretch */}
+   576→   576→          <Card className="flex flex-col md:self-stretch">
+   577→   577→            <CardHeader className="pb-3 shrink-0">
+   578→   578→              <div className="flex items-center justify-between">
+   579→   579→                <CardTitle className="text-lg">
+   580→   580→                  {isExistingJob ? "Job Description" : "Paste Job Description"}
+   581→   581→                </CardTitle>
+   582→   582→                <div className="flex items-center gap-2">
+   583→   583→                  {isExistingJob && selectedJob?.jd_analysis_json && (
+   584→   584→                    <Badge variant="secondary" className="gap-1 text-[10px]">
+   585→   585→                      <Zap className="h-2.5 w-2.5 text-primary" />
+   586→   586→                      AI analyzed
+   587→   587→                    </Badge>
+   588→   588→                  )}
+   589→   589→                  {isExistingJob && selectedJob?.job_description && (
+   590→   590→                    <Button
+   591→   591→                      variant="outline"
+   592→   592→                      size="sm"
+   593→   593→                      className="gap-1.5 h-7 text-xs"
+   594→   594→                      onClick={() => setJdRewriteOpen(true)}
+   595→   595→                    >
+   596→   596→                      <Wand2 className="h-3.5 w-3.5 text-primary" />
+   597→   597→                      AI Rewrite JD
+   598→   598→                    </Button>
+   599→   599→                  )}
+   600→   600→                </div>
+   601→   601→              </div>
+   602→   602→            </CardHeader>
+   603→   603→            <CardContent className="flex flex-col flex-1 pb-4">
+   604→   604→              {isExistingJob ? (
+   605→   605→                <div className="bg-muted/50 rounded-md p-4 text-sm whitespace-pre-wrap overflow-y-auto leading-relaxed flex-1 max-h-[400px]">
+   606→   606→                  {selectedJob?.job_description}
+   607→   607→                </div>
+   608→   608→              ) : (
+   609→   609→                <textarea
+   610→   610→                  placeholder="Paste the full job description here…"
+   611→   611→                  value={jobDescription}
+   612→   612→                  onFocus={() => { if (!isAuthenticated) { onAuthRequired(); } }}
+   613→   613→                  onChange={(e) => { if (!isAuthenticated) { onAuthRequired(); return; } setJobDescription(e.target.value); }}
+   614→   614→                  className="flex-1 min-h-[240px] w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+   615→   615→                />
+   616→   616→              )}
+   617→   617→            </CardContent>
+   618→   618→          </Card>
+   619→   619→
+   620→   620→          {/* RIGHT column — upload card + inbox email card, drives the row height */}
+   621→   621→          <div className="flex flex-col gap-4">
+   622→   622→
+   623→   623→            {/* Upload card */}
+   624→   624→            <Card>
+   625→   625→              <CardHeader className="pb-3">
+   626→   626→                <div className="flex items-center justify-between">
+   627→   627→                  <CardTitle className="text-lg">
+   628→   628→                    {isExistingJob ? "Add More Resumes" : "Upload Resumes"}
+   629→   629→                  </CardTitle>
+   630→   630→                  {isExistingJob && existingResumes.length > 0 && (
+   631→   631→                    <Badge variant="secondary" className="text-[10px]">
+   632→   632→                      {existingResumes.length} uploaded
+   633→   633→                    </Badge>
+   634→   634→                  )}
+   635→   635→                </div>
+   636→   636→              </CardHeader>
+   637→   637→              <CardContent className="space-y-3">
+   638→   638→                <div
+   639→   639→                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center ${
+   640→   640→                    dragOver ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-primary/[0.02]"
+   641→   641→                  }`}
+   642→   642→                  onDragOver={(e) => { e.preventDefault(); if (!isAuthenticated) return; setDragOver(true); }}
+   643→   643→                  onDragLeave={() => setDragOver(false)}
+   644→   644→                  onDrop={(e) => { if (!isAuthenticated) { e.preventDefault(); onAuthRequired(); return; } handleFileDrop(e); }}
+   645→   645→                  onClick={() => { if (!isAuthenticated) { onAuthRequired(); return; } document.getElementById("file-input")?.click(); }}
+   646→   646→                >
+   647→   647→                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-2.5">
+   648→   648→                    <Upload className="h-5 w-5 text-primary" />
+   649→   649→                  </div>
+   650→   650→                  <p className="text-sm font-medium text-foreground mb-1">Drop resumes here</p>
+   651→   651→                  <p className="text-xs text-muted-foreground">PDF or DOCX · Max {maxResumes} files · {maxFileSizeMb}MB each</p>
+   652→   652→                  <input id="file-input" type="file" className="hidden" multiple accept=".pdf,.docx" onChange={handleFileSelect} />
+   653→   653→                </div>
+   654→   654→                {files.length > 0 && (
+   655→   655→                  <div className="space-y-1.5">
+   656→   656→                    {files.map((f, i) => {
+   657→   657→                      const isProcessing = rankingFilesRef.current.has(f.name) && ranking;
+   658→   658→                      return (
+   659→   659→                        <div key={i} className="flex items-center justify-between bg-secondary/50 rounded-md px-3 py-2 animate-fade-in">
+   660→   660→                          <div className="flex items-center gap-2 text-sm">
+   661→   661→                            {isProcessing ? <Loader2 className="h-4 w-4 text-primary animate-spin" /> : <FileText className="h-4 w-4 text-muted-foreground" />}
+   662→   662→                            <span className={isProcessing ? "text-muted-foreground" : ""}>{f.name}</span>
+   663→   663→                            {!isProcessing && ranking && <Badge variant="outline" className="text-xs">Queued</Badge>}
+   664→   664→                          </div>
+   665→   665→                          {!isProcessing && (
+   666→   666→                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeFile(i)}>
+   667→   667→                              <X className="h-3.5 w-3.5" />
+   668→   668→                            </Button>
+   669→   669→                          )}
+   670→   670→                        </div>
+   671→   671→                      );
+   672→   672→                    })}
+   673→   673→                  </div>
+   674→   674→                )}
+   675→   675→              </CardContent>
+   676→   676→            </Card>
+   677→   677→
+   678→   678→            {/* Resume Inbox Email card — shown whenever user has an inbox email */}
+   679→   679→            {user && profile?.inbox_email && (
+   680→   680→              <Card className="border-primary/20 bg-gradient-to-br from-primary/[0.04] to-transparent">
+   681→   681→                <CardContent className="pt-5 pb-5 space-y-4">
+   682→   682→                  {/* Header */}
+   683→   683→                  <div className="flex items-start gap-3">
+   684→   684→                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+   685→   685→                      <Mail className="h-4.5 w-4.5 text-primary h-[18px] w-[18px]" />
+   686→   686→                    </div>
+   687→   687→                    <div>
+   688→   688→                      <div className="flex items-center gap-2 flex-wrap">
+   689→   689→                        <p className="text-sm font-semibold text-foreground">Resume Inbox</p>
+   690→   690→                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary bg-primary/5">Auto-collect</Badge>
+   691→   691→                      </div>
+   692→   692→                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+   693→   693→                        Skip the upload step — forward resumes straight to this address and they'll appear here automatically.
+   694→   694→                      </p>
+   695→   695→                    </div>
+   696→   696→                  </div>
+   697→   697→
+   698→   698→                  {/* Email address box */}
+   699→   699→                  <div className="rounded-lg bg-muted/60 border border-border px-3 py-2.5 flex items-center gap-2">
+   700→   700→                    <code className="flex-1 text-xs font-mono text-foreground truncate">
+   701→   701→                      {isExistingJob && selectedJob?.inbox_email
+   702→   702→                        ? selectedJob!.inbox_email
+   703→   703→                        : profile.inbox_email}
+   704→   704→                    </code>
+   705→   705→                    <Button
+   706→   706→                      variant="ghost"
+   707→   707→                      size="sm"
+   708→   708→                      className="h-6 px-2 gap-1 text-xs text-primary hover:text-primary hover:bg-primary/10 shrink-0"
+   709→   709→                      onClick={() => {
+   710→   710→                        const email = isExistingJob && selectedJob?.inbox_email
+   711→   711→                          ? selectedJob!.inbox_email
+   712→   712→                          : profile.inbox_email!;
+   713→   713→                        navigator.clipboard.writeText(email);
+   714→   714→                        toast.success("Inbox email copied!");
+   715→   715→                      }}
+   716→   716→                    >
+   717→   717→                      <Copy className="h-3 w-3" />
+   718→   718→                      Copy
+   719→   719→                    </Button>
+   720→   720→                  </div>
+   721→   721→
+   722→   722→                  {/* How it works — 3 steps */}
+   723→   723→                  <div className="space-y-2">
+   724→   724→                    {[
+   725→   725→                      { n: "1", text: "Forward any resume email to this address" },
+   726→   726→                      { n: "2", text: "We extract the resume attachment automatically" },
+   727→   727→                      { n: "3", text: "It appears in your active job ready to rank" },
+   728→   728→                    ].map((step) => (
+   729→   729→                      <div key={step.n} className="flex items-start gap-2.5">
+   730→   730→                        <span className="w-4 h-4 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+   731→   731→                          {step.n}
+   732→   732→                        </span>
+   733→   733→                        <p className="text-[11px] text-muted-foreground leading-relaxed">{step.text}</p>
+   734→   734→                      </div>
+   735→   735→                    ))}
+   736→   736→                  </div>
+   737→   737→                </CardContent>
+   738→   738→              </Card>
+   739→   739→            )}
+   740→   740→          </div>
+   741→   741→        </div>
+   742→   742→
+   743→   743→        {/* Landing — How It Works */}
+   744→   744→        {!isExistingJob && allResults.length === 0 && (
+   745→   745→          <div className="space-y-10 py-4">
+   746→   746→
+   747→   747→            {/* Step-by-step pipeline */}
+   748→   748→            <div>
+   749→   749→              <div className="flex items-center gap-2 mb-6">
+   750→   750→                <div className="h-px flex-1 bg-border" />
+   751→   751→                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-3">How It Works</span>
+   752→   752→                <div className="h-px flex-1 bg-border" />
+   753→   753→              </div>
+   754→   754→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   755→   755→                {[
+   756→   756→                  {
+   757→   757→                    step: "01",
+   758→   758→                    icon: Brain,
+   759→   759→                    title: "AI Reads the Job",
+   760→   760→                    desc: "Paste any job description. GPT-4o extracts must-haves, nice-to-haves, seniority level, and builds a custom scoring rubric — automatically.",
+   761→   761→                    detail: "No templates. No setup.",
+   762→   762→                  },
+   763→   763→                  {
+   764→   764→                    step: "02",
+   765→   765→                    icon: Upload,
+   766→   766→                    title: "Drop the Resumes",
+   767→   767→                    desc: "Upload up to 20 PDF or DOCX files at once. The AI parses every resume, extracts skills, experience, and education in seconds.",
+   768→   768→                    detail: "PDF & DOCX supported.",
+   769→   769→                  },
+   770→   770→                  {
+   771→   771→                    step: "03",
+   772→   772→                    icon: BarChart2,
+   773→   773→                    title: "Get Ranked Results",
+   774→   774→                    desc: "Every candidate gets an overall match score, confidence rating, strengths, skill gaps, and ready-to-use interview questions.",
+   775→   775→                    detail: "Ranked best to worst.",
+   776→   776→                  },
+   777→   777→                ].map((item, i) => (
+   778→   778→                  <div key={i} className="relative rounded-xl border border-border bg-card p-5 flex flex-col gap-3">
+   779→   779→                    <div className="flex items-start justify-between">
+   780→   780→                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+   781→   781→                        <item.icon className="h-4.5 w-4.5 text-primary h-[18px] w-[18px]" />
+   782→   782→                      </div>
+   783→   783→                      <span className="text-3xl font-black text-muted-foreground/15 leading-none select-none">{item.step}</span>
+   784→   784→                    </div>
+   785→   785→                    <div>
+   786→   786→                      <h3 className="text-sm font-semibold text-foreground mb-1">{item.title}</h3>
+   787→   787→                      <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+   788→   788→                    </div>
+   789→   789→                    <span className="mt-auto inline-flex items-center gap-1 text-[10px] font-medium text-primary/70 uppercase tracking-wide">
+   790→   790→                      <CheckCircle2 className="h-3 w-3" /> {item.detail}
+   791→   791→                    </span>
+   792→   792→                  </div>
+   793→   793→                ))}
+   794→   794→              </div>
+   795→   795→            </div>
+   796→   796→
+   797→   797→            {/* What the AI scores */}
+   798→   798→            <div className="rounded-xl border border-border bg-card overflow-hidden">
+   799→   799→              <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+   800→   800→                <Sparkles className="h-4 w-4 text-primary" />
+   801→   801→                <span className="text-sm font-semibold text-foreground">What the AI scores for every candidate</span>
+   802→   802→              </div>
+   803→   803→              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border">
+   804→   804→                {[
+   805→   805→                  { label: "Overall Match", sub: "Weighted score across all dimensions" },
+   806→   806→                  { label: "Skill Fit", sub: "Must-haves matched vs missing" },
+   807→   807→                  { label: "Confidence", sub: "How certain the AI is in its score" },
+   808→   808→                  { label: "JD Alignment", sub: "Critical requirements coverage" },
+   809→   809→                ].map((s, i) => (
+   810→   810→                  <div key={i} className="px-4 py-4">
+   811→   811→                    <p className="text-xs font-semibold text-foreground mb-0.5">{s.label}</p>
+   812→   812→                    <p className="text-[11px] text-muted-foreground leading-relaxed">{s.sub}</p>
+   813→   813→                  </div>
+   814→   814→                ))}
+   815→   815→              </div>
+   816→   816→              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y divide-border border-t border-border">
+   817→   817→                {[
+   818→   818→                  { label: "Strengths", sub: "Top reasons to hire" },
+   819→   819→                  { label: "Skill Gaps", sub: "Missing skills to probe" },
+   820→   820→                  { label: "Interview Qs", sub: "AI-generated per candidate" },
+   821→   821→                  { label: "Hard Fit Flag", sub: "Meets minimum bar or not" },
+   822→   822→                ].map((s, i) => (
+   823→   823→                  <div key={i} className="px-4 py-4">
+   824→   824→                    <p className="text-xs font-semibold text-foreground mb-0.5">{s.label}</p>
+   825→   825→                    <p className="text-[11px] text-muted-foreground leading-relaxed">{s.sub}</p>
+   826→   826→                  </div>
+   827→   827→                ))}
+   828→   828→              </div>
+   829→   829→            </div>
+   830→   830→
+   831→   831→            {/* Social proof / stats row */}
+   832→   832→            <div className="grid grid-cols-3 gap-4">
+   833→   833→              {[
+   834→   834→                { icon: Clock, stat: "< 2 min", label: "to rank 10 resumes" },
+   835→   835→                { icon: ListChecks, stat: "20+", label: "scoring dimensions" },
+   836→   836→                { icon: Users, label: "Built for recruiters, founders & hiring managers", stat: "For teams" },
+   837→   837→              ].map((item, i) => (
+   838→   838→                <div key={i} className="rounded-xl border border-border bg-card px-4 py-4 flex items-center gap-3">
+   839→   839→                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+   840→   840→                    <item.icon className="h-4 w-4 text-primary" />
+   841→   841→                  </div>
+   842→   842→                  <div>
+   843→   843→                    <p className="text-sm font-bold text-foreground leading-tight">{item.stat}</p>
+   844→   844→                    <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{item.label}</p>
+   845→   845→                  </div>
+   846→   846→                </div>
+   847→   847→              ))}
+   848→   848→            </div>
+   849→   849→
+   850→   850→            {/* CTA for unauthenticated */}
+   851→   851→            {!isAuthenticated && (
+   852→   852→              <div className="rounded-xl border border-primary/20 bg-primary/5 px-6 py-5 flex items-center justify-between gap-4 flex-wrap">
+   853→   853→                <div>
+   854→   854→                  <div className="flex items-center gap-1.5 mb-1">
+   855→   855→                    <Star className="h-3.5 w-3.5 text-primary" />
+   856→   856→                    <span className="text-xs font-semibold text-primary uppercase tracking-wide">Free to start</span>
+   857→   857→                  </div>
+   858→   858→                  <p className="text-sm font-semibold text-foreground">Sign up and rank your first batch free.</p>
+   859→   859→                  <p className="text-xs text-muted-foreground mt-0.5">No credit card. No setup. Results in under 2 minutes.</p>
+   860→   860→                </div>
+   861→   861→                <button
+   862→   862→                  onClick={onAuthRequired}
+   863→   863→                  className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shrink-0"
+   864→   864→                >
+   865→   865→                  Get started free <ArrowRight className="h-4 w-4" />
+   866→   866→                </button>
+   867→   867→              </div>
+   868→   868→            )}
+   869→   869→
+   870→   870→          </div>
+   871→   871→        )}
+   872→   872→
+   873→   873→        {/* Analyzing JD indicator */}
+   874→   874→        {analyzingJd && (
+   875→   875→          <div className="flex items-center gap-2 text-sm text-primary font-medium animate-fade-in">
+   876→   876→            <Loader2 className="h-4 w-4 animate-spin" />
+   877→   877→            Analyzing job description…
+   878→   878→          </div>
+   879→   879→        )}
+   880→   880→
+   881→   881→        {/* Status & Progress */}
+   882→   882→        <div className="space-y-3">
+   883→   883→          {validationErrors.length > 0 && (
+   884→   884→            <div className="text-sm text-destructive space-y-1">
+   885→   885→              {validationErrors.map((err, i) => <p key={i}>• {err}</p>)}
+   886→   886→            </div>
+   887→   887→          )}
+   888→   888→          {rankingError && (
+   889→   889→            <div className={`rounded-lg border p-4 flex items-start gap-3 animate-fade-in ${
+   890→   890→              rankingError.type === "credits" ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/50"
+   891→   891→            }`}>
+   892→   892→              <AlertTriangle className={`h-5 w-5 mt-0.5 shrink-0 ${rankingError.type === "credits" ? "text-destructive" : "text-muted-foreground"}`} />
+   893→   893→              <div>
+   894→   894→                <p className="text-sm font-medium">
+   895→   895→                  {rankingError.type === "credits" ? "Not enough credits" : rankingError.type === "rate_limit" ? "Too many requests" : "Ranking failed"}
+   896→   896→                </p>
+   897→   897→                <p className="text-sm text-muted-foreground mt-0.5">{rankingError.message}</p>
+   898→   898→              </div>
+   899→   899→            </div>
+   900→   900→          )}
+   901→   901→          {ranking && (
+   902→   902→            <div className="space-y-2 animate-fade-in">
+   903→   903→              <div className="flex items-center justify-between">
+   904→   904→                <div className="flex items-center gap-2 text-sm text-primary font-medium">
+   905→   905→                  <Loader2 className="h-4 w-4 animate-spin" />
+   906→   906→                  {rankingProgress < 25 ? "Analyzing job…" : rankingProgress < 40 ? "Uploading…" : rankingProgress < 60 ? "Parsing resumes…" : totalToScore > 0 ? `Scoring ${scoredCount}/${totalToScore}…` : "Scoring…"}
+   907→   907→                </div>
+   908→   908→              </div>
+   909→   909→              <Progress value={rankingProgress} className="h-2" />
+   910→   910→            </div>
+   911→   911→          )}
+   912→   912→        </div>
+   913→   913→
+   914→   914→        {/* Score Summary + Confidence Report — only when job is completed with results */}
+   915→   915→        {selectedJob?.status === "completed" && results.length > 0 && (
+   916→   916→          <>
+   917→   917→            <ScoreSummaryCards results={results} />
+   918→   918→            {/* Confidence data shown per-candidate in AINudgePanel */}
+   919→   919→          </>
+   920→   920→        )}
+   921→   921→
+   922→   922→        {/* Results Table */}
+   923→   923→        {visibleResults.length > 0 && (
+   924→   924→          <div ref={resultsRef}>
+   925→   925→            <Card>
+   926→   926→              <CardHeader className="pb-3">
+   927→   927→                <div className="flex items-center justify-between flex-wrap gap-2">
+   928→   928→                  <div className="flex items-center gap-2">
+   929→   929→                    <CardTitle className="text-lg">
+   930→   930→                      Results ({visibleResults.length})
+   931→   931→                    </CardTitle>
+   932→   932→                    {/* Stage summary pills */}
+   933→   933→                    {stages && stages.length > 0 && (
+   934→   934→                      <div className="flex items-center gap-1.5 ml-2">
+   935→   935→                        {(["applied", "screened", "interview", "offer", "hired", "rejected"] as const).map((stage) => {
+   936→   936→                          const count = stageSummary[stage];
+   937→   937→                          if (count === 0) return null;
+   938→   938→                          const colors: Record<string, string> = {
+   939→   939→                            applied: "bg-muted text-muted-foreground",
+   940→   940→                            screened: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+   941→   941→                            interview: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+   942→   942→                            offer: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+   943→   943→                            hired: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+   944→   944→                            rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+   945→   945→                          };
+   946→   946→                          return (
+   947→   947→                            <span key={stage} className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${colors[stage]}`}>
+   948→   948→                              {count} {stage.charAt(0).toUpperCase() + stage.slice(1)}
+   949→   949→                            </span>
+   950→   950→                          );
+   951→   951→                        })}
+   952→   952→                      </div>
+   953→   953→                    )}
+   954→   954→                    {dismissedResumes.size > 0 && (
+   955→   955→                      <button
+   956→   956→                        onClick={() => setShowArchived((v) => !v)}
+   957→   957→                        className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md border transition-colors ${
+   958→   958→                          showArchived
+   959→   959→                            ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/30 dark:border-amber-700 dark:text-amber-400"
+   960→   960→                            : "border-border text-muted-foreground hover:border-amber-300 hover:text-amber-600 dark:hover:border-amber-700 dark:hover:text-amber-400"
+   961→   961→                        }`}
+   962→   962→                      >
+   963→   963→                        <FolderOpen className="h-3.5 w-3.5" />
+   964→   964→                        Archived ({dismissedResumes.size})
+   965→   965→                      </button>
+   966→   966→                    )}
+   967→   967→                  </div>
+   968→   968→                  <div className="flex items-center gap-2">
+   969→   969→                    {selectedResumes.size > 0 && (
+   970→   970→                      <>
+   971→   971→                        <span className="text-sm text-muted-foreground">{selectedResumes.size} selected</span>
+   972→   972→                        <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDeleteConfirm({ type: "bulk" })}>
+   973→   973→                          <Trash2 className="h-3.5 w-3.5" /> Delete
+   974→   974→                        </Button>
+   975→   975→                        <Button variant="ghost" size="sm" onClick={() => setSelectedResumes(new Set())}>Clear</Button>
+   976→   976→                      </>
+   977→   977→                    )}
+   978→   978→                    {visibleResults.length > 0 && (
+   979→   979→                      <Button
+   980→   980→                        variant="outline"
+   981→   981→                        size="sm"
+   982→   982→                        className="gap-1.5"
+   983→   983→                        onClick={() => {
+   984→   984→                          const formatCandidateNameLocal = (filename: string) => {
+   985→   985→                            const name = filename.replace(/\.\w+$/, "");
+   986→   986→                            if (UUID_REGEX.test(name)) return "Candidate";
+   987→   987→                            return name.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+   988→   988→                          };
+   989→   989→                          const rows = visibleResults.filter((r) => !r.pending).map((r, i) => {
+   990→   990→                            const matched = Array.isArray(r.matched_must_haves) ? r.matched_must_haves.length : 0;
+   991→   991→                            const missing = Array.isArray(r.missing_must_haves) ? r.missing_must_haves.length : 0;
+   992→   992→                            const total = matched + missing;
+   993→   993→                            const jdAlignment = total > 0 ? Math.round((matched / total) * 100) : 0;
+   994→   994→                            return {
+   995→   995→                              "Rank": i + 1,
+   996→   996→                              "Candidate Name": r.candidate_name || formatCandidateNameLocal(r.filename),
+   997→   997→                              "Overall Score": r.overall_score?.toFixed(0) ?? "0",
+   998→   998→                              "Confidence": (r.confidence ?? 0).toFixed(0),
+   999→   999→                              "Hard Fit": r.hard_fit ? "Yes" : "No",
+  1000→  1000→                              "JD Alignment %": jdAlignment,
+  1001→  1001→                              "Strengths": (r.strengths_json ?? []).join("; "),
+  1002→  1002→                              "Gaps": (r.gaps_json ?? []).join("; "),
+  1003→  1003→                              "Missing Skills": (r.missing_skills ?? []).join("; "),
+  1004→  1004→                            };
+  1005→  1005→                          });
+  1006→  1006→                          exportToCSV(rows, selectedJob?.title || "results");
+  1007→  1007→                        }}
+  1008→  1008→                      >
+  1009→  1009→                        <FileSpreadsheet className="h-3.5 w-3.5" />
+  1010→  1010→                        Export CSV
+  1011→  1011→                      </Button>
+  1012→  1012→                    )}
+  1013→  1013→                    {isExistingJob && existingResumes.length > 0 && (
+  1014→  1014→                      <Button variant="outline" size="sm" className="gap-1.5" disabled={ranking} onClick={handleRerank}>
+  1015→  1015→                        {ranking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+  1016→  1016→                        Re-rank
+  1017→  1017→                      </Button>
+  1018→  1018→                    )}
+  1019→  1019→                  </div>
+  1020→  1020→                </div>
+  1021→  1021→              </CardHeader>
+  1022→  1022→              <CardContent className="p-0">
+  1023→  1023→                <div className="overflow-x-auto">
+  1024→  1024→                  <Table>
+  1025→  1025→                    <TableHeader className="sticky top-0 bg-card z-10">
+  1026→  1026→                      <TableRow>
+  1027→  1027→                        <TableHead className="w-10">
+  1028→  1028→                          <Checkbox checked={visibleResults.length > 0 && selectedResumes.size === visibleResults.length} onCheckedChange={toggleSelectAll} />
+  1029→  1029→                        </TableHead>
+  1030→  1030→                        <TableHead className="w-14 text-center">#</TableHead>
+  1031→  1031→                        <TableHead>Candidate</TableHead>
+  1032→  1032→                        <TableHead className="w-32">Match</TableHead>
+  1033→  1033→                        <TableHead className="w-20">Strength</TableHead>
+  1034→  1034→                        <TableHead className="w-36"></TableHead>
+  1035→  1035→                      </TableRow>
+  1036→  1036→                    </TableHeader>
+  1037→  1037→                    <TableBody>
+  1038→  1038→                      {visibleResults.map((r, index) => (
+  1039→  1039→                        <CandidateRow
+  1040→  1040→                          key={r.id}
+  1041→  1041→                          result={r}
+  1042→  1042→                          index={index}
+  1043→  1043→                          isExpanded={expandedRows.has(r.id)}
+  1044→  1044→                          isSelected={selectedResumes.has(r.resume_id)}
+  1045→  1045→                          jobTitle={selectedJob?.title}
+  1046→  1046→                          onToggleRow={toggleRow}
+  1047→  1047→                          onToggleSelect={toggleSelectResume}
+  1048→  1048→                          onDownload={downloadResume}
+  1049→  1049→                          onDelete={(resumeId, filePath) => setDeleteConfirm({ type: "single", resumeId, filePath })}
+  1050→  1050→                          onDismiss={handleDismiss}
+  1051→  1051→                          formatCandidateName={formatCandidateName}
+  1052→  1052→                          currentStage={stageMap.get(r.resume_id)?.stage}
+  1053→  1053→                          stageUpdatedAt={stageMap.get(r.resume_id)?.updated_at}
+  1054→  1054→                          onStageChange={handleStageChange}
+  1055→  1055→                          onRewriteJd={() => setJdRewriteOpen(true)}
+  1056→  1056→                        />
+  1057→  1057→                      ))}
+  1058→  1058→                    </TableBody>
+  1059→  1059→                  </Table>
+  1060→  1060→                </div>
+  1061→  1061→              </CardContent>
+  1062→  1062→            </Card>
+  1063→  1063→
+  1064→  1064→            {/* Archived Candidates Panel */}
+  1065→  1065→            {showArchived && archivedResults.length > 0 && (
+  1066→  1066→              <Card className="mt-3 border-amber-200 dark:border-amber-800">
+  1067→  1067→                <CardHeader className="pb-3">
+  1068→  1068→                  <div className="flex items-center justify-between">
+  1069→  1069→                    <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+  1070→  1070→                      <Archive className="h-4 w-4" />
+  1071→  1071→                      Archived Candidates ({archivedResults.length})
+  1072→  1072→                    </CardTitle>
+  1073→  1073→                    <button
+  1074→  1074→                      onClick={() => setShowArchived(false)}
+  1075→  1075→                      className="text-muted-foreground hover:text-foreground"
+  1076→  1076→                    >
+  1077→  1077→                      <X className="h-4 w-4" />
+  1078→  1078→                    </button>
+  1079→  1079→                  </div>
+  1080→  1080→                </CardHeader>
+  1081→  1081→                <CardContent className="p-0">
+  1082→  1082→                  <div className="overflow-x-auto">
+  1083→  1083→                    <Table>
+  1084→  1084→                      <TableHeader>
+  1085→  1085→                        <TableRow>
+  1086→  1086→                          <TableHead className="w-14 text-center pl-4">#</TableHead>
+  1087→  1087→                          <TableHead>Candidate</TableHead>
+  1088→  1088→                          <TableHead className="w-32">Match</TableHead>
+  1089→  1089→                          <TableHead className="w-20">Strength</TableHead>
+  1090→  1090→                          <TableHead className="w-20 text-right pr-4">Restore</TableHead>
+  1091→  1091→                        </TableRow>
+  1092→  1092→                      </TableHeader>
+  1093→  1093→                      <TableBod

@@ -1,0 +1,1108 @@
+     1→     1→import { useEffect, useState } from "react";
+     2→     2→import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
+     3→     3→import { useLoaderData, useFetcher } from "react-router";
+     4→     4→import { useAppBridge } from "@shopify/app-bridge-react";
+     5→     5→import { authenticate } from "../shopify.server";
+     6→     6→import db from "../db.server";
+     7→     7→import { getPlan, canCreateChart } from "../lib/plans";
+     8→     8→import { SIZE_CHART_TEMPLATES, getCategories } from "../lib/templates";
+     9→     9→
+    10→    10→export const loader = async ({ request }: LoaderFunctionArgs) => {
+    11→    11→  const { session } = await authenticate.admin(request);
+    12→    12→  const shop = session.shop;
+    13→    13→
+    14→    14→  const [charts, subscription] = await Promise.all([
+    15→    15→    db.sizeChart.findMany({
+    16→    16→      where: { shop },
+    17→    17→      orderBy: { updatedAt: "desc" },
+    18→    18→      include: { assignments: true },
+    19→    19→    }),
+    20→    20→    db.subscription.findUnique({ where: { shop } }),
+    21→    21→  ]);
+    22→    22→
+    23→    23→  const plan = getPlan(subscription?.planId ?? "free");
+    24→    24→  const templates = SIZE_CHART_TEMPLATES.map((t) => ({
+    25→    25→    name: t.name,
+    26→    26→    category: t.category,
+    27→    27→    gender: t.gender,
+    28→    28→    rowCount: t.data.rows.length,
+    29→    29→  }));
+    30→    30→  const categories = getCategories();
+    31→    31→
+    32→    32→  return {
+    33→    33→    charts,
+    34→    34→    plan,
+    35→    35→    templates,
+    36→    36→    categories,
+    37→    37→    canCreate: canCreateChart(plan.id, charts.length),
+    38→    38→  };
+    39→    39→};
+    40→    40→
+    41→    41→export const action = async ({ request }: ActionFunctionArgs) => {
+    42→    42→  const { session } = await authenticate.admin(request);
+    43→    43→  const shop = session.shop;
+    44→    44→  const formData = await request.formData();
+    45→    45→  const intent = formData.get("intent") as string;
+    46→    46→
+    47→    47→  try {
+    48→    48→    switch (intent) {
+    49→    49→      case "create-from-template": {
+    50→    50→        const templateName = formData.get("templateName") as string;
+    51→    51→        const template = SIZE_CHART_TEMPLATES.find((t) => t.name === templateName);
+    52→    52→        if (!template) return { error: "Template not found" };
+    53→    53→
+    54→    54→        const subscription = await db.subscription.findUnique({ where: { shop } });
+    55→    55→        const plan = getPlan(subscription?.planId ?? "free");
+    56→    56→        const chartCount = await db.sizeChart.count({ where: { shop } });
+    57→    57→        if (!canCreateChart(plan.id, chartCount)) {
+    58→    58→          return {
+    59→    59→            error: `Free plan allows max ${plan.limits.maxCharts} charts. Upgrade to create more.`,
+    60→    60→          };
+    61→    61→        }
+    62→    62→
+    63→    63→        let name = template.name;
+    64→    64→        const existing = await db.sizeChart.findUnique({
+    65→    65→          where: { shop_name: { shop, name } },
+    66→    66→        });
+    67→    67→        if (existing) name = `${template.name} (${Date.now().toString(36)})`;
+    68→    68→
+    69→    69→        const created = await db.sizeChart.create({
+    70→    70→          data: {
+    71→    71→            shop,
+    72→    72→            name,
+    73→    73→            category: template.category,
+    74→    74→            data: JSON.stringify(template.data),
+    75→    75→            status: "active",
+    76→    76→          },
+    77→    77→        });
+    78→    78→        return { ok: true, message: `"${name}" created successfully`, redirectId: created.id };
+    79→    79→      }
+    80→    80→
+    81→    81→      case "create-blank": {
+    82→    82→        const name = (formData.get("name") as string) || "Untitled Size Chart";
+    83→    83→        const category = (formData.get("category") as string) || "general";
+    84→    84→
+    85→    85→        const subscription = await db.subscription.findUnique({ where: { shop } });
+    86→    86→        const plan = getPlan(subscription?.planId ?? "free");
+    87→    87→        const chartCount = await db.sizeChart.count({ where: { shop } });
+    88→    88→        if (!canCreateChart(plan.id, chartCount)) {
+    89→    89→          return {
+    90→    90→            error: `Free plan allows max ${plan.limits.maxCharts} charts. Upgrade to create more.`,
+    91→    91→          };
+    92→    92→        }
+    93→    93→
+    94→    94→        let uniqueName = name;
+    95→    95→        const existing = await db.sizeChart.findUnique({
+    96→    96→          where: { shop_name: { shop, name } },
+    97→    97→        });
+    98→    98→        if (existing) uniqueName = `${name} (${Date.now().toString(36)})`;
+    99→    99→
+   100→   100→        const defaultData = {
+   101→   101→          headers: ["Size", "Chest", "Waist", "Hips"],
+   102→   102→          units: { default: "in", available: ["in", "cm"] },
+   103→   103→          rows: [
+   104→   104→            { Size: "S", Chest: "", Waist: "", Hips: "" },
+   105→   105→            { Size: "M", Chest: "", Waist: "", Hips: "" },
+   106→   106→            { Size: "L", Chest: "", Waist: "", Hips: "" },
+   107→   107→          ],
+   108→   108→        };
+   109→   109→
+   110→   110→        const created = await db.sizeChart.create({
+   111→   111→          data: {
+   112→   112→            shop,
+   113→   113→            name: uniqueName,
+   114→   114→            category,
+   115→   115→            data: JSON.stringify(defaultData),
+   116→   116→            status: "draft",
+   117→   117→          },
+   118→   118→        });
+   119→   119→        return { ok: true, message: `"${uniqueName}" created`, redirectId: created.id };
+   120→   120→      }
+   121→   121→
+   122→   122→      case "delete": {
+   123→   123→        const id = formData.get("id") as string;
+   124→   124→        await db.sizeChart.deleteMany({ where: { id, shop } });
+   125→   125→        return { ok: true, message: "Chart deleted" };
+   126→   126→      }
+   127→   127→
+   128→   128→      case "import-csv": {
+   129→   129→        const csvRaw = formData.get("csvData") as string;
+   130→   130→        const chartName = (formData.get("name") as string) || "Imported Size Chart";
+   131→   131→        const category = (formData.get("category") as string) || "general";
+   132→   132→
+   133→   133→        if (!csvRaw?.trim()) return { error: "CSV data is required" };
+   134→   134→
+   135→   135→        const subscription = await db.subscription.findUnique({ where: { shop } });
+   136→   136→        const plan = getPlan(subscription?.planId ?? "free");
+   137→   137→        const chartCount = await db.sizeChart.count({ where: { shop } });
+   138→   138→        if (!canCreateChart(plan.id, chartCount)) {
+   139→   139→          return { error: `Free plan allows max ${plan.limits.maxCharts} charts. Upgrade to create more.` };
+   140→   140→        }
+   141→   141→
+   142→   142→        // Parse CSV
+   143→   143→        const lines = csvRaw.trim().split(/\r?\n/).filter((l) => l.trim());
+   144→   144→        if (lines.length < 2) return { error: "CSV must have a header row and at least one data row." };
+   145→   145→
+   146→   146→        const parseRow = (line: string): string[] => {
+   147→   147→          const result: string[] = [];
+   148→   148→          let current = "";
+   149→   149→          let inQuotes = false;
+   150→   150→          for (let i = 0; i < line.length; i++) {
+   151→   151→            const ch = line[i];
+   152→   152→            if (ch === '"') {
+   153→   153→              if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+   154→   154→              else { inQuotes = !inQuotes; }
+   155→   155→            } else if (ch === "," && !inQuotes) {
+   156→   156→              result.push(current.trim());
+   157→   157→              current = "";
+   158→   158→            } else {
+   159→   159→              current += ch;
+   160→   160→            }
+   161→   161→          }
+   162→   162→          result.push(current.trim());
+   163→   163→          return result;
+   164→   164→        };
+   165→   165→
+   166→   166→        const headers = parseRow(lines[0]);
+   167→   167→        if (headers.length < 1) return { error: "Could not parse CSV headers." };
+   168→   168→
+   169→   169→        const rows = lines.slice(1).map((line) => {
+   170→   170→          const cells = parseRow(line);
+   171→   171→          const row: Record<string, string> = {};
+   172→   172→          headers.forEach((h, i) => { row[h] = cells[i] ?? ""; });
+   173→   173→          return row;
+   174→   174→        });
+   175→   175→
+   176→   176→        const data = {
+   177→   177→          headers,
+   178→   178→          units: { default: "in", available: ["in", "cm"] },
+   179→   179→          rows,
+   180→   180→        };
+   181→   181→
+   182→   182→        let uniqueName = chartName;
+   183→   183→        const existingName = await db.sizeChart.findUnique({ where: { shop_name: { shop, name: chartName } } });
+   184→   184→        if (existingName) uniqueName = `${chartName} (${Date.now().toString(36)})`;
+   185→   185→
+   186→   186→        const created = await db.sizeChart.create({
+   187→   187→          data: { shop, name: uniqueName, category, data: JSON.stringify(data), status: "draft" },
+   188→   188→        });
+   189→   189→        return { ok: true, message: `Imported "${uniqueName}"`, redirectId: created.id };
+   190→   190→      }
+   191→   191→
+   192→   192→      case "duplicate": {
+   193→   193→        const sourceId = formData.get("id") as string;
+   194→   194→        const source = await db.sizeChart.findFirst({ where: { id: sourceId, shop } });
+   195→   195→        if (!source) return { error: "Chart not found" };
+   196→   196→
+   197→   197→        const subscription = await db.subscription.findUnique({ where: { shop } });
+   198→   198→        const plan = getPlan(subscription?.planId ?? "free");
+   199→   199→        const chartCount = await db.sizeChart.count({ where: { shop } });
+   200→   200→        if (!canCreateChart(plan.id, chartCount)) {
+   201→   201→          return { error: "Chart limit reached. Upgrade your plan." };
+   202→   202→        }
+   203→   203→
+   204→   204→        const newName = `${source.name} (Copy)`;
+   205→   205→        await db.sizeChart.create({
+   206→   206→          data: {
+   207→   207→            shop,
+   208→   208→            name: newName,
+   209→   209→            type: source.type,
+   210→   210→            category: source.category,
+   211→   211→            data: source.data,
+   212→   212→            status: "draft",
+   213→   213→          },
+   214→   214→        });
+   215→   215→        return { ok: true, message: `Duplicated as "${newName}"` };
+   216→   216→      }
+   217→   217→
+   218→   218→      case "toggle-status": {
+   219→   219→        const chartId = formData.get("id") as string;
+   220→   220→        const chart = await db.sizeChart.findFirst({ where: { id: chartId, shop } });
+   221→   221→        if (!chart) return { error: "Chart not found" };
+   222→   222→
+   223→   223→        const newStatus = chart.status === "active" ? "draft" : "active";
+   224→   224→        await db.sizeChart.update({ where: { id: chartId }, data: { status: newStatus } });
+   225→   225→        return {
+   226→   226→          ok: true,
+   227→   227→          message: `Chart ${newStatus === "active" ? "published" : "unpublished"}`,
+   228→   228→        };
+   229→   229→      }
+   230→   230→
+   231→   231→      default:
+   232→   232→        return { error: "Unknown action" };
+   233→   233→    }
+   234→   234→  } catch (error) {
+   235→   235→    const message = error instanceof Error ? error.message : "An unexpected error occurred";
+   236→   236→    if (message.includes("Unique constraint")) {
+   237→   237→      return { error: "A chart with this name already exists." };
+   238→   238→    }
+   239→   239→    return { error: message };
+   240→   240→  }
+   241→   241→};
+   242→   242→
+   243→   243→// ---------------------------------------------------------------------------
+   244→   244→// Types
+   245→   245→// ---------------------------------------------------------------------------
+   246→   246→
+   247→   247→type ActionData =
+   248→   248→  | { ok: true; message: string; redirectId?: string }
+   249→   249→  | { error: string };
+   250→   250→
+   251→   251→// ---------------------------------------------------------------------------
+   252→   252→// Constants
+   253→   253→// ---------------------------------------------------------------------------
+   254→   254→
+   255→   255→const CATEGORY_LABELS: Record<string, string> = {
+   256→   256→  tops: "Tops",
+   257→   257→  bottoms: "Bottoms",
+   258→   258→  dresses: "Dresses",
+   259→   259→  shoes: "Shoes",
+   260→   260→  kids: "Kids",
+   261→   261→  rings: "Rings",
+   262→   262→  sportswear: "Sportswear",
+   263→   263→  general: "General",
+   264→   264→};
+   265→   265→
+   266→   266→const CATEGORY_ICONS: Record<string, string> = {
+   267→   267→  tops: "👕",
+   268→   268→  bottoms: "👖",
+   269→   269→  dresses: "👗",
+   270→   270→  shoes: "👟",
+   271→   271→  kids: "🧒",
+   272→   272→  rings: "💍",
+   273→   273→  sportswear: "🏃",
+   274→   274→  general: "📏",
+   275→   275→};
+   276→   276→
+   277→   277→// ---------------------------------------------------------------------------
+   278→   278→// Helpers
+   279→   279→// ---------------------------------------------------------------------------
+   280→   280→
+   281→   281→function formatDate(date: string | Date): string {
+   282→   282→  return new Date(date).toLocaleDateString("en-US", {
+   283→   283→    month: "short",
+   284→   284→    day: "numeric",
+   285→   285→    year: "numeric",
+   286→   286→  });
+   287→   287→}
+   288→   288→
+   289→   289→// ---------------------------------------------------------------------------
+   290→   290→// Sub-components
+   291→   291→// ---------------------------------------------------------------------------
+   292→   292→
+   293→   293→interface TemplateSectionProps {
+   294→   294→  templates: Array<{ name: string; category: string; gender: string; rowCount: number }>;
+   295→   295→  categories: string[];
+   296→   296→  isLoading: boolean;
+   297→   297→  onClose: () => void;
+   298→   298→  fetcher: ReturnType<typeof useFetcher<typeof action>>;
+   299→   299→}
+   300→   300→
+   301→   301→function TemplatePicker({ templates, categories, isLoading, onClose, fetcher }: TemplateSectionProps) {
+   302→   302→  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+   303→   303→
+   304→   304→  const groupedTemplates = categories.reduce<Record<string, typeof templates>>((acc, cat) => {
+   305→   305→    const group = templates.filter((t) => t.category === cat);
+   306→   306→    if (group.length > 0) acc[cat] = group;
+   307→   307→    return acc;
+   308→   308→  }, {});
+   309→   309→
+   310→   310→  return (
+   311→   311→    <s-section>
+   312→   312→      <div
+   313→   313→        style={{
+   314→   314→          background: "#ffffff",
+   315→   315→          border: "1px solid #e3e3e3",
+   316→   316→          borderRadius: "12px",
+   317→   317→          padding: "20px",
+   318→   318→        }}
+   319→   319→      >
+   320→   320→        {/* Picker header */}
+   321→   321→        <div
+   322→   322→          style={{
+   323→   323→            display: "flex",
+   324→   324→            justifyContent: "space-between",
+   325→   325→            alignItems: "flex-start",
+   326→   326→            marginBottom: "20px",
+   327→   327→          }}
+   328→   328→        >
+   329→   329→          <div>
+   330→   330→            <p style={{ fontSize: "15px", fontWeight: 650, color: "#202223", margin: 0 }}>
+   331→   331→              Choose a starting point
+   332→   332→            </p>
+   333→   333→            <p style={{ fontSize: "13px", color: "#6d7175", margin: "4px 0 0" }}>
+   334→   334→              Pick a template with pre-filled sizing data, or start from scratch.
+   335→   335→            </p>
+   336→   336→          </div>
+   337→   337→          <button
+   338→   338→            onClick={onClose}
+   339→   339→            aria-label="Close template picker"
+   340→   340→            style={{
+   341→   341→              background: "none",
+   342→   342→              border: "1px solid #c9cccf",
+   343→   343→              borderRadius: "6px",
+   344→   344→              cursor: "pointer",
+   345→   345→              padding: "4px 12px",
+   346→   346→              fontSize: "13px",
+   347→   347→              color: "#6d7175",
+   348→   348→              lineHeight: "22px",
+   349→   349→              flexShrink: 0,
+   350→   350→              marginLeft: "16px",
+   351→   351→            }}
+   352→   352→          >
+   353→   353→            Close
+   354→   354→          </button>
+   355→   355→        </div>
+   356→   356→
+   357→   357→        {/* Start from scratch */}
+   358→   358→        <div style={{ marginBottom: "24px" }}>
+   359→   359→          <p
+   360→   360→            style={{
+   361→   361→              fontSize: "13px",
+   362→   362→              fontWeight: 600,
+   363→   363→              color: "#6d7175",
+   364→   364→              textTransform: "uppercase",
+   365→   365→              letterSpacing: "0.5px",
+   366→   366→              margin: "0 0 10px",
+   367→   367→            }}
+   368→   368→          >
+   369→   369→            Start from scratch
+   370→   370→          </p>
+   371→   371→          <div
+   372→   372→            style={{
+   373→   373→              display: "inline-block",
+   374→   374→              border: `2px dashed ${hoveredCard === "__blank" ? "#005bd3" : "#c9cccf"}`,
+   375→   375→              borderRadius: "10px",
+   376→   376→              padding: "16px 24px",
+   377→   377→              background: hoveredCard === "__blank" ? "#f3f7ff" : "#f9fafb",
+   378→   378→              transition: "all 0.15s ease",
+   379→   379→              cursor: "pointer",
+   380→   380→              minWidth: "160px",
+   381→   381→            }}
+   382→   382→            onMouseEnter={() => setHoveredCard("__blank")}
+   383→   383→            onMouseLeave={() => setHoveredCard(null)}
+   384→   384→          >
+   385→   385→            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+   386→   386→              <div
+   387→   387→                style={{
+   388→   388→                  width: "40px",
+   389→   389→                  height: "40px",
+   390→   390→                  borderRadius: "50%",
+   391→   391→                  background: "#e4e5e7",
+   392→   392→                  display: "flex",
+   393→   393→                  alignItems: "center",
+   394→   394→                  justifyContent: "center",
+   395→   395→                  fontSize: "18px",
+   396→   396→                  flexShrink: 0,
+   397→   397→                }}
+   398→   398→              >
+   399→   399→                📋
+   400→   400→              </div>
+   401→   401→              <div>
+   402→   402→                <p
+   403→   403→                  style={{
+   404→   404→                    margin: "0 0 2px",
+   405→   405→                    fontWeight: 600,
+   406→   406→                    fontSize: "14px",
+   407→   407→                    color: "#202223",
+   408→   408→                  }}
+   409→   409→                >
+   410→   410→                  Blank chart
+   411→   411→                </p>
+   412→   412→                <p style={{ margin: 0, fontSize: "12px", color: "#6d7175" }}>
+   413→   413→                  Build with your own columns and sizes
+   414→   414→                </p>
+   415→   415→              </div>
+   416→   416→            </div>
+   417→   417→            <fetcher.Form method="post" style={{ marginTop: "12px" }}>
+   418→   418→              <input type="hidden" name="intent" value="create-blank" />
+   419→   419→              <input type="hidden" name="name" value="Untitled Size Chart" />
+   420→   420→              <input type="hidden" name="category" value="general" />
+   421→   421→              <s-button type="submit" loading={isLoading}>
+   422→   422→                Create blank
+   423→   423→              </s-button>
+   424→   424→            </fetcher.Form>
+   425→   425→          </div>
+   426→   426→        </div>
+   427→   427→
+   428→   428→        {/* Templates by category */}
+   429→   429→        <div>
+   430→   430→          <p
+   431→   431→            style={{
+   432→   432→              fontSize: "13px",
+   433→   433→              fontWeight: 600,
+   434→   434→              color: "#6d7175",
+   435→   435→              textTransform: "uppercase",
+   436→   436→              letterSpacing: "0.5px",
+   437→   437→              margin: "0 0 16px",
+   438→   438→            }}
+   439→   439→          >
+   440→   440→            By category
+   441→   441→          </p>
+   442→   442→
+   443→   443→          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+   444→   444→            {categories.map((cat) => {
+   445→   445→              const group = groupedTemplates[cat];
+   446→   446→              if (!group || group.length === 0) return null;
+   447→   447→
+   448→   448→              return (
+   449→   449→                <div key={cat}>
+   450→   450→                  <p
+   451→   451→                    style={{
+   452→   452→                      fontSize: "14px",
+   453→   453→                      fontWeight: 650,
+   454→   454→                      color: "#202223",
+   455→   455→                      margin: "0 0 8px",
+   456→   456→                    }}
+   457→   457→                  >
+   458→   458→                    {CATEGORY_LABELS[cat] ?? cat}
+   459→   459→                  </p>
+   460→   460→                  <div
+   461→   461→                    style={{
+   462→   462→                      display: "grid",
+   463→   463→                      gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+   464→   464→                      gap: "12px",
+   465→   465→                    }}
+   466→   466→                  >
+   467→   467→                    {group.map((template) => {
+   468→   468→                      const cardKey = template.name;
+   469→   469→                      const isHovered = hoveredCard === cardKey;
+   470→   470→                      return (
+   471→   471→                        <div
+   472→   472→                          key={template.name}
+   473→   473→                          style={{
+   474→   474→                            background: isHovered ? "#f3f7ff" : "#fff",
+   475→   475→                            border: `1px solid ${isHovered ? "#005bd3" : "#e3e3e3"}`,
+   476→   476→                            borderRadius: "10px",
+   477→   477→                            padding: "14px",
+   478→   478→                            cursor: "pointer",
+   479→   479→                            transition: "all 0.15s ease",
+   480→   480→                            display: "flex",
+   481→   481→                            flexDirection: "column",
+   482→   482→                            alignItems: "center",
+   483→   483→                            textAlign: "center",
+   484→   484→                          }}
+   485→   485→                          onMouseEnter={() => setHoveredCard(cardKey)}
+   486→   486→                          onMouseLeave={() => setHoveredCard(null)}
+   487→   487→                        >
+   488→   488→                          <div
+   489→   489→                            style={{
+   490→   490→                              width: "40px",
+   491→   491→                              height: "40px",
+   492→   492→                              borderRadius: "50%",
+   493→   493→                              background: "#f0f5ff",
+   494→   494→                              display: "flex",
+   495→   495→                              alignItems: "center",
+   496→   496→                              justifyContent: "center",
+   497→   497→                              fontSize: "20px",
+   498→   498→                              marginBottom: "8px",
+   499→   499→                            }}
+   500→   500→                          >
+   501→   501→                            {CATEGORY_ICONS[template.category] ?? "📏"}
+   502→   502→                          </div>
+   503→   503→                          <p
+   504→   504→                            style={{
+   505→   505→                              margin: "0 0 2px",
+   506→   506→                              fontWeight: 600,
+   507→   507→                              fontSize: "13px",
+   508→   508→                              color: "#202223",
+   509→   509→                              lineHeight: "1.3",
+   510→   510→                            }}
+   511→   511→                          >
+   512→   512→                            {template.name}
+   513→   513→                          </p>
+   514→   514→                          <p
+   515→   515→                            style={{
+   516→   516→                              margin: "0 0 10px",
+   517→   517→                              fontSize: "11px",
+   518→   518→                              color: "#6d7175",
+   519→   519→                            }}
+   520→   520→                          >
+   521→   521→                            {template.rowCount} sizes
+   522→   522→                          </p>
+   523→   523→                          <fetcher.Form method="post">
+   524→   524→                            <input type="hidden" name="intent" value="create-from-template" />
+   525→   525→                            <input type="hidden" name="templateName" value={template.name} />
+   526→   526→                            <s-button variant="primary" type="submit" loading={isLoading}>
+   527→   527→                              Use template
+   528→   528→                            </s-button>
+   529→   529→                          </fetcher.Form>
+   530→   530→                        </div>
+   531→   531→                      );
+   532→   532→                    })}
+   533→   533→                  </div>
+   534→   534→                </div>
+   535→   535→              );
+   536→   536→            })}
+   537→   537→          </div>
+   538→   538→        </div>
+   539→   539→      </div>
+   540→   540→    </s-section>
+   541→   541→  );
+   542→   542→}
+   543→   543→
+   544→   544→// ---------------------------------------------------------------------------
+   545→   545→// Main component
+   546→   546→// ---------------------------------------------------------------------------
+   547→   547→
+   548→   548→export default function SizeCharts() {
+   549→   549→  const { charts, plan, templates, categories, canCreate } =
+   550→   550→    useLoaderData<typeof loader>();
+   551→   551→  const fetcher = useFetcher<typeof action>();
+   552→   552→  const shopify = useAppBridge();
+   553→   553→
+   554→   554→  const [showTemplates, setShowTemplates] = useState(false);
+   555→   555→  const [showImport, setShowImport] = useState(false);
+   556→   556→  const [importName, setImportName] = useState("Imported Size Chart");
+   557→   557→  const [importCategory, setImportCategory] = useState("general");
+   558→   558→  const [importCsvText, setImportCsvText] = useState("");
+   559→   559→  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "draft">("all");
+   560→   560→  const [categoryFilter, setCategoryFilter] = useState("all");
+   561→   561→  const [searchQuery, setSearchQuery] = useState("");
+   562→   562→
+   563→   563→  const isLoading = fetcher.state !== "idle";
+   564→   564→
+   565→   565→  useEffect(() => {
+   566→   566→    if (!fetcher.data) return;
+   567→   567→    const data = fetcher.data as ActionData;
+   568→   568→    if ("ok" in data && data.ok) {
+   569→   569→      shopify.toast.show(data.message);
+   570→   570→      if ("redirectId" in data && data.redirectId) {
+   571→   571→        window.location.href = `/app/size-charts/${data.redirectId}`;
+   572→   572→      } else {
+   573→   573→        setShowTemplates(false);
+   574→   574→        setShowImport(false);
+   575→   575→        setImportCsvText("");
+   576→   576→        setImportName("Imported Size Chart");
+   577→   577→      }
+   578→   578→    } else if ("error" in data) {
+   579→   579→      shopify.toast.show(data.error, { isError: true });
+   580→   580→    }
+   581→   581→  }, [fetcher.data, shopify]);
+   582→   582→
+   583→   583→  const filteredCharts = charts.filter((chart) => {
+   584→   584→    const matchesStatus = statusFilter === "all" || chart.status === statusFilter;
+   585→   585→    const matchesCategory = categoryFilter === "all" || chart.category === categoryFilter;
+   586→   586→    const matchesSearch =
+   587→   587→      searchQuery.trim() === "" ||
+   588→   588→      chart.name.toLowerCase().includes(searchQuery.toLowerCase());
+   589→   589→    return matchesStatus && matchesCategory && matchesSearch;
+   590→   590→  });
+   591→   591→
+   592→   592→  const publishedCount = charts.filter((c) => c.status === "active").length;
+   593→   593→  const draftCount = charts.filter((c) => c.status === "draft").length;
+   594→   594→  const activeFilteredCount = charts.filter((c) => c.status === "active").length;
+   595→   595→  const draftFilteredCount = charts.filter((c) => c.status === "draft").length;
+   596→   596→  const maxCharts = plan.limits.maxCharts;
+   597→   597→  const isFreePlan = plan.id === "free";
+   598→   598→
+   599→   599→  const progressPct =
+   600→   600→    maxCharts > 0 ? Math.min(100, Math.round((publishedCount / maxCharts) * 100)) : 0;
+   601→   601→  const progressColor =
+   602→   602→    publishedCount >= maxCharts && maxCharts > 0 ? "#d72c0d" : "#1a73e8";
+   603→   603→
+   604→   604→  function clearFilters() {
+   605→   605→    setStatusFilter("all");
+   606→   606→    setCategoryFilter("all");
+   607→   607→    setSearchQuery("");
+   608→   608→  }
+   609→   609→
+   610→   610→  return (
+   611→   611→    <s-page heading="Size Charts">
+   612→   612→      {/* Primary action */}
+   613→   613→      <s-button
+   614→   614→        slot="primary-action"
+   615→   615→        variant="primary"
+   616→   616→        onClick={() => setShowTemplates(!showTemplates)}
+   617→   617→        disabled={!canCreate || isLoading}
+   618→   618→      >
+   619→   619→        {canCreate
+   620→   620→          ? showTemplates
+   621→   621→            ? "Cancel"
+   622→   622→            : "Create chart"
+   623→   623→          : `Limit reached (${plan.limits.maxCharts})`}
+   624→   624→      </s-button>
+   625→   625→
+   626→   626→      <s-button
+   627→   627→        slot="secondary-action"
+   628→   628→        onClick={() => { setShowImport(!showImport); setShowTemplates(false); }}
+   629→   629→      >
+   630→   630→        Import CSV
+   631→   631→      </s-button>
+   632→   632→
+   633→   633→      {/* Subtitle */}
+   634→   634→      <s-text tone="neutral">
+   635→   635→        Manage your size charts and assign them to products
+   636→   636→      </s-text>
+   637→   637→
+   638→   638→      {/* ================================================================ */}
+   639→   639→      {/* PLAN LIMIT BANNER                                                 */}
+   640→   640→      {/* ================================================================ */}
+   641→   641→      {!canCreate && (
+   642→   642→        <s-section>
+   643→   643→          <s-banner tone="warning" heading="Chart limit reached">
+   644→   644→            You have reached the {plan.limits.maxCharts}-chart limit on the{" "}
+   645→   645→            {plan.name} plan. Upgrade to Starter for unlimited charts with no
+   646→   646→            hidden fees.{" "}
+   647→   647→            <s-button href="/app/pricing" variant="primary">
+   648→   648→              Upgrade plan
+   649→   649→            </s-button>
+   650→   650→          </s-banner>
+   651→   651→        </s-section>
+   652→   652→      )}
+   653→   653→
+   654→   654→      {/* ================================================================ */}
+   655→   655→      {/* TEMPLATE PICKER                                                   */}
+   656→   656→      {/* ================================================================ */}
+   657→   657→      {showTemplates && (
+   658→   658→        <TemplatePicker
+   659→   659→          templates={templates}
+   660→   660→          categories={categories}
+   661→   661→          isLoading={isLoading}
+   662→   662→          onClose={() => setShowTemplates(false)}
+   663→   663→          fetcher={fetcher}
+   664→   664→        />
+   665→   665→      )}
+   666→   666→
+   667→   667→      {/* ================================================================ */}
+   668→   668→      {/* CSV IMPORT PANEL                                                  */}
+   669→   669→      {/* ================================================================ */}
+   670→   670→      {showImport && (
+   671→   671→        <s-section>
+   672→   672→          <s-box padding="base" borderWidth="base" borderRadius="base">
+   673→   673→            <s-stack direction="block" gap="base">
+   674→   674→              {/* Header row */}
+   675→   675→              <s-stack direction="inline" gap="base">
+   676→   676→                <s-stack direction="block" gap="small-200">
+   677→   677→                  <s-heading>Import Size Chart from CSV</s-heading>
+   678→   678→                  <s-text color="subdued">
+   679→   679→                    Paste your CSV data below. The first row must be column headers (e.g. Size, Chest, Waist).
+   680→   680→                  </s-text>
+   681→   681→                </s-stack>
+   682→   682→                <button
+   683→   683→                  onClick={() => setShowImport(false)}
+   684→   684→                  style={{
+   685→   685→                    background: "none",
+   686→   686→                    border: "1px solid #c9cccf",
+   687→   687→                    borderRadius: "6px",
+   688→   688→                    cursor: "pointer",
+   689→   689→                    padding: "4px 12px",
+   690→   690→                    fontSize: "13px",
+   691→   691→                    color: "#6d7175",
+   692→   692→                    lineHeight: "22px",
+   693→   693→                    flexShrink: 0,
+   694→   694→                    marginLeft: "16px",
+   695→   695→                  }}
+   696→   696→                >
+   697→   697→                  Close
+   698→   698→                </button>
+   699→   699→              </s-stack>
+   700→   700→
+   701→   701→              {/* CSV format hint */}
+   702→   702→              <s-box padding="base" borderWidth="base" borderRadius="base">
+   703→   703→                <s-stack direction="block" gap="small-200">
+   704→   704→                  <s-text color="subdued">
+   705→   705→                    <strong>Expected CSV format</strong>
+   706→   706→                  </s-text>
+   707→   707→                  <code style={{ fontSize: "12px", color: "#5c5f62", lineHeight: 1.7, display: "block", whiteSpace: "pre" }}>{`Size,Chest,Waist,Hips\nXS,32-34,24-26,34-36\nS,34-36,26-28,36-38\nM,36-38,28-30,38-40`}</code>
+   708→   708→                </s-stack>
+   709→   709→              </s-box>
+   710→   710→
+   711→   711→              {/* Name + category row */}
+   712→   712→              <s-stack direction="inline" gap="base">
+   713→   713→                <div style={{ flex: 2, minWidth: "180px" }}>
+   714→   714→                  <label
+   715→   715→                    style={{ fontWeight: 600, fontSize: "13px", color: "#202223", display: "block", marginBottom: "4px" }}
+   716→   716→                    htmlFor="import-name"
+   717→   717→                  >
+   718→   718→                    Chart name
+   719→   719→                  </label>
+   720→   720→                  <input
+   721→   721→                    id="import-name"
+   722→   722→                    value={importName}
+   723→   723→                    onChange={(e) => setImportName((e.target as HTMLInputElement).value)}
+   724→   724→                    placeholder="e.g. Women's Tops"
+   725→   725→                    style={{
+   726→   726→                      width: "100%",
+   727→   727→                      border: "1px solid #c9cccf",
+   728→   728→                      borderRadius: "8px",
+   729→   729→                      padding: "8px 12px",
+   730→   730→                      fontSize: "14px",
+   731→   731→                      color: "#202223",
+   732→   732→                      background: "#fff",
+   733→   733→                      boxSizing: "border-box" as const,
+   734→   734→                      outline: "none",
+   735→   735→                    }}
+   736→   736→                  />
+   737→   737→                </div>
+   738→   738→                <div style={{ flex: 1, minWidth: "140px" }}>
+   739→   739→                  <s-select
+   740→   740→                    label="Category"
+   741→   741→                    value={importCategory}
+   742→   742→                    onChange={(e: Event) =>
+   743→   743→                      setImportCategory((e.target as HTMLSelectElement).value)
+   744→   744→                    }
+   745→   745→                  >
+   746→   746→                    <s-option value="general">General</s-option>
+   747→   747→                    <s-option value="tops">Tops</s-option>
+   748→   748→                    <s-option value="bottoms">Bottoms</s-option>
+   749→   749→                    <s-option value="dresses">Dresses</s-option>
+   750→   750→                    <s-option value="shoes">Shoes</s-option>
+   751→   751→                    <s-option value="kids">Kids</s-option>
+   752→   752→                    <s-option value="rings">Rings</s-option>
+   753→   753→                    <s-option value="sportswear">Sportswear</s-option>
+   754→   754→                  </s-select>
+   755→   755→                </div>
+   756→   756→              </s-stack>
+   757→   757→
+   758→   758→              {/* CSV textarea */}
+   759→   759→              <div>
+   760→   760→                <label
+   761→   761→                  style={{ fontWeight: 600, fontSize: "13px", color: "#202223", display: "block", marginBottom: "4px" }}
+   762→   762→                  htmlFor="import-csv"
+   763→   763→                >
+   764→   764→                  CSV data
+   765→   765→                </label>
+   766→   766→                <textarea
+   767→   767→                  id="import-csv"
+   768→   768→                  value={importCsvText}
+   769→   769→                  onChange={(e) => setImportCsvText((e.target as HTMLTextAreaElement).value)}
+   770→   770→                  placeholder={`Size,Chest,Waist,Hips\nXS,32-34,24-26,34-36\nS,34-36,26-28,36-38`}
+   771→   771→                  rows={8}
+   772→   772→                  style={{
+   773→   773→                    width: "100%",
+   774→   774→                    border: "1px solid #c9cccf",
+   775→   775→                    borderRadius: "8px",
+   776→   776→                    padding: "10px 12px",
+   777→   777→                    fontSize: "13px",
+   778→   778→                    fontFamily: "monospace",
+   779→   779→                    color: "#202223",
+   780→   780→                    background: "#fff",
+   781→   781→                    boxSizing: "border-box" as const,
+   782→   782→                    outline: "none",
+   783→   783→                    resize: "vertical",
+   784→   784→                    lineHeight: 1.6,
+   785→   785→                  }}
+   786→   786→                />
+   787→   787→              </div>
+   788→   788→
+   789→   789→              {/* Import action */}
+   790→   790→              <s-stack direction="inline" gap="base">
+   791→   791→                <fetcher.Form method="post" style={{ display: "inline" }}>
+   792→   792→                  <input type="hidden" name="intent" value="import-csv" />
+   793→   793→                  <input type="hidden" name="name" value={importName} />
+   794→   794→                  <input type="hidden" name="category" value={importCategory} />
+   795→   795→                  <input type="hidden" name="csvData" value={importCsvText} />
+   796→   796→                  <s-button variant="primary" type="submit" loading={isLoading} disabled={!importCsvText.trim()}>
+   797→   797→                    Import chart
+   798→   798→                  </s-button>
+   799→   799→                </fetcher.Form>
+   800→   800→                <s-text color="subdued">
+   801→   801→                  Chart will be created as a draft — review and publish when ready.
+   802→   802→                </s-text>
+   803→   803→              </s-stack>
+   804→   804→            </s-stack>
+   805→   805→          </s-box>
+   806→   806→        </s-section>
+   807→   807→      )}
+   808→   808→
+   809→   809→      {/* ================================================================ */}
+   810→   810→      {/* SEARCH + FILTER BAR (only when charts exist)                     */}
+   811→   811→      {/* ================================================================ */}
+   812→   812→      {charts.length > 0 && (
+   813→   813→        <s-section>
+   814→   814→          <s-box padding="base" borderWidth="base" borderRadius="base">
+   815→   815→            <s-stack direction="block" gap="base">
+   816→   816→              {/* Search input */}
+   817→   817→              <s-search-field
+   818→   818→                label=""
+   819→   819→                placeholder="Search charts..."
+   820→   820→                value={searchQuery}
+   821→   821→                onChange={(e: Event) =>
+   822→   822→                  setSearchQuery((e.target as HTMLInputElement).value)
+   823→   823→                }
+   824→   824→              />
+   825→   825→
+   826→   826→              {/* Status pill tabs + Category dropdown */}
+   827→   827→              <div
+   828→   828→                style={{
+   829→   829→                  display: "flex",
+   830→   830→                  alignItems: "center",
+   831→   831→                  justifyContent: "space-between",
+   832→   832→                  gap: "12px",
+   833→   833→                  flexWrap: "wrap",
+   834→   834→                }}
+   835→   835→              >
+   836→   836→                {/* Status pill tabs — keep custom styling, no Polaris equivalent */}
+   837→   837→                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+   838→   838→                  {(
+   839→   839→                    [
+   840→   840→                      { key: "all", label: `All (${charts.length})` },
+   841→   841→                      { key: "active", label: `Active (${activeFilteredCount})` },
+   842→   842→                      { key: "draft", label: `Draft (${draftFilteredCount})` },
+   843→   843→                    ] as const
+   844→   844→                  ).map((tab) => (
+   845→   845→                    <button
+   846→   846→                      key={tab.key}
+   847→   847→                      onClick={() => setStatusFilter(tab.key)}
+   848→   848→                      style={{
+   849→   849→                        border: "1px solid",
+   850→   850→                        borderColor: statusFilter === tab.key ? "#1a73e8" : "#c9cccf",
+   851→   851→                        borderRadius: "20px",
+   852→   852→                        padding: "4px 14px",
+   853→   853→                        fontSize: "13px",
+   854→   854→                        fontWeight: statusFilter === tab.key ? 600 : 400,
+   855→   855→                        background: statusFilter === tab.key ? "#1a73e8" : "#fff",
+   856→   856→                        color: statusFilter === tab.key ? "#fff" : "#6d7175",
+   857→   857→                        cursor: "pointer",
+   858→   858→                        transition: "all 0.15s ease",
+   859→   859→                        lineHeight: "22px",
+   860→   860→                      }}
+   861→   861→                    >
+   862→   862→                      {tab.label}
+   863→   863→                    </button>
+   864→   864→                  ))}
+   865→   865→                </div>
+   866→   866→
+   867→   867→                {/* Category select */}
+   868→   868→                <s-select
+   869→   869→                  label="Category"
+   870→   870→                  value={categoryFilter}
+   871→   871→                  onChange={(e: Event) =>
+   872→   872→                    setCategoryFilter((e.target as HTMLSelectElement).value)
+   873→   873→                  }
+   874→   874→                >
+   875→   875→                  <s-option value="all">All</s-option>
+   876→   876→                  {categories.map((cat) => (
+   877→   877→                    <s-option key={cat} value={cat}>
+   878→   878→                      {CATEGORY_LABELS[cat] ?? cat}
+   879→   879→                    </s-option>
+   880→   880→                  ))}
+   881→   881→                </s-select>
+   882→   882→              </div>
+   883→   883→            </s-stack>
+   884→   884→          </s-box>
+   885→   885→        </s-section>
+   886→   886→      )}
+   887→   887→
+   888→   888→      {/* ================================================================ */}
+   889→   889→      {/* CHARTS LIST                                                       */}
+   890→   890→      {/* ================================================================ */}
+   891→   891→      <s-section>
+   892→   892→        <s-box padding="base" borderWidth="base" borderRadius="base">
+   893→   893→          {/* Section header */}
+   894→   894→          {charts.length > 0 && (
+   895→   895→            <s-stack direction="inline" gap="small-200">
+   896→   896→              <s-heading>
+   897→   897→                Size Charts
+   898→   898→              </s-heading>
+   899→   899→              <s-text color="subdued">
+   900→   900→                ({filteredCharts.length}
+   901→   901→                {filteredCharts.length !== charts.length ? ` of ${charts.length}` : ""})
+   902→   902→              </s-text>
+   903→   903→            </s-stack>
+   904→   904→          )}
+   905→   905→
+   906→   906→          {/* Empty state — no charts at all */}
+   907→   907→          {charts.length === 0 && (
+   908→   908→            <s-stack direction="block" gap="base">
+   909→   909→              <s-text>📐</s-text>
+   910→   910→              <s-heading>Create your first size chart</s-heading>
+   911→   911→              <s-text tone="neutral">
+   912→   912→                Start by creating a size chart to help your customers find the right
+   913→   913→                size. Reduce size-related returns by up to 40% — get started in under
+   914→   914→                3 minutes using one of our pre-built templates.
+   915→   915→              </s-text>
+   916→   916→              <s-button variant="primary" onClick={() => setShowTemplates(true)}>
+   917→   917→                Create chart
+   918→   918→              </s-button>
+   919→   919→            </s-stack>
+   920→   920→          )}
+   921→   921→
+   922→   922→          {/* Empty state — filters applied but no results */}
+   923→   923→          {charts.length > 0 && filteredCharts.length === 0 && (
+   924→   924→            <s-stack direction="block" gap="base">
+   925→   925→              <s-text>🔍</s-text>
+   926→   926→              <s-heading>No charts match your filters</s-heading>
+   927→   927→              <s-text tone="neutral">
+   928→   928→                Try adjusting your search or filters to find what you are looking for.
+   929→   929→              </s-text>
+   930→   930→              <s-button onClick={clearFilters}>Clear filters</s-button>
+   931→   931→            </s-stack>
+   932→   932→          )}
+   933→   933→
+   934→   934→          {/* Chart rows */}
+   935→   935→          {filteredCharts.length > 0 && (
+   936→   936→            <div style={{ marginTop: "8px" }}>
+   937→   937→              {filteredCharts.map((chart, i) => (
+   938→   938→                <div
+   939→   939→                  key={chart.id}
+   940→   940→                  style={{
+   941→   941→                    padding: "14px 0",
+   942→   942→                    borderBottom:
+   943→   943→                      i === filteredCharts.length - 1
+   944→   944→                        ? "none"
+   945→   945→                        : "1px solid #f1f1f1",
+   946→   946→                  }}
+   947→   947→                >
+   948→   948→                  <s-stack direction="inline" gap="base">
+   949→   949→                    {/* Left: name + meta */}
+   950→   950→                    <div style={{ flex: 1, minWidth: 0 }}>
+   951→   951→                      <s-stack direction="block" gap="small-200">
+   952→   952→                        <s-link href={`/app/size-charts/${chart.id}`}>
+   953→   953→                          {chart.name}
+   954→   954→                        </s-link>
+   955→   955→                        <s-stack direction="inline" gap="small-200">
+   956→   956→                          <s-badge tone={chart.status === "active" ? "success" : "neutral"}>
+   957→   957→                            {chart.status === "active" ? "Active" : "Draft"}
+   958→   958→                          </s-badge>
+   959→   959→                          <s-badge tone="info">
+   960→   960→                            {CATEGORY_LABELS[chart.category] ?? chart.category}
+   961→   961→                          </s-badge>
+   962→   962→                          <s-text color="subdued">
+   963→   963→                            {chart.assignments.length > 0
+   964→   964→                              ? `${chart.assignments.length} product${chart.assignments.length !== 1 ? "s" : ""} assigned`
+   965→   965→                              : "No assignments"}
+   966→   966→                          </s-text>
+   967→   967→                          <s-text color="subdued">
+   968→   968→                            Updated {formatDate(chart.updatedAt)}
+   969→   969→                          </s-text>
+   970→   970→                        </s-stack>
+   971→   971→                      </s-stack>
+   972→   972→                    </div>
+   973→   973→
+   974→   974→                    {/* Right: actions */}
+   975→   975→                    <s-stack direction="inline" gap="small-200">
+   976→   976→                      <s-button href={`/app/size-charts/${chart.id}`} variant="tertiary">
+   977→   977→                        Edit
+   978→   978→                      </s-button>
+   979→   979→
+   980→   980→                      <fetcher.Form method="post">
+   981→   981→                        <input type="hidden" name="intent" value="toggle-status" />
+   982→   982→                        <input type="hidden" name="id" value={chart.id} />
+   983→   983→                        <s-button type="submit" loading={isLoading}>
+   984→   984→                          {chart.status === "active" ? "Unpublish" : "Publish"}
+   985→   985→                        </s-button>
+   986→   986→                      </fetcher.Form>
+   987→   987→
+   988→   988→                      <fetcher.Form method="post">
+   989→   989→                        <input type="hidden" name="intent" value="duplicate" />
+   990→   990→                        <input type="hidden" name="id" value={chart.id} />
+   991→   991→                        <s-button type="submit" loading={isLoading}>
+   992→   992→                          Duplicate
+   993→   993→                        </s-button>
+   994→   994→                      </fetcher.Form>
+   995→   995→
+   996→   996→                      <fetcher.Form method="post">
+   997→   997→                        <input type="hidden" name="intent" value="delete" />
+   998→   998→                        <input type="hidden" name="id" value={chart.id} />
+   999→   999→                        <s-button
+  1000→  1000→                          type="submit"
+  1001→  1001→                          variant="tertiary"
+  1002→  1002→                          tone="critical"
+  1003→  1003→                          loading={isLoading}
+  1004→  1004→                        >
+  1005→  1005→                          Delete
+  1006→  1006→                        </s-button>
+  1007→  1007→                      </fetcher.Form>
+  1008→  1008→                    </s-stack>
+  1009→  1009→                  </s-stack>
+  1010→  1010→                </div>
+  1011→  1011→              ))}
+  1012→  1012→            </div>
+  1013→  1013→          )}
+  1014→  1014→        </s-box>
+  1015→  1015→      </s-section>
+  1016→  1016→
+  1017→  1017→      {/* ================================================================ */}
+  1018→  1018→      {/* ASIDE — Chart Limits                                              */}
+  1019→  1019→      {/* ================================================================ */}
+  1020→  1020→      <s-section slot="aside" heading="Chart limits">
+  1021→  1021→        <s-box padding="base" borderWidth="base" borderRadius="base">
+  1022→  1022→          <s-stack direction="block" gap="base">
+  1023→  1023→            {/* Plan badge row */}
+  1024→  1024→            <s-stack direction="inline" gap="base">
+  1025→  1025→              <s-badge tone={isFreePlan ? "neutral" : "success"}>
+  1026→  1026→                {plan.name} Plan
+  1027→  1027→              </s-badge>
+  1028→  1028→              {plan.price > 0 && (
+  1029→  1029→                <s-text color="subdued">${plan.price}/mo</s-text>
+  1030→  1030→              )}
+  1031→  1031→            </s-stack>
+  1032→  1032→
+  1033→  1033→            {maxCharts === -1 ? (
+  1034→  1034→              <s-text color="subdued">Unlimited charts on your plan.</s-text>
+  1035→  1035→            ) : (
+  1036→  1036→              <s-stack direction="block" gap="small-200">
+  1037→  1037→                <s-stack direction="inline" gap="base">
+  1038→  1038→                  <s-text>
+  1039→  1039→                    {publishedCount} / {maxCharts} published
+  1040→  1040→                  </s-text>
+  1041→  1041→                  <s-text color="subdued">{draftCount} draft</s-text>
+  1042→  1042→                </s-stack>
+  1043→  1043→                {/* Progress bar — keep as-is, no Polaris component available */}
+  1044→  1044→                <div
+  1045→  1045→                  style={{
+  1046→  1046→                    height: "6px",
+  1047→  1047→                    background: "#e4e5e7",
+  1048→  1048→                    borderRadius: "3px",
+  1049→  1049→                    overflow: "hidden",
+  1050→  1050→                  }}
+  1051→  1051→                >
+  1052→  1052→                  <div
+  1053→  1053→                    style={{
+  1054→  1054→                      height: "100%",
+  1055→  1055→                      width: `${progressPct}%`,
+  1056→  1056→                      background: progressColor,
+  1057→  1057→                      borderRadius: "3px",
+  1058→  1058→                      transition: "width 0.3s ease",
+  1059→  1059→                    }}
+  1060→  1060→                  />
+  1061→  1061→                </div>
+  1062→  1062→                <s-text color="subdued">
+  1063→  1063→                  {maxCharts - publishedCount > 0
+  1064→  1064→                    ? `${maxCharts - publishedCount} slot${maxCharts - publishedCount !== 1 ? "s" : ""} remaining`
+  1065→  1065→                    : "Limit reached — upgrade for more"}
+  1066→  1066→                </s-text>
+  1067→  1067→                <s-button href="/app/pricing" variant="primary">
+  1068→  1068→                  Upgrade for unlimited
+  1069→  1069→                </s-button>
+  1070→  1070→              </s-stack>
+  1071→  1071→            )}
+  1072→  1072→          </s-stack>
+  1073→  1073→        </s-box>
+  1074→  1074→      </s-section>
+  1075→  1075→
+  1076→  1076→      {/* ================================================================ */}
+  1077→  1077→      {/* ASIDE — Quick Tips                                                */}
+  1078→  1078→      {/* ================================================================ */}
+  1079→  1079→      <s-section slot="aside" heading="Quick tips">
+  1080→  1080→        <s-unordered-list>
+  1081→  1081→          <s-list-item>
+  1082→  1082→            Assign charts to products or collections for automatic display in your
+  1083→  1083→            storefront widget
+  1084→  1084→          </s-list-item>
+  1085→  1085→          <s-list-item>
+  1086→  1086→            Templates include standard sizing data so you can get started fast
+  1087→  1087→          </s-list-item>
+  1088→  1088→          <s-list-item>
+  1089→  1089→            Publish a chart to make it visible to customers on your store
+  1090→  1090→          </s-list-item>
+  1091→  1091→          <s-list-item>
+  1092→  1092→            Add both inch and centimeter values for international shoppers
+  1093→  1093→          </s-list-item>
+  1094→  1094→        </s-unordered-list>
+  1095→  1095→      </s-section>
+  1096→  1096→    </s-page>
+  1097→  1097→  );
+  1098→  1098→}
+  1099→  1099→
+  1100→
+  1101→<system-reminder>
+  1102→Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+  1103→</system-reminder>
+  1104→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

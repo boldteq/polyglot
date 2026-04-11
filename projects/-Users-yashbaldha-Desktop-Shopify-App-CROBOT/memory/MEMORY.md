@@ -1,0 +1,1 @@
+- [CROBOT Project Overview](project_crobot.md) — AI CRO audit tool, React+shadcn stack, 15-20% built, targeting Hotjar-quality UI

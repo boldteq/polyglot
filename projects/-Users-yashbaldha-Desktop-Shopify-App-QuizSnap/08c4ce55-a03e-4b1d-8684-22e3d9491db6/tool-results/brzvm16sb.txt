@@ -1,0 +1,2274 @@
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/abtest.md ===
+Set up an A/B test for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| A/B Test Feature        | Primary Agent     | Support Agents                      |
+|-------------------------|-------------------|-------------------------------------|
+| Test configuration      | ab-testing        | quiz-builder                        |
+| Traffic splitting       | ab-testing        | storefront-builder                  |
+| Metric tracking         | ab-testing        | analytics-builder                   |
+| Statistical analysis    | ab-testing        | analytics-aggregator                |
+| Winner declaration      | ab-testing        | quiz-builder                        |
+
+## A/B Test Architecture
+
+### What Can Be Tested
+- Quiz title and description
+- Question order and wording
+- Question types (e.g., image choice vs text choice)
+- Number of questions (short quiz vs long quiz)
+- Result page layout and copy
+- Widget display mode (popup vs inline vs slide-in)
+- Popup trigger timing
+- Call-to-action button text and color
+- Product recommendation count
+
+### Traffic Split Model
+- Uses the ABTest model: variantA (original), variantB (variation)
+- Split percentage configurable (default: 50/50)
+- Assignment is sticky per visitor (cookie-based)
+- Cookie name: `qs_ab_{testId}`
+- Cookie lifetime: 30 days
+
+## Process
+
+### Step 1: Define the Test
+- Parse $ARGUMENTS for what element to test
+- Identify the hypothesis (what change should improve what metric)
+- Define the primary metric (completion rate, conversion rate, etc.)
+- Define secondary metrics (engagement, time on quiz, etc.)
+- Calculate minimum sample size for statistical significance
+
+### Step 2: Configure Variants
+- Create the ABTest record in the database
+- Set up variant A (control — current version)
+- Set up variant B (treatment — the change)
+- Configure the traffic split percentage
+- Set the test status to "draft"
+
+### Step 3: Implement Traffic Splitting
+- On widget load, check for existing AB test cookie
+- If no cookie, assign variant based on split percentage
+- Set cookie with variant assignment
+- Load the correct quiz variant based on assignment
+- Ensure consistent experience across page loads
+
+### Step 4: Implement Metric Tracking
+- Tag all analytics events with the variant identifier
+- Track per-variant:
+  - Quiz views (impressions)
+  - Quiz starts
+  - Quiz completions
+  - Product clicks
+  - Add to cart events
+  - Completion rate (completions / starts)
+  - Conversion rate (add_to_cart / completions)
+- Store variant info in AnalyticsEvent metadata
+
+### Step 5: Build Test Dashboard
+- Show test status (draft, running, completed)
+- Display per-variant metrics side by side
+- Show statistical significance indicator
+- Show confidence level (aim for 95%)
+- Display estimated time to reach significance
+- Add controls: start test, pause test, declare winner
+
+### Step 6: Monitor and Analyze
+- Check results daily (or on-demand)
+- Calculate statistical significance using chi-squared test
+- Flag if one variant is significantly underperforming (safety check)
+- Auto-pause if variant B conversion drops below threshold
+
+### Step 7: Declare Winner
+- When statistical significance (95% confidence) is reached:
+  - Highlight the winning variant
+  - Show improvement percentage
+  - Offer one-click "apply winner" to make it permanent
+- If no significant difference after sufficient sample:
+  - Recommend ending the test
+  - Suggest a different element to test
+
+## Statistical Method
+- Test type: Two-proportion z-test
+- Minimum confidence level: 95% (p < 0.05)
+- Minimum sample size per variant: 100 conversions
+- Recommended runtime: at least 7 days (captures weekly patterns)
+
+## Output Format
+
+```
+## A/B Test Report: [Test Name]
+
+### Hypothesis
+- [What change is being tested and expected outcome]
+
+### Configuration
+- **Variant A (Control)**: [description]
+- **Variant B (Treatment)**: [description]
+- **Split**: [percentage]
+- **Primary Metric**: [metric name]
+- **Status**: [draft/running/completed]
+
+### Results (if running/completed)
+| Metric            | Variant A | Variant B | Difference |
+|-------------------|-----------|-----------|------------|
+| Impressions       | [count]   | [count]   |            |
+| Completions       | [count]   | [count]   |            |
+| Completion Rate   | [%]       | [%]       | [+/- %]    |
+| Conversions       | [count]   | [count]   |            |
+| Conversion Rate   | [%]       | [%]       | [+/- %]    |
+
+### Statistical Significance
+- Confidence: [%]
+- Significant: [YES/NO]
+- Winner: [A/B/None yet]
+
+### Files
+- [path] — [purpose]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/analytics.md ===
+Build an analytics feature for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Analytics Feature        | Primary Agent          | Support Agents                   |
+|--------------------------|------------------------|----------------------------------|
+| Event tracking           | analytics-builder      | storefront-builder               |
+| Dashboard widgets        | analytics-builder      | admin-builder                    |
+| Data aggregation         | analytics-aggregator   | database-architect               |
+| Report generation        | report-generator       | analytics-aggregator             |
+| Export/download          | export-import          | report-generator                 |
+| Funnel analysis          | analytics-builder      | analytics-aggregator             |
+
+## Analytics Events
+
+| Event Type          | Trigger                          | Metadata                           |
+|---------------------|----------------------------------|------------------------------------|
+| quiz_view           | Widget loads on storefront       | quizId, pageUrl, referrer          |
+| quiz_start          | User answers first question      | quizId, source (embed/popup)       |
+| question_answer     | User answers any question        | quizId, questionId, optionId       |
+| quiz_complete       | User reaches results page        | quizId, resultProfileId, duration  |
+| quiz_abandon        | User leaves without completing   | quizId, lastQuestionId, duration   |
+| product_click       | User clicks recommended product  | quizId, productId, resultProfileId |
+| add_to_cart         | User adds product from results   | quizId, productId, variantId       |
+| email_capture       | User submits email in quiz       | quizId, hasOptIn                   |
+
+## Process
+
+### Step 1: Define Metrics
+- Parse $ARGUMENTS to determine which analytics feature to build
+- Identify the key metrics (KPIs) this feature should track
+- Define how metrics are calculated (counts, rates, averages)
+- Determine the time granularity (hourly, daily, weekly, monthly)
+
+### Step 2: Implement Event Tracking
+- Add tracking calls in the storefront widget for user actions
+- Send events to the public API endpoint (`/api/analytics`)
+- Store events in the AnalyticsEvent model with proper metadata
+- Ensure events include quizId and shopId for proper scoping
+- Batch events if multiple fire in quick succession
+
+### Step 3: Build Aggregation Layer
+- Create server-side functions to aggregate raw events into metrics
+- Key aggregations:
+  - Completion rate: quiz_complete / quiz_start
+  - Conversion rate: add_to_cart / quiz_complete
+  - Average quiz duration: avg(completedAt - startedAt)
+  - Drop-off by question: count(question_answer) grouped by questionId
+  - Top products clicked: count(product_click) grouped by productId
+- Cache aggregated results for dashboard performance
+- Support date range filtering
+
+### Step 4: Build Dashboard UI
+- Use Polaris components (Card, DataTable, IndexTable)
+- Build summary cards: total responses, completion rate, conversion rate
+- Build time-series chart for responses over time
+- Build funnel visualization (view > start > complete > convert)
+- Build per-question breakdown table
+- Add date range picker (7d, 30d, 90d, custom)
+
+### Step 5: Build Reports
+- Individual quiz performance report
+- Question-level analytics (answer distribution, drop-off)
+- Product recommendation effectiveness (clicks, adds to cart)
+- Comparison report (quiz A vs quiz B)
+- Revenue attribution (orders linked to quiz recommendations)
+
+### Step 6: Validate Data
+- Verify event counts match expected behavior
+- Check for duplicate events (implement idempotency)
+- Verify aggregations produce correct numbers
+- Test with zero data (empty states)
+- Test with large data sets (pagination, performance)
+
+## Output Format
+
+```
+## Analytics Feature Report: [Feature Name]
+
+### Metrics Implemented
+- [Metric name]: [calculation method]
+
+### Events
+- [Event type]: [trigger and metadata]
+
+### Dashboard Components
+- [Component]: [what it shows]
+
+### Data Pipeline
+- Collection: [how events are captured]
+- Storage: [AnalyticsEvent model fields used]
+- Aggregation: [how raw events become metrics]
+- Display: [how metrics are rendered]
+
+### Files
+- [path] — [purpose]
+
+### Performance
+- Aggregation query time: [measurement]
+- Dashboard load time: [measurement]
+- Event ingestion: [sync/async]
+
+### Quality
+- TypeScript: [PASS/FAIL]
+- Empty state: [HANDLED/NOT HANDLED]
+- Date filtering: [WORKING/NOT TESTED]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/api.md ===
+Build an API endpoint for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| API Type                  | Primary Agent       | Support Agents            |
+|---------------------------|---------------------|---------------------------|
+| Admin API (internal)      | api-builder         | validation-specialist     |
+| Public storefront API     | storefront-builder  | api-builder, cors-manager |
+| Webhook receiver          | webhook-handler     | security-auditor          |
+| App proxy endpoint        | api-builder         | storefront-builder        |
+
+## Process
+
+### Step 1: Design the API Contract
+- Define the HTTP method (GET, POST, PUT, DELETE)
+- Define the route path following Remix conventions
+- Design the request body / query parameters schema
+- Design the response shape with proper status codes
+- Document error response format
+
+### Step 2: Choose the Route Type
+- **Admin route** (`app/routes/app.*.tsx`): Protected by Shopify admin auth
+- **API route** (`app/routes/api.*.tsx`): For programmatic access
+- **Public route** (`app/routes/public.*.tsx`): For storefront widget calls
+- **Webhook route** (`app/routes/webhooks.*.tsx`): For Shopify webhook handlers
+
+### Step 3: Implement the Endpoint
+
+For admin routes:
+- Use `authenticate.admin(request)` in loader/action
+- Access shop via session: `const { admin, session } = await authenticate.admin(request)`
+- Return JSON with proper typing
+
+For public/storefront routes:
+- Add CORS headers (Access-Control-Allow-Origin with allowlist)
+- Validate the request origin or use app proxy authentication
+- Rate limit considerations for public endpoints
+- Never expose sensitive shop data
+
+For webhook routes:
+- Verify HMAC signature via `authenticate.webhook(request)`
+- Process asynchronously if heavy work is needed
+- Return 200 immediately to avoid Shopify timeout
+- Handle idempotency (webhooks can be sent multiple times)
+
+### Step 4: Add Validation
+- Validate all input parameters (type, format, required fields)
+- Use Zod or manual validation for request body parsing
+- Return 400 with descriptive error messages for invalid input
+- Sanitize string inputs before database operations
+
+### Step 5: Implement Business Logic
+- Keep route files thin — extract logic to service files if complex
+- Use Prisma transactions for multi-step operations
+- Always scope database queries by shopId
+- Handle edge cases (not found, duplicate, unauthorized)
+
+### Step 6: Add Response Headers
+- Set `Content-Type: application/json` for JSON responses
+- Add CORS headers for public endpoints
+- Add cache headers where appropriate
+
+### Step 7: Test the Endpoint
+- Test happy path with valid input
+- Test with missing required fields
+- Test with invalid data types
+- Test unauthorized access (wrong shop, no session)
+- Test CORS preflight (OPTIONS request) for public endpoints
+
+## Output Format
+
+```
+## API Endpoint Report
+
+### Endpoint
+- **Method**: [GET/POST/PUT/DELETE]
+- **Path**: [route path]
+- **Type**: [admin/public/webhook/proxy]
+- **Auth**: [admin session / HMAC / app proxy / none]
+
+### Request
+- **Params**: [URL parameters]
+- **Body**: [Request body shape]
+- **Headers**: [Required headers]
+
+### Response
+- **200**: [Success response shape]
+- **400**: [Validation error shape]
+- **401**: [Auth error shape]
+- **404**: [Not found shape]
+
+### Files
+- [path] — [purpose]
+
+### Security
+- Input validation: [PASS/FAIL]
+- Auth check: [PASS/FAIL]
+- Shop scoping: [PASS/FAIL]
+- CORS: [CONFIGURED/N/A]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/billing.md ===
+Build a billing feature for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Billing Feature         | Primary Agent      | Support Agents                     |
+|-------------------------|--------------------|------------------------------------|
+| Plan definition         | billing-manager    | database-architect                 |
+| Pricing page UI         | billing-manager    | admin-builder                      |
+| Plan gating logic       | billing-manager    | api-builder                        |
+| Shopify billing API     | billing-manager    | shopify-compliance                 |
+| Usage tracking          | billing-manager    | analytics-builder                  |
+| Upgrade/downgrade       | billing-manager    | admin-builder                      |
+
+## Plan Structure
+
+| Plan       | Price   | Quizzes | Responses/mo | Features                                      |
+|------------|---------|---------|--------------|-----------------------------------------------|
+| Free       | $0      | 1       | 50           | Basic quiz, 3 question types, basic analytics |
+| Starter    | $9/mo   | 5       | 500          | All question types, logic rules, email capture|
+| Growth     | $29/mo  | 20      | 5,000        | Templates, A/B testing, integrations, export  |
+| Enterprise | $79/mo  | Unlimited| Unlimited   | Custom branding, priority support, API access |
+
+## Process
+
+### Step 1: Define Plan Configuration
+- Set up plan definitions in `app/billing.server.ts`
+- Map each plan to Shopify recurring charge parameters
+- Define feature flags per plan
+- Define usage limits per plan
+
+### Step 2: Implement Shopify Billing API
+- Use `billing` configuration in shopify.server.ts
+- Implement plan creation via `admin.billing.subscriptionCreate`
+- Handle billing confirmation callback
+- Store active plan in BillingPlan model
+- Handle plan cancellation and app uninstall cleanup
+
+### Step 3: Build Pricing Page
+- Create admin route `app/routes/app.billing.tsx`
+- Use Polaris components (Page, Card, CalloutCard, Banner)
+- Show plan comparison with feature matrix
+- Highlight current plan
+- Add upgrade/downgrade buttons
+- Show usage stats (responses used / limit)
+
+### Step 4: Implement Plan Gating
+- Create utility function: `checkPlanAccess(shopId, feature)`
+- Gate features at the loader/action level (server-side, not client-side)
+- Return upgrade prompt when accessing gated features
+- Features to gate:
+  - Number of quizzes (count check)
+  - Monthly responses (usage check)
+  - Question types (feature flag)
+  - Logic rules (feature flag)
+  - A/B testing (feature flag)
+  - Email integrations (feature flag)
+  - CSV export (feature flag)
+  - Custom branding (feature flag)
+
+### Step 5: Track Usage
+- Increment response count on quiz submission
+- Reset monthly count on billing cycle renewal
+- Show usage warnings at 80% and 100% of limit
+- Block new responses at limit (show upgrade prompt on widget)
+- Store usage in BillingPlan or separate UsageRecord model
+
+### Step 6: Test Billing Flow
+- Test upgrade from Free to each paid plan
+- Test downgrade between paid plans
+- Test plan cancellation
+- Verify features gate correctly per plan
+- Test usage limit enforcement
+- Test billing webhook handling (charge activated, charge cancelled)
+- Use Shopify CLI test charges in development
+
+## Shopify Billing API Reference
+
+```typescript
+// In shopify.server.ts billing config
+billing: {
+  starter: { amount: 9.0, currencyCode: "USD", interval: "EVERY_30_DAYS" },
+  growth: { amount: 29.0, currencyCode: "USD", interval: "EVERY_30_DAYS" },
+  enterprise: { amount: 79.0, currencyCode: "USD", interval: "EVERY_30_DAYS" },
+}
+```
+
+## Output Format
+
+```
+## Billing Feature Report: [Feature Name]
+
+### Plans Configured
+- [Plan name]: $[price] — [key limits]
+
+### Implementation
+- **Billing server**: [file path]
+- **Pricing page**: [file path]
+- **Plan gating**: [utility file path]
+- **Usage tracking**: [implementation details]
+
+### Gated Features
+| Feature          | Free | Starter | Growth | Enterprise |
+|------------------|------|---------|--------|------------|
+| [feature]        | [Y/N]| [Y/N]  | [Y/N]  | [Y/N]     |
+
+### Files
+- [path] — [purpose]
+
+### Testing
+- Upgrade flow: [PASS/FAIL]
+- Downgrade flow: [PASS/FAIL]
+- Feature gating: [PASS/FAIL]
+- Usage limits: [PASS/FAIL]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/db.md ===
+Handle a database task for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Task Type            | Primary Agent        | Support Agents          |
+|----------------------|----------------------|-------------------------|
+| Schema changes       | database-architect   | migration-specialist    |
+| Query optimization   | performance-optimizer| database-architect      |
+| Data operations      | database-architect   | validation-specialist   |
+| Seed data            | database-architect   | template-builder        |
+
+## Models Reference
+
+| Model              | Key Fields                                                        | Constraints                     |
+|--------------------|-------------------------------------------------------------------|---------------------------------|
+| Session            | id, shop, state, accessToken, scope                               | Managed by Shopify auth         |
+| Shop               | id, shopifyDomain, name, email, plan, onboardingCompleted         | Unique on shopifyDomain         |
+| Quiz               | id, shopId, title, slug, status, type, settings (JSON)            | FK to Shop, unique slug per shop|
+| Question           | id, quizId, type, title, description, position, settings (JSON)   | FK to Quiz, ordered by position |
+| QuestionOption     | id, questionId, label, value, imageUrl, position                  | FK to Question                  |
+| LogicRule          | id, quizId, sourceQuestionId, condition, targetQuestionId, action | FK to Quiz and Questions        |
+| ResultProfile      | id, quizId, title, description, imageUrl, productIds (JSON)       | FK to Quiz                      |
+| ScoreMapping       | id, resultProfileId, questionOptionId, score                      | FK to ResultProfile, Option     |
+| QuizResponse       | id, quizId, shopId, respondentEmail, completedAt, answers (JSON)  | FK to Quiz, Shop                |
+| AnalyticsEvent     | id, quizId, shopId, eventType, metadata (JSON), createdAt         | FK to Quiz, Shop, indexed       |
+| EmailIntegration   | id, shopId, provider, apiKey (encrypted), listId, settings (JSON) | FK to Shop                      |
+| ABTest             | id, quizId, variantA, variantB, splitPercent, status              | FK to Quiz                      |
+| BillingPlan        | id, shopId, planName, chargeId, status, activatedAt               | FK to Shop                      |
+
+## Process: Schema Changes
+
+1. Read current `prisma/schema.prisma` to understand existing models
+2. Plan the change — add model, add field, modify field, add relation
+3. Apply the change to schema.prisma
+4. Run `npx prisma validate` to check syntax
+5. Run `npx prisma db push` to apply to dev database
+6. Run `npx prisma generate` to update the Prisma client
+7. Update any TypeScript types that reference the changed models
+
+## Process: Query Optimization
+
+1. Identify the slow query (check loader/action files)
+2. Analyze the query — look for N+1 problems, missing includes, large selects
+3. Add proper `select` clauses to fetch only needed fields
+4. Add `include` for required relations instead of separate queries
+5. Add database indexes in schema.prisma if needed (`@@index`)
+6. Use `findMany` with `take`/`skip` for pagination
+7. Consider caching for frequently-read, rarely-changed data
+
+## Process: Data Operations
+
+1. Identify the operation scope (single shop, all shops, specific records)
+2. ALWAYS include `shopId` in WHERE clauses — never operate across shops
+3. Use Prisma transactions for multi-step operations
+4. Validate input data before writing to the database
+5. Handle unique constraint violations gracefully
+
+## Caution Rules
+
+- NEVER delete data without explicit confirmation — soft delete preferred
+- NEVER run raw SQL unless Prisma cannot express the query
+- ALWAYS back up before destructive schema changes in production
+- ALWAYS scope queries by shopId to maintain data isolation
+- NEVER store sensitive data (API keys, tokens) in plain text — use encryption
+- NEVER modify the Session model — it is managed by Shopify's auth system
+- ALWAYS use transactions when updating multiple related records
+
+## Output Format
+
+```
+## Database Task Report
+
+### Task
+- [What was requested]
+
+### Changes Made
+- **Schema**: [Changes to prisma/schema.prisma, or "None"]
+- **Queries**: [New or modified queries, or "None"]
+- **Data**: [Data operations performed, or "None"]
+
+### Commands Run
+- [List of prisma commands executed]
+
+### Verification
+- Schema valid: [YES/NO]
+- Client generated: [YES/NO]
+- Shop scoping: [VERIFIED]
+
+### Warnings
+- [Any risks or follow-up actions needed]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/deploy.md ===
+Deploy QuizSnap to Shopify: $ARGUMENTS
+
+## Agent Orchestration
+
+| Deploy Phase         | Agent               | Responsibility                      |
+|----------------------|---------------------|-------------------------------------|
+| Pre-deploy checks    | deploy-specialist   | Typecheck, lint, security           |
+| Build and deploy     | deploy-specialist   | Shopify CLI deployment              |
+| Post-deploy verify   | smoke-tester        | Webhooks, billing, core flows       |
+
+## Pre-Deploy Checklist
+
+### Code Quality
+- [ ] Run `npx tsc --noEmit` — must pass with zero errors
+- [ ] Run `npx eslint . --ext .ts,.tsx` — no errors (warnings acceptable)
+- [ ] Run `npx prisma validate` — schema must be valid
+
+### Security
+- [ ] No hardcoded API keys, secrets, or tokens in source files
+- [ ] All environment variables referenced in code exist in production config
+- [ ] CORS headers use allowlist (not wildcard `*`)
+- [ ] All public endpoints validate input
+- [ ] Webhook handlers verify HMAC signatures
+
+### Shopify Requirements
+- [ ] `shopify.app.toml` scopes match what the app actually uses
+- [ ] GDPR endpoints are implemented and registered
+- [ ] App proxy routes return correct Content-Type headers
+- [ ] Billing API integration matches configured plans
+- [ ] AppBridge version is current and compatible
+
+### Environment Variables
+Verify these are set in production:
+- `DATABASE_URL` — production database connection string
+- `SHOPIFY_API_KEY` — app API key
+- `SHOPIFY_API_SECRET` — app API secret
+- `SCOPES` — required Shopify permission scopes
+- `HOST` — production app URL
+
+## Deploy Process
+
+### Step 1: Build
+Run `npm run build` and verify the build completes without errors.
+
+### Step 2: Database Sync
+Run `npx prisma db push` only if there are pending schema changes.
+Never use `--accept-data-loss` in production.
+
+### Step 3: Deploy
+Run `npm run deploy` or via Shopify CLI: `shopify app deploy`
+
+### Step 4: Verify Extension Deployment
+If the app includes theme extensions or app blocks:
+Run `shopify app deploy --reset` only if extensions are not updating correctly.
+
+## Post-Deploy Smoke Tests
+
+### Core Functionality
+- [ ] App loads in Shopify admin without errors
+- [ ] Navigation menu shows all expected links
+- [ ] Can create a new quiz
+- [ ] Can add questions to a quiz
+- [ ] Quiz preview renders correctly
+- [ ] Published quiz is accessible on storefront
+
+### Webhooks
+- [ ] `APP_UNINSTALLED` webhook fires and cleans up shop data
+- [ ] `CUSTOMERS_DATA_REQUEST` responds correctly
+- [ ] `CUSTOMERS_REDACT` responds correctly
+- [ ] `SHOP_REDACT` responds correctly
+
+### Billing
+- [ ] Free plan features work without billing prompt
+- [ ] Paid plan features gate correctly
+- [ ] Upgrade flow redirects to Shopify billing confirmation
+
+### Widget
+- [ ] Quiz widget loads on storefront
+- [ ] Widget respects shop theme styling
+- [ ] Mobile responsive behavior works
+- [ ] Quiz submission saves response to database
+
+## Output Format
+
+```
+## Deploy Report
+
+### Environment
+- **Target**: [production/staging]
+- **Version**: [commit hash or tag]
+- **Timestamp**: [deploy time]
+
+### Pre-Deploy Checks
+- TypeScript: [PASS/FAIL]
+- Lint: [PASS/FAIL]
+- Security: [PASS/FAIL]
+- Env vars: [PASS/FAIL]
+- Scopes: [PASS/FAIL]
+
+### Deployment
+- Build: [SUCCESS/FAILED]
+- Database sync: [SUCCESS/SKIPPED/FAILED]
+- App deploy: [SUCCESS/FAILED]
+
+### Post-Deploy Verification
+- App loads: [PASS/FAIL]
+- Webhooks: [PASS/FAIL]
+- Billing: [PASS/FAIL]
+- Widget: [PASS/FAIL]
+
+### Issues Found
+- [Any issues encountered during or after deployment]
+
+### Rollback Plan
+- [Steps to revert if critical issues are found]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/export.md ===
+Export or import data for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Export/Import Type       | Primary Agent     | Support Agents                     |
+|--------------------------|-------------------|------------------------------------|
+| Quiz responses CSV       | export-import     | analytics-builder                  |
+| Quiz configuration JSON  | export-import     | quiz-builder                       |
+| Template import          | export-import     | template-builder                   |
+| Analytics report         | report-generator  | export-import                      |
+| Bulk product mapping     | export-import     | quiz-builder                       |
+| Email list export        | export-import     | email-integration                  |
+
+## Exportable Data Types
+
+| Data Type             | Format | Fields Included                                           |
+|-----------------------|--------|-----------------------------------------------------------|
+| Quiz responses        | CSV    | respondentEmail, answers (flattened), result, completedAt |
+| Quiz configuration    | JSON   | quiz, questions, options, logic rules, result profiles    |
+| Analytics summary     | CSV    | date, views, starts, completions, conversions, revenue    |
+| Email subscribers     | CSV    | email, quizId, resultProfile, optInDate, answers          |
+| Product mappings      | CSV    | resultProfileId, productId, productTitle, position        |
+
+## Process
+
+### Step 1: Determine Operation
+- Parse $ARGUMENTS: is this an export or import?
+- Identify the data type to export/import
+- Determine the format (CSV, JSON)
+- Check plan gating (export may be a paid feature)
+
+### Step 2: Export Process
+
+**For CSV exports**:
+- Query the database with proper shop scoping
+- Apply any filters (date range, quiz ID, status)
+- Flatten nested data for CSV compatibility (JSON answers become columns)
+- Generate CSV with headers as first row
+- Stream large exports to avoid memory issues (use chunked processing)
+- Return file as downloadable response with proper headers:
+  Content-Type: text/csv
+  Content-Disposition: attachment; filename="quizsnap-responses-YYYY-MM-DD.csv"
+
+**For JSON exports**:
+- Query the database with all related records
+- Build the complete object graph (quiz + questions + options + logic + results)
+- Strip internal IDs and shop-specific data for portability
+- Pretty-print the JSON for readability
+- Return as downloadable JSON file
+
+### Step 3: Import Process
+
+**For CSV imports**:
+- Parse the uploaded CSV file
+- Validate headers match expected format
+- Validate each row's data (types, required fields, references)
+- Show preview of first 5 rows for confirmation
+- Process in batches (100 rows at a time)
+- Report success/failure counts
+
+**For JSON imports** (quiz templates):
+- Parse the uploaded JSON
+- Validate structure matches expected schema
+- Check for conflicts (duplicate slugs, etc.)
+- Create all records in a transaction (quiz, questions, options, rules, profiles)
+- Assign new IDs and link to current shop
+- Report what was created
+
+### Step 4: Validate
+- Verify exported file opens correctly in target application (Excel for CSV)
+- Verify imported data appears correctly in the admin UI
+- Check record counts match expectations
+- Verify no data corruption (special characters, unicode, line breaks)
+
+### Step 5: Handle Edge Cases
+- Empty dataset: return file with headers only (CSV) or empty array (JSON)
+- Large dataset (10,000+ rows): stream and paginate
+- Special characters in data: proper CSV escaping (quote wrapping)
+- Unicode content: UTF-8 BOM for Excel compatibility
+- Import conflicts: skip duplicates and report, or offer overwrite option
+
+## Security Rules
+- NEVER export data from other shops (always scope by shopId)
+- Sanitize imported data before database insertion
+- Validate file size limits (max 10MB for imports)
+- Validate file type (reject unexpected MIME types)
+- Log all export and import operations for audit trail
+
+## Output Format
+
+```
+## Export/Import Report
+
+### Operation
+- **Type**: [Export / Import]
+- **Data**: [data type]
+- **Format**: [CSV / JSON]
+
+### Results
+- Records processed: [count]
+- Successful: [count]
+- Failed: [count]
+- File size: [size]
+
+### File Details
+- **Filename**: [generated filename]
+- **Columns/Fields**: [list]
+- **Date range**: [if filtered]
+
+### Validation
+- Data integrity: [PASS/FAIL]
+- Shop scoping: [VERIFIED]
+- Special characters: [HANDLED]
+
+### Files
+- [path] — [purpose]
+
+### Errors (if any)
+- Row [N]: [error description]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/feature.md ===
+Build a complete feature for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Feature Domain          | Primary Agent         | Support Agents                    |
+|-------------------------|-----------------------|-----------------------------------|
+| Quiz creation/editing   | quiz-builder          | question-builder, logic-engine    |
+| Question types          | question-builder      | quiz-builder                      |
+| Analytics/reporting     | analytics-builder     | analytics-aggregator              |
+| Admin UI pages          | admin-builder         | polaris-specialist                |
+| Storefront widget       | storefront-builder    | popup-builder, responsive-builder |
+| API endpoints           | api-builder           | validation-specialist             |
+| Billing/plans           | billing-manager       | plan-gating                       |
+| Email integrations      | email-integration     | klaviyo-specialist                |
+| Database/models         | database-architect    | migration-specialist              |
+| Onboarding flows        | onboarding-builder    | wizard-specialist                 |
+
+## Process
+
+### Step 1: Context Gathering
+- Read CLAUDE.md for project conventions, tech stack, and architecture rules
+- Read the 15-day sprint plan to understand where this feature fits
+- Identify which existing files and patterns are relevant
+
+### Step 2: Pattern Study
+- Find the closest existing feature to the one being built
+- Study its route structure, loader/action pattern, Prisma usage, and Polaris components
+- Note naming conventions, file locations, and import patterns
+
+### Step 3: Planning
+- Break the feature into discrete implementation tasks
+- Identify all files that need to be created or modified
+- List database schema changes needed (if any)
+- Define the API contract (if any new endpoints)
+- Map out the UI components needed
+
+### Step 4: Database Layer (if needed)
+- Add/modify Prisma models in prisma/schema.prisma
+- Run `npx prisma db push` to sync schema
+- Create any seed data needed for development
+
+### Step 5: Backend Implementation
+- Build loader functions for data fetching
+- Build action functions for mutations
+- Add server-side validation with proper error messages
+- Implement proper authentication and session checks via `authenticate.admin(request)`
+
+### Step 6: Polaris UI Implementation
+- Use Shopify Polaris components exclusively for admin pages
+- Follow existing layout patterns (Page, Layout, Card structure)
+- Add proper loading states, error boundaries, and empty states
+- Ensure responsive behavior matches existing pages
+
+### Step 7: Quality Gates
+- Run `npx tsc --noEmit` to verify TypeScript compiles cleanly
+- Run `npx eslint . --ext .ts,.tsx` to check lint rules
+- Verify no hardcoded secrets or API keys
+- Confirm all Prisma queries use proper where clauses with shop scoping
+- Ensure CSRF protection on all mutation endpoints
+
+### Step 8: Integration Verification
+- Confirm the feature works with existing navigation (app.nav menu)
+- Verify proper Shopify session handling
+- Test that billing plan gating works if feature is plan-restricted
+
+## Output Format
+
+```
+## Feature Report: [Feature Name]
+
+### What Was Built
+- [Summary of the feature]
+
+### Files Created
+- [path] — [purpose]
+
+### Files Modified
+- [path] — [what changed]
+
+### Database Changes
+- [model/field additions or modifications]
+
+### Quality Checks
+- TypeScript: [PASS/FAIL]
+- Lint: [PASS/FAIL]
+- Security: [PASS/FAIL]
+- Shop Scoping: [PASS/FAIL]
+
+### Next Steps
+- [Any follow-up work needed]
+- [Manual testing recommendations]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/fix.md ===
+Fix a bug in QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Bug Category               | Primary Agent        | Escalation              |
+|----------------------------|----------------------|-------------------------|
+| General application bugs   | bug-fixer            | —                       |
+| Widget/storefront issues   | storefront-builder   | responsive-builder      |
+| Security vulnerabilities   | security-auditor     | database-architect      |
+| Database/query issues      | database-architect   | migration-specialist    |
+| Billing/subscription bugs  | billing-manager      | —                       |
+| API endpoint failures      | api-builder          | validation-specialist   |
+| Analytics data issues      | analytics-builder    | analytics-aggregator    |
+| Build/deploy failures      | deploy-specialist    | —                       |
+
+## Process
+
+### Step 1: Locate the Bug
+- Search for the error message, component name, or route mentioned in $ARGUMENTS
+- Check server logs, browser console errors, or Prisma query logs as relevant
+- Identify the exact file(s) and line(s) where the issue originates
+
+### Step 2: Classify the Bug
+Assign one of these categories:
+- **A — Type Error**: TypeScript type mismatch, missing properties, wrong generics
+- **B — Runtime Error**: Null reference, undefined access, unhandled promise rejection
+- **C — Logic Error**: Wrong conditional, incorrect calculation, bad state management
+- **D — Data Error**: Prisma query returning wrong data, missing relations, bad seed data
+- **E — UI Error**: Polaris component misuse, layout broken, missing loading/error states
+- **F — Auth Error**: Session not found, wrong shop scoping, CSRF failure
+- **G — Integration Error**: Shopify API failure, webhook issue, third-party API problem
+- **H — Performance Error**: Slow query, memory leak, excessive re-renders
+
+### Step 3: Read Full Context
+- Read the ENTIRE file containing the bug (not just the error line)
+- Read any related files (imported modules, shared utilities, Prisma schema)
+- Understand the intended behavior before attempting a fix
+
+### Step 4: Apply Minimal Fix
+- Change only what is necessary to fix the bug
+- Do NOT refactor surrounding code unless it directly caused the issue
+- Preserve existing patterns and conventions from CLAUDE.md
+- Add defensive checks if the bug was caused by unexpected null/undefined
+
+### Step 5: Verify the Fix
+- Run `npx tsc --noEmit` to confirm no new type errors introduced
+- Check that the fix does not break adjacent functionality
+- Verify shop scoping is maintained if the fix touches database queries
+- Ensure no sensitive data is exposed in error messages
+
+### Step 6: Prevent Recurrence
+- If the bug pattern could exist elsewhere, search for similar occurrences
+- Add a brief inline comment explaining WHY the fix was needed (not what it does)
+- Suggest a test case that would catch this bug in the future
+
+## Output Format
+
+```
+## Bug Fix Report
+
+### Bug
+- **Description**: [What was broken]
+- **Category**: [A-H classification]
+- **Root Cause**: [Why it happened]
+
+### Fix Applied
+- **File**: [path]
+- **Change**: [What was changed and why]
+
+### Verification
+- TypeScript: [PASS/FAIL]
+- No regressions: [PASS/FAIL]
+- Shop scoping intact: [YES/N/A]
+
+### Similar Patterns Found
+- [Any other locations with the same potential bug, or "None"]
+
+### Recommended Test
+- [Test case description to prevent recurrence]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/integrate.md ===
+Add an integration to QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Integration Type        | Primary Agent         | Support Agents                    |
+|-------------------------|-----------------------|-----------------------------------|
+| Klaviyo                 | klaviyo-specialist    | email-integration                 |
+| Mailchimp               | email-integration     | api-builder                       |
+| Shopify Flow            | shopify-flow          | webhook-handler                   |
+| Custom webhook          | webhook-handler       | api-builder                       |
+| Zapier / Make           | webhook-handler       | api-builder                       |
+| Google Analytics        | analytics-builder     | storefront-builder                |
+| Meta Pixel              | analytics-builder     | storefront-builder                |
+| Slack notifications     | webhook-handler       | api-builder                       |
+
+## Integration Patterns
+
+### Email/Marketing Providers
+- Store API credentials encrypted in EmailIntegration model
+- Sync quiz respondents to provider lists on quiz completion
+- Map quiz answers to custom fields/tags in the provider
+- Support double opt-in where required by provider
+- Handle API rate limits gracefully
+
+### Shopify Native
+- Shopify Flow triggers: quiz completed, high-value lead captured
+- Shopify Customer tags: apply tags based on quiz results
+- Shopify Metafields: store quiz results on customer metafields
+- Shopify Segments: create segments based on quiz answers
+
+### Third-Party Webhooks
+- Outbound webhooks on configurable events
+- Customizable payload format (JSON)
+- Retry logic with exponential backoff (3 attempts)
+- Webhook delivery logs for debugging
+
+## Process
+
+### Step 1: Choose Provider and Scope
+- Identify the integration provider from $ARGUMENTS
+- Define which events trigger the integration
+- Define what data is sent to the provider
+- Check provider API documentation for authentication method
+
+### Step 2: Build Settings UI
+- Create integration settings page in admin (Polaris components)
+- Build API key/credential input with secure handling
+- Add connection test button (verify credentials)
+- Show connection status (connected/disconnected/error)
+- Build field mapping UI if the provider supports custom fields
+
+### Step 3: Implement Connection
+- Create server-side service for the provider's API
+- Store credentials encrypted in the database (EmailIntegration model)
+- Implement the core API calls (add subscriber, sync data, etc.)
+- Handle authentication errors and token refresh if applicable
+
+### Step 4: Wire Up Events
+- Hook into quiz completion flow to trigger the integration
+- Build event payload with quiz response data
+- Implement async processing (do not block quiz submission)
+- Add error handling that does not affect the user experience
+- Log integration events for debugging
+
+### Step 5: Test the Integration
+- Test with valid credentials — verify data arrives in provider
+- Test with invalid credentials — verify graceful error handling
+- Test with provider API down — verify quiz still works
+- Test data mapping — verify fields map correctly
+- Test unsubscribe/disconnect — verify clean teardown
+
+### Step 6: Document
+- Add integration setup instructions for merchants
+- Document what data is synced and when
+- Note any provider-specific requirements or limitations
+
+## Output Format
+
+```
+## Integration Report: [Provider Name]
+
+### Overview
+- **Provider**: [name]
+- **Type**: [email/analytics/webhook/native]
+- **Events**: [what triggers the integration]
+- **Data Synced**: [what data is sent]
+
+### Implementation
+- **Settings UI**: [admin page path]
+- **Service File**: [server-side service path]
+- **Credential Storage**: [encrypted in EmailIntegration model]
+
+### API Calls
+- [Endpoint 1]: [purpose]
+- [Endpoint 2]: [purpose]
+
+### Error Handling
+- Invalid credentials: [behavior]
+- Provider API down: [behavior]
+- Rate limited: [behavior]
+
+### Files
+- [path] — [purpose]
+
+### Testing
+- Connection test: [PASS/FAIL]
+- Data sync test: [PASS/FAIL]
+- Error handling test: [PASS/FAIL]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/migrate.md ===
+Handle a data migration for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Migration Type           | Primary Agent          | Support Agents                   |
+|--------------------------|------------------------|----------------------------------|
+| Schema migration         | migration-specialist   | database-architect               |
+| Data transformation      | migration-specialist   | database-architect               |
+| Backfill missing data    | migration-specialist   | database-architect               |
+| Cross-model migration    | database-architect     | migration-specialist             |
+| Production migration     | migration-specialist   | deploy-specialist                |
+
+## Process
+
+### Step 1: Plan the Migration
+- Read current `prisma/schema.prisma` to understand existing state
+- Identify what needs to change and why
+- Determine if this is additive (safe) or destructive (risky)
+- Classify the migration:
+  - **Additive**: New model, new field with default, new index
+  - **Rename**: Field rename, model rename
+  - **Transform**: Change field type, restructure data
+  - **Destructive**: Remove field, remove model, change constraints
+
+### Step 2: Assess Impact
+- List all files that query the affected models
+- Check for hardcoded field names in loaders, actions, and services
+- Estimate the number of rows affected
+- Calculate expected migration duration for production data volume
+- Identify if migration requires downtime
+
+### Step 3: Create Backup Plan
+- For production: ensure database backup exists before migration
+- Document the current schema state for rollback reference
+- Write rollback migration steps (reverse of forward migration)
+- Test rollback in development first
+
+### Step 4: Implement the Migration
+
+**For schema changes**:
+- Modify `prisma/schema.prisma`
+- Run `npx prisma validate` to check syntax
+- Run `npx prisma db push` for development
+- For production, use `npx prisma migrate dev --name [description]`
+- Run `npx prisma generate` to update the client
+
+**For data transformations**:
+- Write a migration script in `prisma/migrations/` or a standalone script
+- Process records in batches (100-500 at a time) to avoid memory issues
+- Use Prisma transactions for atomic batch updates
+- Log progress (processed X of Y records)
+- Handle failures gracefully (skip and log, or stop)
+
+**For backfills**:
+- Query records missing the target data
+- Calculate or derive the correct values
+- Update in batches with progress logging
+- Verify counts match expected totals
+
+### Step 5: Execute the Migration
+- Run in development first and verify results
+- Check that all queries still work with the new schema
+- Run `npx tsc --noEmit` to catch any type mismatches
+- Run the application and test affected features manually
+
+### Step 6: Verify
+- Count records before and after (should match for non-destructive)
+- Spot-check data integrity on sample records
+- Run all loaders that query affected models
+- Check that the admin UI renders correctly with migrated data
+- Verify the storefront widget works with migrated data
+
+### Step 7: Production Execution
+- Schedule migration during low-traffic period if possible
+- Take database backup immediately before migration
+- Run migration with monitoring
+- Verify production data after migration
+- Keep rollback plan ready for 24 hours
+
+## Caution Rules
+
+- NEVER run destructive migrations without explicit confirmation
+- ALWAYS back up production data before migrating
+- NEVER modify the Session model (Shopify-managed)
+- ALWAYS test migrations in development before production
+- NEVER use `--accept-data-loss` in production Prisma commands
+- ALWAYS process large data sets in batches
+- NEVER drop columns/tables that might still be referenced in code
+
+## Output Format
+
+```
+## Migration Report
+
+### Migration
+- **Type**: [additive/rename/transform/destructive]
+- **Models Affected**: [list]
+- **Records Affected**: [estimated count]
+- **Downtime Required**: [yes/no]
+
+### Changes
+- [Detailed list of schema or data changes]
+
+### Execution
+- Development: [SUCCESS/FAILED]
+- Production: [SUCCESS/FAILED/NOT YET]
+- Duration: [time taken]
+
+### Verification
+- Record counts: [MATCH/MISMATCH]
+- Data integrity: [VERIFIED/ISSUES FOUND]
+- TypeScript: [PASS/FAIL]
+- App functionality: [WORKING/BROKEN]
+
+### Rollback Plan
+- [Steps to reverse the migration if needed]
+
+### Files Modified
+- [path] — [what changed]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/onboard.md ===
+Build an onboarding flow for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Onboarding Feature      | Primary Agent        | Support Agents                     |
+|-------------------------|----------------------|------------------------------------|
+| Setup wizard            | onboarding-builder   | admin-builder                      |
+| First quiz guide        | onboarding-builder   | quiz-builder                       |
+| Progress tracking       | onboarding-builder   | database-architect                 |
+| Contextual help         | onboarding-builder   | admin-builder                      |
+| Template selection      | template-builder     | onboarding-builder                 |
+
+## Onboarding Steps
+
+### Step 1: Welcome Screen
+- Display app value proposition
+- Show what QuizSnap can do (with visual examples)
+- Collect merchant's primary use case:
+  - Product recommendations
+  - Lead generation
+  - Customer segmentation
+  - Fun engagement quizzes
+
+### Step 2: Store Setup
+- Auto-detect shop information from Shopify session
+- Confirm business category (for template suggestions)
+- Set default quiz styling based on shop theme colors
+- Configure email notification preferences
+
+### Step 3: First Quiz Creation
+- Offer template selection based on use case and category
+- Guide through creating first quiz with inline tips
+- Pre-populate with sample questions if template chosen
+- Show live preview as merchant builds
+
+### Step 4: Product Connection
+- Guide merchant to connect products to quiz results
+- Explain the recommendation logic
+- Offer automatic product mapping based on collections
+- Preview the results page with real products
+
+### Step 5: Widget Placement
+- Show display mode options (inline, popup, slide-in)
+- Guide through placing the quiz on their store
+- Offer recommended placement based on use case
+- Show preview of quiz on their actual storefront
+
+### Step 6: Publish
+- Final review checklist
+- One-click publish
+- Celebration screen with next steps
+
+## Process
+
+### Step 1: Check Onboarding State
+- Read Shop model's `onboardingCompleted` field
+- Check if any quizzes exist (returning user vs new user)
+- Determine which onboarding step to show
+- Store progress in Shop model or localStorage
+
+### Step 2: Build Wizard UI
+- Use Polaris components (Page, Card, ProgressBar, Button)
+- Build each step as a separate section within the wizard
+- Add navigation (Next, Back, Skip)
+- Show progress indicator (Step X of 6)
+- Persist progress so merchant can leave and return
+
+### Step 3: Implement Step Logic
+- Each step has its own validation before proceeding
+- Skip logic: some steps can be skipped, others are required
+- Default values for skipped optional steps
+- Error handling: show inline errors, do not block progress entirely
+
+### Step 4: Build Contextual Help
+- Add tooltips on complex features (using Polaris Tooltip)
+- Add info banners explaining concepts
+- Link to documentation or help articles where available
+- Show first-time hints that dismiss after viewing
+
+### Step 5: Track Completion
+- Mark `onboardingCompleted = true` on Shop model when finished
+- Track which steps were completed vs skipped
+- Fire analytics event for onboarding completion
+- Redirect to main dashboard after completion
+
+### Step 6: Handle Return Visitors
+- If onboarding was completed, skip to dashboard
+- If onboarding was partially completed, resume from last step
+- Offer "restart onboarding" option in Settings
+- Show a checklist on dashboard for incomplete setup tasks
+
+## Output Format
+
+```
+## Onboarding Feature Report: [Feature Name]
+
+### Steps Built
+1. [Step name] — [description]
+2. [Step name] — [description]
+
+### UI Components
+- [Component]: [Polaris components used]
+
+### Progress Tracking
+- Storage: [Shop model field / localStorage]
+- Resume: [YES/NO]
+- Skip allowed: [which steps]
+
+### Files
+- [path] — [purpose]
+
+### User Experience
+- Time to complete: [estimated minutes]
+- Can be skipped: [YES/NO]
+- Return handling: [resume/restart/skip]
+
+### Quality
+- TypeScript: [PASS/FAIL]
+- Mobile responsive: [VERIFIED/NOT TESTED]
+- Empty state handling: [PASS/FAIL]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/optimize.md ===
+Optimize performance in QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Optimization Area       | Primary Agent          | Support Agents                   |
+|-------------------------|------------------------|----------------------------------|
+| Database queries        | performance-optimizer  | database-architect               |
+| Page load speed         | performance-optimizer  | storefront-builder               |
+| Widget performance      | storefront-builder     | responsive-builder               |
+| API response time       | api-builder            | performance-optimizer            |
+| Caching strategy        | cache-manager          | database-architect               |
+| Bundle size             | performance-optimizer  | storefront-builder               |
+| Memory usage            | performance-optimizer  | database-architect               |
+
+## Process
+
+### Step 1: Profile the Problem
+- Identify the specific area mentioned in $ARGUMENTS
+- Measure current performance baseline
+- For database: check query execution time and query count per page load
+- For pages: check Remix loader execution time
+- For widget: check script size and Time to Interactive
+- For API: check response time at p50, p95, p99
+
+### Step 2: Identify Bottlenecks
+
+**Database Bottlenecks**:
+- N+1 queries (multiple queries for related data)
+- Missing indexes on frequently queried columns
+- Selecting all fields when only a few are needed
+- No pagination on list queries
+- Expensive aggregations without caching
+
+**Page Load Bottlenecks**:
+- Large loader data payloads (sending too much data to client)
+- Sequential data fetching (queries that could be parallel)
+- Missing loading states causing layout shift
+- Unoptimized images
+
+**Widget Bottlenecks**:
+- Script blocking page render
+- Large bundle size (images, fonts, unnecessary code)
+- Excessive DOM manipulation
+- Layout thrashing from style recalculations
+
+**API Bottlenecks**:
+- No response caching for stable data
+- Synchronous processing of background tasks
+- Missing database connection pooling
+- Large response payloads without pagination
+
+### Step 3: Apply Optimizations
+
+**Database**:
+- Add `select` to Prisma queries to fetch only needed fields
+- Use `include` with nested `select` for relations
+- Add `@@index` directives in schema.prisma for query patterns
+- Implement cursor-based pagination for large datasets
+- Cache aggregated analytics data with TTL
+
+**Page Load**:
+- Use `defer` in Remix loaders for non-critical data
+- Parallelize independent Prisma queries with `Promise.all`
+- Implement skeleton loading states
+- Lazy load below-the-fold components
+
+**Widget**:
+- Load script with `async` or `defer` attribute
+- Code-split quiz logic from initialization
+- Use `IntersectionObserver` for lazy loading images
+- Minimize DOM operations with batch updates
+- Use CSS animations instead of JavaScript animations
+
+**API**:
+- Add `Cache-Control` headers for cacheable responses
+- Move heavy processing to background jobs
+- Implement response compression (gzip)
+- Add pagination with cursor-based approach
+
+### Step 4: Measure Improvement
+- Re-run the same profile as Step 1
+- Compare before/after metrics
+- Verify no functional regressions
+- Document the improvement percentage
+
+### Step 5: Add Monitoring
+- Add timing logs for critical paths
+- Set up alerts for performance regression thresholds
+- Document expected performance characteristics
+
+## Output Format
+
+```
+## Performance Optimization Report
+
+### Area Optimized
+- [Database / Page Load / Widget / API]
+
+### Baseline (Before)
+- [Metric]: [value]
+- [Metric]: [value]
+
+### Bottlenecks Found
+1. [Bottleneck description and impact]
+2. [Bottleneck description and impact]
+
+### Optimizations Applied
+1. [What was changed] — Expected improvement: [X%]
+2. [What was changed] — Expected improvement: [X%]
+
+### Results (After)
+- [Metric]: [value] ([improvement %])
+- [Metric]: [value] ([improvement %])
+
+### Files Modified
+- [path] — [what changed]
+
+### Monitoring
+- [What metrics to watch going forward]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/quiz.md ===
+Build a quiz-related feature for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Quiz Feature             | Primary Agent      | Support Agents                    |
+|--------------------------|--------------------|-----------------------------------|
+| New quiz type            | quiz-builder       | database-architect                |
+| New question type        | question-builder   | storefront-builder                |
+| Logic/branching rules    | logic-engine       | quiz-builder                      |
+| Results customization    | results-builder    | storefront-builder                |
+| Scoring system           | logic-engine       | results-builder                   |
+| Quiz settings/config     | quiz-builder       | admin-builder                     |
+| Quiz preview             | storefront-builder | quiz-builder                      |
+
+## Quiz Architecture
+
+### Quiz Types
+- **Product Recommendation**: Score-based mapping to products
+- **Personality/Outcome**: Branching logic to result profiles
+- **Assessment/Survey**: Data collection with analytics
+- **Lead Generation**: Email capture with conditional content
+
+### Question Types
+- **Multiple Choice**: Single select from text options
+- **Image Choice**: Single select from image + label options
+- **Multi-Select**: Multiple selections allowed (checkbox style)
+- **Text Input**: Free text answer (short or long)
+- **Slider/Range**: Numeric value on a scale
+- **Rating**: Star or numeric rating
+- **Date Picker**: Date selection input
+- **Email Capture**: Validated email input with opt-in
+
+### Logic System
+- **Skip Logic**: If answer is X, skip to question Y
+- **Branching**: Different paths based on cumulative answers
+- **Score Accumulation**: Each option carries a score, mapped to results
+- **Conditional Display**: Show/hide questions based on prior answers
+
+## Process
+
+### Step 1: Identify Feature Scope
+- Parse $ARGUMENTS to determine which quiz subsystem is affected
+- Read existing quiz-related files to understand current implementation
+- Check the Prisma schema for Quiz, Question, QuestionOption, LogicRule, ResultProfile
+
+### Step 2: Design the Feature
+- Define the data model changes needed
+- Plan the admin UI for configuring this feature
+- Plan the storefront widget behavior for this feature
+- Consider how it interacts with existing quiz features
+
+### Step 3: Implement Database Layer
+- Update Prisma schema if new fields or models are needed
+- Add proper relations and constraints
+- Run `npx prisma db push` and `npx prisma generate`
+
+### Step 4: Build Admin UI
+- Create or update the admin page using Polaris components
+- Implement form validation for quiz configuration
+- Add preview capability where possible
+- Handle loading, error, and empty states
+
+### Step 5: Build Storefront Behavior
+- Update the widget to support the new feature
+- Ensure mobile responsiveness
+- Test with different Shopify themes
+- Maintain CSP compliance (no inline scripts)
+
+### Step 6: Connect Logic
+- Wire up the scoring or branching logic
+- Ensure result profiles update correctly
+- Test edge cases (empty answers, skipped questions, back navigation)
+
+### Step 7: Validate
+- Run `npx tsc --noEmit`
+- Verify quiz creation flow end-to-end
+- Verify quiz-taking flow end-to-end
+- Check analytics events fire correctly
+
+## Output Format
+
+```
+## Quiz Feature Report: [Feature Name]
+
+### Feature Type
+- [Quiz type / Question type / Logic / Results]
+
+### Implementation
+- **Database**: [Schema changes]
+- **Admin UI**: [Pages/components created or modified]
+- **Storefront**: [Widget changes]
+- **Logic**: [Scoring/branching changes]
+
+### Files Changed
+- [path] — [purpose]
+
+### Test Scenarios
+1. [Scenario and expected outcome]
+2. [Scenario and expected outcome]
+
+### Quality
+- TypeScript: [PASS/FAIL]
+- Mobile responsive: [VERIFIED/NOT TESTED]
+- Edge cases handled: [List]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/review.md ===
+Review recent changes in QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Review Phase            | Agent                | Focus Area                          |
+|-------------------------|----------------------|-------------------------------------|
+| Automated checks        | lint-runner          | TypeScript, ESLint, Prisma          |
+| Security audit          | security-auditor     | Auth, CSRF, data exposure, scoping  |
+| Shopify compliance      | shopify-compliance   | API usage, billing, webhooks, GDPR  |
+| Code quality            | code-reviewer        | Patterns, readability, conventions  |
+| API contracts           | api-reviewer         | Request/response shapes, validation |
+
+## Process
+
+### Phase 1: Automated Checks
+- Run `npx tsc --noEmit` and capture all errors
+- Run `npx eslint . --ext .ts,.tsx` and capture warnings/errors
+- Run `npx prisma validate` to check schema integrity
+- Check for any TODO or FIXME comments in changed files
+
+### Phase 2: Security Audit
+- Verify every loader/action calls `authenticate.admin(request)` or `authenticate.public.appProxy(request)`
+- Confirm all Prisma queries include `shopId` in WHERE clauses (shop scoping)
+- Check that no secrets, API keys, or tokens are hardcoded
+- Verify CORS headers on public API endpoints use allowlist, not wildcard
+- Ensure user input is sanitized before database insertion
+- Check for SQL injection risk in any raw queries
+- Verify CSRF tokens on all mutation actions
+
+### Phase 3: Shopify Compliance
+- Confirm webhook handlers validate HMAC signatures
+- Check that billing API usage follows Shopify patterns
+- Verify GDPR endpoints exist (customer data request, erasure, shop erasure)
+- Ensure app scopes match what the app actually uses
+- Check that AppBridge integration is correct for embedded app context
+
+### Phase 4: Code Quality
+- Verify adherence to patterns defined in CLAUDE.md
+- Check for proper error handling (try/catch, error boundaries)
+- Review naming conventions (files, functions, variables, routes)
+- Look for code duplication that should be extracted to shared utilities
+- Verify Polaris components are used correctly (no custom CSS overrides)
+- Check that loading states and empty states are handled
+- Review TypeScript types (no unnecessary `any`, proper generics)
+
+### Phase 5: API Contract Review
+- Verify loader return types match what the UI expects
+- Check action responses include proper status codes and error messages
+- Confirm API endpoints document their request/response shape
+- Verify pagination is implemented for list endpoints
+- Check rate limiting considerations for public endpoints
+
+## Output Format
+
+```
+## Code Review Report
+
+### Summary
+- **Files Reviewed**: [count]
+- **Overall Assessment**: [SHIP / SHIP WITH FIXES / DO NOT SHIP]
+
+### Critical Issues (must fix before shipping)
+1. [Issue description] — [file:line]
+   - **Risk**: [What could go wrong]
+   - **Fix**: [Suggested fix]
+
+### Quality Issues (should fix soon)
+1. [Issue description] — [file:line]
+   - **Suggestion**: [Recommended improvement]
+
+### Security Findings
+- Auth checks: [PASS/FAIL — details]
+- Shop scoping: [PASS/FAIL — details]
+- Input validation: [PASS/FAIL — details]
+- CORS policy: [PASS/FAIL — details]
+
+### Shopify Compliance
+- Webhook HMAC: [PASS/FAIL]
+- GDPR endpoints: [PASS/FAIL]
+- Billing integration: [PASS/FAIL]
+- App scopes: [PASS/FAIL]
+
+### Recommendation
+[Ship recommendation with any conditions]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/scaffold.md ===
+Scaffold a new route or component for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Scaffold Type           | Primary Agent     | Template Source                    |
+|-------------------------|-------------------|------------------------------------|
+| Admin route             | admin-builder     | Existing app routes                |
+| API route               | api-builder       | Existing API routes                |
+| Webhook route           | webhook-handler   | Existing webhook handlers          |
+| Polaris component       | admin-builder     | Existing components                |
+| Storefront component    | storefront-builder| Existing widget code               |
+| Service file            | api-builder       | Existing server utilities          |
+| Prisma model            | database-architect| Existing schema patterns           |
+
+## Process
+
+### Step 1: Identify Scaffold Type
+- Parse $ARGUMENTS to determine what to scaffold
+- Read CLAUDE.md for naming conventions and file locations
+- Find the closest existing example to use as a pattern
+
+### Step 2: Generate the Boilerplate
+
+Select the appropriate template based on type:
+
+**Admin Route** (`app/routes/app.[name].tsx`):
+- Remix loader with `authenticate.admin(request)`
+- Remix action for form submissions
+- Polaris Page layout with proper title
+- TypeScript types for loader/action data
+- Export default component with `useLoaderData` and `useActionData`
+- Error boundary export
+
+**API Route** (`app/routes/api.[name].tsx`):
+- Loader or action with proper auth method
+- Request validation
+- JSON response with correct Content-Type
+- Error handling with status codes
+- CORS headers if public endpoint
+
+**Webhook Route** (`app/routes/webhooks.[topic].tsx`):
+- Action function with `authenticate.webhook(request)`
+- HMAC validation via Shopify authenticate
+- Webhook payload parsing
+- Async processing pattern
+- 200 OK immediate response
+
+**Polaris Component** (`app/components/[Name].tsx`):
+- TypeScript interface for props
+- Functional component with Polaris imports
+- Loading state variant
+- Error state variant
+- Empty state variant
+
+**Service File** (`app/services/[name].server.ts`):
+- TypeScript interfaces for input/output
+- Main function with proper error handling
+- Prisma client usage with shop scoping
+- Export named functions
+
+**Prisma Model Addition**:
+- Model with id, timestamps, and shop relation
+- Proper field types and constraints
+- Index definitions for query patterns
+- Relation to existing models
+
+### Step 3: Apply Project Conventions
+- Match import style from existing files (relative vs alias)
+- Match export style (default vs named)
+- Match naming convention (camelCase functions, PascalCase components)
+- Match Polaris component usage patterns from existing routes
+- Include proper TypeScript typing (no `any` types)
+
+### Step 4: Wire Up
+- Add to navigation if it is a new admin page
+- Register webhook in shopify.server.ts if it is a new webhook
+- Update Prisma schema and generate client if new model
+- Add route to any existing route manifests or menus
+
+### Step 5: Verify
+- Run `npx tsc --noEmit` to ensure the scaffold compiles
+- Verify the file location follows project structure
+- Confirm imports resolve correctly
+
+## Scaffold Templates Quick Reference
+
+### Admin Route Skeleton
+```
+loader: authenticate.admin -> prisma query -> return json
+action: authenticate.admin -> validate input -> prisma mutation -> return json
+Component: useLoaderData -> Polaris Page + Layout + Cards
+```
+
+### API Route Skeleton
+```
+loader/action: authenticate -> validate -> business logic -> json response
+CORS headers for public routes
+```
+
+### Webhook Skeleton
+```
+action: authenticate.webhook -> parse payload -> process -> return 200
+```
+
+## Output Format
+
+```
+## Scaffold Report
+
+### What Was Scaffolded
+- **Type**: [admin route / API route / webhook / component / service / model]
+- **Name**: [file/component name]
+- **Path**: [file path]
+
+### Files Created
+- [path] — [purpose and what it contains]
+
+### Wiring
+- Navigation: [updated / not needed]
+- Prisma: [updated / not needed]
+- Webhooks: [registered / not needed]
+
+### Next Steps
+- [ ] Implement business logic in [function/section]
+- [ ] Add form fields for [specific data]
+- [ ] Connect to [related feature]
+- [ ] Write tests for [critical paths]
+
+### Verification
+- TypeScript: [PASS/FAIL]
+- Imports resolve: [YES/NO]
+- Follows conventions: [YES/NO]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/sprint.md ===
+Plan sprint day for QuizSnap: $ARGUMENTS (day number 1-15)
+
+## Agent Orchestration
+
+| Sprint Phase         | Primary Agent        | Support Agents                      |
+|----------------------|----------------------|-------------------------------------|
+| Day 1-3: Foundation  | database-architect   | admin-builder, api-builder          |
+| Day 4-6: Quiz Core   | quiz-builder         | question-builder, logic-engine      |
+| Day 7-9: Storefront  | storefront-builder   | popup-builder, responsive-builder   |
+| Day 10-11: Analytics | analytics-builder    | analytics-aggregator                |
+| Day 12-13: Integrate | email-integration    | klaviyo-specialist, billing-manager |
+| Day 14-15: Polish    | deploy-specialist    | security-auditor, smoke-tester      |
+
+## 15-Day Sprint Plan
+
+### Day 1 — Project Setup and Database
+- Initialize Prisma schema with all 13 models
+- Set up database connections and run initial migration
+- Configure Shopify app authentication flow
+- Verify dev environment works end-to-end
+
+### Day 2 — Admin Shell and Navigation
+- Build app navigation (Quiz list, Analytics, Settings, Templates)
+- Create the main dashboard page with Polaris layout
+- Implement shop onboarding detection
+- Set up error boundary and loading state patterns
+
+### Day 3 — Quiz CRUD
+- Build quiz list page (index route) with DataTable
+- Build quiz create/edit page with form validation
+- Implement quiz duplicate and delete actions
+- Add quiz status management (draft/active/archived)
+
+### Day 4 — Question Builder
+- Build question type system (multiple choice, image choice, text input, slider, rating)
+- Implement drag-and-drop question reordering
+- Build question option management (add/edit/remove options)
+- Add image upload for image choice questions
+
+### Day 5 — Logic Engine
+- Build conditional logic rule builder UI
+- Implement skip logic (if answer X, go to question Y)
+- Build branching paths visualization
+- Add logic validation (no infinite loops, all paths lead to results)
+
+### Day 6 — Results Builder
+- Build result profile creation and management
+- Implement score-based result mapping
+- Build product recommendation assignment per result
+- Add result page preview
+
+### Day 7 — Storefront Widget (Embed)
+- Build the quiz widget as an app embed block
+- Implement inline embed mode
+- Style the widget to respect shop theme
+- Build question navigation (next/prev/progress bar)
+
+### Day 8 — Storefront Widget (Popup and Slide-in)
+- Build popup trigger (button click, timer, exit intent, scroll)
+- Build slide-in panel variant
+- Implement display frequency controls
+- Add mobile-responsive layouts
+
+### Day 9 — Quiz Submission and Results Display
+- Build quiz response submission API
+- Store responses in database with proper shop scoping
+- Build results display page with product recommendations
+- Implement Add to Cart from results page
+
+### Day 10 — Analytics Core
+- Build analytics event tracking (start, complete, abandon, click)
+- Create analytics dashboard with key metrics
+- Implement date range filtering
+- Build conversion funnel visualization
+
+### Day 11 — Analytics Advanced
+- Build per-question analytics (drop-off rates, answer distribution)
+- Implement response export (CSV)
+- Build revenue attribution tracking
+- Create comparison reports
+
+### Day 12 — Email Integration
+- Build email integration settings page
+- Implement Klaviyo integration (API connection, list sync)
+- Build Mailchimp integration
+- Add lead capture to quiz completion flow
+
+### Day 13 — Billing and Plans
+- Implement Shopify billing API integration
+- Build pricing page with plan comparison
+- Add feature gating based on active plan
+- Implement usage-based limits (responses per month)
+
+### Day 14 — Templates and Onboarding
+- Build quiz template gallery (skincare, fashion, food, fitness, general)
+- Implement one-click template installation
+- Build first-time onboarding wizard
+- Add contextual help and tooltips
+
+### Day 15 — Testing, Security and Deploy
+- Run full security audit
+- Fix all TypeScript and lint errors
+- Run smoke tests on all features
+- Deploy to production
+- Verify webhooks and billing in production
+
+## Process
+
+1. Identify the current day number from $ARGUMENTS
+2. Read the task list for that day from the plan above
+3. Check what was already completed in prior days (read existing files)
+4. Break the day's tasks into ordered sub-tasks
+5. Route each sub-task to the appropriate agent
+6. Execute tasks sequentially, verifying each before moving on
+7. Run quality checks at end of day (typecheck, lint)
+8. Update progress tracking
+
+## Output Format
+
+```
+## Sprint Day [N] Plan
+
+### Today's Focus
+[Theme for the day]
+
+### Tasks
+1. [ ] [Task description] — Agent: [agent-name]
+2. [ ] [Task description] — Agent: [agent-name]
+3. [ ] [Task description] — Agent: [agent-name]
+
+### Dependencies
+- [What must exist before today's work can begin]
+
+### Definition of Done
+- [Criteria for considering the day complete]
+
+### Progress
+- Completed: [count]/[total]
+- Blockers: [any blockers encountered]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/template.md ===
+Create a quiz template for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Template Category     | Primary Agent       | Domain Expert              |
+|-----------------------|---------------------|----------------------------|
+| Skincare routine      | template-builder    | skincare-specialist        |
+| Fashion/style         | template-builder    | fashion-specialist         |
+| Food/nutrition        | template-builder    | food-specialist            |
+| Fitness/wellness      | template-builder    | fitness-specialist         |
+| Gift finder           | template-builder    | general-specialist         |
+| Home decor            | template-builder    | general-specialist         |
+| Pet products          | template-builder    | general-specialist         |
+| General product match | template-builder    | general-specialist         |
+
+## Template Structure
+
+Each template includes:
+- **Title and description**: What the quiz helps customers find
+- **Thumbnail image**: For the template gallery
+- **Questions** (5-10): Pre-built with options and images
+- **Result profiles** (3-5): Outcome categories with descriptions
+- **Score mappings**: Which options map to which results
+- **Recommended products placeholder**: Where merchants assign their products
+- **Widget settings**: Default display mode, colors, button text
+
+## Process
+
+### Step 1: Choose Category
+- Parse $ARGUMENTS to identify the template category
+- Research common quiz patterns for that category
+- Define the customer journey (what problem does this quiz solve?)
+- Identify 3-5 distinct outcome profiles
+
+### Step 2: Design Questions
+- Write 5-10 questions that progressively narrow down recommendations
+- Start with broad preference questions, end with specific needs
+- Mix question types for engagement:
+  - Image choice for visual preferences (e.g., skin type, style)
+  - Multiple choice for lifestyle/habits
+  - Slider for intensity/budget preferences
+  - Rating for priority ranking
+- Keep questions concise and conversational in tone
+- Ensure every question contributes to the scoring logic
+
+### Step 3: Define Result Profiles
+- Create 3-5 distinct outcome profiles
+- Each profile needs:
+  - Title (e.g., "The Minimalist", "Dry Skin Care Routine")
+  - Description (2-3 sentences explaining the recommendation)
+  - Image placeholder
+  - Product slots (where merchant assigns their products)
+
+### Step 4: Build Score Mappings
+- Assign score values to each question option per result profile
+- Ensure scoring produces clear differentiation between results
+- Test scoring with sample answer combinations:
+  - All answers pointing to Profile A should yield Profile A
+  - Mixed answers should yield a reasonable result
+  - No edge cases produce ties without tiebreaker logic
+
+### Step 5: Create Template Data
+- Build the template as a JSON structure that can be imported
+- Include all questions, options, result profiles, and score mappings
+- Add placeholder text for merchant customization
+- Set sensible default widget settings
+
+### Step 6: Add to Template Gallery
+- Register the template in the template gallery data
+- Add category tags for filtering
+- Add difficulty level (simple, intermediate, advanced)
+- Write a merchant-facing description explaining when to use this template
+
+### Step 7: Test Installation
+- Test one-click installation from gallery
+- Verify all questions and options are created correctly
+- Verify score mappings produce expected results
+- Confirm merchant can edit the template after installation
+- Test the quiz end-to-end on storefront
+
+## Template Categories Reference
+
+| Category     | Questions | Profiles | Primary Question Types           |
+|--------------|-----------|----------|----------------------------------|
+| Skincare     | 7-8       | 4-5      | Image choice, multiple choice    |
+| Fashion      | 6-8       | 4-5      | Image choice, multi-select       |
+| Food         | 5-7       | 3-4      | Multiple choice, slider          |
+| Fitness      | 6-8       | 3-4      | Multiple choice, rating          |
+| Gift finder  | 5-6       | 4-5      | Multiple choice, slider          |
+| Home decor   | 6-7       | 3-4      | Image choice, multiple choice    |
+| Pet products | 5-6       | 3-4      | Multiple choice, image choice    |
+| General      | 5-7       | 3-5      | Mixed                            |
+
+## Output Format
+
+```
+## Template Report: [Template Name]
+
+### Category
+- [Category with tags]
+
+### Questions ([count])
+1. [Question title] — [type] — [option count] options
+2. [Question title] — [type] — [option count] options
+
+### Result Profiles ([count])
+1. [Profile title] — [brief description]
+2. [Profile title] — [brief description]
+
+### Score Matrix
+- [Summary of how scoring differentiates profiles]
+
+### Template Data
+- **File**: [path to template JSON/data]
+- **Size**: [number of records created on install]
+
+### Testing
+- Installation: [PASS/FAIL]
+- Scoring logic: [PASS/FAIL]
+- End-to-end quiz: [PASS/FAIL]
+- Merchant editing: [PASS/FAIL]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/test.md ===
+Test a feature in QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Test Type               | Primary Agent     | Support Agents                     |
+|-------------------------|-------------------|------------------------------------|
+| Unit tests              | test-writer       | —                                  |
+| Integration tests       | test-writer       | api-builder                        |
+| Component tests         | test-writer       | admin-builder                      |
+| E2E flow tests          | test-writer       | storefront-builder                 |
+| Load/stress tests       | test-writer       | performance-optimizer              |
+
+## Process
+
+### Step 1: Identify Test Cases
+- Parse $ARGUMENTS to determine what feature to test
+- Read the feature's implementation files
+- Identify the critical paths that must work
+- List edge cases and error scenarios
+- Categorize tests by type (unit, integration, component)
+
+### Step 2: Plan Test Coverage
+
+**For Loader/Action functions**:
+- Valid request with correct session returns expected data
+- Missing session returns 401/redirect
+- Invalid input returns 400 with error messages
+- Database errors are handled gracefully
+- Shop scoping prevents cross-shop data access
+
+**For UI Components**:
+- Component renders with required props
+- Component handles loading state
+- Component handles error state
+- Component handles empty state
+- User interactions trigger correct callbacks
+
+**For API Endpoints**:
+- Valid request returns correct response shape
+- CORS headers are present on public endpoints
+- Rate limiting works (if implemented)
+- Webhook HMAC validation works
+
+**For Quiz Logic**:
+- Score calculation produces correct results
+- Branching logic follows correct path
+- Skip logic skips the right questions
+- All paths reach a valid result profile
+
+### Step 3: Write Tests
+- Create test files in `__tests__/` or alongside source files as `*.test.ts`
+- Use Vitest as the test runner (standard for Remix apps)
+- Mock Prisma client for database tests
+- Mock Shopify session for auth-dependent tests
+- Use `@testing-library/react` for component tests
+
+### Step 4: Run Tests
+Run `npx vitest run` for all tests, or `npx vitest run [test-file-path]` for specific files.
+Use `npx vitest [test-file-path]` for watch mode during development.
+
+### Step 5: Analyze Results
+- Check pass/fail count
+- Review any failures — determine if test or code is wrong
+- Check coverage report if available
+- Identify untested critical paths
+
+### Step 6: Report
+- Summarize what was tested
+- List any failures and their root cause
+- Recommend additional test cases if gaps exist
+
+## Test Patterns
+
+### Mocking Prisma
+```typescript
+const mockPrisma = {
+  quiz: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
+  question: { findMany: vi.fn(), create: vi.fn() },
+};
+```
+
+### Mocking Shopify Auth
+```typescript
+const mockSession = { shop: "test-shop.myshopify.com", accessToken: "token" };
+vi.mock("~/shopify.server", () => ({
+  authenticate: { admin: vi.fn().mockResolvedValue({ session: mockSession }) },
+}));
+```
+
+### Testing Loader
+```typescript
+const response = await loader({ request: new Request(url), params: {}, context: {} });
+const data = await response.json();
+expect(data.quizzes).toHaveLength(3);
+```
+
+## Output Format
+
+```
+## Test Report: [Feature Name]
+
+### Coverage
+- Tests written: [count]
+- Tests passing: [count]
+- Tests failing: [count]
+- Critical paths covered: [count]/[total]
+
+### Test Cases
+| Test Name                    | Type        | Status |
+|------------------------------|-------------|--------|
+| [test description]           | [unit/int]  | [P/F]  |
+
+### Failures
+1. [Test name]: [Failure reason and suggested fix]
+
+### Gaps
+- [Untested scenarios that should be covered]
+
+### Files Created
+- [path] — [what it tests]
+```
+
+=== /Users/yashbaldha/Desktop/Shopify App/QuizSnap/.claude/commands/widget.md ===
+Build a widget/storefront feature for QuizSnap: $ARGUMENTS
+
+## Agent Orchestration
+
+| Widget Feature          | Primary Agent         | Support Agents                    |
+|-------------------------|-----------------------|-----------------------------------|
+| Embed block             | storefront-builder    | responsive-builder                |
+| Popup/modal             | popup-builder         | storefront-builder                |
+| Slide-in panel          | popup-builder         | responsive-builder                |
+| Results display         | storefront-builder    | results-builder                   |
+| Trigger configuration   | popup-builder         | storefront-builder                |
+| Theme compatibility     | responsive-builder    | storefront-builder                |
+| Mobile optimization     | responsive-builder    | popup-builder                     |
+
+## Widget Architecture
+
+### Display Modes
+- **Inline Embed**: Renders directly in page content via app block
+- **Popup Modal**: Overlay triggered by button, timer, exit intent, or scroll
+- **Slide-in Panel**: Slides from side of screen with configurable trigger
+- **Full Page**: Takes over entire page (for dedicated quiz pages)
+
+### Trigger Types
+- **Button Click**: Merchant places a button, click opens quiz
+- **Timer Delay**: Auto-open after X seconds on page
+- **Exit Intent**: Open when mouse moves toward browser close
+- **Scroll Depth**: Open after scrolling X% of page
+- **URL Parameter**: Open if specific URL param is present
+
+## Process
+
+### Step 1: Design the Widget Feature
+- Determine the display mode and trigger type
+- Sketch the layout for desktop and mobile
+- Define the interaction flow (open, navigate questions, submit, show results)
+- Plan animations and transitions
+
+### Step 2: Implement the Widget
+- Build using vanilla JS/CSS (no framework dependencies in storefront)
+- Use shadow DOM or scoped CSS to avoid theme conflicts
+- Keep bundle size minimal (< 50KB gzipped)
+- Load assets asynchronously to avoid blocking page render
+
+### Step 3: Mobile Responsiveness
+- Test at breakpoints: 320px, 375px, 414px, 768px, 1024px, 1440px
+- Popup should become full-screen on mobile (< 768px)
+- Touch targets must be at least 44x44px
+- Ensure no horizontal scrolling on any viewport
+- Test with virtual keyboard open (form inputs)
+
+### Step 4: Performance
+- Lazy load the widget script (do not block page DOMContentLoaded)
+- Lazy load images within the quiz (load on question display)
+- Minimize DOM operations during quiz navigation
+- Use CSS transforms for animations (GPU accelerated)
+- Target: < 100ms interaction response time
+
+### Step 5: CSP Compliance
+- No inline script tags — use external script files only
+- No inline style attributes if CSP restricts them — use class-based styling
+- No eval() or Function() constructors
+- Load scripts from the app's registered domain only
+- Ensure compatibility with Shopify's Content Security Policy
+
+### Step 6: Theme Compatibility
+- Test with Dawn (default Shopify theme)
+- Test with at least 2 other popular themes
+- Respect the shop's color scheme and typography where possible
+- Provide CSS custom properties for merchant customization
+- Handle RTL layouts if applicable
+
+### Step 7: Accessibility
+- All interactive elements must be keyboard navigable
+- Add proper ARIA labels and roles
+- Ensure color contrast meets WCAG 2.1 AA
+- Support screen readers for question/answer navigation
+- Focus management when popup opens/closes
+
+## Output Format
+
+```
+## Widget Feature Report: [Feature Name]
+
+### Display Mode
+- [Inline / Popup / Slide-in / Full Page]
+
+### Implementation
+- **Script**: [file path and size]
+- **Styles**: [file path and size]
+- **Total Bundle**: [size gzipped]
+
+### Responsive Behavior
+- Desktop (1024px+): [layout description]
+- Tablet (768-1023px): [layout description]
+- Mobile (< 768px): [layout description]
+
+### Performance
+- Script load: [async/defer/lazy]
+- First paint: [timing]
+- Interaction ready: [timing]
+
+### Compatibility
+- CSP compliant: [YES/NO]
+- Dawn theme: [TESTED/NOT TESTED]
+- Keyboard accessible: [YES/NO]
+- Screen reader: [YES/NO]
+
+### Files
+- [path] — [purpose]
+```
+

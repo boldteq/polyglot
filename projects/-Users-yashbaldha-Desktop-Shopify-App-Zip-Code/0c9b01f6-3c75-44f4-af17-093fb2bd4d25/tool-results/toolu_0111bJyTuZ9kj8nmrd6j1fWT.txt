@@ -1,0 +1,972 @@
+     1→     1→{% comment %}
+     2→     2→  Zip Code Checker — Theme App Extension Block
+     3→     3→  Add this block to any section in the Shopify Theme Editor.
+     4→     4→  The block automatically connects to your app — no manual configuration needed.
+     5→     5→{% endcomment %}
+     6→     6→
+     7→     7→{% if request.design_mode %}
+     8→     8→  {% comment %}
+     9→     9→    Theme Editor preview — shows two states:
+    10→    10→    1. If app embed is active → full widget preview
+    11→    11→    2. If app embed is NOT active → "Enable app embed" placeholder
+    12→    12→    We check window.__zccAppEnabled which is set by the app embed block.
+    13→    13→  {% endcomment %}
+    14→    14→  <div id="zcc-editor-{{ block.id }}">
+    15→    15→    <!-- Inactive state (shown by default) -->
+    16→    16→    <div id="zcc-inactive-{{ block.id }}" style="
+    17→    17→      background:#f6f6f7;border:1px dashed #c9cccf;border-radius:8px;
+    18→    18→      padding:20px;max-width:480px;text-align:center;
+    19→    19→      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    20→    20→      color:#6d7175;font-size:13px;box-sizing:border-box;
+    21→    21→    ">
+    22→    22→      <p style="margin:0 0 6px;font-weight:600;color:#202223;font-size:15px;">Zip Code Checker</p>
+    23→    23→      <p style="margin:0 0 4px;">This widget requires the app embed to be enabled.</p>
+    24→    24→      <p style="margin:0;font-size:12px;">Go to <strong>App Embeds</strong> and toggle on <strong>Zip Code Checker</strong> to activate.</p>
+    25→    25→    </div>
+    26→    26→    <!-- Active preview (hidden by default) -->
+    27→    27→    <div id="zcc-active-{{ block.id }}" style="display:none;">
+    28→    28→      <div style="
+    29→    29→        background:#ffffff;
+    30→    30→        border:none;
+    31→    31→        border-radius:12px;
+    32→    32→        padding:24px;
+    33→    33→        max-width:480px;
+    34→    34→        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    35→    35→        box-sizing:border-box;
+    36→    36→        color:#202223;
+    37→    37→        box-shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.06);
+    38→    38→      ">
+    39→    39→        <div style="display:flex;align-items:center;gap:8px;margin:0 0 20px;">
+    40→    40→          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#00806012;">
+    41→    41→            <svg viewBox="0 0 24 24" fill="none" stroke="#008060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    42→    42→          </span>
+    43→    43→          <span style="font-size:17px;font-weight:700;letter-spacing:-0.01em;">Check Delivery Availability</span>
+    44→    44→        </div>
+    45→    45→        <div style="display:flex;border:2px solid #e1e3e5;border-radius:8px;overflow:hidden;">
+    46→    46→          <input type="text" placeholder="Enter your zip code" disabled style="
+    47→    47→            flex:1;padding:12px 16px;border:none;
+    48→    48→            font-size:14px;background:transparent;color:#202223;min-width:0;outline:none;
+    49→    49→          ">
+    50→    50→          <button type="button" disabled style="
+    51→    51→            background:#008060;color:#fff;border:none;border-left:1px solid #008060;
+    52→    52→            padding:12px 24px;font-size:14px;font-weight:600;white-space:nowrap;
+    53→    53→            opacity:0.7;cursor:default;display:flex;align-items:center;gap:4px;
+    54→    54→          "><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Check</button>
+    55→    55→        </div>
+    56→    56→        <div style="
+    57→    57→          margin-top:16px;padding:14px 16px;border-radius:8px;
+    58→    58→          background:linear-gradient(135deg,#00806008,#00806014);border:1px solid #00806030;
+    59→    59→          font-size:14px;color:#008060;line-height:1.5;
+    60→    60→          display:flex;gap:12px;align-items:flex-start;
+    61→    61→        ">
+    62→    62→          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;flex-shrink:0;margin-top:1px"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+    63→    63→          <div>
+    64→    64→            Great news! We deliver to your area.
+    65→    65→            <div style="margin-top:6px;font-size:13px;opacity:0.85;display:flex;align-items:center;gap:6px;">
+    66→    66→              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    67→    67→              Estimated delivery: 2-3 business days
+    68→    68→            </div>
+    69→    69→          </div>
+    70→    70→        </div>
+    71→    71→        <p style="margin:14px 0 0;font-size:11px;color:#8c9196;text-align:center;">
+    72→    72→          Zip Code Checker — live widget loads on your storefront
+    73→    73→        </p>
+    74→    74→      </div>
+    75→    75→    </div>
+    76→    76→  </div>
+    77→    77→  <script>
+    78→    78→  (function() {
+    79→    79→    var bid = "{{ block.id }}";
+    80→    80→    function check() {
+    81→    81→      if (window.__zccAppEnabled) {
+    82→    82→        var inactive = document.getElementById('zcc-inactive-' + bid);
+    83→    83→        var active = document.getElementById('zcc-active-' + bid);
+    84→    84→        if (inactive) inactive.style.display = 'none';
+    85→    85→        if (active) active.style.display = 'block';
+    86→    86→      }
+    87→    87→    }
+    88→    88→    check();
+    89→    89→    setTimeout(check, 500);
+    90→    90→    setTimeout(check, 1500);
+    91→    91→    setTimeout(check, 3000);
+    92→    92→  })();
+    93→    93→  </script>
+    94→    94→{% else %}
+    95→    95→
+    96→    96→{% assign zcc_config = app.metafields.zip_checker.widget_config.value %}
+    97→    97→
+    98→    98→<div
+    99→    99→  id="zcc-widget-{{ block.id }}"
+   100→   100→  data-zcc-widget="true"
+   101→   101→  data-shop="{{ shop.permanent_domain }}"
+   102→   102→  data-api="https://{{ shop.permanent_domain }}/apps/zipcheck"
+   103→   103→  data-block="{{ block.id }}"
+   104→   104→  {% if zcc_config %}data-config="{{ zcc_config | json | escape }}"{% endif %}
+   105→   105→  {{ block.shopify_attributes }}
+   106→   106→></div>
+   107→   107→
+   108→   108→<script>
+   109→   109→(function () {
+   110→   110→  // Wait for app embed to set window.__zccAppEnabled.
+   111→   111→  // App embed (target: body) may load after this section block, so we poll briefly.
+   112→   112→  var maxWait = 3000; // ms
+   113→   113→  var interval = 50;  // ms
+   114→   114→  var elapsed = 0;
+   115→   115→
+   116→   116→  function tryInit() {
+   117→   117→    if (window.__zccAppEnabled) {
+   118→   118→      init();
+   119→   119→    } else if (elapsed < maxWait) {
+   120→   120→      elapsed += interval;
+   121→   121→      setTimeout(tryInit, interval);
+   122→   122→    }
+   123→   123→    // If app embed is not enabled after 3s, do nothing (merchant hasn't enabled it)
+   124→   124→  }
+   125→   125→
+   126→   126→  // Start checking — if already set, runs immediately
+   127→   127→  if (document.readyState === 'loading') {
+   128→   128→    document.addEventListener('DOMContentLoaded', tryInit);
+   129→   129→  } else {
+   130→   130→    tryInit();
+   131→   131→  }
+   132→   132→
+   133→   133→  function init() {
+   134→   134→  var ROOT_ID = "zcc-widget-{{ block.id }}";
+   135→   135→  var container = document.getElementById(ROOT_ID);
+   136→   136→  if (!container) return;
+   137→   137→
+   138→   138→  var SHOP = container.dataset.shop;
+   139→   139→  var API_BASE = (container.dataset.api || "").replace(/\/$/, "");
+   140→   140→
+   141→   141→  // Try embedded config from metafield first (instant, no network needed)
+   142→   142→  var configStr = container.getAttribute("data-config");
+   143→   143→  if (configStr) {
+   144→   144→    try {
+   145→   145→      renderWidget(JSON.parse(configStr));
+   146→   146→      return;
+   147→   147→    } catch (e) {
+   148→   148→      console.warn("[ZipCodeChecker] Failed to parse embedded config, falling back to API");
+   149→   149→    }
+   150→   150→  }
+   151→   151→
+   152→   152→  // Fallback: fetch config from API
+   153→   153→  fetch(API_BASE + "/api/widget-config?shop=" + encodeURIComponent(SHOP))
+   154→   154→    .then(function (r) {
+   155→   155→      if (!r.ok) throw new Error("Widget config API returned " + r.status);
+   156→   156→      return r.json();
+   157→   157→    })
+   158→   158→    .then(function (cfg) { renderWidget(cfg); })
+   159→   159→    .catch(function (err) {
+   160→   160→      console.warn("[ZipCodeChecker] Could not load widget config, using defaults:", err.message || err);
+   161→   161→      renderWidget({});
+   162→   162→    });
+   163→   163→
+   164→   164→  function renderWidget(cfg) {
+   165→   165→    // Merge with defaults
+   166→   166→    var D = {
+   167→   167→      position: "inline",
+   168→   168→      heading: "Check Delivery Availability",
+   169→   169→      placeholder: "Enter your zip code",
+   170→   170→      buttonText: "Check",
+   171→   171→      successMessage: "Great news! We deliver to your area.",
+   172→   172→      errorMessage: "Sorry, we don\u2019t deliver to this area yet.",
+   173→   173→      notFoundMessage: "We currently do not ship to this ZIP code.",
+   174→   174→      primaryColor: "#008060",
+   175→   175→      successColor: "#008060",
+   176→   176→      errorColor: "#D72C0D",
+   177→   177→      backgroundColor: "#FFFFFF",
+   178→   178→      textColor: "#202223",
+   179→   179→      borderRadius: "8",
+   180→   180→      showEta: true,
+   181→   181→      showZone: false,
+   182→   182→      showWaitlistOnFailure: false,
+   183→   183→      showCod: true,
+   184→   184→      showReturnPolicy: true,
+   185→   185→      showCutoffTime: true,
+   186→   186→      showDeliveryDays: true,
+   187→   187→      customCss: "",
+   188→   188→      blockCartOnInvalid: false,
+   189→   189→      showSocialProof: true,
+   190→   190→    };
+   191→   191→    Object.keys(D).forEach(function (k) {
+   192→   192→      if (cfg[k] === undefined || cfg[k] === null || cfg[k] === "") cfg[k] = D[k];
+   193→   193→    });
+   194→   194→
+   195→   195→    var rad = cfg.borderRadius + "px";
+   196→   196→    var WID = "zcc-" + ROOT_ID;
+   197→   197→
+   198→   198→    if (cfg.position === "floating") {
+   199→   199→      renderFloating(cfg, WID, rad);
+   200→   200→    } else if (cfg.position === "popup") {
+   201→   201→      renderPopup(cfg, WID, rad);
+   202→   202→    } else {
+   203→   203→      renderInline(cfg, WID, rad);
+   204→   204→    }
+   205→   205→
+   206→   206→    // If blockCartOnInvalid is enabled, disable ATC/Buy Now buttons on page load
+   207→   207→    // until the customer validates their ZIP code
+   208→   208→    if (cfg.blockCartOnInvalid) {
+   209→   209→      blockCartButtonsInitial();
+   210→   210→    }
+   211→   211→  }
+   212→   212→
+   213→   213→  // ── Block ATC buttons on page load (before any ZIP check) ─────────────────
+   214→   214→  function blockCartButtonsInitial() {
+   215→   215→    var ATC_SELECTORS = [
+   216→   216→      'button[name="add"]',
+   217→   217→      '.product-form__submit',
+   218→   218→      '[data-product-add]',
+   219→   219→      '.btn--add-to-cart',
+   220→   220→      '.product-form button[type="submit"]',
+   221→   221→      'button.shopify-payment-button__button',
+   222→   222→      '.shopify-payment-button button',
+   223→   223→      'button.product-form__cart-submit'
+   224→   224→    ].join(',');
+   225→   225→
+   226→   226→    function doBlock() {
+   227→   227→      try {
+   228→   228→        var atcBtns = document.querySelectorAll(ATC_SELECTORS);
+   229→   229→        atcBtns.forEach(function(b) {
+   230→   230→          if (!b.closest('[data-zcc-widget]')) {
+   231→   231→            if (!b.getAttribute('data-zcc-blocked')) {
+   232→   232→              b.setAttribute('data-zcc-orig-title', b.title || '');
+   233→   233→            }
+   234→   234→            b.disabled = true;
+   235→   235→            b.style.opacity = '0.5';
+   236→   236→            b.title = 'Please check ZIP code availability first';
+   237→   237→            b.setAttribute('data-zcc-blocked', 'true');
+   238→   238→          }
+   239→   239→        });
+   240→   240→      } catch(e) {}
+   241→   241→    }
+   242→   242→
+   243→   243→    // Block immediately + delays for dynamic buttons (Shopify Buy Now renders late)
+   244→   244→    doBlock();
+   245→   245→    setTimeout(doBlock, 500);
+   246→   246→    setTimeout(doBlock, 1500);
+   247→   247→
+   248→   248→    // MutationObserver for dynamic payment buttons
+   249→   249→    if (typeof MutationObserver !== 'undefined') {
+   250→   250→      var observer = new MutationObserver(function() { doBlock(); });
+   251→   251→      var form = document.querySelector('.product-form, [data-product-form], form[action*="/cart/add"]');
+   252→   252→      if (form) {
+   253→   253→        observer.observe(form, { childList: true, subtree: true });
+   254→   254→        setTimeout(function() { observer.disconnect(); }, 10000);
+   255→   255→      }
+   256→   256→    }
+   257→   257→  }
+   258→   258→
+   259→   259→  // ── Scope custom CSS: auto-prefix selectors with widget container ID ──────
+   260→   260→  function scopeCustomCss(rawCss, wid) {
+   261→   261→    if (!rawCss) return "";
+   262→   262→    // Strip </style> tags to prevent injection
+   263→   263→    var css = rawCss.replace(/<\/style>/gi, "");
+   264→   264→    var result = "";
+   265→   265→    var i = 0;
+   266→   266→    while (i < css.length) {
+   267→   267→      // Skip whitespace
+   268→   268→      while (i < css.length && /\s/.test(css[i])) { result += css[i]; i++; }
+   269→   269→      if (i >= css.length) break;
+   270→   270→      // Pass through @keyframes and @font-face unchanged
+   271→   271→      if (css[i] === '@') {
+   272→   272→        var atRule = "";
+   273→   273→        var j = i;
+   274→   274→        while (j < css.length && css[j] !== '{' && css[j] !== ';') { atRule += css[j]; j++; }
+   275→   275→        var atName = atRule.trim().toLowerCase();
+   276→   276→        if (atName.indexOf("@keyframes") === 0 || atName.indexOf("@font-face") === 0) {
+   277→   277→          result += atRule;
+   278→   278→          if (j < css.length && css[j] === '{') {
+   279→   279→            var depth = 1; result += css[j]; j++;
+   280→   280→            while (j < css.length && depth > 0) {
+   281→   281→              if (css[j] === '{') depth++;
+   282→   282→              if (css[j] === '}') depth--;
+   283→   283→              result += css[j]; j++;
+   284→   284→            }
+   285→   285→          }
+   286→   286→          i = j; continue;
+   287→   287→        }
+   288→   288→        // @media: scope inner rules
+   289→   289→        if (atName.indexOf("@media") === 0) {
+   290→   290→          result += atRule;
+   291→   291→          if (j < css.length && css[j] === '{') {
+   292→   292→            result += '{'; j++;
+   293→   293→            // Collect inner content
+   294→   294→            var depth = 1; var inner = "";
+   295→   295→            while (j < css.length && depth > 0) {
+   296→   296→              if (css[j] === '{') depth++;
+   297→   297→              if (css[j] === '}') depth--;
+   298→   298→              if (depth > 0) inner += css[j];
+   299→   299→              j++;
+   300→   300→            }
+   301→   301→            result += scopeCustomCss(inner, wid);
+   302→   302→            result += '}';
+   303→   303→          }
+   304→   304→          i = j; continue;
+   305→   305→        }
+   306→   306→      }
+   307→   307→      // Regular rule: grab selector, prefix with #wid
+   308→   308→      var sel = ""; var body = "";
+   309→   309→      while (i < css.length && css[i] !== '{') { sel += css[i]; i++; }
+   310→   310→      if (i < css.length) { i++; } // skip {
+   311→   311→      var depth = 1;
+   312→   312→      while (i < css.length && depth > 0) {
+   313→   313→        if (css[i] === '{') depth++;
+   314→   314→        if (css[i] === '}') depth--;
+   315→   315→        if (depth > 0) body += css[i];
+   316→   316→        i++;
+   317→   317→      }
+   318→   318→      if (sel.trim()) {
+   319→   319→        // Split multiple selectors by comma and prefix each
+   320→   320→        var selectors = sel.split(',').map(function(s) {
+   321→   321→          s = s.trim();
+   322→   322→          if (!s) return '';
+   323→   323→          return '#' + wid + ' ' + s;
+   324→   324→        }).filter(Boolean).join(', ');
+   325→   325→        result += selectors + ' {' + body + '}';
+   326→   326→      }
+   327→   327→    }
+   328→   328→    return result;
+   329→   329→  }
+   330→   330→
+   331→   331→  // ── Shared: inject CSS ──────────────────────────────────────────────────────
+   332→   332→  function injectCss(wid, cfg, rad) {
+   333→   333→    var W = "#" + wid;
+   334→   334→    var css =
+   335→   335→      // Keyframe animations (must be outside scoped selectors)
+   336→   336→      "@keyframes zcc-slide-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}" +
+   337→   337→      "@keyframes zcc-check-draw{to{stroke-dashoffset:0}}" +
+   338→   338→      "@keyframes zcc-fade-in{from{opacity:0}to{opacity:1}}" +
+   339→   339→      "@keyframes zcc-pulse{0%,100%{box-shadow:0 0 0 0 " + cfg.primaryColor + "40}50%{box-shadow:0 0 0 8px " + cfg.primaryColor + "00}}" +
+   340→   340→
+   341→   341→      // Container — elevated card with hover lift
+   342→   342→      W + "{" +
+   343→   343→        "background:" + cfg.backgroundColor + " !important;" +
+   344→   344→        "color:" + cfg.textColor + " !important;" +
+   345→   345→        "border-radius:" + rad + " !important;" +
+   346→   346→        "padding:24px !important;" +
+   347→   347→        "border:none !important;" +
+   348→   348→        "box-shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.06) !important;" +
+   349→   349→        "max-width:480px;" +
+   350→   350→        "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif !important;" +
+   351→   351→        "box-sizing:border-box !important;" +
+   352→   352→        "transition:box-shadow 0.2s ease !important;" +
+   353→   353→      "}" +
+   354→   354→      W + ":hover{box-shadow:0 4px 12px rgba(0,0,0,0.1) !important}" +
+   355→   355→      W + " *{box-sizing:border-box !important}" +
+   356→   356→
+   357→   357→      // Heading with location pin icon
+   358→   358→      W + " .zcc-heading{" +
+   359→   359→        "font-size:17px !important;font-weight:700 !important;letter-spacing:-0.01em !important;" +
+   360→   360→        "margin:0 0 20px !important;color:" + cfg.textColor + " !important;" +
+   361→   361→        "display:flex !important;align-items:center !important;gap:8px !important" +
+   362→   362→      "}" +
+   363→   363→      W + " .zcc-heading-icon{" +
+   364→   364→        "display:inline-flex !important;align-items:center !important;justify-content:center !important;" +
+   365→   365→        "width:28px !important;height:28px !important;border-radius:50% !important;" +
+   366→   366→        "background:" + cfg.primaryColor + "12 !important;flex-shrink:0 !important" +
+   367→   367→      "}" +
+   368→   368→      W + " .zcc-heading-icon svg{width:16px !important;height:16px !important}" +
+   369→   369→
+   370→   370→      // Unified search bar (input + button in one container)
+   371→   371→      W + " .zcc-search-bar{" +
+   372→   372→        "display:flex !important;border:2px solid #e1e3e5 !important;border-radius:" + rad + " !important;" +
+   373→   373→        "overflow:hidden !important;transition:border-color 0.2s ease,box-shadow 0.2s ease !important;margin-bottom:0 !important" +
+   374→   374→      "}" +
+   375→   375→      W + " .zcc-search-bar:focus-within{" +
+   376→   376→        "border-color:" + cfg.primaryColor + " !important;box-shadow:0 0 0 3px " + cfg.primaryColor + "20 !important" +
+   377→   377→      "}" +
+   378→   378→      W + " .zcc-row{display:flex !important;gap:0 !important;margin-bottom:0 !important}" + // backward compat alias
+   379→   379→
+   380→   380→      // Input — borderless inside unified bar
+   381→   381→      W + " .zcc-input{" +
+   382→   382→        "flex:1 !important;padding:12px 16px !important;border:none !important;" +
+   383→   383→        "font-size:14px !important;outline:none !important;" +
+   384→   384→        "background:transparent !important;color:" + cfg.textColor + " !important;min-width:0 !important" +
+   385→   385→      "}" +
+   386→   386→      W + " .zcc-input::placeholder{color:#8c9196 !important}" +
+   387→   387→
+   388→   388→      // Button — right side of search bar
+   389→   389→      W + " .zcc-btn{" +
+   390→   390→        "background:" + cfg.primaryColor + " !important;color:#fff !important;border:none !important;" +
+   391→   391→        "border-left:1px solid " + cfg.primaryColor + " !important;" +
+   392→   392→        "padding:12px 24px !important;font-size:14px !important;" +
+   393→   393→        "font-weight:600 !important;cursor:pointer !important;white-space:nowrap !important;" +
+   394→   394→        "flex-shrink:0 !important;transition:all 0.2s ease !important" +
+   395→   395→      "}" +
+   396→   396→      W + " .zcc-btn:hover{filter:brightness(1.08) !important}" +
+   397→   397→      W + " .zcc-btn:active{transform:scale(0.98) !important}" +
+   398→   398→      W + " .zcc-btn:disabled{opacity:.6 !important;cursor:not-allowed !important;filter:none !important}" +
+   399→   399→
+   400→   400→      // Result card — shared base
+   401→   401→      W + " .zcc-result{" +
+   402→   402→        "margin-top:16px !important;padding:14px 16px !important;border-radius:" + rad + " !important;" +
+   403→   403→        "font-size:14px !important;line-height:1.5 !important;" +
+   404→   404→        "animation:zcc-slide-in 0.3s ease !important;" +
+   405→   405→        "display:flex !important;gap:12px !important;align-items:flex-start !important" +
+   406→   406→      "}" +
+   407→   407→
+   408→   408→      // Success result
+   409→   409→      W + " .zcc-result.ok{" +
+   410→   410→        "background:linear-gradient(135deg," + cfg.successColor + "08," + cfg.successColor + "14) !important;" +
+   411→   411→        "border:1px solid " + cfg.successColor + "30 !important;color:" + cfg.successColor + " !important" +
+   412→   412→      "}" +
+   413→   413→
+   414→   414→      // Error / not found result
+   415→   415→      W + " .zcc-result.fail{" +
+   416→   416→        "background:linear-gradient(135deg," + cfg.errorColor + "08," + cfg.errorColor + "14) !important;" +
+   417→   417→        "border:1px solid " + cfg.errorColor + "30 !important;color:" + cfg.errorColor + " !important" +
+   418→   418→      "}" +
+   419→   419→
+   420→   420→      // Result icon container
+   421→   421→      W + " .zcc-result-icon{" +
+   422→   422→        "flex-shrink:0 !important;width:24px !important;height:24px !important;display:flex !important;align-items:center !important;justify-content:center !important" +
+   423→   423→      "}" +
+   424→   424→      W + " .zcc-result-icon svg{width:22px !important;height:22px !important}" +
+   425→   425→      W + " .zcc-result-content{flex:1 !important;min-width:0 !important}" +
+   426→   426→
+   427→   427→      // Meta info lines
+   428→   428→      W + " .zcc-meta{" +
+   429→   429→        "margin-top:6px !important;font-size:13px !important;opacity:.85 !important;" +
+   430→   430→        "display:flex !important;align-items:center !important;gap:6px !important" +
+   431→   431→      "}" +
+   432→   432→      W + " .zcc-meta svg{width:14px !important;height:14px !important;flex-shrink:0 !important}" +
+   433→   433→
+   434→   434→      // Specific meta classes
+   435→   435→      W + " .zcc-cutoff{margin-top:6px !important;font-size:0.85em !important;color:#6d7175 !important;display:flex !important;align-items:center !important;gap:6px !important}" +
+   436→   436→      W + " .zcc-days{margin-top:6px !important;font-size:0.85em !important;color:#6d7175 !important;display:flex !important;align-items:center !important;gap:6px !important}" +
+   437→   437→      W + " .zcc-cod{margin-top:6px !important;font-size:0.85em !important;font-weight:500 !important;display:flex !important;align-items:center !important;gap:6px !important}" +
+   438→   438→      W + " .zcc-cod--available{color:#008060 !important}" +
+   439→   439→      W + " .zcc-cod--unavailable{color:#d72c0d !important}" +
+   440→   440→      W + " .zcc-return-policy{margin-top:6px !important;font-size:0.85em !important;color:#6d7175 !important;display:flex !important;align-items:center !important;gap:6px !important}" +
+   441→   441→
+   442→   442→      // Waitlist section
+   443→   443→      W + " .zcc-wl{margin-top:14px !important;padding:14px !important;background:" + cfg.errorColor + "06 !important;border-radius:" + rad + " !important}" +
+   444→   444→      W + " .zcc-wl-toggle{" +
+   445→   445→        "display:inline-flex !important;align-items:center !important;gap:6px !important;" +
+   446→   446→        "font-size:13px !important;font-weight:600 !important;color:" + cfg.primaryColor + " !important;" +
+   447→   447→        "text-decoration:none !important;cursor:pointer !important;border:none !important;background:none !important;padding:0 !important" +
+   448→   448→      "}" +
+   449→   449→      W + " .zcc-wl-toggle:hover{text-decoration:underline !important}" +
+   450→   450→      W + " .zcc-wl-input{" +
+   451→   451→        "width:100% !important;padding:10px 12px !important;border:1px solid #e1e3e5 !important;" +
+   452→   452→        "border-radius:" + rad + " !important;font-size:13px !important;margin-bottom:8px !important;" +
+   453→   453→        "display:block !important;outline:none !important;transition:border-color 0.2s !important" +
+   454→   454→      "}" +
+   455→   455→      W + " .zcc-wl-input:focus{border-color:" + cfg.primaryColor + " !important;box-shadow:0 0 0 2px " + cfg.primaryColor + "20 !important}" +
+   456→   456→      W + " .zcc-wl-btn{" +
+   457→   457→        "background:" + cfg.primaryColor + " !important;color:#fff !important;border:none !important;" +
+   458→   458→        "border-radius:" + rad + " !important;padding:10px 16px !important;font-size:13px !important;" +
+   459→   459→        "cursor:pointer !important;width:100% !important;font-weight:600 !important;" +
+   460→   460→        "transition:all 0.2s ease !important" +
+   461→   461→      "}" +
+   462→   462→      W + " .zcc-wl-btn:hover{filter:brightness(1.08) !important}" +
+   463→   463→      W + " .zcc-wl-btn:disabled{opacity:.6 !important;cursor:not-allowed !important}" +
+   464→   464→
+   465→   465→      // Social proof badge
+   466→   466→      W + " .zcc-social-proof{" +
+   467→   467→        "display:inline-flex !important;align-items:center !important;gap:6px !important;" +
+   468→   468→        "font-size:12px !important;color:#6d7175 !important;margin-bottom:10px !important;" +
+   469→   469→        "background:#f6f6f7 !important;padding:4px 10px !important;border-radius:20px !important" +
+   470→   470→      "}" +
+   471→   471→
+   472→   472→      // Mobile responsive
+   473→   473→      "@media(max-width:480px){" +
+   474→   474→        W + "{padding:16px !important}" +
+   475→   475→        W + " .zcc-heading{font-size:15px !important;margin:0 0 16px !important}" +
+   476→   476→        W + " .zcc-search-bar{flex-direction:column !important;border-radius:" + rad + " !important}" +
+   477→   477→        W + " .zcc-btn{border-left:none !important;border-top:1px solid " + cfg.primaryColor + " !important}" +
+   478→   478→        W + " .zcc-result{flex-direction:column !important;gap:8px !important}" +
+   479→   479→      "}" +
+   480→   480→
+   481→   481→      // Scoped custom CSS
+   482→   482→      scopeCustomCss(cfg.customCss, wid);
+   483→   483→
+   484→   484→    var styleEl = document.createElement("style");
+   485→   485→    styleEl.textContent = css;
+   486→   486→    document.head.appendChild(styleEl);
+   487→   487→  }
+   488→   488→
+   489→   489→  // ── Shared: build widget inner HTML + wire up events ────────────────────────
+   490→   490→  function buildWidgetInner(wid, cfg, btnLabel) {
+   491→   491→    return (
+   492→   492→      '<div class="zcc-heading">' +
+   493→   493→        '<span class="zcc-heading-icon">' +
+   494→   494→          '<svg viewBox="0 0 24 24" fill="none" stroke="' + escAttr(cfg.primaryColor) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+   495→   495→        '</span>' +
+   496→   496→        '<span>' + esc(cfg.heading) + '</span>' +
+   497→   497→      "</div>" +
+   498→   498→      '<div class="zcc-search-bar">' +
+   499→   499→        '<input class="zcc-input" type="text" id="' + wid + '-inp"' +
+   500→   500→          ' placeholder="' + escAttr(cfg.placeholder) + '"' +
+   501→   501→          ' aria-label="' + escAttr(cfg.placeholder) + '" />' +
+   502→   502→        '<button class="zcc-btn" id="' + wid + '-btn" type="button">' +
+   503→   503→          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;vertical-align:middle;margin-right:4px"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
+   504→   504→          esc(btnLabel) +
+   505→   505→        "</button>" +
+   506→   506→      "</div>" +
+   507→   507→      '<div id="' + wid + '-res"></div>'
+   508→   508→    );
+   509→   509→  }
+   510→   510→
+   511→   511→  function wireWidget(wid, cfg, API_BASE, SHOP) {
+   512→   512→    var inp = document.getElementById(wid + "-inp");
+   513→   513→    var btn = document.getElementById(wid + "-btn");
+   514→   514→    var res = document.getElementById(wid + "-res");
+   515→   515→    var btnLabel = cfg.buttonText;
+   516→   516→    var btnOrigHtml = btn ? btn.innerHTML : '';
+   517→   517→    if (!inp || !btn || !res) return;
+   518→   518→
+   519→   519→    function normalizeZip(raw) {
+   520→   520→      var z = raw.trim().toUpperCase();
+   521→   521→      z = z.replace(/\s+/g, '');        // collapse all spaces (UK: SW1A 2AA → SW1A2AA)
+   522→   522→      z = z.replace(/-\d{4}$/, '');     // strip US ZIP+4 suffix (90210-1234 → 90210)
+   523→   523→      return z;
+   524→   524→    }
+   525→   525→
+   526→   526→    function checkZip() {
+   527→   527→      var zip = normalizeZip(inp.value);
+   528→   528→      inp.value = zip;  // Update the input field to show the normalized value (clean UX)
+   529→   529→      if (!zip) { inp.focus(); return; }
+   530→   530→
+   531→   531→      btn.disabled = true;
+   532→   532→      btn.textContent = "\u2026";
+   533→   533→      res.innerHTML = "";
+   534→   534→
+   535→   535→      fetch(
+   536→   536→        API_BASE + "/api/zip-check?shop=" + encodeURIComponent(SHOP) +
+   537→   537→          "&zip=" + encodeURIComponent(zip)
+   538→   538→      )
+   539→   539→        .then(function (r) { return r.json(); })
+   540→   540→        .then(function (data) {
+   541→   541→          btn.disabled = false;
+   542→   542→          btn.innerHTML = btnOrigHtml;
+   543→   543→
+   544→   544→          // Store validation result for cart page
+   545→   545→          try {
+   546→   546→            sessionStorage.setItem('zcc:valid', data.allowed ? 'true' : 'false');
+   547→   547→            sessionStorage.setItem('zcc:zip', zip);
+   548→   548→            sessionStorage.setItem('zcc:shop', SHOP);
+   549→   549→            // Fire custom event for other scripts to listen to
+   550→   550→            window.dispatchEvent(new CustomEvent('zcc:validated', {
+   551→   551→              detail: { valid: data.allowed, zip: zip }
+   552→   552→            }));
+   553→   553→          } catch(e) { /* sessionStorage may be unavailable */ }
+   554→   554→
+   555→   555→          // SVG icons for results
+   556→   556→          var svgCheck = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>';
+   557→   557→          var svgX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>';
+   558→   558→          var svgClock = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+   559→   559→          var svgTruck = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>';
+   560→   560→          var svgCalendar = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+   561→   561→          var svgReturn = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>';
+   562→   562→
+   563→   563→          if (data.allowed) {
+   564→   564→            var html = '<div class="zcc-result ok">' +
+   565→   565→              '<div class="zcc-result-icon">' + svgCheck + '</div>' +
+   566→   566→              '<div class="zcc-result-content">' +
+   567→   567→              '<div>' + esc(data.message) + '</div>';
+   568→   568→            if (cfg.showEta && data.eta) {
+   569→   569→              html += '<div class="zcc-meta">' + svgTruck + ' Estimated delivery: ' + esc(data.eta) + "</div>";
+   570→   570→            }
+   571→   571→            if (cfg.showZone && data.zone) {
+   572→   572→              html += '<div class="zcc-meta">Zone: ' + esc(data.zone) + "</div>";
+   573→   573→            }
+   574→   574→            if (cfg.showDeliveryDays && data.daysOfWeek) {
+   575→   575→              var days = data.daysOfWeek.split(',').map(function(d) { return d.trim(); }).join(' \u00b7 ');
+   576→   576→              html += '<div class="zcc-meta zcc-days">' + svgCalendar + ' ' + esc(days) + '</div>';
+   577→   577→            }
+   578→   578→            if (cfg.showCutoffTime && data.cutoffTime) {
+   579→   579→              var parts = data.cutoffTime.split(':');
+   580→   580→              var hr = parseInt(parts[0], 10);
+   581→   581→              var min = parts[1] || '00';
+   582→   582→              var ampm = hr >= 12 ? 'PM' : 'AM';
+   583→   583→              var hr12 = hr % 12 || 12;
+   584→   584→              html += '<div class="zcc-meta zcc-cutoff">' + svgClock + ' Order by ' + hr12 + ':' + min + ' ' + ampm + ' for same-day</div>';
+   585→   585→            }
+   586→   586→            if (data.codAvailable === true) {
+   587→   587→              html += '<div class="zcc-cod zcc-cod--available"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Cash on Delivery Available</div>';
+   588→   588→            } else if (data.codAvailable === false) {
+   589→   589→              html += '<div class="zcc-cod zcc-cod--unavailable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> COD Not Available</div>';
+   590→   590→            }
+   591→   591→            if (data.returnPolicy) {
+   592→   592→              html += '<div class="zcc-return-policy">' + svgReturn + ' ' + esc(data.returnPolicy) + '</div>';
+   593→   593→            }
+   594→   594→            html += "</div></div>";
+   595→   595→            res.innerHTML = html;
+   596→   596→          } else {
+   597→   597→            var html = '<div class="zcc-result fail">' +
+   598→   598→              '<div class="zcc-result-icon">' + svgX + '</div>' +
+   599→   599→              '<div class="zcc-result-content">' +
+   600→   600→              '<div>' + esc(data.message) + '</div>';
+   601→   601→            if (cfg.showWaitlistOnFailure) {
+   602→   602→              html +=
+   603→   603→                '<div class="zcc-wl">' +
+   604→   604→                '<button class="zcc-wl-toggle" id="' + wid + '-wl-toggle" type="button">' +
+   605→   605→                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' +
+   606→   606→                ' Request delivery to your area</button>' +
+   607→   607→                '<div id="' + wid + '-wl-form" style="display:none;margin-top:12px">' +
+   608→   608→                '<input class="zcc-wl-input" type="text" id="' + wid + '-wl-name" placeholder="Your name" />' +
+   609→   609→                '<input class="zcc-wl-input" type="email" id="' + wid + '-wl-email" placeholder="Your email" />' +
+   610→   610→                '<button class="zcc-wl-btn" id="' + wid + '-wl-btn" type="button">Submit Request</button>' +
+   611→   611→                '</div>' +
+   612→   612→                "</div>";
+   613→   613→            }
+   614→   614→            html += "</div></div>";
+   615→   615→            res.innerHTML = html;
+   616→   616→
+   617→   617→            if (cfg.showWaitlistOnFailure) {
+   618→   618→              // Wire "Request ZIP Code" toggle link
+   619→   619→              var wlToggle = document.getElementById(wid + "-wl-toggle");
+   620→   620→              var wlForm = document.getElementById(wid + "-wl-form");
+   621→   621→              if (wlToggle && wlForm) {
+   622→   622→                wlToggle.addEventListener("click", function(e) {
+   623→   623→                  e.preventDefault();
+   624→   624→                  wlForm.style.display = wlForm.style.display === "none" ? "block" : "none";
+   625→   625→                  wlToggle.style.display = "none";
+   626→   626→                });
+   627→   627→              }
+   628→   628→
+   629→   629→              // Social proof count
+   630→   630→              if (cfg.showSocialProof && data.waitlistCount && data.waitlistCount > 0) {
+   631→   631→                var wlSection = document.getElementById(wid + "-wl-name");
+   632→   632→                if (wlSection && wlSection.parentNode) {
+   633→   633→                  var spEl = document.createElement('div');
+   634→   634→                  spEl.className = 'zcc-social-proof';
+   635→   635→                  var count = data.waitlistCount;
+   636→   636→                  spEl.textContent = '\uD83D\uDE4B Join ' + count + ' other' + (count !== 1 ? 's' : '') + ' waiting for delivery to your area';
+   637→   637→                  wlSection.parentNode.insertBefore(spEl, wlSection);
+   638→   638→                }
+   639→   639→              }
+   640→   640→
+   641→   641→              var wBtn = document.getElementById(wid + "-wl-btn");
+   642→   642→              if (wBtn) {
+   643→   643→                wBtn.addEventListener("click", function () {
+   644→   644→                  var nameEl = document.getElementById(wid + "-wl-name");
+   645→   645→                  var emailEl = document.getElementById(wid + "-wl-email");
+   646→   646→                  var name = nameEl ? nameEl.value.trim() : "";
+   647→   647→                  var email = emailEl ? emailEl.value.trim() : "";
+   648→   648→                  if (!email) { if (emailEl) emailEl.focus(); return; }
+   649→   649→                  joinWaitlist(zip, email, name, wBtn);
+   650→   650→                });
+   651→   651→              }
+   652→   652→            }
+   653→   653→          }
+   654→   654→
+   655→   655→          // Block/unblock Add to Cart based on result (if merchant enabled this)
+   656→   656→          if (cfg.blockCartOnInvalid) {
+   657→   657→            var ATC_SELECTORS = [
+   658→   658→              'button[name="add"]',
+   659→   659→              '.product-form__submit',
+   660→   660→              '[data-product-add]',
+   661→   661→              '.btn--add-to-cart',
+   662→   662→              '.product-form button[type="submit"]',
+   663→   663→              'button.shopify-payment-button__button',
+   664→   664→              '.shopify-payment-button button',
+   665→   665→              'button.product-form__cart-submit'
+   666→   666→            ].join(',');
+   667→   667→
+   668→   668→            try {
+   669→   669→              var atcBtns = document.querySelectorAll(ATC_SELECTORS);
+   670→   670→              atcBtns.forEach(function(b) {
+   671→   671→                if (!b.closest('#zcc-widget, [data-zcc-widget]')) { // Don't touch our own widget's button
+   672→   672→                  if (data.allowed) {
+   673→   673→                    b.disabled = false;
+   674→   674→                    b.style.opacity = '';
+   675→   675→                    b.title = b.getAttribute('data-zcc-orig-title') || '';
+   676→   676→                    b.removeAttribute('data-zcc-orig-title');
+   677→   677→                    b.removeAttribute('data-zcc-blocked');
+   678→   678→                  } else {
+   679→   679→                    b.setAttribute('data-zcc-orig-title', b.title || '');
+   680→   680→                    b.disabled = true;
+   681→   681→                    b.style.opacity = '0.5';
+   682→   682→                    b.title = 'Please enter a valid ZIP code to continue';
+   683→   683→                    b.setAttribute('data-zcc-blocked', 'true');
+   684→   684→                  }
+   685→   685→                }
+   686→   686→              });
+   687→   687→            } catch(e) { /* DOM query may fail in some contexts */ }
+   688→   688→          }
+   689→   689→        })
+   690→   690→        .catch(function () {
+   691→   691→          btn.disabled = false;
+   692→   692→          btn.innerHTML = btnOrigHtml;
+   693→   693→          res.innerHTML = '<div class="zcc-result fail"><div class="zcc-result-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg></div><div class="zcc-result-content">Something went wrong. Please try again.</div></div>';
+   694→   694→          try {
+   695→   695→            sessionStorage.setItem('zcc:valid', 'false');
+   696→   696→            window.dispatchEvent(new CustomEvent('zcc:validated', { detail: { valid: false, zip: zip } }));
+   697→   697→          } catch(e) {}
+   698→   698→        });
+   699→   699→    }
+   700→   700→
+   701→   701→    btn.addEventListener("click", checkZip);
+   702→   702→    inp.addEventListener("keydown", function (e) {
+   703→   703→      if (e.key === "Enter") checkZip();
+   704→   704→    });
+   705→   705→
+   706→   706→    // Re-enable buttons when customer clears the input
+   707→   707→    inp.addEventListener('input', function() {
+   708→   708→      if (!inp.value.trim() && cfg.blockCartOnInvalid) {
+   709→   709→        try {
+   710→   710→          var blocked = document.querySelectorAll('[data-zcc-blocked="true"]');
+   711→   711→          blocked.forEach(function(b) {
+   712→   712→            b.disabled = false;
+   713→   713→            b.style.opacity = '';
+   714→   714→            b.title = b.getAttribute('data-zcc-orig-title') || '';
+   715→   715→            b.removeAttribute('data-zcc-blocked');
+   716→   716→            b.removeAttribute('data-zcc-orig-title');
+   717→   717→          });
+   718→   718→          sessionStorage.removeItem('zcc:valid');
+   719→   719→          sessionStorage.removeItem('zcc:zip');
+   720→   720→        } catch(e) {}
+   721→   721→      }
+   722→   722→    });
+   723→   723→  }
+   724→   724→
+   725→   725→  function joinWaitlist(zip, email, name, wBtn) {
+   726→   726→    wBtn.disabled = true;
+   727→   727→    wBtn.textContent = "Submitting\u2026";
+   728→   728→
+   729→   729→    var payload = { shop: SHOP, zip: zip, email: email };
+   730→   730→    if (name) payload.name = name;
+   731→   731→
+   732→   732→    fetch(API_BASE + "/api/waitlist", {
+   733→   733→      method: "POST",
+   734→   734→      headers: { "Content-Type": "application/json" },
+   735→   735→      body: JSON.stringify(payload),
+   736→   736→    })
+   737→   737→      .then(function (r) { return r.json(); })
+   738→   738→      .then(function (data) {
+   739→   739→        var wlEl = wBtn.closest(".zcc-wl");
+   740→   740→        if (data.success) {
+   741→   741→          if (wlEl) wlEl.innerHTML =
+   742→   742→            '<p style="font-size:13px;margin:6px 0 0;color:#008060">' +
+   743→   743→            "\u2713 Your request has been submitted! We\u2019ll notify you when delivery is available." +
+   744→   744→            "</p>";
+   745→   745→        } else {
+   746→   746→          wBtn.disabled = false;
+   747→   747→          wBtn.textContent = "Submit Request";
+   748→   748→        }
+   749→   749→      })
+   750→   750→      .catch(function () {
+   751→   751→        wBtn.disabled = false;
+   752→   752→        wBtn.textContent = "Submit Request";
+   753→   753→      });
+   754→   754→  }
+   755→   755→
+   756→   756→  // ── Inline position ─────────────────────────────────────────────────────────
+   757→   757→  function renderInline(cfg, WID, rad) {
+   758→   758→    injectCss(WID, cfg, rad);
+   759→   759→    container.id = WID;
+   760→   760→    container.innerHTML = buildWidgetInner(WID, cfg, cfg.buttonText);
+   761→   761→    wireWidget(WID, cfg, API_BASE, SHOP);
+   762→   762→  }
+   763→   763→
+   764→   764→  // ── Floating position ────────────────────────────────────────────────────────
+   765→   765→  function renderFloating(cfg, WID, rad) {
+   766→   766→    // The original container becomes invisible (just an anchor)
+   767→   767→    container.style.display = "none";
+   768→   768→
+   769→   769→    injectCss(WID, cfg, rad);
+   770→   770→
+   771→   771→    // Additional styles for floating UI
+   772→   772→    var floatCss =
+   773→   773→      "#" + WID + "-float{position:fixed !important;bottom:20px !important;right:20px !important;z-index:9998 !important;display:flex !important;flex-direction:column !important;align-items:flex-end !important;gap:12px !important}" +
+   774→   774→      "#" + WID + "-panel{" +
+   775→   775→        "background:" + cfg.backgroundColor + " !important;border-radius:16px !important;" +
+   776→   776→        "box-shadow:0 12px 40px rgba(0,0,0,.15),0 4px 12px rgba(0,0,0,.08) !important;overflow:hidden !important;" +
+   777→   777→        "animation:zcc-slide-in 0.25s ease !important;max-width:380px !important;width:380px !important" +
+   778→   778→      "}" +
+   779→   779→      "#" + WID + "-panel.zcc-hidden{display:none !important}" +
+   780→   780→      "#" + WID + "-panel .zcc-panel-header{" +
+   781→   781→        "display:flex !important;align-items:center !important;justify-content:space-between !important;" +
+   782→   782→        "padding:16px 20px 0 !important;margin-bottom:0 !important" +
+   783→   783→      "}" +
+   784→   784→      "#" + WID + "-panel .zcc-panel-title{font-size:14px !important;font-weight:700 !important;color:" + cfg.textColor + " !important;display:flex !important;align-items:center !important;gap:8px !important}" +
+   785→   785→      "#" + WID + "-panel .zcc-panel-close{" +
+   786→   786→        "background:none !important;border:none !important;cursor:pointer !important;line-height:1 !important;" +
+   787→   787→        "color:" + cfg.textColor + " !important;opacity:.5 !important;padding:4px !important;border-radius:6px !important;transition:all 0.15s !important" +
+   788→   788→      "}" +
+   789→   789→      "#" + WID + "-panel .zcc-panel-close:hover{opacity:1 !important;background:#f6f6f7 !important}" +
+   790→   790→      "#" + WID + "-trigger{" +
+   791→   791→        "background:" + cfg.primaryColor + " !important;color:#fff !important;border:none !important;" +
+   792→   792→        "border-radius:50px !important;padding:14px 22px !important;font-size:14px !important;font-weight:600 !important;" +
+   793→   793→        "cursor:pointer !important;box-shadow:0 4px 16px " + cfg.primaryColor + "40 !important;white-space:nowrap !important;" +
+   794→   794→        "transition:all 0.2s ease !important;display:flex !important;align-items:center !important;gap:8px !important;animation:zcc-pulse 2s infinite !important" +
+   795→   795→      "}" +
+   796→   796→      "#" + WID + "-trigger:hover{transform:scale(1.03) !important;box-shadow:0 6px 20px " + cfg.primaryColor + "50 !important}" +
+   797→   797→      "@media(max-width:420px){#" + WID + "-panel{width:calc(100vw - 32px) !important;max-width:none !important}#" + WID + "-float{left:16px !important;right:16px !important;align-items:stretch !important}}";
+   798→   798→
+   799→   799→    var floatStyle = document.createElement("style");
+   800→   800→    floatStyle.textContent = floatCss;
+   801→   801→    document.head.appendChild(floatStyle);
+   802→   802→
+   803→   803→    // Build floating shell
+   804→   804→    var floatEl = document.createElement("div");
+   805→   805→    floatEl.id = WID + "-float";
+   806→   806→    floatEl.innerHTML =
+   807→   807→      '<div id="' + WID + '-panel" class="zcc-hidden">' +
+   808→   808→        '<div class="zcc-panel-header">' +
+   809→   809→          '<span class="zcc-panel-title">' +
+   810→   810→            '<svg viewBox="0 0 24 24" fill="none" stroke="' + escAttr(cfg.primaryColor) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+   811→   811→            ' Delivery Check</span>' +
+   812→   812→          '<button class="zcc-panel-close" id="' + WID + '-close" type="button" aria-label="Close">' +
+   813→   813→            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>' +
+   814→   814→          '</button>' +
+   815→   815→        '</div>' +
+   816→   816→        '<div id="' + WID + '" data-zcc-widget="true" style="border:none !important;box-shadow:none !important;max-width:none !important">' +
+   817→   817→          buildWidgetInner(WID, cfg, cfg.buttonText) +
+   818→   818→        '</div>' +
+   819→   819→      '</div>' +
+   820→   820→      '<button id="' + WID + '-trigger" type="button">' +
+   821→   821→        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+   822→   822→        esc(cfg.buttonText || "Check Delivery") +
+   823→   823→      '</button>';
+   824→   824→
+   825→   825→    document.body.appendChild(floatEl);
+   826→   826→
+   827→   827→    // Wire toggle
+   828→   828→    var trigger = document.getElementById(WID + "-trigger");
+   829→   829→    var panel = document.getElementById(WID + "-panel");
+   830→   830→    var closeBtn = document.getElementById(WID + "-close");
+   831→   831→
+   832→   832→    if (trigger && panel) {
+   833→   833→      trigger.addEventListener("click", function () {
+   834→   834→        panel.classList.toggle("zcc-hidden");
+   835→   835→      });
+   836→   836→    }
+   837→   837→    if (closeBtn && panel) {
+   838→   838→      closeBtn.addEventListener("click", function () {
+   839→   839→        panel.classList.add("zcc-hidden");
+   840→   840→      });
+   841→   841→    }
+   842→   842→    // Close on outside click
+   843→   843→    document.addEventListener("click", function (e) {
+   844→   844→      if (!floatEl.contains(e.target)) {
+   845→   845→        if (panel) panel.classList.add("zcc-hidden");
+   846→   846→      }
+   847→   847→    });
+   848→   848→
+   849→   849→    wireWidget(WID, cfg, API_BASE, SHOP);
+   850→   850→  }
+   851→   851→
+   852→   852→  // ── Popup position ───────────────────────────────────────────────────────────
+   853→   853→  function renderPopup(cfg, WID, rad) {
+   854→   854→    injectCss(WID, cfg, rad);
+   855→   855→
+   856→   856→    var popupCss =
+   857→   857→      "#" + WID + "-overlay{" +
+   858→   858→        "display:none !important;position:fixed !important;inset:0 !important;" +
+   859→   859→        "background:rgba(0,0,0,.5) !important;backdrop-filter:blur(4px) !important;-webkit-backdrop-filter:blur(4px) !important;" +
+   860→   860→        "z-index:9999 !important;align-items:center !important;justify-content:center !important;padding:16px !important" +
+   861→   861→      "}" +
+   862→   862→      "#" + WID + "-overlay.zcc-open{display:flex !important}" +
+   863→   863→      "#" + WID + "-modal{" +
+   864→   864→        "background:" + cfg.backgroundColor + " !important;border-radius:16px !important;" +
+   865→   865→        "max-width:480px !important;width:100% !important;position:relative !important;" +
+   866→   866→        "box-shadow:0 24px 48px rgba(0,0,0,.2) !important;animation:zcc-slide-in 0.3s ease !important" +
+   867→   867→      "}" +
+   868→   868→      "#" + WID + "-modal .zcc-modal-header{" +
+   869→   869→        "display:flex !important;align-items:center !important;justify-content:space-between !important;" +
+   870→   870→        "padding:20px 24px 0 !important" +
+   871→   871→      "}" +
+   872→   872→      "#" + WID + "-modal .zcc-modal-title{font-size:15px !important;font-weight:700 !important;color:" + cfg.textColor + " !important;display:flex !important;align-items:center !important;gap:8px !important}" +
+   873→   873→      "#" + WID + "-modal .zcc-modal-close{" +
+   874→   874→        "background:none !important;border:none !important;" +
+   875→   875→        "cursor:pointer !important;color:" + cfg.textColor + " !important;opacity:.5 !important;" +
+   876→   876→        "padding:4px !important;border-radius:6px !important;transition:all 0.15s !important;line-height:1 !important" +
+   877→   877→      "}" +
+   878→   878→      "#" + WID + "-modal .zcc-modal-close:hover{opacity:1 !important;background:#f6f6f7 !important}" +
+   879→   879→      "#" + WID + "-popup-trigger{" +
+   880→   880→        "background:" + cfg.primaryColor + " !important;color:#fff !important;border:none !important;" +
+   881→   881→        "border-radius:" + rad + " !important;padding:12px 28px !important;font-size:14px !important;font-weight:600 !important;" +
+   882→   882→        "cursor:pointer !important;transition:all 0.2s ease !important;display:inline-flex !important;align-items:center !important;gap:8px !important" +
+   883→   883→      "}" +
+   884→   884→      "#" + WID + "-popup-trigger:hover{filter:brightness(1.08) !important;transform:translateY(-1px) !important;box-shadow:0 4px 12px " + cfg.primaryColor + "30 !important}";
+   885→   885→
+   886→   886→    var popupStyle = document.createElement("style");
+   887→   887→    popupStyle.textContent = popupCss;
+   888→   888→    document.head.appendChild(popupStyle);
+   889→   889→
+   890→   890→    // Trigger button renders in-place (inside the block)
+   891→   891→    container.innerHTML =
+   892→   892→      '<button id="' + WID + '-popup-trigger" type="button">' +
+   893→   893→        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+   894→   894→        esc(cfg.heading) +
+   895→   895→      '</button>';
+   896→   896→
+   897→   897→    // Overlay + modal append to body
+   898→   898→    var overlay = document.createElement("div");
+   899→   899→    overlay.id = WID + "-overlay";
+   900→   900→    overlay.innerHTML =
+   901→   901→      '<div id="' + WID + '-modal">' +
+   902→   902→        '<div class="zcc-modal-header">' +
+   903→   903→          '<span class="zcc-modal-title">' +
+   904→   904→            '<svg viewBox="0 0 24 24" fill="none" stroke="' + escAttr(cfg.primaryColor) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+   905→   905→            ' ' + esc(cfg.heading) + '</span>' +
+   906→   906→          '<button class="zcc-modal-close" id="' + WID + '-modal-close" type="button" aria-label="Close">' +
+   907→   907→            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>' +
+   908→   908→          '</button>' +
+   909→   909→        '</div>' +
+   910→   910→        '<div id="' + WID + '" data-zcc-widget="true" style="border:none !important;box-shadow:none !important;max-width:none !important">' +
+   911→   911→          buildWidgetInner(WID, cfg, cfg.buttonText) +
+   912→   912→        '</div>' +
+   913→   913→      '</div>';
+   914→   914→    document.body.appendChild(overlay);
+   915→   915→
+   916→   916→    var trigger = document.getElementById(WID + "-popup-trigger");
+   917→   917→    var closeBtn = document.getElementById(WID + "-modal-close");
+   918→   918→    var modal = document.getElementById(WID + "-modal");
+   919→   919→
+   920→   920→    function openPopup() { overlay.classList.add("zcc-open"); }
+   921→   921→    function closePopup() { overlay.classList.remove("zcc-open"); }
+   922→   922→
+   923→   923→    if (trigger) trigger.addEventListener("click", openPopup);
+   924→   924→    if (closeBtn) closeBtn.addEventListener("click", closePopup);
+   925→   925→
+   926→   926→    // Close on overlay backdrop click (not modal content)
+   927→   927→    overlay.addEventListener("click", function (e) {
+   928→   928→      if (e.target === overlay) closePopup();
+   929→   929→    });
+   930→   930→
+   931→   931→    // Close on Escape key
+   932→   932→    document.addEventListener("keydown", function (e) {
+   933→   933→      if (e.key === "Escape") closePopup();
+   934→   934→    });
+   935→   935→
+   936→   936→    wireWidget(WID, cfg, API_BASE, SHOP);
+   937→   937→  }
+   938→   938→
+   939→   939→  function esc(str) {
+   940→   940→    return String(str)
+   941→   941→      .replace(/&/g, "&amp;")
+   942→   942→      .replace(/</g, "&lt;")
+   943→   943→      .replace(/>/g, "&gt;")
+   944→   944→      .replace(/"/g, "&quot;");
+   945→   945→  }
+   946→   946→
+   947→   947→  function escAttr(str) {
+   948→   948→    return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+   949→   949→  }
+   950→   950→  } // end init()
+   951→   951→})();
+   952→   952→</script>
+   953→   953→
+   954→   954→{% endif %}
+   955→   955→
+   956→   956→{% schema %}
+   957→   957→{
+   958→   958→  "name": "Zip Code Checker",
+   959→   959→  "target": "section",
+   960→   960→  "settings": []
+   961→   961→}
+   962→   962→{% endschema %}
+   963→   963→
+   964→
+   965→<system-reminder>
+   966→Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+   967→</system-reminder>
+   968→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

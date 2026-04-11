@@ -1,0 +1,289 @@
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/AppHeader.tsx-32-          <Link to="/" className="flex items-center gap-2">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/AppHeader.tsx-33-            <Zap className="h-5 w-5 text-primary" />
+src/components/AppHeader.tsx:34:            <span className="font-semibold text-foreground tracking-tight">​Rankora    
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/AppHeader.tsx-35-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/AppHeader.tsx-36-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/db.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/db.md-2-
+.claude/commands/db.md:3:You are handling a database task for Instant Resume Ranker (Rankora). This app uses Supabase (PostgreSQL).
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/db.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/db.md-5-## BEFORE MAKING CHANGES
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/test.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/test.md-2-
+.claude/commands/test.md:3:You are writing or running tests for Instant Resume Ranker (Rankora). Use the tester agent's methodology.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/test.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/test.md-5-## PROCESS
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/review.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/review.md-2-
+.claude/commands/review.md:3:You are reviewing code changes in Instant Resume Ranker (Rankora). Be thorough and specific.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/review.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/review.md-5-## REVIEW PROCESS
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/perf.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/perf.md-2-
+.claude/commands/perf.md:3:You are analyzing performance for Instant Resume Ranker (Rankora).
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/perf.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/perf.md-5-## WHAT TO ANALYZE
+--
+CLAUDE.md:1:# Instant Resume Ranker (Rankora)
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/CLAUDE.md-2-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/CLAUDE.md-3-AI-powered resume screening SaaS. Users paste a job description, upload resumes, and the system scores/ranks candidates using GPT-4o.
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/feature.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/feature.md-2-
+.claude/commands/feature.md:3:You are building a new feature for Instant Resume Ranker (Rankora). Follow this process exactly.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/feature.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/feature.md-5-## BEFORE YOU WRITE A SINGLE LINE OF CODE
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/LandingPage.tsx-79-              <div className="text-center pt-2">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/LandingPage.tsx-80-                <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full mb-4">
+src/components/LandingPage.tsx:81:                  <Sparkles className="h-3.5 w-3.5" /> Rankora Ai
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/LandingPage.tsx-82-                </div>
+src/components/LandingPage.tsx-83-                <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight leading-tight mb-3">
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/LandingPage.tsx-239-            <div className="flex items-center justify-between pt-3 pb-6 border-t border-border">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/LandingPage.tsx-240-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+src/components/LandingPage.tsx:241:                <Zap className="h-4 w-4 text-primary" /> Rankora
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/LandingPage.tsx-242-              </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/LandingPage.tsx-243-              <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} All rights reserved.</p>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/audit.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/audit.md-2-
+.claude/commands/audit.md:3:You are performing a security audit on Instant Resume Ranker (Rankora). Use the security-auditor agent's methodology.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/audit.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/audit.md-5-## AUDIT SCOPE
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/tester.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/tester.md-6-
+.claude/agents/tester.md:7:You are the testing specialist for Instant Resume Ranker (Rankora). You write tests, validate edge cases, verify fixes, and ensure coverage. Every change needs validation — you are the safety net.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/tester.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/tester.md-9-## SAFETY RULES
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/send-email/index.ts-153-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/send-email/index.ts-154-    const fromEmail = config.email_from_address || "noreply@rankora.co";
+supabase/functions/send-email/index.ts:155:    const fromName = config.email_from_name || "Rankora";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/send-email/index.ts-156-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/send-email/index.ts-157-    // Send via Postmark
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/fix.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/fix.md-2-
+.claude/commands/fix.md:3:You are fixing a bug in Instant Resume Ranker (Rankora). Follow this process — do NOT guess-fix.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/fix.md-4-
+.claude/commands/fix.md-5-## STEP 1: UNDERSTAND THE BUG
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/ranking-specialist.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/ranking-specialist.md-6-
+.claude/agents/ranking-specialist.md:7:You are the AI ranking pipeline specialist for Instant Resume Ranker (Rankora). You own everything related to how resumes are scored, ranked, and evaluated — from JD input to ranked candidate output. This is the CORE VALUE of the product.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/ranking-specialist.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/ranking-specialist.md-9-## SAFETY RULES (NON-NEGOTIABLE)
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-201-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-202-    if (settings.geo_enabled) {
+src/components/SeoHead.tsx:203:      setMeta("name", "generator", "Rankora");
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-204-      if (settings.geo_author_name) {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-205-        setMeta("name", "citation_author", settings.geo_author_name);
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/bug-fixer.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/bug-fixer.md-6-
+.claude/agents/bug-fixer.md:7:You are an autonomous bug-fixer for Instant Resume Ranker (Rankora). You trace issues through the full stack, identify the TRUE root cause, make minimal safe fixes, and NEVER introduce new problems.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/bug-fixer.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/bug-fixer.md-9-## SAFETY RULES (NON-NEGOTIABLE)
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/send-candidate-email/index.ts-115-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/send-candidate-email/index.ts-116-    const fromEmail = config.email_from_address || "noreply@rankora.co";
+supabase/functions/send-candidate-email/index.ts:117:    const fromName = config.email_from_name || "Rankora";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/send-candidate-email/index.ts-118-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/send-candidate-email/index.ts-119-    // Send via Postmark
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/EmailSettingsTab.tsx-202-      setPmApiToken(config.postmark_api_token_masked || "");
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/EmailSettingsTab.tsx-203-      setPmFromAddress(config.email_from_address || "noreply@rankora.co");
+src/components/admin/EmailSettingsTab.tsx:204:      setPmFromName(config.email_from_name || "Rankora");
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/EmailSettingsTab.tsx-205-      setInboundDomain(config.inbound_email_domain || "inbound.rankora.co");
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/EmailSettingsTab.tsx-206-      setConfigLoaded(true);
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/EmailSettingsTab.tsx-511-                  <Label className="text-sm font-medium">From Name</Label>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/EmailSettingsTab.tsx-512-                  <Input
+src/components/admin/EmailSettingsTab.tsx:513:                    placeholder="Rankora"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/EmailSettingsTab.tsx-514-                    value={pmFromName}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/EmailSettingsTab.tsx-515-                    onChange={(e) => setPmFromName(e.target.value)}
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/security-auditor.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/security-auditor.md-6-
+.claude/agents/security-auditor.md:7:You are the security auditor for Instant Resume Ranker (Rankora). You perform deep security analysis across the full stack — frontend, edge functions, database policies, auth flows, payment handling, and AI pipeline. Your findings can BLOCK deployments. You are the last line of defense.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/security-auditor.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/security-auditor.md-9-## CORE PRINCIPLES
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/CreditPacksTab.tsx-590-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/CreditPacksTab.tsx-591-                <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
+src/components/admin/CreditPacksTab.tsx:592:                  Dodo product will be auto-created/synced when you save (if no manual IDs are provided). Brand "Rankora" is auto-attached.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/CreditPacksTab.tsx-593-                </p>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/CreditPacksTab.tsx-594-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/payment-specialist.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/payment-specialist.md-6-
+.claude/agents/payment-specialist.md:7:You are the payment and billing specialist for Instant Resume Ranker (Rankora). You handle the MOST SENSITIVE code — broken payment logic means lost revenue, incorrect charges, or security vulnerabilities. You operate at the HIGHEST level of care.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/payment-specialist.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/payment-specialist.md-9-## EXTREME SAFETY RULES
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-132-            value={newQ}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-133-            onChange={(e) => setNewQ(e.target.value)}
+src/components/admin/seo/AeoGeoTab.tsx:134:            placeholder="What is Rankora?"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-135-            className="mt-1"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-136-          />
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-141-            value={newA}
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-142-            onChange={(e) => setNewA(e.target.value)}
+src/components/admin/seo/AeoGeoTab.tsx:143:            placeholder="Rankora is an AI-powered resume screening tool..."
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-144-            className="mt-1 min-h-[60px]"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-145-          />
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-214-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-215-  const generateDefaultLlmsTxt = () => {
+src/components/admin/seo/AeoGeoTab.tsx:216:    const siteTitle = settings?.site_title || "Rankora";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-217-    const siteDescription = settings?.site_description || "AI-powered resume screening and candidate ranking platform.";
+src/components/admin/seo/AeoGeoTab.tsx-218-    const canonicalUrl = (settings?.canonical_url || "").replace(/\/$/, "") || "https://rankora.com";
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-392-                  value={form.geo_site_description_for_ai}
+src/components/admin/seo/AeoGeoTab.tsx-393-                  onChange={(e) => setForm({ ...form, geo_site_description_for_ai: e.target.value })}
+src/components/admin/seo/AeoGeoTab.tsx:394:                  placeholder="Rankora is an AI-powered resume screening SaaS platform designed for HR teams and hiring managers. Users paste a job description, upload candidate resumes, and receive GPT-4o-scored rankings with skill gap analysis and interview question suggestions within seconds..."
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-395-                  className="min-h-[120px]"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-396-                />
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-404-                    value={form.geo_author_name}
+src/components/admin/seo/AeoGeoTab.tsx-405-                    onChange={(e) => setForm({ ...form, geo_author_name: e.target.value })}
+src/components/admin/seo/AeoGeoTab.tsx:406:                    placeholder="Rankora"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-407-                    className="mt-1"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-408-                  />
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-459-                  value={form.geo_llms_txt}
+src/components/admin/seo/AeoGeoTab.tsx-460-                  onChange={(e) => setForm({ ...form, geo_llms_txt: e.target.value })}
+src/components/admin/seo/AeoGeoTab.tsx:461:                  placeholder="# Rankora&#10;&#10;> AI-powered resume screening platform..."
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-462-                  className="min-h-[200px] font-mono text-sm mt-1"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/AeoGeoTab.tsx-463-                />
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-1----
+.claude/agents/builder.md-2-name: builder
+.claude/agents/builder.md:3:description: Autonomous feature builder that deeply understands Rankora's architecture, builds clean structured components, and never breaks existing functionality
+.claude/agents/builder.md-4-model: sonnet
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-6-
+.claude/agents/builder.md:7:You are an autonomous feature builder for Instant Resume Ranker (Rankora). You are self-sufficient — you understand the full codebase, make the best architectural decisions, build clean structured code, and NEVER break existing functionality.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-9-## SAFETY RULES (NON-NEGOTIABLE)
+--
+src/components/admin/IntegrationsTab.tsx-241-    postmark_api_token: config?.postmark_api_token || "",
+src/components/admin/IntegrationsTab.tsx-242-    email_from_address: config?.email_from_address || "noreply@rankora.co",
+src/components/admin/IntegrationsTab.tsx:243:    email_from_name: config?.email_from_name || "Rankora",
+src/components/admin/IntegrationsTab.tsx-244-    outbound_email_enabled: config?.outbound_email_enabled ?? false,
+src/components/admin/IntegrationsTab.tsx-245-    email_notify_ranking_complete: config?.email_notify_ranking_complete ?? true,
+--
+src/components/admin/IntegrationsTab.tsx-313-              <InfoRow label="API Token" value={maskedToken ? <span className="font-mono text-xs">{maskedToken}</span> : <span className="text-muted-foreground italic text-xs">Not configured</span>} />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/IntegrationsTab.tsx-314-              <InfoRow label="From Address" value={config?.email_from_address || "noreply@rankora.co"} />
+src/components/admin/IntegrationsTab.tsx:315:              <InfoRow label="From Name" value={config?.email_from_name || "Rankora"} />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/IntegrationsTab.tsx-316-              <InfoRow label="Inbound Domain" value={<span className="font-mono text-xs">{config?.inbound_email_domain || "inbound.rankora.co"}</span>} />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/IntegrationsTab.tsx-317-            </div>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/IntegrationsTab.tsx-357-                    value={form.email_from_name}
+src/components/admin/IntegrationsTab.tsx-358-                    onChange={(e) => setForm({ ...form, email_from_name: e.target.value })}
+src/components/admin/IntegrationsTab.tsx:359:                    placeholder="Rankora"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/IntegrationsTab.tsx-360-                    className="mt-1.5 text-sm"
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/IntegrationsTab.tsx-361-                  />
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/PlansTab.tsx-461-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/PlansTab.tsx-462-                <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
+src/components/admin/PlansTab.tsx:463:                  Dodo product will be auto-created/synced when you save. Brand "Rankora" is auto-attached.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/PlansTab.tsx-464-                </p>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/PlansTab.tsx-465-                <Button onClick={save} className="w-full" disabled={saving}>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-1----
+.claude/agents/reviewer.md-2-name: reviewer
+.claude/agents/reviewer.md:3:description: Autonomous code reviewer that validates changes against Rankora's architecture rules, catches regressions, and ensures code quality
+.claude/agents/reviewer.md-4-model: sonnet
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-6-
+.claude/agents/reviewer.md:7:You are the autonomous code reviewer for Instant Resume Ranker (Rankora). You are the FINAL QUALITY GATE — no code ships without your approval. You validate ALL changes against architecture, catch regressions, flag security issues, and ensure quality. You do NOT make changes yourself.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-9-## REVIEW PROCESS
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/db-specialist.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/db-specialist.md-6-
+.claude/agents/db-specialist.md:7:You are the database specialist for Instant Resume Ranker (Rankora). You handle ALL PostgreSQL schema design, Supabase migrations, RLS policies, database functions, indexes, and performance optimization. You own the data layer.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/db-specialist.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/db-specialist.md-9-## SAFETY RULES (NON-NEGOTIABLE)
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/orchestrator.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/orchestrator.md-6-
+.claude/agents/orchestrator.md:7:You are the master orchestrator for Instant Resume Ranker (Rankora). You coordinate ALL specialist agents, decompose complex tasks, enforce quality gates, and ensure nothing slips through the cracks. You are the BRAIN — you think deeply, plan carefully, and dispatch precisely.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/orchestrator.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/orchestrator.md-9-## YOUR ROLE
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-14-UPDATE public.platform_config
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-15-  SET email_from_address = 'noreply@rankora.co',
+supabase/migrations/20260309210000_migrate_domain_to_rankora.sql:16:      email_from_name = 'Rankora'
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-17-  WHERE email_from_address = 'noreply@instantranker.com'
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-18-     OR email_from_address IS NULL;
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-20-ALTER TABLE public.platform_config
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-21-  ALTER COLUMN email_from_address SET DEFAULT 'noreply@rankora.co',
+supabase/migrations/20260309210000_migrate_domain_to_rankora.sql:22:  ALTER COLUMN email_from_name SET DEFAULT 'Rankora';
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-23-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-24--- 4. Replace the handle_new_user trigger function to use new domain
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-49--- 6. Update email templates with new brand name
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-50-UPDATE public.email_templates
+supabase/migrations/20260309210000_migrate_domain_to_rankora.sql:51:  SET body_html = REPLACE(body_html, 'InstantRanker', 'Rankora')
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_migrate_domain_to_rankora.sql-52-  WHERE body_html LIKE '%InstantRanker%';
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-3-  ADD COLUMN IF NOT EXISTS sendgrid_api_key text,
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-4-  ADD COLUMN IF NOT EXISTS email_from_address text DEFAULT 'noreply@rankora.co',
+supabase/migrations/20260309200000_add_sendgrid_config.sql:5:  ADD COLUMN IF NOT EXISTS email_from_name text DEFAULT 'Rankora',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-6-  ADD COLUMN IF NOT EXISTS outbound_email_enabled boolean DEFAULT false,
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-7-  ADD COLUMN IF NOT EXISTS email_notify_ranking_complete boolean DEFAULT true,
+--
+supabase/migrations/20260309200000_add_sendgrid_config.sql-41-    <a href="{{app_url}}/dashboard?job={{job_id}}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">View Results</a>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-42-  </p>
+supabase/migrations/20260309200000_add_sendgrid_config.sql:43:  <p style="color: #6b7280; font-size: 14px;">— The Rankora Team</p>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-44-</div>',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-45-    'Sent when a job ranking is completed'
+--
+supabase/migrations/20260309200000_add_sendgrid_config.sql-56-    <a href="{{app_url}}/dashboard?job={{job_id}}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Go to Job</a>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-57-  </p>
+supabase/migrations/20260309200000_add_sendgrid_config.sql:58:  <p style="color: #6b7280; font-size: 14px;">— The Rankora Team</p>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-59-</div>',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309200000_add_sendgrid_config.sql-60-    'Sent when resumes are received via email ingestion'
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-5-  ADD COLUMN IF NOT EXISTS postmark_api_token text,
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-6-  ADD COLUMN IF NOT EXISTS email_from_address text DEFAULT 'noreply@rankora.co',
+supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql:7:  ADD COLUMN IF NOT EXISTS email_from_name text DEFAULT 'Rankora',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-8-  ADD COLUMN IF NOT EXISTS email_notify_ranking_complete boolean NOT NULL DEFAULT true,
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-9-  ADD COLUMN IF NOT EXISTS email_notify_resume_received boolean NOT NULL DEFAULT true;
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-39-VALUES
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-40-  ('ranking_complete', 'Your ranking for "{{job_title}}" is ready!',
+supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql:41:   '<h2>Hi {{user_name}},</h2><p>Your ranking for <strong>{{job_title}}</strong> is complete. We scored <strong>{{resume_count}}</strong> resumes.</p><p><a href="{{app_url}}/?job={{job_id}}">View Results</a></p><p>— Rankora</p>',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-42-   'Sent when a job ranking finishes processing'),
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-43-  ('resume_received', 'Resume received for "{{job_title}}"',
+supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql:44:   '<h2>Hi {{user_name}},</h2><p>We received <strong>{{attachment_count}}</strong> resume(s) via email for <strong>{{job_title}}</strong>.</p><p>File: {{filename}}</p><p><a href="{{app_url}}/?job={{job_id}}">View Job</a></p><p>— Rankora</p>',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-45-   'Sent when a resume is received via email ingestion')
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260315162013_2f42c898-4b39-4d8c-bbab-173713e992fa.sql-46-ON CONFLICT (template_key) DO NOTHING;
+--
+supabase/functions/serve-llms-txt/index.ts-1-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-2-
+supabase/functions/serve-llms-txt/index.ts:3:const FALLBACK = `# Rankora
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-5-> AI-powered resume screening and candidate ranking platform.
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-7-## About
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-8-
+supabase/functions/serve-llms-txt/index.ts:9:Rankora is a SaaS application for HR teams and hiring managers. Users paste a job description, upload candidate resumes, and receive GPT-4o-scored rankings with skill gap analysis and interview question suggestions.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-10-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-11-## Key Features
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-43-    // If no custom content, generate a sensible default from site settings
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-44-    if (!content) {
+supabase/functions/serve-llms-txt/index.ts:45:      const siteTitle = data?.site_title || "Rankora";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-46-      const siteDescription = data?.site_description || "AI-powered resume screening and candidate ranking platform.";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/functions/serve-llms-txt/index.ts-47-      const canonicalUrl = (data?.canonical_url || "").replace(/\/$/, "") || "";

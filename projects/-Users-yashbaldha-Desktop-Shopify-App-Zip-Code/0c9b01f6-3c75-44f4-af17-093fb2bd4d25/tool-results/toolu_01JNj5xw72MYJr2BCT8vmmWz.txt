@@ -1,0 +1,1010 @@
+build/client/assets/manifest-367f3473.js:1:[Omitted long matching line]
+shopify.app.toml:20:  topics = [ "app/scopes_update" ]
+shopify.app.toml:21:  uri = "/webhooks/app/scopes_update"
+shopify.app.toml:33:[access_scopes]
+shopify.app.toml:36:scopes = "read_themes"
+shopify.app.toml:37:optional_scopes = []
+.env:2:SCOPES=read_themes
+CHANGELOG.md:11:- Removed unused OAuth scopes (`write_products`, `write_metaobject_definitions`, `write_metaobjects`)
+CHANGELOG.md:30:- Webhook handling: `app/uninstalled`, `app/scopes_update`, `app_subscriptions/update`
+build/server/index.js:48:  scopes: (_a = process.env.SCOPES) == null ? void 0 : _a.split(","),
+build/server/index.js:5206:[Omitted long matching line]
+build/server/index.js:5241:  "routes/webhooks.app.scopes_update": {
+build/server/index.js:5242:    id: "routes/webhooks.app.scopes_update",
+build/server/index.js:5244:    path: "webhooks/app/scopes_update",
+app/shopify.server.ts:34:  scopes: process.env.SCOPES?.split(","),
+.shopify/deploy-bundle/manifest.json:25:        "scopes": "",
+.shopify/deploy-bundle/manifest.json:26:        "optional_scopes": [],
+.shopify/deploy-bundle/manifest.json:79:      "uid": "app/scopes_update::undefined::/webhooks/app/scopes_update",
+.shopify/deploy-bundle/manifest.json:80:      "assets": "app/scopes_update::undefined::/webhooks/app/scopes_update",
+.shopify/deploy-bundle/manifest.json:83:        "topic": "app/scopes_update",
+.shopify/deploy-bundle/manifest.json:85:        "uri": "https://automatic-palm-tree-q7rgr65prq672x9p6-4040.app.github.dev/webhooks/app/scopes_update"
+.react-router/types/+routes.ts:23:  "/webhooks/app/scopes_update": {
+.react-router/types/+routes.ts:81:    page: "/" | "/webhooks/app_subscriptions/update" | "/webhooks/customers/data_request" | "/webhooks/app/scopes_update" | "/webhooks/customers/redact" | "/webhooks/app/uninstalled" | "/webhooks/shop/redact" | "/api/widget-config" | "/api/zip-check" | "/api/waitlist" | "/auth/login" | "/auth/*" | "/app" | "/app/delivery-rules" | "/app/zip-codes" | "/app/settings" | "/app/waitlist" | "/app/pricing" | "/app/widget" | "/app/help";
+.react-router/types/+routes.ts:91:  "routes/webhooks.app.scopes_update.tsx": {
+.react-router/types/+routes.ts:92:    id: "routes/webhooks.app.scopes_update";
+.react-router/types/+routes.ts:93:    page: "/webhooks/app/scopes_update";
+.react-router/types/+routes.ts:173:  "routes/webhooks.app.scopes_update": typeof import("./app/routes/webhooks.app.scopes_update.tsx");
+.shopify/dev-bundle/manifest.json:24:        "scopes": "",
+.shopify/dev-bundle/manifest.json:25:        "optional_scopes": [],
+.shopify/dev-bundle/manifest.json:92:      "uid": "app/scopes_update::undefined::/webhooks/app/scopes_update",
+.shopify/dev-bundle/manifest.json:93:      "assets": "app/scopes_update::undefined::/webhooks/app/scopes_update",
+.shopify/dev-bundle/manifest.json:96:        "topic": "app/scopes_update",
+.shopify/dev-bundle/manifest.json:98:        "uri": "https://listed-prophet-successfully-radiation.trycloudflare.com/webhooks/app/scopes_update"
+.react-router/types/app/routes/+types/webhooks.app.scopes_update.ts:5:type Module = typeof import("../webhooks.app.scopes_update.js")
+.react-router/types/app/routes/+types/webhooks.app.scopes_update.ts:8:  file: "routes/webhooks.app.scopes_update.tsx",
+.react-router/types/app/routes/+types/webhooks.app.scopes_update.ts:16:  id: "routes/webhooks.app.scopes_update";
+.react-router/types/app/routes/+types/webhooks.app.scopes_update.ts:17:  module: typeof import("../webhooks.app.scopes_update.js");
+node_modules/@types/node/inspector.generated.d.ts:780:             * Object representing the scope. For <code>global</code> and <code>with</code> scopes it represents the actual object; for the rest of the scopes, it is artificial transient object enumerating scope variables as its properties.
+node_modules/@types/node/inspector.generated.d.ts:996:             * 0-based number of scope as was listed in scope chain. Only 'local', 'closure' and 'catch' scope types are allowed. Other scopes could be manipulated manually.
+node_modules/@types/node/inspector.generated.d.ts:2195:         * Changes value of variable in a callframe. Object-based scopes are not supported and must be mutated manually.
+node_modules/@types/node/inspector.generated.d.ts:3252:         * Changes value of variable in a callframe. Object-based scopes are not supported and must be mutated manually.
+node_modules/@types/node/process.d.ts:414:                 * The available scopes are:
+node_modules/@types/eslint/index.d.ts:42:        scopes: Scope[];
+node_modules/ts-api-utils/lib/index.cjs:1377:// src/usage/scopes.ts
+node_modules/ts-api-utils/lib/index.js:1371:// src/usage/scopes.ts
+node_modules/jiti/dist/babel.js:1:[Omitted long matching line]
+node_modules/jiti/dist/babel.js:227:[Omitted long matching line]
+node_modules/eslint-scope/lib/reference.js:50:         * 'with', etc.), and may be trapped by dynamic scopes.
+node_modules/eslint-scope/lib/variable.js:48:         * in its defining scope and all nested scopes. For defining
+node_modules/eslint-scope/lib/scope.js:130:    scopeManager.scopes.push(scope);
+node_modules/eslint-scope/lib/scope.js:132:    const scopes = scopeManager.__nodeToScope.get(scope.block);
+node_modules/eslint-scope/lib/scope.js:134:    if (scopes) {
+node_modules/eslint-scope/lib/scope.js:135:        scopes.push(scope);
+node_modules/eslint-scope/lib/scope.js:182:         * a few exceptions to this rule. With 'global' and 'with' scopes you
+node_modules/eslint-scope/lib/scope.js:185:         * bindings in this or its parent scopes.
+node_modules/eslint-scope/lib/scope.js:186:         * All those scopes are considered 'dynamic'.
+node_modules/eslint-scope/lib/scope.js:214:         * parent scopes (including the global scope). For local variables
+node_modules/eslint-scope/lib/scope.js:223:         * For 'global' and 'function' scopes, this is a self-reference. For
+node_modules/eslint-scope/lib/scope.js:353:    // To override by function scopes.
+node_modules/eslint-scope/lib/scope-manager.js:48:        this.scopes = [];
+node_modules/eslint-scope/lib/scope-manager.js:123:        const scopes = this.__get(node);
+node_modules/eslint-scope/lib/scope-manager.js:125:        if (!scopes || scopes.length === 0) {
+node_modules/eslint-scope/lib/scope-manager.js:129:        // Heuristic selection from all scopes.
+node_modules/eslint-scope/lib/scope-manager.js:130:        // If you would like to get all scopes, please use ScopeManager#acquireAll.
+node_modules/eslint-scope/lib/scope-manager.js:131:        if (scopes.length === 1) {
+node_modules/eslint-scope/lib/scope-manager.js:132:            return scopes[0];
+node_modules/eslint-scope/lib/scope-manager.js:136:            for (let i = scopes.length - 1; i >= 0; --i) {
+node_modules/eslint-scope/lib/scope-manager.js:137:                const scope = scopes[i];
+node_modules/eslint-scope/lib/scope-manager.js:144:            for (let i = 0, iz = scopes.length; i < iz; ++i) {
+node_modules/eslint-scope/lib/scope-manager.js:145:                const scope = scopes[i];
+node_modules/eslint-scope/lib/scope-manager.js:157:     * acquire all scopes from node.
+node_modules/eslint-scope/lib/scope-manager.js:174:        const scopes = this.__get(node);
+node_modules/eslint-scope/lib/scope-manager.js:176:        if (scopes && scopes.length) {
+node_modules/eslint-scope/lib/scope-manager.js:177:            const scope = scopes[0].upper;
+node_modules/eslint-scope/lib/index.js:33: * <em>escope</em> finds lexical scopes in a source program, i.e. areas of that
+node_modules/eslint-scope/lib/index.js:113: * analyzed scopes.
+node_modules/eslint-scope/dist/eslint-scope.cjs:64:         * 'with', etc.), and may be trapped by dynamic scopes.
+node_modules/eslint-scope/dist/eslint-scope.cjs:227:         * in its defining scope and all nested scopes. For defining
+node_modules/eslint-scope/dist/eslint-scope.cjs:464:    scopeManager.scopes.push(scope);
+node_modules/eslint-scope/dist/eslint-scope.cjs:466:    const scopes = scopeManager.__nodeToScope.get(scope.block);
+node_modules/eslint-scope/dist/eslint-scope.cjs:468:    if (scopes) {
+node_modules/eslint-scope/dist/eslint-scope.cjs:469:        scopes.push(scope);
+node_modules/eslint-scope/dist/eslint-scope.cjs:516:         * a few exceptions to this rule. With 'global' and 'with' scopes you
+node_modules/eslint-scope/dist/eslint-scope.cjs:519:         * bindings in this or its parent scopes.
+node_modules/eslint-scope/dist/eslint-scope.cjs:520:         * All those scopes are considered 'dynamic'.
+node_modules/eslint-scope/dist/eslint-scope.cjs:548:         * parent scopes (including the global scope). For local variables
+node_modules/eslint-scope/dist/eslint-scope.cjs:557:         * For 'global' and 'function' scopes, this is a self-reference. For
+node_modules/eslint-scope/dist/eslint-scope.cjs:687:    // To override by function scopes.
+node_modules/eslint-scope/dist/eslint-scope.cjs:1121:        this.scopes = [];
+node_modules/eslint-scope/dist/eslint-scope.cjs:1196:        const scopes = this.__get(node);
+node_modules/eslint-scope/dist/eslint-scope.cjs:1198:        if (!scopes || scopes.length === 0) {
+node_modules/eslint-scope/dist/eslint-scope.cjs:1202:        // Heuristic selection from all scopes.
+node_modules/eslint-scope/dist/eslint-scope.cjs:1203:        // If you would like to get all scopes, please use ScopeManager#acquireAll.
+node_modules/eslint-scope/dist/eslint-scope.cjs:1204:        if (scopes.length === 1) {
+node_modules/eslint-scope/dist/eslint-scope.cjs:1205:            return scopes[0];
+node_modules/eslint-scope/dist/eslint-scope.cjs:1209:            for (let i = scopes.length - 1; i >= 0; --i) {
+node_modules/eslint-scope/dist/eslint-scope.cjs:1210:                const scope = scopes[i];
+node_modules/eslint-scope/dist/eslint-scope.cjs:1217:            for (let i = 0, iz = scopes.length; i < iz; ++i) {
+node_modules/eslint-scope/dist/eslint-scope.cjs:1218:                const scope = scopes[i];
+node_modules/eslint-scope/dist/eslint-scope.cjs:1230:     * acquire all scopes from node.
+node_modules/eslint-scope/dist/eslint-scope.cjs:1247:        const scopes = this.__get(node);
+node_modules/eslint-scope/dist/eslint-scope.cjs:1249:        if (scopes && scopes.length) {
+node_modules/eslint-scope/dist/eslint-scope.cjs:1250:            const scope = scopes[0].upper;
+node_modules/eslint-scope/dist/eslint-scope.cjs:2199: * analyzed scopes.
+node_modules/eslint-plugin-import/lib/rules/newline-after-import.js:24:    log('SwitchStatement scopes not supported');
+node_modules/eslint-plugin-import/lib/rules/no-import-module-exports.js:20:  return scopeManager && scopeManager.scopes.slice().reverse().find(function (scope) {return scope.variables.some(function (variable) {return variable.identifiers.some(function (node) {return node.name === identifier;});});});
+node_modules/eslint-plugin-import/lib/exportMap/builder.js:26:                              * The creation of this closure is isolated from other scopes
+node_modules/eslint-plugin-import/lib/rules/namespace.js:160:            // check for redefinition in intermediate scopes
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1160: * `Scope` represents an [access scope](https://shopify.dev/docs/api/usage/access-scopes) handle, like "`write_products`" or "`read_orders`"
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1165: * The Scopes API enables embedded apps and extensions to request merchant consent for access scopes.
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1169:     * Queries Shopify for the scopes for this app on this shop
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1173:     * Requests the merchant to grant the provided scopes for this app on this shop
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1175:     * This will open a [permission grant modal](/docs/apps/build/authentication-authorization/app-installation/manage-access-scopes#request-access-scopes-using-the-app-bridge-api-for-embedded-apps) for the merchant to accept or decline the scopes.
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1177:    request: (scopes: Scope[]) => Promise<ScopesRequestResponse>;
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1179:     * Revokes the provided scopes from this app on this shop
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1181:    revoke: (scopes: Scope[]) => Promise<ScopesRevokeResponse>;
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1186:     * The scopes that have been granted on the shop for this app
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1190:     * The required scopes that the app has declared in its configuration
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1194:     * The optional scopes that the app has declared in its configuration
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1228:    scopes: Scopes;
+node_modules/@shopify/app-bridge-types/dist/shopify.ts:1608: * `UserResult` represents the results of a user responding to a scopes request, i.e. a merchant user’s action taken when presented with a grant modal.
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/test-helpers/test-config.js:10:    scopes: ['testScope'],
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/test-helpers/test-config.js.map:1:[Omitted long matching line]
+node_modules/acorn/CHANGELOG.md:15:Properly reject `using` declarations that appear directly in `switch` or `for` head scopes.
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/test-helpers/test-config.mjs:8:    scopes: ['testScope'],
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/test-helpers/test-config.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/shopify-app.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/helpers/redirect-to-install-page.js:27:        ? { optional_scopes: optionalScopes.join(',') }
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/helpers/redirect-to-install-page.js:31:        scope: config.scopes?.toString() || '',
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/helpers/redirect-to-install-page.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/shopify-app.mjs:26: * @param appConfig Configuration options for your Shopify app, such as the scopes your app needs.
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/shopify-app.mjs:38: *   scopes: process.env.SCOPES?.split(",")!,
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/shopify-app.mjs:141:        scopes: apiConfig.scopes,
+node_modules/@shopify/shopify-app-session-storage-prisma/dist/tsconfig.build.tsbuildinfo:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/README.md:17:Once your app has access to the Admin API, you can also access the [Shopify Storefront API](https://shopify.dev/docs/api/storefront) to run GraphQL queries using the `unauthenticated_*` access scopes.
+node_modules/@shopify/shopify-api/README.md:105:- The [scopes](https://shopify.dev/docs/api/usage/access-scopes) you need for your app
+node_modules/@shopify/shopify-api/README.md:118:  scopes: ['read_products'],
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/shopify-app.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/authenticate.js:79:            scopes: factory.scopesApiFactory(params, context.session, context.admin),
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/authenticate.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/revoke-scopes.js:4:mutation AppRevokeAccessScopes($scopes: [String!]!) {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/revoke-scopes.js:5:  appRevokeAccessScopes(scopes: $scopes){
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/revoke-scopes.js:15:async function revokeScopes(admin, scopes) {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/revoke-scopes.js:18:            scopes,
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/revoke-scopes.js:26://# sourceMappingURL=revoke-scopes.js.map
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/revoke-scopes.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/fetch-scopes-details.js:3:const FETCH_SCOPES_DETAIL_QUERY = `#graphql
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/fetch-scopes-details.js:20:    const fetchScopeDetailResult = await admin.graphql(FETCH_SCOPES_DETAIL_QUERY);
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/fetch-scopes-details.js:26://# sourceMappingURL=fetch-scopes-details.js.map
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/client/fetch-scopes-details.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/shopify-app.js:28: * @param appConfig Configuration options for your Shopify app, such as the scopes your app needs.
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/shopify-app.js:40: *   scopes: process.env.SCOPES?.split(",")!,
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/shopify-app.js:143:        scopes: apiConfig.scopes,
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:3:var revokeScopes = require('./client/revoke-scopes.js');
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:6:    return async function revoke(scopes) {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:8:        await validateScopes(scopes);
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:9:        logger.debug('Revoke scopes: ', {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:11:            scopes,
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:13:        const revokeScopesResult = await revokeScopes.revokeScopes(admin, scopes);
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:15:            logger.error('Failed to revoke scopes: ', {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:31:async function validateScopes(scopes) {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:32:    if (!scopes || scopes.length === 0) {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js:33:        throw new Response('No scopes provided', { status: 400 });
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/query.js:4:var fetchScopesDetails = require('./client/fetch-scopes-details.js');
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/query.js:9:        logger.debug('Querying scopes details: ', {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/query.js:12:        const scopesDetail = await fetchScopesDetails.fetchScopeDetail(admin);
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/query.js:13:        return mapFetchScopeDetail(scopesDetail);
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/query.js:16:function mapFetchScopeDetail(scopesDetailResponse) {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/query.js:17:    const appInformation = scopesDetailResponse.app;
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/query.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:5:var fetchScopesDetails = require('./client/fetch-scopes-details.js');
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:8:    return async function requestScopes(scopes) {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:10:        logger.debug('Requesting optional scopes: ', { shop: session.shop, scopes });
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:11:        if (scopes.length === 0)
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:13:        if (await alreadyGranted(scopes, admin))
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:15:        throw await redirectToInstallPage.redirectToInstallPage(params, session.shop, scopes);
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:17:    async function alreadyGranted(scopes, admin) {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:18:        const scopesDetail = await fetchScopesDetails.fetchScopeDetail(admin);
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:19:        const grantedScopes = scopesDetail.app.installation.accessScopes.map((scope) => scope.handle);
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/request.js:20:        return new shopifyApi.AuthScopes(grantedScopes).has(scopes);
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/factory.js:7:function scopesApiFactory(params, session, admin) {
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/factory.js:15:exports.scopesApiFactory = scopesApiFactory;
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/revoke.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/cjs/server/authenticate/admin/scope/factory.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/helpers/redirect-to-install-page.mjs.map:1:[Omitted long matching line]
+node_modules/.vite/deps/chunk-RLJ2RCJQ.js:1735:                      error("You called act(async () => ...) without await. This could lead to unexpected testing behaviour, interleaving multiple act calls and mixing their scopes. You should - await act(async () => ...);");
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/helpers/redirect-to-install-page.mjs:25:        ? { optional_scopes: optionalScopes.join(',') }
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/helpers/redirect-to-install-page.mjs:29:        scope: config.scopes?.toString() || '',
+node_modules/@shopify/polaris-types/dist/polaris.d.ts:1509: * The “section” scopes the autocomplete data that should be inserted
+node_modules/@shopify/shopify-app-session-storage/dist/tsconfig.build.tsbuildinfo:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/authenticate.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/authenticate.mjs:22:import { scopesApiFactory } from './scope/factory.mjs';
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/authenticate.mjs:77:            scopes: scopesApiFactory(params, context.session, context.admin),
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/revoke-scopes.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/cli/oclif.manifest.json:2341:[Omitted long matching line]
+node_modules/@shopify/cli/oclif.manifest.json:2342:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/revoke-scopes.mjs:2:mutation AppRevokeAccessScopes($scopes: [String!]!) {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/revoke-scopes.mjs:3:  appRevokeAccessScopes(scopes: $scopes){
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/revoke-scopes.mjs:13:async function revokeScopes(admin, scopes) {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/revoke-scopes.mjs:16:            scopes,
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/revoke-scopes.mjs:24://# sourceMappingURL=revoke-scopes.mjs.map
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/fetch-scopes-details.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/fetch-scopes-details.mjs:1:const FETCH_SCOPES_DETAIL_QUERY = `#graphql
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/fetch-scopes-details.mjs:18:    const fetchScopeDetailResult = await admin.graphql(FETCH_SCOPES_DETAIL_QUERY);
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/fetch-scopes-details.mjs:24://# sourceMappingURL=fetch-scopes-details.mjs.map
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/factory.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/factory.mjs:5:function scopesApiFactory(params, session, admin) {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/factory.mjs:13:export { scopesApiFactory };
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/query.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/test-helpers/test-config.d.ts:9:    readonly scopes: any;
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/query.mjs:2:import { fetchScopeDetail } from './client/fetch-scopes-details.mjs';
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/query.mjs:7:        logger.debug('Querying scopes details: ', {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/query.mjs:10:        const scopesDetail = await fetchScopeDetail(admin);
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/query.mjs:11:        return mapFetchScopeDetail(scopesDetail);
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/query.mjs:14:function mapFetchScopeDetail(scopesDetailResponse) {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/query.mjs:15:    const appInformation = scopesDetailResponse.app;
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/cli/dist/chunk-E4GUDBAR.js:6391:              wasAwaited || (didWarnNoAwaitAct = !0, error("You called act(async () => ...) without await. This could lead to unexpected testing behaviour, interleaving multiple act calls and mixing their scopes. You should - await act(async () => ...);"));
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/shopify-app.d.ts:9: * @param appConfig Configuration options for your Shopify app, such as the scopes your app needs.
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/shopify-app.d.ts:21: *   scopes: process.env.SCOPES?.split(",")!,
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:1:import { revokeScopes } from './client/revoke-scopes.mjs';
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:4:    return async function revoke(scopes) {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:6:        await validateScopes(scopes);
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:7:        logger.debug('Revoke scopes: ', {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:9:            scopes,
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:11:        const revokeScopesResult = await revokeScopes(admin, scopes);
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:13:            logger.error('Failed to revoke scopes: ', {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:29:async function validateScopes(scopes) {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:30:    if (!scopes || scopes.length === 0) {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/revoke.mjs:31:        throw new Response('No scopes provided', { status: 400 });
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:3:import { fetchScopeDetail } from './client/fetch-scopes-details.mjs';
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:6:    return async function requestScopes(scopes) {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:8:        logger.debug('Requesting optional scopes: ', { shop: session.shop, scopes });
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:9:        if (scopes.length === 0)
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:11:        if (await alreadyGranted(scopes, admin))
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:13:        throw await redirectToInstallPage(params, session.shop, scopes);
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:15:    async function alreadyGranted(scopes, admin) {
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:16:        const scopesDetail = await fetchScopeDetail(admin);
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:17:        const grantedScopes = scopesDetail.app.installation.accessScopes.map((scope) => scope.handle);
+node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/request.mjs:18:        return new AuthScopes(grantedScopes).has(scopes);
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-07/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-07/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-07/access_scope.js:32:    access_scopes;
+node_modules/.vite/deps/chunk-RLJ2RCJQ.js.map:4:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-07/access_scope.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/tsconfig.build.tsbuildinfo:1:[Omitted long matching line]
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:852:  const optionalScopesParam = optionalScopes && optionalScopes.length > 0 ? { optional_scopes: optionalScopes.join(",") } : void 0;
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:855:    scope: ((_a = config.scopes) == null ? void 0 : _a.toString()) || "",
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:861:// node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/fetch-scopes-details.mjs
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:862:var FETCH_SCOPES_DETAIL_QUERY = `#graphql
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:879:  const fetchScopeDetailResult = await admin.graphql(FETCH_SCOPES_DETAIL_QUERY);
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:886:  return async function requestScopes(scopes) {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:888:    logger.debug("Requesting optional scopes: ", { shop: session.shop, scopes });
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:889:    if (scopes.length === 0)
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:891:    if (await alreadyGranted(scopes, admin))
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:893:    throw await redirectToInstallPage(params, session.shop, scopes);
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:895:  async function alreadyGranted(scopes, admin2) {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:896:    const scopesDetail = await fetchScopeDetail(admin2);
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:897:    const grantedScopes = scopesDetail.app.installation.accessScopes.map((scope) => scope.handle);
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:898:    return new AuthScopes(grantedScopes).has(scopes);
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:906:    logger.debug("Querying scopes details: ", {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:909:    const scopesDetail = await fetchScopeDetail(admin);
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:910:    return mapFetchScopeDetail(scopesDetail);
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:913:function mapFetchScopeDetail(scopesDetailResponse) {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:914:  const appInformation = scopesDetailResponse.app;
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:925:// node_modules/@shopify/shopify-app-react-router/dist/esm/server/authenticate/admin/scope/client/revoke-scopes.mjs
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:927:mutation AppRevokeAccessScopes($scopes: [String!]!) {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:928:  appRevokeAccessScopes(scopes: $scopes){
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:938:async function revokeScopes(admin, scopes) {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:941:      scopes
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:950:  return async function revoke(scopes) {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:953:    await validateScopes(scopes);
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:954:    logger.debug("Revoke scopes: ", {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:956:      scopes
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:958:    const revokeScopesResult = await revokeScopes(admin, scopes);
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:960:      logger.error("Failed to revoke scopes: ", {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:976:async function validateScopes(scopes) {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:977:  if (!scopes || scopes.length === 0) {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:978:    throw new Response("No scopes provided", { status: 400 });
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:983:function scopesApiFactory(params, session, admin) {
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:1045:      scopes: scopesApiFactory(params, context.session, context.admin)
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js:1860:    scopes: apiConfig.scopes,
+node_modules/typescript/lib/typescript.d.ts:7482:         * @param reservedInNestedScopes When `true`, reserves the temporary variable name in all nested scopes
+node_modules/typescript/lib/typescript.d.ts:7489:         * @param reservedInNestedScopes When `true`, reserves the temporary variable name in all nested scopes
+node_modules/.vite/deps/chunk-OHP35EGM.js.map:3:[Omitted long matching line]
+node_modules/.vite/deps/chunk-OHP35EGM.js.map:4:[Omitted long matching line]
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js.map:3:[Omitted long matching line]
+node_modules/.vite/deps/@shopify_shopify-app-react-router_server.js.map:4:[Omitted long matching line]
+node_modules/.vite/deps/chunk-OHP35EGM.js:169:// node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs
+node_modules/.vite/deps/chunk-OHP35EGM.js:171:  constructor(scopes) {
+node_modules/.vite/deps/chunk-OHP35EGM.js:175:    let scopesArray = [];
+node_modules/.vite/deps/chunk-OHP35EGM.js:176:    if (typeof scopes === "string") {
+node_modules/.vite/deps/chunk-OHP35EGM.js:177:      scopesArray = scopes.split(new RegExp(`${_AuthScopes.SCOPE_DELIMITER}\\s*`));
+node_modules/.vite/deps/chunk-OHP35EGM.js:178:    } else if (Array.isArray(scopes)) {
+node_modules/.vite/deps/chunk-OHP35EGM.js:179:      scopesArray = scopes;
+node_modules/.vite/deps/chunk-OHP35EGM.js:180:    } else if (scopes) {
+node_modules/.vite/deps/chunk-OHP35EGM.js:181:      scopesArray = Array.from(scopes.expandedScopes);
+node_modules/.vite/deps/chunk-OHP35EGM.js:183:    scopesArray = scopesArray.map((scope) => scope.trim()).filter((scope) => scope.length);
+node_modules/.vite/deps/chunk-OHP35EGM.js:184:    const impliedScopes = this.getImpliedScopes(scopesArray);
+node_modules/.vite/deps/chunk-OHP35EGM.js:185:    const scopeSet = new Set(scopesArray);
+node_modules/.vite/deps/chunk-OHP35EGM.js:192:   * Checks whether the current set of scopes includes the given one.
+node_modules/.vite/deps/chunk-OHP35EGM.js:204:   * Checks whether the current set of scopes equals the given one.
+node_modules/.vite/deps/chunk-OHP35EGM.js:216:   * Returns a comma-separated string with the current set of scopes.
+node_modules/.vite/deps/chunk-OHP35EGM.js:222:   * Returns an array with the current set of scopes.
+node_modules/.vite/deps/chunk-OHP35EGM.js:227:  getImpliedScopes(scopesArray) {
+node_modules/.vite/deps/chunk-OHP35EGM.js:228:    return scopesArray.reduce((array, current) => {
+node_modules/.vite/deps/chunk-OHP35EGM.js:272:     * The desired scopes for the access token, at the time the session was created.
+node_modules/.vite/deps/chunk-OHP35EGM.js:410:   * scopes if scopes is equal to a truthy value.
+node_modules/.vite/deps/chunk-OHP35EGM.js:412:  isActive(scopes, withinMillisecondsOfExpiry = 500) {
+node_modules/.vite/deps/chunk-OHP35EGM.js:415:    const isScopeChanged = this.isScopeChanged(scopes);
+node_modules/.vite/deps/chunk-OHP35EGM.js:419:   * Whether the access token includes the given scopes if they are provided.
+node_modules/.vite/deps/chunk-OHP35EGM.js:421:  isScopeChanged(scopes) {
+node_modules/.vite/deps/chunk-OHP35EGM.js:422:    if (typeof scopes === "undefined") {
+node_modules/.vite/deps/chunk-OHP35EGM.js:425:    return !this.isScopeIncluded(scopes);
+node_modules/.vite/deps/chunk-OHP35EGM.js:428:   * Whether the access token includes the given scopes.
+node_modules/.vite/deps/chunk-OHP35EGM.js:430:  isScopeIncluded(scopes) {
+node_modules/.vite/deps/chunk-OHP35EGM.js:431:    const requiredScopes = scopes instanceof AuthScopes ? scopes : new AuthScopes(scopes);
+node_modules/.vite/deps/chunk-OHP35EGM.js:784:  let scopes;
+node_modules/.vite/deps/chunk-OHP35EGM.js:785:  if (params.scopes === void 0) {
+node_modules/.vite/deps/chunk-OHP35EGM.js:786:    scopes = void 0;
+node_modules/.vite/deps/chunk-OHP35EGM.js:787:  } else if (params.scopes instanceof AuthScopes) {
+node_modules/.vite/deps/chunk-OHP35EGM.js:788:    scopes = params.scopes;
+node_modules/.vite/deps/chunk-OHP35EGM.js:790:    scopes = new AuthScopes(params.scopes);
+node_modules/.vite/deps/chunk-OHP35EGM.js:794:    scopes,
+node_modules/.vite/deps/chunk-OHP35EGM.js:4333:    const scopes = config2.scopes ? config2.scopes.toString() : "";
+node_modules/.vite/deps/chunk-OHP35EGM.js:4336:      scope: scopes,
+node_modules/typescript/lib/typescript.js:23599:                useResult = result.flags & 262144 /* TypeParameter */ ? !!(lastLocation.flags & 16 /* Synthesized */) || // Synthetic fake scopes are added for signatures so type parameters are accessible from them
+node_modules/typescript/lib/typescript.js:23606:                  useResult = lastLocation.kind === 170 /* Parameter */ || !!(lastLocation.flags & 16 /* Synthesized */) || // Synthetic fake scopes are added for signatures so parameters are accessible from them
+node_modules/typescript/lib/typescript.js:150030:  Messages2.cannotAccessVariablesFromNestedScopes = createMessage("Cannot access variables from nested scopes");
+node_modules/typescript/lib/typescript.js:150351:  const scopes = [];
+node_modules/typescript/lib/typescript.js:150358:      scopes.push(current);
+node_modules/typescript/lib/typescript.js:150360:        return scopes;
+node_modules/typescript/lib/typescript.js:150366:  const { scopes, readsAndWrites: { target, usagesPerScope, functionErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context);
+node_modules/typescript/lib/typescript.js:150369:  return extractFunctionInScope(target, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], exposedVariableDeclarations, targetRange, context);
+node_modules/typescript/lib/typescript.js:150372:  const { scopes, readsAndWrites: { target, usagesPerScope, constantErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context);
+node_modules/typescript/lib/typescript.js:150377:  return extractConstantInScope(expression, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], targetRange.facts, context);
+node_modules/typescript/lib/typescript.js:150380:  const { scopes, affectedTextRange, readsAndWrites: { functionErrorsPerScope, constantErrorsPerScope } } = getPossibleExtractionsWorker(targetRange, context);
+node_modules/typescript/lib/typescript.js:150381:  const extractions = scopes.map((scope, i) => {
+node_modules/typescript/lib/typescript.js:150415:  const scopes = collectEnclosingScopes(targetRange);
+node_modules/typescript/lib/typescript.js:150419:    scopes,
+node_modules/typescript/lib/typescript.js:150425:  return { scopes, affectedTextRange: enclosingTextRange, readsAndWrites };
+node_modules/typescript/lib/typescript.js:151119:function collectReadsAndWrites(targetRange, scopes, enclosingTextRange, sourceFile, checker, cancellationToken) {
+node_modules/typescript/lib/typescript.js:151139:  for (const scope of scopes) {
+node_modules/typescript/lib/typescript.js:151167:    for (let curr = unmodifiedNode; curr !== void 0 && i < scopes.length; curr = curr.parent) {
+node_modules/typescript/lib/typescript.js:151168:      if (curr === scopes[i]) {
+node_modules/typescript/lib/typescript.js:151183:    Debug.assert(i === scopes.length, "Should have iterated all scopes");
+node_modules/typescript/lib/typescript.js:151186:    const containingLexicalScopeOfExtraction = isBlockScope(scopes[0], scopes[0].parent) ? scopes[0] : getEnclosingBlockScopeContainer(scopes[0]);
+node_modules/typescript/lib/typescript.js:151189:  for (let i = 0; i < scopes.length; i++) {
+node_modules/typescript/lib/typescript.js:151195:    if (targetRange.facts & 16 /* UsesThisInFunction */ && isClassLike(scopes[i])) {
+node_modules/typescript/lib/typescript.js:151274:      for (let i = 0; i < scopes.length; i++) {
+node_modules/typescript/lib/typescript.js:151319:    for (let i = 0; i < scopes.length; i++) {
+node_modules/typescript/lib/typescript.js:151320:      const scope = scopes[i];
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/client/revoke-scopes.d.ts:11:export declare function revokeScopes(admin: AdminApiContext, scopes: string[]): Promise<RevokeScopesResponse>;
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/client/revoke-scopes.d.ts:12://# sourceMappingURL=revoke-scopes.d.ts.map
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/client/fetch-scopes-details.d.ts:18://# sourceMappingURL=fetch-scopes-details.d.ts.map
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/client/fetch-scopes-details.d.ts.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/client/revoke-scopes.d.ts.map:1:{"version":3,"file":"revoke-scopes.d.ts","sourceRoot":"","sources":["../../../../../../../src/server/authenticate/admin/scope/client/revoke-scopes.ts"],"names":[],"mappings":"AAAA,OAAO,EAAC,eAAe,EAAC,MAAM,qBAAqB,CAAC;AAEpD,MAAM,WAAW,oBAAoB;IACnC,OAAO,EAAE;QACP,MAAM,EAAE,MAAM,CAAC;KAChB,EAAE,CAAC;IACJ,UAAU,EAAE;QACV,KAAK,EAAE,MAAM,CAAC;QACd,OAAO,EAAE,MAAM,CAAC;KACjB,EAAE,CAAC;CACL;AAeD,wBAAsB,YAAY,CAChC,KAAK,EAAE,eAAe,EACtB,MAAM,EAAE,MAAM,EAAE,GACf,OAAO,CAAC,oBAAoB,CAAC,CAS/B"}
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-10/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-10/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-10/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/factory.d.ts:5:export declare function scopesApiFactory(params: BasicParams, session: Session, admin: AdminApiContext): ScopesApiContext;
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/authenticate.admin.scopes.doc.d.ts:4://# sourceMappingURL=authenticate.admin.scopes.doc.d.ts.map
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-10/access_scope.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/authenticate.admin.scopes.doc.d.ts.map:1:{"version":3,"file":"authenticate.admin.scopes.doc.d.ts","sourceRoot":"","sources":["../../../../../../src/server/authenticate/admin/scope/authenticate.admin.scopes.doc.ts"],"names":[],"mappings":"AAAA,OAAO,EAAC,6BAA6B,EAAC,MAAM,wBAAwB,CAAC;AAErE,QAAA,MAAM,IAAI,EAAE,6BAuBX,CAAC;AAEF,eAAe,IAAI,CAAC"}
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/query.d.ts:5:import { FetchScopesDetailResponse } from './client/fetch-scopes-details';
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/query.d.ts:7:export declare function mapFetchScopeDetail(scopesDetailResponse: FetchScopesDetailResponse): ScopesDetail;
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52837:  scopes: z.array(z.string()),
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52843:  scopes: z.array(z.string()),
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52855:  let currentScopes = identity.scopes;
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52858:async function validateSession(scopes, applications, session) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52859:  if (!session || !validateScopes(scopes, session.identity))
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52887:// ../cli-kit/dist/private/node/session/scopes.js
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52890:  let scopes = allAPIs.map((api) => defaultApiScopes(api)).flat();
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52891:  return scopes = ["openid", ...scopes, ...extraScopes].map(scopeTransform), Array.from(new Set(scopes));
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52894:  let scopes = [...defaultApiScopes(api), ...extraScopes.map(scopeTransform)].map(scopeTransform);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:52895:  return Array.from(new Set(scopes));
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53394:async function exchangeAccessForApplicationTokens(identityToken, scopes, store2) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53396:    requestAppToken("partners", token, scopes.partners),
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53397:    requestAppToken("storefront-renderer", token, scopes.storefront),
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53398:    requestAppToken("business-platform", token, scopes.businessPlatform),
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53399:    store2 ? requestAppToken("admin", token, scopes.admin, store2) : {},
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53400:    requestAppToken("app-management", token, scopes.appManagement)
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53419:async function exchangeCliTokenForAccessToken(apiName, token, scopes) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53422:    let accessToken = (await requestAppToken(apiName, token, scopes))[appId].accessToken, userId2 = nonRandomUUID(token);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53449:async function requestAppToken(api, token, scopes = [], store2) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53456:    scope: scopes.join(" "),
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53486:    scopes: result.scope.split(" "),
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53495:    scopes: result.scope.split(" ")
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53539:async function requestDeviceAuthorization(scopes) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53540:  let fqdn = await identityFqdn(), queryParams = { client_id: clientId(), scope: scopes.join(" ") }, url4 = `https://${fqdn}/oauth/device_authorization`, response = await shopifyFetch(url4, {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53641:  return outputDebug(outputContent`Ensuring that the user is authenticated with no particular scopes`), { userId: (await ensureAuthenticated({}, env, options2)).userId };
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53643:async function ensureAuthenticatedPartners(scopes = [], env = process.env, options2 = {}) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53644:  outputDebug(outputContent`Ensuring that the user is authenticated with the Partners API with the following scopes:
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53645:${outputToken.json(scopes)}
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53652:  let tokens = await ensureAuthenticated({ partnersApi: { scopes } }, env, options2);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53658:  outputDebug(outputContent`Ensuring that the user is authenticated with the App Management API with the following scopes:
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53670:  let tokens = await ensureAuthenticated({ appManagementApi: { scopes: appManagementScopes }, businessPlatformApi: { scopes: businessPlatformScopes } }, env, options2);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53679:async function ensureAuthenticatedStorefront(scopes = [], password = void 0, options2 = {}) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53684:  outputDebug(outputContent`Ensuring that the user is authenticated with the Storefront API with the following scopes:
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53685:${outputToken.json(scopes)}
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53687:  let tokens = await ensureAuthenticated({ storefrontRendererApi: { scopes } }, process.env, options2);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53692:async function ensureAuthenticatedAdmin(store2, scopes = [], options2 = {}) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53693:  outputDebug(outputContent`Ensuring that the user is authenticated with the Admin API with the following scopes for the store ${outputToken.raw(store2)}:
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53694:${outputToken.json(scopes)}
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53696:  let tokens = await ensureAuthenticated({ adminApi: { scopes, storeFqdn: store2 } }, process.env, {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53703:async function ensureAuthenticatedThemes(store2, password, scopes = [], options2 = {}) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53704:  if (outputDebug(outputContent`Ensuring that the user is authenticated with the Theme API with the following scopes:
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53705:${outputToken.json(scopes)}
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53710:  return ensureAuthenticatedAdmin(store2, scopes, options2);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53712:async function ensureAuthenticatedBusinessPlatform(scopes = []) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53713:  outputDebug(outputContent`Ensuring that the user is authenticated with the Business Platform API with the following scopes:
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53714:${outputToken.json(scopes)}
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:53716:  let tokens = await ensureAuthenticated({ businessPlatformApi: { scopes } }, process.env);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54163:  let currentSession = currentSessionId && !forceNewSession ? sessions[fqdn]?.[currentSessionId] : void 0, scopes = getFlattenScopes(applications);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54164:  outputDebug(outputContent`Validating existing session against the scopes:
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54165:${outputToken.json(scopes)}
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54169:  let validationResult = await validateSession(scopes, applications, currentSession), newSession = {};
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54198:  let scopes = getFlattenScopes(applications), exchangeScopes = getExchangeScopes(applications), store2 = applications.adminApi?.storeFqdn;
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54199:  firstPartyDev() && (outputDebug(outputContent`Authenticating as Shopify Employee...`), scopes.push("employee"));
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54202:    identityToken = buildIdentityTokenFromEnv(scopes, identityTokenInformation);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54205:    let deviceAuth = await requestDeviceAuthorization(scopes);
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54252:  let admin = apps.adminApi?.scopes ?? [], partner = apps.partnersApi?.scopes ?? [], storefront = apps.storefrontRendererApi?.scopes ?? [], businessPlatform = apps.businessPlatformApi?.scopes ?? [], appManagement = apps.appManagementApi?.scopes ?? [], requestedScopes = [...admin, ...partner, ...storefront, ...businessPlatform, ...appManagement];
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54256:  let adminScope = apps.adminApi?.scopes ?? [], partnerScope = apps.partnersApi?.scopes ?? [], storefrontScopes = apps.storefrontRendererApi?.scopes ?? [], businessPlatformScopes = apps.businessPlatformApi?.scopes ?? [], appManagementScopes = apps.appManagementApi?.scopes ?? [];
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54265:function buildIdentityTokenFromEnv(scopes, identityTokenInformation) {
+node_modules/@shopify/cli/dist/chunk-A2CZGTAP.js:54269:    scopes,
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:2: * The Scopes API enables embedded apps and extensions to request merchant consent for access scopes.
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:6:     * Queries Shopify for the scopes for this app on this shop
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:11:     * <caption>Query for granted scopes.</caption>
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:12:     * <description>Call `scopes.query` to get scope details.</description>
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:21:     *   const { scopes } = await authenticate.admin(request);
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:23:     *   const scopesDetail =  await scopes.query();
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:26:     *     hasWriteProducts: scopesDetail.granted.includes('write_products'),
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:39:     * Requests the merchant to grant the provided scopes for this app on this shop
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:44:     * <caption>Request consent from the merchant to grant the provided scopes for this app.</caption>
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:45:     * <description>Call `scopes.request` to request optional scopes.</description>
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:53:     * // Example of an action to POST a request to for optional scopes
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:55:     *   const { scopes } = await authenticate.admin(request);
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:58:     *   const scopesToRequest = body.getAll("scopes") as string[];
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:60:     *   // If the scopes are not already granted, a full page redirect to the request URL occurs
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:61:     *   await scopes.request(scopesToRequest);
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:70:     *     fetcher.submit({scopes: ["write_products"]}, {
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:79:    request: (scopes: Scope[]) => Promise<void>;
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:81:     * Revokes the provided scopes from this app on this shop
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:83:     * Warning: This method throws an [error](https://shopify.dev/docs/api/admin-graphql/unstable/objects/AppRevokeAccessScopesAppRevokeScopeError) if the provided optional scopes contains a required scope.
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:86:     * <caption>Revoke optional scopes.</caption>
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:87:     * <description>Call `scopes.revoke` to revoke optional scopes.</description>
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:95:     * // Example of an action to POST optional scopes to revoke
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:97:     *   const { scopes } = await authenticate.admin(request);
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:100:     *   const scopesToRevoke = body.getAll("scopes") as string[];
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:102:     *   const revokedResponse = await scopes.revoke(scopesToRevoke);
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:111:     *     fetcher.submit({scopes: ["write_products"]}, {
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:120:    revoke: (scopes: Scope[]) => Promise<ScopesRevokeResponse>;
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:123: * `Scope` represents an [access scope](https://shopify.dev/docs/api/usage/access-scopes) handle, like "`write_products`" or "`read_orders`"
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:127: * `UserResult` represents the results of a user responding to a scopes request, i.e. a merchant user’s action taken when presented with a grant modal.
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:132:     * The scopes that have been granted on the shop for this app
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:136:     * The required scopes that the app has declared in its configuration
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:140:     * The optional scopes that the app has declared in its configuration
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/types.d.ts:150:     * The scopes that have been revoked on the shop for this app
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/revoke.d.ts:4:export declare function revokeScopesFactory(params: BasicParams, session: Session, admin: AdminApiContext): (scopes: string[]) => Promise<{
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/scope/request.d.ts:4:export declare function requestScopesFactory(params: BasicParams, session: Session, admin: AdminApiContext): (scopes: string[]) => Promise<void>;
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/types.d.ts:191:     * Methods to manage scopes for the store that made the request.
+node_modules/@shopify/shopify-app-react-router/dist/ts/server/authenticate/admin/types.d.ts:193:    scopes: ScopesApiContext;
+node_modules/typescript/lib/_tsc.js:19502:                useResult = result.flags & 262144 /* TypeParameter */ ? !!(lastLocation.flags & 16 /* Synthesized */) || // Synthetic fake scopes are added for signatures so type parameters are accessible from them
+node_modules/typescript/lib/_tsc.js:19509:                  useResult = lastLocation.kind === 170 /* Parameter */ || !!(lastLocation.flags & 16 /* Synthesized */) || // Synthetic fake scopes are added for signatures so parameters are accessible from them
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:21986:                if (isFunctionLike(location) && lastLocation && lastLocation !== location.body ? (meaning & result.flags & 788968 && lastLocation.kind !== 320 && (useResult = result.flags & 262144 ? !!(lastLocation.flags & 16) || // Synthetic fake scopes are added for signatures so type parameters are accessible from them
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:21987:                lastLocation === location.type || lastLocation.kind === 169 || lastLocation.kind === 341 || lastLocation.kind === 342 || lastLocation.kind === 168 : !1), meaning & result.flags & 3 && (useOuterVariableScopeInParameter(result, location, lastLocation) ? useResult = !1 : result.flags & 1 && (useResult = lastLocation.kind === 169 || !!(lastLocation.flags & 16) || // Synthetic fake scopes are added for signatures so parameters are accessible from them
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122638:[Omitted long matching line]
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122855:        let scopes = [];
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122857:          if (current = current.parent, current.kind === 169 && (current = findAncestor(current, (parent2) => isFunctionLikeDeclaration(parent2)).parent), isScope(current) && (scopes.push(current), current.kind === 307))
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122858:            return scopes;
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122861:        let { scopes, readsAndWrites: { target, usagesPerScope, functionErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context);
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122862:        return Debug.assert(!functionErrorsPerScope[requestedChangesIndex].length, "The extraction went missing? How?"), context.cancellationToken.throwIfCancellationRequested(), extractFunctionInScope(target, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], exposedVariableDeclarations, targetRange, context);
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122865:        let { scopes, readsAndWrites: { target, usagesPerScope, constantErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context);
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122868:        return extractConstantInScope(expression, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], targetRange.facts, context);
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122871:        let { scopes, affectedTextRange, readsAndWrites: { functionErrorsPerScope, constantErrorsPerScope } } = getPossibleExtractionsWorker(targetRange, context), extractions = scopes.map((scope, i) => {
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122887:        let { file: sourceFile } = context, scopes = collectEnclosingScopes(targetRange), enclosingTextRange = getEnclosingTextRange(targetRange, sourceFile), readsAndWrites = collectReadsAndWrites(
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122889:          scopes,
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:122895:        return { scopes, affectedTextRange: enclosingTextRange, readsAndWrites };
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123521:      function collectReadsAndWrites(targetRange, scopes, enclosingTextRange, sourceFile, checker, cancellationToken) {
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123527:        for (let scope of scopes) {
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123539:          for (let curr = unmodifiedNode; curr !== void 0 && i < scopes.length; curr = curr.parent)
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123540:            if (curr === scopes[i] && (seenTypeParameterUsages.forEach((typeParameter, id) => {
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123547:          Debug.assert(i === scopes.length, "Should have iterated all scopes");
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123550:          let containingLexicalScopeOfExtraction = isBlockScope(scopes[0], scopes[0].parent) ? scopes[0] : getEnclosingBlockScopeContainer(scopes[0]);
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123553:        for (let i = 0; i < scopes.length; i++) {
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123559:          targetRange.facts & 16 && isClassLike(scopes[i]) && functionErrorsPerScope[i].push(createDiagnosticForNode(targetRange.thisNode, Messages.cannotExtractFunctionsContainingThisToMethod));
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123621:            for (let i = 0; i < scopes.length; i++) {
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123647:            for (let i = 0; i < scopes.length; i++) {
+node_modules/@shopify/cli/dist/chunk-CEUL3KX5.js:123648:              let scope = scopes[i];
+node_modules/@shopify/cli/dist/chunk-TH7ZYYDZ.js:16409:  let value = null, values = [], scopes = /* @__PURE__ */ new Map();
+node_modules/@shopify/cli/dist/chunk-TH7ZYYDZ.js:16411:    item.key === key && (values.push(value = item.value), scopes.has(item.file) || scopes.set(item.file, []), scopes.get(item.file).push(value));
+node_modules/@shopify/cli/dist/chunk-TH7ZYYDZ.js:16414:    paths: Array.from(scopes.keys()),
+node_modules/@shopify/cli/dist/chunk-TH7ZYYDZ.js:16415:    scopes,
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110659:        let scopes = [];
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110661:          if (current = current.parent, current.kind === 169 && (current = findAncestor(current, (parent2) => isFunctionLikeDeclaration(parent2)).parent), isScope(current) && (scopes.push(current), current.kind === 312))
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110662:            return scopes;
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110665:        let { scopes, readsAndWrites: { target, usagesPerScope, functionErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context);
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110666:        return Debug.assert(!functionErrorsPerScope[requestedChangesIndex].length, "The extraction went missing? How?"), context.cancellationToken.throwIfCancellationRequested(), extractFunctionInScope(target, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], exposedVariableDeclarations, targetRange, context);
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110669:        let { scopes, readsAndWrites: { target, usagesPerScope, constantErrorsPerScope, exposedVariableDeclarations } } = getPossibleExtractionsWorker(targetRange, context);
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110672:        return extractConstantInScope(expression, scopes[requestedChangesIndex], usagesPerScope[requestedChangesIndex], targetRange.facts, context);
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110675:        let { scopes, readsAndWrites: { functionErrorsPerScope, constantErrorsPerScope } } = getPossibleExtractionsWorker(targetRange, context);
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110676:        return scopes.map((scope, i) => {
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110691:        let { file: sourceFile } = context, scopes = collectEnclosingScopes(targetRange), enclosingTextRange = getEnclosingTextRange(targetRange, sourceFile), readsAndWrites = collectReadsAndWrites(
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110693:          scopes,
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:110699:        return { scopes, readsAndWrites };
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111337:      function collectReadsAndWrites(targetRange, scopes, enclosingTextRange, sourceFile, checker, cancellationToken) {
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111343:        for (let scope of scopes) {
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111355:          for (let curr = unmodifiedNode; curr !== void 0 && i < scopes.length; curr = curr.parent)
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111356:            if (curr === scopes[i] && (seenTypeParameterUsages.forEach((typeParameter, id) => {
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111363:          Debug.assert(i === scopes.length, "Should have iterated all scopes");
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111366:          let containingLexicalScopeOfExtraction = isBlockScope(scopes[0], scopes[0].parent) ? scopes[0] : getEnclosingBlockScopeContainer(scopes[0]);
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111369:        for (let i = 0; i < scopes.length; i++) {
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111375:          targetRange.facts & 16 && isClassLike(scopes[i]) && functionErrorsPerScope[i].push(createDiagnosticForNode(targetRange.thisNode, Messages.cannotExtractFunctionsContainingThisToMethod));
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111437:            for (let i = 0; i < scopes.length; i++) {
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111463:            for (let i = 0; i < scopes.length; i++) {
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111464:              let scope = scopes[i];
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:111574:[Omitted long matching line]
+node_modules/@shopify/cli/dist/morph-7WAMUK6I.js:161663:     * Loads and executes the module script given by moduleURL into all of worklet's global scopes. It can also create additional global scopes as part of this process, depending on the worklet type. The returned promise will fulfill once the script has been successfully loaded and run in all global scopes.
+node_modules/@shopify/cli/dist/index.js:24516:      let scopes = scopedVariables.get(variableName);
+node_modules/@shopify/cli/dist/index.js:24517:      return scopes ? scopes.some((scope) => isDefinedInScope(variablePosition, scope)) : !1;
+node_modules/@shopify/cli/dist/index.js:82022:          description: "This property scopes the specified anchor names, and lookups for these anchor names, to this element\u2019s subtree"
+node_modules/@shopify/cli/dist/index.js:250671:[Omitted long matching line]
+node_modules/@shopify/cli/dist/index.js:250686:        return [this.globals, this.environments, ...this.scopes].reduce((ctx, val) => __assign(ctx, val), {});
+node_modules/@shopify/cli/dist/index.js:250715:        return this.scopes.push(ctx);
+node_modules/@shopify/cli/dist/index.js:250718:        return this.scopes.pop();
+node_modules/@shopify/cli/dist/index.js:250721:        return this.scopes[0];
+node_modules/@shopify/cli/dist/index.js:250734:        for (let i = this.scopes.length - 1; i >= 0; i--) {
+node_modules/@shopify/cli/dist/index.js:250735:          let candidate = this.scopes[i];
+node_modules/@shopify/cli/dist/index.js:345776:  access_scopes: z.object({
+node_modules/@shopify/cli/dist/index.js:345777:    scopes: z.string().transform((scopes) => normalizeDelimitedString(scopes) ?? "").optional(),
+node_modules/@shopify/cli/dist/index.js:345778:    required_scopes: z.array(z.string()).optional(),
+node_modules/@shopify/cli/dist/index.js:345779:    optional_scopes: z.array(z.string()).optional(),
+node_modules/@shopify/cli/dist/index.js:345787:  scopes: "access_scopes.scopes",
+node_modules/@shopify/cli/dist/index.js:345788:  required_scopes: "access_scopes.required_scopes",
+node_modules/@shopify/cli/dist/index.js:345789:  optional_scopes: "access_scopes.optional_scopes",
+node_modules/@shopify/cli/dist/index.js:345790:  use_legacy_install_flow: "access_scopes.use_legacy_install_flow",
+node_modules/@shopify/cli/dist/index.js:345797:    let hasAccessModule = config2.access_scopes !== void 0, isLegacyInstallFlow = config2.access_scopes?.use_legacy_install_flow === !0, hasNoScopes = config2.access_scopes?.scopes == null && config2.access_scopes?.required_scopes == null;
+node_modules/@shopify/cli/dist/index.js:345799:      return ["Using legacy install flow - access scopes are not auto-granted"];
+node_modules/@shopify/cli/dist/index.js:345800:    let scopesString = config2.access_scopes?.scopes ? config2.access_scopes.scopes.split(",").map((scope) => scope.trim()).join(", ") : config2.access_scopes?.required_scopes?.join(", ");
+node_modules/@shopify/cli/dist/index.js:345801:    return scopesString ? [`Access scopes auto-granted: ${scopesString}`] : ["App has been installed"];
+node_modules/@shopify/cli/dist/index.js:345877:  scopes: z.string().transform((scopes) => normalizeDelimitedString(scopes) ?? "").default(""),
+node_modules/@shopify/cli/dist/index.js:345892:  scopes: z.string().transform((scopes) => normalizeDelimitedString(scopes) ?? "").optional(),
+node_modules/@shopify/cli/dist/index.js:345893:  access_scopes: z.object({
+node_modules/@shopify/cli/dist/index.js:345894:    scopes: z.string().transform((scopes) => normalizeDelimitedString(scopes) ?? "")
+node_modules/@shopify/cli/dist/index.js:345899:  let scopesString = config2.scopes ?? config2.access_scopes?.scopes ?? "";
+node_modules/@shopify/cli/dist/index.js:345900:  return scopesString.length === 0 ? [] : scopesString.split(",").map((scope) => scope.trim()).sort();
+node_modules/@shopify/cli/dist/index.js:345925:  return isLegacyAppSchema(config2) ? config2.scopes : isCurrentAppSchema(config2) ? config2.access_scopes?.scopes ?? "" : "";
+node_modules/@shopify/cli/dist/index.js:345928:  let scopes = getAppScopes(config2);
+node_modules/@shopify/cli/dist/index.js:345929:  return scopes.length ? scopes.split(",").map((scope) => scope.trim()) : [];
+node_modules/@shopify/cli/dist/index.js:346048:      scopesArray: getAppScopesArray(this.configuration),
+node_modules/@shopify/cli/dist/index.js:346084:   * scopes in the Partner Dashboard, which aren't synced when using legacy flow.
+node_modules/@shopify/cli/dist/index.js:346090:    let hasAppSpecificWebhooks = this.configuration.webhooks?.subscriptions?.some((subscription) => subscription.topics && subscription.topics.length > 0) ?? !1, usesLegacyInstallFlow = this.configuration.access_scopes?.use_legacy_install_flow === !0;
+node_modules/@shopify/cli/dist/index.js:346094:2. Run 'shopify app deploy' to sync your scopes with the Developer Dashboard
+node_modules/@shopify/cli/dist/index.js:349381:    scopesArray: getTemplateScopesArray(config2),
+node_modules/@shopify/cli/dist/index.js:349429:        scopes: getTemplateScopesArray(parsed).join(","),
+node_modules/@shopify/cli/dist/index.js:349807:      app_scopes: JSON.stringify(sortedAppScopes),
+node_modules/@shopify/cli/dist/index.js:351085:function getAppVars(org, name, isLaunchable = !0, scopesArray) {
+node_modules/@shopify/cli/dist/index.js:351091:    requestedAccessScopes: scopesArray ?? [],
+node_modules/@shopify/cli/dist/index.js:351098:    requestedAccessScopes: scopesArray ?? [],
+node_modules/@shopify/cli/dist/index.js:351218:    let variables = getAppVars(org, options.name, options.isLaunchable, options.scopesArray), result = await this.request(CreateAppQuery, variables);
+node_modules/@shopify/cli/dist/index.js:353915:      grantedScopes: options?.scopesArray ?? [],
+node_modules/@shopify/cli/dist/index.js:354343:  let { isLaunchable, scopesArray, name } = options;
+node_modules/@shopify/cli/dist/index.js:354371:              ...scopesArray && { scopes: scopesArray.map((scope) => scope.trim()).join(",") }
+node_modules/@shopify/cli/dist/index.js:355083:    let blockedKeys = ["path", "scopes"];
+node_modules/@shopify/cli/dist/index.js:355093:# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes`, fileSplit = fileString.split(/(\r\n|\r|\n)/);
+node_modules/@shopify/cli/dist/index.js:355096:    line === "[access_scopes]" && fileSplit.splice(index + 1, 0, appTomlScopesComment);
+node_modules/@shopify/cli/dist/index.js:355950:    scopesArray: [],
+node_modules/@shopify/cli/dist/index.js:355984:            scopes: getAppScopes(configuration),
+node_modules/@shopify/cli/dist/index.js:355994:        scopes: getAppScopes(configuration),
+node_modules/@shopify/cli/dist/index.js:356004:        scopes: "",
+node_modules/@shopify/cli/dist/index.js:356016:        scopes: result.scopes,
+node_modules/@shopify/cli/dist/index.js:356027:        scopes: "",
+node_modules/@shopify/cli/dist/index.js:356050:    let locallyProvidedScopes = localAppOptions.scopes;
+node_modules/@shopify/cli/dist/index.js:356069:  delete mergedAppConfiguration.scopes;
+node_modules/@shopify/cli/dist/index.js:356154:    scopes: remoteApp.requestedAccessScopes.join(",")
+node_modules/@shopify/cli/dist/index.js:356158:    scopes: locallyProvidedScopes,
+node_modules/@shopify/cli/dist/index.js:356164:    access_scopes: accessScopesContent
+node_modules/@shopify/cli/dist/index.js:360257:      #top-bar #scopes-note {
+node_modules/@shopify/cli/dist/index.js:360389:                { id: "scopes-note", className: "top-bar-section" },
+node_modules/@shopify/cli/dist/index.js:360390:                import_react5.default.createElement(import_polaris.Text, { as: "span", tone: "subdued" }, "GraphiQL runs on the same access scopes you\u2019ve defined in the TOML file for your app.")
+node_modules/@shopify/cli/dist/index.js:360829:async function setupWebProcesses({ webs, proxyUrl, frontendPort, backendPort, apiKey, apiSecret, scopes }) {
+node_modules/@shopify/cli/dist/index.js:360852:        scopes,
+node_modules/@shopify/cli/dist/index.js:360864:async function launchWebProcess({ stdout, stderr, abortSignal: signal }, { port, apiKey, apiSecret, hostname: hostname2, backendPort, frontendServerPort, directory, devCommand, preDevCommand, scopes, shopCustomDomain, hmrServerOptions }) {
+node_modules/@shopify/cli/dist/index.js:360869:    SCOPES: scopes,
+node_modules/@shopify/cli/dist/index.js:361909:      scopes: getAppScopes(reloadedApp.configuration)
+node_modules/@shopify/cli/dist/index.js:362697:    let localAccess = localApp.configuration.access_scopes, remoteAccess = remoteApp.configuration?.access_scopes, rationaliseScopes = (scopeString) => scopeString && scopeString.split(",").map((scope) => scope.trim()).sort().join(","), localScopes = rationaliseScopes(localAccess?.scopes), remoteScopes = rationaliseScopes(remoteAccess?.scopes);
+node_modules/@shopify/cli/dist/index.js:362703:          "to push your scopes to the Partner Dashboard"
+node_modules/@shopify/cli/dist/index.js:362707:        headline: ["The scopes in your TOML don't match the scopes in your Partner Dashboard"],
+node_modules/@shopify/cli/dist/index.js:362710:          scopesMessage(getAppScopesArray(localApp.configuration)),
+node_modules/@shopify/cli/dist/index.js:362714:          scopesMessage(remoteAccess?.scopes?.split(",") ?? [])
+node_modules/@shopify/cli/dist/index.js:362852:function scopesMessage(scopes) {
+node_modules/@shopify/cli/dist/index.js:362855:      items: scopes.length === 0 ? ["No scopes"] : scopes
+node_modules/@shopify/cli/dist/index.js:363582:    SCOPES: getAppScopes(app.configuration)
+node_modules/@shopify/cli/dist/index.js:363649:    SCOPES: getAppScopes(app.configuration)
+node_modules/@shopify/cli/dist/index.js:363653:    ${outputToken.green("SCOPES")}=${getAppScopes(app.configuration)}
+node_modules/@shopify/cli/dist/index.js:365560:        ["Access scopes", getAppScopes(this.app.configuration)],
+node_modules/@shopify/cli/dist/index.js:365692:  - The [access scopes](https://shopify.dev/docs/api/usage) your app has requested.
+node_modules/@shopify/cli/dist/index.js:367239:        "Missing sections? Make sure your app has the required access scopes to load metafields and metaobjects (e.g.",
+node_modules/@shopify/cli/dist/chunk-463KYFYO.js:46:            ["Access scopes", "read_products,write_products"]
+node_modules/@shopify/cli/dist/chunk-463KYFYO.js:129:    body: "The deadline for re-selecting your app scopes is May 1, 2022.",
+node_modules/@shopify/cli/dist/chunk-463KYFYO.js:134:          url: "https://shopify.dev/app/scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-01/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-01/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-01/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-01/access_scope.js.map:1:[Omitted long matching line]
+node_modules/c12/node_modules/jiti/dist/babel.cjs:231:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-10/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-10/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-10/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-10/access_scope.js.map:1:[Omitted long matching line]
+node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js:797:      var scope = scopeManager.acquire(node); // Find all our "pure scopes". On every re-render of a component these
+node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js:798:      // pure scopes may have changes to the variables declared within. So all
+node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js:819:        } // If there is no parent function scope then there are no pure scopes.
+node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js:977:        } // Search the direct component subscopes for
+node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js:1003:        // that are in pure scopes (aka render)?
+node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js:1030:      // We can check by traversing scopes upwards  from the reference, and checking
+node_modules/eslint-plugin-react-hooks/cjs/eslint-plugin-react-hooks.development.js:1046:      } // Get dependencies from all our resolved references in pure scopes.
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2026-01/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2026-01/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2026-01/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2026-01/access_scope.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-04/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-04/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-04/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-04/access_scope.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-04/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-04/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-04/access_scope.js:32:    access_scopes;
+node_modules/@typescript-eslint/eslint-plugin/dist/rules/unified-signatures.js:326:        const scopes = [];
+node_modules/@typescript-eslint/eslint-plugin/dist/rules/unified-signatures.js:332:                scopes.push(currentScope);
+node_modules/@typescript-eslint/eslint-plugin/dist/rules/unified-signatures.js:344:            currentScope = scopes.pop();
+node_modules/@typescript-eslint/eslint-plugin/dist/rules/unified-signatures.js:402:            // validate scopes
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-04/access_scope.js.map:1:[Omitted long matching line]
+node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:2318:function deconflict(scopes, globals, identifier) {
+node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:2322:    scopes.some((scope) => scope.contains(deconflicted)) || globals.has(deconflicted);
+node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:2329:  for (const scope of scopes) {
+node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:3842:                scopes: new Set()
+node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:3845:              exportsAssignments.scopes.add(scope);
+node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:4114:  for (const [exportName, { scopes }] of exportsAssignmentsByName) {
+node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:4115:    deconflictedExportNames[exportName] = deconflict([...scopes], globals, exportName);
+node_modules/@typescript-eslint/eslint-plugin/dist/rules/return-await.js:125:                    // We've checked all the relevant scopes
+node_modules/@typescript-eslint/eslint-plugin/dist/util/collectUnusedVariables.js:147:        return this.#scopeManager.scopes[0];
+node_modules/effect/src/Scope.ts:46: * Represents a scope that manages finalizers and can fork child scopes.
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-04/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-04/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-04/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-04/access_scope.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-07/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-07/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-07/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-07/access_scope.js.map:1:[Omitted long matching line]
+node_modules/@babel/parser/lib/index.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2022-10/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2022-10/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2022-10/access_scope.js:32:    access_scopes;
+node_modules/@typescript-eslint/scope-manager/dist/analyze.js:18: * Takes an AST and returns the analyzed scopes.
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2022-10/access_scope.js.map:1:[Omitted long matching line]
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:73:    scopeManager.scopes.push(scope);
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:74:    const scopes = scopeManager.nodeToScope.get(scope.block);
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:75:    if (scopes) {
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:76:        scopes.push(scope);
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:102:     * The array of child scopes. This does not include grandchild scopes.
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:113:     * refers to. There are a few exceptions to this rule. With `global` and `with` scopes you can only decide at runtime
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:115:     * All those scopes are considered "dynamic".
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:135:     * This includes occurrences of local variables as well as variables from parent scopes (including the global scope).
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:161:     * This does not include variables which are defined in child scopes.
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:166:     * For scopes that can contain variable declarations, this is a self-reference.
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.js:243:     * To override by function scopes.
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.d.ts:26:     * The array of child scopes. This does not include grandchild scopes.
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.d.ts:47:     * This includes occurrences of local variables as well as variables from parent scopes (including the global scope).
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.d.ts:73:     * This does not include variables which are defined in child scopes.
+node_modules/@typescript-eslint/scope-manager/dist/scope/ScopeBase.d.ts:83:     * To override by function scopes.
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.d.ts:25:     * All scopes
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.d.ts:28:    readonly scopes: Scope[];
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.d.ts:47:     * @param inner If the node has multiple scopes, this returns the outermost scope normally.
+node_modules/@typescript-eslint/scope-manager/dist/analyze.d.ts:51: * Takes an AST and returns the analyzed scopes.
+node_modules/@typescript-eslint/scope-manager/dist/referencer/Referencer.js:75:     * Searches for a variable named "name" in the upper scopes and adds a pseudo-reference from itself to itself
+node_modules/@typescript-eslint/scope-manager/dist/referencer/Referencer.d.ts:22:     * Searches for a variable named "name" in the upper scopes and adds a pseudo-reference from itself to itself
+node_modules/@typescript-eslint/scope-manager/dist/variable/VariableBase.d.ts:32:     * List of {@link Reference} of this variable (excluding parameter entries)  in its defining scope and all nested scopes.
+node_modules/@typescript-eslint/scope-manager/dist/variable/VariableBase.js:33:     * List of {@link Reference} of this variable (excluding parameter entries)  in its defining scope and all nested scopes.
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:21:     * All scopes
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:24:    scopes;
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:26:        this.scopes = [];
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:54:        this.scopes.forEach(recurse);
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:70:     * @param inner If the node has multiple scopes, this returns the outermost scope normally.
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:81:        const scopes = this.nodeToScope.get(node);
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:82:        if (!scopes || scopes.length === 0) {
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:85:        // Heuristic selection from all scopes.
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:86:        // If you would like to get all scopes, please use ScopeManager#acquireAll.
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:87:        if (scopes.length === 1) {
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:88:            return scopes[0];
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:91:            for (let i = scopes.length - 1; i >= 0; --i) {
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:92:                const scope = scopes[i];
+node_modules/@typescript-eslint/scope-manager/dist/ScopeManager.js:99:        return scopes.find(predicate) ?? null;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-01/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-01/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-01/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2025-01/access_scope.js.map:1:[Omitted long matching line]
+node_modules/@babel/helper-replace-supers/lib/index.js.map:1:[Omitted long matching line]
+node_modules/@babel/traverse/lib/path/inference/inferer-reference.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-01/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-01/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-01/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-01/access_scope.js.map:1:[Omitted long matching line]
+node_modules/@babel/traverse/lib/path/lib/hoister.js:50:    this.scopes = void 0;
+node_modules/@babel/traverse/lib/path/lib/hoister.js:57:    this.scopes = [];
+node_modules/@babel/traverse/lib/path/lib/hoister.js:75:        this.scopes.push(scope);
+node_modules/@babel/traverse/lib/path/lib/hoister.js:113:    const scopes = this.scopes;
+node_modules/@babel/traverse/lib/path/lib/hoister.js:114:    const scope = scopes.pop();
+node_modules/@babel/traverse/lib/path/lib/hoister.js:132:    const scope = this.scopes.pop();
+node_modules/@babel/traverse/lib/path/lib/hoister.js.map:1:[Omitted long matching line]
+node_modules/rollup/dist/es/shared/node-entry.js:2818:     * that require the scopes to be populated with variables.
+node_modules/rollup/dist/es/shared/node-entry.js:5557:    - in function scopes, function and var can redeclare function and var
+node_modules/rollup/dist/es/shared/node-entry.js:5558:    - var is hoisted across scopes, function remains in the scope it is declared
+node_modules/rollup/dist/es/shared/node-entry.js:5791:            // We add the variable to this and all parent scopes to reliably detect conflicts
+node_modules/rollup/dist/es/shared/node-entry.js:6269:            // We only add parameters to parameter scopes
+node_modules/rollup/dist/es/shared/node-entry.js:6274:            // We add the variable to this and all parent scopes to reliably detect conflicts
+node_modules/rollup/dist/es/shared/node-entry.js:6286:    // There is stuff that is only allowed in function scopes, i.e. functions can
+node_modules/rollup/dist/shared/rollup.js:6607:     * that require the scopes to be populated with variables.
+node_modules/rollup/dist/shared/rollup.js:9334:    - in function scopes, function and var can redeclare function and var
+node_modules/rollup/dist/shared/rollup.js:9335:    - var is hoisted across scopes, function remains in the scope it is declared
+node_modules/rollup/dist/shared/rollup.js:9568:            // We add the variable to this and all parent scopes to reliably detect conflicts
+node_modules/rollup/dist/shared/rollup.js:10046:            // We only add parameters to parameter scopes
+node_modules/rollup/dist/shared/rollup.js:10051:            // We add the variable to this and all parent scopes to reliably detect conflicts
+node_modules/rollup/dist/shared/rollup.js:10063:    // There is stuff that is only allowed in function scopes, i.e. functions can
+node_modules/eslint/lib/source-code/source-code.js:345:            ["scopes", new WeakMap()],
+node_modules/eslint/lib/source-code/source-code.js:777:        const cache = this[caches].get("scopes");
+node_modules/eslint/lib/source-code/source-code.js:801:        cache.set(currentNode, this.scopeManager.scopes[0]);
+node_modules/eslint/lib/source-code/source-code.js:802:        return this.scopeManager.scopes[0];
+node_modules/eslint/lib/source-code/source-code.js:865:            // top-level scopes refer to a `Program` node
+node_modules/eslint/lib/source-code/source-code.js:1040:        const globalScope = this.scopeManager.scopes[0];
+node_modules/eslint/lib/linter/linter.js:1346:            sourceCode.scopeManager.scopes[0],
+node_modules/eslint/lib/linter/code-path-analysis/code-path.js:55:         * The code paths of nested function scopes.
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-10/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-10/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-10/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2023-10/access_scope.js.map:1:[Omitted long matching line]
+node_modules/eslint/lib/rules/prefer-arrow-callback.js:246:            // To skip nested scopes.
+node_modules/eslint/lib/rules/no-use-before-define.js:318:         * Finds and validates all references in a given scope and its child scopes.
+node_modules/eslint/lib/rules/block-scoped-var.js:72:         * Finds and reports references which are outside of valid scopes.
+node_modules/eslint/lib/rules/block-scoped-var.js:114:            // Manages scopes.
+node_modules/eslint/lib/rules/no-unused-vars.js:570:         * @returns {Variable[]} unused variables of the scope and descendant scopes.
+node_modules/eslint/lib/rules/utils/ast-utils.js:1264:     * Finds the variable by a given name in a given scope and its upper scopes.
+node_modules/eslint/lib/rules/strict.js:101:            scopes = [],
+node_modules/eslint/lib/rules/strict.js:175:                isParentGlobal = scopes.length === 0 && classScopes.length === 0,
+node_modules/eslint/lib/rules/strict.js:176:                isParentStrict = scopes.length > 0 && scopes[scopes.length - 1],
+node_modules/eslint/lib/rules/strict.js:201:            scopes.push(isParentStrict || isStrict);
+node_modules/eslint/lib/rules/strict.js:209:            scopes.pop();
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-07/access_scope.js:15:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-07/access_scope.js:20:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-07/access_scope.js:32:    access_scopes;
+node_modules/@shopify/shopify-api/dist/cjs/rest/admin/2024-07/access_scope.js.map:1:[Omitted long matching line]
+node_modules/eslint/lib/rules/no-eval.js:76:         * Top-level scopes are handled separately.
+node_modules/morgan/HISTORY.md:99:  * pref: reduce function closure scopes
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:4:var index = require('../auth/scopes/index.js');
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:156:     * The desired scopes for the access token, at the time the session was created.
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:184:     * scopes if scopes is equal to a truthy value.
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:186:    isActive(scopes, withinMillisecondsOfExpiry = 500) {
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:189:        const isScopeChanged = this.isScopeChanged(scopes);
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:193:     * Whether the access token includes the given scopes if they are provided.
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:195:    isScopeChanged(scopes) {
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:196:        if (typeof scopes === 'undefined') {
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:199:        return !this.isScopeIncluded(scopes);
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:202:     * Whether the access token includes the given scopes.
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:204:    isScopeIncluded(scopes) {
+node_modules/@shopify/shopify-api/dist/cjs/lib/session/session.js:205:        const requiredScopes = scopes instanceof index.AuthScopes ? scopes : new index.AuthScopes(scopes);
+node_modules/@shopify/shopify-api/dist/cjs/lib/config.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/lib/config.js:5:var index = require('./auth/scopes/index.js');
+node_modules/@shopify/shopify-api/dist/cjs/lib/config.js:50:    let scopes;
+node_modules/@shopify/shopify-api/dist/cjs/lib/config.js:51:    if (params.scopes === undefined) {
+node_modules/@shopify/shopify-api/dist/cjs/lib/config.js:52:        scopes = undefined;
+node_modules/@shopify/shopify-api/dist/cjs/lib/config.js:54:    else if (params.scopes instanceof index.AuthScopes) {
+node_modules/@shopify/shopify-api/dist/cjs/lib/config.js:55:        scopes = params.scopes;
+node_modules/@shopify/shopify-api/dist/cjs/lib/config.js:58:        scopes = new index.AuthScopes(params.scopes);
+node_modules/@shopify/shopify-api/dist/cjs/lib/config.js:62:        scopes,
+node_modules/@shopify/shopify-api/dist/cjs/lib/index.js:22:var index = require('./auth/scopes/index.js');
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:4: * A class that represents a set of access token scopes.
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:11:    constructor(scopes) {
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:12:        let scopesArray = [];
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:13:        if (typeof scopes === 'string') {
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:14:            scopesArray = scopes.split(new RegExp(`${AuthScopes.SCOPE_DELIMITER}\\s*`));
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:16:        else if (Array.isArray(scopes)) {
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:17:            scopesArray = scopes;
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:19:        else if (scopes) {
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:20:            scopesArray = Array.from(scopes.expandedScopes);
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:22:        scopesArray = scopesArray
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:25:        const impliedScopes = this.getImpliedScopes(scopesArray);
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:26:        const scopeSet = new Set(scopesArray);
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:33:     * Checks whether the current set of scopes includes the given one.
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:46:     * Checks whether the current set of scopes equals the given one.
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:60:     * Returns a comma-separated string with the current set of scopes.
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:66:     * Returns an array with the current set of scopes.
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:73:    getImpliedScopes(scopesArray) {
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/scopes/index.js:74:        return scopesArray.reduce((array, current) => {
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/index.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/oauth/oauth.js:51:        const scopes = config.scopes ? config.scopes.toString() : '';
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/oauth/oauth.js:54:            scope: scopes,
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/oauth/oauth.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/lib/auth/oauth/types.js.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/cjs/tsconfig.build.tsbuildinfo:1:[Omitted long matching line]
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:38:  const scopes: OriginalScope[] = [];
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:71:    scopes.push(scope);
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:75:  return scopes;
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:78:export function encodeOriginalScopes(scopes: OriginalScope[]): string {
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:81:  for (let i = 0; i < scopes.length; ) {
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:82:    i = _encodeOriginalScopes(scopes, i, writer, [0]);
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:89:  scopes: OriginalScope[],
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:96:  const scope = scopes[index];
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:113:  for (index++; index < scopes.length; ) {
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:114:    const next = scopes[index];
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:119:    index = _encodeOriginalScopes(scopes, index, writer, state);
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:283:    const { 4: sourcesIndex, 5: scopesIndex } = range;
+node_modules/@jridgewell/sourcemap-codec/src/scopes.ts:288:    state[3] = encodeInteger(writer, scopesIndex, state[3]);
+node_modules/@jridgewell/sourcemap-codec/src/sourcemap-codec.ts:9:} from './scopes';
+node_modules/@jridgewell/sourcemap-codec/src/sourcemap-codec.ts:10:export type { OriginalScope, GeneratedRange, CallSite, BindingExpressionRange } from './scopes';
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs.map:3:  "sources": ["../src/vlq.ts", "../src/strings.ts", "../src/scopes.ts", "../src/sourcemap-codec.ts"],
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:98:// src/scopes.ts
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:103:  const scopes = [];
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:128:    scopes.push(scope);
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:131:  return scopes;
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:133:function encodeOriginalScopes(scopes) {
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:135:  for (let i = 0; i < scopes.length; ) {
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:136:    i = _encodeOriginalScopes(scopes, i, writer, [0]);
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:140:function _encodeOriginalScopes(scopes, index, writer, state) {
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:141:  const scope = scopes[index];
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:153:  for (index++; index < scopes.length; ) {
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:154:    const next = scopes[index];
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:159:    index = _encodeOriginalScopes(scopes, index, writer, state);
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:283:    const { 4: sourcesIndex, 5: scopesIndex } = range;
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.mjs:288:    state[3] = encodeInteger(writer, scopesIndex, state[3]);
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js.map:3:  "sources": ["../src/sourcemap-codec.ts", "../src/vlq.ts", "../src/strings.ts", "../src/scopes.ts"],
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:146:// src/scopes.ts
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:151:  const scopes = [];
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:176:    scopes.push(scope);
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:179:  return scopes;
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:181:function encodeOriginalScopes(scopes) {
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:183:  for (let i = 0; i < scopes.length; ) {
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:184:    i = _encodeOriginalScopes(scopes, i, writer, [0]);
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:188:function _encodeOriginalScopes(scopes, index, writer, state) {
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:189:  const scope = scopes[index];
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:201:  for (index++; index < scopes.length; ) {
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:202:    const next = scopes[index];
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:207:    index = _encodeOriginalScopes(scopes, index, writer, state);
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:331:    const { 4: sourcesIndex, 5: scopesIndex } = range;
+node_modules/@jridgewell/sourcemap-codec/dist/sourcemap-codec.umd.js:336:    state[3] = encodeInteger(writer, scopesIndex, state[3]);
+node_modules/@jridgewell/sourcemap-codec/types/scopes.d.cts.map:1:[Omitted long matching line]
+node_modules/@jridgewell/sourcemap-codec/types/scopes.d.mts.map:1:[Omitted long matching line]
+node_modules/@jridgewell/sourcemap-codec/types/scopes.d.mts:46:export declare function encodeOriginalScopes(scopes: OriginalScope[]): string;
+node_modules/@jridgewell/sourcemap-codec/types/scopes.d.mts:50://# sourceMappingURL=scopes.d.ts.map
+node_modules/@jridgewell/sourcemap-codec/types/scopes.d.cts:46:export declare function encodeOriginalScopes(scopes: OriginalScope[]): string;
+node_modules/@jridgewell/sourcemap-codec/types/scopes.d.cts:50://# sourceMappingURL=scopes.d.ts.map
+node_modules/@jridgewell/sourcemap-codec/types/sourcemap-codec.d.cts:1:export { decodeOriginalScopes, encodeOriginalScopes, decodeGeneratedRanges, encodeGeneratedRanges, } from './scopes.cts';
+node_modules/@jridgewell/sourcemap-codec/types/sourcemap-codec.d.cts:2:export type { OriginalScope, GeneratedRange, CallSite, BindingExpressionRange } from './scopes.cts';
+node_modules/@jridgewell/sourcemap-codec/types/sourcemap-codec.d.mts:1:export { decodeOriginalScopes, encodeOriginalScopes, decodeGeneratedRanges, encodeGeneratedRanges, } from './scopes.mts';
+node_modules/@jridgewell/sourcemap-codec/types/sourcemap-codec.d.mts:2:export type { OriginalScope, GeneratedRange, CallSite, BindingExpressionRange } from './scopes.mts';
+node_modules/effect/dist/dts/Scope.d.ts:38: * Represents a scope that manages finalizers and can fork child scopes.
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2023-07/access_scope.d.ts:25:    access_scopes: {
+node_modules/.cache/eslint:1:[Omitted long matching line]
+node_modules/graphql-config/node_modules/jiti/dist/babel.cjs:231:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2024-10/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2023-01/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2025-10/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2026-01/access_scope.d.ts:25:    access_scopes: {
+node_modules/eslint-plugin-react/lib/util/propTypes.js:103:  // Necessary because babel's scopes do not track type annotations.
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2025-04/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2024-04/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2023-04/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2022-10/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2025-07/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2025-01/access_scope.d.ts:25:    access_scopes: {
+node_modules/react/cjs/react.development.js:2493:    // number of `act` scopes on the stack.
+node_modules/react/cjs/react.development.js:2564:              error('You called act(async () => ...) without await. ' + 'This could lead to unexpected testing behaviour, ' + 'interleaving multiple act calls and mixing their ' + 'scopes. ' + 'You should - await act(async () => ...);');
+node_modules/react/umd/react.development.js:3105:      // number of `act` scopes on the stack.
+node_modules/react/umd/react.development.js:3176:                error('You called act(async () => ...) without await. ' + 'This could lead to unexpected testing behaviour, ' + 'interleaving multiple act calls and mixing their ' + 'scopes. ' + 'You should - await act(async () => ...);');
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2024-01/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/tsconfig.build.tsbuildinfo:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2023-10/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/ts/lib/session/session.d.ts:2:import { AuthScopes } from '../auth/scopes';
+node_modules/@shopify/shopify-api/dist/ts/lib/session/session.d.ts:26:     * The desired scopes for the access token, at the time the session was created.
+node_modules/@shopify/shopify-api/dist/ts/lib/session/session.d.ts:52:     * scopes if scopes is equal to a truthy value.
+node_modules/@shopify/shopify-api/dist/ts/lib/session/session.d.ts:54:    isActive(scopes: AuthScopes | string | string[] | undefined, withinMillisecondsOfExpiry?: number): boolean;
+node_modules/@shopify/shopify-api/dist/ts/lib/session/session.d.ts:56:     * Whether the access token includes the given scopes if they are provided.
+node_modules/@shopify/shopify-api/dist/ts/lib/session/session.d.ts:58:    isScopeChanged(scopes: AuthScopes | string | string[] | undefined): boolean;
+node_modules/@shopify/shopify-api/dist/ts/lib/session/session.d.ts:60:     * Whether the access token includes the given scopes.
+node_modules/@shopify/shopify-api/dist/ts/lib/session/session.d.ts:62:    isScopeIncluded(scopes: AuthScopes | string | string[]): boolean;
+node_modules/@shopify/shopify-api/dist/ts/lib/session/types.d.ts:21:     * The scopes for the access token.
+node_modules/@shopify/shopify-api/dist/ts/rest/admin/2024-07/access_scope.d.ts:25:    access_scopes: {
+node_modules/@shopify/shopify-api/dist/esm/tsconfig.build.tsbuildinfo:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/ts/lib/base-types.d.ts:3:import { AuthScopes } from './auth/scopes';
+node_modules/@shopify/shopify-api/dist/ts/lib/base-types.d.ts:24:     * The scopes your app needs to access the API. Not required if using Shopify managed installation.
+node_modules/@shopify/shopify-api/dist/ts/lib/base-types.d.ts:26:    scopes?: string[] | AuthScopes;
+node_modules/@shopify/shopify-api/dist/ts/lib/base-types.d.ts:115:export type ConfigInterface<Params extends ConfigParams = ConfigParams> = Omit<Params, 'restResources' | 'scopes'> & {
+node_modules/@shopify/shopify-api/dist/ts/lib/base-types.d.ts:118:    scopes?: AuthScopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-07/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-07/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-07/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/scopes/index.d.ts.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/scopes/index.d.ts:2: * A class that represents a set of access token scopes.
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/scopes/index.d.ts:9:    constructor(scopes: string | string[] | AuthScopes | undefined);
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/scopes/index.d.ts:11:     * Checks whether the current set of scopes includes the given one.
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/scopes/index.d.ts:15:     * Checks whether the current set of scopes equals the given one.
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/scopes/index.d.ts:19:     * Returns a comma-separated string with the current set of scopes.
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/scopes/index.d.ts:23:     * Returns an array with the current set of scopes.
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/index.d.ts:10:export { AuthScopes } from './scopes';
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-07/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/types.d.ts:3:export * from './scopes/index';
+node_modules/@shopify/shopify-api/dist/ts/lib/auth/oauth/types.d.ts:42:     * The effective set of scopes for the session.
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-04/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-10/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-04/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-04/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-04/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-10/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-10/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-10/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:2:import { AuthScopes } from '../auth/scopes/index.mjs';
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:154:     * The desired scopes for the access token, at the time the session was created.
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:182:     * scopes if scopes is equal to a truthy value.
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:184:    isActive(scopes, withinMillisecondsOfExpiry = 500) {
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:187:        const isScopeChanged = this.isScopeChanged(scopes);
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:191:     * Whether the access token includes the given scopes if they are provided.
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:193:    isScopeChanged(scopes) {
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:194:        if (typeof scopes === 'undefined') {
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:197:        return !this.isScopeIncluded(scopes);
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:200:     * Whether the access token includes the given scopes.
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:202:    isScopeIncluded(scopes) {
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs:203:        const requiredScopes = scopes instanceof AuthScopes ? scopes : new AuthScopes(scopes);
+node_modules/@shopify/shopify-api/dist/esm/lib/session/session.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-04/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-04/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-04/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-04/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/lib/config.mjs:3:import { AuthScopes } from './auth/scopes/index.mjs';
+node_modules/@shopify/shopify-api/dist/esm/lib/config.mjs:48:    let scopes;
+node_modules/@shopify/shopify-api/dist/esm/lib/config.mjs:49:    if (params.scopes === undefined) {
+node_modules/@shopify/shopify-api/dist/esm/lib/config.mjs:50:        scopes = undefined;
+node_modules/@shopify/shopify-api/dist/esm/lib/config.mjs:52:    else if (params.scopes instanceof AuthScopes) {
+node_modules/@shopify/shopify-api/dist/esm/lib/config.mjs:53:        scopes = params.scopes;
+node_modules/@shopify/shopify-api/dist/esm/lib/config.mjs:56:        scopes = new AuthScopes(params.scopes);
+node_modules/@shopify/shopify-api/dist/esm/lib/config.mjs:60:        scopes,
+node_modules/@shopify/shopify-api/dist/esm/lib/index.mjs:21:export { AuthScopes } from './auth/scopes/index.mjs';
+node_modules/@shopify/shopify-api/dist/esm/lib/config.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:2: * A class that represents a set of access token scopes.
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:9:    constructor(scopes) {
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:10:        let scopesArray = [];
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:11:        if (typeof scopes === 'string') {
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:12:            scopesArray = scopes.split(new RegExp(`${AuthScopes.SCOPE_DELIMITER}\\s*`));
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:14:        else if (Array.isArray(scopes)) {
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:15:            scopesArray = scopes;
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:17:        else if (scopes) {
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:18:            scopesArray = Array.from(scopes.expandedScopes);
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:20:        scopesArray = scopesArray
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:23:        const impliedScopes = this.getImpliedScopes(scopesArray);
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:24:        const scopeSet = new Set(scopesArray);
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:31:     * Checks whether the current set of scopes includes the given one.
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:44:     * Checks whether the current set of scopes equals the given one.
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:58:     * Returns a comma-separated string with the current set of scopes.
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:64:     * Returns an array with the current set of scopes.
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:71:    getImpliedScopes(scopesArray) {
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs:72:        return scopesArray.reduce((array, current) => {
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-01/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/scopes/index.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/index.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/oauth/oauth.mjs:49:        const scopes = config.scopes ? config.scopes.toString() : '';
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/oauth/oauth.mjs:52:            scope: scopes,
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/oauth/oauth.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-04/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-01/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-01/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-01/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/lib/auth/oauth/types.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-04/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-04/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-04/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-01/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-01/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-01/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-01/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-01/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-01/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-01/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-01/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-10/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-10/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-10/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2023-10/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-07/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-07/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-07/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2024-07/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-10/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-10/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-10/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-07/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2022-10/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2022-10/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2022-10/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2022-10/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-07/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-07/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-07/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2026-01/access_scope.mjs:13:        { "http_method": "get", "operation": "get", "ids": [], "path": "access_scopes.json" }
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2026-01/access_scope.mjs:18:            "plural": "access_scopes"
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2026-01/access_scope.mjs:30:    access_scopes;
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2025-10/access_scope.mjs.map:1:[Omitted long matching line]
+node_modules/@shopify/shopify-api/dist/esm/rest/admin/2026-01/access_scope.mjs.map:1:[Omitted long matching line]

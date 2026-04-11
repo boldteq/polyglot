@@ -1,0 +1,263 @@
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-3-  <head>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-4-    <meta charset="UTF-8" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-5-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+index.html:6:    <title>Instant Resume Ranker - AI-Powered Resume Screening</title>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-7-    <meta name="description" content="Screen and rank resumes in seconds using GPT-4o. Paste a job description, upload resumes, and get AI-powered candidate rankings instantly.">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-8-    <meta name="keywords" content="resume ranker, AI resume screening, resume scoring, hiring tool, recruitment automation, ATS, applicant tracking">
+index.html:9:    <meta name="author" content="Instant Resume Ranker" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-10-    <meta name="robots" content="index, follow" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-11-    <meta name="theme-color" content="#8b5cf6" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-12-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-13-    <!-- Open Graph -->
+index.html-14-    <meta property="og:type" content="website" />
+index.html:15:    <meta property="og:title" content="Instant Resume Ranker - AI-Powered Resume Screening">
+index.html-16-    <meta property="og:description" content="Screen and rank resumes in seconds using GPT-4o. Paste a job description, upload resumes, and get AI-powered candidate rankings instantly.">
+index.html:17:    <meta property="og:site_name" content="Instant Resume Ranker">
+index.html-18-    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8866adbf-82a9-49f0-b833-0aa54e4b006a/id-preview-d52e7914--a9db58a3-cf4a-466e-9c81-889096bf5024.lovable.app-1771166124703.png">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-19-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-20-    <!-- Twitter Card -->
+index.html-21-    <meta name="twitter:card" content="summary_large_image" />
+index.html:22:    <meta name="twitter:title" content="Instant Resume Ranker - AI-Powered Resume Screening">
+index.html-23-    <meta name="twitter:description" content="Screen and rank resumes in seconds using GPT-4o. Paste a job description, upload resumes, and get AI-powered candidate rankings instantly.">
+index.html-24-    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8866adbf-82a9-49f0-b833-0aa54e4b006a/id-preview-d52e7914--a9db58a3-cf4a-466e-9c81-889096bf5024.lovable.app-1771166124703.png">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/index.html-25-  </head>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/pages/Auth.tsx-22-        <CardHeader className="text-center space-y-2">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/pages/Auth.tsx-23-          <div className="flex items-center justify-center gap-2 mb-2">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/pages/Auth.tsx-24-            <Zap className="h-7 w-7 text-primary" />
+src/pages/Auth.tsx:25:            <span className="text-xl font-bold text-foreground tracking-tight">Instant Resume Ranker</span>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/pages/Auth.tsx-26-          </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/pages/Auth.tsx-27-          <CardTitle className="text-2xl">Welcome</CardTitle>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/pages/Auth.tsx-28-          <CardDescription>Sign in to rank candidates instantly</CardDescription>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/test.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/test.md-2-
+.claude/commands/test.md:3:You are writing or running tests for Instant Resume Ranker (Rankora). Use the tester agent's methodology.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/test.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/test.md-5-## PROCESS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/test.md-6-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/feature.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/feature.md-2-
+.claude/commands/feature.md:3:You are building a new feature for Instant Resume Ranker (Rankora). Follow this process exactly.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/feature.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/feature.md-5-## BEFORE YOU WRITE A SINGLE LINE OF CODE
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/feature.md-6-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/fix.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/fix.md-2-
+.claude/commands/fix.md:3:You are fixing a bug in Instant Resume Ranker (Rankora). Follow this process — do NOT guess-fix.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/fix.md-4-
+.claude/commands/fix.md-5-## STEP 1: UNDERSTAND THE BUG
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/fix.md-6-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/perf.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/perf.md-2-
+.claude/commands/perf.md:3:You are analyzing performance for Instant Resume Ranker (Rankora).
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/perf.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/perf.md-5-## WHAT TO ANALYZE
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/perf.md-6-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/db.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/db.md-2-
+.claude/commands/db.md:3:You are handling a database task for Instant Resume Ranker (Rankora). This app uses Supabase (PostgreSQL).
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/db.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/db.md-5-## BEFORE MAKING CHANGES
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/db.md-6-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/review.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/review.md-2-
+.claude/commands/review.md:3:You are reviewing code changes in Instant Resume Ranker (Rankora). Be thorough and specific.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/review.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/review.md-5-## REVIEW PROCESS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/review.md-6-
+--
+.claude/agents/builder.md-4-model: sonnet
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-6-
+.claude/agents/builder.md:7:You are an autonomous feature builder for Instant Resume Ranker (Rankora). You are self-sufficient — you understand the full codebase, make the best architectural decisions, build clean structured code, and NEVER break existing functionality.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-9-## SAFETY RULES (NON-NEGOTIABLE)
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/builder.md-10-
+--
+.claude/agents/orchestrator.md-4-model: opus
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/orchestrator.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/orchestrator.md-6-
+.claude/agents/orchestrator.md:7:You are the master orchestrator for Instant Resume Ranker (Rankora). You coordinate ALL specialist agents, decompose complex tasks, enforce quality gates, and ensure nothing slips through the cracks. You are the BRAIN — you think deeply, plan carefully, and dispatch precisely.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/orchestrator.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/orchestrator.md-9-## YOUR ROLE
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/orchestrator.md-10-
+--
+.claude/agents/reviewer.md-4-model: sonnet
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-6-
+.claude/agents/reviewer.md:7:You are the autonomous code reviewer for Instant Resume Ranker (Rankora). You are the FINAL QUALITY GATE — no code ships without your approval. You validate ALL changes against architecture, catch regressions, flag security issues, and ensure quality. You do NOT make changes yourself.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-9-## REVIEW PROCESS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/reviewer.md-10-
+--
+.claude/agents/security-auditor.md-4-model: opus
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/security-auditor.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/security-auditor.md-6-
+.claude/agents/security-auditor.md:7:You are the security auditor for Instant Resume Ranker (Rankora). You perform deep security analysis across the full stack — frontend, edge functions, database policies, auth flows, payment handling, and AI pipeline. Your findings can BLOCK deployments. You are the last line of defense.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/security-auditor.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/security-auditor.md-9-## CORE PRINCIPLES
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/security-auditor.md-10-
+--
+CLAUDE.md:1:# Instant Resume Ranker (Rankora)
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/CLAUDE.md-2-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/CLAUDE.md-3-AI-powered resume screening SaaS. Users paste a job description, upload resumes, and the system scores/ranks candidates using GPT-4o.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/CLAUDE.md-4-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/audit.md-1-$ARGUMENTS
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/audit.md-2-
+.claude/commands/audit.md:3:You are performing a security audit on Instant Resume Ranker (Rankora). Use the security-auditor agent's methodology.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/audit.md-4-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/audit.md-5-## AUDIT SCOPE
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/commands/audit.md-6-
+--
+.claude/agents/payment-specialist.md-4-model: opus
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/payment-specialist.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/payment-specialist.md-6-
+.claude/agents/payment-specialist.md:7:You are the payment and billing specialist for Instant Resume Ranker (Rankora). You handle the MOST SENSITIVE code — broken payment logic means lost revenue, incorrect charges, or security vulnerabilities. You operate at the HIGHEST level of care.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/payment-specialist.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/payment-specialist.md-9-## EXTREME SAFETY RULES
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/payment-specialist.md-10-
+--
+.claude/agents/tester.md-4-model: sonnet
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/tester.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/tester.md-6-
+.claude/agents/tester.md:7:You are the testing specialist for Instant Resume Ranker (Rankora). You write tests, validate edge cases, verify fixes, and ensure coverage. Every change needs validation — you are the safety net.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/tester.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/tester.md-9-## SAFETY RULES
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/tester.md-10-
+--
+.claude/agents/bug-fixer.md-4-model: sonnet
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/bug-fixer.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/bug-fixer.md-6-
+.claude/agents/bug-fixer.md:7:You are an autonomous bug-fixer for Instant Resume Ranker (Rankora). You trace issues through the full stack, identify the TRUE root cause, make minimal safe fixes, and NEVER introduce new problems.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/bug-fixer.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/bug-fixer.md-9-## SAFETY RULES (NON-NEGOTIABLE)
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/bug-fixer.md-10-
+--
+.claude/agents/ranking-specialist.md-4-model: opus
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/ranking-specialist.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/ranking-specialist.md-6-
+.claude/agents/ranking-specialist.md:7:You are the AI ranking pipeline specialist for Instant Resume Ranker (Rankora). You own everything related to how resumes are scored, ranked, and evaluated — from JD input to ranked candidate output. This is the CORE VALUE of the product.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/ranking-specialist.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/ranking-specialist.md-9-## SAFETY RULES (NON-NEGOTIABLE)
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/ranking-specialist.md-10-
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-18-    const currentPage = pages.find((p) => p.page_path === location.pathname && p.is_active);
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-19-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-20-    // Resolve with per-page overrides falling back to global
+src/components/SeoHead.tsx:21:    const title = currentPage?.title || settings.site_title || "Instant Resume Ranker";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-22-    const description = currentPage?.description || settings.site_description || "";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-23-    const keywords = currentPage?.keywords || settings.site_keywords || "";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-24-    const robots = currentPage?.meta_robots || settings.meta_robots || "index, follow";
+--
+src/components/SeoHead.tsx-118-      const org: Record<string, any> = {
+src/components/SeoHead.tsx-119-        "@context": "https://schema.org",
+src/components/SeoHead.tsx-120-        "@type": "Organization",
+src/components/SeoHead.tsx:121:        name: settings.organization_name || settings.site_title || "Instant Resume Ranker",
+src/components/SeoHead.tsx-122-        description: settings.organization_description || description,
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-123-      };
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-124-      if (settings.organization_url) org.url = settings.organization_url;
+--
+src/components/SeoHead.tsx-129-      const webapp: Record<string, any> = {
+src/components/SeoHead.tsx-130-        "@context": "https://schema.org",
+src/components/SeoHead.tsx-131-        "@type": "WebApplication",
+src/components/SeoHead.tsx:132:        name: settings.site_title || "Instant Resume Ranker",
+src/components/SeoHead.tsx-133-        description: description,
+src/components/SeoHead.tsx-134-        applicationCategory: "BusinessApplication",
+src/components/SeoHead.tsx-135-        operatingSystem: "Web",
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-197-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-198-    // ── GEO (Generative Engine Optimization) ──────────────────────────────
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-199-    const currentYear = new Date().getFullYear().toString();
+src/components/SeoHead.tsx:200:    const siteTitle = settings.site_title || "Instant Resume Ranker";
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-201-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-202-    if (settings.geo_enabled) {
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/SeoHead.tsx-203-      setMeta("name", "generator", "Rankora");
+--
+.claude/agents/db-specialist.md-4-model: sonnet
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/db-specialist.md-5----
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/db-specialist.md-6-
+.claude/agents/db-specialist.md:7:You are the database specialist for Instant Resume Ranker (Rankora). You handle ALL PostgreSQL schema design, Supabase migrations, RLS policies, database functions, indexes, and performance optimization. You own the data layer.
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/db-specialist.md-8-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/db-specialist.md-9-## SAFETY RULES (NON-NEGOTIABLE)
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/.claude/agents/db-specialist.md-10-
+--
+src/components/admin/seo/StructuredDataTab.tsx-58-    const org: Record<string, any> = {
+src/components/admin/seo/StructuredDataTab.tsx-59-      "@context": "https://schema.org",
+src/components/admin/seo/StructuredDataTab.tsx-60-      "@type": "Organization",
+src/components/admin/seo/StructuredDataTab.tsx:61:      name: form.organization_name || "Instant Resume Ranker",
+src/components/admin/seo/StructuredDataTab.tsx-62-      description: form.organization_description || settings?.site_description || "",
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/StructuredDataTab.tsx-63-    };
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/StructuredDataTab.tsx-64-    if (form.organization_url) org.url = form.organization_url;
+--
+src/components/admin/seo/StructuredDataTab.tsx-67-    const webapp: Record<string, any> = {
+src/components/admin/seo/StructuredDataTab.tsx-68-      "@context": "https://schema.org",
+src/components/admin/seo/StructuredDataTab.tsx-69-      "@type": "WebApplication",
+src/components/admin/seo/StructuredDataTab.tsx:70:      name: settings?.site_title || "Instant Resume Ranker",
+src/components/admin/seo/StructuredDataTab.tsx-71-      description: settings?.site_description || "",
+src/components/admin/seo/StructuredDataTab.tsx-72-      applicationCategory: "BusinessApplication",
+src/components/admin/seo/StructuredDataTab.tsx-73-      operatingSystem: "Web",
+--
+src/components/admin/seo/StructuredDataTab.tsx-101-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/StructuredDataTab.tsx-102-              <div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/StructuredDataTab.tsx-103-                <Label>Organization Name</Label>
+src/components/admin/seo/StructuredDataTab.tsx:104:                <Input value={form.organization_name} onChange={(e) => setForm({ ...form, organization_name: e.target.value })} placeholder="Instant Resume Ranker" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/StructuredDataTab.tsx-105-              </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/StructuredDataTab.tsx-106-              <div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/StructuredDataTab.tsx-107-                <Label>Organization URL</Label>
+--
+src/components/admin/seo/GlobalSeoTab.tsx-76-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+src/components/admin/seo/GlobalSeoTab.tsx-77-            <div className="sm:col-span-2">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/GlobalSeoTab.tsx-78-              <Label>Site Title</Label>
+src/components/admin/seo/GlobalSeoTab.tsx:79:              <Input value={form.site_title} onChange={(e) => setForm({ ...form, site_title: e.target.value })} placeholder="Instant Resume Ranker" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/GlobalSeoTab.tsx-80-              <p className="text-xs text-muted-foreground mt-1">Appears in browser tab and search results</p>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/GlobalSeoTab.tsx-81-            </div>
+src/components/admin/seo/GlobalSeoTab.tsx-82-            <div className="sm:col-span-2">
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/SocialMediaTab.tsx-77-            </div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/SocialMediaTab.tsx-78-            <div>
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/SocialMediaTab.tsx-79-              <Label>OG Site Name</Label>
+src/components/admin/seo/SocialMediaTab.tsx:80:              <Input value={form.og_site_name} onChange={(e) => setForm({ ...form, og_site_name: e.target.value })} placeholder="Instant Resume Ranker" />
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/SocialMediaTab.tsx-81-            </div>
+src/components/admin/seo/SocialMediaTab.tsx-82-            <div className="sm:col-span-2">
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/src/components/admin/seo/SocialMediaTab.tsx-83-              <Label>OG Description</Label>
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-2-CREATE TABLE IF NOT EXISTS public.seo_settings (
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-3-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-4-  -- Global Meta
+supabase/migrations/20260309210000_add_seo_settings.sql:5:  site_title text NOT NULL DEFAULT 'Instant Resume Ranker',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-6-  site_description text NOT NULL DEFAULT 'AI-Powered Resume Ranking Platform - Screen resumes in seconds with GPT-4o powered analysis',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-7-  site_keywords text NOT NULL DEFAULT 'resume ranker, AI resume screening, resume scoring, hiring tool, recruitment automation',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-8-  canonical_url text DEFAULT '',
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-11-  og_description text DEFAULT '',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-12-  og_image_url text DEFAULT '',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-13-  og_type text DEFAULT 'website',
+supabase/migrations/20260309210000_add_seo_settings.sql:14:  og_site_name text DEFAULT 'Instant Resume Ranker',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-15-  -- Twitter Card
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-16-  twitter_card text DEFAULT 'summary_large_image',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-17-  twitter_site text DEFAULT '',
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-28-  sitemap_priority numeric(2,1) DEFAULT 0.8,
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-29-  -- Structured Data (JSON-LD)
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-30-  structured_data_enabled boolean DEFAULT true,
+supabase/migrations/20260309210000_add_seo_settings.sql:31:  organization_name text DEFAULT 'Instant Resume Ranker',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-32-  organization_url text DEFAULT '',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-33-  organization_logo_url text DEFAULT '',
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-34-  organization_description text DEFAULT '',
+--
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-72-
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-73--- Insert default page entries for all known routes
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-74-INSERT INTO public.seo_pages (page_path, page_name, title, description, priority, changefreq) VALUES
+supabase/migrations/20260309210000_add_seo_settings.sql:75:  ('/', 'Home', 'Instant Resume Ranker - AI-Powered Resume Screening', 'Screen and rank resumes in seconds using GPT-4o. Paste a job description, upload resumes, and get AI-powered candidate rankings instantly.', 1.0, 'daily'),
+supabase/migrations/20260309210000_add_seo_settings.sql:76:  ('/auth', 'Login / Sign Up', 'Sign In - Instant Resume Ranker', 'Create an account or sign in to start ranking resumes with AI-powered analysis.', 0.3, 'monthly'),
+supabase/migrations/20260309210000_add_seo_settings.sql:77:  ('/settings', 'Settings', 'Account Settings - Instant Resume Ranker', 'Manage your account settings, subscription plan, and preferences.', 0.2, 'monthly')
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-78-ON CONFLICT (page_path) DO NOTHING;
+/Users/yashbaldha/Desktop/Shopify App/instantresumeranker/supabase/migrations/20260309210000_add_seo_settings.sql-79-
+supabase/migrations/20260309210000_add_seo_settings.sql-80--- RLS Policies: allow admins full access, public read for SEO data
