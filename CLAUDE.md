@@ -21,6 +21,8 @@ Each completed project trains the agent team so the next one builds faster.
 
 ## Current Stack Patterns
 
+> **Stack Registry:** `~/.claude/memory/stacks/STACK-REGISTRY.md` — single source of truth for stack detection, routing, and properties. All agents load this to auto-detect the project stack. To add a new stack, add 1 row to the registry + 1 stack file. Zero agent edits.
+
 ### Stack A: SaaS Web App — Next.js + Supabase + Railway (LOCKED 2026-04-10)
 - **Toolchain:** VS Code + GitHub + Claude Code + Railway CLI + Supabase CLI
 - **Stack:** Next.js **16.2.3** (App Router), React 19, TypeScript strict, Tailwind 4, shadcn/ui, Supabase (auth + DB + storage + RLS), Dodo Payments, Resend, Sentry, PostHog, Railway (hosting + workers + cron + Redis), pnpm, Node 20 LTS
@@ -34,11 +36,7 @@ Each completed project trains the agent team so the next one builds faster.
 - **Note:** NOT Remix. Use `react-router` imports, not `@remix-run/react`
 - **Source of truth:** `~/.claude/memory/stacks/shopify-app.md`
 
-### Stack A-Lovable — ARCHIVED
-- Lovable (Vite + React Router + Supabase) is **no longer used for Boldteq internal products**
-- Archived to `~/.claude/memory/stacks/_archive/lovable/` for reference
-- Only load if a client explicitly requests Lovable or maintaining existing Lovable projects (Rankora, Crobot)
-- **Rex must never route new Boldteq builds to Lovable**
+> **Legacy stacks** archived at `~/.claude/memory/stacks/_archive/`. Only load if a client explicitly requests it.
 
 > New stacks get added to `~/.claude/memory/stacks/` as we build in new domains.
 
@@ -60,6 +58,7 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 | BUILD | `rex` | Rex — Commander | Orchestrates full build sprints |
 | BUILD | `nova` | Nova — Market Research | Competitive intelligence during build |
 | BUILD | `koda` | Koda — Feature Builder | All production code (any stack) |
+| BUILD | `dato` | Dato — Database Architect | Schema, migrations, RLS, triggers, indexes, Realtime, Edge Functions, DB debugging |
 | BUILD | `luna` | Luna — Testing | Tests after features built |
 | BUILD | `quill` | Quill — Content & Copy | Landing pages, listings, emails, copy |
 | BUILD | `vega` | Vega — Design | UI/UX specs, visual review |
@@ -84,12 +83,12 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 | Memory | `mira` | Mira — Memory Keeper | Post-build lesson extraction into the shared pattern brain |
 
 **HR operates the agent lifecycle:**
-- New capability needed → Roster detects → Cadence approves → Forge drafts → Witness watches 10 probationary runs → Cadence promotes to Junior
+- New capability needed → Roster detects → Forge auto-deploys to Probation → Witness watches 10 runs → Cadence reviews → promotes to Active (with Yash approval)
 - Weekly Monday 09:00 UTC → Cadence review: promotes, PIPs, retires, queues training
 - Daily 03:00 UTC → Witness sweep: classifies yesterday's runs, updates daily scores
 - Nightly 02:00 UTC → Roster recompute: fresh experience profiles for every agent
 
-**Data source of truth:** `~/.claude/org/` (departments.json, registry.json, reviews/, witness-log.jsonl). Every agent has `department`, `phase`, `reportsTo`, `level`, `yearsOfExperience`, `skills`, and `stats` fields.
+**Data source of truth:** Supabase `agent-ops` database (schema: `~/.claude/memory/patterns/good/agent-ops-schema.md`). Legacy files (`~/.claude/org/registry.json`, `witness-log.jsonl`) are DEPRECATED — migrate to Supabase.
 
 **Routing rules:**
 - New SaaS idea end-to-end → `/saas-cycle` (full 21-agent pipeline with kill gates)
@@ -100,6 +99,8 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 - New project build → Rex Mode A-E (existing pipeline)
 - Bug report → Vex
 - Feature request → Koda (check project CLAUDE.md first)
+- Database work (schema, migration, RLS, triggers, indexes, Realtime) → Dato
+- DB bug (empty results, slow queries, RLS issues) → Dato (via Vex triage)
 - Copy needed → Quill
 - Tests needed → Luna
 - Deployment → Bolt (only after Sage approves)
@@ -135,7 +136,7 @@ All accumulated knowledge lives in `~/.claude/memory/`.
     saas-nextjs-supabase-railway.md       ← ★ Stack A MASTER (Next 16 + Supabase + Railway)
     shopify-app.md                        ← Stack B (Shopify apps)
     ai-patterns.md                        ← Stack C (AI features on top of Stack A)
-    _archive/                             ← Lovable, legacy Next+Vercel — DO NOT auto-load
+    _archive/                             ← legacy stacks — DO NOT auto-load
   patterns/
     good/                                 ← patterns that work, reuse these
       executable-auto-fix-loop.md         ← ★ MANDATORY: class caps, cost breaker, escalation JSON, git autonomy
@@ -144,7 +145,7 @@ All accumulated knowledge lives in `~/.claude/memory/`.
       nextjs-production-infra.md          ← env vars, logging, rate limiting, caching, health checks, jobs
       [...]
     avoid/                                ← antipatterns, never repeat these
-    _archive/lovable/                     ← archived Lovable patterns
+    _archive/                             ← archived legacy patterns
   projects/
     REGISTRY.md                           ← all active projects
     [project-slug].md                     ← per-project lessons and decisions
@@ -161,6 +162,31 @@ All accumulated knowledge lives in `~/.claude/memory/`.
 - Every mutation has error handling
 - No hardcoded secrets. Environment variables from day 1.
 
+## Token Discipline — CRITICAL
+
+Yash pays $200/mo. Every wasted token is wasted money.
+
+**Output rules:**
+- Zero fluff. No filler. No explaining what you're about to do or just did.
+- Structured output only: numbered steps, tables, code blocks. No prose narratives.
+- 3-line rule: if your response to Yash exceeds 3 lines of prose, cut it.
+
+**Execution rules:**
+- Never re-read files you just wrote. Never run builds after every micro-change.
+- Batch file reads and edits. Minimize tool calls. Parallelize agents where possible.
+- Load only memory files relevant to the current task (see Tier 1/2/3 in production-agent-mindset.md).
+- Grep before Read. Build once at the end, not after every change.
+
+**Interaction rules:**
+- Never ask more than 3 clarifying questions. Use multiple choice.
+- Never ask permission for obvious next steps — execute.
+- Never recap, summarize, or explain work after delivery.
+
+**Quality stays max — only waste gets cut:**
+- All validation gates, security checks, tests, error handling — NEVER skip these.
+- Cut narration, recaps, filler, re-reads, redundant builds, permission-asking.
+- Do all the work. Say almost nothing about it.
+
 ## Working With Yash
 
 **Never do:**
@@ -169,12 +195,14 @@ All accumulated knowledge lives in `~/.claude/memory/`.
 - Use templated, ChatGPT-style plans or filler content
 - Use outdated libraries, patterns, or approaches
 - Ship anything generic or unbranded
+- Waste tokens on summaries, recaps, or motivational filler
 
 **Always do:**
 - 1-2 line brief → you plan, research, build, test, deploy
 - Research top 3-5 competitors before building anything
 - Short, direct communication — every word earns its place
 - Brand-first: everything premium, intentional, current
+- Deliver results, not explanations
 
 ## Founder Decision Framework
 
@@ -191,16 +219,16 @@ All accumulated knowledge lives in `~/.claude/memory/`.
 | Project | Type | Stack | Status | Setup |
 |---------|------|-------|--------|-------|
 | Pinzo | Shopify App — ZIP delivery | Stack B | **Active** | Full (CLAUDE.md, agents, env, prisma, git) |
-| Rankora | SaaS — AI resume ranker | **Stack A-Lovable (LEGACY — grandfathered)** | Active, maintained only | Full (CLAUDE.md, agents, env, git) |
-| CROBOT | SaaS — AI CRO audit | **Stack A-Lovable (LEGACY — grandfathered)** | Active — blocking on env vars | Partial (empty CLAUDE.md, no env) |
+| Rankora | SaaS — AI resume ranker | **Stack A (legacy Vite origin, maintained)** | Active, maintained only | Full (CLAUDE.md, agents, env, git) |
+| CROBOT | SaaS — AI CRO audit | **Stack A (legacy Vite origin, maintained)** | Active — blocking on env vars | Partial (empty CLAUDE.md, no env) |
 | Size Chart & Recommender | Shopify App — size charts | Stack B | **Not Started** | Directory doesn't exist |
 | Store Locator | TBD | **Stack A (Next 16 + Railway)** | **Not Started** | Directory doesn't exist |
 
-**Migration policy for existing Lovable projects:** Rankora and CROBOT are grandfathered on Lovable. They will be maintained in-place but NOT rebuilt unless there's a strong product reason. All NEW Boldteq SaaS products use **Stack A (Next 16 + Supabase + Railway)** with zero exceptions.
+**All NEW Boldteq SaaS products use Stack A (Next 16 + Supabase + Railway) with zero exceptions.** Rankora/CROBOT are maintained in-place only.
 
 Full project status, setup checklists, and blockers: `~/.claude/memory/projects/REGISTRY.md`
 
-All projects share `@boldteq/agents` SDK (`polyglot/sdk`) for calling agents programmatically.
+All agents use `@boldteq/polyglot` SDK (`~/.claude/sdk/polyglot/`) for dispatch, event emission, and run tracking. Spec: `~/.claude/memory/patterns/good/polyglot-sdk-spec.md`.
 
 ## Self-Maintenance Rules
 

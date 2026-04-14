@@ -20,7 +20,10 @@ Index loaded every session. Check before starting any task.
 - ★ **[Stack A Scaffold Dry Run](patterns/good/stack-a-scaffold-dryrun.md)** — 7-phase Rankora rebuild rehearsal: Next 16 proxy cookies async, RLS SQL, Dodo HMAC, BullMQ, Rex dispatch JSON
 - ★ **[Shopify App Store Submission Runbook](patterns/good/shopify-app-store-submission-runbook.md)** — 18-item checklist with runnable verify bash + `submit-gate.sh`
 - ★ **[Legal Baseline Templates](patterns/good/legal-baseline-templates.md)** — Stack A ToS/Privacy/DPA, Stack B Shopify deltas, Rankora EU AI Act rider, Sage `legal-check.sh`
-- [Rankora Next.js Rebuild](projects/rankora-nextjs-rebuild.md) — Training ground: full Stack A rebuild from Lovable
+- ★ **[Next.js Debugging & Fix Protocol](patterns/good/nextjs-debugging-and-fix-protocol.md)** — **THE master protocol**: fix-verify loop (pnpm tsc→lint→build→test), Next.js 16 gotchas (async cookies/headers/params, Server Components, metadata API), Supabase gotchas (RLS debugging, server vs client), Shopify gotchas, common fix patterns, escalation rules. ALL code agents load this.
+- ★ **[Code Change Discipline](patterns/good/code-change-discipline.md)** — Anti-cascade protocol: pre-change impact analysis, 1-3-Verify rule, blast radius categories (A/B/C), regression prevention checklist, Koda/Vex-specific sequences. ALL code agents load this.
+- ★ **[Supabase Database Mastery](patterns/good/supabase-database-mastery.md)** — Production DB patterns: migration safety (zero-downtime, rollback), RLS (4 patterns + performance), triggers (updated_at, handle_new_user, audit trail, soft delete), index strategy (B-tree, GIN, trigram, EXPLAIN ANALYZE), Realtime subscriptions, Edge Functions, schema design (standard table template, JSONB, enums), backup/restore, type generation workflow, connection pooling, DB debugging (empty results, slow queries, locks)
+- [Rankora Next.js Rebuild](projects/rankora-nextjs-rebuild.md) — Training ground: full Stack A rebuild from legacy Vite SPA
 - [Project Registry](projects/REGISTRY.md) — All project status, setup, blockers (single source of truth)
 - [System Health](HEALTH.md) — Memory staleness, file counts, quick diagnostics
 
@@ -29,7 +32,7 @@ Index loaded every session. Check before starting any task.
 - [ConvertScan (CROBOT)](projects/crobot.md) — AI CRO audit SaaS: architecture, bugs, current state
 - [Pinzo](projects/pinzo.md) — Shopify ZIP delivery checker: compliance audit, session history
 - [Clientloop](projects/clientloop.md) — ManyRequests-style SaaS: Phase 1 UI shell, mock-data-only, deploy deferred
-- [Rankora](projects/rankora.md) — AI resume ranker (Lovable/Vite origin); Next.js 16 migration planned (70-95h, not started)
+- [Rankora](projects/rankora.md) — AI resume ranker (legacy Vite origin); Next.js 16 migration planned (70-95h, not started)
 
 ### Sync Pass 3 product-readiness files (2026-04-11)
 
@@ -44,11 +47,12 @@ Index loaded every session. Check before starting any task.
 
 ## Stack Knowledge
 
+- ★ **[Stack Registry](stacks/STACK-REGISTRY.md)** — **LOAD FIRST**: Detection markers → stack file → properties. Add new stacks here (zero agent edits). All agents reference this for stack routing.
 - ★ **[Stack A: Next.js + Supabase + Railway](stacks/saas-nextjs-supabase-railway.md)** — **MASTER** (Next 16.2.3 + React 19 + Tailwind 4 + Supabase + Railway + Dodo Payments + pnpm + Node 20). The ONLY stack for Boldteq internal SaaS products as of 2026-04-10.
 - [Stack B: Shopify KB](stacks/shopify/INDEX.md) — 42 files across core/build/design/launch (start here)
 - [Stack B: Core Rules](stacks/shopify/core/shopify-app.md) — Polaris-only, session auth, billing, GDPR
 - [Stack C: AI](stacks/ai-patterns.md) — Vercel AI SDK, streaming, token management (runs ON TOP of Stack A)
-- [_archive/](stacks/_archive/ARCHIVED.md) — Lovable + legacy Next+Vercel. DO NOT auto-load. Only for client-requested Lovable or grandfathered Rankora/CROBOT maintenance.
+- [_archive/](stacks/_archive/ARCHIVED.md) — Legacy stacks. DO NOT auto-load. Only for explicit client requests or grandfathered project maintenance.
 
 ## Patterns — Good
 
@@ -71,8 +75,8 @@ Index loaded every session. Check before starting any task.
 - [SaaS Brand Patterns](patterns/good/saas-brand-patterns.md) — Linear, Notion, Vercel, Dodo brand analysis
 - [SaaS Growth & Onboarding](patterns/good/saas-growth-onboarding.md) — TTV, activation, retention, viral loops
 - [Shopify App Patterns](patterns/good/shopify-app-patterns.md) — Rate limiting, widget sync, GDPR, Prisma
-- ~~[Lovable Package Safety]~~ — **ARCHIVED** to `patterns/_archive/lovable/lovable-package-management.md`
-- ~~[Lovable Execution Model]~~ — **ARCHIVED** to `patterns/_archive/lovable/lovable-execution-model.md`
+- ~~Legacy Package Safety~~ — **ARCHIVED** to `patterns/_archive/lovable/`
+- ~~Legacy Execution Model~~ — **ARCHIVED** to `patterns/_archive/lovable/`
 - [Claude Hub Integration](patterns/good/claude-hub-integration.md) — 3 patterns for calling agents from apps
 - [SEO Patterns](patterns/good/seo-patterns.md) — Technical SEO, structured data, ranking strategy
 - [Agile Methodology](patterns/good/agile-methodology.md) — Sprints, kanban, velocity for multi-project factory
@@ -82,6 +86,8 @@ Index loaded every session. Check before starting any task.
 - [Open-Source SaaS Patterns](patterns/good/open-source-saas-patterns.md) — 12 universal patterns from 12 production codebases (Cal.com, Dub.sh, Twenty, Novu, etc.)
 - [Production-Validated Patterns](patterns/good/production-validated-patterns.md) — 1900+ lines of REAL code from Cal.com, Supabase, Vercel, Sentry, OWASP, Playwright, Infisical, Unkey (rollback, smoke tests, RLS, security headers, quality gates, E2E testing, SEO, monitoring, CI/CD, copy, ADR, scaffolding)
 - [Open-Source Agent Training](patterns/good/open-source-agent-training.md) — Validated patterns from 600+ community skills + 2026-04-10 update. **30 sections**: orchestration, API design, DB, testing, CI/CD, observability, security (OWASP Top 10), SEO (AI citability), LLM cost optimization, RAG pipeline, debugging protocol, product discovery, UI tokens, payments, scaffolding phases + NEW: edge computing, realtime/CRDT, AI agent frameworks, feature flags, background jobs, email/notifications, file upload, search infrastructure, billing innovations, monorepo, agent prompt engineering, agent testing, auth patterns, ORM selection, rate limiting, observability stack
+- ★ **[Agent-Ops Schema](patterns/good/agent-ops-schema.md)** — **THE database reference** for all HR agents. 15-table Supabase schema: agents, agent_runs, agent_events, training_signals, agent_reviews, composite_scores, capability_gaps, patterns_proposed, escalations, cost_tracking, performance_history, promotion_candidates, pip_tracking, deprecation_schedule, audit_trail. RLS, triggers, views, composite scoring (40% gate_pass_rate + 30% first_try_success + 20% rework_cycles + 10% yash_override_rate), adaptive promotions (Probation→Active→Expert→Architect).
+- ★ **[Polyglot SDK Spec](patterns/good/polyglot-sdk-spec.md)** — **THE integration reference** for all agents. Agent dispatch, event system (16 types), run tracking, cost logging, dashboard pages (10-page Next.js spec: leaderboard, events, training, costs, patterns, reviews, escalations, promotions, training-signals, audit-trail). Replaces registry.json, witness-log.jsonl, agent-runs.json with Supabase-native events + dashboard.
 
 ## Patterns — Avoid
 

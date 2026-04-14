@@ -277,10 +277,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=        # server only — signs admin requests
 SUPABASE_JWT_SECRET=              # for verifying tokens server-side
 
-# Dodo Payments
-DODO_API_KEY=
-DODO_WEBHOOK_SECRET=
-NEXT_PUBLIC_DODO_PUBLISHABLE_KEY=
+# Dodo Payments (server-side only)
+DODO_API_KEY=                          # Server only, never expose
+DODO_PAYMENTS_WEBHOOK_KEY=             # For verifying webhook signatures
 
 # Resend
 RESEND_API_KEY=
@@ -295,8 +294,7 @@ NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=
 
 # Redis (Railway-provided)
-REDIS_URL=                        # Railway injects from Redis service
-REDIS_PRIVATE_URL=                # Private networking
+REDIS_URL=                        # Railway injects from Redis service (${{redis.REDIS_PRIVATE_URL}})
 
 # App config
 NEXT_PUBLIC_APP_URL=

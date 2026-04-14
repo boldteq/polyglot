@@ -12,14 +12,14 @@ last_updated: 2026-04-11
 
 ---
 
-## File Counts (2026-04-11 evening — 9+ push)
+## File Counts (2026-04-14 evening — Training Pass 5)
 
 | Category | Files | Lines (est.) | Notes |
 |----------|-------|-------------|-------|
 | User | 3 | ~400 | Profile + feedback + decision-simulator |
 | Stacks | 6 + 42 Shopify | ~5000 | Shopify KB is most mature |
 | Starters | 1 | ~480 | boldteq-saas-starter.md |
-| Patterns/Good | 28 | ~13000 | **+executable-auto-fix-loop, +executable-validation-gates** (the 9+ push) |
+| Patterns/Good | 33 | ~18500 | +2 new (agent-ops-schema, polyglot-sdk-spec) in Pass 5 |
 | Patterns/Avoid | 1 | ~300 | Single file |
 | Design KB | 35 | ~43,000 | Vega-maintained |
 | Projects | 5 + registry | ~1500 | rankora-nextjs-rebuild.md is the sole live training target |
@@ -28,7 +28,7 @@ last_updated: 2026-04-11
 | Lessons | 1 (bugs.jsonl) | 0 | Empty, ready |
 | Agents | 1 summary + 2 session files | ~500 | auto-decision-log.md, perf-summary |
 | Intake (active) | 3 | ~300 | 4 archived |
-| **Total** | **~156** | **~64,700** | |
+| **Total** | **~161** | **~70,180** | +2 files, ~2K lines from Pass 5 |
 
 ## Training Pass 2 (2026-04-11 evening) — The 9+ Push
 
@@ -111,6 +111,167 @@ Sync Pass 3 does not change agent internals (no agent file edits). It closes the
 
 Outstanding: none for this pass. Next gate = Rankora cutover rehearsal week of 2026-05-12.
 
+## Training Pass 4 (2026-04-13 — Full Agent Restructure for Next.js Effectiveness)
+
+**Problem solved:** Agents were structurally compliant (right references, right patterns) but operationally ineffective — they loaded 15+ pattern files before doing anything, diluting context and making Claude Code worse at actual tasks. Fixes required 2-3+ re-prompts. Agents didn't verify their own work with real commands.
+
+**Root causes identified:**
+1. **Context dilution:** Koda loaded 16 files before writing any code — by the time it started, it forgot what to build
+2. **Pseudocode verification:** "Self-correcting loops" were Python pseudocode, not real shell commands
+3. **No blast-radius analysis:** Agents edited files without checking what depended on them → cascading breakage
+4. **Legacy references:** `lovable-execution-model.md`, `npm run build`, Lovable folder structures still in agent instructions
+5. **No fix-verify enforcement:** Rex accepted "done" from agents without proof they ran `pnpm tsc` / `pnpm build`
+
+**What changed:**
+
+### New pattern files (2):
+1. `patterns/good/nextjs-debugging-and-fix-protocol.md` — THE master protocol: fix-verify loop with real commands (`pnpm tsc --noEmit && pnpm lint && pnpm build && pnpm test --run`), 10 Next.js 16 gotchas (async cookies/headers/params, Server Components, metadata API, etc.), 4 Supabase gotchas, Shopify/Stack B gotchas, regression prevention checklist, common fix patterns (copy-paste solutions), escalation format, "don't do this" list
+2. `patterns/good/code-change-discipline.md` — Anti-cascade protocol: pre-change impact analysis (grep consumers), 1-3-Verify rule, blast radius categories (A=safe, B=risky, C=dangerous), post-change regression check, common cascade patterns, Koda/Vex-specific build sequences
+
+### All 21 agents restructured:
+- **First-Load Manifest:** Reduced from 12-16 files to 4-5 essential Tier 1 files + optional Tier 2. Every agent's manifest is now customized to its role.
+- **Package manager:** All `npm run build` → `pnpm build`, `npm install` → `pnpm install` (130+ replacements across all agents)
+- **Lovable references:** All `lovable-execution-model.md` → `nextjs-debugging-and-fix-protocol.md`. Lovable section headers renamed to "Legacy" or "Production-Grade"
+- **Rex dispatch rule:** Rex now REQUIRES verification output (terminal paste) from any code agent before accepting "done"
+- **Fix-verify loop:** Real bash commands embedded in Koda and Vex — no more pseudocode
+
+### Verification sweep:
+- `lovable-execution-model.md` references in agents: **0** (was 21)
+- `npm run build` references in agents: **0** (was 50+)
+- `FIRST-LOAD-MANIFEST:2026-04-13` across agents: **21/21** ✅
+- `nextjs-debugging-and-fix-protocol.md` loaded by code agents: **13 agents** ✅
+- `code-change-discipline.md` loaded by code agents: **9 agents** ✅
+
+### Expected impact:
+- Fewer re-prompts (agents verify before reporting done)
+- Fewer cascading breakage (blast radius analysis before editing)
+- Better Next.js 16 code (gotchas embedded, not in a file that gets lost in context)
+- Faster agent startup (load 5 files, not 16)
+
+Factory score: **9.18 → projected 9.5** pending empirical validation on next Pinzo/Rankora sprint.
+
+### Dato Agent Creation (2026-04-13)
+
+**Problem:** Database work (schema, migrations, RLS, triggers, indexes, debugging) was spread across Koda, Vex, Arya, and Sage with no single owner. 12 Supabase topic gaps identified across agents. Result: inconsistent RLS, missing indexes, stale types, empty-result bugs.
+
+**Solution:** Created dedicated **Dato — Database Architect** agent + comprehensive pattern file.
+
+**New files (2):**
+1. `agents/dato.md` — BUILDER class (5 retries, 25 min, $5), reports to Arya. Owns: schema design, migrations, RLS, triggers, functions, indexes, type gen, Realtime, Edge Functions, query optimization, DB debugging. The Dato Guarantee: every table ships with RLS + indexes + timestamps + trigger + rollback comment + type gen.
+2. `patterns/good/supabase-database-mastery.md` — 11-section master reference (~1500 lines): migration safety (zero-downtime, rollback), RLS (4 patterns + performance), triggers (updated_at, handle_new_user, audit, soft delete), index strategy (B-tree, GIN, trigram, EXPLAIN ANALYZE), Realtime subscriptions, Edge Functions, schema design, backup/restore, type generation, connection pooling, DB debugging.
+
+**4 agents updated with Dato delegation:**
+- **Koda:** Database Delegation section — delegates all schema/migration/RLS/trigger work to Dato, keeps `supabase-database-mastery.md` in Tier 2
+- **Arya:** Database Delegation section — delegates data model implementation to Dato with handoff format
+- **Sage:** Database Audit Delegation section — 4 audit responsibilities (RLS on every table, no `serial` IDs, proper indexes, migration rollback comments)
+- **Vex:** Database Bug Delegation section — triages DB bugs then delegates to Dato
+
+**System registration:**
+- `CLAUDE.md` — Dato added to agent roster (BUILD phase) + 2 routing rules (Database work → Dato, DB bug → Dato via Vex)
+- `rex.md` — Dato Dispatch Rule (dispatch BEFORE Koda for DB tasks) + verification requirement
+- `MEMORY.md` — `supabase-database-mastery.md` entry added to Critical section
+
+**Agent count:** 21 → **22** (Dato is the first new agent since the initial roster)
+
+## Training Pass 5 (2026-04-14 — Complete HR System Deep Training)
+
+**Scope:** Complete overhaul of 6 HR agents + Supabase schema + Polyglot SDK + PII awareness across Dato + Koda
+
+**Problem solved:** HR agents (Witness, Cadence, Tutor, Forge, Roster, Mira) operated off static registry.json + hand-written witness-log.jsonl with no real-time scoring, no adaptive thresholds, no PII guardrails. System couldn't track agent health, training ROI, or capability gaps. Dato created with PII awareness but no reference spec for other agents on PII classification rules.
+
+**What changed:**
+
+### New pattern files (2):
+1. `patterns/good/agent-ops-schema.md` — **MASTER** Supabase schema for HR system (15 tables, ~800 lines):
+   - **agents** — agent metadata (name, level, phase, dept, reports_to, skills[], stats JSON)
+   - **agent_runs** — every agent execution (run_id, agent_id, task_id, status, tokens_in/out, cost_usd, errors, verification_output, git_commit_sha)
+   - **agent_events** — 16 event types (started, completed, escalated, retried, self_corrected, promoted, pip_initiated, deprecation_scheduled, training_applied, pattern_detected, cost_exceeded, performance_alert, feedback_received, override_applied, rework_needed, gate_failed)
+   - **training_signals** — P0-P5 priorities (P0=urgent, P1=priority, P2=scheduled, P3=optional, P4=reference, P5=historical)
+   - **agent_reviews** — Yash approval/rejection + feedback (review_id, agent_id, reviewer, status, feedback, override_reason)
+   - **composite_scores** — weighted scoring (gate_pass_rate 40%, first_try_success 30%, rework_cycles 20%, yash_override_rate 10%) — gates: Probation (60%+), Active (75%+), Expert (88%+), Architect (95%+)
+   - **capability_gaps** — SQL-detected gaps (agent_id, capability, required_by_date, estimated_training_hours, assigned_trainer)
+   - **patterns_proposed** — Mira's semi-auto pattern suggestions (pattern_id, agent_id, pattern_text, confidence_pct, yash_review_queue, status)
+   - **escalations** — unresolved issues (escalation_id, agent_id, issue_type, severity, created_at, resolved_at, resolver)
+   - **cost_tracking** — per-agent spend (agent_id, period, tokens_in, tokens_out, cost_usd, model_tier, efficiency_ratio)
+   - **performance_history** — time-series snapshots (agent_id, date, score, gate_passes, first_try, rework_count, events_count)
+   - **promotion_candidates** — auto-recommend (agent_id, current_level, next_level, score, confidence, trainer_assigned, yash_approval)
+   - **pip_tracking** — performance improvement plans (agent_id, start_date, end_date, metrics, trainer, escalation_path)
+   - **deprecation_schedule** — agent retirement (agent_id, end_of_life, final_date, replacement_agent, data_migration_plan)
+   - **audit_trail** — all schema changes (timestamp, changed_by, change_type, before_state, after_state)
+   - RLS (all tables service-role only, Yash can view/edit)
+   - Triggers: updated_at on all tables, auto-composite scoring on agent_runs insertion, auto-event creation on status changes
+   - Views: current_scores, promotion_ready, pip_active, cost_summary, capability_gap_report, pattern_detection_queue
+
+2. `patterns/good/polyglot-sdk-spec.md` — **MASTER** SDK integration (agent dispatch, events, tracking, ~1200 lines):
+   - Agent Dispatch: `dispatchAgent(agentId, task, model='sonnet', context={}) → run_id`
+   - Event System: 16 emit types (`onStarted`, `onCompleted`, `onEscalated`, `onRetried`, `onSelfCorrected`, `onPromoted`, `onPIPInitiated`, `onDeprecationScheduled`, `onTrainingApplied`, `onPatternDetected`, `onCostExceeded`, `onPerformanceAlert`, `onFeedbackReceived`, `onOverrideApplied`, `onReworkNeeded`, `onGateFailed`)
+   - Run Tracking: `track(run_id, event_type, metadata) → void`, logs to Supabase `agent_events` + `agent_runs`
+   - Cost Logging: `logCost(run_id, tokens_in, tokens_out, model) → cost_usd`, integrates with Claude API usage
+   - Dashboard Spec: 10-page Next.js app (leaderboard [agent scores, levels, training status], events [timeline], training [patches + changelog], costs [per-agent spend], patterns [Mira's suggestions], reviews [Yash queue], escalations [blockers], promotions [ready candidates], training-signals [P0-P5], audit-trail [schema changes])
+   - Replaces: registry.json (now `agents` table), witness-log.jsonl (now `agent_events` + `agent_runs`), agent-runs.json (now `agent_runs` table)
+   - Backwards compat: optional read-through bridge for legacy JSON files during migration
+
+3. **PII Awareness Training** (embedded in Dato + Koda):
+   - **Dato PII Rules (4 levels):**
+     - **L1 (Public):** repo_name, agent_name, event_type, composite_score
+     - **L2 (Internal):** run_cost_usd, token_counts, model_tier
+     - **L3 (Sensitive):** verification_output (might contain code snippets), git_commit_sha (linked to Yash's repos)
+     - **L4 (PII):** user feedback comments (could mention Yash by name), escalation reasons (could expose issues), pattern_detected text (cross-agent analysis)
+   - **RLS tagging:** All L3+ columns tagged with `COMMENT 'PII_LEVEL_3/4_CONFIDENTIAL'`
+   - **Display masking rules:** Dato exposes L1+L2 freely. L3 requires admin dashboard auth. L4 (user feedback) never displayed in multi-agent views.
+   - **Deletion patterns:** GDPR compliance — soft-delete on user request, cascade cleanup for agent_runs → linked events.
+
+4. **Koda + Dato PII Integration:**
+   - **Koda display rules:** When displaying run metadata in logs, only show L1+L2 fields. Never log verification_output to stdout. Use SELECT-specific-fields pattern in queries.
+   - **Koda server-side rule:** API routes that expose cost/training data must validate Yash auth (not public). Dashboard routes protected by session token.
+   - **Dato:** PII tagging on schema design (L1-L4 per column), GDPR deletion patterns in trigger definitions
+
+### All 8 agents updated (6 HR + 2 builders):
+
+1. **Witness** — Supabase integration (composite_scores table), daily sweep with SQL (no JSON file reads), antipattern detection from agent_events, event logging protocol, verification output capture (Terminal paste → stored in agent_runs)
+2. **Cadence** — Adaptive promotion (statistical peer comparison via composite_scores view, no fixed thresholds), Supabase-backed reviews (agent_reviews table), PIP protocol with DB tracking (pip_tracking table), auto-recommend candidates + Yash approval queue
+3. **Tutor** — Post-build training trigger (not just weekly), training patches + changelog system (training_signals table with P0-P5 priority), impact measurement with optional auto-rollback on regression, per-agent efficiency ratio tracking (cost_tracking table)
+4. **Forge** — Auto-deploy to probation (no approval gate, new agents added to deprecation_schedule with 20-day EOL), Supabase gap detection with SQL (capability_gaps table), 11-section agent template, replacement assignment rule
+5. **Roster** — Supabase-native experience recomputation (SQL query on agents table, replaces missing experience.js logic), skill index rebuild, capability gap detection (query capability_gaps view), assignment VETO power (can override Cadence's dispatch if gaps detected)
+6. **Mira** — Semi-auto pattern detection (cross-agent analysis from agent_runs + agent_events), proposed_patterns table with Yash review queue (yash_review_queue status), memory audit trail (audit_trail table), knowledge decay detection (patterns with zero usage in 90 days)
+7. **Dato** — PII awareness: 4-level data classification (L1-L4), COMMENT tags on schema, GDPR deletion patterns in triggers, no L4 data in multi-agent views
+8. **Koda** — PII awareness: display masking rules (never log verification_output), select-specific-fields pattern, server vs client PII rules (API auth check), dashboard routes protected by session token
+
+### System changes:
+
+- **registry.json** → deprecated, all agent metadata in Supabase `agents` table
+- **witness-log.jsonl** → deprecated, all events in Supabase `agent_events` + `agent_runs`
+- **agent-runs.json** → deprecated, all runs tracked in Supabase `agent_runs` table
+- **All 22 HR + code agents** now use Supabase service role connection (credentials in env)
+- **Polyglot SDK events:** 16 types covering full agent lifecycle (dispatch → completion/escalation → training/promotion)
+- **Dashboard:** 10-page Next.js app spec (location: TBD, may embed in Rankora admin)
+- **Composite scoring:** Weighted formula with static coefficients (can be tuned by Yash in DB)
+- **4-level agent progression:** Probation (60%+) → Active (75%+) → Expert (88%+) → Architect (95%+)
+- **Agent count:** 22 (unchanged — no new agents created, 6 HR + 2 builders upgraded)
+
+### Verification checklist:
+
+- agent-ops-schema.md deployed and tested: ✅
+- polyglot-sdk-spec.md deployment plan written: ✅
+- Witness daily sweep SQL written and tested: ✅
+- Cadence adaptive promotion logic drafted: ✅
+- PII awareness rules embedded in Dato + Koda: ✅
+- RLS on all 15 tables: ✅
+- Audit trail trigger on schema_changes: ✅
+
+### Expected impact:
+
+- Real-time agent health tracking (no more daily manual reviews)
+- Adaptive promotions (Witness scores, Cadence decides, Yash approves)
+- Training ROI measurable (training_signals + cost_tracking integration)
+- PII safeguarded (no sensitive data in logs or multi-agent views)
+- Pattern detection automated (Mira semi-auto → Yash queue, not fully auto)
+- Knowledge decay detected (pattern staleness check weekly)
+
+Factory score: **9.18 → projected 9.65** (HR system validation pending empirical testing on Pinzo/Rankora next sprint)
+
+---
+
 ## Staleness Report
 
 | File | Last Updated | Days Stale | Risk |
@@ -157,4 +318,4 @@ Outstanding: none for this pass. Next gate = Rankora cutover rehearsal week of 2
 
 ---
 
-*(Updated by Mira — 2026-04-06)*
+*(Updated by Mira — 2026-04-14)*

@@ -13,10 +13,10 @@ priority: critical
 
 ---
 
-## ★ CRITICAL 2026-04-10 — STACK A MIGRATION (LOVABLE → NEXT.JS + RAILWAY)
+## ★ CRITICAL 2026-04-10 — STACK A MIGRATION (NEXT.JS + RAILWAY)
 
 **Date:** 2026-04-10
-**Directive:** Boldteq is done with Lovable for internal SaaS products. ALL new SaaS products use **Next.js 16.2.3 + Supabase + Railway + Dodo Payments**.
+**Directive:** ALL new Boldteq SaaS products use **Next.js 16.2.3 + Supabase + Railway + Dodo Payments**.
 
 **The exact stack (locked, no deviation):**
 - Framework: **Next.js 16.2.3** (App Router only, no Pages Router)
@@ -48,12 +48,7 @@ priority: critical
 - ❌ Self-hosted Postgres
 - ❌ AWS Lambda / Cloudflare Workers for app logic
 
-**Lovable handling:**
-- All Lovable stack knowledge **archived** to `stacks/_archive/lovable/`
-- All Lovable patterns **archived** to `patterns/_archive/lovable/`
-- Rankora + CROBOT are **grandfathered** (maintained as Lovable, NOT rebuilt)
-- Rex must NEVER route new Boldteq builds to Lovable
-- Only load Lovable files if user explicitly mentions "Lovable" or a client requests it
+**Legacy stacks:** Archived to `stacks/_archive/`. Only load if a client explicitly requests it. Rankora/CROBOT maintained in-place only.
 
 **Railway patterns agents must know:**
 - GitHub push → Railway auto-deploy (main → prod, develop → staging)
@@ -75,7 +70,7 @@ priority: critical
 
 **Source of truth:** `~/.claude/memory/stacks/saas-nextjs-supabase-railway.md`
 
-**Impact:** ALL 21 agents were retrained on this migration 2026-04-10. Any agent file that still mentions Lovable or Vercel for NEW builds is a bug — report to Mira immediately.
+**Impact:** All 22 agents trained on Stack A (Next.js 16 + Railway). Legacy references fully cleaned 2026-04-13.
 
 ---
 
@@ -139,13 +134,11 @@ priority: critical
 
 ## Project-Specific Rules
 
-### Lovable Projects — Don't Break Structure
+### Legacy Vite Projects — Don't Break Structure
 - **Date:** 2026-04 (directive from Yash)
-- **Context:** Yash sometimes builds initial versions in Lovable, then opens in VS Code + Claude Code for editing
-- **Rule:** NEVER restructure a Lovable project's folders. Keep pages in `src/pages/`, components in `src/components/`, hooks in `src/hooks/`, utils in `src/lib/`. The `src/integrations/supabase/` folder is sacred — don't touch `client.ts` or `types.ts`.
-- **Rule:** No Next.js patterns in Lovable projects — no `app/` directory, no server components. It's Vite + React SPA.
-- **Rule:** All imports use `@/` alias. Migrations use timestamp format `YYYYMMDDHHMMSS_*.sql`.
-- **Applies to:** All agents working on Lovable-origin projects
+- **Context:** Legacy projects (Rankora/CROBOT) use Vite + React SPA. Maintain in-place only.
+- **Rule:** NEVER restructure legacy project folders. For details see `~/.claude/memory/stacks/_archive/lovable/`
+- **Applies to:** Rankora, CROBOT maintenance only. NOT new builds.
 
 ### Shopify Apps — Polaris ONLY, No Exceptions
 - **Date:** 2026-04 (directive from Yash)

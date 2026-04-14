@@ -1,0 +1,204 @@
+src/components/careers/careers-testimonials.module.css:1:.section {
+src/components/careers/careers-testimonials.module.css-2-  background-color: #f5f7fa;
+src/components/careers/careers-testimonials.module.css-3-  padding: 80px 5%;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-testimonials.module.css-4-}
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-testimonials.module.css-5-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-testimonials.module.css-6-.container {
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-1-/* ============================================================
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-2-   CAREERS TABS — careers-tabs.module.css
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-3-   ============================================================ */
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-4-
+src/components/careers/careers-tabs.module.css:5:.section {
+src/components/careers/careers-tabs.module.css-6-  background-color: transparent;
+src/components/careers/careers-tabs.module.css-7-  padding: 20px 5% 40px;
+src/components/careers/careers-tabs.module.css-8-  overflow: hidden;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-9-}
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-10-
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-404-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-405-/* ============================================================
+src/components/careers/careers-tabs.module.css-406-   max-width: 991px
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-407-   ============================================================ */
+src/components/careers/careers-tabs.module.css-408-@media screen and (max-width: 991px) {
+src/components/careers/careers-tabs.module.css:409:  .section {
+src/components/careers/careers-tabs.module.css-410-    padding: 56px 5% 64px;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-411-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-412-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-413-  .heading {
+src/components/careers/careers-tabs.module.css-414-    font-size: 34px;
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-482-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-483-/* ============================================================
+src/components/careers/careers-tabs.module.css-484-   max-width: 479px  (mobile)
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-485-   ============================================================ */
+src/components/careers/careers-tabs.module.css-486-@media screen and (max-width: 479px) {
+src/components/careers/careers-tabs.module.css:487:  .section {
+src/components/careers/careers-tabs.module.css-488-    padding: 48px 1.25rem 56px;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-489-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-490-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-tabs.module.css-491-  .heading {
+src/components/careers/careers-tabs.module.css-492-    font-size: 1.5rem;
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-1-/* ============================================================
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-2-   CAREERS BENCHMARKS — careers-benchmarks.module.css
+src/components/careers/careers-benchmarks.module.css-3-   Matches: .benchmark-sec.overflow-hidden on careers.html
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-4-   ============================================================ */
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-5-
+src/components/careers/careers-benchmarks.module.css:6:.section {
+src/components/careers/careers-benchmarks.module.css-7-  background-color: transparent;
+src/components/careers/careers-benchmarks.module.css-8-  padding: 0 5%;
+src/components/careers/careers-benchmarks.module.css-9-  display: block;
+src/components/careers/careers-benchmarks.module.css-10-  overflow: hidden;
+src/components/careers/careers-benchmarks.module.css-11-  position: relative;
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-172-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-173-/* ============================================================
+src/components/careers/careers-benchmarks.module.css-174-   max-width: 991px
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-175-   ============================================================ */
+src/components/careers/careers-benchmarks.module.css-176-@media screen and (max-width: 991px) {
+src/components/careers/careers-benchmarks.module.css:177:  .section {
+src/components/careers/careers-benchmarks.module.css-178-    padding-bottom: 60px;
+src/components/careers/careers-benchmarks.module.css-179-    padding-left: 2%;
+src/components/careers/careers-benchmarks.module.css-180-    padding-right: 2%;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-181-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-182-
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-187-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-188-/* ============================================================
+src/components/careers/careers-benchmarks.module.css-189-   max-width: 767px
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-190-   ============================================================ */
+src/components/careers/careers-benchmarks.module.css-191-@media screen and (max-width: 767px) {
+src/components/careers/careers-benchmarks.module.css:192:  .section {
+src/components/careers/careers-benchmarks.module.css-193-    padding-bottom: 0;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-194-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-195-}
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-196-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-197-/* ============================================================
+src/components/careers/careers-benchmarks.module.css-198-   max-width: 479px
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-199-   ============================================================ */
+src/components/careers/careers-benchmarks.module.css-200-@media screen and (max-width: 479px) {
+src/components/careers/careers-benchmarks.module.css:201:  .section {
+src/components/careers/careers-benchmarks.module.css-202-    padding: 0 5%;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-203-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-204-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-benchmarks.module.css-205-  .benchOuter {
+src/components/careers/careers-benchmarks.module.css-206-    padding-top: 40px;
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-1-/* ============================================================
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-2-   CAREERS SELECTION — careers-selection.module.css
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-3-   ============================================================ */
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-4-
+src/components/careers/careers-selection.module.css:5:.section {
+src/components/careers/careers-selection.module.css-6-  background-color: transparent;
+src/components/careers/careers-selection.module.css-7-  padding: 20px 5% 70px;
+src/components/careers/careers-selection.module.css-8-  overflow: hidden;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-9-}
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-10-
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-102-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-103-/* ============================================================
+src/components/careers/careers-selection.module.css-104-   max-width: 991px
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-105-   ============================================================ */
+src/components/careers/careers-selection.module.css-106-@media screen and (max-width: 991px) {
+src/components/careers/careers-selection.module.css:107:  .section {
+src/components/careers/careers-selection.module.css-108-    padding: 56px 5% 64px;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-109-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-110-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-111-  .heading {
+src/components/careers/careers-selection.module.css-112-    font-size: 34px;
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-134-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-135-/* ============================================================
+src/components/careers/careers-selection.module.css-136-   max-width: 479px  (mobile)
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-137-   ============================================================ */
+src/components/careers/careers-selection.module.css-138-@media screen and (max-width: 479px) {
+src/components/careers/careers-selection.module.css:139:  .section {
+src/components/careers/careers-selection.module.css-140-    padding: 48px 1.25rem 56px;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-141-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-142-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-selection.module.css-143-  .heading {
+src/components/careers/careers-selection.module.css-144-    font-size: 1.5rem;
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-1-/* ============================================================
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-2-   CAREERS GLOBAL — careers-global.module.css
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-3-   Matches .career-btm-sec / .career-btm-out in Webflow CSS
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-4-   ============================================================ */
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-5-
+src/components/careers/careers-global.module.css:6:.section {
+src/components/careers/careers-global.module.css-7-  background-image: url('/images/webflow/Rectangle-30849.png');
+src/components/careers/careers-global.module.css-8-  background-position: 50% 0;
+src/components/careers/careers-global.module.css-9-  background-size: cover;
+src/components/careers/careers-global.module.css-10-  padding: 80px 5%;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-11-}
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-137-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-138-/* ============================================================
+src/components/careers/careers-global.module.css-139-   max-width: 991px
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-140-   ============================================================ */
+src/components/careers/careers-global.module.css-141-@media screen and (max-width: 991px) {
+src/components/careers/careers-global.module.css:142:  .section {
+src/components/careers/careers-global.module.css-143-    padding-top: 40px;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-144-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-145-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-146-  .outer {
+src/components/careers/careers-global.module.css-147-    margin-bottom: 10px;
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-160-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-161-/* ============================================================
+src/components/careers/careers-global.module.css-162-   max-width: 767px
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-163-   ============================================================ */
+src/components/careers/careers-global.module.css-164-@media screen and (max-width: 767px) {
+src/components/careers/careers-global.module.css:165:  .section {
+src/components/careers/careers-global.module.css-166-    padding-top: 40px;
+src/components/careers/careers-global.module.css-167-    padding-bottom: 60px;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-168-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-169-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-global.module.css-170-  .cimg1,
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-1-/* ============================================================
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-2-   CAREERS HERO — careers-hero.module.css
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-3-   ============================================================ */
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-4-
+src/components/careers/careers-hero.module.css:5:.section {
+src/components/careers/careers-hero.module.css-6-  background-color: transparent;
+src/components/careers/careers-hero.module.css-7-  padding: 4rem 5% 3rem;
+src/components/careers/careers-hero.module.css-8-  overflow: hidden;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-9-}
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-10-
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-157-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-158-/* ============================================================
+src/components/careers/careers-hero.module.css-159-   max-width: 991px
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-160-   ============================================================ */
+src/components/careers/careers-hero.module.css-161-@media screen and (max-width: 991px) {
+src/components/careers/careers-hero.module.css:162:  .section {
+src/components/careers/careers-hero.module.css-163-    padding: 60px 5% 0;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-164-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-165-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-166-  .galleryRow {
+src/components/careers/careers-hero.module.css-167-    gap: 12px;
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-186-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-187-/* ============================================================
+src/components/careers/careers-hero.module.css-188-   max-width: 767px
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-189-   ============================================================ */
+src/components/careers/careers-hero.module.css-190-@media screen and (max-width: 767px) {
+src/components/careers/careers-hero.module.css:191:  .section {
+src/components/careers/careers-hero.module.css-192-    padding: 56px 5% 0;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-193-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-194-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-195-  .content {
+src/components/careers/careers-hero.module.css-196-    padding-bottom: 40px;
+--
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-215-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-216-/* ============================================================
+src/components/careers/careers-hero.module.css-217-   max-width: 479px  (mobile)
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-218-   ============================================================ */
+src/components/careers/careers-hero.module.css-219-@media screen and (max-width: 479px) {
+src/components/careers/careers-hero.module.css:220:  .section {
+src/components/careers/careers-hero.module.css-221-    padding: 48px 1.25rem 0;
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-222-  }
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-223-
+/Users/yashbaldha/Desktop/Boldteq App/Marketing Site/Boldteq/src/components/careers/careers-hero.module.css-224-  .heading {
+src/components/careers/careers-hero.module.css-225-    font-size: 1.9rem;

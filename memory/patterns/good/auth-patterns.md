@@ -28,22 +28,91 @@ type: reference
 
 ### Stack A — Supabase Auth (Next.js SaaS)
 
-**Server Components:**
-```typescript
-// Always use getUser(), never getSession() on server
-const { data: { user }, error } = await supabase.auth.getUser()
-if (!user) redirect('/login')
-```
+**@supabase/ssr (Next.js 16 — REQUIRED)**
 
-**Middleware Protection:**
+Stack A uses `@supabase/ssr` (NOT the deprecated `@supabase/auth-helpers-nextjs`).
+
+**Server client (for Server Components, Route Handlers, Server Actions):**
 ```typescript
-// middleware.ts — broad route protection
-const protectedPaths = ['/dashboard', '/settings', '/api/private']
-if (protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.redirect(new URL('/login', request.url))
+// lib/supabase/server.ts
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+export async function createClient() {
+  const cookieStore = await cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options)
+          })
+        },
+      },
+    }
+  )
 }
 ```
+
+**Browser client (for Client Components):**
+```typescript
+// lib/supabase/client.ts
+import { createBrowserClient } from '@supabase/ssr'
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+}
+```
+
+**Middleware (token refresh on every request — CRITICAL for Next.js 16):**
+```typescript
+// middleware.ts
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request })
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+  // IMPORTANT: call getUser() to refresh the session
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  // Redirect unauthenticated users to login
+  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/auth/login', request.url))
+  }
+  return supabaseResponse
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/webhooks).*)'],
+}
+```
+
+**CRITICAL RULES:**
+- NEVER use `getSession()` for auth checks — always use `getUser()` (it validates the JWT against Supabase)
+- Middleware MUST call `getUser()` on every request to keep tokens refreshed
+- The `@supabase/auth-helpers-nextjs` package is DEPRECATED — never import it
 
 **RLS as Second Layer:**
 - Supabase RLS policies enforce data access even if application logic has bugs

@@ -32,11 +32,10 @@ SUPABASE_JWT_SECRET=...                    # for verifying tokens server-side
 SUPABASE_DB_PASSWORD=...                   # for CLI migrations
 
 # ═══════════════════════════════════════════════════════════
-# DODO PAYMENTS
+# DODO PAYMENTS (server-side only)
 # ═══════════════════════════════════════════════════════════
-DODO_API_KEY=...                           # test_... or live_...
-DODO_WEBHOOK_SECRET=whsec_...
-NEXT_PUBLIC_DODO_PUBLISHABLE_KEY=pk_...
+DODO_API_KEY=...                           # test_... or live_, server only
+DODO_PAYMENTS_WEBHOOK_KEY=whsec_...        # For verifying webhook signatures
 
 # ═══════════════════════════════════════════════════════════
 # RESEND (email)

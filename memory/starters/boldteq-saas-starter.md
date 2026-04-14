@@ -205,9 +205,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=             # Server only, never expose
 
 # Dodo Payments (from https://app.dodopayments.com/developer/api-keys)
-DODO_API_KEY=
-DODO_WEBHOOK_SECRET=
-NEXT_PUBLIC_DODO_PUBLISHABLE_KEY=
+DODO_API_KEY=                          # Server only, never expose
+DODO_PAYMENTS_WEBHOOK_KEY=             # For verifying webhook signatures
 DODO_PRO_PRODUCT_ID=                   # Dodo product ID for Pro tier
 DODO_TEAM_PRODUCT_ID=                  # Dodo product ID for Team tier
 

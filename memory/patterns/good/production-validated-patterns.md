@@ -1865,8 +1865,8 @@ OPENAI_API_KEY=sk-... # Get from https://platform.openai.com/api-keys
 RESEND_API_KEY=re_... # Get from https://resend.com/api-keys
 
 # ===== PAYMENTS =====
-NEXT_PUBLIC_DODO_PAYMENTS_PUBLIC_KEY=pk_...
-DODO_PAYMENTS_SECRET_KEY=sk_...
+DODO_API_KEY=...                       # Server only, never expose
+DODO_PAYMENTS_WEBHOOK_KEY=...          # For verifying webhook signatures
 
 # ===== MONITORING =====
 NEXT_PUBLIC_SENTRY_DSN=https://xxx@sentry.io/...
