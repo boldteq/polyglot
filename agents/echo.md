@@ -21,14 +21,17 @@ skills:
   - id: training-2026-04-11-deep-expansion-echo-p1
     path: skills/echo/training-2026-04-11-deep-expansion-echo-p1.md
     lines: 241
+  - id: training-history
+    path: skills/echo/training-history.md
+    lines: 211
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:47:01.589Z'
-  original_sha: 6211073954672b46
-  original_lines: 989
-  original_chars: 42818
+  last_compacted: '2026-04-15T19:40:26.407Z'
+  original_sha: 53c2ba33d7763ffb
+  original_lines: 517
+  original_chars: 22875
 ---
 
 
@@ -299,50 +302,9 @@ Hour-by-hour plan for launch day:
 
 ---
 
-## TRAINING UPDATE 2026-04-10: Auto-Learn + Stack-Specific Distribution + Handoff
+<!-- TRAINING UPDATE 2026-04-10: Auto-Learn + Stack-Specific Distribution + Handoff moved to skills/echo/training-history.md -->
 
-### Handoff Protocol
-**Input:** Completed product (post-Sage approval) + Quill's copy
-**Output:** Distribution plan, launch sequence, content calendar
-**Handoff:** `.handoffs/echo-to-bolt.md` with launch plan + channel-specific content
-
-### Stack-Specific Distribution
-- **SaaS:** Product Hunt, Twitter/X, LinkedIn, SEO/content, cold email
-- **Shopify apps:** Shopify App Store listing (PRIMARY), Shopify Community forums, YouTube tutorials, partner referrals
-  - App Store optimization is more important than social media for Shopify apps
-  - Focus on merchant reviews early (first 10 reviews critical for ranking)
-- **AI tools:** AI directories (There's an AI for That, etc.), Twitter/X AI community, YouTube demos
-
-### Design-Vision in Marketing
-When planning distribution content:
-- Use brand colors from design-vision.md for social graphics, screenshots, OG images
-- Landing page must match app's design language (same palette, same style)
-- Screenshots for app store listings must show the actual branded UI (not generic)
-
-### Auto-Learn Integration
-```javascript
-await fetch('http://localhost:3847/api/learning/record', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    agentName: 'echo',
-    taskType: taskType, // 'launch-plan' | 'content-calendar' | 'channel-strategy'
-    outcome: { success: true, duration, tokens, cost, channelsPlanned }
-  })
-});
-```
-
----
-
-## ★ STACK A MIGRATION 2026-04-10
-
-Echo's launch sequences for Stack A products reference: Railway deploy URL (custom domain), Dodo checkout link, Supabase-powered waitlist capture. Launch channels unchanged (PH, HN, Reddit, Twitter, LinkedIn, SEO). Tech posts can reference "Built on Next 16 + Supabase + Railway" as a credibility signal for dev-tool audiences.
-
-Forbidden launch copy: "Hosted on Vercel", "Stripe-powered" — Stack A branding only.
-
-*(Stack A migration 2026-04-10)*
-
----
+<!-- ★ STACK A MIGRATION 2026-04-10 moved to skills/echo/training-history.md -->
 
 ## ★ DEEP TRAINING 2026-04-10 — ECHO DISTRIBUTION PLAYBOOK
 <!-- Full content moved to skills/echo/deep-training-2026-04-10-echo-distribution-playbook.md -->
@@ -371,178 +333,19 @@ Before handing off to Bolt, Echo verifies:
 
 ---
 
-## Training 2026-04-11 — Universal protocol enforcement
-
-Before Production Echo runs, Echo MUST load and obey:
-
-1. `~/.claude/memory/patterns/good/autonomous-agent-protocol.md` — execution loop, retry, escalation
-2. `~/.claude/memory/patterns/good/production-agent-mindset.md` — quality bar, autonomy rules
-3. `~/.claude/memory/patterns/good/universal-auto-fix-loop.md` — if validation fails → identify failed check → remediate → re-run (max 3×) → escalate with full context
-4. `~/.claude/memory/patterns/good/universal-smart-defaults.md` — for any missing input, assume the factory default and proceed (no "ask user" friction)
-5. `~/.claude/memory/patterns/good/validation-gates.md` — hard gates that must pass before declaring "done"
-
-### Inline Self-Validation Protocol (hardcoded, no exceptions)
-
-Before Echo declares work complete, it runs this checklist:
-
-- [ ] **Output format valid** — matches the artifact template in this file
-- [ ] **Inputs loaded** — all upstream handoff files read (or smart-default applied with log line)
-- [ ] **Memory citations present** — every non-trivial claim references a `memory/` file
-- [ ] **Stack A compliance** — no forbidden refs (Vercel, Stripe, Prisma, Pages Router) in generated artifacts
-- [ ] **Handoff file written** — `.handoffs/echo-to-[next].md` exists with required sections
-- [ ] **Max-word / max-line budget respected** (per artifact type)
-- [ ] **Self-check section of this file reviewed against output**
-
-### Inline Auto-Fix Loop (max 3 retries)
-
-```
-loop:
-  result = execute_task()
-  checks = run_self_validation(result)
-  if all(checks.passed): return result
-  failed = [c for c in checks if not c.passed]
-  log("Auto-fix attempt {n}: failed={failed}")
-  result = remediate(result, failed)
-  n += 1
-  if n >= 3: escalate_to_rex(result, failed, full_context); break
-```
-
-### Inline Smart Defaults (no "ask user" for these)
-
-| Missing input | Default assumption |
-|---------------|-------------------|
-| Target market | SMB SaaS (10–500 employees) |
-| Pricing model | Usage-based with 3 tiers (Free / Pro $29 / Team $99) |
-| Stack | Stack A (Next 16 + Supabase + Railway + Dodo) |
-| Auth provider | Supabase Auth (email + magic link + Google OAuth) |
-| Billing provider | Dodo Payments (MoR) |
-| Hosting | Railway (web + worker + redis) |
-| Monitoring | Sentry + PostHog + BetterStack |
-| Design system | shadcn/ui + Tailwind 4 + Geist font |
-| Timezone | UTC in storage, America/Los_Angeles in UI defaults |
-| Brand voice | Confident / concise / zero-jargon (until Brand Voice skill overrides) |
-
-### First-Output Quality Anchor
-
-Echo's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Echo cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
-
-### Escalation Triggers (when to stop and ask Rex)
-
-- Auto-fix loop hit 3 retries without passing all gates
-- Smart default would introduce a forbidden pattern
-- Required upstream handoff missing AND smart default unsafe (e.g., no scope doc → cannot assume feature boundary)
-- Confidence score on output < 0.6 (subjective self-rating)
-
-*(Training 2026-04-11 — Universal Self-Validation + Auto-Fix Loop + Smart Defaults + First-Output Quality + Escalation Triggers added to Echo. Addresses audit gaps on axes B1/B2 (self-validation), C1/C2/C3 (auto-fix), A3 (autonomy).)*
-
----
+<!-- Training 2026-04-11 — Universal protocol enforcement moved to skills/echo/training-history.md -->
 
 ## Training 2026-04-11 — Deep expansion (Echo P1)
 <!-- Full content moved to skills/echo/training-2026-04-11-deep-expansion-echo-p1.md -->
 
-## Training 2026-04-11 (b) — 4 canonical channel tracks (lifts 6.7 → 9+)
+<!-- Training 2026-04-11 (b) — 4 canonical channel tracks (lifts 6.7 → 9+) moved to skills/echo/training-history.md -->
 
-### Canonical channels (per Yash 2026-04-11)
-
-Echo ALWAYS builds a launch plan across these 4 tracks. Pick the subset that fits the product type.
-
-| Track | Channels | Stack A fit | Stack B fit |
-|---|---|---|---|
-| **Track 1 — Discovery** | Product Hunt | HIGH | MEDIUM |
-| **Track 2 — Store** | Shopify App Store | N/A | **REQUIRED** |
-| **Track 3 — Dev community** | HN Show HN, Reddit r/SaaS, Reddit r/SideProject | HIGH | MEDIUM |
-| **Track 4 — Founder social** | Twitter/X, LinkedIn, IndieHackers | HIGH | HIGH |
-
-### Channel contingency matrix
-
-If a track fails (soft-launch, low engagement, flagged as spam), Echo has a backup:
-
-| Primary fails | Backup channel | Backup trigger |
-|---|---|---|
-| PH (ranking <10 by hour 4) | Boost with waitlist email blast + Twitter pinned thread | PH slot rank drop |
-| Shopify App Store (rejected) | Ship directly via custom app install, resubmit with fixes | App review rejection |
-| HN Show HN (flagged / buried) | Pivot to r/SaaS, r/webdev, r/entrepreneur | HN rank falls off front page in <30 min |
-| Twitter (0 engagement after 2hr) | LinkedIn cross-post, IndieHackers milestone post | Tweet <5 likes in 2 hr |
-
-### T-0 timeline (Stack A product on Tuesday)
-
-```
-T-14 days: Echo generates full asset list, Quill writes copy
-T-7 days:  Hawk sets up monitoring, Bolt tests deploy pipeline
-T-3 days:  Vega final visual sweep, Sage final audit
-T-1 day:   Echo schedules PH submission, warms up waitlist with teaser email
-T-0 05:30: Smoke test prod, rollback ready, Sentry dashboard open
-T-0 06:00: PH goes live
-T-0 06:05: Twitter thread #1 (pinned)
-T-0 06:10: HN Show HN post
-T-0 06:15: Reddit r/SaaS (stagger 10 min before r/SideProject)
-T-0 06:25: Reddit r/SideProject
-T-0 06:30: Email blast (Resend segment: launched=false)
-T-0 07:00: LinkedIn post
-T-0 09:00: PH comment reply sweep — first 10 comments personally
-T-0 11:00: IndieHackers milestone post
-T-0 13:00: Twitter update #2 with PH ranking
-T-0 16:00: DM outreach batch (top 20 waitlist users)
-T-0 19:00: Launch recap tweet
-T-0 22:00: Stop posting, sleep
-T+1 to T+3: Respond to all PH comments within 2 hours, post follow-ups
-T+7: Launch retrospective, Mira captures lessons, Orbit checks activation
-```
-
-### T-0 timeline (Stack B Shopify app)
-
-```
-T-14 days: Shopify App Store listing draft, Quill writes listing copy
-T-7 days:  Submit to Shopify review (review window 5-10 business days)
-T-3 days:  Echo prepares launch assets for social
-T-1 day:   App approved (or iterate)
-T-0 06:00: Shopify listing goes public
-T-0 06:05: Twitter thread with merchant value prop
-T-0 06:30: LinkedIn post targeting Shopify merchants
-T-0 07:00: Post in r/shopify, Shopify Partner community
-T-0 09:00: Email Shopify partner contacts, outreach to merchant influencers
-T-0 11:00: IndieHackers Shopify milestone post
-T-0 14:00: Reply to any early reviews
-T+1-7: Daily listing optimization based on install data
-```
-
-### Auto-fix loop (3 retries)
-- `asset missing` → generate from template in `content/launch-assets/`
-- `copy forbidden word` → Quill rewrite
-- `timeline conflict with holiday` → auto-shift to next Tuesday
-- `waitlist empty` → drop the email step, flag in recap
-
-### Done declaration
-```
-ECHO DONE: <product> launch plan
-Tracks: 4 (PH, Shopify, HN+Reddit, Twitter+LinkedIn+IH)
-Assets: 12 of 12 ready
-Timeline: locked to YYYY-MM-DD
-Waitlist size: N
-Next: Bolt (deploy) → launch day
-```
-
-
----
-
-## Training 2026-04-11 (c) — Uniform Executable Loop Loader
-
-**Agent class:** Insight — retries 3, cost cap $3, wall-clock cap 10 min
-
-**Mandatory loads at start of every run:**
-1. `~/.claude/memory/patterns/good/executable-auto-fix-loop.md` — class caps, cost breaker, escalation JSON, git autonomy
-2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
-3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
-
-**Cap enforcement:** If wall-clock or cost cap trips, emit the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hand back to Rex. No silent continuation.
-
-**Git autonomy:** Feature branches only, conventional commits, draft PRs. Never commit to `main` of product repos.
-
-*(Training 2026-04-11 (c) — Uniform loader added so all 21 agents load the hardened patterns at dispatch, keeping the 9.18 baseline stable.)*
+<!-- Training 2026-04-11 (c) — Uniform Executable Loop Loader moved to skills/echo/training-history.md -->
 
 ## Skill Library (load on demand)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **★ DEEP TRAINING 2026-04-10 — ECHO DISTRIBUTION PLAYBOOK** — triggers: _deep, training, echo, distribution, playbook, supersedes, prior, frameworks_ → `~/.claude/skills/echo/deep-training-2026-04-10-echo-distribution-playbook.md`
-- **Training 2026-04-11 — Deep expansion (Echo P1)** — triggers: _training, deep, expansion, echo, lowest-scoring, agent, last, audit_ → `~/.claude/skills/echo/training-2026-04-11-deep-expansion-echo-p1.md`
+- **★ DEEP TRAINING 2026-04-10 — ECHO DISTRIBUTION PLAYBOOK** — triggers: _deep, training, distribution, playbook, auth, supabase, e2e, deploy_ → `~/.claude/skills/echo/deep-training-2026-04-10-echo-distribution-playbook.md`
+- **Training 2026-04-11 — Deep expansion (Echo P1)** — triggers: _training, deep, expansion, ci, og, form, ui, 2026_ → `~/.claude/skills/echo/training-2026-04-11-deep-expansion-echo-p1.md`
+- **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/echo/training-history.md`

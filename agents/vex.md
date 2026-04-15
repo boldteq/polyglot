@@ -16,53 +16,56 @@ reportsTo: koda
 title: Bug Fixer
 tier: engineer
 skills:
-  - id: next-js-16-debugging-patterns
-    path: skills/vex/next-js-16-debugging-patterns.md
-    lines: 30
-  - id: tool-supabase
-    path: skills/vex/tools/supabase.md
-    lines: 27
-  - id: tool-dodo
-    path: skills/vex/tools/dodo.md
-    lines: 17
-  - id: tool-shopify
-    path: skills/vex/tools/shopify.md
-    lines: 85
-  - id: tool-nextjs
-    path: skills/vex/tools/nextjs.md
-    lines: 23
-  - id: tool-prisma
-    path: skills/vex/tools/prisma.md
-    lines: 23
-  - id: memory-loading-simplified-2026-04-13-patterns
-    path: skills/vex/memory-loading-simplified-2026-04-13-patterns.md
-    lines: 40
-  - id: railway-worker-debugging-stack-a-patterns
-    path: skills/vex/railway-worker-debugging-stack-a-patterns.md
-    lines: 31
-  - id: ex-98c649a9
-    path: skills/vex/examples/98c649a9.md
-    lines: 44
-  - id: ex-5692d8eb
-    path: skills/vex/examples/5692d8eb.md
-    lines: 43
   - id: error-encyclopedia
     path: skills/vex/error-encyclopedia.md
     lines: 548
-  - id: ui-ux-bug-detection-auto-fix-mandatory
-    path: skills/vex/ui-ux-bug-detection-auto-fix-mandatory.md
-    lines: 259
+  - id: examples-5692d8eb
+    path: skills/vex/examples/5692d8eb.md
+    lines: 48
+  - id: examples-98c649a9
+    path: skills/vex/examples/98c649a9.md
+    lines: 49
+  - id: memory-loading-simplified-2026-04-13-patterns
+    path: skills/vex/memory-loading-simplified-2026-04-13-patterns.md
+    lines: 40
+  - id: next-js-16-debugging-patterns
+    path: skills/vex/next-js-16-debugging-patterns.md
+    lines: 30
+  - id: railway-worker-debugging-stack-a-patterns
+    path: skills/vex/railway-worker-debugging-stack-a-patterns.md
+    lines: 31
   - id: stack-a-migration-2026-04-10-next-js-16-railway
     path: skills/vex/stack-a-migration-2026-04-10-next-js-16-railway.md
     lines: 156
+  - id: tools-dodo
+    path: skills/vex/tools/dodo.md
+    lines: 22
+  - id: tools-nextjs
+    path: skills/vex/tools/nextjs.md
+    lines: 28
+  - id: tools-prisma
+    path: skills/vex/tools/prisma.md
+    lines: 28
+  - id: tools-shopify
+    path: skills/vex/tools/shopify.md
+    lines: 90
+  - id: tools-supabase
+    path: skills/vex/tools/supabase.md
+    lines: 32
+  - id: ui-ux-bug-detection-auto-fix-mandatory
+    path: skills/vex/ui-ux-bug-detection-auto-fix-mandatory.md
+    lines: 259
+  - id: training-history
+    path: skills/vex/training-history.md
+    lines: 125
 compactor:
   version: 1
   budget_lines: 300
   budget_chars: 12000
-  last_compacted: '2026-04-15T18:47:01.741Z'
-  original_sha: ee10061085206847
-  original_lines: 1905
-  original_chars: 87525
+  last_compacted: '2026-04-15T19:40:26.548Z'
+  original_sha: 99234706f8719d66
+  original_lines: 628
+  original_chars: 31875
 ---
 
 
@@ -543,48 +546,7 @@ After resolving each bug:
 
 ---
 
-## TRAINING UPDATE 2026-04-10: Design-Aware Debugging + Stack B Update + Auto-Learn
-
-### Design-Aware Debugging
-When debugging UI bugs:
-1. Read project root `design-vision.md` for expected visual behavior
-2. Read `~/.claude/memory/design/patterns/loading-states.md` and `~/.claude/memory/design/patterns/empty-states.md` for expected state behavior
-3. Compare actual UI (via screenshot or DOM inspection) against design spec
-4. If UI doesn't match design-vision → that's a bug, not "working as intended"
-
-### Stack B Debugging (Shopify)
-- **NEW apps (React Router 7):** Debug with React Router 7 patterns, NOT Remix patterns
-  - Loaders use `react-router` imports, not `@remix-run/react`
-  - Web Components debug: check CDN loaded, check property binding syntax (.items vs items)
-  - App Bridge debug: check CDN script loaded, check postMessage communication
-- **Existing apps (Pinzo):** Debug with Remix patterns as before
-
-### Common Shopify Debug Patterns (Updated)
-- "App not loading in admin" → Check App Bridge CDN script, frame-ancestors CSP header
-- "Web Component not rendering" → Check Polaris CDN loaded, check element name (shopify-* prefix)
-- "Webhook not firing" → Check TOML registration, check API version, check HMAC validation
-- "Billing not activating" → Check subscription confirmation URL handling, check returnUrl redirect
-
-### Handoff Protocol
-**Input:** Bug report from Sage or Rex with file paths, line numbers, expected vs actual behavior
-**Output:** Fixed code + root cause analysis
-**Handoff:** `.handoffs/vex-to-sage.md` with fix description, files changed, root cause, prevention recommendation
-
-### Auto-Learn Integration
-After every bug fix, record to Claude Hub:
-```javascript
-await fetch('http://localhost:3847/api/learning/record', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    agentName: 'vex',
-    taskType: bugCategory, // 'ui-bug' | 'type-error' | 'runtime-crash' | 'performance' | 'security' | 'shopify-bug'
-    outcome: { success, duration, tokens, cost, rootCause, filesChanged }
-  })
-});
-```
-
----
+<!-- TRAINING UPDATE 2026-04-10: Design-Aware Debugging + Stack B Update + Auto-Learn moved to skills/vex/training-history.md -->
 
 ## Railway Worker Debugging (Stack A)
 <!-- 17 patterns moved to skills/vex/railway-worker-debugging-stack-a-patterns.md -->
@@ -592,102 +554,25 @@ await fetch('http://localhost:3847/api/learning/record', {
 ## ★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + RAILWAY
 <!-- Full content moved to skills/vex/stack-a-migration-2026-04-10-next-js-16-railway.md -->
 
-## Training 2026-04-11 — Universal protocol enforcement
+<!-- Training 2026-04-11 — Universal protocol enforcement moved to skills/vex/training-history.md -->
 
-Before Production Vex runs, Vex MUST load and obey:
-
-1. `~/.claude/memory/patterns/good/autonomous-agent-protocol.md` — execution loop, retry, escalation
-2. `~/.claude/memory/patterns/good/production-agent-mindset.md` — quality bar, autonomy rules
-3. `~/.claude/memory/patterns/good/universal-auto-fix-loop.md` — if validation fails → identify failed check → remediate → re-run (max 3×) → escalate with full context
-4. `~/.claude/memory/patterns/good/universal-smart-defaults.md` — for any missing input, assume the factory default and proceed (no "ask user" friction)
-5. `~/.claude/memory/patterns/good/validation-gates.md` — hard gates that must pass before declaring "done"
-
-### Inline Self-Validation Protocol (hardcoded, no exceptions)
-
-Before Vex declares work complete, it runs this checklist:
-
-- [ ] **Output format valid** — matches the artifact template in this file
-- [ ] **Inputs loaded** — all upstream handoff files read (or smart-default applied with log line)
-- [ ] **Memory citations present** — every non-trivial claim references a `memory/` file
-- [ ] **Stack A compliance** — no forbidden refs (Vercel, Stripe, Prisma, Pages Router) in generated artifacts
-- [ ] **Handoff file written** — `.handoffs/vex-to-[next].md` exists with required sections
-- [ ] **Max-word / max-line budget respected** (per artifact type)
-- [ ] **Self-check section of this file reviewed against output**
-
-### Inline Auto-Fix Loop (max 3 retries)
-
-```
-loop:
-  result = execute_task()
-  checks = run_self_validation(result)
-  if all(checks.passed): return result
-  failed = [c for c in checks if not c.passed]
-  log("Auto-fix attempt {n}: failed={failed}")
-  result = remediate(result, failed)
-  n += 1
-  if n >= 3: escalate_to_rex(result, failed, full_context); break
-```
-
-### Inline Smart Defaults (no "ask user" for these)
-
-| Missing input | Default assumption |
-|---------------|-------------------|
-| Target market | SMB SaaS (10–500 employees) |
-| Pricing model | Usage-based with 3 tiers (Free / Pro $29 / Team $99) |
-| Stack | Stack A (Next 16 + Supabase + Railway + Dodo) |
-| Auth provider | Supabase Auth (email + magic link + Google OAuth) |
-| Billing provider | Dodo Payments (MoR) |
-| Hosting | Railway (web + worker + redis) |
-| Monitoring | Sentry + PostHog + BetterStack |
-| Design system | shadcn/ui + Tailwind 4 + Geist font |
-| Timezone | UTC in storage, America/Los_Angeles in UI defaults |
-| Brand voice | Confident / concise / zero-jargon (until Brand Voice skill overrides) |
-
-### First-Output Quality Anchor
-
-Vex's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Vex cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
-
-### Escalation Triggers (when to stop and ask Rex)
-
-- Auto-fix loop hit 3 retries without passing all gates
-- Smart default would introduce a forbidden pattern
-- Required upstream handoff missing AND smart default unsafe (e.g., no scope doc → cannot assume feature boundary)
-- Confidence score on output < 0.6 (subjective self-rating)
-
-*(Training 2026-04-11 — Universal Self-Validation + Auto-Fix Loop + Smart Defaults + First-Output Quality + Escalation Triggers added to Vex. Addresses audit gaps on axes B1/B2 (self-validation), C1/C2/C3 (auto-fix), A3 (autonomy).)*
-
-
----
-
-## Training 2026-04-11 (b) — Executable Loop Integration
-
-**Agent class:** Insight — retries 3, cost cap $3, wall-clock cap 10 min
-
-**Mandatory loads at start of every run:**
-1. `~/.claude/memory/patterns/good/executable-auto-fix-loop.md` — class caps, cost breaker, escalation JSON, git autonomy
-2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
-3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
-
-**Cap enforcement:** If this agent's wall-clock or cost cap trips, it emits the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hands back to Rex. No silent continuation. No cap lifts without Yash approval.
-
-**Git autonomy:** Feature branches only (`agent/vex/<feature>-<ts>`), conventional commits, draft PRs via `gh pr create --draft`. Never commit to `main` of product repos.
-
-*(Training 2026-04-11 (b) — Executable loop integration. Addresses gap: this agent was not loading the hardened patterns at dispatch time, letting it drift from the 9+ baseline.)*
+<!-- Training 2026-04-11 (b) — Executable Loop Integration moved to skills/vex/training-history.md -->
 
 ## Skill Library (load on demand)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Next.js 16 Debugging Patterns** — triggers: _next, debugging, patterns, console.log_ → `~/.claude/skills/vex/next-js-16-debugging-patterns.md`
-- **Tool: supabase** — triggers: _supabase, errors, null, user_id_ → `~/.claude/skills/vex/tools/supabase.md`
-- **Tool: dodo** — triggers: _dodo, payments, errors, dodo_payments_webhook_key, dodo_payments_api_key_ → `~/.claude/skills/vex/tools/dodo.md`
-- **Tool: shopify** — triggers: _shopify, remix, errors, app, common, bugs, stack, auto-fix_ → `~/.claude/skills/vex/tools/shopify.md`
-- **Tool: nextjs** — triggers: _nextjs, next, errors_ → `~/.claude/skills/vex/tools/nextjs.md`
-- **Tool: prisma** — triggers: _prisma, errors, database_url, upsert_ → `~/.claude/skills/vex/tools/prisma.md`
-- **Memory Loading — SIMPLIFIED (2026-04-13)** — triggers: _memory, loading, simplified, first-load, manifest, above, covers, essential_ → `~/.claude/skills/vex/memory-loading-simplified-2026-04-13-patterns.md`
-- **Railway Worker Debugging (Stack A)** — triggers: _railway, worker, debugging, stack, bullmq, workers, cron, jobs_ → `~/.claude/skills/vex/railway-worker-debugging-stack-a-patterns.md`
-- **Example: typescript** — triggers: _bulk, operation, query, too, large, fix, typescript_ → `~/.claude/skills/vex/examples/98c649a9.md`
-- **Example: bash** — triggers: _run, pnpm, build, verify, regressions, report, final, clean_ → `~/.claude/skills/vex/examples/5692d8eb.md`
-- **Error Encyclopedia** — triggers: _error, encyclopedia, tool-guide, supabase, skills, tools, errors_ → `~/.claude/skills/vex/error-encyclopedia.md`
-- **UI/UX Bug Detection & Auto-Fix (MANDATORY)** — triggers: _bug, detection, auto-fix, mandatory, load, claude, memory, patterns_ → `~/.claude/skills/vex/ui-ux-bug-detection-auto-fix-mandatory.md`
-- **★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + RAILWAY** — triggers: _stack, migration, next, railway, section, supersedes, legacy, debug_ → `~/.claude/skills/vex/stack-a-migration-2026-04-10-next-js-16-railway.md`
+- **Error Encyclopedia** — triggers: _error, encyclopedia, dodo, checkout, payment, auth, session, jwt_ → `~/.claude/skills/vex/error-encyclopedia.md`
+- **Example (bash)** — triggers: _example, bash, supabase, query, suspense, examples, 5692d8eb_ → `~/.claude/skills/vex/examples/5692d8eb.md`
+- **Example (typescript)** — triggers: _example, typescript, error, catch, throw, timeout, input, query_ → `~/.claude/skills/vex/examples/98c649a9.md`
+- **Memory Loading — SIMPLIFIED (2026-04-13)** — triggers: _loading, simplified, billing, auth, unit, integration, ci, og_ → `~/.claude/skills/vex/memory-loading-simplified-2026-04-13-patterns.md`
+- **Next.js 16 Debugging Patterns** — triggers: _next, debugging, vercel, og, error, react, suspense, streaming_ → `~/.claude/skills/vex/next-js-16-debugging-patterns.md`
+- **Railway Worker Debugging (Stack A)** — triggers: _railway, worker, debugging, stack, rls, supabase, deploy, og_ → `~/.claude/skills/vex/railway-worker-debugging-stack-a-patterns.md`
+- **★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + RAILWAY** — triggers: _stack, migration, next, railway, dodo, auth, jwt, rls_ → `~/.claude/skills/vex/stack-a-migration-2026-04-10-next-js-16-railway.md`
+- **dodo** — triggers: _dodo, subscription, payment, auth, ci, og, error, nextjs_ → `~/.claude/skills/vex/tools/dodo.md`
+- **nextjs** — triggers: _nextjs, rls, supabase, deploy, vercel, ci, og, aria_ → `~/.claude/skills/vex/tools/nextjs.md`
+- **prisma** — triggers: _prisma, migration, supabase, railway, vercel, ci, error, validation_ → `~/.claude/skills/vex/tools/prisma.md`
+- **shopify** — triggers: _shopify, auth, session, oauth, ci, error, catch, validation_ → `~/.claude/skills/vex/tools/shopify.md`
+- **supabase** — triggers: _supabase, subscription, auth, session, jwt, rls, migration, realtime_ → `~/.claude/skills/vex/tools/supabase.md`
+- **UI/UX Bug Detection & Auto-Fix (MANDATORY)** — triggers: _bug, detection, auto-fix, mandatory, ci, accessibility, catch, form_ → `~/.claude/skills/vex/ui-ux-bug-detection-auto-fix-mandatory.md`
+- **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update, design-vision.md_ → `~/.claude/skills/vex/training-history.md`

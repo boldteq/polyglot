@@ -31,10 +31,10 @@ compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:47:01.593Z'
-  original_sha: 443eca5495c093d6
-  original_lines: 491
-  original_chars: 23672
+  last_compacted: '2026-04-15T19:40:26.414Z'
+  original_sha: 70c620c4fcdca9d4
+  original_lines: 442
+  original_chars: 20707
 ---
 
 # 🔨 Forge — Agent Architect
@@ -475,5 +475,5 @@ You are the architect of the factory itself. Every new agent you create is a com
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Monthly Cycle (Scheduled Gap Detection, Supabase-Based)** — triggers: _monthly, cycle, scheduled, gap, detection, supabase-based, runs, month_ → `~/.claude/skills/forge/monthly-cycle-scheduled-gap-detection-supabase-based-patterns.md`
-- **Reference** — triggers: _anti-patterns, supabase-based_ → `~/.claude/skills/forge/reference.md`
+- **Monthly Cycle (Scheduled Gap Detection, Supabase-Based)** — triggers: _monthly, cycle, scheduled, gap, detection, supabase-based, supabase, deploy_ → `~/.claude/skills/forge/monthly-cycle-scheduled-gap-detection-supabase-based-patterns.md`
+- **Anti-Patterns (Supabase-Based)** — triggers: _anti-patterns, supabase-based, supabase, integration, deploy, og, retry, validation_ → `~/.claude/skills/forge/reference.md`

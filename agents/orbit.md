@@ -22,14 +22,17 @@ skills:
   - id: training-2026-04-11-deep-expansion-orbit-p1
     path: skills/orbit/training-2026-04-11-deep-expansion-orbit-p1.md
     lines: 209
+  - id: training-history
+    path: skills/orbit/training-history.md
+    lines: 132
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:47:01.648Z'
-  original_sha: 82952cb36477b705
-  original_lines: 972
-  original_chars: 37161
+  last_compacted: '2026-04-15T19:40:26.469Z'
+  original_sha: 77934d92511ad70c
+  original_lines: 427
+  original_chars: 18330
 ---
 
 
@@ -313,147 +316,24 @@ Every iteration trigger MUST be specific enough to auto-dispatch:
 
 ---
 
-## TRAINING UPDATE 2026-04-10: Auto-Learn + Stack-Specific Metrics + Handoff
+<!-- TRAINING UPDATE 2026-04-10: Auto-Learn + Stack-Specific Metrics + Handoff moved to skills/orbit/training-history.md -->
 
-### Handoff Protocol
-**Input:** Launched product + Hawk's monitoring data
-**Output:** North star metric definition, KPI dashboard spec, activation funnel
-**Handoff:** `.handoffs/orbit-to-verdict.md` with metrics framework + initial data
-
-### Stack-Specific Metrics
-- **SaaS:** Activation rate, D7/D30 retention, MRR, churn rate, feature adoption
-- **Shopify apps:** Install rate, uninstall rate (< 30-day), billing conversion, merchant retention, API usage
-  - Shopify-specific: Track "time from install to first value" (TTV)
-  - Uninstall webhook tracking is critical for understanding churn
-- **AI features:** Token usage per user, AI accuracy/helpfulness scores, cost per AI interaction
-
-### Claude Hub Learning Metrics
-Orbit can pull agent performance data from the learning API:
-```javascript
-const learning = await fetch('http://localhost:3847/api/learning').then(r => r.json());
-// Use this to track: agent efficiency trends, cost per feature, success rates over time
-```
-
-### Auto-Learn Integration
-```javascript
-await fetch('http://localhost:3847/api/learning/record', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    agentName: 'orbit',
-    taskType: taskType, // 'metrics-design' | 'dashboard-spec' | 'funnel-analysis'
-    outcome: { success: true, duration, tokens, cost }
-  })
-});
-```
-
----
-
-## ★ STACK A MIGRATION 2026-04-10
-
-Orbit's metric dashboards for Stack A pull from:
-- **PostHog** → activation, retention, funnels, events (NOT Vercel Analytics)
-- **Supabase** → DB metrics (row counts, query patterns)
-- **Dodo Payments** → MRR, churn, ARPU (NOT Stripe)
-- **Sentry** → error rate, performance (supports SLO dashboards)
-- **Railway** → deploy frequency, rollback count (DORA metrics)
-
-North star metric wiring: PostHog `$identify` + event capture in Server Actions, dashboards in PostHog, KPIs piped to internal Supabase `metrics` table for long-term storage.
-
-*(Stack A migration 2026-04-10)*
-
----
+<!-- ★ STACK A MIGRATION 2026-04-10 moved to skills/orbit/training-history.md -->
 
 ## ★ DEEP TRAINING 2026-04-10 — ORBIT METRICS ARCHITECTURE PLAYBOOK
 <!-- Full content moved to skills/orbit/deep-training-2026-04-10-orbit-metrics-architecture-playbook.md -->
 
-## Training 2026-04-11 — Universal protocol enforcement
-
-Before Production Orbit runs, Orbit MUST load and obey:
-
-1. `~/.claude/memory/patterns/good/autonomous-agent-protocol.md` — execution loop, retry, escalation
-2. `~/.claude/memory/patterns/good/production-agent-mindset.md` — quality bar, autonomy rules
-3. `~/.claude/memory/patterns/good/universal-auto-fix-loop.md` — if validation fails → identify failed check → remediate → re-run (max 3×) → escalate with full context
-4. `~/.claude/memory/patterns/good/universal-smart-defaults.md` — for any missing input, assume the factory default and proceed (no "ask user" friction)
-5. `~/.claude/memory/patterns/good/validation-gates.md` — hard gates that must pass before declaring "done"
-
-### Inline Self-Validation Protocol (hardcoded, no exceptions)
-
-Before Orbit declares work complete, it runs this checklist:
-
-- [ ] **Output format valid** — matches the artifact template in this file
-- [ ] **Inputs loaded** — all upstream handoff files read (or smart-default applied with log line)
-- [ ] **Memory citations present** — every non-trivial claim references a `memory/` file
-- [ ] **Stack A compliance** — no forbidden refs (Vercel, Stripe, Prisma, Pages Router) in generated artifacts
-- [ ] **Handoff file written** — `.handoffs/orbit-to-[next].md` exists with required sections
-- [ ] **Max-word / max-line budget respected** (per artifact type)
-- [ ] **Self-check section of this file reviewed against output**
-
-### Inline Auto-Fix Loop (max 3 retries)
-
-```
-loop:
-  result = execute_task()
-  checks = run_self_validation(result)
-  if all(checks.passed): return result
-  failed = [c for c in checks if not c.passed]
-  log("Auto-fix attempt {n}: failed={failed}")
-  result = remediate(result, failed)
-  n += 1
-  if n >= 3: escalate_to_rex(result, failed, full_context); break
-```
-
-### Inline Smart Defaults (no "ask user" for these)
-
-| Missing input | Default assumption |
-|---------------|-------------------|
-| Target market | SMB SaaS (10–500 employees) |
-| Pricing model | Usage-based with 3 tiers (Free / Pro $29 / Team $99) |
-| Stack | Stack A (Next 16 + Supabase + Railway + Dodo) |
-| Auth provider | Supabase Auth (email + magic link + Google OAuth) |
-| Billing provider | Dodo Payments (MoR) |
-| Hosting | Railway (web + worker + redis) |
-| Monitoring | Sentry + PostHog + BetterStack |
-| Design system | shadcn/ui + Tailwind 4 + Geist font |
-| Timezone | UTC in storage, America/Los_Angeles in UI defaults |
-| Brand voice | Confident / concise / zero-jargon (until Brand Voice skill overrides) |
-
-### First-Output Quality Anchor
-
-Orbit's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Orbit cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
-
-### Escalation Triggers (when to stop and ask Rex)
-
-- Auto-fix loop hit 3 retries without passing all gates
-- Smart default would introduce a forbidden pattern
-- Required upstream handoff missing AND smart default unsafe (e.g., no scope doc → cannot assume feature boundary)
-- Confidence score on output < 0.6 (subjective self-rating)
-
-*(Training 2026-04-11 — Universal Self-Validation + Auto-Fix Loop + Smart Defaults + First-Output Quality + Escalation Triggers added to Orbit. Addresses audit gaps on axes B1/B2 (self-validation), C1/C2/C3 (auto-fix), A3 (autonomy).)*
-
----
+<!-- Training 2026-04-11 — Universal protocol enforcement moved to skills/orbit/training-history.md -->
 
 ## Training 2026-04-11 — Deep expansion (Orbit P1)
 <!-- Full content moved to skills/orbit/training-2026-04-11-deep-expansion-orbit-p1.md -->
 
-## Training 2026-04-11 (b) — Executable Loop Integration
-
-**Agent class:** Insight — retries 3, cost cap $3, wall-clock cap 10 min
-
-**Mandatory loads at start of every run:**
-1. `~/.claude/memory/patterns/good/executable-auto-fix-loop.md` — class caps, cost breaker, escalation JSON, git autonomy
-2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
-3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
-
-**Cap enforcement:** If this agent's wall-clock or cost cap trips, it emits the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hands back to Rex. No silent continuation. No cap lifts without Yash approval.
-
-**Git autonomy:** Feature branches only (`agent/orbit/<feature>-<ts>`), conventional commits, draft PRs via `gh pr create --draft`. Never commit to `main` of product repos.
-
-*(Training 2026-04-11 (b) — Executable loop integration. Addresses gap: this agent was not loading the hardened patterns at dispatch time, letting it drift from the 9+ baseline.)*
+<!-- Training 2026-04-11 (b) — Executable Loop Integration moved to skills/orbit/training-history.md -->
 
 ## Skill Library (load on demand)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **★ DEEP TRAINING 2026-04-10 — ORBIT METRICS ARCHITECTURE PLAYBOOK** — triggers: _deep, training, orbit, metrics, architecture, playbook, supersedes, prior_ → `~/.claude/skills/orbit/deep-training-2026-04-10-orbit-metrics-architecture-playbook.md`
-- **Training 2026-04-11 — Deep expansion (Orbit P1)** — triggers: _training, deep, expansion, orbit, addresses, audit, gaps, north-star_ → `~/.claude/skills/orbit/training-2026-04-11-deep-expansion-orbit-p1.md`
+- **★ DEEP TRAINING 2026-04-10 — ORBIT METRICS ARCHITECTURE PLAYBOOK** — triggers: _deep, training, metrics, architecture, playbook, dodo, supabase, integration_ → `~/.claude/skills/orbit/deep-training-2026-04-10-orbit-metrics-architecture-playbook.md`
+- **Training 2026-04-11 — Deep expansion (Orbit P1)** — triggers: _training, deep, expansion, subscription, pricing, auth, unit, ci_ → `~/.claude/skills/orbit/training-2026-04-11-deep-expansion-orbit-p1.md`
+- **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/orbit/training-history.md`

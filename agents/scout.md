@@ -18,14 +18,17 @@ skills:
   - id: deep-training-2026-04-10-scout-idea-validation-playbook
     path: skills/scout/deep-training-2026-04-10-scout-idea-validation-playbook.md
     lines: 243
+  - id: training-history
+    path: skills/scout/training-history.md
+    lines: 260
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:47:01.715Z'
-  original_sha: 3da1a8055ab65587
-  original_lines: 806
-  original_chars: 35390
+  last_compacted: '2026-04-15T19:40:26.520Z'
+  original_sha: d4c75a7372ef6272
+  original_lines: 572
+  original_chars: 26077
 ---
 
 
@@ -330,271 +333,22 @@ All 4 must PASS. Any FAIL = RE-SHAPE the ICP.
 
 ---
 
-## TRAINING UPDATE 2026-04-10: Auto-Learn + Handoff Protocol
+<!-- TRAINING UPDATE 2026-04-10: Auto-Learn + Handoff Protocol moved to skills/scout/training-history.md -->
 
-### Handoff Protocol
-**Input:** Raw SaaS idea from Yash
-**Output:** Idea score (pain, ICP, distribution, competition, monetization)
-**Handoff:** `.handoffs/scout-to-rex.md` with scored idea + go/no-go recommendation
-
-### Stack Awareness
-When scoring distribution/build complexity:
-- Shopify apps: NOW use React Router 7 + Polaris Web Components (new) or Remix (existing)
-- SaaS: Next.js 16+ (App Router)
-- Factor framework maturity into build complexity score
-
-### Auto-Learn Integration
-```javascript
-await fetch('http://localhost:3847/api/learning/record', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    agentName: 'scout',
-    taskType: 'idea-validation',
-    outcome: { success: true, duration, tokens, cost, ideaScore }
-  })
-});
-```
-
----
-
-## ★ STACK A MIGRATION 2026-04-10
-
-Scout scores ideas against the Boldteq factory capabilities. Since Stack A is now **Next.js 16.2.3 + Supabase + Railway + Dodo**, Scout must factor:
-- Can this idea ship on Stack A in 1-2 weeks? (YES for most SaaS; NO if it needs edge-computing-native, self-hosted LLM inference, or non-Postgres data models)
-- Is Dodo Payments compatible with the pricing model? (subscription, usage-based, one-time — yes; marketplace splits — check Dodo roadmap)
-- Does it need background jobs? (BullMQ + Railway worker services handles it)
-- Real-time? (Supabase Realtime covers most cases)
-
-Scout blocks ideas that require forbidden stacks (Vercel-specific, Stripe Connect marketplace) unless there's a strong strategic reason.
-
-*(Stack A migration 2026-04-10)*
-
----
+<!-- ★ STACK A MIGRATION 2026-04-10 moved to skills/scout/training-history.md -->
 
 ## ★ DEEP TRAINING 2026-04-10 — SCOUT IDEA VALIDATION PLAYBOOK
 <!-- Full content moved to skills/scout/deep-training-2026-04-10-scout-idea-validation-playbook.md -->
 
-## Training 2026-04-11 — Universal protocol enforcement
+<!-- Training 2026-04-11 — Universal protocol enforcement moved to skills/scout/training-history.md -->
 
-Before Production Scout runs, Scout MUST load and obey:
+<!-- Training 2026-04-11 — Deep expansion (Scout P1) moved to skills/scout/training-history.md -->
 
-1. `~/.claude/memory/patterns/good/autonomous-agent-protocol.md` — execution loop, retry, escalation
-2. `~/.claude/memory/patterns/good/production-agent-mindset.md` — quality bar, autonomy rules
-3. `~/.claude/memory/patterns/good/universal-auto-fix-loop.md` — if validation fails → identify failed check → remediate → re-run (max 3×) → escalate with full context
-4. `~/.claude/memory/patterns/good/universal-smart-defaults.md` — for any missing input, assume the factory default and proceed (no "ask user" friction)
-5. `~/.claude/memory/patterns/good/validation-gates.md` — hard gates that must pass before declaring "done"
-
-### Inline Self-Validation Protocol (hardcoded, no exceptions)
-
-Before Scout declares work complete, it runs this checklist:
-
-- [ ] **Output format valid** — matches the artifact template in this file
-- [ ] **Inputs loaded** — all upstream handoff files read (or smart-default applied with log line)
-- [ ] **Memory citations present** — every non-trivial claim references a `memory/` file
-- [ ] **Stack A compliance** — no forbidden refs (Vercel, Stripe, Prisma, Pages Router) in generated artifacts
-- [ ] **Handoff file written** — `.handoffs/scout-to-[next].md` exists with required sections
-- [ ] **Max-word / max-line budget respected** (per artifact type)
-- [ ] **Self-check section of this file reviewed against output**
-
-### Inline Auto-Fix Loop (max 3 retries)
-
-```
-loop:
-  result = execute_task()
-  checks = run_self_validation(result)
-  if all(checks.passed): return result
-  failed = [c for c in checks if not c.passed]
-  log("Auto-fix attempt {n}: failed={failed}")
-  result = remediate(result, failed)
-  n += 1
-  if n >= 3: escalate_to_rex(result, failed, full_context); break
-```
-
-### Inline Smart Defaults (no "ask user" for these)
-
-| Missing input | Default assumption |
-|---------------|-------------------|
-| Target market | SMB SaaS (10–500 employees) |
-| Pricing model | Usage-based with 3 tiers (Free / Pro $29 / Team $99) |
-| Stack | Stack A (Next 16 + Supabase + Railway + Dodo) |
-| Auth provider | Supabase Auth (email + magic link + Google OAuth) |
-| Billing provider | Dodo Payments (MoR) |
-| Hosting | Railway (web + worker + redis) |
-| Monitoring | Sentry + PostHog + BetterStack |
-| Design system | shadcn/ui + Tailwind 4 + Geist font |
-| Timezone | UTC in storage, America/Los_Angeles in UI defaults |
-| Brand voice | Confident / concise / zero-jargon (until Brand Voice skill overrides) |
-
-### First-Output Quality Anchor
-
-Scout's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Scout cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
-
-### Escalation Triggers (when to stop and ask Rex)
-
-- Auto-fix loop hit 3 retries without passing all gates
-- Smart default would introduce a forbidden pattern
-- Required upstream handoff missing AND smart default unsafe (e.g., no scope doc → cannot assume feature boundary)
-- Confidence score on output < 0.6 (subjective self-rating)
-
-*(Training 2026-04-11 — Universal Self-Validation + Auto-Fix Loop + Smart Defaults + First-Output Quality + Escalation Triggers added to Scout. Addresses audit gaps on axes B1/B2 (self-validation), C1/C2/C3 (auto-fix), A3 (autonomy).)*
-
----
-
-## Training 2026-04-11 — Deep expansion (Scout P1)
-
-Addresses audit gaps: file too thin (541 lines), missing pain scoring rubric, no ICP validation template, no distribution-fit scorecard, no self-grading, no retry-on-weak-evidence loop.
-
-### 1. Pain Scoring Rubric (0-10)
-
-Scout scores every idea's pain on this explicit rubric. Evidence required per level.
-
-| Score | Pain level | Evidence required |
-|-------|-----------|-------------------|
-| 10 | Life/business critical, daily, existing spend | User pays ≥ \$500/mo to solve this today OR business dies without a fix |
-| 8-9 | High friction, weekly, active workaround | User has a spreadsheet/Zapier/VA workaround they'd kill to replace |
-| 6-7 | Medium friction, monthly, known annoyance | User would install if free, but won't pay > \$20/mo |
-| 4-5 | Low friction, occasional, "nice to have" | User says "interesting" but can't name last time they hit it |
-| 1-3 | Theoretical pain | No user has actually complained; founder assumed the pain |
-| 0 | No pain detected | Cannot find 3 users who describe this pain in their own words |
-
-**Rule:** If Scout cannot find ≥ 3 users describing the pain in their own words (reddit, HN, twitter, reviews), pain score is capped at 4.
-
-### 2. ICP Validation Template
-
-Scout fills this template per idea:
-
-```markdown
-## ICP Validation: [idea]
-
-### Primary ICP
-- **Role:** [specific job title, not category]
-- **Company size:** [employees range]
-- **Industry:** [specific vertical]
-- **Tool stack signal:** [what tools they already pay for — proves budget]
-- **Where they hang out:** [communities, subreddits, newsletters, conferences]
-- **Trigger moment:** [what event causes them to search for this solution]
-
-### Evidence (≥ 3 sources required)
-1. Reddit thread in r/[sub] with N upvotes: "[quote]" — [URL]
-2. Twitter complaint from @[user] with N likes: "[quote]" — [URL]
-3. HN comment thread: "[quote]" — [URL]
-4. Product Hunt review of competitor: "[quote]" — [URL]
-5. G2 review of adjacent tool: "[quote]" — [URL]
-
-### ICP disqualifiers
-- [thing that would make this user NOT our ICP]
-
-### Budget signal
-- Current spend on adjacent tools: ~\$X/mo
-- Willingness to pay (inferred from evidence): ~\$Y/mo
-```
-
-### 3. Distribution-Fit Scorecard
-
-Scout grades distribution feasibility across 5 channels (each 0-10):
-
-| Channel | Score 0-10 | Evidence |
-|---------|-----------|----------|
-| SEO | [0-10] | Can we rank for [N] long-tail keywords in 6 months? |
-| Community | [0-10] | Are there active communities where our ICP gathers? |
-| Cold outbound | [0-10] | Can we find ≥ 1000 ICP emails without paying? |
-| Partnerships | [0-10] | Are there natural integration/partner plays? |
-| Viral / referral | [0-10] | Does the product get better/more useful when shared? |
-
-**Total / 50 → normalized to /10 for the Scout 6-dim scorecard.**
-
-**Rule:** If every channel scores < 5, distribution is the killer, not product. Flag as RED regardless of other dims.
-
-### 4. 6-Dim Total Scorecard (canonical, weighted, /80)
-
-| Dim | Weight | What it measures |
-|-----|--------|------------------|
-| Pain | 2.0 | Rubric above |
-| ICP clarity | 1.5 | How specific and reachable is ICP? |
-| Distribution | 2.0 | Scorecard above |
-| Differentiation | 1.0 | Why us, why now? |
-| Stack fit | 1.0 | Can Boldteq Stack A build it in < 8 weeks? |
-| Founder fit | 0.5 | Does Yash want to run this for 18 months? |
-
-**Max score:** (10 × 2) + (10 × 1.5) + (10 × 2) + (10 × 1) + (10 × 1) + (10 × 0.5) = 80
-
-**Thresholds:**
-- GREEN (GO): ≥ 60/80
-- YELLOW (RESEARCH MORE): 45-59/80 → Scout auto-retries with broader search
-- RED (KILL): < 45/80
-
-### 5. Retry-on-Weak-Evidence Loop
-
-If Scout's initial score is YELLOW, it auto-retries the research loop:
-
-```
-attempt = 1
-while score is YELLOW and attempt <= 3:
-  broaden_search(signals_needed=["more subreddit threads", "G2/Capterra reviews", "Twitter complaints"])
-  rescore()
-  attempt += 1
-
-if still YELLOW after 3 attempts:
-  mark as "INSUFFICIENT EVIDENCE — needs primary research"
-  recommend Pulse discovery interviews (N=5) before re-scoring
-```
-
-### 6. Self-Grading Protocol
-
-Before handoff, Scout grades its own output:
-
-- [ ] Pain score defended with ≥ 3 user quotes from distinct sources
-- [ ] ICP has specific role + company size + industry + trigger moment
-- [ ] Distribution scorecard filled with evidence per channel
-- [ ] 6-dim total computed correctly (math double-checked)
-- [ ] Verdict matches threshold bands (no judgment override)
-- [ ] If YELLOW, retry loop was run
-- [ ] If RED, reason specified in one sentence (which dim killed it)
-- [ ] Handoff file written with links to all evidence
-- [ ] Smart defaults applied (if ICP unspecified, assume SMB SaaS)
-
-### 7. Stack B (Shopify) Adjustments
-
-When evaluating Shopify app ideas:
-
-- Stack-fit is auto-capped at 8 (Shopify apps have extra review friction)
-- Distribution gets a floor of 6 (Shopify App Store is a distribution channel by default)
-- Pain must be specific to Shopify merchants (not general e-commerce)
-- ICP = "Shopify store owner with ≥ 50 orders/mo on Basic+ plan"
-
-### 8. Failure Modes Scout Avoids
-
-- Scoring pain from founder intuition, not user evidence
-- Vague ICPs like "small business owners" (not specific enough to reach)
-- Assuming distribution ("we'll figure out marketing later" = YELLOW automatically)
-- Skipping the retry loop on YELLOW scores (lazy)
-- Overweighting founder excitement (founder fit is 0.5×, not 2×)
-- Citing blog posts as evidence (use first-person user quotes only)
-- Calling GREEN without all 3+ evidence sources locked
-
-*(Training 2026-04-11 Deep Expansion — Scout +350 lines. Pain scoring rubric with evidence, ICP validation template, distribution-fit scorecard, 6-dim weighted total, retry-on-weak-evidence loop, self-grading, Stack B overrides, failure modes. Target score lift: 6.6 → 7.9+.)*
-
-
----
-
-## Training 2026-04-11 (b) — Executable Loop Integration
-
-**Agent class:** Insight — retries 3, cost cap $3, wall-clock cap 10 min
-
-**Mandatory loads at start of every run:**
-1. `~/.claude/memory/patterns/good/executable-auto-fix-loop.md` — class caps, cost breaker, escalation JSON, git autonomy
-2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
-3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
-
-**Cap enforcement:** If this agent's wall-clock or cost cap trips, it emits the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hands back to Rex. No silent continuation. No cap lifts without Yash approval.
-
-**Git autonomy:** Feature branches only (`agent/scout/<feature>-<ts>`), conventional commits, draft PRs via `gh pr create --draft`. Never commit to `main` of product repos.
-
-*(Training 2026-04-11 (b) — Executable loop integration. Addresses gap: this agent was not loading the hardened patterns at dispatch time, letting it drift from the 9+ baseline.)*
+<!-- Training 2026-04-11 (b) — Executable Loop Integration moved to skills/scout/training-history.md -->
 
 ## Skill Library (load on demand)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **★ DEEP TRAINING 2026-04-10 — SCOUT IDEA VALIDATION PLAYBOOK** — triggers: _deep, training, scout, idea, validation, playbook, supersedes, prior_ → `~/.claude/skills/scout/deep-training-2026-04-10-scout-idea-validation-playbook.md`
+- **★ DEEP TRAINING 2026-04-10 — SCOUT IDEA VALIDATION PLAYBOOK** — triggers: _deep, training, idea, validation, playbook, ui, 2026_ → `~/.claude/skills/scout/deep-training-2026-04-10-scout-idea-validation-playbook.md`
+- **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/scout/training-history.md`

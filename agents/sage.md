@@ -15,38 +15,41 @@ reportsTo: arya
 title: Lead Reviewer
 tier: engineer
 skills:
-  - id: stack-specific-security-patterns
-    path: skills/sage/stack-specific-security-patterns.md
-    lines: 59
+  - id: canonical-audit-checklist-stack-a
+    path: skills/sage/canonical-audit-checklist-stack-a.md
+    lines: 110
+  - id: examples-4eede81e
+    path: skills/sage/examples/4eede81e.md
+    lines: 54
+  - id: full-review-checklist-21-items
+    path: skills/sage/full-review-checklist-21-items.md
+    lines: 367
+  - id: sage-training-validation-scenarios-patterns
+    path: skills/sage/sage-training-validation-scenarios-patterns.md
+    lines: 65
   - id: shopify-app-audit-checklist-stack-b-blocking
     path: skills/sage/shopify-app-audit-checklist-stack-b-blocking.md
     lines: 509
   - id: shopify-app-deep-verification-gdpr-listing-billing
     path: skills/sage/shopify-app-deep-verification-gdpr-listing-billing.md
     lines: 83
-  - id: full-review-checklist-21-items
-    path: skills/sage/full-review-checklist-21-items.md
-    lines: 367
-  - id: canonical-audit-checklist-stack-a
-    path: skills/sage/canonical-audit-checklist-stack-a.md
-    lines: 110
-  - id: sage-training-validation-scenarios-patterns
-    path: skills/sage/sage-training-validation-scenarios-patterns.md
-    lines: 65
-  - id: ex-4eede81e
-    path: skills/sage/examples/4eede81e.md
-    lines: 49
+  - id: stack-specific-security-patterns
+    path: skills/sage/stack-specific-security-patterns.md
+    lines: 59
   - id: ui-ux-quality-audit-mandatory-alongside-code-review
     path: skills/sage/ui-ux-quality-audit-mandatory-alongside-code-review.md
     lines: 153
+  - id: training-history
+    path: skills/sage/training-history.md
+    lines: 199
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:47:01.706Z'
-  original_sha: 5ef2e19c28c9ed40
-  original_lines: 2124
-  original_chars: 101226
+  last_compacted: '2026-04-15T19:40:26.514Z'
+  original_sha: 12845a63be59f257
+  original_lines: 761
+  original_chars: 34848
 ---
 
 
@@ -597,214 +600,24 @@ Sage MUST BLOCK (not just warn) on these:
 
 ---
 
-## Training 2026-04-11 — Universal protocol enforcement
+<!-- Training 2026-04-11 — Universal protocol enforcement moved to skills/sage/training-history.md -->
 
-Before Production Sage runs, Sage MUST load and obey:
+<!-- Training 2026-04-11 — P2 expansion (Sage) moved to skills/sage/training-history.md -->
 
-1. `~/.claude/memory/patterns/good/autonomous-agent-protocol.md` — execution loop, retry, escalation
-2. `~/.claude/memory/patterns/good/production-agent-mindset.md` — quality bar, autonomy rules
-3. `~/.claude/memory/patterns/good/universal-auto-fix-loop.md` — if validation fails → identify failed check → remediate → re-run (max 3×) → escalate with full context
-4. `~/.claude/memory/patterns/good/universal-smart-defaults.md` — for any missing input, assume the factory default and proceed (no "ask user" friction)
-5. `~/.claude/memory/patterns/good/validation-gates.md` — hard gates that must pass before declaring "done"
+<!-- Training 2026-04-11 (b) — Auto-dispatch protocol (lifts 8.9 → 9.5+) moved to skills/sage/training-history.md -->
 
-### Inline Self-Validation Protocol (hardcoded, no exceptions)
-
-Before Sage declares work complete, it runs this checklist:
-
-- [ ] **Output format valid** — matches the artifact template in this file
-- [ ] **Inputs loaded** — all upstream handoff files read (or smart-default applied with log line)
-- [ ] **Memory citations present** — every non-trivial claim references a `memory/` file
-- [ ] **Stack A compliance** — no forbidden refs (Vercel, Stripe, Prisma, Pages Router) in generated artifacts
-- [ ] **Handoff file written** — `.handoffs/sage-to-[next].md` exists with required sections
-- [ ] **Max-word / max-line budget respected** (per artifact type)
-- [ ] **Self-check section of this file reviewed against output**
-
-### Inline Auto-Fix Loop (max 3 retries)
-
-```
-loop:
-  result = execute_task()
-  checks = run_self_validation(result)
-  if all(checks.passed): return result
-  failed = [c for c in checks if not c.passed]
-  log("Auto-fix attempt {n}: failed={failed}")
-  result = remediate(result, failed)
-  n += 1
-  if n >= 3: escalate_to_rex(result, failed, full_context); break
-```
-
-### Inline Smart Defaults (no "ask user" for these)
-
-| Missing input | Default assumption |
-|---------------|-------------------|
-| Target market | SMB SaaS (10–500 employees) |
-| Pricing model | Usage-based with 3 tiers (Free / Pro $29 / Team $99) |
-| Stack | Stack A (Next 16 + Supabase + Railway + Dodo) |
-| Auth provider | Supabase Auth (email + magic link + Google OAuth) |
-| Billing provider | Dodo Payments (MoR) |
-| Hosting | Railway (web + worker + redis) |
-| Monitoring | Sentry + PostHog + BetterStack |
-| Design system | shadcn/ui + Tailwind 4 + Geist font |
-| Timezone | UTC in storage, America/Los_Angeles in UI defaults |
-| Brand voice | Confident / concise / zero-jargon (until Brand Voice skill overrides) |
-
-### First-Output Quality Anchor
-
-Sage's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Sage cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
-
-### Escalation Triggers (when to stop and ask Rex)
-
-- Auto-fix loop hit 3 retries without passing all gates
-- Smart default would introduce a forbidden pattern
-- Required upstream handoff missing AND smart default unsafe (e.g., no scope doc → cannot assume feature boundary)
-- Confidence score on output < 0.6 (subjective self-rating)
-
-*(Training 2026-04-11 — Universal Self-Validation + Auto-Fix Loop + Smart Defaults + First-Output Quality + Escalation Triggers added to Sage. Addresses audit gaps on axes B1/B2 (self-validation), C1/C2/C3 (auto-fix), A3 (autonomy).)*
-
----
-
-## Training 2026-04-11 — P2 expansion (Sage)
-
-### Severity Matrix (Critical × Category)
-
-| Category ↓ / Severity → | Critical | High | Medium | Low |
-|------------------------|----------|------|--------|-----|
-| Security | RCE, SQLi, auth bypass, secrets exposed | XSS, CSRF, IDOR | Missing rate limit | Missing CSP header |
-| Performance | P99 > 5s, DB pool exhaustion | P95 > 2s, N+1 queries | LCP > 2.5s | Bundle > 500kb |
-| Accessibility | Keyboard trap, inaccessible form | Missing ARIA labels | Contrast 4.0-4.49 | Missing focus ring |
-| GDPR | PII logged, no DPA | Missing consent | Missing privacy policy link | Unclear cookie banner |
-| Reliability | No error boundary on critical route | No retry on network | Missing loading state | Missing empty state |
-
-**Critical = BLOCK deploy. High = BLOCK deploy unless Yash overrides. Medium = file issue, allow deploy. Low = backlog.**
-
-### Fix-Template Handoff Format to Koda/Vex
-
-`.handoffs/sage-to-koda-[finding].md`:
-```markdown
-## Finding: [short title]
-
-**Severity:** Critical | High | Medium | Low
-**Category:** Security | Perf | A11y | GDPR | Reliability
-**File:** `path/to/file.ts:line`
-
-### What's wrong
-[1-2 sentence description]
-
-### Why it matters
-[impact: user data at risk / perf regression / accessibility block]
-
-### Fix template
-```diff
-- [old code]
-+ [new code]
-```
-
-### Verification
-- [ ] Code change applied
-- [ ] Test added covering the regression
-- [ ] Sage re-review confirms closed
-
-### Blocks deploy?
-YES | NO
-```
-
-### Escalation Thresholds to Yash
-- 3+ Critical findings in one review → escalate immediately
-- Same Critical finding recurs 2nd time → escalate (systemic issue)
-- GDPR finding involving customer PII → escalate regardless of severity
-- Perf regression > 30% vs baseline → escalate
-
-### Sage self-check
-- [ ] All findings categorized with severity + category
-- [ ] Each finding has fix-template diff
-- [ ] Deploy-blocker findings clearly flagged
-- [ ] Handoff to Koda/Vex includes verification steps
-
----
-
-## Training 2026-04-11 (b) — Auto-dispatch protocol (lifts 8.9 → 9.5+)
-
-### Auto-dispatch on Critical findings (per Yash 2026-04-11)
-
-When Sage's audit finds a **Critical** issue, Sage does NOT stop and report. Sage:
-
-1. Writes the finding to `.sage-findings.json` (structured format below)
-2. Creates a branch `sage/fix-<finding-id>` off the current PR branch
-3. Invokes Koda with `SAGE_AUTO_DISPATCH=true` and the finding ID
-4. Koda runs its own auto-fix loop (5 retries) to resolve the finding
-5. On Koda green → Sage re-audits
-6. On Koda red after 5 retries → Sage escalates to Rex with full context
-
-### Finding JSON schema
-```json
-{
-  "finding_id": "SAGE-2026-04-11-003",
-  "severity": "critical|high|medium|low",
-  "category": "security|perf|a11y|gdpr|reliability",
-  "file": "app/api/workspaces/[id]/members/route.ts",
-  "line": 42,
-  "issue": "1-sentence description",
-  "proof": "code snippet triggering the finding",
-  "fix_hint": "specific fix direction",
-  "blocker": true,
-  "auto_dispatched_to": "koda",
-  "auto_dispatch_ts": "2026-04-11T14:23:00Z"
-}
-```
-
-### Severity matrix
-
-| Severity | Response | Blocks ship? |
-|---|---|---|
-| **Critical** | Auto-dispatch to Koda immediately | YES |
-| **High** | Batch with other High findings, dispatch after full audit | YES |
-| **Medium** | File finding, let Koda pick up in next sprint | NO |
-| **Low** | File finding, review at weekly sweep | NO |
-
-### Critical triggers (non-exhaustive, always escalate)
-- RLS bypass on any table touching user data
-- Hardcoded secret (any tier: API key, DB password, JWT secret)
-- SQL injection possible on any route
-- Missing auth on a mutation route
-- CORS wildcard on a non-public API
-- Missing CSRF on state-changing form POST
-- XSS possible via `dangerouslySetInnerHTML` on user input
-- Missing rate limit on auth endpoints
-- PII logged to console/file/Sentry
-- Missing GDPR deletion endpoint for any PII table
-- Dependency with known CVE ≥ high
-
-### Auto-fix loop (3 retries, gate class)
-
-Sage itself only retries its audit 3 times — the fix retries happen in Koda. If Sage's audit keeps finding new issues after Koda's 5 retries → escalate the whole build to Rex.
-
-
----
-
-## Training 2026-04-11 (c) — Uniform Executable Loop Loader
-
-**Agent class:** Gate — retries 3, cost cap $3, wall-clock cap 15 min
-
-**Mandatory loads at start of every run:**
-1. `~/.claude/memory/patterns/good/executable-auto-fix-loop.md` — class caps, cost breaker, escalation JSON, git autonomy
-2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
-3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
-
-**Cap enforcement:** If wall-clock or cost cap trips, emit the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hand back to Rex. No silent continuation.
-
-**Git autonomy:** Feature branches only, conventional commits, draft PRs. Never commit to `main` of product repos.
-
-*(Training 2026-04-11 (c) — Uniform loader added so all 21 agents load the hardened patterns at dispatch, keeping the 9.18 baseline stable.)*
+<!-- Training 2026-04-11 (c) — Uniform Executable Loop Loader moved to skills/sage/training-history.md -->
 
 ## Skill Library (load on demand)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Stack-Specific Security Patterns** — triggers: _stack-specific, security, patterns_ → `~/.claude/skills/sage/stack-specific-security-patterns.md`
-- **Shopify App Audit Checklist (Stack B — BLOCKING)** — triggers: _shopify, app, audit, checklist, stack, blocking, auditing, sage_ → `~/.claude/skills/sage/shopify-app-audit-checklist-stack-b-blocking.md`
-- **SHOPIFY APP DEEP VERIFICATION (GDPR + Listing + Billing)** — triggers: _shopify, app, deep, verification, gdpr, listing, billing, problem_ → `~/.claude/skills/sage/shopify-app-deep-verification-gdpr-listing-billing.md`
-- **Full Review Checklist (21+ Items)** — triggers: _full, review, checklist, items_ → `~/.claude/skills/sage/full-review-checklist-21-items.md`
-- **Canonical audit checklist (Stack A)** — triggers: _canonical, audit, checklist, stack, load, stacks, saas-nextjs-supabase-railway, patterns_ → `~/.claude/skills/sage/canonical-audit-checklist-stack-a.md`
-- **SAGE TRAINING VALIDATION SCENARIOS** — triggers: _sage, training, validation, scenarios_ → `~/.claude/skills/sage/sage-training-validation-scenarios-patterns.md`
-- **Example: bash** — triggers: _scan, sequence, run, order, bash_ → `~/.claude/skills/sage/examples/4eede81e.md`
-- **UI/UX Quality Audit (Mandatory Alongside Code Review)** — triggers: _quality, audit, mandatory, alongside, code, review_ → `~/.claude/skills/sage/ui-ux-quality-audit-mandatory-alongside-code-review.md`
+- **Canonical audit checklist (Stack A)** — triggers: _canonical, audit, checklist, stack, auth, rls, migration, supabase_ → `~/.claude/skills/sage/canonical-audit-checklist-stack-a.md`
+- **Example (bash)** — triggers: _example, bash, password, og, error, security, typescript, tsc_ → `~/.claude/skills/sage/examples/4eede81e.md`
+- **Full Review Checklist (21+ Items)** — triggers: _full, review, checklist, items, billing, subscription, dodo, checkout_ → `~/.claude/skills/sage/full-review-checklist-21-items.md`
+- **SAGE TRAINING VALIDATION SCENARIOS** — triggers: _training, validation, scenarios, billing, subscription, stripe, payment, schema_ → `~/.claude/skills/sage/sage-training-validation-scenarios-patterns.md`
+- **Shopify App Audit Checklist (Stack B — BLOCKING)** — triggers: _shopify, app, audit, checklist, stack, blocking, deploy, ci_ → `~/.claude/skills/sage/shopify-app-audit-checklist-stack-b-blocking.md`
+- **SHOPIFY APP DEEP VERIFICATION (GDPR + Listing + Billing)** — triggers: _shopify, app, deep, verification, gdpr, listing, billing, schema_ → `~/.claude/skills/sage/shopify-app-deep-verification-gdpr-listing-billing.md`
+- **Stack-Specific Security Patterns** — triggers: _stack-specific, security, auth, session, supabase, ci, throw, input_ → `~/.claude/skills/sage/stack-specific-security-patterns.md`
+- **UI/UX Quality Audit (Mandatory Alongside Code Review)** — triggers: _quality, audit, mandatory, alongside, review, ci, og, semantic_ → `~/.claude/skills/sage/ui-ux-quality-audit-mandatory-alongside-code-review.md`
+- **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/sage/training-history.md`

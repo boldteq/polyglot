@@ -16,32 +16,32 @@ reportsTo: null
 title: Commander
 tier: leadership
 skills:
-  - id: deploy-gate-updates-rex-enforces
-    path: skills/rex/deploy-gate-updates-rex-enforces.md
-    lines: 11
+  - id: 13-project-claude-md-template-new
+    path: skills/rex/13-project-claude-md-template-new.md
+    lines: 160
   - id: 2-operating-modes-patterns
     path: skills/rex/2-operating-modes-patterns.md
     lines: 307
-  - id: extension-only-apps-no-admin-ui-patterns
-    path: skills/rex/extension-only-apps-no-admin-ui-patterns.md
-    lines: 256
   - id: 6-step-by-step-execution-per-mode-patterns
     path: skills/rex/6-step-by-step-execution-per-mode-patterns.md
     lines: 1404
   - id: deep-training-2026-04-10-rex-operating-protocol-v2-patterns
     path: skills/rex/deep-training-2026-04-10-rex-operating-protocol-v2-patterns.md
     lines: 418
-  - id: 13-project-claude-md-template-new
-    path: skills/rex/13-project-claude-md-template-new.md
-    lines: 160
+  - id: deploy-gate-updates-rex-enforces
+    path: skills/rex/deploy-gate-updates-rex-enforces.md
+    lines: 11
+  - id: extension-only-apps-no-admin-ui-patterns
+    path: skills/rex/extension-only-apps-no-admin-ui-patterns.md
+    lines: 256
 compactor:
   version: 1
   budget_lines: 700
   budget_chars: 28000
-  last_compacted: '2026-04-15T18:47:01.676Z'
-  original_sha: 9ed964296000cd61
-  original_lines: 3581
-  original_chars: 143400
+  last_compacted: '2026-04-15T19:40:26.490Z'
+  original_sha: 0c669c976754f23a
+  original_lines: 1053
+  original_chars: 52065
 ---
 
 
@@ -1089,9 +1089,9 @@ Rex never commits to `main` of any product repo. Rex dispatches Koda/Riko to fea
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Deploy gate updates (Rex enforces)** — triggers: _deploy, gate, updates, rex, enforces, before, allows, bolt_ → `~/.claude/skills/rex/deploy-gate-updates-rex-enforces.md`
-- **2. Operating Modes** — triggers: _operating, modes, identify, mode, first, always, state, execute_ → `~/.claude/skills/rex/2-operating-modes-patterns.md`
-- **Extension-Only Apps (No Admin UI)** — triggers: _extension-only, apps, admin, home, just, extensions, modify, pipeline_ → `~/.claude/skills/rex/extension-only-apps-no-admin-ui-patterns.md`
-- **6. Step-by-Step Execution Per Mode** — triggers: _step-by-step, execution, per, mode_ → `~/.claude/skills/rex/6-step-by-step-execution-per-mode-patterns.md`
-- **DEEP TRAINING 2026-04-10: Rex Operating Protocol v2** — triggers: _deep, training, rex, operating, protocol, section, authoritative, conflict_ → `~/.claude/skills/rex/deep-training-2026-04-10-rex-operating-protocol-v2-patterns.md`
-- **13. Project CLAUDE.md Template (NEW)** — triggers: _project, claude, template, new, must, documenting, architecture, decisions_ → `~/.claude/skills/rex/13-project-claude-md-template-new.md`
+- **13. Project CLAUDE.md Template (NEW)** — triggers: _project, template, new, billing, subscription, dodo, payment, auth_ → `~/.claude/skills/rex/13-project-claude-md-template-new.md`
+- **2. Operating Modes** — triggers: _operating, modes, trigger, integration, deploy, error, shopify, security_ → `~/.claude/skills/rex/2-operating-modes-patterns.md`
+- **6. Step-by-Step Execution Per Mode** — triggers: _step-by-step, execution, per, mode, billing, subscription, auth, index_ → `~/.claude/skills/rex/6-step-by-step-execution-per-mode-patterns.md`
+- **DEEP TRAINING 2026-04-10: Rex Operating Protocol v2** — triggers: _deep, training, operating, protocol, billing, auth, deploy, ci_ → `~/.claude/skills/rex/deep-training-2026-04-10-rex-operating-protocol-v2-patterns.md`
+- **Deploy gate updates (Rex enforces)** — triggers: _deploy, gate, updates, enforces, rls, e2e, railway, ci_ → `~/.claude/skills/rex/deploy-gate-updates-rex-enforces.md`
+- **Extension-Only Apps (No Admin UI)** — triggers: _extension-only, apps, admin, billing, deploy, og, form, remix_ → `~/.claude/skills/rex/extension-only-apps-no-admin-ui-patterns.md`

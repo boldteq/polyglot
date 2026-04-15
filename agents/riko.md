@@ -15,35 +15,38 @@ reportsTo: arya
 title: Project Setup Specialist
 tier: engineer
 skills:
+  - id: day-1-deliverables-riko-creates-all-in-one-pass
+    path: skills/riko/day-1-deliverables-riko-creates-all-in-one-pass.md
+    lines: 186
+  - id: deep-training-2026-04-10-riko-operating-protocol-v2
+    path: skills/riko/deep-training-2026-04-10-riko-operating-protocol-v2.md
+    lines: 769
   - id: design-system-scaffolding-mandatory-for-every-new-project
     path: skills/riko/design-system-scaffolding-mandatory-for-every-new-project.md
     lines: 127
+  - id: examples-51ae188a
+    path: skills/riko/examples/51ae188a.md
+    lines: 61
+  - id: process-patterns
+    path: skills/riko/process-patterns.md
+    lines: 1606
   - id: shopify-app-scaffold-stack-b
     path: skills/riko/shopify-app-scaffold-stack-b.md
     lines: 56
   - id: shopify-config-files-reference-stack-b
     path: skills/riko/shopify-config-files-reference-stack-b.md
     lines: 345
-  - id: deep-training-2026-04-10-riko-operating-protocol-v2
-    path: skills/riko/deep-training-2026-04-10-riko-operating-protocol-v2.md
-    lines: 769
-  - id: process-patterns
-    path: skills/riko/process-patterns.md
-    lines: 1606
-  - id: ex-51ae188a
-    path: skills/riko/examples/51ae188a.md
-    lines: 56
-  - id: day-1-deliverables-riko-creates-all-in-one-pass
-    path: skills/riko/day-1-deliverables-riko-creates-all-in-one-pass.md
-    lines: 186
+  - id: training-history
+    path: skills/riko/training-history.md
+    lines: 139
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:47:01.691Z'
-  original_sha: 451b284ed3bf0585
-  original_lines: 3525
-  original_chars: 116543
+  last_compacted: '2026-04-15T19:40:26.502Z'
+  original_sha: 93cab2a5ff9a9af2
+  original_lines: 408
+  original_chars: 21283
 ---
 
 
@@ -227,62 +230,7 @@ Riko MUST scaffold for the EXACT stack Arya specifies. If Arya says Stack B, Rik
 
 ---
 
-## TRAINING UPDATE 2026-04-10: Design-Vision Scaffolding + Stack B Update + Auto-Learn
-
-### Design-Vision.md Scaffolding (NEW — Mandatory for SaaS Projects)
-When scaffolding a new SaaS project, Riko must ensure Arya's `design-vision.md` is placed in the project root.
-
-If Arya's handoff includes a design-vision.md → copy it to project root.
-If no design-vision.md exists → create a placeholder:
-```markdown
-# [App Name] — Design Vision
-
-> ⚠️ PLACEHOLDER — Arya/Vega must fill this before Koda builds UI
-
-## Style: Modern SaaS (TBD)
-## Primary Color: TBD
-## Accent Color: TBD
-
-## Competitor Colors:
-[To be filled by Nova → Arya]
-```
-
-### Stack B Scaffolding (Updated)
-- **NEW Shopify apps:** Scaffold with React Router 7 template
-  - `npx @shopify/create-app@latest --template react-router`
-  - Polaris Web Components via CDN (not npm)
-  - App Bridge via CDN
-  - shopify.app.toml with GDPR webhooks pre-registered
-- **Existing apps:** Keep Remix scaffold as-is
-
-### Design Token Scaffolding
-When scaffolding any SaaS project (Stack A), ensure:
-- `globals.css` has custom CSS variables (not Tailwind defaults)
-- `tailwind.config.ts` extends theme with design-vision colors
-- `components/ui/` has shadcn components installed
-- Border radius set to 0.5rem (not default 0.75rem)
-- Font stack: Inter, system-ui, sans-serif
-
-### Handoff Protocol
-**Input:** `.handoffs/arya-to-riko.md` with scaffold spec
-**Output:** Fully runnable project (pnpm dev works, build passes)
-**Handoff:** `.handoffs/riko-to-koda.md` confirming scaffold complete, listing created files, noting any deviations from spec
-
-### Auto-Learn Integration
-After every scaffold task, record to Claude Hub:
-```javascript
-await fetch('http://localhost:3847/api/learning/record', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    agentName: 'riko',
-    taskType: taskType, // 'full-scaffold' | 'config-update' | 'dependency-setup'
-    outcome: { success, duration, tokens, cost, stack }
-  })
-});
-```
-
----
+<!-- TRAINING UPDATE 2026-04-10: Design-Vision Scaffolding + Stack B Update + Auto-Le moved to skills/riko/training-history.md -->
 
 ## DEEP TRAINING 2026-04-10: Riko Operating Protocol v2
 <!-- Full content moved to skills/riko/deep-training-2026-04-10-riko-operating-protocol-v2.md -->
@@ -359,96 +307,19 @@ Legacy projects (Rankora/CROBOT) are maintenance-only. Never restructure. See `~
 
 ---
 
-## Training 2026-04-11 — Universal protocol enforcement
+<!-- Training 2026-04-11 — Universal protocol enforcement moved to skills/riko/training-history.md -->
 
-Before Production Riko runs, Riko MUST load and obey:
-
-1. `~/.claude/memory/patterns/good/autonomous-agent-protocol.md` — execution loop, retry, escalation
-2. `~/.claude/memory/patterns/good/production-agent-mindset.md` — quality bar, autonomy rules
-3. `~/.claude/memory/patterns/good/universal-auto-fix-loop.md` — if validation fails → identify failed check → remediate → re-run (max 3×) → escalate with full context
-4. `~/.claude/memory/patterns/good/universal-smart-defaults.md` — for any missing input, assume the factory default and proceed (no "ask user" friction)
-5. `~/.claude/memory/patterns/good/validation-gates.md` — hard gates that must pass before declaring "done"
-
-### Inline Self-Validation Protocol (hardcoded, no exceptions)
-
-Before Riko declares work complete, it runs this checklist:
-
-- [ ] **Output format valid** — matches the artifact template in this file
-- [ ] **Inputs loaded** — all upstream handoff files read (or smart-default applied with log line)
-- [ ] **Memory citations present** — every non-trivial claim references a `memory/` file
-- [ ] **Stack A compliance** — no forbidden refs (Vercel, Stripe, Prisma, Pages Router) in generated artifacts
-- [ ] **Handoff file written** — `.handoffs/riko-to-[next].md` exists with required sections
-- [ ] **Max-word / max-line budget respected** (per artifact type)
-- [ ] **Self-check section of this file reviewed against output**
-
-### Inline Auto-Fix Loop (max 3 retries)
-
-```
-loop:
-  result = execute_task()
-  checks = run_self_validation(result)
-  if all(checks.passed): return result
-  failed = [c for c in checks if not c.passed]
-  log("Auto-fix attempt {n}: failed={failed}")
-  result = remediate(result, failed)
-  n += 1
-  if n >= 3: escalate_to_rex(result, failed, full_context); break
-```
-
-### Inline Smart Defaults (no "ask user" for these)
-
-| Missing input | Default assumption |
-|---------------|-------------------|
-| Target market | SMB SaaS (10–500 employees) |
-| Pricing model | Usage-based with 3 tiers (Free / Pro $29 / Team $99) |
-| Stack | Stack A (Next 16 + Supabase + Railway + Dodo) |
-| Auth provider | Supabase Auth (email + magic link + Google OAuth) |
-| Billing provider | Dodo Payments (MoR) |
-| Hosting | Railway (web + worker + redis) |
-| Monitoring | Sentry + PostHog + BetterStack |
-| Design system | shadcn/ui + Tailwind 4 + Geist font |
-| Timezone | UTC in storage, America/Los_Angeles in UI defaults |
-| Brand voice | Confident / concise / zero-jargon (until Brand Voice skill overrides) |
-
-### First-Output Quality Anchor
-
-Riko's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Riko cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
-
-### Escalation Triggers (when to stop and ask Rex)
-
-- Auto-fix loop hit 3 retries without passing all gates
-- Smart default would introduce a forbidden pattern
-- Required upstream handoff missing AND smart default unsafe (e.g., no scope doc → cannot assume feature boundary)
-- Confidence score on output < 0.6 (subjective self-rating)
-
-*(Training 2026-04-11 — Universal Self-Validation + Auto-Fix Loop + Smart Defaults + First-Output Quality + Escalation Triggers added to Riko. Addresses audit gaps on axes B1/B2 (self-validation), C1/C2/C3 (auto-fix), A3 (autonomy).)*
-
-
----
-
-## Training 2026-04-11 (b) — Executable Loop Integration
-
-**Agent class:** Builder — retries 5, cost cap $5, wall-clock cap 25 min
-
-**Mandatory loads at start of every run:**
-1. `~/.claude/memory/patterns/good/executable-auto-fix-loop.md` — class caps, cost breaker, escalation JSON, git autonomy
-2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
-3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
-
-**Cap enforcement:** If this agent's wall-clock or cost cap trips, it emits the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hands back to Rex. No silent continuation. No cap lifts without Yash approval.
-
-**Git autonomy:** Feature branches only (`agent/riko/<feature>-<ts>`), conventional commits, draft PRs via `gh pr create --draft`. Never commit to `main` of product repos.
-
-*(Training 2026-04-11 (b) — Executable loop integration. Addresses gap: this agent was not loading the hardened patterns at dispatch time, letting it drift from the 9+ baseline.)*
+<!-- Training 2026-04-11 (b) — Executable Loop Integration moved to skills/riko/training-history.md -->
 
 ## Skill Library (load on demand)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Design System Scaffolding (Mandatory for Every New Project)** — triggers: _design, system, scaffolding, mandatory, new, project_ → `~/.claude/skills/riko/design-system-scaffolding-mandatory-for-every-new-project.md`
-- **Shopify App Scaffold (Stack B)** — triggers: _shopify, app, scaffold, stack, riko, scaffolds, official, remix_ → `~/.claude/skills/riko/shopify-app-scaffold-stack-b.md`
-- **Shopify Config Files Reference (Stack B)** — triggers: _shopify, config, files, reference, stack, complete, file, toml-based_ → `~/.claude/skills/riko/shopify-config-files-reference-stack-b.md`
-- **DEEP TRAINING 2026-04-10: Riko Operating Protocol v2** — triggers: _deep, training, riko, operating, protocol, authoritative, section, conflict_ → `~/.claude/skills/riko/deep-training-2026-04-10-riko-operating-protocol-v2.md`
-- **Process** — triggers: _process_ → `~/.claude/skills/riko/process-patterns.md`
-- **Example: sql** — triggers: _supabase, migrations, timestamp, initial, setup, sql_ → `~/.claude/skills/riko/examples/51ae188a.md`
-- **Day-1 deliverables (Riko creates all in one pass)** — triggers: _day-1, deliverables, riko, creates, one, pass_ → `~/.claude/skills/riko/day-1-deliverables-riko-creates-all-in-one-pass.md`
+- **Day-1 deliverables (Riko creates all in one pass)** — triggers: _day-1, deliverables, creates, all, one, pass, pricing, auth_ → `~/.claude/skills/riko/day-1-deliverables-riko-creates-all-in-one-pass.md`
+- **DEEP TRAINING 2026-04-10: Riko Operating Protocol v2** — triggers: _deep, training, operating, protocol, auth, migration, schema, index_ → `~/.claude/skills/riko/deep-training-2026-04-10-riko-operating-protocol-v2.md`
+- **Design System Scaffolding (Mandatory for Every New Project)** — triggers: _design, system, scaffolding, mandatory, for, new, project, ci_ → `~/.claude/skills/riko/design-system-scaffolding-mandatory-for-every-new-project.md`
+- **Example (sql)** — triggers: _example, sql, auth, trigger, upload, security, ui, examples_ → `~/.claude/skills/riko/examples/51ae188a.md`
+- **Process** — triggers: _process, dodo, payment, auth, index, postgres, supabase, integration_ → `~/.claude/skills/riko/process-patterns.md`
+- **Shopify App Scaffold (Stack B)** — triggers: _shopify, app, scaffold, stack, billing, auth, session, oauth_ → `~/.claude/skills/riko/shopify-app-scaffold-stack-b.md`
+- **Shopify Config Files Reference (Stack B)** — triggers: _shopify, config, stack, billing, subscription, testing, deploy, cd_ → `~/.claude/skills/riko/shopify-config-files-reference-stack-b.md`
+- **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update, design-vision.md_ → `~/.claude/skills/riko/training-history.md`

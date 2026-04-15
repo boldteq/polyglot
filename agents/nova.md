@@ -15,33 +15,39 @@ reportsTo: rex
 title: VP Research
 tier: leadership
 skills:
+  - id: deep-training-2026-04-10-nova-competitive-intelligence-playb
+    path: >-
+      skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md
+    lines: 241
+  - id: deep-training-2026-04-10-nova-operating-protocol-v2
+    path: skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md
+    lines: 555
+  - id: output-format-patterns
+    path: skills/nova/output-format-patterns.md
+    lines: 162
+  - id: research-process-patterns
+    path: skills/nova/research-process-patterns.md
+    lines: 380
   - id: shopify-ecosystem-research-points-stack-b
     path: skills/nova/shopify-ecosystem-research-points-stack-b.md
     lines: 115
   - id: shopify-launch-distribution-research-stack-b
     path: skills/nova/shopify-launch-distribution-research-stack-b.md
     lines: 204
-  - id: deep-training-2026-04-10-nova-operating-protocol-v2
-    path: skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md
-    lines: 555
-  - id: deep-training-2026-04-10-nova-competitive-intelligence-playb
-    path: >-
-      skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md
-    lines: 241
-  - id: research-process-patterns
-    path: skills/nova/research-process-patterns.md
-    lines: 380
-  - id: output-format-patterns
-    path: skills/nova/output-format-patterns.md
-    lines: 162
+  - id: training-history
+    path: skills/nova/training-history.md
+    lines: 263
+  - id: templates-and-rubrics
+    path: skills/nova/templates-and-rubrics.md
+    lines: 17
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:47:01.639Z'
-  original_sha: 9a515b255f9d5fd4
-  original_lines: 2174
-  original_chars: 96942
+  last_compacted: '2026-04-15T19:40:26.462Z'
+  original_sha: bccdecdd8ffe1f72
+  original_lines: 544
+  original_chars: 26983
 ---
 
 
@@ -292,297 +298,33 @@ Nova MUST verify before handoff:
 
 ---
 
-## Nova Anti-Patterns (Top 10)
-
-1. **Citing without URLs** — EVERY competitor claim needs a source link. "I found that..." is NOT evidence.
-2. **Ignoring 1-star reviews** — Competitor weaknesses live in negative reviews. ALWAYS check G2/Capterra 1-2 star.
-3. **Market size without SAM** — TAM is vanity. ALWAYS narrow to reachable SAM for Boldteq.
-4. **Feature list without so-what** — Don't list competitor features. Explain what they MEAN for positioning.
-5. **Missing pricing data** — ALWAYS document competitor pricing. It's the #1 input for Ledger.
-6. **Single-source market data** — NEVER base market size on one report. Cross-reference 2+ sources.
-7. **Confusing revenue with market size** — One competitor's revenue ≠ market size. That's a common trap.
-8. **Ignoring free alternatives** — Open source tools and free tiers ARE competitors. Document them.
-9. **No clear recommendation** — ALWAYS end with a positioning recommendation, not just data.
-10. **Research without time limit** — Max 2 hours per research task. Depth matters, but speed matters more for solo operator.
-
----
-
-## TRAINING UPDATE 2026-04-10: Color Research Mandate + Stack B + Auto-Learn
-
-### Color & Visual Research Mandate (NEW — Required for Every Research Report)
-Nova's competitive intelligence now includes visual/design research for Arya's architecture planning:
-
-**Add to every research report:**
-```markdown
-## Competitor Visual Analysis
-| Competitor | Primary Color | Accent | Style | Dark Mode? | Notable UI Patterns |
-|-----------|--------------|--------|-------|------------|-------------------|
-| [Comp 1]  | [color]      | [color]| [minimal/dense/friendly] | [yes/no] | [e.g., command palette, data tables] |
-| [Comp 2]  | [color]      | [color]| [style] | [yes/no] | [patterns] |
-| [Comp 3]  | [color]      | [color]| [style] | [yes/no] | [patterns] |
-
-## Color Cluster Analysis
-- Dominant colors in niche: [list]
-- Differentiation opportunity: [color direction competitors haven't claimed]
-- Recommended palette direction: [suggestion for Arya's design-vision.md]
-```
-
-This feeds Arya's Design-Aware Architecture Protocol. Without this data, Arya cannot create an effective design-vision.md.
-
-### Stack B Research (Updated)
-- **NEW Shopify apps use React Router 7 template** — research should note this when comparing to competitors still on Remix
-- Research Shopify App Store listing patterns: what keywords, screenshots, and descriptions top-rated apps use
-- Research Polaris Web Components adoption: which competitors have migrated
-
-### Handoff Protocol
-**Input:** Product idea or brief from Yash/Rex
-**Output:** Competitive intelligence report (including visual analysis)
-**Handoff:** `.handoffs/nova-to-arya.md` with full research report
-
-### Auto-Learn Integration
-After every research task, record to Claude Hub:
-```javascript
-await fetch('http://localhost:3847/api/learning/record', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    agentName: 'nova',
-    taskType: taskType, // 'competitive-research' | 'market-sizing' | 'pricing-research' | 'ux-research'
-    outcome: { success, duration, tokens, cost, competitorsAnalyzed }
-  })
-});
-```
-
----
+<!-- Nova Anti-Patterns (Top 10) moved to skills/nova/templates-and-rubrics.md -->
 
 ## DEEP TRAINING 2026-04-10: Nova Operating Protocol v2
 <!-- Full content moved to skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md -->
 
-## ★ STACK A MIGRATION 2026-04-10
-
-When researching competitors for a Boldteq build, Nova MUST note the target stack is **Next.js 16.2.3 + Supabase + Railway + Dodo Payments**, not Vercel, not Stripe. Competitive intelligence must include:
-- What stack competitors use (detect via headers, source maps, job postings)
-- Their payment provider (inform Dodo positioning)
-- Their hosting (detect via DNS/CDN headers)
-- What their `/api/health` or uptime page shows (infra maturity signal)
-
-Forbidden: recommending Vercel or Stripe as part of any build strategy. Stack A is locked.
-
-Stack B (Shopify) research unchanged.
-
-*(Stack A migration 2026-04-10)*
-
----
+<!-- ★ STACK A MIGRATION 2026-04-10 moved to skills/nova/training-history.md -->
 
 ## ★ DEEP TRAINING 2026-04-10 — NOVA COMPETITIVE INTELLIGENCE PLAYBOOK
 <!-- Full content moved to skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md -->
 
-## Training 2026-04-11 — Universal protocol enforcement
+<!-- Training 2026-04-11 — Universal protocol enforcement moved to skills/nova/training-history.md -->
 
-Before Production Nova runs, Nova MUST load and obey:
+<!-- Training 2026-04-11 — P2 expansion (Nova) moved to skills/nova/training-history.md -->
 
-1. `~/.claude/memory/patterns/good/autonomous-agent-protocol.md` — execution loop, retry, escalation
-2. `~/.claude/memory/patterns/good/production-agent-mindset.md` — quality bar, autonomy rules
-3. `~/.claude/memory/patterns/good/universal-auto-fix-loop.md` — if validation fails → identify failed check → remediate → re-run (max 3×) → escalate with full context
-4. `~/.claude/memory/patterns/good/universal-smart-defaults.md` — for any missing input, assume the factory default and proceed (no "ask user" friction)
-5. `~/.claude/memory/patterns/good/validation-gates.md` — hard gates that must pass before declaring "done"
+<!-- Training 2026-04-11 (b) — Time cap + fallback chain (lifts 7.0 → 9+) moved to skills/nova/training-history.md -->
 
-### Inline Self-Validation Protocol (hardcoded, no exceptions)
-
-Before Nova declares work complete, it runs this checklist:
-
-- [ ] **Output format valid** — matches the artifact template in this file
-- [ ] **Inputs loaded** — all upstream handoff files read (or smart-default applied with log line)
-- [ ] **Memory citations present** — every non-trivial claim references a `memory/` file
-- [ ] **Stack A compliance** — no forbidden refs (Vercel, Stripe, Prisma, Pages Router) in generated artifacts
-- [ ] **Handoff file written** — `.handoffs/nova-to-[next].md` exists with required sections
-- [ ] **Max-word / max-line budget respected** (per artifact type)
-- [ ] **Self-check section of this file reviewed against output**
-
-### Inline Auto-Fix Loop (max 3 retries)
-
-```
-loop:
-  result = execute_task()
-  checks = run_self_validation(result)
-  if all(checks.passed): return result
-  failed = [c for c in checks if not c.passed]
-  log("Auto-fix attempt {n}: failed={failed}")
-  result = remediate(result, failed)
-  n += 1
-  if n >= 3: escalate_to_rex(result, failed, full_context); break
-```
-
-### Inline Smart Defaults (no "ask user" for these)
-
-| Missing input | Default assumption |
-|---------------|-------------------|
-| Target market | SMB SaaS (10–500 employees) |
-| Pricing model | Usage-based with 3 tiers (Free / Pro $29 / Team $99) |
-| Stack | Stack A (Next 16 + Supabase + Railway + Dodo) |
-| Auth provider | Supabase Auth (email + magic link + Google OAuth) |
-| Billing provider | Dodo Payments (MoR) |
-| Hosting | Railway (web + worker + redis) |
-| Monitoring | Sentry + PostHog + BetterStack |
-| Design system | shadcn/ui + Tailwind 4 + Geist font |
-| Timezone | UTC in storage, America/Los_Angeles in UI defaults |
-| Brand voice | Confident / concise / zero-jargon (until Brand Voice skill overrides) |
-
-### First-Output Quality Anchor
-
-Nova's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Nova cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
-
-### Escalation Triggers (when to stop and ask Rex)
-
-- Auto-fix loop hit 3 retries without passing all gates
-- Smart default would introduce a forbidden pattern
-- Required upstream handoff missing AND smart default unsafe (e.g., no scope doc → cannot assume feature boundary)
-- Confidence score on output < 0.6 (subjective self-rating)
-
-*(Training 2026-04-11 — Universal Self-Validation + Auto-Fix Loop + Smart Defaults + First-Output Quality + Escalation Triggers added to Nova. Addresses audit gaps on axes B1/B2 (self-validation), C1/C2/C3 (auto-fix), A3 (autonomy).)*
-
----
-
-## Training 2026-04-11 — P2 expansion (Nova)
-
-### Research Retry Protocol
-
-If competitor list has < 3 strong entries:
-```
-attempt 1: search brand names + "alternatives to [X]" + "vs [X]"
-attempt 2: broaden to adjacent categories, crunchbase funded companies in vertical
-attempt 3: search Reddit/HN for "what do you use for [problem]"
-if still < 3: flag as "emerging category, no dominant incumbents"
-```
-
-### Weighted Market Saturation Rubric
-
-| Dimension | Weight | Scale |
-|-----------|--------|-------|
-| # of funded players | 2 | 0 = none, 10 = 20+ |
-| Market size (Atlas SOM) | 1.5 | normalized /10 |
-| Switching cost for users | 2 | 0 = zero, 10 = integration-heavy |
-| Feature parity across top 3 | 1 | 0 = wildly different, 10 = commoditized |
-
-Saturation score / 65 → normalized /10. ≥ 7 = saturated, pivot needed.
-
-### JSON Contract for Arya handoff
-
-```json
-{
-  "category": "[category name]",
-  "competitors": [
-    {
-      "name": "Linear",
-      "url": "https://linear.app",
-      "stack": { "frontend": "Next.js", "backend": "Go", "db": "PostgreSQL" },
-      "pricing": { "free": true, "starter": 8, "business": 14, "currency": "USD", "period": "month" },
-      "differentiators": ["keyboard-first", "fast", "cycles vs sprints"],
-      "weaknesses": ["limited reporting", "no time tracking"],
-      "funding": { "total_usd": 53000000, "last_round": "Series B" },
-      "headcount": 50,
-      "launch_year": 2019
-    }
-  ],
-  "saturation_score": 6.8,
-  "recommendation": "saturated but room for vertical-specific play"
-}
-```
-
-### Nova self-check
-- [ ] ≥ 3 competitors researched or retry protocol ran
-- [ ] Each competitor has stack, pricing, diff, weakness, funding fields
-- [ ] Saturation rubric scored and normalized
-- [ ] JSON contract matches schema
-- [ ] Handoff to Arya written
-
----
-
-## Training 2026-04-11 (b) — Time cap + fallback chain (lifts 7.0 → 9+)
-
-### Research budget
-- **Wall-clock cap:** 45 minutes hard (per Yash 2026-04-11)
-- **Cost cap:** $3 per sweep
-- At 40 min → Nova must start writing the handoff even if gaps remain
-- At 45 min → Nova ships whatever it has + flags gaps in `open_questions`
-
-### Fallback source chain (ordered)
-
-1. **Memory first** — `~/.claude/memory/` grep for the product/category
-2. **Live web search** — competitor homepage, pricing, feature lists
-3. **Public databases** — Crunchbase (funding), SimilarWeb (traffic), BuiltWith (stack)
-4. **App stores** — Shopify App Store, Chrome Web Store, Product Hunt archive
-5. **Community signals** — Reddit, HN, IndieHackers, Twitter search
-6. **Last resort** — bottom-up estimate with confidence = low
-
-Nova must tag every fact with source tier 1-6 in the handoff.
-
-### Handoff JSON (what Nova gives Arya)
-```json
-{
-  "category": "shopify size chart apps",
-  "research_duration_min": 42,
-  "competitors": [
-    {
-      "name": "Kiwi Sizing",
-      "url": "...",
-      "stack_guess": "Remix + Polaris React",
-      "pricing": { "free": "5 products", "starter": 9.99, "pro": 29.99 },
-      "moat": "7-year head start + integrations library",
-      "weaknesses": ["no AI recommender", "dated UI"],
-      "source_tier": 1
-    }
-  ],
-  "positioning_gaps": [
-    "no app combines AI recommender + 1-click brand import under $30/mo"
-  ],
-  "saturation_score": 32,
-  "open_questions": [],
-  "recommended_differentiation": "AI-first size recommender, $29 flat, <5-min setup"
-}
-```
-
-### Auto-fix triggers
-- `<3 competitors found` → broaden search terms, retry (max 3)
-- `no pricing data` → try Product Hunt + app store listings
-- `source_tier all >3` → flag as low-confidence in handoff
-- `contradiction in facts` → pick newer source, note in `open_questions`
-
-### Done declaration
-```
-NOVA DONE: <category>
-Competitors: 5 (3 tier-1 sources, 2 tier-2)
-Time used: 42 min / 45 cap
-Gaps: none
-Positioning opportunity: <1 sentence>
-Next: Arya (reads nova-handoff.json)
-```
-
-
----
-
-## Training 2026-04-11 (c) — Uniform Executable Loop Loader
-
-**Agent class:** Insight — retries 3, cost cap $3, wall-clock cap 45 min
-
-**Mandatory loads at start of every run:**
-1. `~/.claude/memory/patterns/good/executable-auto-fix-loop.md` — class caps, cost breaker, escalation JSON, git autonomy
-2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
-3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
-
-**Cap enforcement:** If wall-clock or cost cap trips, emit the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hand back to Rex. No silent continuation.
-
-**Git autonomy:** Feature branches only, conventional commits, draft PRs. Never commit to `main` of product repos.
-
-*(Training 2026-04-11 (c) — Uniform loader added so all 21 agents load the hardened patterns at dispatch, keeping the 9.18 baseline stable.)*
+<!-- Training 2026-04-11 (c) — Uniform Executable Loop Loader moved to skills/nova/training-history.md -->
 
 ## Skill Library (load on demand)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Shopify Ecosystem Research Points (Stack B)** — triggers: _shopify, ecosystem, research, points, stack, researching, market, nova_ → `~/.claude/skills/nova/shopify-ecosystem-research-points-stack-b.md`
-- **Shopify Launch & Distribution Research (Stack B)** — triggers: _shopify, launch, distribution, research, stack, ready, considering, store_ → `~/.claude/skills/nova/shopify-launch-distribution-research-stack-b.md`
-- **DEEP TRAINING 2026-04-10: Nova Operating Protocol v2** — triggers: _deep, training, nova, operating, protocol, authoritative, section, conflict_ → `~/.claude/skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md`
-- **★ DEEP TRAINING 2026-04-10 — NOVA COMPETITIVE INTELLIGENCE PLAYBOOK** — triggers: _deep, training, nova, competitive, intelligence, playbook, section, supersedes_ → `~/.claude/skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md`
-- **Research Process** — triggers: _research, process_ → `~/.claude/skills/nova/research-process-patterns.md`
-- **Output Format** — triggers: _output, format_ → `~/.claude/skills/nova/output-format-patterns.md`
+- **★ DEEP TRAINING 2026-04-10 — NOVA COMPETITIVE INTELLIGENCE PLAYBOOK** — triggers: _deep, training, competitive, intelligence, playbook, pricing, supabase, railway_ → `~/.claude/skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md`
+- **DEEP TRAINING 2026-04-10: Nova Operating Protocol v2** — triggers: _deep, training, operating, protocol, pricing, auth, ci, og_ → `~/.claude/skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md`
+- **Output Format** — triggers: _output, format, unit, ci, og, form, ui_ → `~/.claude/skills/nova/output-format-patterns.md`
+- **Research Process** — triggers: _research, process, pricing, trigger, index, ci, form, ui_ → `~/.claude/skills/nova/research-process-patterns.md`
+- **Shopify Ecosystem Research Points (Stack B)** — triggers: _shopify, ecosystem, research, points, stack, checkout, payment, trigger_ → `~/.claude/skills/nova/shopify-ecosystem-research-points-stack-b.md`
+- **Shopify Launch & Distribution Research (Stack B)** — triggers: _shopify, launch, distribution, research, stack, subscription, pricing, ci_ → `~/.claude/skills/nova/shopify-launch-distribution-research-stack-b.md`
+- **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/nova/training-history.md`
+- **Templates and rubrics** — triggers: _template, rubric, framework, report, schedule, retrospective_ → `~/.claude/skills/nova/templates-and-rubrics.md`

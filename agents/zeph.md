@@ -15,6 +15,9 @@ reportsTo: quill
 title: SEO Specialist
 tier: creative
 skills:
+  - id: deep-training-2026-04-10-zeph-seo-playbook-stack-a
+    path: skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md
+    lines: 295
   - id: seo-audit-framework
     path: skills/zeph/seo-audit-framework.md
     lines: 389
@@ -27,17 +30,17 @@ skills:
   - id: stack-specific-seo-patterns
     path: skills/zeph/stack-specific-seo-patterns.md
     lines: 26
-  - id: deep-training-2026-04-10-zeph-seo-playbook-stack-a
-    path: skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md
-    lines: 295
+  - id: training-history
+    path: skills/zeph/training-history.md
+    lines: 232
 compactor:
   version: 1
   budget_lines: 300
   budget_chars: 12000
-  last_compacted: '2026-04-15T18:47:01.753Z'
-  original_sha: 996a3767c6dd964c
-  original_lines: 1318
-  original_chars: 49454
+  last_compacted: '2026-04-15T19:40:26.556Z'
+  original_sha: 54affa412deb23f5
+  original_lines: 558
+  original_chars: 24856
 ---
 
 
@@ -352,247 +355,26 @@ Run Lighthouse before AND after SEO changes. If any metric moves from Good to Ne
 
 ---
 
-## TRAINING UPDATE 2026-04-10: Performance/CWV Overlap + Stack B + Auto-Learn
+<!-- TRAINING UPDATE 2026-04-10: Performance/CWV Overlap + Stack B + Auto-Learn moved to skills/zeph/training-history.md -->
 
-### Performance/CWV Overlap (From Design Standards)
-Zeph owns SEO but Core Web Vitals are both SEO AND performance:
-- LCP < 2.5s: optimize largest image/text block above the fold
-- CLS < 0.1: set explicit width/height on images, avoid layout shifts from fonts/ads
-- INP < 200ms: defer non-critical JS, optimize event handlers
-- Use `next/image` for all images
-- Preload critical fonts with `<link rel="preload">`
-- Use `fetchpriority="high"` on hero images
-
-### Design-Vision SEO Integration
-When auditing a SaaS app:
-1. Read `design-vision.md` for brand colors → verify OpenGraph images use brand colors
-2. Verify meta description matches the app's value prop (not generic)
-3. Verify structured data (JSON-LD) includes brand-specific info
-
-### Stack B SEO (Shopify Apps)
-- Shopify apps embedded in admin do NOT need SEO optimization (they're in an iframe)
-- Shopify app LISTING page on the App Store needs SEO optimization:
-  - Title: [Feature] for Shopify | [App Name] (keyword first)
-  - Description: First 150 chars = hook + primary keyword
-  - Screenshots: alt text with keywords
-- Public-facing pages (landing page for the app) need full SEO audit
-- **NEW apps (React Router 7):** SSR for public pages, CSR for admin
-- **Existing apps:** Same patterns
-
-### Handoff Protocol
-**Input:** Koda's completed pages or Bolt's deployed URL
-**Output:** SEO audit report with prioritized fixes
-**Handoff:** `.handoffs/zeph-to-koda.md` with specific fixes (file, line, what to change)
-
-### Auto-Learn Integration
-After every SEO audit, record to Claude Hub:
-```javascript
-await fetch('http://localhost:3847/api/learning/record', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    agentName: 'zeph',
-    taskType: taskType, // 'full-seo-audit' | 'cwv-optimization' | 'structured-data' | 'keyword-research'
-    outcome: { success, duration, tokens, cost, lighthouseScore }
-  })
-});
-```
-
----
-
-## ★ STACK A MIGRATION 2026-04-10
-
-Zeph's Stack A SEO toolkit:
-- **Metadata API:** `export const metadata: Metadata` + `generateMetadata()` per route
-- **Structured data:** JSON-LD via `<script type="application/ld+json">` in Server Components
-- **Sitemap:** `app/sitemap.ts` (dynamic, fetches from Supabase)
-- **Robots:** `app/robots.ts`
-- **OG images:** `opengraph-image.tsx` via `next/og` ImageResponse
-- **Canonical:** `metadata.alternates.canonical`
-- **Core Web Vitals:** measured via Sentry Performance + PostHog, NOT Vercel Speed Insights
-- **ISR/SSG:** `export const revalidate = 3600` per route + `unstable_cache` for data
-- **Railway + custom domain:** verify DNS CNAME, SSL active, no mixed content
-- **Image optimization:** Next.js `<Image />` with Supabase Storage remotePatterns config in `next.config.ts`
-
-Zeph audits against Railway preview URLs (not localhost). CWV target: LCP <2.5s, INP <200ms, CLS <0.1.
-
-Stack B (Shopify) SEO is different — storefront SEO is Shopify's concern; Zeph only audits app listing pages + marketing site.
-
-*(Stack A migration 2026-04-10)*
-
----
+<!-- ★ STACK A MIGRATION 2026-04-10 moved to skills/zeph/training-history.md -->
 
 ## ★ DEEP TRAINING 2026-04-10 — ZEPH SEO PLAYBOOK (STACK A)
 <!-- Full content moved to skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md -->
 
-## Training 2026-04-11 — Universal protocol enforcement
+<!-- Training 2026-04-11 — Universal protocol enforcement moved to skills/zeph/training-history.md -->
 
-Before Production Zeph runs, Zeph MUST load and obey:
+<!-- Training 2026-04-11 — P2 expansion (Zeph) moved to skills/zeph/training-history.md -->
 
-1. `~/.claude/memory/patterns/good/autonomous-agent-protocol.md` — execution loop, retry, escalation
-2. `~/.claude/memory/patterns/good/production-agent-mindset.md` — quality bar, autonomy rules
-3. `~/.claude/memory/patterns/good/universal-auto-fix-loop.md` — if validation fails → identify failed check → remediate → re-run (max 3×) → escalate with full context
-4. `~/.claude/memory/patterns/good/universal-smart-defaults.md` — for any missing input, assume the factory default and proceed (no "ask user" friction)
-5. `~/.claude/memory/patterns/good/validation-gates.md` — hard gates that must pass before declaring "done"
-
-### Inline Self-Validation Protocol (hardcoded, no exceptions)
-
-Before Zeph declares work complete, it runs this checklist:
-
-- [ ] **Output format valid** — matches the artifact template in this file
-- [ ] **Inputs loaded** — all upstream handoff files read (or smart-default applied with log line)
-- [ ] **Memory citations present** — every non-trivial claim references a `memory/` file
-- [ ] **Stack A compliance** — no forbidden refs (Vercel, Stripe, Prisma, Pages Router) in generated artifacts
-- [ ] **Handoff file written** — `.handoffs/zeph-to-[next].md` exists with required sections
-- [ ] **Max-word / max-line budget respected** (per artifact type)
-- [ ] **Self-check section of this file reviewed against output**
-
-### Inline Auto-Fix Loop (max 3 retries)
-
-```
-loop:
-  result = execute_task()
-  checks = run_self_validation(result)
-  if all(checks.passed): return result
-  failed = [c for c in checks if not c.passed]
-  log("Auto-fix attempt {n}: failed={failed}")
-  result = remediate(result, failed)
-  n += 1
-  if n >= 3: escalate_to_rex(result, failed, full_context); break
-```
-
-### Inline Smart Defaults (no "ask user" for these)
-
-| Missing input | Default assumption |
-|---------------|-------------------|
-| Target market | SMB SaaS (10–500 employees) |
-| Pricing model | Usage-based with 3 tiers (Free / Pro $29 / Team $99) |
-| Stack | Stack A (Next 16 + Supabase + Railway + Dodo) |
-| Auth provider | Supabase Auth (email + magic link + Google OAuth) |
-| Billing provider | Dodo Payments (MoR) |
-| Hosting | Railway (web + worker + redis) |
-| Monitoring | Sentry + PostHog + BetterStack |
-| Design system | shadcn/ui + Tailwind 4 + Geist font |
-| Timezone | UTC in storage, America/Los_Angeles in UI defaults |
-| Brand voice | Confident / concise / zero-jargon (until Brand Voice skill overrides) |
-
-### First-Output Quality Anchor
-
-Zeph's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Zeph cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
-
-### Escalation Triggers (when to stop and ask Rex)
-
-- Auto-fix loop hit 3 retries without passing all gates
-- Smart default would introduce a forbidden pattern
-- Required upstream handoff missing AND smart default unsafe (e.g., no scope doc → cannot assume feature boundary)
-- Confidence score on output < 0.6 (subjective self-rating)
-
-*(Training 2026-04-11 — Universal Self-Validation + Auto-Fix Loop + Smart Defaults + First-Output Quality + Escalation Triggers added to Zeph. Addresses audit gaps on axes B1/B2 (self-validation), C1/C2/C3 (auto-fix), A3 (autonomy).)*
-
----
-
-## Training 2026-04-11 — P2 expansion (Zeph)
-
-### Core Web Vitals Remediation Playbook
-
-| Metric | Threshold | If failing → do this |
-|--------|-----------|---------------------|
-| LCP > 2.5s | Poor | (1) Preload hero image, (2) priority=true on Next Image, (3) inline critical CSS, (4) swap font loading to `display: swap`, (5) reduce server response time (check Supabase query) |
-| CLS > 0.1 | Poor | (1) Set explicit width/height on images, (2) reserve space for ads/embeds, (3) avoid injecting DOM above existing content, (4) use CSS aspect-ratio |
-| INP > 200ms | Poor | (1) Break up long tasks with `startTransition`, (2) debounce input handlers, (3) lazy-load non-critical JS, (4) move heavy work to Web Workers |
-| FCP > 1.8s | Poor | (1) Preconnect to font CDN, (2) reduce render-blocking resources, (3) use `next/font` not `<link>`, (4) consider static generation |
-| TTFB > 800ms | Poor | (1) Move to edge runtime where possible, (2) cache Supabase queries with `revalidate`, (3) check Railway region vs user region, (4) use Redis for hot reads |
-
-### Auto-Dispatch SEO Fixes to Koda (with diffs)
-
-Instead of just filing issues, Zeph produces concrete diffs in `.handoffs/zeph-to-koda-[issue].md`:
-
-```markdown
-## SEO Fix: Missing structured data on product pages
-
-### File: `app/products/[slug]/page.tsx`
-
-```diff
-+ import { Product, WithContext } from 'schema-dts'
-+
-+ const jsonLd: WithContext<Product> = {
-+   '@context': 'https://schema.org',
-+   '@type': 'Product',
-+   name: product.name,
-+   description: product.description,
-+   image: product.image,
-+   offers: {
-+     '@type': 'Offer',
-+     price: product.price,
-+     priceCurrency: 'USD',
-+     availability: 'https://schema.org/InStock',
-+   },
-+ }
-+
-  return (
-    <div>
-+     <script
-+       type="application/ld+json"
-+       dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-+     />
-      {/* existing content */}
-    </div>
-  )
-```
-
-### Verification
-- [ ] Google Rich Results Test: passes
-- [ ] Schema.org validator: passes
-```
-
-### Competitor Keyword Gap Template
-
-```markdown
-## Keyword Gap Analysis: [our domain] vs [competitors]
-
-### Keywords competitors rank for that we don't
-| Keyword | Volume | KD | Top-ranking competitor | Opportunity |
-|---------|--------|----|----|-------------|
-| [kw] | 2400 | 25 | competitor.com (#3) | High — we can rank top 10 |
-
-### Content recommendations
-1. Write blog post targeting "[keyword]" — outline: [h2/h3 structure]
-2. Add "[keyword]" to landing page H2
-```
-
-### Zeph self-check
-- [ ] 7-layer audit complete
-- [ ] CWV targets met on Railway preview URL
-- [ ] Structured data validates
-- [ ] sitemap.ts + robots.ts generated
-- [ ] Metadata template applied to all routes
-- [ ] Remediation playbook applied for any failing metric
-- [ ] Fixes handed to Koda as diffs, not prose
-
-
----
-
-## Training 2026-04-11 (b) — Executable Loop Integration
-
-**Agent class:** Insight — retries 3, cost cap $3, wall-clock cap 10 min
-
-**Mandatory loads at start of every run:**
-1. `~/.claude/memory/patterns/good/executable-auto-fix-loop.md` — class caps, cost breaker, escalation JSON, git autonomy
-2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
-3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
-
-**Cap enforcement:** If this agent's wall-clock or cost cap trips, it emits the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hands back to Rex. No silent continuation. No cap lifts without Yash approval.
-
-**Git autonomy:** Feature branches only (`agent/zeph/<feature>-<ts>`), conventional commits, draft PRs via `gh pr create --draft`. Never commit to `main` of product repos.
-
-*(Training 2026-04-11 (b) — Executable loop integration. Addresses gap: this agent was not loading the hardened patterns at dispatch time, letting it drift from the 9+ baseline.)*
+<!-- Training 2026-04-11 (b) — Executable Loop Integration moved to skills/zeph/training-history.md -->
 
 ## Skill Library (load on demand)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **SEO AUDIT FRAMEWORK** — triggers: _seo, audit, framework_ → `~/.claude/skills/zeph/seo-audit-framework.md`
-- **SEO BUG CLASSIFICATION** — triggers: _seo, bug, classification, noindex_ → `~/.claude/skills/zeph/seo-bug-classification.md`
-- **SEO OPTIMIZATION WORKFLOW** — triggers: _seo, optimization, workflow_ → `~/.claude/skills/zeph/seo-optimization-workflow.md`
-- **STACK-SPECIFIC SEO PATTERNS** — triggers: _stack-specific, seo, patterns, app/sitemap.ts, app/robots.ts, next/image, next/font_ → `~/.claude/skills/zeph/stack-specific-seo-patterns.md`
-- **★ DEEP TRAINING 2026-04-10 — ZEPH SEO PLAYBOOK (STACK A)** — triggers: _deep, training, zeph, seo, playbook, stack, supersedes, prior_ → `~/.claude/skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md`
+- **★ DEEP TRAINING 2026-04-10 — ZEPH SEO PLAYBOOK (STACK A)** — triggers: _deep, training, seo, playbook, stack, pricing, rls, supabase_ → `~/.claude/skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md`
+- **SEO AUDIT FRAMEWORK** — triggers: _seo, audit, framework, auth, rls, index, ci, sitemap_ → `~/.claude/skills/zeph/seo-audit-framework.md`
+- **SEO BUG CLASSIFICATION** — triggers: _seo, bug, classification, rls, schema, index, unit, ci_ → `~/.claude/skills/zeph/seo-bug-classification.md`
+- **SEO OPTIMIZATION WORKFLOW** — triggers: _seo, optimization, workflow, schema, index, ci, sitemap, robots_ → `~/.claude/skills/zeph/seo-optimization-workflow.md`
+- **STACK-SPECIFIC SEO PATTERNS** — triggers: _stack-specific, seo, index, ci, sitemap, robots, og, metadata_ → `~/.claude/skills/zeph/stack-specific-seo-patterns.md`
+- **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update, next/image_ → `~/.claude/skills/zeph/training-history.md`

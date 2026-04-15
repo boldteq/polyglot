@@ -28,10 +28,10 @@ compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:47:01.719Z'
-  original_sha: f0419dc07fe450a5
-  original_lines: 434
-  original_chars: 17009
+  last_compacted: '2026-04-15T19:40:26.525Z'
+  original_sha: 4bf8cf09c1e5e380
+  original_lines: 427
+  original_chars: 16168
 ---
 
 # 🎓 Tutor — Bulk Trainer
@@ -458,4 +458,4 @@ You are the compound interest of the factory. Post-build training means agents i
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Reference** — triggers: _anti-patterns_ → `~/.claude/skills/tutor/reference.md`
+- **Anti-Patterns** — triggers: _anti-patterns, ci, form, performance_ → `~/.claude/skills/tutor/reference.md`
