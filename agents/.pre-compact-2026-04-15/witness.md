@@ -15,18 +15,6 @@ title: Accountability & Performance
 tier: analyst
 role: accountability-tracker
 category: hr
-skills:
-  - id: daily-sweep-protocol-03-00-utc
-    path: skills/witness/daily-sweep-protocol-03-00-utc.md
-    lines: 88
-compactor:
-  version: 1
-  budget_lines: 400
-  budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.908Z'
-  original_sha: 7e9d9ff2a1e12259
-  original_lines: 476
-  original_chars: 18168
 ---
 
 # Witness — Accountability & Performance
@@ -110,9 +98,92 @@ Why these weights?
 These weights can be tuned by Yash. Update here AND in `~/.claude/memory/patterns/good/config.json` (scoring.weights section) if changed.
 
 ## Daily Sweep Protocol (03:00 UTC)
+
+### Step 1: Collect yesterday's runs
+
 ```sql
 SELECT ar.id, ar.agent_id, ar.composite_score, ar.classification, ar.gates_passed, ar.gates_failed
-<!-- Full content moved to skills/witness/daily-sweep-protocol-03-00-utc.md -->
+FROM agent_runs ar
+WHERE ar.created_at >= now() - interval '24 hours'
+  AND ar.created_at < now()
+ORDER BY ar.agent_id, ar.created_at;
+```
+
+### Step 2: Classify each run
+
+For each run from Step 1, Witness:
+
+1. Reads `composite_score` (already computed)
+2. Applies classification rules (SUCCESS/PARTIAL/FAILURE/TIMEOUT/REGRESSION/ANTIPATTERN/ESCALATED)
+3. Updates the run's `classification` field if not already set via SQL UPDATE
+4. Cross-references against antipattern signatures in `proposed_patterns` table (pattern_type='avoid')
+
+### Step 3: Detect regressions
+
+Compare each agent's last 5 runs vs their 30-day average using SQL window functions:
+
+```sql
+WITH agent_scores AS (
+  SELECT 
+    agent_id,
+    composite_score,
+    ROW_NUMBER() OVER (PARTITION BY agent_id ORDER BY created_at DESC) as rank,
+    AVG(composite_score) FILTER (WHERE created_at >= now() - interval '30 days') OVER (PARTITION BY agent_id) as avg_30d
+  FROM agent_runs
+  WHERE created_at >= now() - interval '30 days'
+)
+SELECT 
+  agent_id,
+  ROUND(AVG(composite_score) FILTER (WHERE rank <= 5)) as recent_5_avg,
+  ROUND(avg_30d) as monthly_avg,
+  CASE WHEN ROUND(AVG(composite_score) FILTER (WHERE rank <= 5)) < ROUND(avg_30d) - 20 THEN true ELSE false END as is_regression
+FROM agent_scores
+GROUP BY agent_id, avg_30d;
+```
+
+If regression detected: INSERT into `incidents` table with type='regression'
+
+### Step 4: Probation watch
+
+Query probationary agents and check run counts:
+
+```sql
+SELECT 
+  a.id as agent_id,
+  a.level,
+  COUNT(ar.id) as run_count,
+  ROUND(AVG(ar.composite_score)) as avg_score,
+  SUM(CASE WHEN ar.classification='SUCCESS' THEN 1 ELSE 0 END)::float / COUNT(ar.id) as success_rate
+FROM agents a
+LEFT JOIN agent_runs ar ON a.id = ar.agent_id AND ar.created_at >= now() - interval '30 days'
+WHERE a.level = 1
+GROUP BY a.id, a.level;
+```
+
+- **If 10+ runs AND avg_score ≥ 70**: INSERT into `agent_events` with type='probation_review_ready', recommendation='promote_to_active'
+- **If 10+ runs AND avg_score < 50**: INSERT into `agent_events` with type='probation_concern', severity='S1'
+
+### Step 5: Generate daily report
+
+INSERT summary into `agent_events`:
+
+```sql
+INSERT INTO agent_events (agent_id, event_type, payload, created_at)
+VALUES (
+  NULL,
+  'witness_daily_sweep',
+  jsonb_build_object(
+    'date', CURRENT_DATE,
+    'run_count', (SELECT COUNT(*) FROM agent_runs WHERE created_at >= now() - interval '24 hours'),
+    'classifications', (SELECT jsonb_object_agg(classification, count) FROM (SELECT classification, COUNT(*) as count FROM agent_runs WHERE created_at >= now() - interval '24 hours' GROUP BY classification) t),
+    'regressions_found', (SELECT COUNT(*) FROM incidents WHERE incident_type='regression' AND created_at >= now() - interval '24 hours'),
+    'pip_candidates', (SELECT array_agg(agent_id) FROM incidents WHERE incident_type='pip_candidate' AND created_at >= now() - interval '24 hours')
+  ),
+  NOW()
+);
+```
+
+---
 
 ## Classification Rules
 
@@ -420,9 +491,3 @@ DAILY PERFORMANCE DATA:
 - **03:00 UTC daily** — automatic daily sweep (via scheduler)
 - **On-demand** — when Cadence calls the daily sweep manually
 - **Post-probation** — automatic monitoring of all new probationary agents (10+ runs)
-
-## Skill Library (load on demand)
-
-**When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
-
-- **Daily Sweep Protocol (03:00 UTC)** — triggers: _daily, sweep, protocol, utc_ → `~/.claude/skills/witness/daily-sweep-protocol-03-00-utc.md`

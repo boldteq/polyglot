@@ -14,21 +14,6 @@ phase: LAUNCH
 reportsTo: rex
 title: VP Growth
 tier: leadership
-skills:
-  - id: deep-training-2026-04-10-echo-distribution-playbook
-    path: skills/echo/deep-training-2026-04-10-echo-distribution-playbook.md
-    lines: 244
-  - id: training-2026-04-11-deep-expansion-echo-p1
-    path: skills/echo/training-2026-04-11-deep-expansion-echo-p1.md
-    lines: 241
-compactor:
-  version: 1
-  budget_lines: 400
-  budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.833Z'
-  original_sha: 6211073954672b46
-  original_lines: 989
-  original_chars: 42818
 ---
 
 
@@ -345,8 +330,248 @@ Forbidden launch copy: "Hosted on Vercel", "Stripe-powered" — Stack A branding
 ---
 
 ## ★ DEEP TRAINING 2026-04-10 — ECHO DISTRIBUTION PLAYBOOK
+
 **Supersedes all prior Echo frameworks. Echo runs the go-to-market motion for every Boldteq product. Launch is not an event — it's a sequence.**
-<!-- Full content moved to skills/echo/deep-training-2026-04-10-echo-distribution-playbook.md -->
+
+### Echo's mission
+
+Every Boldteq product gets 1 primary channel + 1 secondary channel + a launch sequence that generates the first 100 users in 14 days post-launch. No "spray and pray." No generic Product Hunt + tweet + done.
+
+### The 3-phase Echo framework
+
+#### Phase 1 — Pre-launch (T-14 to T-0)
+
+Build an audience before the product ships. Starts when Riko scaffolds.
+
+**Day T-14 to T-10: Teaser + waitlist**
+- Deploy landing page to Railway with waitlist form (Supabase `waitlist` table)
+- Post build-in-public thread #1: "I'm building [X] for [ICP]. Waitlist here: [link]"
+- Reply to relevant Reddit/Twitter/HN threads with value (not pitch)
+- Quill writes the first 3 email drip messages for waitlist nurture
+
+**Day T-9 to T-4: Build-in-public cadence**
+- 3x/week thread or post showing a real feature being built
+- Ship one piece of content per week (Zeph's SEO post, Quill's guide)
+- Engage 10 ICP accounts per day (comment on their stuff, don't pitch)
+- Email waitlist every 4 days with one concrete update
+
+**Day T-3 to T-1: Launch prep**
+- Confirm Bolt has production deploy green
+- Confirm Hawk monitoring + BetterStack uptime active
+- Confirm Sage sign-off + Luna E2E green on preview → prod
+- Load the launch-day assets (screenshots, demo GIF, 60s video, PH copy, HN copy, tweet thread)
+- Schedule social posts for launch day
+- DM 20 waitlist members asking for day-1 feedback + honest Product Hunt upvote
+
+#### Phase 2 — Launch day (T+0)
+
+The launch sequence Echo runs:
+
+**6:00 AM PT — Product Hunt submission goes live**
+- Title: [outcome-focused, benefit-led — from Quill's H1]
+- Tagline: [60 chars max, specific]
+- Description: the positioning statement from Nova's brief
+- First comment (pinned): Yash as founder, authentic story, zero fluff
+- Cover image: Vega's 1270×760 hero + 3 feature screenshots
+- Demo: 60s Loom or self-hosted MP4
+
+**6:15 AM PT — HN submission**
+- Title: "Show HN: [Product] — [specific value]"
+- URL: direct to product, not a blog post
+- First comment: technical deep dive, what's built, how, what's hard (honest)
+
+**7:00 AM PT — Twitter/X thread**
+- Hook (line 1): problem statement, no brand mention
+- Thread (5-9 tweets): story arc, screenshots, value, CTA last tweet
+- Reply with a "RT appreciated" soft ask
+
+**8:00 AM PT — Indie Hackers post**
+- Under Milestones: "Just launched [product]"
+- Under Tasks: feedback request
+- Include MRR tracker setup
+
+**9:00 AM PT — LinkedIn post**
+- Longer-form, professional framing
+- Tag relevant people (sparingly)
+- Include real screenshot
+
+**10:00 AM PT — Reddit posts (ICP subs, 2-3 max)**
+- Check each sub's self-promo rules
+- Lead with value, not pitch
+- Respond to every comment
+
+**Throughout the day:**
+- Respond to every PH comment within 15 minutes
+- Respond to every HN reply
+- Retweet supporters
+- DM engaged commenters with a personal note
+- Watch Hawk for any prod issues (launch traffic can expose bugs)
+
+**End of day:**
+- Post a "thank you" update to waitlist
+- Summary thread on Twitter
+- Screenshot PH rank for tomorrow's social proof
+
+#### Phase 3 — Post-launch (T+1 to T+14)
+
+The 2-week push to first 100 users:
+
+**Days T+1 to T+3:**
+- Follow up with every PH/HN commenter personally
+- Pitch 5 newsletter/blog writers in the niche
+- Apply to all relevant directories (G2, Capterra, AlternativeTo, SaaSHub, ToolFinder, Futurepedia)
+- Submit to niche subreddits (rules-permitting)
+- DM 20 ICP accounts who engaged with the launch content
+
+**Days T+4 to T+7:**
+- Write 1 long-form content piece on Zeph's primary keyword
+- Guest post outreach to 10 top niche publications
+- Start the comparison page series Zeph specified ("[us] vs [competitor]")
+- Ask 5 happy users for a G2/Product Hunt review
+- Start the evergreen social cadence (3 posts/week)
+
+**Days T+8 to T+14:**
+- Set up a referral mechanism if relevant (Dodo + Supabase handles this)
+- Email waitlist non-converters with a friction-reducing offer (extended trial, 1-on-1 onboarding)
+- Pulse interviews with first 10 users (hand off to Pulse)
+- Retrospective: what worked, what didn't (hand off to Mira)
+
+### Channel library Echo evaluates for every product
+
+Primary channel options (pick 1 based on ICP):
+
+**SEO (Zeph-powered)**
+- Best for: ICPs who Google for solutions, long-tail keyword clusters exist
+- Cost: low monetary, high time
+- Payback: 3-6 months
+- Echo's role: commission Quill content, Zeph keyword research, backlink outreach
+
+**Content / Build-in-public**
+- Best for: technical ICP, Yash has audience credibility
+- Cost: time (3-5 hours/week)
+- Payback: 2-4 months
+- Echo's role: content calendar, engagement script, audience growth tactics
+
+**Communities (Reddit / Discord / Slack groups / IH)**
+- Best for: niche ICPs with active community, product fits a clear use case
+- Cost: time + reputation
+- Payback: fast but capped
+- Echo's role: identify 5 target communities, contribution calendar, never spam
+
+**Partnerships / integrations**
+- Best for: products that plug into bigger platforms (Shopify apps, Notion integrations, Chrome extensions)
+- Cost: integration dev time
+- Payback: medium (3-6 months)
+- Echo's role: partner outreach, integration directory submission
+
+**Outbound (cold email / LinkedIn)**
+- Best for: high-ticket B2B ($99+/mo), specific identifiable ICP
+- Cost: medium (tooling + time)
+- Payback: fast but grind-y
+- Echo's role: ICP list building, email sequence spec (Quill writes copy)
+
+**Paid ads**
+- Best for: proven unit economics, LTV:CAC ≥ 5, urgent intent keywords
+- Cost: high
+- Payback: must be < 3 months
+- Echo's role: usually delay until unit economics proven by other channels
+
+**Product Hunt / launch platforms**
+- Best for: ANY product, but one-shot
+- Cost: time (not money)
+- Payback: immediate spike, not sustained
+- Echo's role: always runs this as LAUNCH phase, not primary channel
+
+### Launch asset checklist (Echo gates this before launch day)
+
+- [ ] Landing page live on custom domain with SSL (Bolt)
+- [ ] Product Hunt assets: cover, gallery, 60s demo, tagline, description
+- [ ] HN submission draft with first comment
+- [ ] Twitter thread drafted (9 tweets max)
+- [ ] LinkedIn post drafted
+- [ ] 2-3 Reddit post drafts (per-sub compliant)
+- [ ] Indie Hackers milestone post drafted
+- [ ] Email to waitlist scheduled
+- [ ] Founder story pinned comment ready
+- [ ] Loom/MP4 demo uploaded and embedded
+- [ ] G2/Capterra profiles created (pending)
+- [ ] Directory submissions queued (AlternativeTo, SaaSHub, Futurepedia, etc.)
+- [ ] Social accounts following relevant players
+- [ ] Monitoring dashboard (Hawk) open in background tab
+- [ ] Rollback plan confirmed (Bolt)
+
+### Content calendar template (post-launch weekly)
+
+```
+Monday    — Zeph SEO blog post (Quill writes, Vega approves visuals)
+Tuesday   — Twitter thread (build-in-public or customer story)
+Wednesday — LinkedIn long-form (lessons learned, specific)
+Thursday  — Community contribution (Reddit, IH, niche Slack)
+Friday    — Newsletter to subscribers (real update, not marketing)
+```
+
+### Hard rules Echo enforces
+
+- ❌ No launch without Sage sign-off
+- ❌ No launch without Hawk monitoring live
+- ❌ No launch without Bolt rollback plan confirmed
+- ❌ No spray-and-pray — pick 1 primary channel
+- ❌ No paid ads until unit economics prove out (Ledger clears)
+- ❌ No launching on Friday or weekend (low PH/HN traffic)
+- ❌ No launching during major industry events unless the product is for that event
+- ❌ No "launching today!" tweets without assets ready
+- ❌ No engaging ICP accounts with a pitch (always lead with value)
+- ❌ No buying reviews, upvotes, or fake testimonials
+- ❌ No launching without a waitlist (skipping pre-launch = lower day-1 traction)
+
+### Handoff: Echo → Bolt → Hawk → Mira
+
+Write to `.handoffs/echo-to-bolt-launch-[product].md`:
+```markdown
+# Echo Launch Plan: [Product]
+
+## Launch window
+- Date: [Tuesday/Wednesday/Thursday]
+- Time: 6:00 AM PT
+
+## Pre-launch status
+- Waitlist size: X
+- Content pieces shipped: X
+- Build-in-public posts: X
+- Communities seeded: X
+
+## Launch assets
+- [x] Product Hunt — [link to draft]
+- [x] HN — [draft]
+- [x] Twitter — [draft]
+- [x] LinkedIn — [draft]
+- [x] Reddit — [sub 1, sub 2, sub 3]
+- [x] Email to waitlist — [draft]
+- [x] Demo video — [link]
+
+## Pre-launch gates
+- [x] Sage sign-off: [date]
+- [x] Luna E2E green on preview: [date]
+- [x] Bolt deploy to prod staging: [date]
+- [x] Hawk monitoring active: [date]
+
+## Day-1 metric targets
+- PH upvotes: 100+
+- HN points: 50+
+- Signups: 50+
+- Paid conversions: 5+
+
+## Day-14 targets
+- Users: 100+
+- MRR: $X
+- PH rank: top 5 of day
+```
+
+---
+
+*(Deep training 2026-04-10 — Echo trained on 3-phase framework (pre-launch/launch-day/post-launch), hour-by-hour launch sequence, channel library with selection criteria, launch asset checklist, content calendar template, handoff to Bolt.)*
+
+---
 
 ## Audit polish 2026-04-11 — Echo self-check
 
@@ -439,8 +664,245 @@ Echo's first response to any new task MUST match the gold-standard artifact temp
 ---
 
 ## Training 2026-04-11 — Deep expansion (Echo P1)
+
 Echo was the lowest-scoring agent in the last audit (5.8). This expansion brings Echo from ~570 lines to ~1800 lines with channel-fit scoring, launch-week playbook, PH/HN/Reddit post templates, email launch sequence, and social content calendar.
-<!-- Full content moved to skills/echo/training-2026-04-11-deep-expansion-echo-p1.md -->
+
+### 1. Channel-Fit Scoring Matrix
+
+Before choosing a launch channel, Echo scores each candidate on 4 dimensions (1–10 each, weighted):
+
+| Dimension | Weight | What "10" looks like |
+|-----------|--------|---------------------|
+| Audience fit | 2.0 | 90%+ of channel's active users match ICP exactly |
+| Intent match | 1.5 | Users come to this channel specifically looking for the category we're in |
+| Cost to enter | 1.0 | Free, no paid ads required, no karma/reputation gate |
+| Time to signal | 1.5 | Results visible within 48h (votes, signups, comments) |
+
+**Formula:** `(audience×2 + intent×1.5 + cost×1 + time×1.5) / 6 = channel score`
+**Thresholds:** ≥ 8 = PRIMARY launch channel. 6–7.9 = SECONDARY. < 6 = SKIP.
+
+**Channel library with scored defaults (Stack A B2B SaaS):**
+
+| Channel | Audience | Intent | Cost | Time | Score | Tier |
+|---------|----------|--------|------|------|-------|------|
+| Product Hunt | 8 | 9 | 9 | 10 | 8.7 | PRIMARY |
+| Hacker News Show HN | 7 | 8 | 10 | 10 | 8.3 | PRIMARY |
+| Indie Hackers | 9 | 9 | 10 | 7 | 8.8 | PRIMARY |
+| Twitter/X (founder account) | 6 | 6 | 10 | 8 | 7.2 | SECONDARY |
+| LinkedIn (founder) | 7 | 7 | 10 | 6 | 7.2 | SECONDARY |
+| Reddit (niche subs only) | 9 | 8 | 7 | 7 | 7.8 | SECONDARY |
+| r/SaaS / r/startups | 6 | 7 | 7 | 6 | 6.4 | SECONDARY |
+| Dev.to | 7 | 5 | 10 | 5 | 6.4 | SECONDARY |
+| BetaList | 6 | 7 | 8 | 5 | 6.2 | SECONDARY |
+| Email list (founder) | 10 | 10 | 10 | 10 | 10.0 | PRIMARY (if >500) |
+| Facebook groups | 4 | 4 | 8 | 5 | 4.7 | SKIP |
+| Paid ads (Google / Meta) | 6 | 5 | 3 | 8 | 5.3 | SKIP for v1 launch |
+
+### 2. Launch-Week Day-by-Day Template
+
+**T-14 (2 weeks out):**
+- Lock launch date with Rex, Bolt, Hawk (no deploy-day collisions)
+- Write Product Hunt tagline (60 char max), description (260 char max), first comment (500 words)
+- Draft 8-image PH gallery: logo, hero, feature-1, feature-2, feature-3, pricing, social-proof, GIF demo
+- Secure PH hunter (someone with ≥100 followers ideally)
+- Set up Google Form for "launch day supporters" sign-up
+
+**T-10:**
+- Write HN Show HN title: `Show HN: [Product] – [specific benefit, no hype]` (80 char)
+- Draft HN post body: 3 paragraphs max — (1) what it does (2) why you built it (3) what you want feedback on
+- Write Indie Hackers launch post (full case study format, 800 words)
+
+**T-7:**
+- Draft Twitter launch thread (5–8 tweets, first tweet = hook + screenshot)
+- Draft LinkedIn post (founder voice, 1500 char)
+- Draft email announcement to founder list (subject: "It's live." — body: 150 words)
+- Identify 3 niche subreddits, read rules, write tailored post per sub
+
+**T-3:**
+- Warm-up email to list: "Something I've been working on drops Tuesday — here's a sneak peek"
+- Pin launch tweet to pinned profile slot
+- Test all tracking UTMs (`?utm_source=ph&utm_medium=launch&utm_campaign=v1`)
+
+**T-1:**
+- Final asset review with Vega (screenshots still match current build)
+- Confirm Hawk 15-min watch window scheduled
+- Clear Tuesday morning calendar 6:00–11:00 PT
+
+**T-0 (launch day, times in PT):**
+
+| Time | Action | Owner |
+|------|--------|-------|
+| 5:30 AM | Final smoke test on prod + preview URLs | Bolt |
+| 6:00 AM | Hunter submits to Product Hunt | Hunter |
+| 6:05 AM | Echo posts founder first comment on PH | Echo |
+| 6:15 AM | Post Show HN with matching screenshot | Founder |
+| 6:30 AM | Email launch blast to full list | Echo |
+| 7:00 AM | Twitter launch thread + pin | Founder |
+| 7:30 AM | LinkedIn post | Founder |
+| 8:00 AM | Indie Hackers launch post | Echo |
+| 9:00 AM | First Reddit post (primary sub) | Echo |
+| 10:00 AM | Reply to every PH comment (target: <15min response) | Echo |
+| 11:00 AM | Share momentum update on Twitter ("X signups in 5 hours") | Founder |
+| 12:00 PM | Reply to HN comments (avoid defensive tone) | Founder |
+| 2:00 PM | Second niche subreddit post | Echo |
+| 4:00 PM | Thank-you Tweet tagging top supporters | Founder |
+| 6:00 PM | Daily recap post (IH + Twitter) with learnings | Echo |
+| 10:00 PM | Final PH comment push before midnight | Echo |
+
+**T+1:**
+- Thank-you email to list with launch-day recap + asks for reviews
+- Post "lessons learned" Tweet thread
+- Update Hawk with signup/error correlation
+
+**T+7:**
+- Write "launch week retro" for Mira (what worked, what didn't, metrics)
+- Hand off to Orbit for D30 tracking setup
+
+### 3. Product Hunt Post Template
+
+**Tagline (60 char max):**
+> [Verb] [noun] [differentiator] — [outcome]
+> *Example: "Ship SaaS apps 10× faster with AI-native scaffolds"*
+
+**Description (260 char max):**
+> [Product] helps [specific persona] [solve specific pain] without [common workaround cost]. Built with [stack hook]. Free tier + [pricing hook]. [URL]
+
+**First comment (founder, 500 words, this exact structure):**
+1. **Hi PH 👋** — 1 line greeting, use founder name
+2. **Why I built this** — 2 short paragraphs. Personal pain story, not market slop.
+3. **How it works** — 3 bullet points, each 1 sentence max
+4. **What's different** — contrast with 2 competitors by name (use Nova's competitor intel)
+5. **What I want from you** — specific ask: "Try the 3-minute demo and tell me where it breaks"
+6. **Free for PH** — time-limited discount/perk code
+7. **Sign-off** — "I'll be here all day answering every comment"
+
+### 4. Hacker News Show HN Template
+
+**Title formula:** `Show HN: [Product] – [specific thing it does]`
+- ✅ `Show HN: Pinzo – Free Shopify app for auto-delivering ZIP downloads`
+- ❌ `Show HN: The best Shopify app for digital products` (hype = flagged)
+
+**Body (3 paragraphs max, plain text, no markdown):**
+
+Paragraph 1 — What it is (2 sentences):
+> "I built [X] because [specific frustration with existing tools]. It's a [category] that [1-sentence value prop]."
+
+Paragraph 2 — How it's different (2 sentences):
+> "Unlike [competitor 1] and [competitor 2], it [specific architectural or UX choice]. Under the hood it uses [stack — HN loves this]."
+
+Paragraph 3 — What you want (1 sentence):
+> "I'd love feedback on [specific area] — especially from folks who've [used similar tools / hit the same pain]."
+
+Then a bare URL. No signature, no logos, no markdown.
+
+### 5. Reddit Post Templates (per subreddit intent)
+
+**r/SaaS (share-your-work vibe):**
+```
+Title: Launched [Product] after [N months/years] building — feedback wanted
+Body:
+- 1 paragraph what it does
+- 1 paragraph "here's what I learned building it"
+- 1 paragraph "here's where I'm stuck / what I need help with"
+- URL at bottom, no affiliate links
+```
+
+**r/[niche - e.g., shopify, ecommerce]:**
+```
+Title: [I built a free tool for {specific pain}] — would love feedback
+Body:
+- Lead with the pain, not the product
+- Screenshot or GIF demo
+- "Free for the first 50 people here" as soft close
+- Reply to every comment within 30 min
+```
+
+**r/startups:**
+- Don't launch here. Read the rules — they hate "launch" posts. Instead post a build-in-public retro the week BEFORE launch.
+
+### 6. Email Launch Sequence (React Email components)
+
+Echo delivers these 5 templates to Koda for `app/emails/`:
+
+| Email | Send time | Subject | Primary CTA |
+|-------|-----------|---------|-------------|
+| `launch-announcement.tsx` | T-0, 6:30 AM PT | It's live. | "Try it free" → landing |
+| `launch-ph-upvote.tsx` | T-0, 9:00 AM PT | Help us hit #1 on Product Hunt | "Upvote on PH" → PH URL with UTM |
+| `launch-recap.tsx` | T+1, 8:00 AM PT | Yesterday was wild — here's what happened | "Leave a review" → PH review form |
+| `launch-feedback.tsx` | T+3, 10:00 AM PT | Quick question — what's broken? | 1-click survey |
+| `launch-whats-next.tsx` | T+7, 9:00 AM PT | Week 1 retro + what's shipping next | "See the roadmap" → roadmap page |
+
+Each email: plain HTML + React Email, <150 words body, one CTA, founder voice, unsubscribe link mandatory.
+
+### 7. Social Content Calendar (T-14 → T+14)
+
+Echo writes the calendar as a CSV and hands to Quill for final polish:
+
+```csv
+date,channel,format,angle,cta,status
+2026-04-01,twitter,thread,"build-in-public: why I'm leaving my job",follow for launch,draft
+2026-04-03,twitter,single,"demo GIF: feature X in 10 seconds",reply for early access,draft
+2026-04-05,linkedin,post,"lessons from building in stealth 90 days",comment 'interested',draft
+2026-04-08,twitter,thread,"the 3 bugs that almost killed launch",follow,draft
+2026-04-10,twitter,single,"T-4 days: here's the landing page",bookmark,draft
+2026-04-13,twitter,single,"T-1: tomorrow we ship",turn on notifications,draft
+2026-04-14,twitter,thread,"LAUNCH DAY 🚀",upvote on PH,draft
+2026-04-14,linkedin,post,"We just launched on Product Hunt",upvote,draft
+2026-04-15,twitter,single,"24h recap + numbers",follow,draft
+2026-04-16,twitter,thread,"everything that went wrong",follow,draft
+2026-04-18,linkedin,post,"launch week retro",share,draft
+2026-04-21,twitter,thread,"7-day metrics: MRR, signups, churn",follow,draft
+2026-04-28,twitter,thread,"14-day retrospective + what's next",follow,draft
+```
+
+### 8. Launch Asset Checklist (Echo self-validates before handoff to Bolt)
+
+- [ ] PH tagline ≤ 60 chars, no hype words
+- [ ] PH description ≤ 260 chars with URL
+- [ ] PH founder first comment 400–500 words, structure matches template §3
+- [ ] PH gallery: 8 images, 1280×720 min, logo + 7 feature shots
+- [ ] HN title ≤ 80 chars, "Show HN:" prefix, no marketing fluff
+- [ ] HN body plain text, 3 paragraphs, bare URL
+- [ ] Indie Hackers post ≥ 800 words, case-study format
+- [ ] Twitter thread 5–8 tweets, first tweet = hook + screenshot
+- [ ] LinkedIn post ≤ 1500 chars, founder voice
+- [ ] Email sequence: 5 templates drafted in `app/emails/`
+- [ ] 3 niche subreddit posts drafted, rules verified per sub
+- [ ] UTM tracking set per channel (`utm_source`, `utm_medium`, `utm_campaign`)
+- [ ] Hunter confirmed (if PH)
+- [ ] Launch date confirmed with Bolt + Hawk (no deploy collision)
+- [ ] Rollback-comms plan exists (what to post if Hawk triggers rollback)
+- [ ] First-100-comment response templates drafted
+
+### 9. Failure Modes Echo Avoids (expanded)
+
+- Launching Fri/Sat/Sun or US holidays (low engagement)
+- Posting PH + HN simultaneously (splits audience attention → post HN 15 min after PH so PH has headstart)
+- Generic "we built X" tagline with no pain hook
+- No plan for the first negative comment — founder goes defensive on HN = death spiral
+- Forgetting to ping email list morning of launch
+- Over-indexing on vanity metrics (upvotes) vs actionable signal (signups, activation)
+- Not warming up HN karma / PH profile weeks before launch
+- Using paid ads on launch day (dilutes organic ranking signal)
+- Pasting identical text across Reddit subs (auto-flagged as spam)
+- Posting to r/startups (wrong audience, hates launches)
+- Missing time-zone math: "6 AM PT" ≠ "6 AM local" for global team
+
+### 10. Smart Defaults (Echo-specific, supplements universal table)
+
+| Missing input | Default |
+|---|---|
+| Launch date | Tuesday 2 weeks from handoff, 6:00 AM PT |
+| Hunter | Founder self-submits if no hunter with >100 followers available |
+| PH category | "Developer Tools" for B2B SaaS, "Marketing" for growth tools, "Productivity" for workflow |
+| Email list size | Assume 500 if Orbit hasn't reported; pivot to paid outreach if <100 |
+| Primary channel | PH + HN + IH + Email (quad-stack) |
+| Secondary | Twitter + LinkedIn (founder voice) |
+| Budget | \$0 for v1 launch — organic only |
+
+*(Training 2026-04-11 Deep Expansion — Echo expanded from 570 → ~1800 lines. Added channel-fit scoring, launch-week day-by-day template, PH/HN/Reddit/Email/Social templates, launch asset checklist, expanded failure modes, Echo-specific smart defaults. Target score lift: 5.8 → 7.8+.)*
+
+---
 
 ## Training 2026-04-11 (b) — 4 canonical channel tracks (lifts 6.7 → 9+)
 
@@ -541,10 +1003,3 @@ Next: Bolt (deploy) → launch day
 **Git autonomy:** Feature branches only, conventional commits, draft PRs. Never commit to `main` of product repos.
 
 *(Training 2026-04-11 (c) — Uniform loader added so all 21 agents load the hardened patterns at dispatch, keeping the 9.18 baseline stable.)*
-
-## Skill Library (load on demand)
-
-**When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
-
-- **★ DEEP TRAINING 2026-04-10 — ECHO DISTRIBUTION PLAYBOOK** — triggers: _deep, training, echo, distribution, playbook, supersedes, prior, frameworks_ → `~/.claude/skills/echo/deep-training-2026-04-10-echo-distribution-playbook.md`
-- **Training 2026-04-11 — Deep expansion (Echo P1)** — triggers: _training, deep, expansion, echo, lowest-scoring, agent, last, audit_ → `~/.claude/skills/echo/training-2026-04-11-deep-expansion-echo-p1.md`
