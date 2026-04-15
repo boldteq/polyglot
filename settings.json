@@ -8,5 +8,6 @@
       "Bash"
     ]
   },
-  "effortLevel": "max"
+  "effortLevel": "high",
+  "model": "sonnet"
 }
