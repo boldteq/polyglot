@@ -1,0 +1,252 @@
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Memory.tsx-1334-          {rightPanel === 'stats' ? (
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Memory.tsx-1335-            <StatsPanel stats={stats} />
+client/src/pages/Memory.tsx-1336-          ) : (
+client/src/pages/Memory.tsx:1337:            <InfoSidebar filePath={selectedPath} content={content} node={selectedNode} />
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Memory.tsx-1338-          )}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Memory.tsx-1339-        </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Memory.tsx-1340-      </aside>
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/DatabaseExplorer.tsx-661-          </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/DatabaseExplorer.tsx-662-          <div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/DatabaseExplorer.tsx-663-            <p className="text-text-muted font-semibold text-[10px] uppercase tracking-wider mb-0.5">Recent runs</p>
+client/src/pages/DatabaseExplorer.tsx:664:            <Code>{'SELECT agentName, status, duration, estimatedCost, timestamp FROM agent_runs ORDER BY timestamp DESC LIMIT 20'}</Code>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/DatabaseExplorer.tsx-665-          </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/DatabaseExplorer.tsx-666-          <div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/DatabaseExplorer.tsx-667-            <p className="text-text-muted font-semibold text-[10px] uppercase tracking-wider mb-0.5">Cost by agent</p>
+client/src/pages/DatabaseExplorer.tsx:668:            <Code>{'SELECT agentName, COUNT(*) as runs, ROUND(SUM(estimatedCost), 4) as totalCost, ROUND(AVG(duration)) as avgMs FROM agent_runs GROUP BY agentName ORDER BY runs DESC'}</Code>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/DatabaseExplorer.tsx-669-          </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/DatabaseExplorer.tsx-670-          <div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/DatabaseExplorer.tsx-671-            <p className="text-text-muted font-semibold text-[10px] uppercase tracking-wider mb-0.5">Recent changes (audit trail)</p>
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-31-  const [showProjectForm, setShowProjectForm] = useState(false)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-32-  const [showAgentForm, setShowAgentForm] = useState<string | null>(null)
+client/src/pages/GoalCascade.tsx-33-  const [projectForm, setProjectForm] = useState({ projectId: '', goal: '', description: '', priority: 'medium' })
+client/src/pages/GoalCascade.tsx:34:  const [agentForm, setAgentForm] = useState({ agentName: '', goal: '', description: '' })
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-35-
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-36-  const load = () => {
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-37-    setLoading(true)
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-80-  }
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-81-
+client/src/pages/GoalCascade.tsx-82-  const handleAgentGoalCreate = async (projectGoalId: string) => {
+client/src/pages/GoalCascade.tsx:83:    if (!agentForm.agentName || !agentForm.goal) return
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-84-    try {
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-85-      await createAgentGoal({
+client/src/pages/GoalCascade.tsx:86:        agentName: agentForm.agentName,
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-87-        projectGoalId,
+client/src/pages/GoalCascade.tsx-88-        goal: agentForm.goal,
+client/src/pages/GoalCascade.tsx-89-        description: agentForm.description,
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-90-      })
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-91-      setShowAgentForm(null)
+client/src/pages/GoalCascade.tsx:92:      setAgentForm({ agentName: '', goal: '', description: '' })
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-93-      load()
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-94-    } catch {}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-95-  }
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-314-                    <div className="px-4 pb-3 space-y-2">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-315-                      <div className="grid grid-cols-2 gap-2">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-316-                        <select
+client/src/pages/GoalCascade.tsx:317:                          value={agentForm.agentName}
+client/src/pages/GoalCascade.tsx:318:                          onChange={e => setAgentForm({ ...agentForm, agentName: e.target.value })}
+client/src/pages/GoalCascade.tsx-319-                          className="px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none"
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-320-                        >
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-321-                          <option value="">Select agent...</option>
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-355-                            <StatusIcon className="w-3.5 h-3.5" />
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-356-                          </button>
+client/src/pages/GoalCascade.tsx-357-                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded bg-surface-2 ${ag.status === 'completed' ? 'opacity-50' : ''}`}>
+client/src/pages/GoalCascade.tsx:358:                            {ag.agentName}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-359-                          </span>
+client/src/pages/GoalCascade.tsx-360-                          <span className={`text-xs flex-1 ${ag.status === 'completed' ? 'text-text-muted line-through' : ''}`}>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/GoalCascade.tsx-361-                            {ag.goal}
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-27-  const [agents, setAgents] = useState<Agent[]>([])
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-28-  const [loading, setLoading] = useState(true)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-29-  const [showForm, setShowForm] = useState(false)
+client/src/pages/Schedules.tsx:30:  const [form, setForm] = useState({ name: '', agentName: '', prompt: '', cronExpr: '0 9 * * *' })
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-31-  const [saving, setSaving] = useState(false)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-32-  const [error, setError] = useState('')
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-33-
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-42-  useEffect(() => { load() }, [])
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-43-
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-44-  const handleCreate = async () => {
+client/src/pages/Schedules.tsx:45:    if (!form.name || !form.agentName || !form.prompt || !form.cronExpr) {
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-46-      setError('All fields are required')
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-47-      return
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-48-    }
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-51-    try {
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-52-      await createSchedule(form)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-53-      setShowForm(false)
+client/src/pages/Schedules.tsx:54:      setForm({ name: '', agentName: '', prompt: '', cronExpr: '0 9 * * *' })
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-55-      load()
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-56-    } catch (err) {
+client/src/pages/Schedules.tsx-57-      setError(err instanceof Error ? err.message : 'Failed to create schedule')
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-117-              <label className="block text-xs text-text-muted mb-1">Agent</label>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-118-              <select
+client/src/pages/Schedules.tsx-119-                className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg focus:border-accent outline-none"
+client/src/pages/Schedules.tsx:120:                value={form.agentName}
+client/src/pages/Schedules.tsx:121:                onChange={e => setForm({ ...form, agentName: e.target.value })}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-122-              >
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-123-                <option value="">Select agent...</option>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-124-                {agents.map(a => (
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-196-                  <div className="text-xs text-text-muted mt-0.5">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-197-                    <span className="font-mono bg-surface-2 px-1.5 py-0.5 rounded">{s.cron}</span>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-198-                    <span className="mx-2">&middot;</span>
+client/src/pages/Schedules.tsx:199:                    <span>{s.agentName}</span>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-200-                  </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-201-                </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Schedules.tsx-202-              </div>
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-18-  const [agents, setAgents] = useState<Agent[]>([])
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-19-  const [loading, setLoading] = useState(true)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-20-  const [showForm, setShowForm] = useState(false)
+client/src/pages/Webhooks.tsx:21:  const [form, setForm] = useState({ name: '', agentName: '' })
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-22-  const [saving, setSaving] = useState(false)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-23-  const [error, setError] = useState('')
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-24-  const [revealedSecrets, setRevealedSecrets] = useState<Record<string, string>>({})
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-35-  useEffect(() => { load() }, [])
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-36-
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-37-  const handleCreate = async () => {
+client/src/pages/Webhooks.tsx:38:    if (!form.name || !form.agentName) { setError('Name and agent are required'); return }
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-39-    setSaving(true); setError('')
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-40-    try {
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-41-      await createWebhook(form)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-42-      setShowForm(false)
+client/src/pages/Webhooks.tsx:43:      setForm({ name: '', agentName: '' })
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-44-      load()
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-45-    } catch (err) {
+client/src/pages/Webhooks.tsx-46-      setError(err instanceof Error ? err.message : 'Failed to create webhook')
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-113-              <label className="block text-xs text-text-muted mb-1">Agent</label>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-114-              <select
+client/src/pages/Webhooks.tsx-115-                className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg focus:border-accent outline-none"
+client/src/pages/Webhooks.tsx:116:                value={form.agentName}
+client/src/pages/Webhooks.tsx:117:                onChange={e => setForm({ ...form, agentName: e.target.value })}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-118-              >
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-119-                <option value="">Select agent...</option>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-120-                {agents.map(a => (
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-145-                <div className="flex items-center gap-2">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-146-                  <span className="text-sm font-medium">{w.name}</span>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-147-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-medium">
+client/src/pages/Webhooks.tsx:148:                    {w.agentName || 'orchestration'}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-149-                  </span>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-150-                </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Webhooks.tsx-151-                <div className="text-xs text-text-muted mt-0.5">
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-76-    try {
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-77-      const convo = await createProjectConversation(projectId, {
+client/src/pages/ProjectChat.tsx-78-        title: newTitle.trim(),
+client/src/pages/ProjectChat.tsx:79:        agentName: newAgent || undefined,
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-80-      })
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-81-      setActiveConvo(convo)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-82-      setShowNewForm(false)
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-219-                </button>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-220-              </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-221-              <div className="flex items-center gap-2 mt-0.5 text-[10px] text-text-muted">
+client/src/pages/ProjectChat.tsx:222:                {c.agentName && <span className="bg-surface-2 px-1.5 py-0.5 rounded font-medium">{c.agentName}</span>}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-223-                <span>{c.messageCount} msgs</span>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-224-                <span>&middot;</span>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-225-                <span>{timeAgo(c.lastMessageAt)}</span>
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-244-              <div className="flex-1 min-w-0">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-245-                <h3 className="text-sm font-bold truncate">{activeConvo.title}</h3>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-246-                <div className="text-[10px] text-text-muted flex items-center gap-2">
+client/src/pages/ProjectChat.tsx:247:                  {activeConvo.agentName && (
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-248-                    <span className="flex items-center gap-1">
+client/src/pages/ProjectChat.tsx:249:                      <Bot className="w-3 h-3" /> {activeConvo.agentName}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-250-                    </span>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-251-                  )}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-252-                  <span>{activeConvo.messages.length} messages</span>
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-326-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+client/src/pages/ProjectChat.tsx-327-        ) : (
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-328-          <div className="text-sm prose-sm">
+client/src/pages/ProjectChat.tsx:329:            <MarkdownRenderer content={message.content} />
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-330-            {streaming && <span className="inline-block w-2 h-4 ml-0.5 bg-accent animate-pulse rounded-sm" />}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-331-          </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/ProjectChat.tsx-332-        )}
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/TemplateEditor.tsx-246-            <div className="flex-1 min-w-0 overflow-y-auto bg-bg">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/TemplateEditor.tsx-247-              <div className="max-w-4xl mx-auto py-2">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/TemplateEditor.tsx-248-                <RichMarkdownEditor
+client/src/pages/TemplateEditor.tsx:249:                  content={body}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/TemplateEditor.tsx-250-                  onChange={handleBodyChange}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/TemplateEditor.tsx-251-                  placeholder="Define your output structure here..."
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/TemplateEditor.tsx-252-                  className="min-h-[calc(100vh-120px)] border-0 rounded-none bg-transparent"
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RuleEditor.tsx-159-      <div className="flex-1 min-h-0 p-6 pt-4">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RuleEditor.tsx-160-        {viewMode === 'rich' ? (
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RuleEditor.tsx-161-          <RichMarkdownEditor
+client/src/pages/RuleEditor.tsx:162:            content={content}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RuleEditor.tsx-163-            onChange={handleBodyChange}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RuleEditor.tsx-164-            placeholder="Write your rule here. Be specific about what Claude should always or never do."
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RuleEditor.tsx-165-            className="h-full"
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/AllAgents.tsx-491-  )
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/AllAgents.tsx-492-}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/AllAgents.tsx-493-
+client/src/pages/AllAgents.tsx:494:// Inline budget-health badge — mirrors AgentHealthBar at the top of the
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/AllAgents.tsx-495-// agent editor. Same status, same colors, same usage% so list and detail
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/AllAgents.tsx-496-// views are consistent.
+client/src/pages/AllAgents.tsx-497-function HealthBadge({ health }: { health: UnifiedAgent['health'] }) {
+--
+client/src/pages/AllAgents.tsx-511-    : health.status === 'warning' ? 'Near limit'
+client/src/pages/AllAgents.tsx-512-    : health.status === 'sparse'  ? 'Sparse'
+client/src/pages/AllAgents.tsx-513-    : 'Healthy'
+client/src/pages/AllAgents.tsx:514:  // Cap display at 110% to match AgentHealthBar visual ceiling
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/AllAgents.tsx-515-  const rawPct = Math.round(health.usage * 100)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/AllAgents.tsx-516-  const pct = Math.min(rawPct, 110)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/AllAgents.tsx-517-  const tokenStr = health.estimatedTokens >= 1000
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/CommandEditor.tsx-148-      <div className="flex-1 min-h-0 p-6 pt-4">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/CommandEditor.tsx-149-        {viewMode === 'rich' ? (
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/CommandEditor.tsx-150-          <RichMarkdownEditor
+client/src/pages/CommandEditor.tsx:151:            content={content}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/CommandEditor.tsx-152-            onChange={handleBodyChange}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/CommandEditor.tsx-153-            placeholder={`Describe what this command does.\nUse $ARGUMENTS for user-provided input.`}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/CommandEditor.tsx-154-            className="h-full"
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/MemoryHistory.tsx-298-      {expanded && (
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/MemoryHistory.tsx-299-        <div className="border-t border-border">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/MemoryHistory.tsx-300-          {hasDiff && <DiffViewer hunks={entry.diff!} />}
+client/src/pages/MemoryHistory.tsx:301:          {hasSnapshot && <SnapshotViewer content={entry.contentSnapshot!} />}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/MemoryHistory.tsx-302-        </div>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/MemoryHistory.tsx-303-      )}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/MemoryHistory.tsx-304-    </div>
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-107-  const agentCosts = useMemo(() => {
+client/src/pages/Analytics.tsx-108-    const map: Record<string, { cost: number; runs: number; success: number }> = {}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-109-    for (const r of runs) {
+client/src/pages/Analytics.tsx:110:      if (!map[r.agentName]) map[r.agentName] = { cost: 0, runs: 0, success: 0 }
+client/src/pages/Analytics.tsx:111:      map[r.agentName].cost += r.estimatedCost || 0
+client/src/pages/Analytics.tsx:112:      map[r.agentName].runs++
+client/src/pages/Analytics.tsx:113:      if (r.status === 'success') map[r.agentName].success++
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-114-    }
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-115-    return Object.entries(map)
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-116-      .sort(([, a], [, b]) => b.cost - a.cost)
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-380-            <tbody>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-381-              {runs.slice(0, 20).map((run) => (
+client/src/pages/Analytics.tsx-382-                <tr key={run.id} className="border-b border-border/50 hover:bg-surface-2/50">
+client/src/pages/Analytics.tsx:383:                  <td className="py-2 pr-4 font-medium">{run.agentName}</td>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-384-                  <td className="py-2 pr-4">
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-385-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${SOURCE_COLORS[run.source] || ''}`}>
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/Analytics.tsx-386-                      {run.source}
+--
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RunHistory.tsx-21-}
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RunHistory.tsx-22-
+client/src/pages/RunHistory.tsx-23-function exportCsv(runs: AgentRunEntry[]) {
+client/src/pages/RunHistory.tsx:24:  const headers = ['id', 'agentName', 'source', 'status', 'duration', 'tokens', 'cost', 'timestamp', 'prompt']
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RunHistory.tsx-25-  const rows = runs.map(r => [
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RunHistory.tsx-26-    r.id,
+client/src/pages/RunHistory.tsx:27:    r.agentName,
+/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/client/src/pages/RunHistory.tsx-28-    r.source,
+
+[Showing results with pagination = limit: 250]
