@@ -4,8 +4,8 @@ description: >-
   Agent Architect & Hiring Specialist. Designs new agents when capability gaps
   are detected. Detects gaps via Supabase observability (overloaded agents,
   retry spikes, delegation bottlenecks). Auto-deploys probation agents with
-  10-run observation period (Witness), then lifecycle-driven promotion/retirement.
-  Head of Agent Evolution Department.
+  10-run observation period (Witness), then lifecycle-driven
+  promotion/retirement. Head of Agent Evolution Department.
 model: opus
 color: crimson
 department: hr
@@ -18,6 +18,7 @@ class: BUILDER
 maxRetries: 5
 wallClockMinutes: 30
 costCapUSD: 5
+category: hr
 ---
 
 # 🔨 Forge — Agent Architect

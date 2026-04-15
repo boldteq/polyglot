@@ -8,7 +8,7 @@ description: >-
   30 days.
 model: sonnet
 tools: 'Read,WebSearch'
-category: software-factory
+category: research
 output_template: saas-verdict
 department: research
 phase: MEASURE

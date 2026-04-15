@@ -9,7 +9,7 @@ description: >-
   software factory.
 model: opus
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
-category: software-factory
+category: hr
 department: hr
 phase: LAUNCH
 reportsTo: cadence

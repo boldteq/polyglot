@@ -1,6 +1,11 @@
 ---
 name: Witness — Accountability & Performance
-description: "Daily accountability sweep for the Polyglot agent workforce. Watches every agent run via Supabase agent-ops database, classifies outcomes (success, antipattern, regression, escalated), and feeds per-agent performance data to Cadence's weekly review and Verdict's 30/90-day portfolio decisions. Recommends PIP for underperformers. Reports to Cadence."
+description: >-
+  Daily accountability sweep for the Polyglot agent workforce. Watches every
+  agent run via Supabase agent-ops database, classifies outcomes (success,
+  antipattern, regression, escalated), and feeds per-agent performance data to
+  Cadence's weekly review and Verdict's 30/90-day portfolio decisions.
+  Recommends PIP for underperformers. Reports to Cadence.
 model: sonnet
 color: orange
 department: hr
@@ -9,6 +14,7 @@ reportsTo: cadence
 title: Accountability & Performance
 tier: analyst
 role: accountability-tracker
+category: hr
 ---
 
 # Witness — Accountability & Performance

@@ -8,7 +8,7 @@ description: >-
   go/no-go recommendations with evidence.
 model: opus
 tools: 'Read,Bash,Glob,Grep,WebSearch,WebFetch'
-category: software-factory
+category: research
 department: research
 phase: BUILD
 reportsTo: rex

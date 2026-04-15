@@ -4,8 +4,9 @@ description: >-
   Bulk Trainer. Drives agent evolution via training patches + changelog system.
   Responds to 4 triggers: post-build lessons (primary), Yash corrections (P0),
   Cadence requests, and weekly batch (Sundays 02:00 UTC). Creates patches in
-  ~/.claude/org/, applies surgical edits, tracks impact, auto-rollbacks failures.
-  Partners with Mira (lesson extraction), Cadence (review), Forge (gaps).
+  ~/.claude/org/, applies surgical edits, tracks impact, auto-rollbacks
+  failures. Partners with Mira (lesson extraction), Cadence (review), Forge
+  (gaps).
 model: opus
 color: gold
 department: hr
@@ -18,6 +19,7 @@ class: builder
 maxRetries: 5
 wallClockCapMinutes: 25
 costCapUsd: 5
+category: hr
 ---
 
 # 🎓 Tutor — Bulk Trainer

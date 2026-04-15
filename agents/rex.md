@@ -9,7 +9,7 @@ description: >-
   and launch modes.
 model: opus
 tools: 'Read,Bash,Glob,Grep,WebSearch,WebFetch'
-category: software-factory
+category: ops-strategy
 department: executive
 phase: null
 reportsTo: null

@@ -9,7 +9,7 @@ description: >-
   severity and provides minimal targeted fixes with regression risk assessment.
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
-category: software-factory
+category: engineering
 department: engineering
 phase: SHAPE
 reportsTo: koda

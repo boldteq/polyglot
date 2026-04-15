@@ -7,7 +7,7 @@ description: >-
   gate: SAM <$50M OR market shrinking year-over-year.
 model: sonnet
 tools: 'Read,WebSearch,WebFetch'
-category: software-factory
+category: research
 output_template: saas-verdict
 department: research
 phase: VALIDATE

@@ -9,7 +9,7 @@ description: >-
   not prototype-grade. Loads from the 43K-line Design Knowledge Base.
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
-category: software-factory
+category: design
 department: creative
 phase: BUILD
 reportsTo: quill

@@ -8,7 +8,7 @@ description: >-
   immediately after Riko finishes.
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
-category: software-factory
+category: engineering
 department: engineering
 phase: VALIDATE
 reportsTo: arya

@@ -8,7 +8,7 @@ description: >-
   theater.
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
-category: software-factory
+category: engineering
 department: engineering
 phase: BUILD
 reportsTo: sage

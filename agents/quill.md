@@ -8,7 +8,7 @@ description: >-
   product with a systematic brand voice framework.
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep,WebSearch,WebFetch'
-category: software-factory
+category: content-seo
 department: creative
 phase: BUILD
 reportsTo: rex

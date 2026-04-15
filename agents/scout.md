@@ -7,7 +7,7 @@ description: >-
   no organic distribution channel OR guessing at pain instead of observing it.
 model: sonnet
 tools: 'Read,WebSearch,WebFetch'
-category: software-factory
+category: research
 output_template: saas-verdict
 department: research
 phase: SHAPE

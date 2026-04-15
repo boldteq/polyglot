@@ -7,7 +7,7 @@ description: >-
   ground. No "let's give it another month."
 model: opus
 tools: Read
-category: software-factory
+category: ops-strategy
 output_template: saas-verdict
 department: research
 phase: DECIDE

@@ -9,7 +9,7 @@ description: >-
   custom stack.
 model: opus
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
-category: software-factory
+category: ops-strategy
 department: engineering
 phase: VALIDATE
 reportsTo: rex

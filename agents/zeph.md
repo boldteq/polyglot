@@ -8,7 +8,7 @@ description: >-
   to top rankings fast.
 model: opus
 tools: 'Read,Write,Edit,Bash,Glob,Grep,WebSearch,WebFetch'
-category: software-factory
+category: content-seo
 department: creative
 phase: BUILD
 reportsTo: quill

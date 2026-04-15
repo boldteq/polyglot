@@ -7,7 +7,7 @@ description: >-
   not measurable on day 1.
 model: sonnet
 tools: Read
-category: software-factory
+category: ops-strategy
 output_template: saas-verdict
 department: research
 phase: MEASURE

@@ -7,7 +7,7 @@ description: >-
   playbooks. Kill gate: fewer than 2 viable organic channels for solo operator.
 model: sonnet
 tools: 'Read,WebSearch,WebFetch'
-category: software-factory
+category: ops-strategy
 output_template: saas-verdict
 department: growth
 phase: LAUNCH

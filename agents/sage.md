@@ -8,7 +8,7 @@ description: >-
   codebase review and targeted diff review. Blocks deploy on critical findings.
 model: opus
 tools: 'Read,Bash,Glob,Grep,WebSearch'
-category: software-factory
+category: engineering
 department: engineering
 phase: SHAPE
 reportsTo: arya

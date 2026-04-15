@@ -7,7 +7,7 @@ description: >-
   LTV/CAC <3 OR payback period >18 months.
 model: opus
 tools: 'Read,WebSearch'
-category: software-factory
+category: ops-strategy
 output_template: saas-verdict
 department: research
 phase: VALIDATE

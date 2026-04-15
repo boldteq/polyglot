@@ -7,7 +7,7 @@ description: >-
   capacity planning, runbooks, and cross-product portfolio health.
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
-category: software-factory
+category: engineering
 department: engineering
 phase: LAUNCH
 reportsTo: bolt

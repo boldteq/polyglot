@@ -13,6 +13,7 @@ phase: null
 reportsTo: echo
 title: Market Intelligence Scraper
 tier: analyst
+category: research
 ---
 
 # 🌾 Harvest — Market Intelligence Scraper
