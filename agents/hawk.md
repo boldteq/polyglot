@@ -14,35 +14,35 @@ reportsTo: bolt
 title: Ops Monitor
 tier: engineer
 skills:
-  - id: stack-a-monitoring-stack-next-js-16-supabase-railway
-    path: skills/hawk/stack-a-monitoring-stack-next-js-16-supabase-railway.md
-    lines: 35
-  - id: runbook-creation-for-common-incidents
-    path: skills/hawk/runbook-creation-for-common-incidents.md
-    lines: 140
-  - id: tool-sentry
-    path: skills/hawk/tools/sentry.md
-    lines: 20
+  - id: examples-a81eadbd
+    path: skills/hawk/examples/a81eadbd.md
+    lines: 54
+  - id: examples-ac389936
+    path: skills/hawk/examples/ac389936.md
+    lines: 51
   - id: memory-loading-before-every-task-patterns
     path: skills/hawk/memory-loading-before-every-task-patterns.md
     lines: 49
+  - id: runbook-creation-for-common-incidents
+    path: skills/hawk/runbook-creation-for-common-incidents.md
+    lines: 140
   - id: stack-a-migration-2026-04-10-next-js-16-railway-patterns
     path: skills/hawk/stack-a-migration-2026-04-10-next-js-16-railway-patterns.md
     lines: 137
-  - id: ex-ac389936
-    path: skills/hawk/examples/ac389936.md
-    lines: 46
-  - id: ex-a81eadbd
-    path: skills/hawk/examples/a81eadbd.md
-    lines: 49
+  - id: stack-a-monitoring-stack-next-js-16-supabase-railway
+    path: skills/hawk/stack-a-monitoring-stack-next-js-16-supabase-railway.md
+    lines: 35
+  - id: tools-sentry
+    path: skills/hawk/tools/sentry.md
+    lines: 25
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.843Z'
-  original_sha: 93905cd43dbb09fe
-  original_lines: 2096
-  original_chars: 69817
+  last_compacted: '2026-04-15T18:32:53.182Z'
+  original_sha: bacbd435f2817c8f
+  original_lines: 1648
+  original_chars: 54929
 ---
 
 
@@ -1684,10 +1684,10 @@ scaling triggers:
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Stack A Monitoring Stack (Next.js 16 + Supabase + Railway)** — triggers: _stack, monitoring, next, supabase, railway, next_public_sentry_dsn, posthog-js, posthog-node_ → `~/.claude/skills/hawk/stack-a-monitoring-stack-next-js-16-supabase-railway.md`
-- **RUNBOOK CREATION FOR COMMON INCIDENTS** — triggers: _runbook, creation, common, incidents, create, maintain, runbooks, recurring_ → `~/.claude/skills/hawk/runbook-creation-for-common-incidents.md`
-- **Tool: sentry** — triggers: _sentry, config, next, railway, sentry.server.config.ts_ → `~/.claude/skills/hawk/tools/sentry.md`
-- **Memory Loading (Before Every Task)** — triggers: _memory, loading, before, task, monitoring, responding, incident, read_ → `~/.claude/skills/hawk/memory-loading-before-every-task-patterns.md`
-- **★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + RAILWAY** — triggers: _stack, migration, next, railway, section, supersedes, legacy, monitoring_ → `~/.claude/skills/hawk/stack-a-migration-2026-04-10-next-js-16-railway-patterns.md`
-- **Example: typescript** — triggers: _universal, health, endpoint, required, deployments, typescript_ → `~/.claude/skills/hawk/examples/ac389936.md`
-- **Example: markdown** — triggers: _use, incidents, significant, p2s, markdown_ → `~/.claude/skills/hawk/examples/a81eadbd.md`
+- **Example (markdown)** — triggers: _example, markdown, auth, trigger, postgres, integration, ci, error_ → `~/.claude/skills/hawk/examples/a81eadbd.md`
+- **Example (typescript)** — triggers: _example, typescript, supabase, deploy, error, catch, examples, ac389936_ → `~/.claude/skills/hawk/examples/ac389936.md`
+- **Memory Loading (Before Every Task)** — triggers: _loading, task, trigger, unit, ci, error, form, nextjs_ → `~/.claude/skills/hawk/memory-loading-before-every-task-patterns.md`
+- **[Incident Name] Runbook** — triggers: _incident, name, runbook, auth, trigger, postgres, supabase, railway_ → `~/.claude/skills/hawk/runbook-creation-for-common-incidents.md`
+- **1. Sentry** — triggers: _sentry, migration, trigger, supabase, deploy, railway, og, error_ → `~/.claude/skills/hawk/stack-a-migration-2026-04-10-next-js-16-railway-patterns.md`
+- **Stack A Monitoring Stack (Next.js 16 + Supabase + Railway)** — triggers: _stack, monitoring, next, supabase, railway, payment, auth, session_ → `~/.claude/skills/hawk/stack-a-monitoring-stack-next-js-16-supabase-railway.md`
+- **sentry** — triggers: _sentry, deploy, railway, ci, nextjs, ui, tools_ → `~/.claude/skills/hawk/tools/sentry.md`

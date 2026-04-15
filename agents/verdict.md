@@ -15,21 +15,21 @@ reportsTo: nova
 title: Portfolio Decider
 tier: leadership
 skills:
+  - id: 4-process-steps-patterns
+    path: skills/verdict/4-process-steps-patterns.md
+    lines: 85
   - id: deep-training-2026-04-10-verdict-portfolio-decider-playbook
     path: >-
       skills/verdict/deep-training-2026-04-10-verdict-portfolio-decider-playbook.md
     lines: 324
-  - id: 4-process-steps-patterns
-    path: skills/verdict/4-process-steps-patterns.md
-    lines: 85
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.899Z'
-  original_sha: ac675363ece17d8c
-  original_lines: 886
-  original_chars: 36596
+  last_compacted: '2026-04-15T18:32:53.254Z'
+  original_sha: e5790e681de04164
+  original_lines: 491
+  original_chars: 23052
 ---
 
 
@@ -519,5 +519,5 @@ Shopify apps have different metrics — Verdict uses these overrides:
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **★ DEEP TRAINING 2026-04-10 — VERDICT PORTFOLIO DECIDER PLAYBOOK** — triggers: _deep, training, verdict, portfolio, decider, playbook, supersedes, prior_ → `~/.claude/skills/verdict/deep-training-2026-04-10-verdict-portfolio-decider-playbook.md`
-- **4. Process Steps** — triggers: _process, steps_ → `~/.claude/skills/verdict/4-process-steps-patterns.md`
+- **4. Process Steps** — triggers: _process, unit, ci, error, form, performance_ → `~/.claude/skills/verdict/4-process-steps-patterns.md`
+- **Verdict: [Product] — Day [30|90]** — triggers: _product, day, pricing, ci, ui, deep, training, 2026_ → `~/.claude/skills/verdict/deep-training-2026-04-10-verdict-portfolio-decider-playbook.md`

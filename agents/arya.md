@@ -16,39 +16,39 @@ reportsTo: rex
 title: VP Engineering
 tier: leadership
 skills:
+  - id: arya-training-validation-scenarios-patterns
+    path: skills/arya/arya-training-validation-scenarios-patterns.md
+    lines: 58
+  - id: design-aware-architecture-protocol
+    path: skills/arya/design-aware-architecture-protocol.md
+    lines: 97
   - id: design-system-architecture-mandatory-for-every-project
     path: skills/arya/design-system-architecture-mandatory-for-every-project.md
     lines: 56
+  - id: examples-d51aeaf0
+    path: skills/arya/examples/d51aeaf0.md
+    lines: 117
+  - id: process-patterns
+    path: skills/arya/process-patterns.md
+    lines: 739
   - id: shopify-app-architecture-template-stack-b
     path: skills/arya/shopify-app-architecture-template-stack-b.md
     lines: 50
   - id: shopify-data-models-api-architecture-stack-b
     path: skills/arya/shopify-data-models-api-architecture-stack-b.md
     lines: 209
-  - id: design-aware-architecture-protocol
-    path: skills/arya/design-aware-architecture-protocol.md
-    lines: 97
-  - id: training-2026-04-11-b-hardened-execution-protocol-lifts-5-0-
+  - id: training-2026-04-11-b-hardened-execution-protocol-lifts-5-0
     path: >-
       skills/arya/training-2026-04-11-b-hardened-execution-protocol-lifts-5-0-.md
     lines: 198
-  - id: process-patterns
-    path: skills/arya/process-patterns.md
-    lines: 739
-  - id: arya-training-validation-scenarios-patterns
-    path: skills/arya/arya-training-validation-scenarios-patterns.md
-    lines: 58
-  - id: ex-d51aeaf0
-    path: skills/arya/examples/d51aeaf0.md
-    lines: 112
 compactor:
   version: 1
   budget_lines: 700
   budget_chars: 28000
-  last_compacted: '2026-04-15T18:15:05.794Z'
-  original_sha: e7e5c3eff175b596
-  original_lines: 2129
-  original_chars: 97788
+  last_compacted: '2026-04-15T18:32:53.134Z'
+  original_sha: c0efd7538d233b9d
+  original_lines: 642
+  original_chars: 30577
 ---
 
 
@@ -683,11 +683,11 @@ on rejection by Rex:
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Design System Architecture (Mandatory for Every Project)** — triggers: _design, system, architecture, mandatory, project_ → `~/.claude/skills/arya/design-system-architecture-mandatory-for-every-project.md`
-- **Shopify App Architecture Template (Stack B)** — triggers: _shopify, app, architecture, template, stack, arya, designs, must_ → `~/.claude/skills/arya/shopify-app-architecture-template-stack-b.md`
-- **Shopify Data Models & API Architecture (Stack B)** — triggers: _shopify, data, models, api, architecture, stack, designing, apps_ → `~/.claude/skills/arya/shopify-data-models-api-architecture-stack-b.md`
-- **DESIGN-AWARE ARCHITECTURE PROTOCOL** — triggers: _design-aware, architecture, protocol, problem, arya, designs, data, models_ → `~/.claude/skills/arya/design-aware-architecture-protocol.md`
-- **Training 2026-04-11 (b) — Hardened execution protocol (lifts 5.0 → 9+)** — triggers: _training, hardened, execution, protocol, lifts, block, supersedes, earlier_ → `~/.claude/skills/arya/training-2026-04-11-b-hardened-execution-protocol-lifts-5-0-.md`
-- **Process** — triggers: _process_ → `~/.claude/skills/arya/process-patterns.md`
-- **ARYA TRAINING VALIDATION SCENARIOS** — triggers: _arya, training, validation, scenarios_ → `~/.claude/skills/arya/arya-training-validation-scenarios-patterns.md`
-- **Example: markdown** — triggers: _arya, must, deliver, single, architecture, document, markdown, format_ → `~/.claude/skills/arya/examples/d51aeaf0.md`
+- **★ CANONICAL STACK A — NEXT.JS 16 + SUPABASE + RAILWAY (2026-04-10)** — triggers: _canonical, stack, next, supabase, railway, billing, auth, rls_ → `~/.claude/skills/arya/arya-training-validation-scenarios-patterns.md`
+- **[App Name] — Design Vision** — triggers: _app, name, design, vision, stripe, auth, supabase, vercel_ → `~/.claude/skills/arya/design-aware-architecture-protocol.md`
+- **Design System Architecture (Mandatory for Every Project)** — triggers: _design, system, architecture, mandatory, for, project, vercel, ci_ → `~/.claude/skills/arya/design-system-architecture-mandatory-for-every-project.md`
+- **Example (markdown)** — triggers: _example, markdown, billing, auth, session, rls, schema, index_ → `~/.claude/skills/arya/examples/d51aeaf0.md`
+- **Process** — triggers: _process, rls, migration, supabase, deploy, ci, cd, og_ → `~/.claude/skills/arya/process-patterns.md`
+- **Shopify App Architecture Template (Stack B)** — triggers: _shopify, app, architecture, template, stack, billing, subscription, checkout_ → `~/.claude/skills/arya/shopify-app-architecture-template-stack-b.md`
+- **OR** — triggers: _subscription, ci, og, aria, shopify, query, bundle, design_ → `~/.claude/skills/arya/shopify-data-models-api-architecture-stack-b.md`
+- **ADR-NNNN: <Decision Title>** — triggers: _adr-nnnn, decision, title, billing, pricing, auth, rls, schema_ → `~/.claude/skills/arya/training-2026-04-11-b-hardened-execution-protocol-lifts-5-0-.md`

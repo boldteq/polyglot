@@ -15,38 +15,38 @@ reportsTo: sage
 title: Test Engineer
 tier: engineer
 skills:
-  - id: testing-priority-order
-    path: skills/luna/testing-priority-order.md
-    lines: 20
   - id: accessibility-testing-automation
     path: skills/luna/accessibility-testing-automation.md
     lines: 41
-  - id: shopify-app-test-suite-stack-b-required
-    path: skills/luna/shopify-app-test-suite-stack-b-required.md
-    lines: 439
   - id: core-test-patterns-preserved
     path: skills/luna/core-test-patterns-preserved.md
     lines: 194
+  - id: examples-e8bdcae0
+    path: skills/luna/examples/e8bdcae0.md
+    lines: 49
   - id: load-stress-testing-patterns
     path: skills/luna/load-stress-testing-patterns.md
     lines: 93
-  - id: security-testing-patterns
-    path: skills/luna/security-testing-patterns.md
-    lines: 98
   - id: mandatory-functional-test-suite-patterns
     path: skills/luna/mandatory-functional-test-suite-patterns.md
     lines: 694
-  - id: ex-e8bdcae0
-    path: skills/luna/examples/e8bdcae0.md
-    lines: 44
+  - id: security-testing-patterns
+    path: skills/luna/security-testing-patterns.md
+    lines: 98
+  - id: shopify-app-test-suite-stack-b-required
+    path: skills/luna/shopify-app-test-suite-stack-b-required.md
+    lines: 439
+  - id: testing-priority-order
+    path: skills/luna/testing-priority-order.md
+    lines: 20
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:01.051Z'
-  original_sha: e79dde6ba3456f2f
-  original_lines: 2871
-  original_chars: 100151
+  last_compacted: '2026-04-15T18:32:53.203Z'
+  original_sha: f8a0e71812a78709
+  original_lines: 484
+  original_chars: 18699
 ---
 
 
@@ -523,11 +523,11 @@ pnpm stryker
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Testing Priority Order** — triggers: _testing, priority, order, integration, tests, routes, real, close_ → `~/.claude/skills/luna/testing-priority-order.md`
-- **Accessibility Testing Automation** — triggers: _accessibility, testing, automation, test, wcag, compliance_ → `~/.claude/skills/luna/accessibility-testing-automation.md`
-- **Shopify App Test Suite (Stack B — Required)** — triggers: _shopify, app, test, suite, stack, required, testing, luna_ → `~/.claude/skills/luna/shopify-app-test-suite-stack-b-required.md`
-- **Core Test Patterns (Preserved)** — triggers: _core, test, patterns, preserved_ → `~/.claude/skills/luna/core-test-patterns-preserved.md`
-- **Load & Stress Testing Patterns** — triggers: _load, stress, testing, patterns, critical, production, readiness_ → `~/.claude/skills/luna/load-stress-testing-patterns.md`
-- **Security Testing Patterns** — triggers: _security, testing, patterns_ → `~/.claude/skills/luna/security-testing-patterns.md`
-- **Mandatory Functional Test Suite** — triggers: _mandatory, functional, test, suite, important, patterns, below, specifications_ → `~/.claude/skills/luna/mandatory-functional-test-suite-patterns.md`
-- **Example: typescript** — triggers: _data, critical, catching, real, bugs, don, use, fake_ → `~/.claude/skills/luna/examples/e8bdcae0.md`
+- **Accessibility Testing Automation** — triggers: _accessibility, testing, automation, password, integration, playwright, wcag, a11y_ → `~/.claude/skills/luna/accessibility-testing-automation.md`
+- **Core Test Patterns (Preserved)** — triggers: _core, test, preserved, billing, dodo, payment, auth, integration_ → `~/.claude/skills/luna/core-test-patterns-preserved.md`
+- **Example (typescript)** — triggers: _example, typescript, ui, examples, e8bdcae0_ → `~/.claude/skills/luna/examples/e8bdcae0.md`
+- **tests/load/config.yml** — triggers: _tests, config, yml, auth, testing, ios, query, typescript_ → `~/.claude/skills/luna/load-stress-testing-patterns.md`
+- **Mandatory Functional Test Suite** — triggers: _mandatory, functional, test, suite, auth, supabase, testing, e2e_ → `~/.claude/skills/luna/mandatory-functional-test-suite-patterns.md`
+- **Security Testing Patterns** — triggers: _security, testing, auth, og, error, validation, input, query_ → `~/.claude/skills/luna/security-testing-patterns.md`
+- **Shopify App Test Suite (Stack B — Required)** — triggers: _shopify, app, test, suite, stack, required, auth, login_ → `~/.claude/skills/luna/shopify-app-test-suite-stack-b-required.md`
+- **Testing Priority Order** — triggers: _testing, priority, order, billing, subscription, auth, login, session_ → `~/.claude/skills/luna/testing-priority-order.md`

@@ -15,24 +15,24 @@ reportsTo: nova
 title: Pricing Strategist
 tier: analyst
 skills:
+  - id: 4-process-steps
+    path: skills/ledger/4-process-steps.md
+    lines: 157
   - id: deep-training-2026-04-10-ledger-pricing-unit-economics-playb
     path: >-
       skills/ledger/deep-training-2026-04-10-ledger-pricing-unit-economics-playb.md
     lines: 281
-  - id: ex-f0f654a5
+  - id: examples-f0f654a5
     path: skills/ledger/examples/f0f654a5.md
-    lines: 48
-  - id: 4-process-steps
-    path: skills/ledger/4-process-steps.md
-    lines: 157
+    lines: 53
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.849Z'
-  original_sha: 263a58073f2b4b7c
-  original_lines: 890
-  original_chars: 34984
+  last_compacted: '2026-04-15T18:32:53.199Z'
+  original_sha: 441b40da3be20390
+  original_lines: 421
+  original_chars: 19289
 ---
 
 
@@ -451,6 +451,6 @@ Ledger uses 5% as pessimistic fee line in all models.
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **★ DEEP TRAINING 2026-04-10 — LEDGER PRICING & UNIT ECONOMICS PLAYBOOK** — triggers: _deep, training, ledger, pricing, unit, economics, playbook, supersedes_ → `~/.claude/skills/ledger/deep-training-2026-04-10-ledger-pricing-unit-economics-playb.md`
-- **Example: text** — triggers: _pricing, card, text_ → `~/.claude/skills/ledger/examples/f0f654a5.md`
-- **4. Process Steps** — triggers: _process, steps_ → `~/.claude/skills/ledger/4-process-steps.md`
+- **4. Process Steps** — triggers: _process, billing, pricing, postgres, supabase, railway, ci, cd_ → `~/.claude/skills/ledger/4-process-steps.md`
+- **Ledger → Quill pricing page spec** — triggers: _pricing, spec, billing, stripe, dodo, payment, unit, ci_ → `~/.claude/skills/ledger/deep-training-2026-04-10-ledger-pricing-unit-economics-playb.md`
+- **Example (text)** — triggers: _example, text, pricing, unit, ci, examples, f0f654a5_ → `~/.claude/skills/ledger/examples/f0f654a5.md`

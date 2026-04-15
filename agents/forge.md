@@ -20,6 +20,9 @@ wallClockMinutes: 30
 costCapUSD: 5
 category: hr
 skills:
+  - id: examples-08a10b45
+    path: skills/forge/examples/08a10b45.md
+    lines: 59
   - id: monthly-cycle-scheduled-gap-detection-supabase-based-patterns
     path: >-
       skills/forge/monthly-cycle-scheduled-gap-detection-supabase-based-patterns.md
@@ -27,17 +30,14 @@ skills:
   - id: reference
     path: skills/forge/reference.md
     lines: 24
-  - id: ex-08a10b45
-    path: skills/forge/examples/08a10b45.md
-    lines: 54
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.837Z'
-  original_sha: 443eca5495c093d6
-  original_lines: 491
-  original_chars: 23672
+  last_compacted: '2026-04-15T18:32:53.174Z'
+  original_sha: 7ba0be9622254c07
+  original_lines: 390
+  original_chars: 19020
 ---
 
 # 🔨 Forge — Agent Architect
@@ -425,6 +425,6 @@ You are the architect of the factory itself. Every new agent you create is a com
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Monthly Cycle (Scheduled Gap Detection, Supabase-Based)** — triggers: _monthly, cycle, scheduled, gap, detection, supabase-based, runs, month_ → `~/.claude/skills/forge/monthly-cycle-scheduled-gap-detection-supabase-based-patterns.md`
-- **Reference** — triggers: _anti-patterns, supabase-based_ → `~/.claude/skills/forge/reference.md`
-- **Example: markdown** — triggers: _new, agent, file, must, include, sections, below, forge_ → `~/.claude/skills/forge/examples/08a10b45.md`
+- **Example (markdown)** — triggers: _example, markdown, schema, trigger, supabase, integration, ci, retry_ → `~/.claude/skills/forge/examples/08a10b45.md`
+- **Monthly Cycle (Scheduled Gap Detection, Supabase-Based)** — triggers: _monthly, cycle, scheduled, gap, detection, supabase-based, supabase, deploy_ → `~/.claude/skills/forge/monthly-cycle-scheduled-gap-detection-supabase-based-patterns.md`
+- **Anti-Patterns (Supabase-Based)** — triggers: _anti-patterns, supabase-based, supabase, integration, deploy, og, retry, validation_ → `~/.claude/skills/forge/reference.md`

@@ -16,53 +16,53 @@ reportsTo: koda
 title: Bug Fixer
 tier: engineer
 skills:
-  - id: next-js-16-debugging-patterns
-    path: skills/vex/next-js-16-debugging-patterns.md
-    lines: 30
-  - id: tool-supabase
-    path: skills/vex/tools/supabase.md
-    lines: 27
-  - id: tool-dodo
-    path: skills/vex/tools/dodo.md
-    lines: 17
-  - id: tool-shopify
-    path: skills/vex/tools/shopify.md
-    lines: 85
-  - id: tool-nextjs
-    path: skills/vex/tools/nextjs.md
-    lines: 23
-  - id: tool-prisma
-    path: skills/vex/tools/prisma.md
-    lines: 23
-  - id: memory-loading-simplified-2026-04-13-patterns
-    path: skills/vex/memory-loading-simplified-2026-04-13-patterns.md
-    lines: 40
-  - id: railway-worker-debugging-stack-a-patterns
-    path: skills/vex/railway-worker-debugging-stack-a-patterns.md
-    lines: 31
-  - id: ex-98c649a9
-    path: skills/vex/examples/98c649a9.md
-    lines: 44
-  - id: ex-5692d8eb
-    path: skills/vex/examples/5692d8eb.md
-    lines: 43
   - id: error-encyclopedia
     path: skills/vex/error-encyclopedia.md
     lines: 548
-  - id: ui-ux-bug-detection-auto-fix-mandatory
-    path: skills/vex/ui-ux-bug-detection-auto-fix-mandatory.md
-    lines: 259
+  - id: examples-5692d8eb
+    path: skills/vex/examples/5692d8eb.md
+    lines: 48
+  - id: examples-98c649a9
+    path: skills/vex/examples/98c649a9.md
+    lines: 49
+  - id: memory-loading-simplified-2026-04-13-patterns
+    path: skills/vex/memory-loading-simplified-2026-04-13-patterns.md
+    lines: 40
+  - id: next-js-16-debugging-patterns
+    path: skills/vex/next-js-16-debugging-patterns.md
+    lines: 30
+  - id: railway-worker-debugging-stack-a-patterns
+    path: skills/vex/railway-worker-debugging-stack-a-patterns.md
+    lines: 31
   - id: stack-a-migration-2026-04-10-next-js-16-railway
     path: skills/vex/stack-a-migration-2026-04-10-next-js-16-railway.md
     lines: 156
+  - id: tools-dodo
+    path: skills/vex/tools/dodo.md
+    lines: 22
+  - id: tools-nextjs
+    path: skills/vex/tools/nextjs.md
+    lines: 28
+  - id: tools-prisma
+    path: skills/vex/tools/prisma.md
+    lines: 28
+  - id: tools-shopify
+    path: skills/vex/tools/shopify.md
+    lines: 90
+  - id: tools-supabase
+    path: skills/vex/tools/supabase.md
+    lines: 32
+  - id: ui-ux-bug-detection-auto-fix-mandatory
+    path: skills/vex/ui-ux-bug-detection-auto-fix-mandatory.md
+    lines: 259
 compactor:
   version: 1
   budget_lines: 300
   budget_chars: 12000
-  last_compacted: '2026-04-15T18:15:05.904Z'
-  original_sha: ee10061085206847
-  original_lines: 1905
-  original_chars: 87525
+  last_compacted: '2026-04-15T18:32:53.260Z'
+  original_sha: a9e9f2c2e01953eb
+  original_lines: 635
+  original_chars: 32613
 ---
 
 
@@ -685,16 +685,16 @@ Vex's first response to any new task MUST match the gold-standard artifact templ
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Next.js 16 Debugging Patterns** — triggers: _next, debugging, patterns, console.log_ → `~/.claude/skills/vex/next-js-16-debugging-patterns.md`
-- **Tool: supabase** — triggers: _supabase, errors, null, user_id_ → `~/.claude/skills/vex/tools/supabase.md`
-- **Tool: dodo** — triggers: _dodo, payments, errors, dodo_payments_webhook_key, dodo_payments_api_key_ → `~/.claude/skills/vex/tools/dodo.md`
-- **Tool: shopify** — triggers: _shopify, remix, errors, app, common, bugs, stack, auto-fix_ → `~/.claude/skills/vex/tools/shopify.md`
-- **Tool: nextjs** — triggers: _nextjs, next, errors_ → `~/.claude/skills/vex/tools/nextjs.md`
-- **Tool: prisma** — triggers: _prisma, errors, database_url, upsert_ → `~/.claude/skills/vex/tools/prisma.md`
-- **Memory Loading — SIMPLIFIED (2026-04-13)** — triggers: _memory, loading, simplified, first-load, manifest, above, covers, essential_ → `~/.claude/skills/vex/memory-loading-simplified-2026-04-13-patterns.md`
-- **Railway Worker Debugging (Stack A)** — triggers: _railway, worker, debugging, stack, bullmq, workers, cron, jobs_ → `~/.claude/skills/vex/railway-worker-debugging-stack-a-patterns.md`
-- **Example: typescript** — triggers: _bulk, operation, query, too, large, fix, typescript_ → `~/.claude/skills/vex/examples/98c649a9.md`
-- **Example: bash** — triggers: _run, pnpm, build, verify, regressions, report, final, clean_ → `~/.claude/skills/vex/examples/5692d8eb.md`
-- **Error Encyclopedia** — triggers: _error, encyclopedia, tool-guide, supabase, skills, tools, errors_ → `~/.claude/skills/vex/error-encyclopedia.md`
-- **UI/UX Bug Detection & Auto-Fix (MANDATORY)** — triggers: _bug, detection, auto-fix, mandatory, load, claude, memory, patterns_ → `~/.claude/skills/vex/ui-ux-bug-detection-auto-fix-mandatory.md`
-- **★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + RAILWAY** — triggers: _stack, migration, next, railway, section, supersedes, legacy, debug_ → `~/.claude/skills/vex/stack-a-migration-2026-04-10-next-js-16-railway.md`
+- **Admin action — correct target** — triggers: _admin, action, correct, target, dodo, checkout, payment, auth_ → `~/.claude/skills/vex/error-encyclopedia.md`
+- **Example (bash)** — triggers: _example, bash, supabase, query, suspense, examples, 5692d8eb_ → `~/.claude/skills/vex/examples/5692d8eb.md`
+- **Example (typescript)** — triggers: _example, typescript, error, catch, throw, timeout, input, query_ → `~/.claude/skills/vex/examples/98c649a9.md`
+- **Memory Loading — SIMPLIFIED (2026-04-13)** — triggers: _loading, simplified, billing, auth, unit, integration, ci, og_ → `~/.claude/skills/vex/memory-loading-simplified-2026-04-13-patterns.md`
+- **Next.js 16 Debugging Patterns** — triggers: _next, debugging, vercel, og, error, react, suspense, streaming_ → `~/.claude/skills/vex/next-js-16-debugging-patterns.md`
+- **Railway Worker Debugging (Stack A)** — triggers: _railway, worker, debugging, stack, rls, supabase, deploy, og_ → `~/.claude/skills/vex/railway-worker-debugging-stack-a-patterns.md`
+- **Pull exact staging env** — triggers: _pull, exact, staging, env, dodo, auth, jwt, rls_ → `~/.claude/skills/vex/stack-a-migration-2026-04-10-next-js-16-railway.md`
+- **dodo** — triggers: _dodo, subscription, payment, auth, ci, og, error, nextjs_ → `~/.claude/skills/vex/tools/dodo.md`
+- **nextjs** — triggers: _nextjs, rls, supabase, deploy, vercel, ci, og, aria_ → `~/.claude/skills/vex/tools/nextjs.md`
+- **prisma** — triggers: _prisma, migration, supabase, railway, vercel, ci, error, validation_ → `~/.claude/skills/vex/tools/prisma.md`
+- **shopify** — triggers: _shopify, auth, session, oauth, ci, error, catch, validation_ → `~/.claude/skills/vex/tools/shopify.md`
+- **supabase** — triggers: _supabase, subscription, auth, session, jwt, rls, migration, realtime_ → `~/.claude/skills/vex/tools/supabase.md`
+- **Check every page for layout consistency** — triggers: _for, layout, consistency, ci, accessibility, catch, form, security_ → `~/.claude/skills/vex/ui-ux-bug-detection-auto-fix-mandatory.md`

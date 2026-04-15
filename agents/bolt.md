@@ -15,50 +15,50 @@ reportsTo: arya
 title: DevOps Lead
 tier: engineer
 skills:
-  - id: deployment-strategies
-    path: skills/bolt/deployment-strategies.md
-    lines: 48
-  - id: deployment-environments
-    path: skills/bolt/deployment-environments.md
-    lines: 24
-  - id: supabase-production-hardening-stack-a-c
-    path: skills/bolt/supabase-production-hardening-stack-a-c.md
-    lines: 33
-  - id: shopify-app-store-submission
-    path: skills/bolt/shopify-app-store-submission.md
-    lines: 353
-  - id: deployment-process
-    path: skills/bolt/deployment-process.md
-    lines: 29
-  - id: shopify-extension-deployment-stack-b
-    path: skills/bolt/shopify-extension-deployment-stack-b.md
-    lines: 383
-  - id: infrastructure-as-code-patterns
-    path: skills/bolt/infrastructure-as-code-patterns.md
-    lines: 339
-  - id: tool-railway
-    path: skills/bolt/tools/railway.md
-    lines: 28
   - id: bolt-auto-fix-loop-domain-specific-patterns
     path: skills/bolt/bolt-auto-fix-loop-domain-specific-patterns.md
     lines: 96
-  - id: ex-4a3ae515
+  - id: deployment-environments
+    path: skills/bolt/deployment-environments.md
+    lines: 24
+  - id: deployment-process
+    path: skills/bolt/deployment-process.md
+    lines: 29
+  - id: deployment-strategies
+    path: skills/bolt/deployment-strategies.md
+    lines: 48
+  - id: examples-4a3ae515
     path: skills/bolt/examples/4a3ae515.md
-    lines: 60
-  - id: ex-8042d7d0
+    lines: 65
+  - id: examples-8042d7d0
     path: skills/bolt/examples/8042d7d0.md
-    lines: 124
-  - id: ex-dfe77be8
+    lines: 129
+  - id: examples-dfe77be8
     path: skills/bolt/examples/dfe77be8.md
-    lines: 45
+    lines: 50
+  - id: infrastructure-as-code-patterns
+    path: skills/bolt/infrastructure-as-code-patterns.md
+    lines: 339
+  - id: shopify-app-store-submission
+    path: skills/bolt/shopify-app-store-submission.md
+    lines: 353
+  - id: shopify-extension-deployment-stack-b
+    path: skills/bolt/shopify-extension-deployment-stack-b.md
+    lines: 383
+  - id: supabase-production-hardening-stack-a-c
+    path: skills/bolt/supabase-production-hardening-stack-a-c.md
+    lines: 33
+  - id: tools-railway
+    path: skills/bolt/tools/railway.md
+    lines: 33
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.822Z'
-  original_sha: 19686700d90fc36b
-  original_lines: 2597
-  original_chars: 88445
+  last_compacted: '2026-04-15T18:32:53.163Z'
+  original_sha: e51c91aaa830ff25
+  original_lines: 1028
+  original_chars: 41631
 ---
 
 
@@ -1075,15 +1075,15 @@ Bolt's first response to any new task MUST match the gold-standard artifact temp
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Deployment Strategies** — triggers: _deployment, strategies_ → `~/.claude/skills/bolt/deployment-strategies.md`
-- **Deployment Environments** — triggers: _deployment, environments, develop_ → `~/.claude/skills/bolt/deployment-environments.md`
-- **Supabase Production Hardening (Stack A/C)** — triggers: _supabase, production, hardening, stack, non-negotiable, before, saas, goes_ → `~/.claude/skills/bolt/supabase-production-hardening-stack-a-c.md`
-- **Shopify App Store Submission** — triggers: _shopify, app, store, submission, used, public, apps, going_ → `~/.claude/skills/bolt/shopify-app-store-submission.md`
-- **Deployment Process** — triggers: _deployment, process, main_ → `~/.claude/skills/bolt/deployment-process.md`
-- **Shopify Extension Deployment (Stack B)** — triggers: _shopify, extension, deployment, stack, includes, extensions, bolt, handles_ → `~/.claude/skills/bolt/shopify-extension-deployment-stack-b.md`
-- **Infrastructure-as-Code Patterns** — triggers: _infrastructure-as-code, patterns, define, infrastructure, code, version, control, reproducibility_ → `~/.claude/skills/bolt/infrastructure-as-code-patterns.md`
-- **Tool: railway** — triggers: _railway, primary, stack, main, develop_ → `~/.claude/skills/bolt/tools/railway.md`
-- **Bolt Auto-Fix Loop (Domain-Specific)** — triggers: _bolt, auto-fix, loop, domain-specific, mandatory, load, claude, memory_ → `~/.claude/skills/bolt/bolt-auto-fix-loop-domain-specific-patterns.md`
-- **Example: yaml** — triggers: _github, actions, recommended, most, teams, create, workflows, deploy_ → `~/.claude/skills/bolt/examples/4a3ae515.md`
-- **Example: typescript** — triggers: _smoke, test, suite, playwright, cypress, create, tests, typescript_ → `~/.claude/skills/bolt/examples/8042d7d0.md`
-- **Example: bash** — triggers: _bolt, day-1, railway, setup, protocol, bash_ → `~/.claude/skills/bolt/examples/dfe77be8.md`
+- **Load required vars from .env.example** — triggers: _required, vars, env, example, auth, rls, migration, schema_ → `~/.claude/skills/bolt/bolt-auto-fix-loop-domain-specific-patterns.md`
+- **Deployment Environments** — triggers: _deployment, environments, testing, playwright, deploy, railway, ci, ui_ → `~/.claude/skills/bolt/deployment-environments.md`
+- **Deployment Process** — triggers: _deployment, process, billing, subscription, dodo, payment, auth, oauth_ → `~/.claude/skills/bolt/deployment-process.md`
+- **Deployment Strategies** — triggers: _deployment, strategies, deploy, railway, vercel, ci, aria, error_ → `~/.claude/skills/bolt/deployment-strategies.md`
+- **Example (yaml)** — triggers: _example, yaml, checkout, auth, deploy, vercel, ui, examples_ → `~/.claude/skills/bolt/examples/4a3ae515.md`
+- **Example (typescript)** — triggers: _example, typescript, auth, login, password, playwright, og, input_ → `~/.claude/skills/bolt/examples/8042d7d0.md`
+- **Example (bash)** — triggers: _example, bash, dodo, login, supabase, deploy, railway, cd_ → `~/.claude/skills/bolt/examples/dfe77be8.md`
+- **main.tf** — triggers: _main, password, postgres, docker, ci, timeout, form, security_ → `~/.claude/skills/bolt/infrastructure-as-code-patterns.md`
+- **1. Run production build** — triggers: _run, production, build, billing, auth, deploy, aria, error_ → `~/.claude/skills/bolt/shopify-app-store-submission.md`
+- **Deploy only one extension (rare — usually deploy all together)** — triggers: _deploy, one, extension, rare, usually, all, together, checkout_ → `~/.claude/skills/bolt/shopify-extension-deployment-stack-b.md`
+- **Supabase Production Hardening (Stack A/C)** — triggers: _supabase, production, hardening, stack, auth, jwt, oauth, rls_ → `~/.claude/skills/bolt/supabase-production-hardening-stack-a-c.md`
+- **railway** — triggers: _railway, login, integration, deploy, docker, ci, og, aria_ → `~/.claude/skills/bolt/tools/railway.md`

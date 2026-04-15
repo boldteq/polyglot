@@ -17,9 +17,6 @@ title: Memory Keeper
 tier: analyst
 role: memory-keeper
 skills:
-  - id: self-learning-auto-enhancement-protocol
-    path: skills/mira/self-learning-auto-enhancement-protocol.md
-    lines: 152
   - id: deep-training-2026-04-10-mira-memory-architecture-playbook
     path: skills/mira/deep-training-2026-04-10-mira-memory-architecture-playbook.md
     lines: 318
@@ -27,23 +24,26 @@ skills:
     path: >-
       skills/mira/deep-training-2026-04-14-semi-auto-pattern-detection-file-ba.md
     lines: 494
+  - id: examples-f211ff9a
+    path: skills/mira/examples/f211ff9a.md
+    lines: 54
+  - id: examples-f688260b
+    path: skills/mira/examples/f688260b.md
+    lines: 48
+  - id: self-learning-auto-enhancement-protocol
+    path: skills/mira/self-learning-auto-enhancement-protocol.md
+    lines: 152
   - id: training-process-patterns
     path: skills/mira/training-process-patterns.md
     lines: 651
-  - id: ex-f688260b
-    path: skills/mira/examples/f688260b.md
-    lines: 43
-  - id: ex-f211ff9a
-    path: skills/mira/examples/f211ff9a.md
-    lines: 49
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.855Z'
-  original_sha: 14be9421e7d51fe9
-  original_lines: 2278
-  original_chars: 88414
+  last_compacted: '2026-04-15T18:32:53.208Z'
+  original_sha: 708ff701bd90c43a
+  original_lines: 601
+  original_chars: 29369
 ---
 
 
@@ -639,9 +639,9 @@ Mira's biggest upgrade: **Semi-automatic pattern discovery across all agents** w
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Self-Learning & Auto-Enhancement Protocol** — triggers: _self-learning, auto-enhancement, protocol, user/feedback.md_ → `~/.claude/skills/mira/self-learning-auto-enhancement-protocol.md`
-- **★ DEEP TRAINING 2026-04-10 — MIRA MEMORY ARCHITECTURE PLAYBOOK** — triggers: _deep, training, mira, memory, architecture, playbook, supersedes, prior_ → `~/.claude/skills/mira/deep-training-2026-04-10-mira-memory-architecture-playbook.md`
-- **DEEP TRAINING 2026-04-14 — SEMI-AUTO PATTERN DETECTION + FILE-BASED STORAGE** — triggers: _deep, training, semi-auto, pattern, detection, file-based, storage, mira_ → `~/.claude/skills/mira/deep-training-2026-04-14-semi-auto-pattern-detection-file-ba.md`
-- **Training Process** — triggers: _training, process_ → `~/.claude/skills/mira/training-process-patterns.md`
-- **Example: text** — triggers: _memory, file, structure, reference, text_ → `~/.claude/skills/mira/examples/f688260b.md`
-- **Example: markdown** — triggers: _after, training, run, produce, markdown_ → `~/.claude/skills/mira/examples/f211ff9a.md`
+- **Incident: [title]** — triggers: _incident, title, billing, auth, session, migration, index, supabase_ → `~/.claude/skills/mira/deep-training-2026-04-10-mira-memory-architecture-playbook.md`
+- **DEEP TRAINING 2026-04-14 — SEMI-AUTO PATTERN DETECTION + FILE-BASED STORAGE** — triggers: _deep, training, semi-auto, pattern, detection, file-based, storage, schema_ → `~/.claude/skills/mira/deep-training-2026-04-14-semi-auto-pattern-detection-file-ba.md`
+- **Example (markdown)** — triggers: _example, markdown, session, ci, og, form, validation, input_ → `~/.claude/skills/mira/examples/f211ff9a.md`
+- **Example (text)** — triggers: _example, text, billing, dodo, auth, session, migration, index_ → `~/.claude/skills/mira/examples/f688260b.md`
+- **Self-Learning & Auto-Enhancement Protocol** — triggers: _self-learning, auto-enhancement, protocol, auth, schema, trigger, integration, deploy_ → `~/.claude/skills/mira/self-learning-auto-enhancement-protocol.md`
+- **1. Does the app build?** — triggers: _the, app, build, session, testing, ci, og, error_ → `~/.claude/skills/mira/training-process-patterns.md`

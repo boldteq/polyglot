@@ -18,17 +18,17 @@ skills:
   - id: deep-training-2026-04-10-atlas-market-sizing-playbook
     path: skills/atlas/deep-training-2026-04-10-atlas-market-sizing-playbook.md
     lines: 233
-  - id: ex-c832b92c
+  - id: examples-c832b92c
     path: skills/atlas/examples/c832b92c.md
-    lines: 50
+    lines: 55
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.816Z'
-  original_sha: 2f4fe4cab32f4f34
-  original_lines: 694
-  original_chars: 28159
+  last_compacted: '2026-04-15T18:32:53.154Z'
+  original_sha: fae8c57da736de04
+  original_lines: 423
+  original_chars: 19249
 ---
 
 
@@ -450,5 +450,5 @@ Atlas scores 1 point per row matching each column; highest column wins. Company 
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **★ DEEP TRAINING 2026-04-10 — ATLAS MARKET SIZING PLAYBOOK** — triggers: _deep, training, atlas, market, sizing, playbook, supersedes, prior_ → `~/.claude/skills/atlas/deep-training-2026-04-10-atlas-market-sizing-playbook.md`
-- **Example: text** — triggers: _market, card, text_ → `~/.claude/skills/atlas/examples/c832b92c.md`
+- **Atlas Market Size: [Idea]** — triggers: _market, size, idea, pricing, ci, og, shopify, ui_ → `~/.claude/skills/atlas/deep-training-2026-04-10-atlas-market-sizing-playbook.md`
+- **Example (text)** — triggers: _example, text, billing, og, examples, c832b92c_ → `~/.claude/skills/atlas/examples/c832b92c.md`

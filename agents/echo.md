@@ -25,10 +25,10 @@ compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.833Z'
-  original_sha: 6211073954672b46
-  original_lines: 989
-  original_chars: 42818
+  last_compacted: '2026-04-15T18:32:53.171Z'
+  original_sha: 377c7ce3c3590392
+  original_lines: 519
+  original_chars: 23266
 ---
 
 
@@ -546,5 +546,5 @@ Next: Bolt (deploy) → launch day
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **★ DEEP TRAINING 2026-04-10 — ECHO DISTRIBUTION PLAYBOOK** — triggers: _deep, training, echo, distribution, playbook, supersedes, prior, frameworks_ → `~/.claude/skills/echo/deep-training-2026-04-10-echo-distribution-playbook.md`
-- **Training 2026-04-11 — Deep expansion (Echo P1)** — triggers: _training, deep, expansion, echo, lowest-scoring, agent, last, audit_ → `~/.claude/skills/echo/training-2026-04-11-deep-expansion-echo-p1.md`
+- **Echo Launch Plan: [Product]** — triggers: _launch, plan, product, auth, supabase, e2e, deploy, railway_ → `~/.claude/skills/echo/deep-training-2026-04-10-echo-distribution-playbook.md`
+- **Training 2026-04-11 — Deep expansion (Echo P1)** — triggers: _training, deep, expansion, ci, og, form, ui, 2026_ → `~/.claude/skills/echo/training-2026-04-11-deep-expansion-echo-p1.md`

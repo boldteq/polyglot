@@ -15,17 +15,38 @@ reportsTo: arya
 title: Project Setup Specialist
 tier: engineer
 skills:
-  - id: ex-ca89cd2d
+  - id: day-1-deliverables-riko-creates-all-in-one-pass
+    path: skills/riko/day-1-deliverables-riko-creates-all-in-one-pass.md
+    lines: 186
+  - id: deep-training-2026-04-10-riko-operating-protocol-v2
+    path: skills/riko/deep-training-2026-04-10-riko-operating-protocol-v2.md
+    lines: 769
+  - id: design-system-scaffolding-mandatory-for-every-new-project
+    path: skills/riko/design-system-scaffolding-mandatory-for-every-new-project.md
+    lines: 127
+  - id: examples-51ae188a
+    path: skills/riko/examples/51ae188a.md
+    lines: 61
+  - id: examples-ca89cd2d
     path: skills/riko/examples/ca89cd2d.md
-    lines: 59
+    lines: 64
+  - id: process-patterns
+    path: skills/riko/process-patterns.md
+    lines: 1606
+  - id: shopify-app-scaffold-stack-b
+    path: skills/riko/shopify-app-scaffold-stack-b.md
+    lines: 56
+  - id: shopify-config-files-reference-stack-b
+    path: skills/riko/shopify-config-files-reference-stack-b.md
+    lines: 345
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.877Z'
-  original_sha: 87264849daa4fe6b
-  original_lines: 412
-  original_chars: 21497
+  last_compacted: '2026-04-15T18:32:53.233Z'
+  original_sha: e054117009809523
+  original_lines: 309
+  original_chars: 16109
 ---
 
 
@@ -327,4 +348,11 @@ loop:
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Example: text** — triggers: _day-1, deliverables, riko, creates, one, pass, text, pages/_ → `~/.claude/skills/riko/examples/ca89cd2d.md`
+- **Initialize Supabase CLI** — triggers: _initialize, supabase, cli, pricing, auth, login, password, migration_ → `~/.claude/skills/riko/day-1-deliverables-riko-creates-all-in-one-pass.md`
+- **.github/workflows/ci.yml** — triggers: _github, workflows, yml, auth, migration, schema, index, playwright_ → `~/.claude/skills/riko/deep-training-2026-04-10-riko-operating-protocol-v2.md`
+- **Design System Scaffolding (Mandatory for Every New Project)** — triggers: _design, system, scaffolding, mandatory, for, new, project, ci_ → `~/.claude/skills/riko/design-system-scaffolding-mandatory-for-every-new-project.md`
+- **Example (sql)** — triggers: _example, sql, auth, trigger, upload, security, ui, examples_ → `~/.claude/skills/riko/examples/51ae188a.md`
+- **Example (text)** — triggers: _example, text, billing, stripe, dodo, pricing, auth, login_ → `~/.claude/skills/riko/examples/ca89cd2d.md`
+- **Build stage** — triggers: _build, stage, dodo, payment, auth, index, postgres, supabase_ → `~/.claude/skills/riko/process-patterns.md`
+- **1. App starts** — triggers: _app, starts, billing, auth, session, oauth, schema, index_ → `~/.claude/skills/riko/shopify-app-scaffold-stack-b.md`
+- **Basic app metadata** — triggers: _basic, app, metadata, billing, subscription, testing, deploy, cd_ → `~/.claude/skills/riko/shopify-config-files-reference-stack-b.md`

@@ -15,30 +15,30 @@ reportsTo: arya
 title: Lead Reviewer
 tier: engineer
 skills:
-  - id: stack-specific-security-patterns
-    path: skills/sage/stack-specific-security-patterns.md
-    lines: 59
+  - id: canonical-audit-checklist-stack-a
+    path: skills/sage/canonical-audit-checklist-stack-a.md
+    lines: 110
+  - id: examples-4eede81e
+    path: skills/sage/examples/4eede81e.md
+    lines: 54
+  - id: examples-98d959cc
+    path: skills/sage/examples/98d959cc.md
+    lines: 57
+  - id: full-review-checklist-21-items
+    path: skills/sage/full-review-checklist-21-items.md
+    lines: 367
+  - id: sage-training-validation-scenarios-patterns
+    path: skills/sage/sage-training-validation-scenarios-patterns.md
+    lines: 65
   - id: shopify-app-audit-checklist-stack-b-blocking
     path: skills/sage/shopify-app-audit-checklist-stack-b-blocking.md
     lines: 509
   - id: shopify-app-deep-verification-gdpr-listing-billing
     path: skills/sage/shopify-app-deep-verification-gdpr-listing-billing.md
     lines: 83
-  - id: full-review-checklist-21-items
-    path: skills/sage/full-review-checklist-21-items.md
-    lines: 367
-  - id: canonical-audit-checklist-stack-a
-    path: skills/sage/canonical-audit-checklist-stack-a.md
-    lines: 110
-  - id: sage-training-validation-scenarios-patterns
-    path: skills/sage/sage-training-validation-scenarios-patterns.md
-    lines: 65
-  - id: ex-98d959cc
-    path: skills/sage/examples/98d959cc.md
-    lines: 52
-  - id: ex-4eede81e
-    path: skills/sage/examples/4eede81e.md
-    lines: 49
+  - id: stack-specific-security-patterns
+    path: skills/sage/stack-specific-security-patterns.md
+    lines: 59
   - id: ui-ux-quality-audit-mandatory-alongside-code-review
     path: skills/sage/ui-ux-quality-audit-mandatory-alongside-code-review.md
     lines: 153
@@ -46,10 +46,10 @@ compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:15:05.882Z'
-  original_sha: 5ef2e19c28c9ed40
-  original_lines: 2124
-  original_chars: 101226
+  last_compacted: '2026-04-15T18:32:53.241Z'
+  original_sha: 62865905fe22ec22
+  original_lines: 672
+  original_chars: 31632
 ---
 
 
@@ -713,12 +713,12 @@ Sage itself only retries its audit 3 times — the fix retries happen in Koda. I
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Stack-Specific Security Patterns** — triggers: _stack-specific, security, patterns_ → `~/.claude/skills/sage/stack-specific-security-patterns.md`
-- **Shopify App Audit Checklist (Stack B — BLOCKING)** — triggers: _shopify, app, audit, checklist, stack, blocking, auditing, sage_ → `~/.claude/skills/sage/shopify-app-audit-checklist-stack-b-blocking.md`
-- **SHOPIFY APP DEEP VERIFICATION (GDPR + Listing + Billing)** — triggers: _shopify, app, deep, verification, gdpr, listing, billing, problem_ → `~/.claude/skills/sage/shopify-app-deep-verification-gdpr-listing-billing.md`
-- **Full Review Checklist (21+ Items)** — triggers: _full, review, checklist, items_ → `~/.claude/skills/sage/full-review-checklist-21-items.md`
-- **Canonical audit checklist (Stack A)** — triggers: _canonical, audit, checklist, stack, load, stacks, saas-nextjs-supabase-railway, patterns_ → `~/.claude/skills/sage/canonical-audit-checklist-stack-a.md`
-- **SAGE TRAINING VALIDATION SCENARIOS** — triggers: _sage, training, validation, scenarios_ → `~/.claude/skills/sage/sage-training-validation-scenarios-patterns.md`
-- **Example: text** — triggers: _output, format, enhanced, text_ → `~/.claude/skills/sage/examples/98d959cc.md`
-- **Example: bash** — triggers: _scan, sequence, run, order, bash_ → `~/.claude/skills/sage/examples/4eede81e.md`
-- **UI/UX Quality Audit (Mandatory Alongside Code Review)** — triggers: _quality, audit, mandatory, alongside, code, review_ → `~/.claude/skills/sage/ui-ux-quality-audit-mandatory-alongside-code-review.md`
+- **Canonical audit checklist (Stack A)** — triggers: _canonical, audit, checklist, stack, auth, rls, migration, supabase_ → `~/.claude/skills/sage/canonical-audit-checklist-stack-a.md`
+- **Example (bash)** — triggers: _example, bash, password, og, error, security, typescript, tsc_ → `~/.claude/skills/sage/examples/4eede81e.md`
+- **Example (text)** — triggers: _example, text, auth, migration, supabase, deploy, ci, og_ → `~/.claude/skills/sage/examples/98d959cc.md`
+- **Check that all authenticated pages use layout wrapper** — triggers: _all, authenticated, use, layout, wrapper, billing, subscription, dodo_ → `~/.claude/skills/sage/full-review-checklist-21-items.md`
+- **★ STACK A MIGRATION 2026-04-10 — NEXT.JS + SUPABASE + RAILWAY AUDIT (SUPERSEDES OLD STACK CONTENT)** — triggers: _stack, migration, next, supabase, railway, audit, supersedes, old_ → `~/.claude/skills/sage/sage-training-validation-scenarios-patterns.md`
+- **Sage runs this on every Shopify app audit** — triggers: _runs, shopify, app, audit, deploy, ci, og, accessibility_ → `~/.claude/skills/sage/shopify-app-audit-checklist-stack-b-blocking.md`
+- **Step 1: Find GDPR webhook handlers in actual codebase** — triggers: _find, gdpr, webhook, handlers, actual, codebase, billing, schema_ → `~/.claude/skills/sage/shopify-app-deep-verification-gdpr-listing-billing.md`
+- **Stack-Specific Security Patterns** — triggers: _stack-specific, security, auth, session, supabase, ci, throw, input_ → `~/.claude/skills/sage/stack-specific-security-patterns.md`
+- **List all routes** — triggers: _list, all, routes, ci, og, semantic, form, react_ → `~/.claude/skills/sage/ui-ux-quality-audit-mandatory-alongside-code-review.md`
