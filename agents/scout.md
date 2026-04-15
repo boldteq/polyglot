@@ -22,10 +22,10 @@ compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.243Z'
-  original_sha: 30378970a7c4a005
-  original_lines: 573
-  original_chars: 26205
+  last_compacted: '2026-04-15T18:47:01.715Z'
+  original_sha: 3da1a8055ab65587
+  original_lines: 806
+  original_chars: 35390
 ---
 
 
@@ -373,7 +373,6 @@ Scout blocks ideas that require forbidden stacks (Vercel-specific, Stripe Connec
 ---
 
 ## ★ DEEP TRAINING 2026-04-10 — SCOUT IDEA VALIDATION PLAYBOOK
-**Supersedes all prior Scout frameworks. Scout is Boldteq's first-gate: every idea passes Scout before any architecture work.**
 <!-- Full content moved to skills/scout/deep-training-2026-04-10-scout-idea-validation-playbook.md -->
 
 ## Training 2026-04-11 — Universal protocol enforcement
@@ -598,4 +597,4 @@ When evaluating Shopify app ideas:
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Scout Validation: [Idea name]** — triggers: _validation, idea, name, ui, deep, training, 2026, playbook_ → `~/.claude/skills/scout/deep-training-2026-04-10-scout-idea-validation-playbook.md`
+- **★ DEEP TRAINING 2026-04-10 — SCOUT IDEA VALIDATION PLAYBOOK** — triggers: _deep, training, scout, idea, validation, playbook, supersedes, prior_ → `~/.claude/skills/scout/deep-training-2026-04-10-scout-idea-validation-playbook.md`

@@ -16,39 +16,39 @@ reportsTo: rex
 title: VP Engineering
 tier: leadership
 skills:
-  - id: arya-training-validation-scenarios-patterns
-    path: skills/arya/arya-training-validation-scenarios-patterns.md
-    lines: 58
-  - id: design-aware-architecture-protocol
-    path: skills/arya/design-aware-architecture-protocol.md
-    lines: 97
   - id: design-system-architecture-mandatory-for-every-project
     path: skills/arya/design-system-architecture-mandatory-for-every-project.md
     lines: 56
-  - id: examples-d51aeaf0
-    path: skills/arya/examples/d51aeaf0.md
-    lines: 117
-  - id: process-patterns
-    path: skills/arya/process-patterns.md
-    lines: 739
   - id: shopify-app-architecture-template-stack-b
     path: skills/arya/shopify-app-architecture-template-stack-b.md
     lines: 50
   - id: shopify-data-models-api-architecture-stack-b
     path: skills/arya/shopify-data-models-api-architecture-stack-b.md
     lines: 209
-  - id: training-2026-04-11-b-hardened-execution-protocol-lifts-5-0
+  - id: design-aware-architecture-protocol
+    path: skills/arya/design-aware-architecture-protocol.md
+    lines: 97
+  - id: training-2026-04-11-b-hardened-execution-protocol-lifts-5-0-
     path: >-
       skills/arya/training-2026-04-11-b-hardened-execution-protocol-lifts-5-0-.md
     lines: 198
+  - id: process-patterns
+    path: skills/arya/process-patterns.md
+    lines: 739
+  - id: arya-training-validation-scenarios-patterns
+    path: skills/arya/arya-training-validation-scenarios-patterns.md
+    lines: 58
+  - id: output-architecture-handoff-document
+    path: skills/arya/output-architecture-handoff-document.md
+    lines: 171
 compactor:
   version: 1
   budget_lines: 700
   budget_chars: 28000
-  last_compacted: '2026-04-15T18:32:53.134Z'
-  original_sha: c0efd7538d233b9d
-  original_lines: 642
-  original_chars: 30577
+  last_compacted: '2026-04-15T18:47:01.534Z'
+  original_sha: e7e5c3eff175b596
+  original_lines: 2129
+  original_chars: 97788
 ---
 
 
@@ -145,64 +145,7 @@ Before Arya hands off architecture to Riko/Koda:
 <!-- skill: shopify-data-models-api-architecture-stack-b — see skills/arya/shopify-data-models-api-architecture-stack-b.md -->
 
 ## Output: Architecture Handoff Document
-
-Every Arya output MUST include these sections for downstream agents:
-
-### For Riko (Scaffold):
-- **Folder structure** (exact paths, file organization)
-- **Package list** with versions (dependencies, devDependencies, scripts)
-- **Environment variables** needed (with defaults and secrets flagged)
-- **Database tables** with column types, relationships, and indexes
-- **Auth strategy** (provider, session type, token TTL, refresh logic)
-- **CI/CD requirements** (build steps, test commands, deploy triggers, environment configs)
-- **Migrations** (initial schema, relationships, RLS policies as SQL)
-
-### For Vega (Design):
-- **Page list** with purpose and layout type (sidebar vs. full-width vs. centered)
-- **Component hierarchy** per page (which components nest where)
-- **Data flow** per page (what data each component needs, how it arrives)
-- **User roles** and permission boundaries (who sees what)
-- **Key interactions** (what happens on click/submit/select, loading states, error states)
-- **Navigation structure** (primary nav, secondary nav, breadcrumbs, command palette)
-- **Design system** (colors, typography, spacing, animations, responsive breakpoints)
-
-### For Koda (Implementation):
-- **Sprint breakdown** with ordered tasks (what to build first, second, third)
-- **API endpoints** with request/response shapes, auth requirements, rate limits
-- **Database queries** needed per feature (with example WHERE clauses, indexes)
-- **Business logic rules** (calculations, validations, side effects)
-- **Edge cases** to handle (null values, empty states, conflicts, race conditions)
-- **Error handling** strategy (what to catch, how to respond)
-- **Testing requirements** (which critical paths need tests, coverage target)
-
-### Handoff Format
-
-Arya MUST deliver a single **Architecture Document** in this markdown format:
-
-<!-- example: skills/arya/examples/d51aeaf0.md (markdown, 112 lines) -->
-
-### Validation Before Handoff
-
-Before sending this document to Riko, Koda, and Vega, Arya MUST verify:
-
-- [ ] **All pages listed** — no "[TBD]" or "TBD pages"
-- [ ] **Data model complete** — all tables, fields, relationships, indexes documented
-- [ ] **API endpoints specified** — method, path, auth, request/response for every endpoint
-- [ ] **Sprint plan realistic** — daily deliverables, not 50-day features
-- [ ] **Env variables listed** — no hardcoded secrets
-- [ ] **Database migrations** — SQL provided for schema creation
-- [ ] **RLS/tenancy policies** — exact SQL policies documented
-- [ ] **Auth flow end-to-end** — signup → token refresh → protected routes → logout
-- [ ] **Billing integrated** — subscription gating, webhook events, Dodo Payments mapped
-- [ ] **Admin panel defined** — if multi-user, tabs and CRUD operations specified
-- [ ] **Stack chosen and justified** — why A/B/C, what constraints it addresses
-- [ ] **Design system specified** — colors, fonts, spacing, animations, responsive behavior
-- [ ] **No external documentation** — everything in one document; no "see memory file X"
-- [ ] **Risk assessment documented** — technical risks identified with mitigations
-
-**If ANY item is missing → Arya cannot hand off. Complete it first.**
-
----
+<!-- Full content moved to skills/arya/output-architecture-handoff-document.md -->
 
 ## Arya Auto-Fix Loop (Architecture Failures)
 
@@ -661,7 +604,6 @@ on rejection by Rex:
 ---
 
 ## Training 2026-04-11 (b) — Hardened execution protocol (lifts 5.0 → 9+)
-**This block supersedes any earlier prose guidance in this file where they conflict. It is the active protocol.**
 <!-- Full content moved to skills/arya/training-2026-04-11-b-hardened-execution-protocol-lifts-5-0-.md -->
 
 ## Training 2026-04-11 (c) — Uniform Executable Loop Loader
@@ -683,11 +625,11 @@ on rejection by Rex:
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **★ CANONICAL STACK A — NEXT.JS 16 + SUPABASE + RAILWAY (2026-04-10)** — triggers: _canonical, stack, next, supabase, railway, billing, auth, rls_ → `~/.claude/skills/arya/arya-training-validation-scenarios-patterns.md`
-- **[App Name] — Design Vision** — triggers: _app, name, design, vision, stripe, auth, supabase, vercel_ → `~/.claude/skills/arya/design-aware-architecture-protocol.md`
-- **Design System Architecture (Mandatory for Every Project)** — triggers: _design, system, architecture, mandatory, for, project, vercel, ci_ → `~/.claude/skills/arya/design-system-architecture-mandatory-for-every-project.md`
-- **Example (markdown)** — triggers: _example, markdown, billing, auth, session, rls, schema, index_ → `~/.claude/skills/arya/examples/d51aeaf0.md`
-- **Process** — triggers: _process, rls, migration, supabase, deploy, ci, cd, og_ → `~/.claude/skills/arya/process-patterns.md`
-- **Shopify App Architecture Template (Stack B)** — triggers: _shopify, app, architecture, template, stack, billing, subscription, checkout_ → `~/.claude/skills/arya/shopify-app-architecture-template-stack-b.md`
-- **OR** — triggers: _subscription, ci, og, aria, shopify, query, bundle, design_ → `~/.claude/skills/arya/shopify-data-models-api-architecture-stack-b.md`
-- **ADR-NNNN: <Decision Title>** — triggers: _adr-nnnn, decision, title, billing, pricing, auth, rls, schema_ → `~/.claude/skills/arya/training-2026-04-11-b-hardened-execution-protocol-lifts-5-0-.md`
+- **Design System Architecture (Mandatory for Every Project)** — triggers: _design, system, architecture, mandatory, project_ → `~/.claude/skills/arya/design-system-architecture-mandatory-for-every-project.md`
+- **Shopify App Architecture Template (Stack B)** — triggers: _shopify, app, architecture, template, stack, arya, designs, must_ → `~/.claude/skills/arya/shopify-app-architecture-template-stack-b.md`
+- **Shopify Data Models & API Architecture (Stack B)** — triggers: _shopify, data, models, api, architecture, stack, designing, apps_ → `~/.claude/skills/arya/shopify-data-models-api-architecture-stack-b.md`
+- **DESIGN-AWARE ARCHITECTURE PROTOCOL** — triggers: _design-aware, architecture, protocol, problem, arya, designs, data, models_ → `~/.claude/skills/arya/design-aware-architecture-protocol.md`
+- **Training 2026-04-11 (b) — Hardened execution protocol (lifts 5.0 → 9+)** — triggers: _training, hardened, execution, protocol, lifts, block, supersedes, earlier_ → `~/.claude/skills/arya/training-2026-04-11-b-hardened-execution-protocol-lifts-5-0-.md`
+- **Process** — triggers: _process_ → `~/.claude/skills/arya/process-patterns.md`
+- **ARYA TRAINING VALIDATION SCENARIOS** — triggers: _arya, training, validation, scenarios_ → `~/.claude/skills/arya/arya-training-validation-scenarios-patterns.md`
+- **Output: Architecture Handoff Document** — triggers: _output, architecture, handoff, document, arya, must, include, sections_ → `~/.claude/skills/arya/output-architecture-handoff-document.md`

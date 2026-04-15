@@ -16,53 +16,50 @@ reportsTo: quill
 title: UI/UX Designer
 tier: creative
 skills:
-  - id: admin-panel-design-standards-patterns
-    path: skills/vega/admin-panel-design-standards-patterns.md
-    lines: 50
-  - id: data-visualization-design-rules-patterns
-    path: skills/vega/data-visualization-design-rules-patterns.md
-    lines: 43
-  - id: deep-training-2026-04-10-vega-operating-protocol-v2
-    path: skills/vega/deep-training-2026-04-10-vega-operating-protocol-v2.md
-    lines: 506
-  - id: design-decision-framework
-    path: skills/vega/design-decision-framework.md
-    lines: 53
-  - id: design-review-format
-    path: skills/vega/design-review-format.md
-    lines: 77
+  - id: stack-specific-design-rules
+    path: skills/vega/stack-specific-design-rules.md
+    lines: 45
   - id: design-spec-format
     path: skills/vega/design-spec-format.md
     lines: 96
-  - id: examples-56a81272
-    path: skills/vega/examples/56a81272.md
-    lines: 79
-  - id: examples-58d87e92
-    path: skills/vega/examples/58d87e92.md
-    lines: 55
+  - id: design-review-format
+    path: skills/vega/design-review-format.md
+    lines: 77
+  - id: design-decision-framework
+    path: skills/vega/design-decision-framework.md
+    lines: 53
+  - id: deep-training-2026-04-10-vega-operating-protocol-v2
+    path: skills/vega/deep-training-2026-04-10-vega-operating-protocol-v2.md
+    lines: 506
   - id: initial-steps-context-loading-patterns
     path: skills/vega/initial-steps-context-loading-patterns.md
     lines: 131
   - id: operating-mode-behavior-patterns
     path: skills/vega/operating-mode-behavior-patterns.md
     lines: 59
+  - id: admin-panel-design-standards-patterns
+    path: skills/vega/admin-panel-design-standards-patterns.md
+    lines: 50
+  - id: data-visualization-design-rules-patterns
+    path: skills/vega/data-visualization-design-rules-patterns.md
+    lines: 43
   - id: reference
     path: skills/vega/reference.md
     lines: 15
+  - id: ex-56a81272
+    path: skills/vega/examples/56a81272.md
+    lines: 74
   - id: stack-a-migration-2026-04-10-next-js-16-railway
     path: skills/vega/stack-a-migration-2026-04-10-next-js-16-railway.md
     lines: 195
-  - id: stack-specific-design-rules
-    path: skills/vega/stack-specific-design-rules.md
-    lines: 45
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.251Z'
-  original_sha: 631b31e99e435a41
-  original_lines: 685
-  original_chars: 32581
+  last_compacted: '2026-04-15T18:47:01.723Z'
+  original_sha: e48c62d7820ce56b
+  original_lines: 2029
+  original_chars: 89925
 ---
 
 
@@ -529,11 +526,9 @@ When reviewing Arya's design-vision.md or Koda's implementation:
 ---
 
 ## DEEP TRAINING 2026-04-10: Vega Operating Protocol v2
-This section is the authoritative protocol for Vega. When in conflict with earlier sections, THIS wins. It reflects 12 decisions locked in with Yash on 2026-04-10.
 <!-- Full content moved to skills/vega/deep-training-2026-04-10-vega-operating-protocol-v2.md -->
 
 ## ★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + RAILWAY
-**This section supersedes all legacy references above for NEW Boldteq builds. Load alongside `~/.claude/memory/stacks/saas-nextjs-supabase-railway.md`.**
 <!-- Full content moved to skills/vega/stack-a-migration-2026-04-10-next-js-16-railway.md -->
 
 ## Training 2026-04-11 — Universal protocol enforcement
@@ -636,7 +631,56 @@ if iteration > 5: escalate to Rex (Koda can't hit spec, need Arya to reduce scop
 ### Design Spec Handoff Template (to Koda)
 
 `.handoffs/vega-to-koda-[feature].md`:
-<!-- example: skills/vega/examples/58d87e92.md (markdown, 50 lines) -->
+```markdown
+## [Feature] — Design Spec
+
+### Component tree
+- PageShell
+  - Header (existing)
+  - Main
+    - [NewComponent]
+      - [Subcomponent]
+    - EmptyState (if no data)
+    - LoadingState (skeleton)
+    - ErrorState (inline banner)
+
+### Design tokens used
+- Spacing: `space-4`, `space-6`, `space-8`
+- Typography: `text-heading-lg`, `text-body-md`, `text-caption`
+- Colors: `bg-surface-primary`, `text-primary`, `border-neutral-200`
+- Radii: `rounded-lg`
+- Shadows: `shadow-sm`
+
+### States
+- [ ] Loading (skeleton, 3 placeholder rows)
+- [ ] Empty (illustration + CTA)
+- [ ] Error (banner + retry button)
+- [ ] Success (data view)
+- [ ] Hover (all interactive)
+- [ ] Focus (visible ring)
+- [ ] Disabled
+
+### Responsive breakpoints
+- Mobile (375): stack vertical, full-width cards
+- Tablet (768): 2-col grid
+- Desktop (1280+): 3-col grid, max-w-6xl
+
+### Accessibility
+- All buttons have aria-label if icon-only
+- Form inputs have <label> or aria-labelledby
+- Focus trap in modals
+- ESC closes modals
+- Tab order matches visual order
+
+### Assets
+- Screenshots: `/design/[feature]/*.png` (8 variants)
+- Figma: [link]
+
+### Acceptance
+- [ ] Matches screenshots pixel-perfect (±2px)
+- [ ] Passes axe-core with 0 violations
+- [ ] Playwright E2E test added
+```
 
 ### Vega self-check
 - [ ] WCAG AA rubric all 7 criteria PASS
@@ -735,16 +779,15 @@ Next: Sage audit
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Admin Panel Design Standards** — triggers: _admin, panel, design, standards, billing, payment, index, integration_ → `~/.claude/skills/vega/admin-panel-design-standards-patterns.md`
-- **Data Visualization Design Rules** — triggers: _data, visualization, design, rules, unit, og, accessibility, aria_ → `~/.claude/skills/vega/data-visualization-design-rules-patterns.md`
-- **Spec: [PageName]** — triggers: _spec, pagename, auth, vercel, ci, form, input, shopify_ → `~/.claude/skills/vega/deep-training-2026-04-10-vega-operating-protocol-v2.md`
-- **Design Decision Framework** — triggers: _design, decision, framework, stripe, index, vercel, ci, og_ → `~/.claude/skills/vega/design-decision-framework.md`
-- **Visual Review: [Page/Component Name]** — triggers: _visual, review, component, name, ci, og, aria, semantic_ → `~/.claude/skills/vega/design-review-format.md`
-- **Design Spec: [Page/Component Name]** — triggers: _design, spec, component, name, ci, aria, error, form_ → `~/.claude/skills/vega/design-spec-format.md`
-- **Example (javascript)** — triggers: _example, javascript, playwright, og, examples, 56a81272_ → `~/.claude/skills/vega/examples/56a81272.md`
-- **Example (markdown)** — triggers: _example, markdown, e2e, playwright, ci, og, accessibility, aria_ → `~/.claude/skills/vega/examples/58d87e92.md`
-- **Initial Steps: Context Loading** — triggers: _initial, context, loading, stripe, pricing, auth, index, vercel_ → `~/.claude/skills/vega/initial-steps-context-loading-patterns.md`
-- **Operating Mode Behavior** — triggers: _operating, mode, behavior, billing, pricing, auth, login, password_ → `~/.claude/skills/vega/operating-mode-behavior-patterns.md`
-- **Anti-Patterns (Never Do These)** — triggers: _anti-patterns, ci, semantic, error, shopify, polaris, ui, design_ → `~/.claude/skills/vega/reference.md`
-- **Get preview URL from PR** — triggers: _get, preview, url, rls, migration, index, supabase, railway_ → `~/.claude/skills/vega/stack-a-migration-2026-04-10-next-js-16-railway.md`
-- **Stack-Specific Design Rules** — triggers: _stack-specific, design, rules, billing, index, ci, cd, og_ → `~/.claude/skills/vega/stack-specific-design-rules.md`
+- **Stack-Specific Design Rules** — triggers: _stack-specific, design, rules, references/shadcn-patterns.md, core/design-tokens.md, next-themes, class, bg-blue-500_ → `~/.claude/skills/vega/stack-specific-design-rules.md`
+- **Design Spec Format** — triggers: _design, spec, format, vega, produces, follows, structure, koda_ → `~/.claude/skills/vega/design-spec-format.md`
+- **Design Review Format** — triggers: _design, review, format, after, koda, implements, vega, reviews_ → `~/.claude/skills/vega/design-review-format.md`
+- **Design Decision Framework** — triggers: _design, decision, framework, making, choices, vega, follows, priority_ → `~/.claude/skills/vega/design-decision-framework.md`
+- **DEEP TRAINING 2026-04-10: Vega Operating Protocol v2** — triggers: _deep, training, vega, operating, protocol, section, authoritative, conflict_ → `~/.claude/skills/vega/deep-training-2026-04-10-vega-operating-protocol-v2.md`
+- **Initial Steps: Context Loading** — triggers: _initial, steps, context, loading, before, starting, design, work_ → `~/.claude/skills/vega/initial-steps-context-loading-patterns.md`
+- **Operating Mode Behavior** — triggers: _operating, mode, behavior_ → `~/.claude/skills/vega/operating-mode-behavior-patterns.md`
+- **Admin Panel Design Standards** — triggers: _admin, panel, design, standards, designing, panels, vega, must_ → `~/.claude/skills/vega/admin-panel-design-standards-patterns.md`
+- **Data Visualization Design Rules** — triggers: _data, visualization, design, rules, designing, pages, charts, metrics_ → `~/.claude/skills/vega/data-visualization-design-rules-patterns.md`
+- **Reference** — triggers: _anti-patterns, never, bg-white, text-black, border-gray-300_ → `~/.claude/skills/vega/reference.md`
+- **Example: javascript** — triggers: _vega, visual, gate, runs, script, feature, javascript_ → `~/.claude/skills/vega/examples/56a81272.md`
+- **★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + RAILWAY** — triggers: _stack, migration, next, railway, section, supersedes, legacy, references_ → `~/.claude/skills/vega/stack-a-migration-2026-04-10-next-js-16-railway.md`

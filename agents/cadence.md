@@ -21,20 +21,20 @@ costCap: $3
 class: REVIEWER
 category: hr
 skills:
-  - id: hr-partner-handoff-contracts-patterns
-    path: skills/cadence/hr-partner-handoff-contracts-patterns.md
-    lines: 191
   - id: weekly-review-cycle-mondays-09-00-utc-patterns
     path: skills/cadence/weekly-review-cycle-mondays-09-00-utc-patterns.md
     lines: 178
+  - id: hr-partner-handoff-contracts-patterns
+    path: skills/cadence/hr-partner-handoff-contracts-patterns.md
+    lines: 191
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.166Z'
-  original_sha: ec7cf72bb4b48c62
-  original_lines: 230
-  original_chars: 9510
+  last_compacted: '2026-04-15T18:47:01.582Z'
+  original_sha: f211913cea7d5578
+  original_lines: 586
+  original_chars: 22142
 ---
 
 # Cadence — Head of People
@@ -263,5 +263,5 @@ Opus for complex peer analysis + decision synthesis.
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **HR Partner Handoff Contracts** — triggers: _partner, handoff, contracts, testing, ci, og, validation, input_ → `~/.claude/skills/cadence/hr-partner-handoff-contracts-patterns.md`
-- **Weekly Review Cycle (Mondays 09:00 UTC)** — triggers: _weekly, review, cycle, mondays, utc, supabase, deploy, timeout_ → `~/.claude/skills/cadence/weekly-review-cycle-mondays-09-00-utc-patterns.md`
+- **Weekly Review Cycle (Mondays 09:00 UTC)** — triggers: _weekly, review, cycle, mondays, utc, execute, strict, order_ → `~/.claude/skills/cadence/weekly-review-cycle-mondays-09-00-utc-patterns.md`
+- **HR Partner Handoff Contracts** — triggers: _partner, handoff, contracts_ → `~/.claude/skills/cadence/hr-partner-handoff-contracts-patterns.md`

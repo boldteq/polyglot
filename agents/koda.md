@@ -16,113 +16,17 @@ reportsTo: arya
 title: Lead Developer
 tier: engineer
 skills:
-  - id: accessibility-first-development-wcag-2-1-aa-minimum
-    path: skills/koda/accessibility-first-development-wcag-2-1-aa-minimum.md
-    lines: 49
   - id: advanced-patterns
     path: skills/koda/advanced-patterns.md
     lines: 415
-  - id: before-writing-code-patterns
-    path: skills/koda/before-writing-code-patterns.md
-    lines: 43
-  - id: build-phases-non-negotiable-order
-    path: skills/koda/build-phases-non-negotiable-order.md
-    lines: 110
-  - id: completion-proof-protocol-mandatory-cannot-skip
-    path: skills/koda/completion-proof-protocol-mandatory-cannot-skip.md
-    lines: 93
-  - id: deep-edge-case-race-condition-protocol
-    path: skills/koda/deep-edge-case-race-condition-protocol.md
-    lines: 198
-  - id: deep-form-patterns
-    path: skills/koda/deep-form-patterns.md
-    lines: 251
-  - id: deep-pre-build-protocol-run-before-every-single-task
-    path: skills/koda/deep-pre-build-protocol-run-before-every-single-task.md
-    lines: 150
-  - id: deep-react-query-patterns
-    path: skills/koda/deep-react-query-patterns.md
-    lines: 185
-  - id: deep-security-patterns-never-skip
-    path: skills/koda/deep-security-patterns-never-skip.md
-    lines: 188
-  - id: deep-typescript-patterns-strict-mode-always
-    path: skills/koda/deep-typescript-patterns-strict-mode-always.md
-    lines: 162
-  - id: error-handling-rules
-    path: skills/koda/error-handling-rules.md
-    lines: 57
-  - id: examples-92468039
-    path: skills/koda/examples/92468039.md
-    lines: 51
-  - id: examples-b6c41707
-    path: skills/koda/examples/b6c41707.md
-    lines: 122
-  - id: incremental-build-protocol-adding-features-to-existing-codeb-patterns
-    path: >-
-      skills/koda/incremental-build-protocol-adding-features-to-existing-codeb-patterns.md
-    lines: 60
-  - id: koda-auto-fix-loop-domain-specific-patterns
-    path: skills/koda/koda-auto-fix-loop-domain-specific-patterns.md
-    lines: 98
-  - id: koda-self-code-review-run-on-every-file-before-handoff
-    path: skills/koda/koda-self-code-review-run-on-every-file-before-handoff.md
-    lines: 162
-  - id: koda-training-validation-scenarios-patterns
-    path: skills/koda/koda-training-validation-scenarios-patterns.md
-    lines: 81
-  - id: output-self-validation-protocol
-    path: skills/koda/output-self-validation-protocol.md
-    lines: 120
-  - id: pii-awareness-in-application-code-patterns
-    path: skills/koda/pii-awareness-in-application-code-patterns.md
-    lines: 32
-  - id: premium-ui-ux-standards-mandatory-for-every-feature
-    path: skills/koda/premium-ui-ux-standards-mandatory-for-every-feature.md
-    lines: 315
-  - id: production-grade-execution-rules-non-negotiable-patterns
-    path: skills/koda/production-grade-execution-rules-non-negotiable-patterns.md
-    lines: 79
-  - id: shopify-design-implementation-rules-stack-b
-    path: skills/koda/shopify-design-implementation-rules-stack-b.md
-    lines: 378
-  - id: shopify-extension-build-patterns-stack-b
-    path: skills/koda/shopify-extension-build-patterns-stack-b.md
-    lines: 541
-  - id: shopify-polaris-web-components-for-new-apps-stack-b-update
-    path: skills/koda/shopify-polaris-web-components-for-new-apps-stack-b-update.md
-    lines: 82
-  - id: stack-a-next-js-supabase-saas
-    path: skills/koda/stack-a-next-js-supabase-saas.md
-    lines: 43
-  - id: stack-b-shopify-app-react-router-7-for-new-remix-for-existin
-    path: >-
-      skills/koda/stack-b-shopify-app-react-router-7-for-new-remix-for-existin.md
-    lines: 43
-  - id: stack-c-ai-features-vercel-ai-sdk-anthropic-openai
-    path: skills/koda/stack-c-ai-features-vercel-ai-sdk-anthropic-openai.md
-    lines: 170
-  - id: testing-hooks
-    path: skills/koda/testing-hooks.md
-    lines: 45
-  - id: the-patterns-koda-must-use-locked
-    path: skills/koda/the-patterns-koda-must-use-locked.md
-    lines: 236
-  - id: tools-supabase
-    path: skills/koda/tools/supabase.md
-    lines: 21
-  - id: ui-ux-alignment-modern-saas-niche-colors-shopify-native-fixe-patterns
-    path: >-
-      skills/koda/ui-ux-alignment-modern-saas-niche-colors-shopify-native-fixe-patterns.md
-    lines: 102
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.196Z'
-  original_sha: ea6ebae0bc3bc1ca
-  original_lines: 208
-  original_chars: 16824
+  last_compacted: '2026-04-15T18:47:01.607Z'
+  original_sha: cfccc63b35e0d12a
+  original_lines: 582
+  original_chars: 31205
 ---
 
 
@@ -292,42 +196,10 @@ When Koda builds ANY SaaS app feature, these components are REQUIRED (not option
 <!-- 12 patterns moved to skills/koda/incremental-build-protocol-adding-features-to-existing-codeb-patterns.md -->
 
 ## Advanced Patterns
-**React: Zustand (app-wide state), Jotai (atomic/fine-grained), React Context (read-only values like theme/locale only). Check CLAUDE.md for project's chosen tool — never mix state libraries**
-<!-- example: skills/koda/examples/92468039.md (typescript, 46 lines) -->
+<!-- Full content moved to skills/koda/advanced-patterns.md -->
 
 ## Skill Library (load on demand)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Accessibility-First Development (WCAG 2.1 AA minimum)** — triggers: _accessibility-first, development, wcag, minimum, testing, og, accessibility, aria_ → `~/.claude/skills/koda/accessibility-first-development-wcag-2-1-aa-minimum.md`
-- **Check for duplicate component names** — triggers: _for, duplicate, component, names, ci, og, error, form_ → `~/.claude/skills/koda/advanced-patterns.md`
-- **Before Writing Code** — triggers: _writing, migration, index, unit, ci, og, nextjs, query_ → `~/.claude/skills/koda/before-writing-code-patterns.md`
-- **Build Phases (Non-Negotiable Order)** — triggers: _build, phases, non-negotiable, order, auth, index, ci, og_ → `~/.claude/skills/koda/build-phases-non-negotiable-order.md`
-- **PORT: 3000 for Next.js projects — check CLAUDE.md for stack** — triggers: _port, for, next, projects, stack, billing, auth, ci_ → `~/.claude/skills/koda/completion-proof-protocol-mandatory-cannot-skip.md`
-- **DEEP EDGE CASE & RACE CONDITION PROTOCOL** — triggers: _deep, edge, case, race, condition, protocol, og, error_ → `~/.claude/skills/koda/deep-edge-case-race-condition-protocol.md`
-- **DEEP FORM PATTERNS** — triggers: _deep, form, schema, og, error, validation, zod, input_ → `~/.claude/skills/koda/deep-form-patterns.md`
-- **1. Ensure screenshot utility exists (create from template if not)** — triggers: _screenshot, utility, exists, template, not, subscription, auth, rls_ → `~/.claude/skills/koda/deep-pre-build-protocol-run-before-every-single-task.md`
-- **DEEP REACT QUERY PATTERNS** — triggers: _deep, react, query, supabase, ci, error, throw, validation_ → `~/.claude/skills/koda/deep-react-query-patterns.md`
-- **DEEP SECURITY PATTERNS (Never Skip)** — triggers: _deep, security, skip, auth, schema, supabase, ci, retry_ → `~/.claude/skills/koda/deep-security-patterns-never-skip.md`
-- **DEEP TYPESCRIPT PATTERNS (Strict Mode Always)** — triggers: _deep, typescript, strict, mode, schema, error, zod, input_ → `~/.claude/skills/koda/deep-typescript-patterns-strict-mode-always.md`
-- **Error Handling Rules** — triggers: _error, handling, rules, auth, og, catch, retry, validation_ → `~/.claude/skills/koda/error-handling-rules.md`
-- **Example (typescript)** — triggers: _example, typescript, trigger, accessibility, wcag, semantic, form, react_ → `~/.claude/skills/koda/examples/92468039.md`
-- **Example (bash)** — triggers: _example, bash, deploy, ci, form, performance, ui, ux_ → `~/.claude/skills/koda/examples/b6c41707.md`
-- **Incremental Build Protocol (Adding Features to Existing Codebases)** — triggers: _incremental, build, protocol, adding, features, existing, codebases, migration_ → `~/.claude/skills/koda/incremental-build-protocol-adding-features-to-existing-codeb-patterns.md`
-- **Koda Auto-Fix Loop (Domain-Specific)** — triggers: _auto-fix, loop, domain-specific, auth, rls, schema, index, supabase_ → `~/.claude/skills/koda/koda-auto-fix-loop-domain-specific-patterns.md`
-- **1. TypeScript strict check** — triggers: _typescript, strict, subscription, auth, session, rls, supabase, ci_ → `~/.claude/skills/koda/koda-self-code-review-run-on-every-file-before-handoff.md`
-- **★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + SUPABASE + RAILWAY (SUPERSEDES ALL LEGACY/VERCEL/STRIPE CONTENT)** — triggers: _stack, migration, next, supabase, railway, supersedes, all, legacy_ → `~/.claude/skills/koda/koda-training-validation-scenarios-patterns.md`
-- **Check TypeScript** — triggers: _typescript, migration, trigger, ci, og, error, catch, form_ → `~/.claude/skills/koda/output-self-validation-protocol.md`
-- **PII Awareness in Application Code** — triggers: _pii, awareness, application, auth, session, supabase, og, error_ → `~/.claude/skills/koda/pii-awareness-in-application-code-patterns.md`
-- **Premium UI/UX Standards (Mandatory for Every Feature)** — triggers: _premium, standards, mandatory, for, feature, ci, aria, semantic_ → `~/.claude/skills/koda/premium-ui-ux-standards-mandatory-for-every-feature.md`
-- **MANDATORY after every code change — no exceptions** — triggers: _mandatory, after, change, exceptions, auth, trigger, shopify, polaris_ → `~/.claude/skills/koda/production-grade-execution-rules-non-negotiable-patterns.md`
-- **Shopify Design Implementation Rules (Stack B)** — triggers: _shopify, design, implementation, rules, stack, metadata, form, polaris_ → `~/.claude/skills/koda/shopify-design-implementation-rules-stack-b.md`
-- **Types: admin_block, admin_action, theme, checkout_ui_extension, delivery_customization, discount_function, payment_customization, etc.** — triggers: _admin, block, action, theme, checkout, extension, delivery, customization_ → `~/.claude/skills/koda/shopify-extension-build-patterns-stack-b.md`
-- **SHOPIFY: POLARIS WEB COMPONENTS FOR NEW APPS (Stack B Update)** — triggers: _shopify, polaris, web, components, for, new, apps, stack_ → `~/.claude/skills/koda/shopify-polaris-web-components-for-new-apps-stack-b-update.md`
-- **Stack A: Next.js + Supabase SaaS** — triggers: _stack, next, supabase, saas, auth, login, session, rls_ → `~/.claude/skills/koda/stack-a-next-js-supabase-saas.md`
-- **Stack B: Shopify App (React Router 7 for new / Remix for existing)** — triggers: _stack, shopify, app, react, router, for, new, remix_ → `~/.claude/skills/koda/stack-b-shopify-app-react-router-7-for-new-remix-for-existin.md`
-- **Stack C: AI Features (Vercel AI SDK + Anthropic/OpenAI)** — triggers: _stack, features, vercel, sdk, anthropic, openai, auth, supabase_ → `~/.claude/skills/koda/stack-c-ai-features-vercel-ai-sdk-anthropic-openai.md`
-- **Testing Hooks** — triggers: _testing, hooks, supabase, jest, typescript_ → `~/.claude/skills/koda/testing-hooks.md`
-- **The patterns Koda must use (locked)** — triggers: _the, use, locked, auth, login, schema, supabase, og_ → `~/.claude/skills/koda/the-patterns-koda-must-use-locked.md`
-- **supabase** — triggers: _supabase, ci, query, typescript, ui, tools_ → `~/.claude/skills/koda/tools/supabase.md`
-- **UI/UX ALIGNMENT: MODERN SAAS + NICHE COLORS + SHOPIFY NATIVE (Fixes Failure Mode #3)** — triggers: _alignment, modern, saas, niche, colors, shopify, native, fixes_ → `~/.claude/skills/koda/ui-ux-alignment-modern-saas-niche-colors-shopify-native-fixe-patterns.md`
+- **Advanced Patterns** — triggers: _advanced, patterns, react, zustand, app-wide, state, jotai, atomic_ → `~/.claude/skills/koda/advanced-patterns.md`

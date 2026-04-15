@@ -14,35 +14,32 @@ reportsTo: bolt
 title: Ops Monitor
 tier: engineer
 skills:
-  - id: examples-a81eadbd
-    path: skills/hawk/examples/a81eadbd.md
-    lines: 54
-  - id: examples-ac389936
-    path: skills/hawk/examples/ac389936.md
-    lines: 51
-  - id: memory-loading-before-every-task-patterns
-    path: skills/hawk/memory-loading-before-every-task-patterns.md
-    lines: 49
-  - id: runbook-creation-for-common-incidents
-    path: skills/hawk/runbook-creation-for-common-incidents.md
-    lines: 140
-  - id: stack-a-migration-2026-04-10-next-js-16-railway-patterns
-    path: skills/hawk/stack-a-migration-2026-04-10-next-js-16-railway-patterns.md
-    lines: 137
   - id: stack-a-monitoring-stack-next-js-16-supabase-railway
     path: skills/hawk/stack-a-monitoring-stack-next-js-16-supabase-railway.md
     lines: 35
-  - id: tools-sentry
+  - id: runbook-creation-for-common-incidents
+    path: skills/hawk/runbook-creation-for-common-incidents.md
+    lines: 140
+  - id: tool-sentry
     path: skills/hawk/tools/sentry.md
-    lines: 25
+    lines: 20
+  - id: memory-loading-before-every-task-patterns
+    path: skills/hawk/memory-loading-before-every-task-patterns.md
+    lines: 49
+  - id: stack-a-migration-2026-04-10-next-js-16-railway-patterns
+    path: skills/hawk/stack-a-migration-2026-04-10-next-js-16-railway-patterns.md
+    lines: 137
+  - id: ex-ac389936
+    path: skills/hawk/examples/ac389936.md
+    lines: 46
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.182Z'
-  original_sha: bacbd435f2817c8f
-  original_lines: 1648
-  original_chars: 54929
+  last_compacted: '2026-04-15T18:47:01.599Z'
+  original_sha: 93905cd43dbb09fe
+  original_lines: 2096
+  original_chars: 69817
 ---
 
 
@@ -1066,7 +1063,6 @@ Contact: [on-call engineer Slack @mention]
 ---
 
 ## RUNBOOK CREATION FOR COMMON INCIDENTS
-Create and maintain runbooks for recurring incidents. Auto-trigger from alerts.
 <!-- Full content moved to skills/hawk/runbook-creation-for-common-incidents.md -->
 
 ## AVAILABILITY SLO/SLI FRAMEWORK
@@ -1235,7 +1231,55 @@ Action: Rebuilding indexes on schedule to prevent recurrence.
 
 Use this for all P0/P1 incidents and significant P2s.
 
-<!-- example: skills/hawk/examples/a81eadbd.md (markdown, 49 lines) -->
+```markdown
+# Incident Post-Mortem: [Product] [Incident Name]
+
+## Timeline
+- **14:23** Alert: error rate spike detected
+- **14:25** On-call engineer paged
+- **14:28** Root cause identified: database memory leak
+- **14:31** Mitigation: restarted PostgreSQL connection pool
+- **14:35** Service recovered, error rate normal
+- **14:40** Verified: no data loss, all systems healthy
+
+## Root Cause
+PostgreSQL was leaking connections over 6 hours due to: [code / config / external factor]
+
+## Impact
+- Duration: 12 minutes
+- Affected users: ~200 (8% of active)
+- Requests failed: ~3,200 (0.5% of total in window)
+- Downtime cost: ~$X in lost revenue
+- Data loss: None
+
+## What Went Well
+- Alert triggered within 2 min
+- On-call engineer was available
+- Runbook covered this scenario
+- Recovery was quick
+
+## What Didn't Go Well
+- New code from 1 week ago introduced leak (not caught in PR review)
+- No integration test for connection pool saturation
+- Monitoring wasn't sensitive enough (alert came late)
+
+## Actions (to prevent recurrence)
+1. **Vex**: Add connection pool exhaustion test to CI ([due: 1 week])
+2. **Koda**: Add slow connection cleanup query to nightly maintenance ([due: 1 week])
+3. **Hawk**: Lower alert threshold for connection count from 80% to 70% utilization ([due: immediate])
+4. **Mira**: Update memory: connection pool leaks typically from improper try/catch in async handlers ([due: immediate])
+
+## Lessons Learned
+Connection pools are a common failure mode under growth. We should:
+- Test connection limits in staging
+- Monitor connection count + age
+- Have documented recovery procedure (done now)
+
+---
+Authored by: [On-call engineer]
+Date: [Date]
+Resolution status: Actions assigned and tracking
+```
 
 ---
 
@@ -1684,10 +1728,9 @@ scaling triggers:
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Example (markdown)** — triggers: _example, markdown, auth, trigger, postgres, integration, ci, error_ → `~/.claude/skills/hawk/examples/a81eadbd.md`
-- **Example (typescript)** — triggers: _example, typescript, supabase, deploy, error, catch, examples, ac389936_ → `~/.claude/skills/hawk/examples/ac389936.md`
-- **Memory Loading (Before Every Task)** — triggers: _loading, task, trigger, unit, ci, error, form, nextjs_ → `~/.claude/skills/hawk/memory-loading-before-every-task-patterns.md`
-- **[Incident Name] Runbook** — triggers: _incident, name, runbook, auth, trigger, postgres, supabase, railway_ → `~/.claude/skills/hawk/runbook-creation-for-common-incidents.md`
-- **1. Sentry** — triggers: _sentry, migration, trigger, supabase, deploy, railway, og, error_ → `~/.claude/skills/hawk/stack-a-migration-2026-04-10-next-js-16-railway-patterns.md`
-- **Stack A Monitoring Stack (Next.js 16 + Supabase + Railway)** — triggers: _stack, monitoring, next, supabase, railway, payment, auth, session_ → `~/.claude/skills/hawk/stack-a-monitoring-stack-next-js-16-supabase-railway.md`
-- **sentry** — triggers: _sentry, deploy, railway, ci, nextjs, ui, tools_ → `~/.claude/skills/hawk/tools/sentry.md`
+- **Stack A Monitoring Stack (Next.js 16 + Supabase + Railway)** — triggers: _stack, monitoring, next, supabase, railway, next_public_sentry_dsn, posthog-js, posthog-node_ → `~/.claude/skills/hawk/stack-a-monitoring-stack-next-js-16-supabase-railway.md`
+- **RUNBOOK CREATION FOR COMMON INCIDENTS** — triggers: _runbook, creation, common, incidents, create, maintain, runbooks, recurring_ → `~/.claude/skills/hawk/runbook-creation-for-common-incidents.md`
+- **Tool: sentry** — triggers: _sentry, config, next, railway, sentry.server.config.ts_ → `~/.claude/skills/hawk/tools/sentry.md`
+- **Memory Loading (Before Every Task)** — triggers: _memory, loading, before, task, monitoring, responding, incident, read_ → `~/.claude/skills/hawk/memory-loading-before-every-task-patterns.md`
+- **★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + RAILWAY** — triggers: _stack, migration, next, railway, section, supersedes, legacy, monitoring_ → `~/.claude/skills/hawk/stack-a-migration-2026-04-10-next-js-16-railway-patterns.md`
+- **Example: typescript** — triggers: _universal, health, endpoint, required, deployments, typescript_ → `~/.claude/skills/hawk/examples/ac389936.md`

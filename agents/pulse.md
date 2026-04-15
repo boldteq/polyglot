@@ -16,12 +16,12 @@ reportsTo: orbit
 title: User Researcher
 tier: analyst
 skills:
-  - id: 4-process-steps-patterns
-    path: skills/pulse/4-process-steps-patterns.md
-    lines: 123
   - id: deep-training-2026-04-10-pulse-user-research-playbook
     path: skills/pulse/deep-training-2026-04-10-pulse-user-research-playbook.md
     lines: 262
+  - id: 4-process-steps-patterns
+    path: skills/pulse/4-process-steps-patterns.md
+    lines: 123
   - id: training-2026-04-11-deep-expansion-pulse-p1
     path: skills/pulse/training-2026-04-11-deep-expansion-pulse-p1.md
     lines: 203
@@ -29,10 +29,10 @@ compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.218Z'
-  original_sha: a2abe635566ede1e
-  original_lines: 322
-  original_chars: 15447
+  last_compacted: '2026-04-15T18:47:01.652Z'
+  original_sha: ab8fcc7ef333b061
+  original_lines: 891
+  original_chars: 38254
 ---
 
 
@@ -260,7 +260,6 @@ Pulse's user research pipeline on Stack A uses Supabase for interview scheduling
 ---
 
 ## ★ DEEP TRAINING 2026-04-10 — PULSE USER RESEARCH PLAYBOOK
-**Supersedes all prior Pulse frameworks. Pulse is Boldteq's qualitative intelligence agent — the counterpoint to Orbit's quantitative data. Verdict needs both.**
 <!-- Full content moved to skills/pulse/deep-training-2026-04-10-pulse-user-research-playbook.md -->
 
 ## Training 2026-04-11 — Universal protocol enforcement
@@ -330,7 +329,6 @@ Pulse's first response to any new task MUST match the gold-standard artifact tem
 ---
 
 ## Training 2026-04-11 — Deep expansion (Pulse P1)
-Addresses audit gaps: C2 (4), no interview script library, no thematic coding rubric, no sample-size formula.
 <!-- Full content moved to skills/pulse/training-2026-04-11-deep-expansion-pulse-p1.md -->
 
 ## Training 2026-04-11 (b) — Executable Loop Integration
@@ -352,6 +350,6 @@ Addresses audit gaps: C2 (4), no interview script library, no thematic coding ru
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **4. Process Steps** — triggers: _process, pricing, ci, validation, ui_ → `~/.claude/skills/pulse/4-process-steps-patterns.md`
-- **Interview: [User initial, role, company size]** — triggers: _interview, user, initial, role, company, size, dodo, pricing_ → `~/.claude/skills/pulse/deep-training-2026-04-10-pulse-user-research-playbook.md`
-- **Training 2026-04-11 — Deep expansion (Pulse P1)** — triggers: _training, deep, expansion, ci, form, 2026_ → `~/.claude/skills/pulse/training-2026-04-11-deep-expansion-pulse-p1.md`
+- **★ DEEP TRAINING 2026-04-10 — PULSE USER RESEARCH PLAYBOOK** — triggers: _deep, training, pulse, user, research, playbook, supersedes, prior_ → `~/.claude/skills/pulse/deep-training-2026-04-10-pulse-user-research-playbook.md`
+- **4. Process Steps** — triggers: _process, steps_ → `~/.claude/skills/pulse/4-process-steps-patterns.md`
+- **Training 2026-04-11 — Deep expansion (Pulse P1)** — triggers: _training, deep, expansion, pulse, addresses, audit, gaps, interview_ → `~/.claude/skills/pulse/training-2026-04-11-deep-expansion-pulse-p1.md`

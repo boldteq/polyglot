@@ -15,33 +15,33 @@ reportsTo: rex
 title: VP Research
 tier: leadership
 skills:
-  - id: deep-training-2026-04-10-nova-competitive-intelligence-playb
-    path: >-
-      skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md
-    lines: 241
-  - id: deep-training-2026-04-10-nova-operating-protocol-v2
-    path: skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md
-    lines: 555
-  - id: output-format-patterns
-    path: skills/nova/output-format-patterns.md
-    lines: 162
-  - id: research-process-patterns
-    path: skills/nova/research-process-patterns.md
-    lines: 380
   - id: shopify-ecosystem-research-points-stack-b
     path: skills/nova/shopify-ecosystem-research-points-stack-b.md
     lines: 115
   - id: shopify-launch-distribution-research-stack-b
     path: skills/nova/shopify-launch-distribution-research-stack-b.md
     lines: 204
+  - id: deep-training-2026-04-10-nova-operating-protocol-v2
+    path: skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md
+    lines: 555
+  - id: deep-training-2026-04-10-nova-competitive-intelligence-playb
+    path: >-
+      skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md
+    lines: 241
+  - id: research-process-patterns
+    path: skills/nova/research-process-patterns.md
+    lines: 380
+  - id: output-format-patterns
+    path: skills/nova/output-format-patterns.md
+    lines: 162
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.213Z'
-  original_sha: c3c1ef455e2af16b
-  original_lines: 546
-  original_chars: 27312
+  last_compacted: '2026-04-15T18:47:01.639Z'
+  original_sha: 9a515b255f9d5fd4
+  original_lines: 2174
+  original_chars: 96942
 ---
 
 
@@ -356,7 +356,6 @@ await fetch('http://localhost:3847/api/learning/record', {
 ---
 
 ## DEEP TRAINING 2026-04-10: Nova Operating Protocol v2
-Authoritative section. When in conflict with earlier sections, THIS wins. Reflects 12 decisions locked in with Yash on 2026-04-10.
 <!-- Full content moved to skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md -->
 
 ## ★ STACK A MIGRATION 2026-04-10
@@ -376,7 +375,6 @@ Stack B (Shopify) research unchanged.
 ---
 
 ## ★ DEEP TRAINING 2026-04-10 — NOVA COMPETITIVE INTELLIGENCE PLAYBOOK
-**This section supersedes all prior Nova research frameworks. Load alongside `~/.claude/memory/stacks/saas-nextjs-supabase-railway.md` and `~/.claude/memory/patterns/good/saas-brand-patterns.md`.**
 <!-- Full content moved to skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md -->
 
 ## Training 2026-04-11 — Universal protocol enforcement
@@ -582,9 +580,9 @@ Next: Arya (reads nova-handoff.json)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **[Competitor Name]** — triggers: _competitor, name, pricing, supabase, railway, ci, seo, og_ → `~/.claude/skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md`
-- **Nova scans:** — triggers: _scans, pricing, auth, ci, og, form, ux, deep_ → `~/.claude/skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md`
-- **Output Format** — triggers: _output, format, unit, ci, og, form, ui_ → `~/.claude/skills/nova/output-format-patterns.md`
-- **Research Process** — triggers: _research, process, pricing, trigger, index, ci, form, ui_ → `~/.claude/skills/nova/research-process-patterns.md`
-- **Shopify Ecosystem Research Points (Stack B)** — triggers: _shopify, ecosystem, research, points, stack, checkout, payment, trigger_ → `~/.claude/skills/nova/shopify-ecosystem-research-points-stack-b.md`
-- **Shopify Launch & Distribution Research (Stack B)** — triggers: _shopify, launch, distribution, research, stack, subscription, pricing, ci_ → `~/.claude/skills/nova/shopify-launch-distribution-research-stack-b.md`
+- **Shopify Ecosystem Research Points (Stack B)** — triggers: _shopify, ecosystem, research, points, stack, researching, market, nova_ → `~/.claude/skills/nova/shopify-ecosystem-research-points-stack-b.md`
+- **Shopify Launch & Distribution Research (Stack B)** — triggers: _shopify, launch, distribution, research, stack, ready, considering, store_ → `~/.claude/skills/nova/shopify-launch-distribution-research-stack-b.md`
+- **DEEP TRAINING 2026-04-10: Nova Operating Protocol v2** — triggers: _deep, training, nova, operating, protocol, authoritative, section, conflict_ → `~/.claude/skills/nova/deep-training-2026-04-10-nova-operating-protocol-v2.md`
+- **★ DEEP TRAINING 2026-04-10 — NOVA COMPETITIVE INTELLIGENCE PLAYBOOK** — triggers: _deep, training, nova, competitive, intelligence, playbook, section, supersedes_ → `~/.claude/skills/nova/deep-training-2026-04-10-nova-competitive-intelligence-playb.md`
+- **Research Process** — triggers: _research, process_ → `~/.claude/skills/nova/research-process-patterns.md`
+- **Output Format** — triggers: _output, format_ → `~/.claude/skills/nova/output-format-patterns.md`

@@ -15,38 +15,38 @@ reportsTo: rex
 title: VP Creative
 tier: leadership
 skills:
-  - id: deep-training-2026-04-10-quill-copy-playbook-stack-a
-    path: skills/quill/deep-training-2026-04-10-quill-copy-playbook-stack-a.md
-    lines: 281
-  - id: examples-1134eedb
-    path: skills/quill/examples/1134eedb.md
-    lines: 83
-  - id: saas-brand-voice-patterns-from-top-companies
-    path: skills/quill/saas-brand-voice-patterns-from-top-companies.md
-    lines: 86
-  - id: seo-content-strategy
-    path: skills/quill/seo-content-strategy.md
-    lines: 24
   - id: shopify-app-store-listing-copy-stack-b
     path: skills/quill/shopify-app-store-listing-copy-stack-b.md
     lines: 737
-  - id: shopify-content-ux-copy-rules-stack-b
-    path: skills/quill/shopify-content-ux-copy-rules-stack-b.md
-    lines: 247
+  - id: seo-content-strategy
+    path: skills/quill/seo-content-strategy.md
+    lines: 24
   - id: shopify-extension-descriptions-stack-b
     path: skills/quill/shopify-extension-descriptions-stack-b.md
     lines: 261
-  - id: tools-shopify
+  - id: shopify-content-ux-copy-rules-stack-b
+    path: skills/quill/shopify-content-ux-copy-rules-stack-b.md
+    lines: 247
+  - id: saas-brand-voice-patterns-from-top-companies
+    path: skills/quill/saas-brand-voice-patterns-from-top-companies.md
+    lines: 86
+  - id: deep-training-2026-04-10-quill-copy-playbook-stack-a
+    path: skills/quill/deep-training-2026-04-10-quill-copy-playbook-stack-a.md
+    lines: 281
+  - id: tool-shopify
     path: skills/quill/tools/shopify.md
-    lines: 41
+    lines: 36
+  - id: ex-1134eedb
+    path: skills/quill/examples/1134eedb.md
+    lines: 78
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.223Z'
-  original_sha: 2bc32a9759df03a6
-  original_lines: 724
-  original_chars: 37007
+  last_compacted: '2026-04-15T18:47:01.659Z'
+  original_sha: 05be82e39086e6a5
+  original_lines: 2441
+  original_chars: 95211
 ---
 
 
@@ -329,8 +329,6 @@ After copy performs (Yash approves, conversion data is positive), flag to Mira f
 - Read every piece out loud — if it's awkward to say, rewrite it
 
 ## SaaS Brand Voice Patterns (From Top Companies)
-Study these real brand voices and pick the right one for each Boldteq product:
-**Linear Voice — Technical Precision**
 <!-- Full content moved to skills/quill/saas-brand-voice-patterns-from-top-companies.md -->
 
 ## Quill Auto-Fix Loop (Domain-Specific)
@@ -510,7 +508,6 @@ Stack B (Shopify) copy unchanged — still uses Polaris Banner/Text/EmptyState.
 ---
 
 ## ★ DEEP TRAINING 2026-04-10 — QUILL COPY PLAYBOOK (STACK A)
-**Supersedes all prior Quill copy frameworks. Load alongside `~/.claude/memory/patterns/good/saas-brand-patterns.md` and `~/.claude/memory/patterns/good/saas-winning-patterns.md`.**
 <!-- Full content moved to skills/quill/deep-training-2026-04-10-quill-copy-playbook-stack-a.md -->
 
 ## Training 2026-04-11 — Universal protocol enforcement
@@ -763,11 +760,11 @@ Next: Vega (spec copy into components)
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Quill Copy Spec: [route]** — triggers: _copy, spec, route, pricing, auth, login, ci, seo_ → `~/.claude/skills/quill/deep-training-2026-04-10-quill-copy-playbook-stack-a.md`
-- **Example (bash)** — triggers: _example, bash, ci, error, ui, examples, 1134eedb_ → `~/.claude/skills/quill/examples/1134eedb.md`
-- **SaaS Brand Voice Patterns (From Top Companies)** — triggers: _saas, brand, voice, top, companies, dodo, payment, auth_ → `~/.claude/skills/quill/saas-brand-voice-patterns-from-top-companies.md`
-- **SEO Content Strategy** — triggers: _seo, content, strategy, og, shopify, query, ui_ → `~/.claude/skills/quill/seo-content-strategy.md`
-- **Shopify App Store Listing Copy (Stack B)** — triggers: _shopify, app, store, listing, copy, stack, pricing, integration_ → `~/.claude/skills/quill/shopify-app-store-listing-copy-stack-b.md`
-- **Shopify Content & UX Copy Rules (Stack B)** — triggers: _shopify, content, copy, rules, stack, ci, error, form_ → `~/.claude/skills/quill/shopify-content-ux-copy-rules-stack-b.md`
-- **Shopify Extension Descriptions (Stack B)** — triggers: _shopify, extension, descriptions, stack, checkout, trigger, unit, ci_ → `~/.claude/skills/quill/shopify-extension-descriptions-stack-b.md`
-- **shopify** — triggers: _shopify, ci, seo, form, ui, tools_ → `~/.claude/skills/quill/tools/shopify.md`
+- **Shopify App Store Listing Copy (Stack B)** — triggers: _shopify, app, store, listing, copy, stack, writing, quill_ → `~/.claude/skills/quill/shopify-app-store-listing-copy-stack-b.md`
+- **SEO Content Strategy** — triggers: _seo, content, strategy, note, zeph, agent, handles, technical_ → `~/.claude/skills/quill/seo-content-strategy.md`
+- **Shopify Extension Descriptions (Stack B)** — triggers: _shopify, extension, descriptions, stack, includes, extensions, quill, writes_ → `~/.claude/skills/quill/shopify-extension-descriptions-stack-b.md`
+- **Shopify Content & UX Copy Rules (Stack B)** — triggers: _shopify, content, copy, rules, stack, in-app, buttons, error_ → `~/.claude/skills/quill/shopify-content-ux-copy-rules-stack-b.md`
+- **SaaS Brand Voice Patterns (From Top Companies)** — triggers: _saas, brand, voice, patterns, top, companies_ → `~/.claude/skills/quill/saas-brand-voice-patterns-from-top-companies.md`
+- **★ DEEP TRAINING 2026-04-10 — QUILL COPY PLAYBOOK (STACK A)** — triggers: _deep, training, quill, copy, playbook, stack, supersedes, prior_ → `~/.claude/skills/quill/deep-training-2026-04-10-quill-copy-playbook-stack-a.md`
+- **Tool: shopify** — triggers: _shopify, app, store, listing_ → `~/.claude/skills/quill/tools/shopify.md`
+- **Example: bash** — triggers: _copy, script, runs, piece, bash_ → `~/.claude/skills/quill/examples/1134eedb.md`

@@ -16,32 +16,32 @@ reportsTo: null
 title: Commander
 tier: leadership
 skills:
-  - id: 13-project-claude-md-template-new
-    path: skills/rex/13-project-claude-md-template-new.md
-    lines: 160
+  - id: deploy-gate-updates-rex-enforces
+    path: skills/rex/deploy-gate-updates-rex-enforces.md
+    lines: 11
   - id: 2-operating-modes-patterns
     path: skills/rex/2-operating-modes-patterns.md
     lines: 307
+  - id: extension-only-apps-no-admin-ui-patterns
+    path: skills/rex/extension-only-apps-no-admin-ui-patterns.md
+    lines: 256
   - id: 6-step-by-step-execution-per-mode-patterns
     path: skills/rex/6-step-by-step-execution-per-mode-patterns.md
     lines: 1404
   - id: deep-training-2026-04-10-rex-operating-protocol-v2-patterns
     path: skills/rex/deep-training-2026-04-10-rex-operating-protocol-v2-patterns.md
     lines: 418
-  - id: deploy-gate-updates-rex-enforces
-    path: skills/rex/deploy-gate-updates-rex-enforces.md
-    lines: 11
-  - id: extension-only-apps-no-admin-ui-patterns
-    path: skills/rex/extension-only-apps-no-admin-ui-patterns.md
-    lines: 256
+  - id: 13-project-claude-md-template-new
+    path: skills/rex/13-project-claude-md-template-new.md
+    lines: 160
 compactor:
   version: 1
   budget_lines: 700
   budget_chars: 28000
-  last_compacted: '2026-04-15T18:32:53.229Z'
-  original_sha: fdc848a1ccb6ae18
-  original_lines: 1055
-  original_chars: 52186
+  last_compacted: '2026-04-15T18:47:01.676Z'
+  original_sha: 9ed964296000cd61
+  original_lines: 3581
+  original_chars: 143400
 ---
 
 
@@ -626,8 +626,6 @@ Boldteq is building a portfolio of products. Rex must learn across projects.
 ---
 
 ## 13. Project CLAUDE.md Template (NEW)
-Every project must have `CLAUDE.md` documenting architecture decisions.
-**Riko creates this, or Rex ensures it exists.**
 <!-- Full content moved to skills/rex/13-project-claude-md-template-new.md -->
 
 ## 14. Integration with Claude Hub Systems (UPDATED 2026-04-05)
@@ -1091,9 +1089,9 @@ Rex never commits to `main` of any product repo. Rex dispatches Koda/Riko to fea
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **[Project Name] — Architecture Decision Record** — triggers: _project, name, architecture, decision, record, billing, subscription, dodo_ → `~/.claude/skills/rex/13-project-claude-md-template-new.md`
-- **In extensions/function-[type]/** — triggers: _extensions, function-, trigger, integration, deploy, error, shopify, security_ → `~/.claude/skills/rex/2-operating-modes-patterns.md`
-- **1. Missing loading states (data fetching without loaders)** — triggers: _missing, loading, states, data, fetching, loaders, billing, subscription_ → `~/.claude/skills/rex/6-step-by-step-execution-per-mode-patterns.md`
-- **[Sender] → [Receiver] Handoff** — triggers: _sender, receiver, handoff, billing, auth, deploy, ci, error_ → `~/.claude/skills/rex/deep-training-2026-04-10-rex-operating-protocol-v2-patterns.md`
-- **Deploy gate updates (Rex enforces)** — triggers: _deploy, gate, updates, enforces, rls, e2e, railway, ci_ → `~/.claude/skills/rex/deploy-gate-updates-rex-enforces.md`
-- **Extension-Only Apps (No Admin UI)** — triggers: _extension-only, apps, admin, billing, deploy, og, form, remix_ → `~/.claude/skills/rex/extension-only-apps-no-admin-ui-patterns.md`
+- **Deploy gate updates (Rex enforces)** — triggers: _deploy, gate, updates, rex, enforces, before, allows, bolt_ → `~/.claude/skills/rex/deploy-gate-updates-rex-enforces.md`
+- **2. Operating Modes** — triggers: _operating, modes, identify, mode, first, always, state, execute_ → `~/.claude/skills/rex/2-operating-modes-patterns.md`
+- **Extension-Only Apps (No Admin UI)** — triggers: _extension-only, apps, admin, home, just, extensions, modify, pipeline_ → `~/.claude/skills/rex/extension-only-apps-no-admin-ui-patterns.md`
+- **6. Step-by-Step Execution Per Mode** — triggers: _step-by-step, execution, per, mode_ → `~/.claude/skills/rex/6-step-by-step-execution-per-mode-patterns.md`
+- **DEEP TRAINING 2026-04-10: Rex Operating Protocol v2** — triggers: _deep, training, rex, operating, protocol, section, authoritative, conflict_ → `~/.claude/skills/rex/deep-training-2026-04-10-rex-operating-protocol-v2-patterns.md`
+- **13. Project CLAUDE.md Template (NEW)** — triggers: _project, claude, template, new, must, documenting, architecture, decisions_ → `~/.claude/skills/rex/13-project-claude-md-template-new.md`

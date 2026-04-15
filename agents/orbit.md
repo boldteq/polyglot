@@ -26,10 +26,10 @@ compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.216Z'
-  original_sha: 6326a4faadc4ccd5
-  original_lines: 429
-  original_chars: 18615
+  last_compacted: '2026-04-15T18:47:01.648Z'
+  original_sha: 82952cb36477b705
+  original_lines: 972
+  original_chars: 37161
 ---
 
 
@@ -365,7 +365,6 @@ North star metric wiring: PostHog `$identify` + event capture in Server Actions,
 ---
 
 ## ★ DEEP TRAINING 2026-04-10 — ORBIT METRICS ARCHITECTURE PLAYBOOK
-**Supersedes all prior Orbit frameworks. Orbit wires the metrics stack BEFORE launch so Verdict can make kill/scale decisions with real data at day 30 and day 90.**
 <!-- Full content moved to skills/orbit/deep-training-2026-04-10-orbit-metrics-architecture-playbook.md -->
 
 ## Training 2026-04-11 — Universal protocol enforcement
@@ -435,7 +434,6 @@ Orbit's first response to any new task MUST match the gold-standard artifact tem
 ---
 
 ## Training 2026-04-11 — Deep expansion (Orbit P1)
-Addresses audit gaps: C2 (4), north-star prose, no KPI dashboard output format, no AARRR template, no alert thresholds.
 <!-- Full content moved to skills/orbit/training-2026-04-11-deep-expansion-orbit-p1.md -->
 
 ## Training 2026-04-11 (b) — Executable Loop Integration
@@ -457,5 +455,5 @@ Addresses audit gaps: C2 (4), north-star prose, no KPI dashboard output format, 
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Orbit Tracking Plan: [Product]** — triggers: _tracking, plan, product, dodo, supabase, integration, deploy, ci_ → `~/.claude/skills/orbit/deep-training-2026-04-10-orbit-metrics-architecture-playbook.md`
-- **Training 2026-04-11 — Deep expansion (Orbit P1)** — triggers: _training, deep, expansion, subscription, pricing, auth, unit, ci_ → `~/.claude/skills/orbit/training-2026-04-11-deep-expansion-orbit-p1.md`
+- **★ DEEP TRAINING 2026-04-10 — ORBIT METRICS ARCHITECTURE PLAYBOOK** — triggers: _deep, training, orbit, metrics, architecture, playbook, supersedes, prior_ → `~/.claude/skills/orbit/deep-training-2026-04-10-orbit-metrics-architecture-playbook.md`
+- **Training 2026-04-11 — Deep expansion (Orbit P1)** — triggers: _training, deep, expansion, orbit, addresses, audit, gaps, north-star_ → `~/.claude/skills/orbit/training-2026-04-11-deep-expansion-orbit-p1.md`

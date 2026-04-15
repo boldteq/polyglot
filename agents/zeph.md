@@ -15,9 +15,6 @@ reportsTo: quill
 title: SEO Specialist
 tier: creative
 skills:
-  - id: deep-training-2026-04-10-zeph-seo-playbook-stack-a
-    path: skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md
-    lines: 295
   - id: seo-audit-framework
     path: skills/zeph/seo-audit-framework.md
     lines: 389
@@ -30,14 +27,17 @@ skills:
   - id: stack-specific-seo-patterns
     path: skills/zeph/stack-specific-seo-patterns.md
     lines: 26
+  - id: deep-training-2026-04-10-zeph-seo-playbook-stack-a
+    path: skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md
+    lines: 295
 compactor:
   version: 1
   budget_lines: 300
   budget_chars: 12000
-  last_compacted: '2026-04-15T18:32:53.265Z'
-  original_sha: 45305cd7f4902ad4
-  original_lines: 559
-  original_chars: 25057
+  last_compacted: '2026-04-15T18:47:01.753Z'
+  original_sha: 996a3767c6dd964c
+  original_lines: 1318
+  original_chars: 49454
 ---
 
 
@@ -423,7 +423,6 @@ Stack B (Shopify) SEO is different — storefront SEO is Shopify's concern; Zeph
 ---
 
 ## ★ DEEP TRAINING 2026-04-10 — ZEPH SEO PLAYBOOK (STACK A)
-**Supersedes all prior Zeph SEO frameworks. Load alongside `~/.claude/memory/stacks/saas-nextjs-supabase-railway.md`, `patterns/good/nextjs-production-infra.md`, and `patterns/good/seo-patterns.md`.**
 <!-- Full content moved to skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md -->
 
 ## Training 2026-04-11 — Universal protocol enforcement
@@ -592,8 +591,8 @@ Instead of just filing issues, Zeph produces concrete diffs in `.handoffs/zeph-t
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Lighthouse against Railway preview URL** — triggers: _lighthouse, against, railway, preview, url, pricing, rls, supabase_ → `~/.claude/skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md`
-- **Check robots.txt** — triggers: _robots, txt, auth, rls, index, ci, seo, sitemap_ → `~/.claude/skills/zeph/seo-audit-framework.md`
-- **SEO BUG CLASSIFICATION** — triggers: _seo, bug, classification, rls, schema, index, unit, ci_ → `~/.claude/skills/zeph/seo-bug-classification.md`
-- **SEO OPTIMIZATION WORKFLOW** — triggers: _seo, optimization, workflow, schema, index, ci, sitemap, robots_ → `~/.claude/skills/zeph/seo-optimization-workflow.md`
-- **STACK-SPECIFIC SEO PATTERNS** — triggers: _stack-specific, seo, index, ci, sitemap, robots, og, metadata_ → `~/.claude/skills/zeph/stack-specific-seo-patterns.md`
+- **SEO AUDIT FRAMEWORK** — triggers: _seo, audit, framework_ → `~/.claude/skills/zeph/seo-audit-framework.md`
+- **SEO BUG CLASSIFICATION** — triggers: _seo, bug, classification, noindex_ → `~/.claude/skills/zeph/seo-bug-classification.md`
+- **SEO OPTIMIZATION WORKFLOW** — triggers: _seo, optimization, workflow_ → `~/.claude/skills/zeph/seo-optimization-workflow.md`
+- **STACK-SPECIFIC SEO PATTERNS** — triggers: _stack-specific, seo, patterns, app/sitemap.ts, app/robots.ts, next/image, next/font_ → `~/.claude/skills/zeph/stack-specific-seo-patterns.md`
+- **★ DEEP TRAINING 2026-04-10 — ZEPH SEO PLAYBOOK (STACK A)** — triggers: _deep, training, zeph, seo, playbook, stack, supersedes, prior_ → `~/.claude/skills/zeph/deep-training-2026-04-10-zeph-seo-playbook-stack-a.md`

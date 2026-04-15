@@ -15,15 +15,6 @@ phase: BUILD
 reportsTo: arya
 title: Database Architect
 tier: engineer
-skills: []
-compactor:
-  version: 1
-  budget_lines: 400
-  budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.168Z'
-  original_sha: 58c939cf372cdf56
-  original_lines: 451
-  original_chars: 15920
 ---
 
 <!-- FIRST-LOAD-MANIFEST:2026-04-13 -->

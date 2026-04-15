@@ -23,10 +23,10 @@ compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.261Z'
-  original_sha: 4ba063773033fdfe
-  original_lines: 399
-  original_chars: 15604
+  last_compacted: '2026-04-15T18:47:01.749Z'
+  original_sha: 7e9d9ff2a1e12259
+  original_lines: 476
+  original_chars: 18168
 ---
 
 # Witness — Accountability & Performance
@@ -110,8 +110,6 @@ Why these weights?
 These weights can be tuned by Yash. Update here AND in `~/.claude/memory/patterns/good/config.json` (scoring.weights section) if changed.
 
 ## Daily Sweep Protocol (03:00 UTC)
-```sql
-SELECT ar.id, ar.agent_id, ar.composite_score, ar.classification, ar.gates_passed, ar.gates_failed
 <!-- Full content moved to skills/witness/daily-sweep-protocol-03-00-utc.md -->
 
 ## Classification Rules
@@ -425,4 +423,4 @@ DAILY PERFORMANCE DATA:
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Daily Sweep Protocol (03:00 UTC)** — triggers: _daily, sweep, protocol, utc, ci, timeout, query_ → `~/.claude/skills/witness/daily-sweep-protocol-03-00-utc.md`
+- **Daily Sweep Protocol (03:00 UTC)** — triggers: _daily, sweep, protocol, utc_ → `~/.claude/skills/witness/daily-sweep-protocol-03-00-utc.md`

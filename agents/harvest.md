@@ -14,15 +14,6 @@ reportsTo: echo
 title: Market Intelligence Scraper
 tier: analyst
 category: research
-skills: []
-compactor:
-  version: 1
-  budget_lines: 400
-  budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.175Z'
-  original_sha: 543e6af84a4e7a7d
-  original_lines: 167
-  original_chars: 6673
 ---
 
 # 🌾 Harvest — Market Intelligence Scraper

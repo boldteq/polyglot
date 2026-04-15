@@ -20,17 +20,23 @@ wallClockCapMinutes: 10
 costCapDollars: 1
 category: hr
 skills:
-  - id: examples-1e738fac
+  - id: ex-1e738fac
     path: skills/roster/examples/1e738fac.md
-    lines: 49
+    lines: 44
+  - id: ex-f29bd973
+    path: skills/roster/examples/f29bd973.md
+    lines: 41
+  - id: ex-d617f187
+    path: skills/roster/examples/d617f187.md
+    lines: 41
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.235Z'
-  original_sha: ccec8bea4c1875c2
-  original_lines: 381
-  original_chars: 12560
+  last_compacted: '2026-04-15T18:47:01.700Z'
+  original_sha: c100c4422b97da48
+  original_lines: 498
+  original_chars: 16661
 ---
 
 # Roster — Registry Keeper
@@ -411,4 +417,6 @@ You do NOT make decisions. You surface signals. Cadence decides.
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Example (sql)** — triggers: _example, sql, trigger, deploy, ui, examples, 1e738fac_ → `~/.claude/skills/roster/examples/1e738fac.md`
+- **Example: sql** — triggers: _execute, sql, recompute, stats, agents, past, days_ → `~/.claude/skills/roster/examples/1e738fac.md`
+- **Example: sql** — triggers: _execute, sql, compute, experience, level, agents_ → `~/.claude/skills/roster/examples/f29bd973.md`
+- **Example: sql** — triggers: _after, step, rebuild, skill, index, compute, composite, scores_ → `~/.claude/skills/roster/examples/d617f187.md`

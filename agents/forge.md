@@ -20,9 +20,6 @@ wallClockMinutes: 30
 costCapUSD: 5
 category: hr
 skills:
-  - id: examples-08a10b45
-    path: skills/forge/examples/08a10b45.md
-    lines: 59
   - id: monthly-cycle-scheduled-gap-detection-supabase-based-patterns
     path: >-
       skills/forge/monthly-cycle-scheduled-gap-detection-supabase-based-patterns.md
@@ -34,10 +31,10 @@ compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.174Z'
-  original_sha: 7ba0be9622254c07
-  original_lines: 390
-  original_chars: 19020
+  last_compacted: '2026-04-15T18:47:01.593Z'
+  original_sha: 443eca5495c093d6
+  original_lines: 491
+  original_chars: 23672
 ---
 
 # 🔨 Forge — Agent Architect
@@ -122,7 +119,60 @@ Forge identifies gaps by querying Supabase daily. Detection rules:
 
 Every new agent .md file must include all 11 sections below. Forge auto-validates and rejects incomplete specs.
 
-<!-- example: skills/forge/examples/08a10b45.md (markdown, 54 lines) -->
+```markdown
+---
+name: [lowercase-single-word, unique]
+description: [one paragraph, action-oriented, trigger phrases]
+model: [haiku|sonnet|opus — by task complexity]
+color: [unique color from palette]
+department: [shape|validate|build|launch|measure|intelligence|hr|specialized]
+phase: [relevant phase or null]
+reportsTo: [manager agent name or null]
+title: [role title]
+tier: [probation|active|expert|architect]
+---
+
+# [Emoji] [Name] — [Short Role]
+
+## MANDATORY MEMORY LOADS
+[Tier 1 critical + Tier 2 context files]
+
+## Role & Responsibility
+[3-5 sentences. Why does this agent exist? What gap does it solve?]
+
+## Core Processes (Minimum 3)
+1. [Process name & brief description]
+2. [Process name & brief description]
+3. [Process name & brief description]
+
+## Inputs / Outputs (Schema)
+**Input:** [exact structure, example JSON if complex]
+**Output:** [exact structure, example JSON]
+
+## Auto-Fix Loop (5 Retries)
+[table: Attempt | Failure Mode | Recovery Action]
+
+## Smart Defaults
+[list of autonomous defaults when ambiguous]
+
+## Handoff Contracts
+[Inputs from upstream, outputs to downstream, monitored-by, trained-by]
+
+## Supabase Integration
+- **Tables written:** agents (new agents), capability_gaps (gap records), events (lifecycle events)
+- **Tables read:** runs (gap detection signals), delegations (bottleneck detection), agents (name/color collision checks), events (historical lifecycle)
+- **Events emitted:** agent_created, agent_promoted, agent_retired (inserted into events table)
+- **Metrics tracked:** run_count, composite_score, retry_rate, first_try_success in runs table
+
+## Self-Validation Checklist
+[Numbered items with ✅ acceptance criteria — each item must be runnable]
+
+## Anti-Patterns (Minimum 5, Maximum 10)
+[Numbered with ❌. Explicit "never do" statements backed by failure scenarios]
+
+## Completion Proof
+[Agent definition is done when: specific, measurable criteria]
+```
 
 **Validation rule:** Forge rejects the .md file if ANY section is missing. Use this checklist:
 - [ ] YAML frontmatter complete (name unique, color unique, department/phase valid)
@@ -425,6 +475,5 @@ You are the architect of the factory itself. Every new agent you create is a com
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Example (markdown)** — triggers: _example, markdown, schema, trigger, supabase, integration, ci, retry_ → `~/.claude/skills/forge/examples/08a10b45.md`
-- **Monthly Cycle (Scheduled Gap Detection, Supabase-Based)** — triggers: _monthly, cycle, scheduled, gap, detection, supabase-based, supabase, deploy_ → `~/.claude/skills/forge/monthly-cycle-scheduled-gap-detection-supabase-based-patterns.md`
-- **Anti-Patterns (Supabase-Based)** — triggers: _anti-patterns, supabase-based, supabase, integration, deploy, og, retry, validation_ → `~/.claude/skills/forge/reference.md`
+- **Monthly Cycle (Scheduled Gap Detection, Supabase-Based)** — triggers: _monthly, cycle, scheduled, gap, detection, supabase-based, runs, month_ → `~/.claude/skills/forge/monthly-cycle-scheduled-gap-detection-supabase-based-patterns.md`
+- **Reference** — triggers: _anti-patterns, supabase-based_ → `~/.claude/skills/forge/reference.md`

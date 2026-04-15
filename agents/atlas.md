@@ -18,17 +18,14 @@ skills:
   - id: deep-training-2026-04-10-atlas-market-sizing-playbook
     path: skills/atlas/deep-training-2026-04-10-atlas-market-sizing-playbook.md
     lines: 233
-  - id: examples-c832b92c
-    path: skills/atlas/examples/c832b92c.md
-    lines: 55
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.154Z'
-  original_sha: fae8c57da736de04
-  original_lines: 423
-  original_chars: 19249
+  last_compacted: '2026-04-15T18:47:01.563Z'
+  original_sha: 2f4fe4cab32f4f34
+  original_lines: 694
+  original_chars: 28159
 ---
 
 
@@ -201,7 +198,56 @@ If FEATURE: suggest which platform this should be built on (Shopify app? Salesfo
 
 ### Market Card
 
-<!-- example: skills/atlas/examples/c832b92c.md (text, 50 lines) -->
+```
+## MARKET CARD
+
+**Category:** [Market category name]
+**Date:** [YYYY-MM-DD]
+
+### Market Size
+| Metric | Value | Source |
+|--------|-------|--------|
+| TAM | $[X]B | [Source + URL] |
+| SAM | $[X]M | [Methodology: geo + segment + tech filter] |
+| SOM Year 1 | $[X]K | [Capture % + reasoning] |
+| SOM Year 3 | $[X]M | [Growth assumptions] |
+| CAGR | [X]% | [Source 1] / [X]% [Source 2] |
+
+### Growth Drivers
+1. [Driver + evidence]
+2. [Driver + evidence]
+
+### Growth Risks
+1. [Risk + evidence]
+2. [Risk + evidence]
+
+### 5-Year Projection
+| Year | Pessimistic | Realistic | Optimistic |
+|------|-------------|-----------|------------|
+| Y1 | $[X]K | $[X]K | $[X]K |
+| Y2 | $[X]K | $[X]M | $[X]M |
+| Y3 | $[X]M | $[X]M | $[X]M |
+| Y4 | $[X]M | $[X]M | $[X]M |
+| Y5 | $[X]M | $[X]M | $[X]M |
+
+### Feature or Company
+**Verdict:** [COMPANY / FEATURE / UNCLEAR]
+| Question | Answer | Evidence |
+|----------|--------|----------|
+| (a) Standalone billing viable | YES/NO | |
+| (b) ICP buys point solutions | YES/NO | |
+| (c) 3+ standalone competitors | YES/NO | |
+| (d) SAM supports $1M+ ARR | YES/NO | |
+
+### Kill Gate Results
+| Criterion | Result | Notes |
+|-----------|--------|-------|
+| SAM ≥$50M | PASS/FAIL | |
+| CAGR positive | PASS/FAIL | |
+| Company (not feature) | PASS/FAIL/UNCLEAR | |
+| Data quality (2+ sources) | PASS/FAIL | |
+| SOM Y3 ≥$500K | PASS/FAIL | |
+```
 
 ### Universal Verdict
 Fill in the saas-verdict template (auto-injected by Claude Hub).
@@ -309,7 +355,6 @@ Atlas TAM/SAM/SOM analysis references Boldteq's locked build velocity: Stack A (
 ---
 
 ## ★ DEEP TRAINING 2026-04-10 — ATLAS MARKET SIZING PLAYBOOK
-**Supersedes all prior Atlas frameworks. Atlas sizes the market only AFTER Scout returns GREEN. Never sizes a market for a RED idea.**
 <!-- Full content moved to skills/atlas/deep-training-2026-04-10-atlas-market-sizing-playbook.md -->
 
 ## Training 2026-04-11 — Universal protocol enforcement
@@ -450,5 +495,4 @@ Atlas scores 1 point per row matching each column; highest column wins. Company 
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **Atlas Market Size: [Idea]** — triggers: _market, size, idea, pricing, ci, og, shopify, ui_ → `~/.claude/skills/atlas/deep-training-2026-04-10-atlas-market-sizing-playbook.md`
-- **Example (text)** — triggers: _example, text, billing, og, examples, c832b92c_ → `~/.claude/skills/atlas/examples/c832b92c.md`
+- **★ DEEP TRAINING 2026-04-10 — ATLAS MARKET SIZING PLAYBOOK** — triggers: _deep, training, atlas, market, sizing, playbook, supersedes, prior_ → `~/.claude/skills/atlas/deep-training-2026-04-10-atlas-market-sizing-playbook.md`

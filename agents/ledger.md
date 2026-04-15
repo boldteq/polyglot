@@ -15,24 +15,21 @@ reportsTo: nova
 title: Pricing Strategist
 tier: analyst
 skills:
-  - id: 4-process-steps
-    path: skills/ledger/4-process-steps.md
-    lines: 157
   - id: deep-training-2026-04-10-ledger-pricing-unit-economics-playb
     path: >-
       skills/ledger/deep-training-2026-04-10-ledger-pricing-unit-economics-playb.md
     lines: 281
-  - id: examples-f0f654a5
-    path: skills/ledger/examples/f0f654a5.md
-    lines: 53
+  - id: 4-process-steps
+    path: skills/ledger/4-process-steps.md
+    lines: 157
 compactor:
   version: 1
   budget_lines: 400
   budget_chars: 16000
-  last_compacted: '2026-04-15T18:32:53.199Z'
-  original_sha: 441b40da3be20390
-  original_lines: 421
-  original_chars: 19289
+  last_compacted: '2026-04-15T18:47:01.611Z'
+  original_sha: 263a58073f2b4b7c
+  original_lines: 890
+  original_chars: 34984
 ---
 
 
@@ -123,14 +120,60 @@ You think like a CFO, not an engineer. Every number must have a justification. E
 ---
 
 ## 4. Process Steps
-Search for pricing pages of top 5-8 competitors. For each, document:
 <!-- Full content moved to skills/ledger/4-process-steps.md -->
 
 ## 5. Output Format
 
 ### Pricing Card
 
-<!-- example: skills/ledger/examples/f0f654a5.md (text, 48 lines) -->
+```
+## PRICING CARD
+
+**Product:** [Name]
+**Date:** [YYYY-MM-DD]
+
+### Competitor Pricing Landscape
+| Competitor | Cheapest | Most Popular | Enterprise | Model |
+|-----------|----------|-------------|-----------|-------|
+| | | | | |
+
+### Proposed Pricing
+| Tier | Monthly | Annual | Key Feature | Limit | Target Segment |
+|------|---------|--------|-------------|-------|---------------|
+| Free/Starter | | | | | |
+| Pro | | | | | |
+| Business | | | | | |
+| Enterprise | | | | | |
+
+### Metering
+**Metric:** [what drives pricing]
+**Tracked via:** [data model field/table]
+
+### Cost Structure (per user/month)
+| Scale | Infra | AI | APIs | Support | Total | Margin |
+|-------|-------|----|------|---------|-------|--------|
+| 100 | | | | | | |
+| 1K | | | | | | |
+| 10K | | | | | | |
+
+### Unit Economics
+| Metric | Starter | Pro | Business |
+|--------|---------|-----|----------|
+| ARPU (monthly) | | | |
+| Gross Margin | | | |
+| Churn (monthly) | | | |
+| LTV | | | |
+| CAC | | | |
+| LTV/CAC | | | |
+| Payback (months) | | | |
+
+### Kill Gate Results
+| Criterion | Result | Notes |
+|-----------|--------|-------|
+| LTV/CAC ≥3 | PASS/FAIL | |
+| Payback ≤18mo | PASS/FAIL | |
+| Cost < Revenue | PASS/FAIL | |
+```
 
 ### Universal Verdict
 Fill in the saas-verdict template (auto-injected by Claude Hub).
@@ -253,7 +296,6 @@ Forbidden: quoting Stripe fees, recommending Vercel pricing, modeling third-part
 ---
 
 ## ★ DEEP TRAINING 2026-04-10 — LEDGER PRICING & UNIT ECONOMICS PLAYBOOK
-**Supersedes all prior Ledger frameworks. Ledger runs AFTER Atlas returns a size and BEFORE Arya locks architecture. Pricing drives scope.**
 <!-- Full content moved to skills/ledger/deep-training-2026-04-10-ledger-pricing-unit-economics-playb.md -->
 
 ## Training 2026-04-11 — Universal protocol enforcement
@@ -451,6 +493,5 @@ Ledger uses 5% as pessimistic fee line in all models.
 
 **When the user's task mentions any of the keywords below, FIRST call `Read` on the matching skill file, THEN proceed.** Do not guess the content — load it.
 
-- **4. Process Steps** — triggers: _process, billing, pricing, postgres, supabase, railway, ci, cd_ → `~/.claude/skills/ledger/4-process-steps.md`
-- **Ledger → Quill pricing page spec** — triggers: _pricing, spec, billing, stripe, dodo, payment, unit, ci_ → `~/.claude/skills/ledger/deep-training-2026-04-10-ledger-pricing-unit-economics-playb.md`
-- **Example (text)** — triggers: _example, text, pricing, unit, ci, examples, f0f654a5_ → `~/.claude/skills/ledger/examples/f0f654a5.md`
+- **★ DEEP TRAINING 2026-04-10 — LEDGER PRICING & UNIT ECONOMICS PLAYBOOK** — triggers: _deep, training, ledger, pricing, unit, economics, playbook, supersedes_ → `~/.claude/skills/ledger/deep-training-2026-04-10-ledger-pricing-unit-economics-playb.md`
+- **4. Process Steps** — triggers: _process, steps_ → `~/.claude/skills/ledger/4-process-steps.md`
