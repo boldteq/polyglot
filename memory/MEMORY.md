@@ -33,6 +33,7 @@ Index loaded every session. Check before starting any task.
 - [Pinzo](projects/pinzo.md) — Shopify ZIP delivery checker: compliance audit, session history
 - [Clientloop](projects/clientloop.md) — ManyRequests-style SaaS: Phase 1 UI shell, mock-data-only, deploy deferred
 - [Rankora](projects/rankora.md) — AI resume ranker (legacy Vite origin); Next.js 16 migration planned (70-95h, not started)
+- ★ [InkOS Lessons](projects/inkos-lessons.md) — 13-sprint tattoo studio SaaS build lessons: RPC contract drift, hand-typed types antipattern, Dodo webhook spec, Sage-per-sprint rule, velocity patterns (2026-04-16)
 
 ### Sync Pass 3 product-readiness files (2026-04-11)
 
