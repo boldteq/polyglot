@@ -1,0 +1,703 @@
+     1	import { useState, useRef, useEffect } from "react";
+     2	import { motion } from "framer-motion";
+     3	import { Copy, Check } from "lucide-react";
+     4	import { Card, CardContent } from "@/components/ui/card";
+     5	import { Badge } from "@/components/ui/badge";
+     6	import { cn } from "@/lib/utils";
+     7	import type { CopyRewrite, CopyRewriteElementType } from "@/types";
+     8	
+     9	// ── Element type label + color map ────────────────────────────
+    10	
+    11	const ELEMENT_TYPE_CONFIG: Record<
+    12	  CopyRewriteElementType,
+    13	  { label: string; className: string }
+    14	> = {
+    15	  headline: {
+    16	    label: "Headline",
+    17	    className: "bg-violet-100 text-violet-700 border-violet-200",
+    18	  },
+    19	  subheadline: {
+    20	    label: "Subheadline",
+    21	    className: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    22	  },
+    23	  cta: {
+    24	    label: "CTA",
+    25	    className: "bg-orange-100 text-orange-700 border-orange-200",
+    26	  },
+    27	  value_prop: {
+    28	    label: "Value Prop",
+    29	    className: "bg-blue-100 text-blue-700 border-blue-200",
+    30	  },
+    31	  body_copy: {
+    32	    label: "Body Copy",
+    33	    className: "bg-slate-100 text-slate-700 border-slate-200",
+    34	  },
+    35	};
+    36	
+    37	// ── Copy inline button ─────────────────────────────────────────
+    38	
+    39	function CopyInline({ text }: { text: string }) {
+    40	  const [copied, setCopied] = useState(false);
+    41	  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    42	
+    43	  useEffect(
+    44	    () => () => {
+    45	      if (timerRef.current) clearTimeout(timerRef.current);
+    46	    },
+    47	    [],
+    48	  );
+    49	
+    50	  const handleCopy = async () => {
+    51	    if (timerRef.current) clearTimeout(timerRef.current);
+    52	    try {
+    53	      await navigator.clipboard.writeText(text);
+    54	    } catch {
+    55	      /* clipboard API unavailable */
+    56	    }
+    57	    setCopied(true);
+    58	    timerRef.current = setTimeout(() => setCopied(false), 2000);
+    59	  };
+    60	
+    61	  return (
+    62	    <button
+    63	      onClick={handleCopy}
+    64	      className={cn(
+    65	        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-medium border transition-all",
+    66	        copied
+    67	          ? "bg-green-50 text-green-600 border-green-200"
+    68	          : "bg-card text-muted-foreground border-border/50 hover:bg-muted/40 hover:text-foreground",
+    69	      )}
+    70	    >
+    71	      {copied ? (
+    72	        <>
+    73	          <Check className="h-2.5 w-2.5" />
+    74	          Copied
+    75	        </>
+    76	      ) : (
+    77	        <>
+    78	          <Copy className="h-2.5 w-2.5" />
+    79	          Copy
+    80	        </>
+    81	      )}
+    82	    </button>
+    83	  );
+    84	}
+    85	
+    86	// ── CopyRewriteCard ────────────────────────────────────────────
+    87	
+    88	interface CopyRewriteCardProps {
+    89	  rewrite: CopyRewrite;
+    90	}
+    91	
+    92	export function CopyRewriteCard({ rewrite }: CopyRewriteCardProps) {
+    93	  const typeConfig =
+    94	    ELEMENT_TYPE_CONFIG[rewrite.element_type] ?? ELEMENT_TYPE_CONFIG.body_copy;
+    95	
+    96	  return (
+    97	    <motion.div
+    98	      initial={{ opacity: 0, y: 8 }}
+    99	      animate={{ opacity: 1, y: 0 }}
+   100	      transition={{ duration: 0.25, ease: "easeOut" }}
+   101	    >
+   102	      <Card className="border-border/50 shadow-soft overflow-hidden">
+   103	        <CardContent className="p-0">
+   104	          {/* Element type badge row */}
+   105	          <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2.5">
+   106	            <Badge
+   107	              variant="outline"
+   108	              className={cn("text-2xs font-semibold uppercase tracking-wide px-2 py-0.5", typeConfig.className)}
+   109	            >
+   110	              {typeConfig.label}
+   111	            </Badge>
+   112	            {rewrite.impact && (
+   113	              <span className="text-xs text-muted-foreground ml-auto truncate max-w-[280px]">
+   114	                {rewrite.impact}
+   115	              </span>
+   116	            )}
+   117	          </div>
+   118	
+   119	          {/* Side-by-side copy comparison */}
+   120	          <div className="grid grid-cols-1 gap-0 sm:grid-cols-2">
+   121	            {/* Current copy */}
+   122	            <div className="border-b border-border/40 p-4 sm:border-b-0 sm:border-r">
+   123	              <p className="mb-2 text-2xs font-semibold uppercase tracking-widest text-red-500">
+   124	                Current
+   125	              </p>
+   126	              <div className="rounded-lg bg-red-50 border border-red-100 p-3">
+   127	                <p className="text-sm text-slate-600 leading-relaxed line-through decoration-red-400/60">
+   128	                  {rewrite.original}
+   129	                </p>
+   130	              </div>
+   131	            </div>
+   132	
+   133	            {/* Suggested copy */}
+   134	            <div className="p-4">
+   135	              <div className="mb-2 flex items-center justify-between">
+   136	                <p className="text-2xs font-semibold uppercase tracking-widest text-emerald-600">
+   137	                  Suggested
+   138	                </p>
+   139	                <CopyInline text={rewrite.suggested} />
+   140	              </div>
+   141	              <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
+   142	                <p className="text-sm text-slate-700 font-medium leading-relaxed">
+   143	                  {rewrite.suggested}
+   144	                </p>
+   145	              </div>
+   146	            </div>
+   147	          </div>
+   148	
+   149	          {/* Reasoning */}
+   150	          <div className="border-t border-border/40 px-4 py-3">
+   151	            <p className="text-xs text-muted-foreground leading-relaxed">
+   152	              <span className="font-semibold text-foreground/70">Why this works: </span>
+   153	              {rewrite.reasoning}
+   154	            </p>
+   155	          </div>
+   156	        </CardContent>
+   157	      </Card>
+   158	    </motion.div>
+   159	  );
+   160	}
+===
+     1	import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+     2	import { Skeleton } from "@/components/ui/skeleton";
+     3	import { useCopyRewrites } from "@/hooks/use-copy-rewrites";
+     4	import { CopyRewriteCard } from "./CopyRewriteCard";
+     5	import type { CopyRewrite, CopyRewriteElementType } from "@/types";
+     6	
+     7	// ── Filter tab config ─────────────────────────────────────────
+     8	
+     9	interface FilterTab {
+    10	  value: string;
+    11	  label: string;
+    12	  filter: (r: CopyRewrite) => boolean;
+    13	}
+    14	
+    15	const FILTER_TABS: FilterTab[] = [
+    16	  { value: "all", label: "All", filter: () => true },
+    17	  {
+    18	    value: "headline",
+    19	    label: "Headlines",
+    20	    filter: (r) => r.element_type === "headline" || r.element_type === "subheadline",
+    21	  },
+    22	  {
+    23	    value: "cta",
+    24	    label: "CTAs",
+    25	    filter: (r) => r.element_type === "cta",
+    26	  },
+    27	  {
+    28	    value: "value_prop",
+    29	    label: "Value Props",
+    30	    filter: (r) => r.element_type === "value_prop",
+    31	  },
+    32	  {
+    33	    value: "body_copy",
+    34	    label: "Body",
+    35	    filter: (r) => r.element_type === "body_copy",
+    36	  },
+    37	];
+    38	
+    39	// ── Loading skeleton ──────────────────────────────────────────
+    40	
+    41	function CopyRewriteLoadingSkeleton() {
+    42	  return (
+    43	    <div className="space-y-4">
+    44	      {[1, 2, 3].map((i) => (
+    45	        <div key={i} className="overflow-hidden rounded-xl border border-border/50">
+    46	          <Skeleton className="h-10 w-full rounded-none" />
+    47	          <div className="grid grid-cols-2 gap-0">
+    48	            <div className="p-4 space-y-2 border-r border-border/40">
+    49	              <Skeleton className="h-3 w-16" />
+    50	              <Skeleton className="h-16 w-full rounded-lg" />
+    51	            </div>
+    52	            <div className="p-4 space-y-2">
+    53	              <Skeleton className="h-3 w-16" />
+    54	              <Skeleton className="h-16 w-full rounded-lg" />
+    55	            </div>
+    56	          </div>
+    57	          <div className="border-t border-border/40 p-4">
+    58	            <Skeleton className="h-3 w-full" />
+    59	            <Skeleton className="mt-1.5 h-3 w-3/4" />
+    60	          </div>
+    61	        </div>
+    62	      ))}
+    63	    </div>
+    64	  );
+    65	}
+    66	
+    67	// ── Empty state ───────────────────────────────────────────────
+    68	
+    69	function EmptyState() {
+    70	  return (
+    71	    <div className="flex flex-col items-center justify-center py-16 text-center">
+    72	      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50">
+    73	        <span className="text-2xl">✦</span>
+    74	      </div>
+    75	      <p className="text-sm font-medium text-foreground">No copy rewrites available</p>
+    76	      <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+    77	        Copy rewrites are generated during the scan. This scan may not have produced rewrite suggestions.
+    78	      </p>
+    79	    </div>
+    80	  );
+    81	}
+    82	
+    83	// ── CopyRewritePanel ──────────────────────────────────────────
+    84	
+    85	interface CopyRewritePanelProps {
+    86	  scanId: string;
+    87	}
+    88	
+    89	export function CopyRewritePanel({ scanId }: CopyRewritePanelProps) {
+    90	  const { data: rewrites = [], isLoading } = useCopyRewrites(scanId);
+    91	
+    92	  if (isLoading) {
+    93	    return <CopyRewriteLoadingSkeleton />;
+    94	  }
+    95	
+    96	  if (rewrites.length === 0) {
+    97	    return <EmptyState />;
+    98	  }
+    99	
+   100	  return (
+   101	    <Tabs defaultValue="all">
+   102	      <TabsList className="mb-5 flex w-full flex-wrap gap-1 rounded-xl bg-muted/40 h-auto p-1">
+   103	        {FILTER_TABS.map((tab) => {
+   104	          const count =
+   105	            tab.value === "all" ? rewrites.length : rewrites.filter(tab.filter).length;
+   106	          return (
+   107	            <TabsTrigger
+   108	              key={tab.value}
+   109	              value={tab.value}
+   110	              disabled={tab.value !== "all" && count === 0}
+   111	              className="rounded-lg px-3 py-2 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground disabled:opacity-40"
+   112	            >
+   113	              {tab.label}
+   114	              {count > 0 && (
+   115	                <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs text-foreground/70">
+   116	                  {count}
+   117	                </span>
+   118	              )}
+   119	            </TabsTrigger>
+   120	          );
+   121	        })}
+   122	      </TabsList>
+   123	
+   124	      {FILTER_TABS.map((tab) => {
+   125	        const filtered = rewrites.filter(tab.filter);
+   126	        return (
+   127	          <TabsContent key={tab.value} value={tab.value}>
+   128	            {filtered.length > 0 ? (
+   129	              <div className="space-y-4">
+   130	                {filtered.map((rewrite) => (
+   131	                  <CopyRewriteCard key={rewrite.id} rewrite={rewrite} />
+   132	                ))}
+   133	              </div>
+   134	            ) : (
+   135	              <p className="py-8 text-center text-sm text-muted-foreground">
+   136	                No {tab.label.toLowerCase()} rewrites for this scan.
+   137	              </p>
+   138	            )}
+   139	          </TabsContent>
+   140	        );
+   141	      })}
+   142	    </Tabs>
+   143	  );
+   144	}
+===
+     1	/**
+     2	 * PDFOptionsDialog.tsx
+     3	 *
+     4	 * Lets the user choose between a Basic PDF (existing generateAuditPDF)
+     5	 * and an Enhanced PDF (generateEnhancedPDF — Pro+ only).
+     6	 * Enhanced options include optional company name, accent color, and
+     7	 * toggles for copy rewrites and score history sections.
+     8	 */
+     9	
+    10	import { useState } from "react";
+    11	import { generateAuditPDF, generateEnhancedPDF } from "@/lib/pdf-generator";
+    12	import { useCopyRewrites } from "@/hooks/use-copy-rewrites";
+    13	import { useScanHistory } from "@/hooks/use-scan-history";
+    14	import { useAuth } from "@/contexts/AuthContext";
+    15	import { isProPlus, isAgencyPlan } from "@/types";
+    16	import type { Scan, PillarResult, TeamBranding } from "@/types";
+    17	import {
+    18	  Dialog,
+    19	  DialogContent,
+    20	  DialogHeader,
+    21	  DialogTitle,
+    22	  DialogFooter,
+    23	  DialogDescription,
+    24	} from "@/components/ui/dialog";
+    25	import { Button } from "@/components/ui/button";
+    26	import { Input } from "@/components/ui/input";
+    27	import { Label } from "@/components/ui/label";
+    28	import { Checkbox } from "@/components/ui/checkbox";
+    29	import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+    30	import { Separator } from "@/components/ui/separator";
+    31	import { Download, RefreshCw, Lock, Sparkles, FileText, Building2 } from "lucide-react";
+    32	import { toast } from "sonner";
+    33	import { cn } from "@/lib/utils";
+    34	
+    35	// ── Preset accent colors ──────────────────────────────────────────
+    36	
+    37	const PRESET_COLORS: Array<{ label: string; hex: string }> = [
+    38	  { label: "Indigo", hex: "#6366f1" },
+    39	  { label: "Violet", hex: "#7c3aed" },
+    40	  { label: "Blue", hex: "#2563eb" },
+    41	  { label: "Emerald", hex: "#059669" },
+    42	  { label: "Rose", hex: "#e11d48" },
+    43	  { label: "Amber", hex: "#d97706" },
+    44	];
+    45	
+    46	// ── Props ─────────────────────────────────────────────────────────
+    47	
+    48	interface PDFOptionsDialogProps {
+    49	  scan: Scan;
+    50	  pillarResults: PillarResult[];
+    51	  open: boolean;
+    52	  onOpenChange: (open: boolean) => void;
+    53	  /** Team branding for the scan — passed when scan.team_id is set and user is on agency plan */
+    54	  teamBranding?: TeamBranding | null;
+    55	}
+    56	
+    57	// ── Component ─────────────────────────────────────────────────────
+    58	
+    59	export function PDFOptionsDialog({
+    60	  scan,
+    61	  pillarResults,
+    62	  open,
+    63	  onOpenChange,
+    64	  teamBranding,
+    65	}: PDFOptionsDialogProps) {
+    66	  const { profile } = useAuth();
+    67	  const isProUser = profile ? isProPlus(profile.plan) : false;
+    68	  const isAgencyUser = profile ? isAgencyPlan(profile.plan) : false;
+    69	
+    70	  // When agency team branding is available, pre-populate from team
+    71	  const defaultCompany = teamBranding?.name ?? profile?.company_name ?? "";
+    72	  const defaultAccent = teamBranding?.brand_color ?? "#6366f1";
+    73	
+    74	  // Form state
+    75	  const [pdfType, setPdfType] = useState<"basic" | "enhanced">("basic");
+    76	  const [companyName, setCompanyName] = useState(defaultCompany);
+    77	  const [accentColor, setAccentColor] = useState(defaultAccent);
+    78	  const [customHex, setCustomHex] = useState("");
+    79	  const [includeRewrites, setIncludeRewrites] = useState(true);
+    80	  const [includeHistory, setIncludeHistory] = useState(true);
+    81	  const [isGenerating, setIsGenerating] = useState(false);
+    82	
+    83	  // When team branding changes (dialog re-opens), sync defaults
+    84	  const usingTeamBranding = isAgencyUser && !!teamBranding;
+    85	
+    86	  // url_hash for scan history: same derivation as AuditReport.tsx
+    87	  const urlHash = scan.url.toLowerCase().trim();
+    88	
+    89	  const { data: copyRewrites = [] } = useCopyRewrites(scan.id);
+    90	  const { data: historyEntries = [] } = useScanHistory(urlHash);
+    91	  const scoreHistory = historyEntries.map((e) => ({
+    92	    date: e.scanned_at,
+    93	    score: e.score,
+    94	  }));
+    95	
+    96	  const hasRewrites = copyRewrites.length > 0;
+    97	  const hasHistory = scoreHistory.length >= 2;
+    98	
+    99	  // Resolve effective accent color (custom hex takes precedence if valid)
+   100	  const effectiveAccent =
+   101	    customHex.match(/^#[0-9a-fA-F]{6}$/) ? customHex : accentColor;
+   102	
+   103	  const handleDownload = async () => {
+   104	    if (pillarResults.length === 0) {
+   105	      toast.error("Report data not ready. Please wait and try again.");
+   106	      return;
+   107	    }
+   108	
+   109	    setIsGenerating(true);
+   110	    try {
+   111	      if (pdfType === "basic") {
+   112	        await new Promise<void>((resolve) => {
+   113	          setTimeout(() => {
+   114	            generateAuditPDF(scan, pillarResults, {
+   115	              full_name: profile?.full_name ?? "User",
+   116	              company_name: profile?.company_name ?? undefined,
+   117	            });
+   118	            resolve();
+   119	          }, 0);
+   120	        });
+   121	        toast.success("Basic PDF downloaded.");
+   122	      } else {
+   123	        await generateEnhancedPDF({
+   124	          scan,
+   125	          pillarResults,
+   126	          copyRewrites: includeRewrites && hasRewrites ? copyRewrites : undefined,
+   127	          scoreHistory: includeHistory && hasHistory ? scoreHistory : undefined,
+   128	          branding: {
+   129	            companyName: companyName.trim() || undefined,
+   130	            accentColor: effectiveAccent,
+   131	          },
+   132	        });
+   133	        toast.success("Enhanced PDF downloaded.");
+   134	      }
+   135	      onOpenChange(false);
+   136	    } catch (err) {
+   137	      console.error("PDF generation error:", err);
+   138	      toast.error("Failed to generate PDF. Please try again.");
+   139	    } finally {
+   140	      setIsGenerating(false);
+   141	    }
+   142	  };
+   143	
+   144	  return (
+   145	    <Dialog open={open} onOpenChange={onOpenChange}>
+   146	      <DialogContent className="max-w-md">
+   147	        <DialogHeader>
+   148	          <DialogTitle className="flex items-center gap-2">
+   149	            <Download className="h-4.5 w-4.5 text-primary" />
+   150	            Download PDF Report
+   151	          </DialogTitle>
+   152	          <DialogDescription>
+   153	            Choose the format that best fits your needs.
+   154	          </DialogDescription>
+   155	        </DialogHeader>
+   156	
+   157	        <div className="space-y-5 py-2">
+   158	          {/* ── PDF Type Selection ─────────────────────────────── */}
+   159	          <RadioGroup
+   160	            value={pdfType}
+   161	            onValueChange={(v) => setPdfType(v as "basic" | "enhanced")}
+   162	            className="space-y-3"
+   163	          >
+   164	            {/* Basic */}
+   165	            <label
+   166	              htmlFor="pdf-basic"
+   167	              className={cn(
+   168	                "flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 transition-colors",
+   169	                pdfType === "basic"
+   170	                  ? "border-primary/60 bg-primary/5"
+   171	                  : "border-border/60 hover:bg-muted/40"
+   172	              )}
+   173	            >
+   174	              <RadioGroupItem value="basic" id="pdf-basic" className="mt-0.5 shrink-0" />
+   175	              <div className="flex-1 min-w-0">
+   176	                <div className="flex items-center gap-2">
+   177	                  <FileText className="h-4 w-4 text-muted-foreground" />
+   178	                  <span className="text-sm font-semibold text-foreground">Basic PDF</span>
+   179	                </div>
+   180	                <p className="mt-0.5 text-xs text-muted-foreground">
+   181	                  Cover page, executive summary, pillar breakdown, and quick wins.
+   182	                  Available on all plans.
+   183	                </p>
+   184	              </div>
+   185	            </label>
+   186	
+   187	            {/* Enhanced */}
+   188	            <label
+   189	              htmlFor="pdf-enhanced"
+   190	              className={cn(
+   191	                "flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 transition-colors",
+   192	                pdfType === "enhanced"
+   193	                  ? "border-primary/60 bg-primary/5"
+   194	                  : "border-border/60 hover:bg-muted/40",
+   195	                !isProUser && "opacity-70"
+   196	              )}
+   197	            >
+   198	              <RadioGroupItem
+   199	                value="enhanced"
+   200	                id="pdf-enhanced"
+   201	                className="mt-0.5 shrink-0"
+   202	                disabled={!isProUser}
+   203	              />
+   204	              <div className="flex-1 min-w-0">
+   205	                <div className="flex items-center gap-2">
+   206	                  <Sparkles className="h-4 w-4 text-violet-500" />
+   207	                  <span className="text-sm font-semibold text-foreground">
+   208	                    Enhanced PDF
+   209	                  </span>
+   210	                  {!isProUser && (
+   211	                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-2xs font-semibold text-amber-700">
+   212	                      <Lock className="h-2.5 w-2.5" />
+   213	                      Pro+
+   214	                    </span>
+   215	                  )}
+   216	                </div>
+   217	                <p className="mt-0.5 text-xs text-muted-foreground">
+   218	                  Multi-page branded report with custom colors, detailed findings,
+   219	                  AI copy rewrites, and score history.
+   220	                </p>
+   221	              </div>
+   222	            </label>
+   223	          </RadioGroup>
+   224	
+   225	          {/* ── Enhanced Options (Pro+ only) ───────────────────── */}
+   226	          {pdfType === "enhanced" && (
+   227	            <>
+   228	              <Separator />
+   229	
+   230	              {isProUser ? (
+   231	                <div className="space-y-4">
+   232	                  {/* Team branding badge (agency only) */}
+   233	                  {usingTeamBranding && (
+   234	                    <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+   235	                      <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+   236	                      <p className="text-xs text-primary font-medium">
+   237	                        Using team branding from <span className="font-semibold">{teamBranding?.name}</span>
+   238	                      </p>
+   239	                    </div>
+   240	                  )}
+   241	
+   242	                  {/* Company name */}
+   243	                  <div className="space-y-1.5">
+   244	                    <Label htmlFor="company-name" className="text-sm font-medium">
+   245	                      Company Name
+   246	                      <span className="ml-1 text-xs text-muted-foreground">(optional)</span>
+   247	                    </Label>
+   248	                    <Input
+   249	                      id="company-name"
+   250	                      value={companyName}
+   251	                      onChange={(e) => setCompanyName(e.target.value)}
+   252	                      placeholder="Your company name"
+   253	                      className="h-9 text-sm"
+   254	                    />
+   255	                    <p className="text-xs text-muted-foreground">
+   256	                      Replaces "ConvertScan" in the report header and footer.
+   257	                    </p>
+   258	                  </div>
+   259	
+   260	                  {/* Accent color */}
+   261	                  <div className="space-y-1.5">
+   262	                    <Label className="text-sm font-medium">Accent Color</Label>
+   263	                    <div className="flex flex-wrap gap-2">
+   264	                      {PRESET_COLORS.map((color) => (
+   265	                        <button
+   266	                          key={color.hex}
+   267	                          type="button"
+   268	                          title={color.label}
+   269	                          onClick={() => {
+   270	                            setAccentColor(color.hex);
+   271	                            setCustomHex("");
+   272	                          }}
+   273	                          className={cn(
+   274	                            "h-7 w-7 rounded-full border-2 transition-all",
+   275	                            effectiveAccent === color.hex
+   276	                              ? "border-foreground scale-110 shadow-md"
+   277	                              : "border-transparent hover:scale-105"
+   278	                          )}
+   279	                          style={{ backgroundColor: color.hex }}
+   280	                        />
+   281	                      ))}
+   282	                    </div>
+   283	                    <div className="flex items-center gap-2">
+   284	                      <Input
+   285	                        value={customHex}
+   286	                        onChange={(e) => setCustomHex(e.target.value)}
+   287	                        placeholder="#1a2b3c"
+   288	                        maxLength={7}
+   289	                        className="h-8 w-28 font-mono text-xs"
+   290	                      />
+   291	                      <span className="text-xs text-muted-foreground">Custom hex</span>
+   292	                      {customHex && !customHex.match(/^#[0-9a-fA-F]{6}$/) && (
+   293	                        <span className="text-xs text-red-500">Invalid format</span>
+   294	                      )}
+   295	                    </div>
+   296	                  </div>
+   297	
+   298	                  {/* Section toggles */}
+   299	                  <div className="space-y-3">
+   300	                    <Label className="text-sm font-medium">Include Sections</Label>
+   301	
+   302	                    <div className="flex items-center gap-3">
+   303	                      <Checkbox
+   304	                        id="include-rewrites"
+   305	                        checked={includeRewrites}
+   306	                        onCheckedChange={(v) => setIncludeRewrites(v === true)}
+   307	                        disabled={!hasRewrites}
+   308	                      />
+   309	                      <label
+   310	                        htmlFor="include-rewrites"
+   311	                        className={cn(
+   312	                          "text-sm cursor-pointer",
+   313	                          !hasRewrites && "text-muted-foreground cursor-not-allowed"
+   314	                        )}
+   315	                      >
+   316	                        AI Copy Rewrites
+   317	                        {!hasRewrites && (
+   318	                          <span className="ml-2 text-xs text-muted-foreground">
+   319	                            (no rewrites for this scan)
+   320	                          </span>
+   321	                        )}
+   322	                      </label>
+   323	                    </div>
+   324	
+   325	                    <div className="flex items-center gap-3">
+   326	                      <Checkbox
+   327	                        id="include-history"
+   328	                        checked={includeHistory}
+   329	                        onCheckedChange={(v) => setIncludeHistory(v === true)}
+   330	                        disabled={!hasHistory}
+   331	                      />
+   332	                      <label
+   333	                        htmlFor="include-history"
+   334	                        className={cn(
+   335	                          "text-sm cursor-pointer",
+   336	                          !hasHistory && "text-muted-foreground cursor-not-allowed"
+   337	                        )}
+   338	                      >
+   339	                        Score History
+   340	                        {!hasHistory && (
+   341	                          <span className="ml-2 text-xs text-muted-foreground">
+   342	                            (requires 2+ scans of this URL)
+   343	                          </span>
+   344	                        )}
+   345	                      </label>
+   346	                    </div>
+   347	                  </div>
+   348	                </div>
+   349	              ) : (
+   350	                // Not Pro+ — show upgrade prompt
+   351	                <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+   352	                  <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+   353	                  <div>
+   354	                    <p className="text-sm font-semibold text-amber-800">Pro plan required</p>
+   355	                    <p className="mt-0.5 text-xs text-amber-700">
+   356	                      Upgrade to Pro to unlock enhanced branded reports, custom colors,
+   357	                      AI copy rewrite sections, and score history pages.
+   358	                    </p>
+   359	                  </div>
+   360	                </div>
+   361	              )}
+   362	            </>
+   363	          )}
+   364	        </div>
+   365	
+   366	        <DialogFooter className="gap-2 sm:gap-0">
+   367	          <Button
+   368	            variant="outline"
+   369	            size="sm"
+   370	            onClick={() => onOpenChange(false)}
+   371	            disabled={isGenerating}
+   372	          >
+   373	            Cancel
+   374	          </Button>
+   375	          <Button
+   376	            size="sm"
+   377	            onClick={handleDownload}
+   378	            disabled={isGenerating || (pdfType === "enhanced" && !isProUser)}
+   379	            className="min-w-[120px]"
+   380	          >
+   381	            {isGenerating ? (
+   382	              <>
+   383	                <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+   384	                Generating…
+   385	              </>
+   386	            ) : (
+   387	              <>
+   388	                <Download className="mr-1.5 h-3.5 w-3.5" />
+   389	                Download PDF
+   390	              </>
+   391	            )}
+   392	          </Button>
+   393	        </DialogFooter>
+   394	      </DialogContent>
+   395	    </Dialog>
+   396	  );
+   397	}
