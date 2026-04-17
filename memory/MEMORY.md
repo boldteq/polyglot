@@ -96,6 +96,7 @@ Index loaded every session. Check before starting any task.
 
 ## Design Knowledge Base
 
+- [Pixel Skills](../skills/pixel/) — Public-facing page designer: Flowbase DNA, niche blueprints, font pairings, CRO psychology, 14 page types
 - [Design KB Index](design/INDEX.md) — 35 files, 43K lines. Tokens, patterns, standards (start here)
 - Quick links: [tokens](design/core/design-tokens.md) | [colors](design/core/color-system.md) | [motion](design/core/motion.md) | [a11y](design/standards/accessibility.md) | [state](design/standards/state-management.md) | [errors](design/standards/error-handling.md) | [shadcn](design/references/shadcn-patterns.md) | [SaaS examples](design/references/best-saas-examples.md)
 - Patterns: [dashboards](design/patterns/dashboards.md) | [forms](design/patterns/forms.md) | [tables](design/patterns/data-tables.md) | [auth](design/patterns/auth-pages.md) | [billing](design/patterns/billing-ui.md) | [settings](design/patterns/settings.md) | [nav](design/patterns/navigation.md) | [landing](design/patterns/landing-page.md) | [onboarding](design/patterns/onboarding.md) | [notifications](design/patterns/notifications.md) | [errors](design/patterns/error-pages.md) | [empty](design/patterns/empty-states.md) | [loading](design/patterns/loading-states.md) | [upload](design/patterns/file-upload.md) | [email](design/patterns/email-templates.md) | [search](design/patterns/search.md) | [chat](design/patterns/chat.md) | [realtime](design/patterns/real-time.md) | [changelog](design/patterns/changelog.md) | [help](design/patterns/help-center.md)

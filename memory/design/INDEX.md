@@ -113,6 +113,21 @@ stacks/shopify/design/storefront-widgets.md → Theme/checkout/customer account 
 stacks/shopify/design/brand-examples.md    → Real brand analysis from 7 top Shopify apps (Stack B)
 ```
 
+### Pixel (Public-Facing Page Design)
+Loads for all public-facing page design work (landing, about, pricing, blog, etc.):
+```
+skills/pixel/flowbase-design-dna.md    -> 9 Flowbase collections, niche mapping, 10 mandatory patterns
+skills/pixel/niche-blueprints.md       -> 3 core blueprints (SaaS/Tech, E-commerce, AI/ML) + auto-research
+skills/pixel/font-pairings.md          -> 20 curated font pairings (heading + body + mono)
+skills/pixel/cro-psychology.md         -> AIDA framework, social proof placement, pricing UX
+skills/pixel/page-type-library.md      -> 14 page type definitions and specs
+core/color-system.md                   -> HSL color system (extending Vega's)
+core/motion.md                         -> Animation presets reference
+standards/accessibility.md             -> WCAG 2.1 AA checklist
+standards/performance.md               -> CWV budgets
+patterns/landing-page.md               -> Existing landing page patterns (reference, not replace)
+```
+
 ### Koda (Implementation)
 Loads when building UI:
 ```
