@@ -40,7 +40,18 @@ Each completed project trains the agent team so the next one builds faster.
 
 > New stacks get added to `~/.claude/memory/stacks/` as we build in new domains.
 
-## Agent Roster
+## Agent Roster (54-agent target — scaling 2026-04-18 → 2026-05-30)
+
+**Org scale-up plan in motion:** `~/.claude/plans/hr-team-agent-can-melodic-dolphin.md`
+
+Current: 30 agents → Target: 54 agents in 6 weekly cohorts of 5. Decompositions of overloaded agents (Quill, Koda, Vega, Rex) completed Week 0 to release token-efficiency capacity BEFORE new specialists hire.
+
+**New departments after scale-up:**
+- **Stack Pods** — 3 stack-specific engineering pods (Pod A: Next.js, Pod B: Shopify Native, Pod C: Shopify External). Each pod has 5 specialists (Frontend, Backend, DB, Tester, Reviewer). Pod A repurposes Koda/Dato/Luna/Sage; Pods B + C are net-new.
+- **Design Specialists** — 4 specialists under Vega (Lead): elio (ecom), dash (dashboard), token (design system), figma-synth (JSX→.fig)
+- **CRO Team** — 5 specialists under new CRO Lead `catalyst`: decoder (brand pattern teardowns), spark (hero/CTA), landing-cro (marketing CRO), ecom-cro (ecom funnel), sequence (lifecycle email)
+- **Email Infrastructure** — 2 specialists: postmark (Resend transactional infra) + sequence (lifecycle sequences, sits under CRO)
+- **Quill Decomposition Hires** — serif (App Store / PH / ASO copy), docsmith (developer docs / API)
 
 All agents live in `~/.claude/agents/`. They are always available. Use them proactively — do not wait to be asked.
 
@@ -55,13 +66,14 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 | VALIDATE | `arya` | Arya — Architecture | System design, data model, stack decisions |
 | VALIDATE | `riko` | Riko — Project Setup | Scaffolding from Arya's plan |
 | VALIDATE | `ledger` | Ledger — Pricing & Economics | Pricing tiers, LTV/CAC, payback period |
-| BUILD | `rex` | Rex — Commander | Orchestrates full build sprints |
+| EXECUTIVE | `rex` | Rex — Strategic Commander | Portfolio + new product approvals + 30/90d verdicts only (NARROWED 2026-04-18) |
 | BUILD | `nova` | Nova — Market Research | Competitive intelligence during build |
-| BUILD | `koda` | Koda — Feature Builder | All production code (any stack) |
+| BUILD | `koda` | Koda — Pod A Backend Specialist | Stack A backend ONLY: Next.js API routes, Server Components, integrations (NARROWED 2026-04-18) |
 | BUILD | `dato` | Dato — Database Architect | Schema, migrations, RLS, triggers, indexes, Realtime, Edge Functions, DB debugging |
-| BUILD | `luna` | Luna — Testing | Tests after features built |
-| BUILD | `quill` | Quill — Content & Copy | Landing pages, listings, emails, copy |
-| BUILD | `vega` | Vega — Design | UI/UX specs, visual review |
+| BUILD | `luna` | Luna — Testing | Tests after features built (cross-pod test mentor) |
+| BUILD | `quill` | Quill — Marketing Copy & Brand Voice | Landing/email/social/microcopy ONLY (NARROWED 2026-04-18) |
+| BUILD | `vega` | Vega — Design Department Lead | Cross-pod design standards + review only; delegates execution (NARROWED 2026-04-18) |
+| BUILD | `pixel` | Pixel — Public-Facing Page Designer | 14 page types: landing, pricing, blog, etc. |
 | BUILD | `zeph` | Zeph — SEO | Technical SEO audits, optimization |
 | LAUNCH | `echo` | Echo — Distribution | Channel plans, launch sequence, content calendar |
 | LAUNCH | `mira` | Mira — Memory & Training | Knowledge capture before/after launches |
@@ -90,21 +102,53 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 
 **Data source of truth:** Supabase `agent-ops` database (schema: `~/.claude/memory/patterns/good/agent-ops-schema.md`). Legacy files (`~/.claude/org/registry.json`, `witness-log.jsonl`) are DEPRECATED — migrate to Supabase.
 
-**Routing rules:**
-- New SaaS idea end-to-end → `/saas-cycle` (full 21-agent pipeline with kill gates)
+**Routing rules (UPDATED 2026-04-18 for stack pods + specialists):**
+- New SaaS idea end-to-end → `/saas-cycle` (full pipeline with kill gates)
 - Quick idea validation → `/shape-only` (Scout → Vex → Sage, 2 hours)
 - Market + business validation → `/validate-only` (Atlas → Arya → Riko → Ledger, 1 week)
 - Pre-launch gate → `/launch-check` (Echo → Mira → Bolt → Hawk)
 - Post-launch decision → `/verdict-30d` (Orbit → Pulse → Verdict)
-- New project build → Rex Mode A-E (existing pipeline)
-- Bug report → Vex
-- Feature request → Koda (check project CLAUDE.md first)
-- Database work (schema, migration, RLS, triggers, indexes, Realtime) → Dato
-- DB bug (empty results, slow queries, RLS issues) → Dato (via Vex triage)
-- Copy needed → Quill
-- Tests needed → Luna
+- New project build → dispatched VP runs the pipeline; Rex only on Mode A new-product approval
+
+**Stack-pod routing (engineering work):**
+- Stack A (Next.js + Supabase + Railway) → Pod A: koda (backend), pod-a-frontend (Cohort 3+), dato (db), luna (tests), sage (review)
+- Stack B (Shopify Native React Router 7 + Polaris) → Pod B: pod-b-frontend / pod-b-backend / pod-b-db / pod-b-tester / pod-b-reviewer (Cohort 1+)
+- Stack C (Shopify External standalone) → Pod C: pod-c-frontend / pod-c-backend / pod-c-db / pod-c-tester / pod-c-reviewer (Cohort 2+)
+
+**Specialty routing:**
+- Bug report → Vex (any stack)
+- Database work → Dato (schema/migration/RLS/triggers/Realtime/Edge Functions)
+- Tests → pod tester first; Luna for cross-pod or strategy
+- Code review → pod reviewer first; Sage for cross-pod or escalation
 - Deployment → Bolt (only after Sage approves)
-- Work complete → Mira to capture lessons
+- Monitoring → Hawk
+
+**Design routing (after Cohort 3):**
+- Ecom UI (storefront, PDP, cart, checkout) → elio
+- Dashboard (admin panels, multi-widget data viz) → dash
+- Design system / tokens / shadcn customization → token
+- JSX → .fig deliverable conversion → figma-synth
+- Public-facing pages (landing, pricing, blog, etc.) → pixel
+- Cross-pod design standards / review / escalation → vega
+
+**Copy routing (after Cohort 4-5):**
+- Marketing landing/email/social/microcopy → quill
+- Hero/CTA optimization (40%+ CRO mandate) → spark
+- Lifecycle email sequences (welcome, nurture, win-back) → sequence
+- App Store / Shopify App Store / Product Hunt / ASO → serif
+- Developer docs, API docs, SDK guides, changelogs → docsmith
+
+**CRO routing (after Cohort 4):**
+- CRO strategy + funnel analysis + brand teardown direction → catalyst
+- Top-50 brand decoding + weekly teardowns + niche audits → decoder
+- Marketing landing/pricing CRO (40%+ visitor→signup) → landing-cro
+- Ecom CRO (40%+ cart→purchase) → ecom-cro
+
+**Email infra routing (after Cohort 5):**
+- Resend integration / SPF-DKIM-DMARC / templates / deliverability → postmark
+- Lifecycle email sequences (under CRO) → sequence
+
+**Knowledge:** Work complete → Mira to capture lessons (every project).
 
 Always check for a project-level agent in `.claude/agents/` before falling back to global agents.
 
