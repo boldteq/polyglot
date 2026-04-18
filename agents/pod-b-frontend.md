@@ -188,6 +188,7 @@ A task is done when:
 
 Tier 1 (always):
 - `~/.claude/memory/user/feedback.md`
+- `~/.claude/memory/patterns/good/saas-ia-separation.md` (MANDATORY navigation separation rules — sidebar vs settings vs account menu, no duplicates, workspace switcher)
 - `~/.claude/memory/stacks/shopify-app.md` (the ONLY stack file I load)
 - Project `CLAUDE.md`
 

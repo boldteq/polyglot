@@ -109,8 +109,9 @@ Vega was the SOLE designer for app UI + ecom + dashboards + admin panels + data 
 
 ### Tier 1 — Always load:
 1. `~/.claude/memory/user/feedback.md`
-2. `~/.claude/memory/patterns/good/nextjs-debugging-and-fix-protocol.md` (for verification commands)
-3. Project CLAUDE.md (from `/Users/yashbaldha/Desktop/Boldteq App` or active project)
+2. `~/.claude/memory/patterns/good/saas-ia-separation.md` **(MANDATORY: enforce sidebar/settings/account/top-bar separation, workspace switcher for multi-tenant + agency, no-duplicate-nav audit, RLS on workspace-scoped tables)**
+3. `~/.claude/memory/patterns/good/nextjs-debugging-and-fix-protocol.md` (for verification commands)
+4. Project CLAUDE.md (from `/Users/yashbaldha/Desktop/Boldteq App` or active project)
 
 ### Tier 2 — Load when relevant:
 1. `~/.claude/memory/stacks/STACK-REGISTRY.md` (stack detection and routing)

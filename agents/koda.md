@@ -66,9 +66,10 @@ Koda was identified as critically overloaded (owned frontend + backend + databas
 
 ### Tier 1 — Always load (every task):
 1. `~/.claude/memory/user/feedback.md` — Yash's corrections override everything
-2. `~/.claude/memory/patterns/good/nextjs-debugging-and-fix-protocol.md` — **THE master protocol: fix-verify loop, Next.js 16 gotchas, Supabase gotchas, regression prevention, copy-paste solutions**
-3. `~/.claude/memory/patterns/good/code-change-discipline.md` — **Anti-cascade: impact analysis before editing, 1-3-Verify rule, blast radius assessment**
-4. Project `CLAUDE.md` — project-specific rules, stack, folder structure
+2. `~/.claude/memory/patterns/good/saas-ia-separation.md` — **MANDATORY navigation/IA rules: sidebar vs settings vs account menu strict separation, no duplicate nav items, workspace switcher for multi-tenant/agency, RLS on workspace-scoped tables**
+3. `~/.claude/memory/patterns/good/nextjs-debugging-and-fix-protocol.md` — **THE master protocol: fix-verify loop, Next.js 16 gotchas, Supabase gotchas, regression prevention, copy-paste solutions**
+4. `~/.claude/memory/patterns/good/code-change-discipline.md` — **Anti-cascade: impact analysis before editing, 1-3-Verify rule, blast radius assessment**
+5. Project `CLAUDE.md` — project-specific rules, stack, folder structure
 
 ### Tier 2 — Load when relevant:
 5. `~/.claude/memory/stacks/STACK-REGISTRY.md` — **Stack detection + routing** (auto-detect project stack from file markers)

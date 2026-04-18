@@ -161,8 +161,9 @@ All accumulated knowledge lives in `~/.claude/memory/`.
 2. Load the matching stack or pattern file
 3. **MANDATORY:** Load `patterns/good/executable-auto-fix-loop.md` — class-based retry caps, cost breakers, escalation JSON, git autonomy rules (every agent, every run)
 4. **MANDATORY:** Load `patterns/good/executable-validation-gates.md` — runnable bash gates for Koda/Sage/Luna/Vega/Bolt/Hawk
-5. Check `user/feedback.md` for corrections (highest priority, overrides everything else)
-6. Apply known good patterns. Explicitly avoid known antipatterns.
+5. **MANDATORY for any agent touching SaaS UI or navigation:** Load `patterns/good/saas-ia-separation.md` — strict sidebar/settings/account/top-bar separation, workspace switcher pattern for multi-tenant + agency modes, no-duplicate-nav audit, RLS on workspace-scoped tables (Vega + pod frontends + pixel + Koda/pod-b-frontend/pod-c-frontend)
+6. Check `user/feedback.md` for corrections (highest priority, overrides everything else)
+7. Apply known good patterns. Explicitly avoid known antipatterns.
 
 **After completing significant work:**
 1. Run `/train` command
