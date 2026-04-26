@@ -240,3 +240,325 @@ Sprint 6 (M2): Dato wrote `change_member_role` and `deactivate_member` RPCs with
 ---
 
 *Extracted by Mira, 2026-04-15. Source: InkOS `.handoffs/` (33 files). Knowledge version v1.*
+
+---
+
+## Appendix — Calendar Rebuild (2026-04-23, Phases 1-10)
+
+Context: 10-phase rebuild of the multi-chair Day view with dnd-kit drag-drop, Supabase Realtime, SMS notifications, WCAG keyboard accessibility. 29 feature changes + 11 audit fixes + 36 tests. Typecheck / build / tests all green. Reusable patterns lifted to `~/.claude/memory/patterns/good/calendar-drag-drop-and-realtime.md`.
+
+### Booking API rate-limit + auth contract (non-negotiable)
+
+Every new `app/api/bookings/**/route.ts` handler — GET, POST, PATCH, DELETE — must:
+1. Call `getAuthenticatedUser()` (internally uses `supabase.auth.getUser()`, validates against auth server). Never `getSession()` server-side.
+2. Rate-limit on `authUser.user.id` via `authedRatelimit.limit(authUser.user.id)`. Never on IP / `x-forwarded-for` — spoofable.
+3. Only then validate body with Zod and touch the DB.
+
+Any deviation is a Sage hard-fail. The pattern is copy-paste from `app/api/bookings/[id]/route.ts`.
+
+### `CalendarBooking` shape (source-of-truth for any booking-returning endpoint)
+
+Calendar expects nested relations with these exact shapes. Any endpoint that returns bookings for calendar consumption must SELECT matching columns:
+
+- `client: { first_name: string; last_name: string }` — NOT `{ name: string }`. Calendar card concatenates.
+- `artist: { display_name: string; avatar_url: string | null; sort_order: number }` — NOT `{ color_index: number }`. `sort_order` drives column order in DayChairGrid.
+
+Supabase select string:
+```ts
+.select(`
+  id, start_at, end_at, status, chair_id, notes,
+  client:clients ( first_name, last_name ),
+  artist:studio_members ( display_name, avatar_url, sort_order )
+`)
+```
+
+New endpoints (e.g. `/api/bookings/day`, `/api/bookings/week`) must follow this contract. Shape drift triggers silent UI breakage — card shows blank name, wrong avatar, or `undefined NaN`.
+
+### Multi-chair Day view branches from Week/Month
+
+`CalendarPageClient` picks the renderer based on view mode:
+- `view === 'day'` → `<DayChairGrid />` (custom CSS Grid + dnd-kit, multi-chair columns)
+- `view === 'week' | 'month' | 'agenda'` → `<FullCalendar />` (existing free-tier)
+
+Any future calendar enhancement (new event type, recurring bookings, blocked time, etc.) must be implemented in BOTH renderers, OR must gracefully no-op in the one it doesn't support. Silent divergence between views is the #1 calendar bug class.
+
+### `client_communications` contract (any SMS/email/WhatsApp flow)
+
+Column names are NOT what you'd guess:
+- `channel` (NOT `type`) with values `'email' | 'sms' | 'whatsapp' | 'in_app'`
+- `direction` with `'inbound' | 'outbound'`
+- `status` with `'queued' | 'sent' | 'delivered' | 'failed' | 'bounced'`
+
+SMS dispatch flow (proven in calendar PATCH handler):
+1. INSERT `client_communications` row: `channel='sms'`, `direction='outbound'`, `status='queued'`
+2. Enqueue BullMQ job `send-sms` with payload `{ commId, studioId }` — the worker reads the row, calls Twilio, updates `status` to `sent` or `failed`
+3. Fire-and-forget from the route handler: `void dispatchFn().catch(log)` — never await, never block the mutation response
+
+Any new notification channel (in-app push, WhatsApp) follows the same pattern: insert row → enqueue job → worker owns the actual send.
+
+---
+
+## Calendar Sprints 1-6 PDF-Compliance Closeout (2026-04-23)
+
+These sprints closed the final PDF-spec compliance gaps after Phases 1-11. Six tight sprints, each shipping distinct patterns. Full patterns preserved in `~/.claude/memory/patterns/good/` (category colors, detail drawer, progressive disclosure, smart linking, QR, NOW line). This appendix captures the InkOS-specific contract + gotcha items that don't belong in cross-project patterns.
+
+### Smart-linking contract — `POST /api/bookings`
+
+The client may send an optional `link_booking_id: string`. Server-side, the route handler:
+
+1. Reads the referenced booking (validating `studio_id === current studio` AND `client_id === body.client_id`).
+2. Inherits `project_id` from the referenced booking.
+3. Sets `session_number` to `(ref.session_number ?? 1) + 1`.
+
+**Never trust the client to set `project_id` or `session_number` directly.** The server is the only writer of those columns. Any client attempting to POST `project_id` gets 400 (Zod strips unknown keys — ensure the `CreateBookingSchema` does NOT whitelist project_id or session_number).
+
+Candidate detection (client-side heuristic): on client select, fetch `/api/bookings?client_id=X&from=<now-7d>`, pick nearest non-cancelled booking within ±7 days of new booking's date, render inline Sparkles banner with Yes/No pills.
+
+### HOLD auto-cancel is already wired — don't re-create
+
+Two cron workers already own the HOLD lifecycle:
+
+- `workers/cron/auto-cancel-deposits.ts` — runs every 10 min, cancels HOLD bookings whose `deposit_deadline_at` is past.
+- `workers/cron/deposit-deadline-reminders.ts` — runs every 15 min, sends SMS/email reminders at 24h / 4h / 1h before deadline.
+
+Before adding any deposit-lifecycle feature, check these workers first. Adding a second auto-cancel path creates race conditions (both workers try to cancel the same row).
+
+### Progressive-disclosure form fields may be silently stripped
+
+`SmartBookingSheet` surfaces `reference_images` (File[]) and `recurring` (`'once' | 'weekly' | 'monthly'`) behind the "+ Add more" toggle. Current `CreateBookingSchema` (Zod on `POST /api/bookings`) does NOT accept these fields — they're stripped server-side.
+
+**When backend support lands** (reference images to Supabase Storage + recurring as a linked child-booking template):
+
+1. Update `CreateBookingSchema` to `z.object({ ..., reference_images: z.array(z.string().url()).max(4).optional(), recurring: z.enum(['once','weekly','monthly']).default('once') })`.
+2. Switch from `.strip()` (default) to `.strict()` on the schema so unknown keys error loudly during the transition.
+3. Remove the client-side `stripUnsupported(payload)` helper in `SmartBookingSheet`.
+4. Wire upload: files → `POST /api/storage/booking-refs` → returned paths → included in create payload.
+
+Until then, the UI silently collects data the backend discards. This is acceptable as a staged rollout but MUST be tracked.
+
+---
+*Calendar rebuild appendix added 2026-04-23.*
+*Sprints 1-6 PDF-compliance closeout appendix added 2026-04-23.*
+
+---
+
+## Appendix — Messages v1 Sprint (Sprint 13, 2026-04-23)
+
+Context: Omnichannel 3-pane inbox (list + thread + context). 8 agents dispatched in parallel. 59 files, 3 migrations, 20 UI components, 4 hooks, 23 server actions, 1 worker, 4 webhook routes, 167 tests. Patterns below capture items that repeated across agents and must not recur.
+
+### M1. Surgical edits to `lib/supabase/types.ts` — still an antipattern, even for RPCs
+
+Dato hand-edited the generated types file to add `triage_conversation` and `enqueue_auto_reply` to the `Database['public']['Functions']` union. Sage caught the downstream symptom: `as unknown as` casts in `triage.ts` compensating for un-typed return shapes. The fix was to add proper Function signatures to the union — but the root cause is the same recurring antipattern from Section 1B and 4A.
+
+**Rule:** Never hand-edit `lib/supabase/types.ts`, even "just to add an RPC signature." Pattern for adding an RPC to types:
+1. Write the migration first (Dato).
+2. Apply it locally: `pnpm db:migrate`.
+3. Regenerate: `pnpm db:types` → `pnpm supabase gen types typescript --linked > lib/supabase/types.ts`.
+4. If regeneration is not available (project not linked), COPY an existing Function entry's exact shape and ADD your new entry — do not invent a new structure.
+
+Any `as unknown as` cast in a file that calls an RPC is a red flag that the types file is behind the schema. Fix the types, not the callsite.
+
+### M2. Feature gate applied to page but NOT to server actions
+
+Dato + Koda added the `omnichannel_inbox` gate to `/settings/messaging` correctly, but the `/messages` page AND all 21 server actions in `actions.ts` were ungated. A user on Solo tier could call any action by URL manipulation or direct fetch, bypassing the UI restriction.
+
+**Rule:** Every gated feature requires gates in THREE places:
+1. Sidebar/nav link — hidden via `featureKey` in nav-config (UX clarity).
+2. Page route — `requireFeatureRpc(supabase, studioId, 'key')` at the top of the server component (URL-manipulation block).
+3. **Every server action and API route** — same `requireFeatureRpc` call (fetch/cURL block).
+
+**DRY pattern for multi-action files:** Add a module-level helper at the top of `actions.ts`:
+```ts
+async function requireOmnichannelGate(studioId: string) {
+  const supabase = await createClient()
+  await requireFeatureRpc(supabase, studioId, 'omnichannel_inbox')
+  return supabase
+}
+```
+Every action calls `const supabase = await requireOmnichannelGate(studioId)` as its first line. One line per action. Zero skipped gates.
+
+Sage scan: grep `actions.ts` for exported async functions that do NOT call the gate helper — hard-fail any that miss it.
+
+### M3. Service-role client in session-scoped code paths
+
+`lib/messaging/send.ts` used `createServiceRoleClient()` in functions called from server actions. Server actions ALWAYS carry session context (the cookie is on the request); the session-scoped client + RLS is both sufficient and safer — any bug in the send logic can't accidentally write cross-tenant.
+
+**Rule:** `createServiceRoleClient()` is justified ONLY in:
+- Webhook handlers (no session — request comes from provider).
+- BullMQ workers / cron jobs (no session — background).
+- Admin routes AFTER `is_platform_admin` gate (deliberate cross-tenant access).
+
+Everywhere else (server actions, API routes under `/api/*` called from the app, server components), use the session-scoped `createClient()`. Sage grep: `createServiceRoleClient` usage must be in one of the allowed contexts — otherwise fail.
+
+### M4. Orphan-comm antipattern in auto-reply RPC
+
+`enqueue_auto_reply` RPC inserted a `client_communications` row with `status='queued'` AND stamped `conversations.last_auto_reply_at` BEFORE checking whether the dispatch channel was supported. If a channel wasn't wired (e.g. WhatsApp without Twilio config), the comm row was orphaned forever in `queued` state, and the conversation's `last_auto_reply_at` lied about what actually happened.
+
+**Rule:** State-changing RPCs that depend on external dispatchability must gate on capability BEFORE writing state. Order:
+1. Validate the channel is supported (env check, config row, capability table).
+2. If not → return early with a clear "channel_unsupported" status, write NOTHING.
+3. Only after capability check → insert queued row + stamp `last_*_at`.
+
+Equivalent rule for any "enqueue + stamp + dispatch" flow: capability → write → dispatch. Never write → discover-unsupported → leak.
+
+### M5. Webhook returns 200 when config is missing
+
+The Meta (Instagram/Messenger) webhook route returned 200 silently when `META_APP_SECRET` was unset. Meta treats 200 as successful delivery and never retries — messages were dropped with zero observable signal.
+
+**Rule:** Webhook config errors return **503 Service Unavailable**, not 200. 503 signals "provider, retry later, ops will fix this." The provider keeps retrying on its schedule, and the missing-config error shows up in logs, dashboards, and alerts.
+
+Pattern for every webhook route:
+```ts
+const secret = process.env.META_APP_SECRET
+if (!secret) {
+  logger.error({ webhook: 'meta' }, 'META_APP_SECRET not configured')
+  return new Response('Webhook not configured', { status: 503 })
+}
+```
+
+Apply to ALL webhook routes: Dodo, Meta, Twilio, Resend, any future provider. The only 200 a webhook returns is after successful processing (or successful idempotent-replay detection).
+
+### M6. BullMQ `throw` for expected transient states
+
+`workers/jobs/send-scheduled-message.ts` had an early `throw new Error('scheduled time not reached')` when the job was processed before its target time. BullMQ counts every throw as a failed attempt — 3 throws and the job is dead-lettered, even though the "failure" was entirely expected (the scheduler just has fuzzy timing).
+
+**Rule:** In BullMQ worker bodies, NEVER throw for expected transient states (not-yet-time, rate-limit-cooldown, external-service-busy-retry-later). Use one of:
+- `return` (mark job complete, success) — appropriate if another mechanism will re-schedule.
+- `await job.moveToDelayed(nextRunAt.getTime())` — push the job back to the delayed queue until the target time, doesn't count as a failure.
+- `throw new UnrecoverableError(...)` — explicit dead-letter, skip remaining retries.
+
+`throw` is for genuine, unexpected failure. Every retry budget is finite; burning it on clock skew is a waste.
+
+### M7. Template rendering must match DEFAULT_TEMPLATES token set exactly
+
+Initial `enqueue_auto_reply` RPC rendered only 3 tokens (`{{studio_name}}`, `{{client_first_name}}`, `{{booking_link}}`) but `DEFAULT_TEMPLATES` shipped with 5 tokens including `{{portfolio_link}}` and `{{aftercare_pdf_link}}`. A follow-up migration was required to add the missing REPLACE chain + a defensive `REGEXP_REPLACE` strip for unresolved `{{anything}}` tokens (so broken templates don't leak raw Liquid to clients).
+
+**Rule:** When designing any templated-string RPC:
+1. Enumerate the FULL token set in the design spec before Dato writes the migration.
+2. The RPC's REPLACE chain must cover EVERY token the UI/seed data exposes.
+3. Add a defensive tail: `REGEXP_REPLACE(rendered, '\{\{[^}]+\}\}', '', 'g')` to strip any unresolved tokens rather than leaking them.
+4. If the token set changes, a migration is required — treat the template contract like an API contract.
+
+Canonical pattern: keep token definitions in a single shared source (`lib/messaging/template-tokens.ts`), and reference them from both the seed data and the RPC's REPLACE chain generator.
+
+### M8. `.single()` throws `PGRST116` on upsert with no returned rows
+
+`seedDefaultTemplates()` used `.upsert(...).select('id').single()`. When the upsert was a no-op (row already existed with same values), Supabase returned 0 rows, and `.single()` threw `PGRST116 — Cannot coerce the result to a single JSON object`. The seed function crashed on the happy-path second run.
+
+**Rule:** In seed/idempotent functions, use `.maybeSingle()` (returns `null` instead of throwing) and explicitly guard the `23505` unique-violation code if you're using plain `.insert()` with `ON CONFLICT`. Pattern:
+```ts
+const { data, error } = await supabase
+  .from('message_templates')
+  .upsert(payload, { onConflict: 'studio_id,kind' })
+  .select('id')
+  .maybeSingle()
+
+if (error && error.code !== '23505') throw error
+```
+
+`.single()` is only for queries where exactly one row is guaranteed (e.g., primary-key lookups after a verified insert).
+
+### M9. CSS Grid 3+1 pane layout — messaging chrome recipe
+
+3-pane inbox layout that reuses the app sidebar and behaves correctly at every breakpoint:
+
+```tsx
+// Outer page container — grid changes based on context-pane visibility
+<div
+  className="grid h-[calc(100vh-var(--header-height))] transition-[grid-template-columns] duration-150"
+  style={{
+    gridTemplateColumns: contextOpen
+      ? '72px 360px minmax(0,1fr) 380px'
+      : '72px 360px minmax(0,1fr) 0px',
+  }}
+>
+  <AppSidebar />              {/* 72px — existing global chrome */}
+  <ConversationList />        {/* 360px — own <ScrollArea> */}
+  <ConversationThread />      {/* minmax(0,1fr) — own <ScrollArea> */}
+  <ContextPane />             {/* 380px when open, 0 when collapsed */}
+</div>
+```
+
+**Rules:**
+- Each pane owns its OWN `<ScrollArea>`. Never a shared scroll container.
+- Context-pane collapse is via `grid-template-columns` change, NOT `translateX` — transforms break sticky headers inside the pane.
+- Transition the GRID, not the pane itself, so content reflows rather than sliding off.
+- Tablet (1024–1279px): replace the 4th column with a `<Sheet>` that slides in over the thread. Mobile (<1024px): single pane, navigation via routes.
+- `minmax(0, 1fr)` on the flexible column is REQUIRED — without the `0` min, child overflow pushes the column wider than the viewport.
+
+### M10. Brand color remapping — reject PDF mockups that ship non-brand colors
+
+The Messages audit PDF specified indigo (unread badges), amber (warnings), green (delivered status), and pink (typing) — all forbidden by the InkOS 4-color system.
+
+**Rule:** When a design/audit PDF ships with non-brand colors, the first job of the implementing agent is to remap the semantic intent to Bone/Onyx/Stone/Rust. Canonical remapping for messaging surfaces (lock this in a design handoff note so future sprints inherit it):
+
+| PDF spec | Semantic intent | InkOS remap |
+|----------|-----------------|-------------|
+| indigo row bg | unread conversation | `rust @ 3% opacity` bg + Onyx sender name (was Stone when read) |
+| amber pill | inquiry / pricing / missed_call triage | Rust pill with Bone text |
+| green pill | delivered / sent success | Onyx-muted pill (Stone bg + Onyx text) |
+| pink ring | typing indicator | Rust 2px ring at 60% opacity, animates opacity only (not color) |
+| gray bubble | internal note | Stone-muted background + Stone border, NO Rust |
+| blue bubble | auto-reply | `rust @ 6% opacity` bg + Onyx text + tiny "Auto" label in Stone |
+
+Document every remap in the sprint's design handoff. Future sprints that touch messaging read this table before looking at any external reference.
+
+### M11. Supabase Realtime presence channels — typing + viewing indicator pattern
+
+Canonical pattern for "who is looking at / typing in this conversation right now":
+
+```ts
+// hooks/messaging/use-conversation-presence.ts
+const channel = supabase.channel(`presence:conversation:${conversationId}`, {
+  config: { presence: { key: userId } },
+})
+
+channel
+  .on('presence', { event: 'sync' }, () => {
+    const state = channel.presenceState<{ userId: string; userName: string; state: 'viewing' | 'typing'; ts: number }>()
+    setPresent(
+      Object.values(state)
+        .flat()
+        .filter(p => p.userId !== currentUserId), // exclude self
+    )
+  })
+  .subscribe(async (status) => {
+    if (status !== 'SUBSCRIBED') return
+    await channel.track({ userId, userName, state: 'viewing', ts: Date.now() })
+  })
+
+// Typing updates — throttled
+const trackTyping = throttle(
+  () => channel.track({ userId, userName, state: 'typing', ts: Date.now() }),
+  TYPING_THROTTLE_MS,
+)
+
+// Cleanup on unmount — MUST call removeChannel
+return () => void supabase.removeChannel(channel)
+```
+
+**Rules:**
+- Channel key: `presence:{entity_type}:{entity_id}` — stable, namespaced, predictable.
+- Presence `key` = `userId` — deduplicates a user's own multiple tabs (only latest state sticks).
+- ALWAYS exclude the current user from the rendered list (`p.userId !== currentUserId`).
+- Throttle `track()` calls for typing — 1 per `TYPING_THROTTLE_MS` (e.g., 2000ms). Every keystroke is a network round-trip otherwise.
+- ALWAYS clean up with `supabase.removeChannel(channel)` on unmount. Leaked channels accumulate and eventually exceed Realtime's per-project channel cap.
+- Presence state is NOT persisted — it's ephemeral. For "last seen at" use a `user_presence` table updated via throttled server action.
+
+### M12. Worker files must be git-tracked before Bolt runs
+
+`workers/jobs/send-scheduled-message.ts` was created locally but never `git add`ed. Sage passed (grep-based scans saw the file on disk), but Bolt's pre-deploy check caught it: Railway would deploy from the commit, and the commit didn't contain the worker. Messages would enqueue into a queue with no consumer.
+
+**Rule:** Before Bolt runs for any sprint that adds workers, verify:
+```bash
+git status workers/
+# Should show no unstaged files in workers/
+git ls-files workers/ | wc -l
+# Should match the number of files on disk
+find workers -type f -name "*.ts" | wc -l
+```
+
+Bolt's pre-deploy checklist includes this step explicitly. Add a CI check: `git diff --name-only HEAD` compared to `find workers -type f` — if the on-disk set is larger than the tracked set, fail the build. This generalizes to any directory that Railway's Dockerfile COPYs from: `workers/`, `scripts/`, `supabase/migrations/` — all must be fully tracked before deploy.
+
+---
+*Messages v1 sprint appendix added 2026-04-23.*

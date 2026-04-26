@@ -41,6 +41,27 @@
 | **Pulse** | FAST | Synthesis across >20 interviews → DEEP | Single interview notes → CHEAP |
 | **Verdict** | **DEEP** | Always — D30/D90 gate is binding | Never |
 | **Mira** | CHEAP | Pattern extraction across full project → FAST | Default: CHEAP (log parsing + file updates) |
+| **Witness** | **CHEAP** | Cross-agent regression cluster >3 agents → FAST | Always CHEAP — classification + aggregation, rule-based |
+| **Roster** | **CHEAP** | Capability-gap investigation for new hire → FAST | Always CHEAP — SQL aggregation, nightly recompute |
+
+---
+
+## 2026-04-22 Hardening — Haiku rollout, Phase 1
+
+**Changed (frontmatter `model: haiku` shipped):**
+- Witness — daily sweep, rule-based classification
+- Roster — nightly experience recompute, SQL-based
+
+**Deferred to Phase 2 (requires per-task dispatch logic in Polyglot SDK):**
+- Quill downgrades (button labels, empty states) — default stays FAST
+- Vex downgrades (known regressions) — default stays DEEP
+- Orbit downgrades (adding one event) — default stays FAST
+- Echo downgrades (repeat launches) — default stays FAST
+- Mira, Riko, Bolt — doc says CHEAP but agent frontmatter may need audit in Phase 2
+
+**Why phased:** Claude Code subagent `model:` frontmatter is fixed per invocation. Task-conditional downgrades from this routing table require programmatic dispatch — that's Polyglot SDK's job. SDK is spec-only today. Phase 2 ships when SDK does.
+
+**Enforcement for Phase 1:** Sage MUST run full audit (Mode A, 21 items) on any PR produced by a Haiku agent. See `sage.md` → "Mandatory Review Triggers". Auto-escalation on double self-validation failure already handled by `executable-auto-fix-loop.md`.
 
 ---
 

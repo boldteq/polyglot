@@ -946,4 +946,116 @@ const queryClient = new QueryClient({
 
 ---
 
+---
+
+## InkOS Calendar Rebuild — New Antipatterns (2026-04-23)
+
+### Security / Auth
+
+- **Never use IP-based rate limiting on authenticated routes.** `x-forwarded-for` is trivially spoofable — attacker sets any header value and gets fresh bucket. On any route behind auth, rate-limit on `authUser.user.id` via the existing `getAuthenticatedUser()` pattern. IP-based is only acceptable on fully public unauthenticated endpoints (and even then, prefer Turnstile/hCaptcha). **Incident:** InkOS calendar mutation routes originally rate-limited on IP; Sage flagged in audit. **Fix:** `authedRatelimit.limit(authUser.user.id)`.
+
+- **Never use `supabase.auth.getSession()` server-side.** It reads the session cookie without re-validating with the Supabase auth server, so a forged/stale cookie passes. Always use `getAuthenticatedUser()` which internally calls `supabase.auth.getUser()` — that verifies the JWT against the auth server. `getSession()` is only appropriate in client components where the cookie is trusted relative to the browser context.
+
+### TypeScript / types
+
+- **`as any` on Supabase query results is a forbidden escape hatch.** The project rule is zero `any`. When you hit a type error on a Supabase result, regenerate types with `pnpm db:types`. If the column/table genuinely doesn't exist yet, ship the Dato migration first, then regenerate, then write the code — do NOT paper over with `as any`. **Detection trap:** `as any` silently hid a wrong table name (`team_members` vs `studio_members`) through the entire InkOS calendar build until tests failed at runtime.
+
+- **Wrong table name hidden by `as any`.** InkOS: code referenced `team_members` but actual table is `studio_members`. `supabase.from('team_members' as any)` made it compile. Runtime failure, 500 on every calendar load. **Rule:** Always query via the typed client — `supabase.from('studio_members')` — so TypeScript checks the table name against `Database['public']['Tables']`. Never cast the string argument.
+
+### React Query
+
+- **Broad invalidation keys nuke unrelated caches.** `queryClient.invalidateQueries({ queryKey: ['bookings'] })` invalidates every query whose key starts with `['bookings']` — dashboard bookings, calendar bookings, booking details, everything. Scope to the narrowest useful key: `['bookings', 'calendar']` or `['bookings', 'calendar', studioId, dateRange]`. **Symptom:** Editing a single booking in a drawer causes the entire dashboard and reports pages to refetch.
+
+### Test hygiene
+
+- **`setInterval` without environment guard keeps vitest workers alive.** A polling hook that does `setInterval(poll, 30000)` will keep the Node event loop busy in vitest, causing 5-minute hangs after tests finish (until vitest's forced-exit timeout). **Fix:** Guard with
+  ```ts
+  if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') return;
+  ```
+  or — better — clear the interval in the hook's cleanup and export a disposer. **Incident:** InkOS `use-bookings-realtime.ts` polling fallback hung vitest until the guard was added.
+
+### dnd-kit
+
+- **`activationConstraint` shape trap.** Correct:
+  ```ts
+  useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  ```
+  Wrong:
+  ```ts
+  useSensor(PointerSensor, { distance: 5 }) // ❌ no error at runtime, just no constraint
+  ```
+  TypeScript will yell but with a misleading message pointing at the wrong field. **Rule:** `activationConstraint` is always the outer key. `distance`, `delay`, `tolerance` go inside it.
+
+- **Drag handle on a focusable element swallows Enter/Space.** If you attach dnd-kit listeners directly to a `<button>` or `role="button"` element, the keyboard sensor's `onKeyDown` captures Enter and Space — so your `onClick` handler never fires for keyboard users, and screen-reader users can't open the edit drawer. **Fix:** Write a local `onKeyDown` that handles Enter yourself (opens the drawer / triggers click) and delegates Space to `listeners.onKeyDown`:
+  ```tsx
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') { e.preventDefault(); openEdit(); return; }
+    listeners?.onKeyDown?.(e); // Space + arrows → dnd-kit
+  }
+  ```
+
+---
+
+## InkOS Calendar Sprint 1-6 Antipatterns (2026-04-23)
+
+### `Record<string, unknown>` on Supabase `.insert()` breaks type narrowing
+
+- **Never** type an insert payload as `Record<string, unknown>` when calling `supabase.from('table').insert(payload)`. Supabase's generated types use a `RejectExcessProperties` type guard that relies on knowing the exact keys at compile time. Passing an index-signature type bypasses the guard — TS accepts garbage, and column-name typos only surface at runtime as PostgREST 400s.
+
+  ```ts
+  // ❌ WRONG — type guard disabled
+  const payload: Record<string, unknown> = { studio_id, client_id };
+  if (hasDeadline) payload.deposit_deadline_at = deadline;
+  await supabase.from('bookings').insert(payload);
+
+  // ✅ CORRECT — typed object literal with conditional spread
+  await supabase.from('bookings').insert({
+    studio_id,
+    client_id,
+    ...(hasDeadline && { deposit_deadline_at: deadline }),
+  });
+  ```
+
+  The conditional spread preserves literal types so `RejectExcessProperties` can still validate every key. (InkOS Calendar Sprint 1-6, 2026-04-23)
+
+### Unbounded `setInterval` hangs vitest workers
+
+- **Never** arm a `setInterval` inside a React hook without guarding against non-browser environments. Vitest runs components via JSDOM, and intervals armed in `useEffect` keep the worker process alive indefinitely — test runs appear to pass but never exit, CI times out.
+
+  ```tsx
+  // ❌ hangs vitest workers
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ✅ guarded
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (process.env.NODE_ENV === 'test') return;
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  ```
+
+  Applies to any live timer: NOW-line indicators, polling, optimistic refresh loops. (InkOS Calendar Sprint 1-6, 2026-04-23)
+
+### Consuming PDF spec audits without a per-requirement compliance matrix
+
+- **Never** read a user-provided spec PDF and answer "we're mostly done" from a prose summary. Spec-compliance gaps only surface when every requirement has a row and every row has a status.
+- **Always** build a row-per-requirement matrix BEFORE claiming the spec is done:
+
+  | # | Requirement | Source (PDF section) | Status | Evidence (file/commit) |
+  |---|-------------|---------------------|--------|------------------------|
+  | 1 | NOW line shows current time label | §4.6 Motion | DONE | `components/calendar/DayChairGrid.tsx` |
+  | 2 | Service category colors on booking cards | §5.3 Calendar | MISSING | (none) |
+  | ... | ... | ... | ... | ... |
+
+  Statuses: `DONE` · `PARTIAL` · `MISSING`. Anything else is hand-waving.
+
+- **Root cause:** InkOS Calendar Sprints 1-6 were only surfaced because the Explore agent produced a 54-row audit table. Without that table, a prose read of the PDF would have claimed "we're done" — six sprints would have shipped unbuilt.
+- **Rule:** When user references a spec doc, the first deliverable is the matrix. Only after every row is classified does build/fix work start. (InkOS Calendar Sprint 1-6, 2026-04-23)
+
+---
+
 *(Updated by Mira — add antipatterns via `/train`)*

@@ -6,7 +6,7 @@ description: >-
   Detects capability gaps on task assignment. Blocks unsafe assignments
   (retired/probation/antipatterns). Veto power on task dispatch. Reports to
   Cadence.
-model: sonnet
+model: haiku
 color: orange
 department: hr
 phase: null

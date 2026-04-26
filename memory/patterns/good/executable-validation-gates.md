@@ -1,7 +1,27 @@
 # Executable Validation Gates — Factory Protocol
 
 **Locked:** 2026-04-11
+**Hardened:** 2026-04-22 (MUST enforcement + multi-model readiness)
 **Owner:** Every agent runs its gate before declaring done. Koda's gate is the master because it's the biggest.
+
+---
+
+## Enforcement Level — MUST, not SHOULD
+
+Every gate below is **MANDATORY**. Non-negotiable. The wording "runs it before" = hard gate, not suggestion.
+
+**Binding rules (apply to every agent, every stack, every PR):**
+
+1. **No PR merges** without its owning agent's gate in a `PASS` state in the gate report.
+2. **No deploy** without Bolt preflight returning exit 0.
+3. **Sage review is mandatory** on any PR where the producing agent ran on:
+   - `claude-haiku-4-5-20251001` (any agent routed to CHEAP tier)
+   - Any non-Anthropic provider (Ollama, local models, future providers)
+   - An agent whose `agent_runs.composite_score` for the last 20 runs is < 70
+4. **Pre-dispatch score gate:** before any dispatch, Roster queries `agents.composite_score`; if < 50, the dispatch is **blocked** and escalated to Cadence. (Requires Polyglot SDK implementation — see handoff note in `polyglot-sdk-spec.md`.)
+5. **CI/CD workflows** in every project MUST include: `tsc --noEmit`, `eslint --max-warnings=0`, `vitest run --coverage` with threshold `lines ≥ 70`. Projects missing any of the three are non-compliant and must be brought into compliance before any Haiku/Ollama routing is enabled for that project.
+
+**Why this section exists:** validation-gates.md was previously aspirational — gates existed as scripts but nothing technically enforced they ran. With multi-model routing (Haiku, Ollama autocomplete), a weaker model's output could ship if gates stayed optional. This section makes them binding.
 
 ---
 

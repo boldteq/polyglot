@@ -218,6 +218,26 @@ priority: critical
 
 ---
 
+## Multi-Model Rollout Rules (2026-04-22)
+
+**Rule:** Continue.dev + Ollama is **autocomplete only**. Never dispatches as a Polyglot agent. Agent-scope work stays in Claude Code.
+
+**Why:** Protects quality floor. 7B local models don't clear Boldteq's production bar on auth/RLS/billing/AI-security code. Continue is for tab-complete in VS Code, not for generating anything that reaches a PR without human review.
+
+**How to apply:**
+- Never add `provider: anthropic` entries to `~/.continue/config.yaml` — that double-bills.
+- Never wire Continue into Polyglot dispatch (`dispatch.ts`, agent frontmatter, agent prompts).
+- Continue suggestions get human review before accept. Any code that will open a PR goes through Claude Code + Sage gate regardless of where the first draft came from.
+- Sage runs Mode A (full 21-item audit) on any PR labelled `model:haiku` or `provider:ollama` — see `~/.claude/agents/sage.md` → "Mandatory Review Triggers".
+
+**Rule:** Witness and Roster run on Haiku (`claude-haiku-4-5-20251001`) as of 2026-04-22.
+
+**Why:** Both are classification + aggregation tasks (daily sweep, nightly recompute), not reasoning tasks. Haiku 4.5 is ~12× cheaper at equal quality on this workload. Auto-fix loop upgrades to Sonnet if they fail self-validation twice.
+
+**How to apply:** If Witness or Roster output quality drops (composite_score trending down, Cadence PIP alerts rising), consider upgrading to Sonnet — but first check whether the work still fits the classification/aggregation class. If the workload has drifted toward reasoning, the model change follows.
+
+---
+
 ## How to Add Entries
 
 When Yash corrects any agent behavior:

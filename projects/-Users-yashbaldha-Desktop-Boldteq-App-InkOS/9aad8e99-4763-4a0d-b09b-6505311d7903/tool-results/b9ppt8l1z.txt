@@ -1,0 +1,465 @@
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/CommissionsHub.tsx:13:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/CommissionsHub.tsx:155:        <SelectTrigger className="h-7 min-w-[130px] text-xs border-none shadow-none px-2 font-medium">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/CommissionsHub.tsx:157:        </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RecordsTable.tsx:20:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RecordsTable.tsx:28:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RecordsTable.tsx:191:            <SelectTrigger className="h-8 w-[140px] text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RecordsTable.tsx:193:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RecordsTable.tsx:206:          <SelectTrigger className="h-8 w-[120px] text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RecordsTable.tsx:208:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RecordsTable.tsx:391:                        <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/DisputesList.tsx:11:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/DisputesList.tsx:26:  TooltipTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/DisputesList.tsx:113:          <SelectTrigger className="h-8 w-[130px] text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/DisputesList.tsx:115:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/DisputesList.tsx:168:                    <TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/DisputesList.tsx:172:                    </TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/AdjustmentModal.tsx:22:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/AdjustmentModal.tsx:176:              <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/AdjustmentModal.tsx:178:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/AdjustmentsList.tsx:21:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/AdjustmentsList.tsx:36:  TooltipTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/AdjustmentsList.tsx:218:                    <TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/AdjustmentsList.tsx:222:                    </TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/AdjustmentsList.tsx:244:                        <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RuleEditorDrawer.tsx:15:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RuleEditorDrawer.tsx:22:  TooltipTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RuleEditorDrawer.tsx:239:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RuleEditorDrawer.tsx:241:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RuleEditorDrawer.tsx:286:                  <SelectTrigger className="mt-1.5">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RuleEditorDrawer.tsx:288:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RuleEditorDrawer.tsx:398:                  <TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RuleEditorDrawer.tsx:400:                  </TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientTagEditor.tsx:14:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientTagEditor.tsx:194:        <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsToolbar.tsx:12:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsToolbar.tsx:219:          <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsViewTabs.tsx:11:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsViewTabs.tsx:125:              <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/BulkEditDialog.tsx:20:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/BulkEditDialog.tsx:164:              <SelectTrigger id="bulk-edit-source">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/BulkEditDialog.tsx:173:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/BulkEditDialog.tsx:191:              <SelectTrigger id="bulk-edit-contact">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/BulkEditDialog.tsx:197:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RulesList.tsx:17:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/commissions/RulesList.tsx:295:                          <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientProfileHero.tsx:34:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientProfileHero.tsx:37:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientProfileHero.tsx:41:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientProfileHero.tsx:108:          <TooltipTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientProfileHero.tsx:124:          <TooltipTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientProfileHero.tsx:140:          <TooltipTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientProfileHero.tsx:335:                  <PopoverTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientProfileHero.tsx:404:                  <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientProfileHero.tsx:448:              <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ColumnsPicker.tsx:11:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ColumnsPicker.tsx:47:      <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/TagPicker.tsx:7:import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/TagPicker.tsx:38:      <PopoverTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientHero.tsx:19:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientHero.tsx:22:import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientHero.tsx:150:              <TooltipTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientHero.tsx:171:            <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/SortDropdown.tsx:12:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/SortDropdown.tsx:34:      <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientFilterBar.tsx:11:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientFilterBar.tsx:17:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientFilterBar.tsx:160:          <PopoverTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientFilterBar.tsx:229:            <PopoverTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientFilterBar.tsx:279:            <PopoverTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientFilterBar.tsx:328:          <PopoverTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientFilterBar.tsx:364:          <PopoverTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientFilterBar.tsx:439:            <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/BulkActionsBar.tsx:10:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/BulkActionsBar.tsx:226:          <PopoverTrigger render={<Button variant="outline" size="sm" className="h-9 gap-1.5" disabled={isTagging}><Tag className="h-3.5 w-3.5" />Add tag</Button>} />
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/BulkActionsBar.tsx:266:          <PopoverTrigger render={<Button variant="outline" size="sm" className="h-9 gap-1.5" disabled={isTagging}><XCircle className="h-3.5 w-3.5" />Remove tag</Button>} />
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsTable.tsx:19:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsTable.tsx:21:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsTable.tsx:54:      <TooltipTrigger render={<span><Icon className="h-3.5 w-3.5 text-muted-foreground" /></span>} />
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsTable.tsx:344:                <TooltipTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsTable.tsx:358:                <TooltipTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientsTable.tsx:374:            <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/FiltersPopover.tsx:14:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/FiltersPopover.tsx:107:      <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/HealthAlertBadge.tsx:7:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/HealthAlertBadge.tsx:53:        <TooltipTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/HealthAlertBadge.tsx:75:        <TooltipTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/SavedViewManager.tsx:21:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/SavedViewManager.tsx:123:              <SelectTrigger id="view-scope">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/SavedViewManager.tsx:125:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/SavedViewSwitcher.tsx:10:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/SavedViewSwitcher.tsx:71:                <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientDialog.tsx:34:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientDialog.tsx:736:                  <SelectTrigger id="client-pronouns">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientDialog.tsx:738:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientDialog.tsx:763:              <SelectTrigger id="client-preferred-contact">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientDialog.tsx:765:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientDialog.tsx:923:                <SelectTrigger id="client-source">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/ClientDialog.tsx:925:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/notes/NoteCard.tsx:12:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/notes/NoteCard.tsx:89:          <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/notes/AddNoteModal.tsx:24:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/notes/AddNoteModal.tsx:171:              <SelectTrigger id="note-category">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/notes/AddNoteModal.tsx:173:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/notes/AddNoteModal.tsx:282:                <SelectTrigger id="link-appointment" className="h-9">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/notes/AddNoteModal.tsx:284:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/files/FileUploader.tsx:19:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/files/FileUploader.tsx:209:              <SelectTrigger id="file-kind">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/files/FileUploader.tsx:211:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/files/FileRow.tsx:19:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/clients/files/FileRow.tsx:115:          <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/date-range-picker.tsx:12:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/date-range-picker.tsx:112:      <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/combobox.tsx:11:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/combobox.tsx:79:        <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/popover.tsx:12:function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/popover.tsx:89:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/tooltip.tsx:24:function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/tooltip.tsx:66:export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/CloneRoleDialog.tsx:21:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/CloneRoleDialog.tsx:111:              <SelectTrigger id="clone-from">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/CloneRoleDialog.tsx:113:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/sidebar.tsx:24:  TooltipTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/sidebar.tsx:525:    render: !tooltip ? render : <TooltipTrigger render={render} />,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/PermissionsMatrix.tsx:20:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/PermissionsMatrix.tsx:469:              <TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/PermissionsMatrix.tsx:474:              </TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/dropdown-menu.tsx:17:function DropdownMenuTrigger({ ...props }: MenuPrimitive.Trigger.Props) {
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/dropdown-menu.tsx:263:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/select.tsx:31:function SelectTrigger({
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ui/select.tsx:199:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/TeamMembersTable.tsx:16:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/TeamMembersTable.tsx:197:              <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/TeamMembersTable.tsx:202:              </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/tags/TagsManager.tsx:29:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/tags/TagsManager.tsx:92:        <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/EffectiveDateRange.tsx:9:  TooltipTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/EffectiveDateRange.tsx:34:            <TooltipTrigger className="inline-flex" aria-label="About effective from">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/EffectiveDateRange.tsx:36:            </TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/EffectiveDateRange.tsx:55:            <TooltipTrigger className="inline-flex" aria-label="About effective until">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/EffectiveDateRange.tsx:57:            </TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payments/PaymentsPageClient.tsx:25:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payments/PaymentsPageClient.tsx:233:          <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/TeamInvitesTable.tsx:15:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/TeamInvitesTable.tsx:199:                      <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/settings/team/TeamInvitesTable.tsx:205:                      </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payments/PaymentRefundModal.tsx:20:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payments/PaymentRefundModal.tsx:149:              <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payments/PaymentRefundModal.tsx:151:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/SlotPopover.tsx:9:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/SlotPopover.tsx:16:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/SlotPopover.tsx:54:      <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/SlotPopover.tsx:61:      </PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/SlotPopover.tsx:69:              <SelectTrigger className="h-8 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/SlotPopover.tsx:71:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/SlotPopover.tsx:85:              <SelectTrigger className="h-8 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/SlotPopover.tsx:87:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/ScheduleCell.tsx:5:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/ScheduleCell.tsx:60:          <TooltipTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/messages/ThreadPanel.tsx:38:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/messages/ThreadPanel.tsx:289:              <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/messages/ThreadPanel.tsx:294:              </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/CopyScheduleDialog.tsx:18:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/CopyScheduleDialog.tsx:106:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/CopyScheduleDialog.tsx:108:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/SmartBookingSheet.tsx:22:import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/SmartBookingSheet.tsx:301:                  <PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/SmartBookingSheet.tsx:306:                  </PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/TimeOffModal.tsx:19:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/TimeOffModal.tsx:184:              <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/TimeOffModal.tsx:186:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/ScheduleGridMobile.tsx:8:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/ScheduleGridMobile.tsx:72:        <SelectTrigger className="w-full" aria-label="Select artist">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/schedule/ScheduleGridMobile.tsx:74:        </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarOverflowMenu.tsx:9:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarOverflowMenu.tsx:33:      <DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarOverflowMenu.tsx:42:      </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/GuestArtistStrip.tsx:11:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/GuestArtistStrip.tsx:129:      <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/GuestArtistStrip.tsx:157:      </PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inbox/AssignUserPicker.tsx:17:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inbox/AssignUserPicker.tsx:74:      <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/messages/Composer.tsx:24:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/messages/Composer.tsx:225:          <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/messages/Composer.tsx:232:          </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarKeyboardHelp.tsx:8:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarKeyboardHelp.tsx:25:      <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarKeyboardHelp.tsx:36:      </PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inbox/InboxItemRow.tsx:35:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inbox/InboxItemRow.tsx:464:          <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarFilterRow.tsx:4:import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarFilterRow.tsx:108:        <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarFilterRow.tsx:116:        </PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarFilterRow.tsx:149:        <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarFilterRow.tsx:157:        </PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarFilterRow.tsx:184:          <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/calendar/CalendarFilterRow.tsx:192:          </PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/guest-artists/EngagementsList.tsx:11:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/guest-artists/EngagementsList.tsx:57:          <SelectTrigger className="h-8 w-36">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/guest-artists/EngagementsList.tsx:59:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/app/sidebar/HeaderBookingLinkButton.tsx:10:  TooltipTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/app/sidebar/HeaderBookingLinkButton.tsx:44:        <TooltipTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/app/shell/UserMenu.tsx:32:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/app/shell/UserMenu.tsx:101:      <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/app/shell/UserMenu.tsx:153:      </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/app/sidebar/CommissionPulsePill.tsx:7:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/app/sidebar/CommissionPulsePill.tsx:20:      <TooltipTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/guest-artists/CreateEngagementModal.tsx:25:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/guest-artists/CreateEngagementModal.tsx:327:                        <SelectTrigger id="engagement-artist" className="w-full">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/guest-artists/CreateEngagementModal.tsx:329:                        </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/today/TodayScheduleTimelineWidget.tsx:11:  TooltipTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/today/TodayScheduleTimelineWidget.tsx:121:      <TooltipTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/appointments/BulkRescheduleSheet.tsx:11:import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/appointments/BulkRescheduleSheet.tsx:164:              <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/appointments/AppointmentFilterBar.tsx:9:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/appointments/AppointmentFilterBar.tsx:189:        <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/appointments/AppointmentFilterBar.tsx:238:        <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DetailsTab.tsx:14:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DetailsTab.tsx:202:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DetailsTab.tsx:204:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DetailsTab.tsx:288:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DetailsTab.tsx:290:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/booking/BookingParticipantsField.tsx:12:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/booking/BookingParticipantsField.tsx:179:                <SelectTrigger className="h-7 w-[130px] text-xs shrink-0">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/booking/BookingParticipantsField.tsx:181:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/booking/BookingParticipantsField.tsx:240:            <SelectTrigger className="h-8 flex-1 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/booking/BookingParticipantsField.tsx:242:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectHero.tsx:23:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectHero.tsx:235:      <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectHero.tsx:410:              <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DepositPoolLedger.tsx:22:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DepositPoolLedger.tsx:28:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DepositPoolLedger.tsx:227:            <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DepositPoolLedger.tsx:318:                <SelectTrigger><SelectValue /></SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DepositPoolLedger.tsx:355:                <SelectTrigger><SelectValue placeholder="Select session…" /></SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectActivityTab.tsx:21:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectActivityTab.tsx:189:          <SelectTrigger className="w-44 h-8 text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectActivityTab.tsx:191:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DepositTab.tsx:21:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DepositTab.tsx:263:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/DepositTab.tsx:265:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/NewProjectForm.tsx:15:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/NewProjectForm.tsx:218:              <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/NewProjectForm.tsx:220:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/studios/StudiosList.tsx:17:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/studios/StudiosList.tsx:23:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/studios/StudiosList.tsx:101:          <SelectTrigger className="w-36">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/studios/StudiosList.tsx:103:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/studios/StudiosList.tsx:113:          <SelectTrigger className="w-36">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/studios/StudiosList.tsx:115:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/studios/StudiosList.tsx:186:                            <DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/studios/StudiosList.tsx:190:                            </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectsListClient.tsx:19:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectsListClient.tsx:146:          <SelectTrigger className="h-9 w-36 text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectsListClient.tsx:148:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectsListClient.tsx:161:            <SelectTrigger className="h-9 w-40 text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/projects/ProjectsListClient.tsx:163:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/system/AnnouncementEditor.tsx:17:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/system/AnnouncementEditor.tsx:120:                    <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/admin/system/AnnouncementEditor.tsx:122:                    </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/LocationSwitcher.tsx:13:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/LocationSwitcher.tsx:61:      <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/LocationSwitcher.tsx:80:      </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/StudioSwitcher.tsx:14:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/StudioSwitcher.tsx:99:      <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/StudioSwitcher.tsx:123:      </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/FacetedFilter.tsx:10:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/FacetedFilter.tsx:53:      <PopoverTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/DataTable.tsx:27:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/DataTable.tsx:257:                <SelectTrigger className="h-7 w-16 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/DataTable.tsx:259:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/ThemeToggle.tsx:6:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/ThemeToggle.tsx:55:      <TooltipTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/ThemeToggle.tsx:70:      </TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/Page.tsx:14:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/shared/Page.tsx:158:          <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/integrations/GoogleCalendarConnect.tsx:12:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/integrations/GoogleCalendarConnect.tsx:195:                <SelectTrigger className="h-8 w-48 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/integrations/GoogleCalendarConnect.tsx:197:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/integrations/QuickBooksExport.tsx:11:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/integrations/QuickBooksExport.tsx:80:            <SelectTrigger className="h-8 w-44 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/integrations/QuickBooksExport.tsx:82:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/EditFlashEventForm.tsx:15:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/EditFlashEventForm.tsx:133:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/EditFlashEventForm.tsx:135:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/EditFlashEventForm.tsx:178:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/EditFlashEventForm.tsx:180:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/EditFlashEventForm.tsx:196:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/EditFlashEventForm.tsx:198:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/NewFlashEventForm.tsx:14:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/NewFlashEventForm.tsx:125:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/NewFlashEventForm.tsx:127:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/NewFlashEventForm.tsx:166:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/NewFlashEventForm.tsx:168:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/NewFlashEventForm.tsx:184:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/flash-events/NewFlashEventForm.tsx:186:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/SendConsentRequestModal.tsx:19:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/SendConsentRequestModal.tsx:147:                <SelectTrigger className="h-9 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/SendConsentRequestModal.tsx:149:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/NoteMappingEditor.tsx:21:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/NoteMappingEditor.tsx:191:                  <SelectTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/NoteMappingEditor.tsx:196:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/submissions/SubmissionsTable.tsx:17:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/submissions/SubmissionsTable.tsx:152:          <SelectTrigger className="h-8 w-36 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/submissions/SubmissionsTable.tsx:154:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/kiosk/KioskDisplay.tsx:13:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/kiosk/KioskDisplay.tsx:199:              <SelectTrigger id="kiosk-template">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/kiosk/KioskDisplay.tsx:201:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplatesGrid.tsx:11:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplatesGrid.tsx:58:          <SelectTrigger className="h-8 w-36 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplatesGrid.tsx:60:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateCard.tsx:27:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateCard.tsx:223:            <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateCard.tsx:226:            </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateBuilder.tsx:28:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateBuilder.tsx:382:            <SelectTrigger className="h-10 w-40 rounded-2xl text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateBuilder.tsx:384:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateBuilder.tsx:401:              <SelectTrigger className="h-10 w-24 rounded-2xl text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateBuilder.tsx:403:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateBuilder.tsx:416:            <SelectTrigger className="h-10 w-24 rounded-2xl text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/consent/templates/TemplateBuilder.tsx:418:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationCard.tsx:11:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationCard.tsx:100:                <DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationCard.tsx:109:                </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/PromptTemplateEditor.tsx:12:import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/PromptTemplateEditor.tsx:353:                  <SelectTrigger className="text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/PromptTemplateEditor.tsx:355:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemForm.tsx:18:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemForm.tsx:178:                    <SelectTrigger id="item-category" className="w-full">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemForm.tsx:180:                    </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemForm.tsx:315:                  <SelectTrigger id="item-supplier" className="w-full">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemForm.tsx:317:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/AdminAiUsageDashboard.tsx:11:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/AdminAiUsageDashboard.tsx:59:          <SelectTrigger className="h-8 w-28 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/AdminAiUsageDashboard.tsx:61:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/NewDesignRequestForm.tsx:12:import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/NewDesignRequestForm.tsx:184:            <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/NewDesignRequestForm.tsx:186:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/DesignGallery.tsx:7:import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/DesignGallery.tsx:89:            <SelectTrigger className="h-8 w-40 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/DesignGallery.tsx:91:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/DesignGallery.tsx:105:            <SelectTrigger className="h-8 w-36 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/ai/DesignGallery.tsx:107:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationPicker.tsx:8:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationPicker.tsx:39:      <SelectTrigger className={className}>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationPicker.tsx:42:      </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationForm.tsx:18:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationForm.tsx:158:                <SelectTrigger id="status">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationForm.tsx:160:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationForm.tsx:175:                <SelectTrigger id="timezone">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationForm.tsx:177:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationForm.tsx:277:                    <SelectTrigger className="w-24">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/LocationForm.tsx:279:                    </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/StockAdjustmentModal.tsx:23:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/StockAdjustmentModal.tsx:140:              <SelectTrigger id="reason">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/StockAdjustmentModal.tsx:142:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/ArtistAssignments.tsx:15:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/ArtistAssignments.tsx:123:                  <SelectTrigger className="h-8 w-40 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/locations/ArtistAssignments.tsx:125:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemsTable.tsx:18:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemsTable.tsx:25:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemsTable.tsx:111:            <SelectTrigger className="h-8 w-32">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemsTable.tsx:114:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemsTable.tsx:127:            <SelectTrigger className="h-8 w-32">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemsTable.tsx:129:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemsTable.tsx:211:                        <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/ItemsTable.tsx:309:                          <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/ReferralDashboard.tsx:14:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/ReferralDashboard.tsx:111:                <SelectTrigger className="flex-1">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/ReferralDashboard.tsx:113:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/SuppliersTable.tsx:19:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/SuppliersTable.tsx:166:                      <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/AudienceFilterBuilder.tsx:12:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/AudienceFilterBuilder.tsx:187:                <SelectTrigger className="h-8 w-44 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/AudienceFilterBuilder.tsx:189:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/AudienceFilterBuilder.tsx:202:                  <SelectTrigger className="h-8 flex-1 text-xs">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/AudienceFilterBuilder.tsx:204:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/MovementsLog.tsx:17:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/MovementsLog.tsx:98:          <SelectTrigger className="h-8 w-36">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/MovementsLog.tsx:100:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/StocktakeForm.tsx:12:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/StocktakeForm.tsx:124:            <SelectTrigger className="h-8 w-32">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/StocktakeForm.tsx:126:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/PurchaseOrdersTable.tsx:18:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/PurchaseOrdersTable.tsx:76:          <SelectTrigger className="h-8 w-36">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/PurchaseOrdersTable.tsx:78:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistFilterBar.tsx:7:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistFilterBar.tsx:37:        <SelectTrigger className="h-8 w-[130px] text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistFilterBar.tsx:39:        </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistFilterBar.tsx:52:        <SelectTrigger className="h-8 w-[150px] text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistFilterBar.tsx:54:        </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistFilterBar.tsx:69:        <SelectTrigger className="h-8 w-[150px] text-sm">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistFilterBar.tsx:71:        </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/PurchaseOrderForm.tsx:17:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/PurchaseOrderForm.tsx:174:                <SelectTrigger id="supplier_id">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/PurchaseOrderForm.tsx:176:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/PurchaseOrderForm.tsx:236:                            <SelectTrigger className="h-8">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/inventory/PurchaseOrderForm.tsx:238:                            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistDetailHeader.tsx:11:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistDetailHeader.tsx:145:        <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistDetailHeader.tsx:150:        </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/CampaignCard.tsx:11:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/CampaignCard.tsx:108:              <DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/CampaignCard.tsx:117:              </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/MergeTagsReference.tsx:9:  PopoverTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/MergeTagsReference.tsx:34:      <PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/MergeTagsReference.tsx:39:      </PopoverTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/W9Form.tsx:15:  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/W9Form.tsx:229:                    <SelectTrigger aria-invalid={!!errors.legal_entity_type}>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/W9Form.tsx:231:                    </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/W9Form.tsx:251:                      <SelectTrigger aria-invalid={!!errors.tin_type}>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/W9Form.tsx:253:                      </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/CalendarColorPicker.tsx:4:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/CalendarColorPicker.tsx:24:            {/* base-ui TooltipTrigger renders its own button-like element — no asChild needed */}
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/CalendarColorPicker.tsx:25:            <TooltipTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistTable.tsx:16:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistTable.tsx:167:                  <DropdownMenuTrigger
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistTable.tsx:172:                  </DropdownMenuTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/CampaignEditor.tsx:17:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/CampaignEditor.tsx:161:                    <SelectTrigger><SelectValue /></SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/CampaignEditor.tsx:178:                    <SelectTrigger><SelectValue /></SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/CampaignEditor.tsx:196:                    <SelectTrigger><SelectValue /></SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/marketing/CampaignEditor.tsx:273:                    <SelectTrigger><SelectValue /></SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistGoalsPanel.tsx:22:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistGoalsPanel.tsx:240:                  <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistGoalsPanel.tsx:242:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistGoalsPanel.tsx:257:                  <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/artists/ArtistGoalsPanel.tsx:259:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/ArtistSummaryDetailView.tsx:15:import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/ArtistSummaryDetailView.tsx:225:                <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/ArtistSummaryDetailView.tsx:227:                </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/billing/FeatureLockIcon.tsx:4:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/billing/FeatureLockIcon.tsx:22:      <TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/billing/FeatureLockIcon.tsx:24:      </TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/MarkPaidModal.tsx:12:import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/MarkPaidModal.tsx:85:              <SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/MarkPaidModal.tsx:87:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/PayrollRunsTab.tsx:11:  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/PayrollRunsTab.tsx:19:import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/PayrollRunsTab.tsx:140:            <SelectTrigger className="h-8 text-sm w-36">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/PayrollRunsTab.tsx:142:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/PayrollRunsTab.tsx:154:            <SelectTrigger className="h-8 text-sm w-28">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/PayrollRunsTab.tsx:156:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/PayrollRunsTab.tsx:231:                    <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/TaxForms1099Tab.tsx:11:  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/TaxForms1099Tab.tsx:18:import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/TaxForms1099Tab.tsx:115:          <SelectTrigger className="h-8 text-sm w-32">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/TaxForms1099Tab.tsx:117:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/payroll/TaxForms1099Tab.tsx:222:                        <DropdownMenuTrigger render={
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/billing/RefundModal.tsx:18:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/billing/RefundModal.tsx:95:              <SelectTrigger id="reason">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/billing/RefundModal.tsx:97:              </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/onboarding/StepFirstService.tsx:15:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/onboarding/StepFirstService.tsx:112:            <SelectTrigger id="durationMin">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/onboarding/StepFirstService.tsx:114:            </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/onboarding/StepStudioProfile.tsx:18:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/onboarding/StepStudioProfile.tsx:163:          <SelectTrigger id="timezone">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/components/onboarding/StepStudioProfile.tsx:165:          </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/app/(app)/settings/studio/policies/_components/BookingPoliciesClient.tsx:15:  SelectTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/app/(app)/settings/studio/policies/_components/BookingPoliciesClient.tsx:212:                  <SelectTrigger className="w-full sm:w-72">
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/app/(app)/settings/studio/policies/_components/BookingPoliciesClient.tsx:214:                  </SelectTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/app/(app)/dev/design/DesignShowcase.tsx:37:import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/app/(app)/dev/design/DesignShowcase.tsx:1483:                    <TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/app/(app)/dev/design/DesignShowcase.tsx:1488:                    </TooltipTrigger>
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/app/(app)/artists/schedules/page.tsx:42:  DropdownMenuTrigger,
+/Users/yashbaldha/Desktop/Boldteq App/InkOS/app/(app)/artists/schedules/page.tsx:391:            <DropdownMenuTrigger render={

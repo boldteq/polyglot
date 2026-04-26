@@ -82,6 +82,24 @@ last_updated: 2026-04-10
 | Blockers | None known |
 | Last Session | ~2026-03-24 |
 
+### InkOS
+| Field | Value |
+|-------|-------|
+| Type | SaaS — Operating system for tattoo studios (multi-tenant) |
+| Stack | Stack A (Next.js 16.2.3 + Supabase + Railway + Dodo Payments) |
+| Path | `~/Desktop/Boldteq App/InkOS` |
+| Status | **active** — Sprint 13 complete — Messages v1 shipped. 3-pane omnichannel inbox live. Waiting DB migration verify on prod. |
+| Git | Yes (branch: main) |
+| CLAUDE.md | Yes (comprehensive, brand board v1.0 locked) |
+| Agents | Global roster (project shortlist in CLAUDE.md) |
+| Env | Yes (.env.local + .env.example) |
+| Dependencies | Installed (pnpm) |
+| Database | Supabase (21 migrations incl. 3 from Messages v1) |
+| Sprints Complete | 0-12 build sprints + Calendar rebuild (Phases 1-11) + Calendar PDF closeout (Sprints 1-6) + Messages v1 (Sprint 13) |
+| Last Session | 2026-04-23 — Messages v1 sprint (8 agents, 59 files, 167 tests) |
+| Memory | [inkos-lessons.md](inkos-lessons.md) |
+| Plan | `~/.claude/plans/immutable-conjuring-pelican.md` |
+
 ---
 
 ## Not Started
@@ -137,4 +155,4 @@ Use this to verify any project is ready for development:
 
 ---
 
-*(Updated by Mira after every session. Last update: 2026-04-10)*
+*(Updated by Mira after every session. Last update: 2026-04-23 — InkOS entry added with Messages v1 status.)*

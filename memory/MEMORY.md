@@ -12,7 +12,8 @@ Index loaded every session. Check before starting any task.
 - ★ **[Decision Simulator](user/decision-simulator.md)** — Pre-resolved Yash defaults (stack/pricing/design/copy/launch/budget). Consult BEFORE escalating to Yash.
 - ★ **[Full Autonomy Rules](patterns/good/full-autonomy-rules.md)** — When agents ask Yash vs. when they decide (whitelist of 7 escalation reasons, everything else is auto-decided)
 - ★ **[Boldteq SaaS Starter](starters/boldteq-saas-starter.md)** — Master spec for <10-min Stack A scaffold (GitHub template repo)
-- ★ **[Rex Model Routing](patterns/good/rex-model-routing.md)** — DEEP/FAST/CHEAP model tier table per agent + budget guardrails
+- ★ **[Rex Model Routing](patterns/good/rex-model-routing.md)** — DEEP/FAST/CHEAP model tier table per agent + budget guardrails (Haiku Phase 1 shipped 2026-04-22: Witness + Roster)
+- ★ **[Local Autocomplete Setup](patterns/good/local-autocomplete-setup.md)** — Continue.dev + Ollama + Qwen (VS Code tab-complete only, NEVER Polyglot dispatch)
 - ★ **[Mira Bug Ingestion Schema](patterns/good/mira-bug-ingestion-schema.md)** — JSONL schema for structured bug capture + auto-clustering
 - ★ **[Gold Examples](patterns/good/gold-examples.md)** — First-output quality anchors per agent (Scout/Atlas/Koda/Vega/Quill/Sage/Echo/Verdict)
 - ★ **[Executable Auto-Fix Loop](patterns/good/executable-auto-fix-loop.md)** — Class-based retry caps (Builder 5 / Gate 3), cost breakers, escalation JSON, git autonomy rules
@@ -33,7 +34,8 @@ Index loaded every session. Check before starting any task.
 - [Pinzo](projects/pinzo.md) — Shopify ZIP delivery checker: compliance audit, session history
 - [Clientloop](projects/clientloop.md) — ManyRequests-style SaaS: Phase 1 UI shell, mock-data-only, deploy deferred
 - [Rankora](projects/rankora.md) — AI resume ranker (legacy Vite origin); Next.js 16 migration planned (70-95h, not started)
-- ★ [InkOS Lessons](projects/inkos-lessons.md) — 13-sprint tattoo studio SaaS build lessons: RPC contract drift, hand-typed types antipattern, Dodo webhook spec, Sage-per-sprint rule, velocity patterns (2026-04-16)
+- ★ [InkOS Lessons](projects/inkos-lessons.md) — 13-sprint tattoo studio SaaS build lessons: RPC contract drift, hand-typed types antipattern, Dodo webhook spec, Sage-per-sprint rule, velocity patterns (2026-04-16); Calendar rebuild appendix (2026-04-23); Calendar PDF-closeout appendix (2026-04-23); **Messages v1 appendix: triple-layer feature gate, service-role justification, orphan-comm antipattern, webhook 503-not-200, BullMQ throw-vs-return, Realtime presence pattern, 3-pane CSS Grid, brand color remapping** (2026-04-23)
+- [InkOS Clients v2 Deep Fix](projects/inkos-clients-v2-deep-fix.md) — 11-issue QA deep pass: contact tooltips, HTML stripping, allergy alerts, tag creation, archive filter, CSS tokens, health summaries batch-fetch (2026-04-22)
 
 ### Sync Pass 3 product-readiness files (2026-04-11)
 
@@ -60,6 +62,13 @@ Index loaded every session. Check before starting any task.
 - [Production Agent Mindset](patterns/good/production-agent-mindset.md) — 7-step execution loop, mandatory for all agents
 - ★ **[Railway Deployment](patterns/good/railway-deployment.md)** — Auto-deploy, preview envs per PR, private networking, custom domains, rollback (Stack A master)
 - ★ **[Next.js Production Infra](patterns/good/nextjs-production-infra.md)** — Env vars, pino logging, rate limiting, caching, health checks, BullMQ job queues, security headers (Stack A master)
+- ★ **[Calendar Drag-Drop + Realtime](patterns/good/calendar-drag-drop-and-realtime.md)** — Custom CSS Grid + dnd-kit (skip paid FullCalendar), React Query scoped mutations, Supabase Realtime 3-prereq checklist, non-blocking SMS dispatch, WCAG KeyboardSensor (Stack A, from InkOS calendar rebuild 2026-04-23)
+- [Service Category Color Coding](patterns/good/inkos-calendar-service-category-colors.md) — Data-layer accent colors with customHex→categoryColor→stoneTint fallback (InkOS Sprint 1-6, 2026-04-23)
+- [Detail Drawer Action Pattern](patterns/good/inkos-detail-drawer-action-pattern.md) — 4 primary + 2 secondary actions, delegation via caller props, inline AlertDialog (InkOS Sprint 1-6, 2026-04-23)
+- [Progressive Disclosure Form](patterns/good/progressive-disclosure-form.md) — "+ Add more" toggle, client-side blob preview, staged upload (InkOS Sprint 1-6, 2026-04-23)
+- [Smart Linking Suggestion](patterns/good/smart-linking-suggestion.md) — link_booking_id pointer, server-side project_id + session_number inheritance with studio/client verification (InkOS Sprint 1-6, 2026-04-23)
+- [QR from Installed Package](patterns/good/qr-from-installed-package.md) — Grep package.json before adding deps; qrcode.toDataURL with brand colors at 2x retina (InkOS Sprint 1-6, 2026-04-23)
+- [NOW Line + Label Pattern](patterns/good/now-line-label-pattern.md) — Rust 2px line + anchored pill with "NOW · H:MM AM/PM", pill offset = topPx - 9, minute-tick interval (InkOS Sprint 1-6, 2026-04-23)
 - [Visual Validation Protocol](patterns/good/visual-validation-protocol.md) — Auto-screenshot with Playwright
 - [Handoff Protocol](patterns/good/handoff-protocol.md) — Inter-agent handoff format + quality gates
 - [Validation Gates](patterns/good/validation-gates.md) — 10 pre-deployment gates for Sage + Bolt

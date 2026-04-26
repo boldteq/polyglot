@@ -6,7 +6,7 @@ description: >-
   antipattern, regression, escalated), and feeds per-agent performance data to
   Cadence's weekly review and Verdict's 30/90-day portfolio decisions.
   Recommends PIP for underperformers. Reports to Cadence.
-model: sonnet
+model: haiku
 color: orange
 department: hr
 phase: null

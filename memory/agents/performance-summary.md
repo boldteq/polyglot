@@ -490,3 +490,28 @@ Report: `outputs/audit-2026-04-11/report.md` (mirrored to `agents/audit-2026-04-
 - Mira structured bug-memory ingestion schema (P3, deferred)
 - Factory-wide first-output quality template GOLD examples (universal anchor added but agent-specific examples still pending)
 - Rex cost/model routing decision table (still prose)
+
+---
+
+## InkOS Calendar Rebuild — Agent Observations (2026-04-23)
+
+### Koda — "planned but didn't write" failure mode
+
+**Observation:** On the 10-phase InkOS calendar rebuild, Koda occasionally returned a plan summary ("I will add X, add Y, update Z") describing intended edits without actually writing them. The handoff reads like completed work but grep of the target files shows no change.
+
+**Detection heuristic:** If Koda's output uses future/intentional voice ("I will add", "We should update", "Next I'll edit") rather than past/completed voice ("Added", "Updated", "Wrote"), verify file contents with grep / Read BEFORE moving the phase to done. If the edit is missing, re-dispatch Koda with an explicit "write the file now, then report the diff" instruction.
+
+**Root cause hypothesis:** Model sometimes emits a plan as if it were execution when tool-call budget or context pressure is high. Mira to track frequency over next 10 Koda dispatches.
+
+**Fix pattern for dispatchers (Rex / pod leads):** After every Koda dispatch on a write task, verify at least one of: (a) grep shows the expected symbol in the target file, (b) `git diff --stat` shows the expected file in the change list, (c) typecheck/build caught a new error that implies the edit landed. Handoff alone is insufficient evidence.
+
+### Sage — stale finding risk on concurrent writes
+
+**Observation:** Sage's diff audit reads the target files at dispatch time. If another agent (Koda, Vex) writes to the same file during Sage's audit window, Sage's findings can reference pre-write state. This produced two "phantom" findings during InkOS calendar audit that were already fixed.
+
+**Fix pattern:** Before acting on a Sage finding, re-read the specific file/line mentioned in the finding. If the code has already changed to address the issue, mark the finding as "stale — verified fixed at [commit]" and skip. Don't blindly apply Sage's suggested patch on top of already-fixed code (can introduce regressions).
+
+**Prevention:** When dispatching Sage for audit, freeze concurrent writes to the audit target path for the duration. Or audit on a specific commit SHA and note it in the Sage handoff so consumers can check freshness.
+
+---
+*InkOS calendar rebuild observations, 2026-04-23.*

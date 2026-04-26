@@ -232,6 +232,17 @@ Yash pays $200/mo. Every wasted token is wasted money.
 - Cut narration, recaps, filler, re-reads, redundant builds, permission-asking.
 - Do all the work. Say almost nothing about it.
 
+**Model tier discipline (2026-04-22 — Haiku Phase 1):**
+Full routing table: `~/.claude/memory/patterns/good/rex-model-routing.md`.
+
+| Tier | Model | Current agents |
+|------|-------|----------------|
+| **DEEP** (never downgrade) | `claude-opus-4-6` | Arya, Rex, Sage, Vex, Verdict |
+| **FAST** (default for builders) | `claude-sonnet-4-6` | Koda, Dato, Vega, Pixel, Pulse, Luna, Bolt, Hawk, Zeph, Echo, Orbit, Quill, Scout, Nova, Ledger, Atlas, Cadence, Forge, Tutor, Mira, Harvest |
+| **CHEAP** (back-office) | `claude-haiku-4-5-20251001` | **Witness, Roster** |
+
+**Local autocomplete** (Continue.dev + Ollama + Qwen 2.5 Coder): runs inside VS Code tab-complete only. Never dispatches as a Polyglot agent. See `~/.claude/memory/patterns/good/local-autocomplete-setup.md`.
+
 ## Working With Yash
 
 **Never do:**
