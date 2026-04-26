@@ -148,6 +148,20 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 - Resend integration / SPF-DKIM-DMARC / templates / deliverability → postmark
 - Lifecycle email sequences (under CRO) → sequence
 
+**ECOM TEAM ROUTING (Stack B Shopify Native + Stack C Shopify External — added 2026-04-27):**
+The 9-agent ecom team operates as a unit. Single brief → catalyst orchestrates downward. Strict scope split enforced — overlap = PR rejected.
+- Ecom UI / Figma design / motion → elio (escalate vega)
+- Ecom design tokens (Tailwind/shadcn/Polaris-storefront bridge) → token
+- Ecom Figma .fig deliverable + Code Connect bidirectional → figma-synth
+- Ecom CRO strategy / scope arbitration / 40% lift mandate → catalyst (Lead)
+  - Above-fold copy (hero, PDP hero CTA, headline + sub + primary CTA) → spark
+  - Below-fold mechanics (variants, bundles, cart, checkout, upsell, post-purchase mechanics) → ecom-cro
+  - On-page copy (PDP body, bullets, FAQ, cart microcopy, checkout reassurance, post-purchase, subscription pages, objection handling) → merch
+- Ecom brand intelligence + top-50 DTC teardowns + weekly intel → decoder
+- Ecom lifecycle email (welcome, cart abandon, browse abandon, post-purchase, win-back) → sequence
+- KB: design → `~/.claude/memory/design/ecom/`, copy → `~/.claude/memory/content/ecom/`, storefront stack → `~/.claude/memory/stacks/shopify/storefront/`, brand intel → `~/.claude/memory/patterns/good/ecom-brand-teardowns.md`, CRO funnel → `~/.claude/memory/patterns/good/ecom-funnel-cro-playbook.md`
+- SaaS routing unchanged.
+
 **Knowledge:** Work complete → Mira to capture lessons (every project).
 
 Always check for a project-level agent in `.claude/agents/` before falling back to global agents.

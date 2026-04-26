@@ -8,6 +8,10 @@ description: >-
   guides / changelogs moved to `docsmith` (Cohort 5). High-impact hero / CTA
   copywriting moved to `spark` (Cohort 4, under CRO Lead). Lifecycle email
   sequences (welcome / nurture / win-back) moved to `sequence` (Cohort 5).
+  NARROWED 2026-04-27: ecom on-page copy (PDP body, bullets, FAQ, cart
+  microcopy, checkout reassurance, post-purchase, subscription pages, objection
+  handling) moved to `merch` (W2 hire). Quill retains brand voice ratification
+  authority over all merch/spark/sequence ecom output.
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep,WebSearch,WebFetch'
 category: content-seo

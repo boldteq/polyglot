@@ -54,6 +54,7 @@ Index loaded every session. Check before starting any task.
 - ★ **[Stack A: Next.js + Supabase + Railway](stacks/saas-nextjs-supabase-railway.md)** — **MASTER** (Next 16.2.3 + React 19 + Tailwind 4 + Supabase + Railway + Dodo Payments + pnpm + Node 20). The ONLY stack for Boldteq internal SaaS products as of 2026-04-10.
 - [Stack B: Shopify KB](stacks/shopify/INDEX.md) — 42 files across core/build/design/launch (start here)
 - [Stack B: Core Rules](stacks/shopify/core/shopify-app.md) — Polaris-only, session auth, billing, GDPR
+- ★ **[Stack B/C: Shopify Storefront](stacks/shopify/storefront/INDEX.md)** — Storefront-side stack KB (Hydrogen RR7, standalone Stack C, Polaris↔storefront token bridge). Distinct from admin-side Shopify KB.
 - [Stack C: AI](stacks/ai-patterns.md) — Vercel AI SDK, streaming, token management (runs ON TOP of Stack A)
 - [_archive/](stacks/_archive/ARCHIVED.md) — Legacy stacks. DO NOT auto-load. Only for explicit client requests or grandfathered project maintenance.
 
@@ -106,13 +107,15 @@ Index loaded every session. Check before starting any task.
 ## Design Knowledge Base
 
 - [Pixel Skills](../skills/pixel/) — Public-facing page designer: Flowbase DNA, niche blueprints, font pairings, CRO psychology, 14 page types
-- [Design KB Index](design/INDEX.md) — 35 files, 43K lines. Tokens, patterns, standards (start here)
+- [Design KB Index](design/INDEX.md) — 35 files, 43K lines. Tokens, patterns, standards (start here) — **SaaS-only, do NOT import for ecom**
+- ★ **[Ecom Design KB](design/ecom/INDEX.md)** — Ecom storefront design (PDP, cart, checkout, listing, hero, trust, post-purchase, subscription, motion, mobile). Owner: elio + vega. Stack B/C only.
 - Quick links: [tokens](design/core/design-tokens.md) | [colors](design/core/color-system.md) | [motion](design/core/motion.md) | [a11y](design/standards/accessibility.md) | [state](design/standards/state-management.md) | [errors](design/standards/error-handling.md) | [shadcn](design/references/shadcn-patterns.md) | [SaaS examples](design/references/best-saas-examples.md)
 - Patterns: [dashboards](design/patterns/dashboards.md) | [forms](design/patterns/forms.md) | [tables](design/patterns/data-tables.md) | [auth](design/patterns/auth-pages.md) | [billing](design/patterns/billing-ui.md) | [settings](design/patterns/settings.md) | [nav](design/patterns/navigation.md) | [landing](design/patterns/landing-page.md) | [onboarding](design/patterns/onboarding.md) | [notifications](design/patterns/notifications.md) | [errors](design/patterns/error-pages.md) | [empty](design/patterns/empty-states.md) | [loading](design/patterns/loading-states.md) | [upload](design/patterns/file-upload.md) | [email](design/patterns/email-templates.md) | [search](design/patterns/search.md) | [chat](design/patterns/chat.md) | [realtime](design/patterns/real-time.md) | [changelog](design/patterns/changelog.md) | [help](design/patterns/help-center.md)
 
 ## Content
 
 - [Copy Patterns](content/copy-patterns.md) | [App Store Listings](content/app-store-listings.md) | [Brand Voices](content/brand-voices.md)
+- ★ **[Ecom Copy KB](content/ecom/INDEX.md)** — Ecom on-page + lifecycle copy (PDP body, cart microcopy, checkout reassurance, post-purchase, subscription, hero/CTA, lifecycle email, objection handling). Owners: merch (on-page) + spark (above-fold) + sequence (lifecycle).
 
 ## Agents
 
