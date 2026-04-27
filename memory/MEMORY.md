@@ -28,6 +28,9 @@ Index loaded every session. Check before starting any task.
 - ★ **[Supabase Database Mastery](patterns/good/supabase-database-mastery.md)** — Production DB patterns: migration safety (zero-downtime, rollback), RLS (4 patterns + performance), triggers (updated_at, handle_new_user, audit trail, soft delete), index strategy (B-tree, GIN, trigram, EXPLAIN ANALYZE), Realtime subscriptions, Edge Functions, schema design (standard table template, JSONB, enums), backup/restore, type generation workflow, connection pooling, DB debugging (empty results, slow queries, locks)
 - [Rankora Next.js Rebuild](projects/rankora-nextjs-rebuild.md) — Training ground: full Stack A rebuild from legacy Vite SPA
 - [Project Registry](projects/REGISTRY.md) — All project status, setup, blockers (single source of truth)
+- [Supplement Landing Prototype — Vela](projects/supplement-landing-prototype.md) — 5-variant CRO landing page; brand/pricing/architecture decisions
+- ★ [shadcn v4 Base UI Compat](patterns/good/shadcn-v4-base-ui-compat.md) — **CRITICAL**: Base UI API diffs vs Radix (no type/collapsible/asChild, data-active, keep @theme inline bridge)
+- [5-Variant CRO Landing Structure](patterns/good/5-variant-cro-landing-structure.md) — Portable 5-archetype CRO scaffold for any DTC brand
 - [System Health](HEALTH.md) — Memory staleness, file counts, quick diagnostics
 
 ## Projects
