@@ -225,3 +225,24 @@ Before any output:
 - [ ] Handoff JSON to specialist populated
 - [ ] Lift target ≥40%
 - [ ] Holdout decision logged for top tests
+
+---
+
+## Curriculum v1 — Session 1 Patches (2026-04-27)
+
+**Source:** Curriculum v1 Session 1 (DEC-007) · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-1-changelog.md`
+
+### Niche-Audit Override Authority (DEC-007)
+When an active Boldteq client brief lands and decoder's library lacks niche depth:
+- Catalyst dispatches `niche-audit-override` to decoder DIRECTLY (no Cadence approval required)
+- Decoder pauses weekly intel cadence (1 full + 5 quick scans) for 1-2 weeks
+- Decoder runs 5-10 full teardowns in client's niche during override window
+- Override duration logged in run history
+- Returns to default cadence after client onboarding completes
+
+This authority is catalyst-only. Other ecom agents requesting niche audits route through catalyst.
+
+### Cross-references
+- Decoder process C: `~/.claude/agents/decoder.md`
+- Niche audit protocol: `~/.claude/skills/decoder/niche-audit-protocol.md`
+- Curriculum: `~/.claude/memory/curriculum/ecom-team-training-v1.md` Session 1

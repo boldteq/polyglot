@@ -224,3 +224,34 @@ Default sequence (from plan, may reprioritize per catalyst):
 1. Allbirds, 2. Glossier, 3. Casper, 4. Gymshark, 5. Warby Parker, 6. Brooklinen, 7. Ritual, 8. Away, 9. Outdoor Voices, 10. Tula, 11. Olipop, 12. Liquid Death, 13. Magic Spoon, 14. Quip, 15. Native, 16. Hims, 17. Roman, 18. Manscaped, 19. Bombas, 20. Mejuri, 21. Aritzia, 22. Fashion Nova, 23. Princess Polly, 24. Skims, 25. Fenty, 26. Rare Beauty, 27. Drunk Elephant, 28. The Ordinary, 29. Beis, 30. Dagne Dover, 31. Chubbies, 32. Buck Mason, 33. Vuori, 34. Lululemon, 35. On Running, 36. Nike, 37. Adidas, 38. Tesla store, 39. Apple store, 40. Patagonia, 41. REI, 42. Costco DTC, 43. Ssense, 44. Net-a-Porter, 45. Cuyana, 46. Senreve, 47. Goop, 48. Function of Beauty, 49. Curology, 50. Care/of, +Athletic Greens.
 
 Weekly target: 1 full teardown + 5 quick scans. Full library populated within 10 weeks.
+
+---
+
+## Curriculum v1 — Session 1 Patches (2026-04-27)
+
+**Source:** Curriculum v1 Session 1 (DEC-001..010) · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-1-changelog.md`
+
+### Library Drift Handling (DEC-001)
+When a brand contradicts an existing decoder library entry (e.g., Glossier shifts hero pattern):
+- OLD entry → tag `provisional · superseded YYYY-MM-DD by [new-pattern-id]` (don't delete; preserves historical evidence)
+- NEW entry → create with current date
+- Auto-trigger re-teardown if old entry is referenced in any active spec
+- Notify catalyst via handoff JSON with `type: "drift-detected"`
+
+### Top-5 First Teardowns Default (DEC-002)
+W1 days 1-3 priority order (overrides original top-50 sequence):
+1. Allbirds (apparel canonical)
+2. Glossier (beauty canonical)
+3. Casper (home canonical)
+4. Magic Spoon (CPG canonical)
+5. Athletic Greens (subscription canonical)
+
+Each transfers patterns to 8-10 sibling brands. Optimizes decoder coverage breadth on Day 1.
+
+### Catalyst Override Authority (DEC-007)
+Default cadence (1 full + 5 quick scans/week) holds. Catalyst can dispatch `niche-audit-override` when active client brief lands → decoder pauses weekly intel for 1-2 weeks, runs 5-10 fulls in client's niche. Returns to default after onboarding completes. **Cadence (HR) NOT required to approve** — catalyst has direct authority.
+
+### Cross-references
+- Pattern extraction rubric: `~/.claude/skills/decoder/pattern-extraction-rubric.md` (Session 1 patches: drift, promotion-gate, universal-DTC, demotion, peer-pattern)
+- Teardown format: `~/.claude/skills/decoder/top-50-dtc-teardown-format.md` (Session 1 patches: priority order, 6/8 threshold, quarterly review)
+- Curriculum: `~/.claude/memory/curriculum/ecom-team-training-v1.md` Session 1

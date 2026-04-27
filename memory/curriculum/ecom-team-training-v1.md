@@ -64,7 +64,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: META-002
   agent: cross-cutting
@@ -77,7 +77,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: META-003
   agent: cross-cutting
@@ -90,7 +90,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 ```
 
 ## Decoder questions (10 Q — brand teardown methodology + niche prioritization)
@@ -107,7 +107,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-DEC-002
   agent: decoder
@@ -120,7 +120,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-DEC-003
   agent: decoder
@@ -133,7 +133,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-DEC-004
   agent: decoder
@@ -146,7 +146,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-DEC-005
   agent: decoder
@@ -159,7 +159,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-DEC-006
   agent: decoder
@@ -172,7 +172,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-DEC-007
   agent: decoder
@@ -185,7 +185,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-DEC-008
   agent: decoder
@@ -198,7 +198,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-DEC-009
   agent: decoder
@@ -211,7 +211,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-DEC-010
   agent: decoder
@@ -224,7 +224,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 ```
 
 ---
@@ -1456,16 +1456,15 @@ After all 103 questions answered + Mira extracted + Tutor patched, run final int
 ## Status tracking
 
 ```yaml
-sessions_completed: 0
+sessions_completed: 1
 total_questions: 103
-questions_answered: 0
-questions_extracted: 0
-patches_created: 0
-patches_applied: 0
+questions_answered: 13
+questions_extracted: 13
+patches_applied: 21 (1 deferred to Polyglot W3)
 patches_rolled_back: 0
 team_composite_score_at_start: TBD (capture before Session 1)
 team_composite_score_current: TBD
-last_updated: 2026-04-27
+last_updated: 2026-04-27 (post-session-1)
 ```
 
 ---

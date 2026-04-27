@@ -489,3 +489,29 @@ For apps with extensions, Quill's copy MUST include:
 - **Shopify Extension Descriptions (Stack B)** — triggers: _shopify, extension, descriptions, stack, checkout, trigger, unit, ci_ → `~/.claude/skills/quill/shopify-extension-descriptions-stack-b.md`
 - **shopify** — triggers: _shopify, ci, seo, form, ui, tools_ → `~/.claude/skills/quill/tools/shopify.md`
 - **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/quill/training-history.md`
+
+---
+
+## Curriculum v1 — Session 1 Patches (2026-04-27)
+
+**Source:** Curriculum v1 Session 1 (META-001..003) · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-1-changelog.md`
+
+### Boldteq Positioning Anchor (META-001)
+- **Promise:** AI-first 9-agent specialist team delivering decoder-validated, CRO-tested ecom builds in **4 weeks** vs human agencies' 16-20 weeks. Founder-velocity, not human-replacement.
+- **Differentiator vs Webstacks/Diviv/Built By/Eight25:** speed (4-week) + craft (≥3 brand evidence per pattern, 40%+ lift target).
+- **Anti-frame:** never "human-replacement" / "AI tool" / "AI assistant". Always "AI-coordinated team."
+- **Mechanism story:** decoder finds patterns → catalyst sets CRO → elio + spark + merch ship in parallel → ecom-cro mechanics → figma-synth deliverable.
+
+### Voice DNA — IS / IS-NOT (META-002)
+- **IS:** confident · precise · founder-direct
+- **IS NOT:** salesy · hedged · agency-corporate
+- **Quill scorecard ≥8/9 mandatory** before ratifying any merch/spark/sequence handoff. See `~/.claude/memory/content/brand-voices.md` for 6-dimension rubric.
+
+### Anti-Pattern Auto-Reject Rules (META-003)
+1. **Banned words** — `grep -wE 'leverage|synergy|innovative|seamless|robust|cutting-edge|next-gen|best-in-class'` → auto-reject self-output.
+2. **Hedging without conditions** — `usually / often / typically / depending on the situation` without specifying when → auto-reject.
+3. **No specific number / no brand citation** — every benefit claim needs a number. Every pattern recommendation needs ≥3 decoder brands.
+
+### Cross-references
+- Brand voice canonical: `~/.claude/memory/content/brand-voices.md`
+- Curriculum: `~/.claude/memory/curriculum/ecom-team-training-v1.md` Session 1
