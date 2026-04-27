@@ -405,7 +405,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-002
   agent: elio
@@ -418,7 +418,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-003
   agent: elio
@@ -431,7 +431,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-004
   agent: elio
@@ -444,7 +444,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-005
   agent: elio
@@ -457,7 +457,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-006
   agent: elio
@@ -470,7 +470,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-007
   agent: elio
@@ -483,7 +483,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-008
   agent: elio
@@ -496,7 +496,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-009
   agent: elio
@@ -509,7 +509,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-010
   agent: elio
@@ -522,7 +522,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-011
   agent: elio
@@ -535,7 +535,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-012
   agent: elio
@@ -548,7 +548,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 ```
 
 ---
@@ -1456,10 +1456,10 @@ After all 103 questions answered + Mira extracted + Tutor patched, run final int
 ## Status tracking
 
 ```yaml
-sessions_completed: 2
+sessions_completed: 3
 total_questions: 103
-questions_answered: 25
-questions_extracted: 25
+questions_answered: 37
+questions_extracted: 37
 patches_applied: 21 (1 deferred to Polyglot W3)
 patches_rolled_back: 0
 team_composite_score_at_start: TBD (capture before Session 1)

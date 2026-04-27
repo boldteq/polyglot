@@ -260,3 +260,59 @@ Document any post-freeze edit in handoff notes with reason.
 
 ### Cross-references
 - Catalyst skill: `~/.claude/skills/catalyst/cro-strategy-playbook.md` (parallel soft-freeze rule)
+
+---
+
+## Curriculum v1 — Session 3 Patches (2026-04-27)
+
+**Source:** ELI-001..012 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-3-changelog.md`
+
+### PDP Hero Default — Mobile-First Stack (ELI-001)
+Gallery TOP, info BELOW on ALL devices. No split layout default. Single design system.
+
+### Variant Density Per-Axis Tiers (ELI-002)
+≤8 swatches grid / 9-20 hybrid / >20 dropdown. Per axis, not combo total.
+
+### Stock Urgency Anti-Pattern (ELI-003)
+NEVER fake scarcity. Show specific count ONLY when verified inventory ≤5. Above 5 = hide indicator. No vague text ('Limited stock', 'Selling fast', 'restock soon').
+
+### Trust Trio Niche-Tier (ELI-004)
+ABOVE ATC for skeptical (supplements/wellness/luxury). BELOW ATC for default (apparel/beauty/CPG/home).
+
+### Reviews — Most-Helpful Default (ELI-005)
+Most-helpful default + 'most recent' secondary tab + 'photo only' filter. Three options max.
+
+### Cross-Sell AOV-Tier (ELI-006)
+Bottom for <$50 commodity. Mid-scroll for >$100 considered purchase. $50-100 → bottom default.
+
+### Image Count Price-Tier (ELI-007)
+4-6 (<$40) / 6-10 ($40-150) / 10-15 (>$150).
+
+### Homepage Hero — No Carousel (ELI-008)
+Single static lifestyle hero default. NEVER carousel (slides 2+ near-zero engagement). Video bg ONLY luxury/sleep/beauty editorial.
+
+### Hero Text Overlay (ELI-009)
+Overlay top-left, 40% scrim for WCAG AA contrast. Mobile-first.
+
+### Subscription Toggle One-Time Default (ELI-010)
+One-time selected by default. Default-subscribe ONLY when LTV-sub > 3x AND ≥3-step cancel-save AND pause option.
+
+### Confirmation Page Order (ELI-011)
+Order details FIRST → upsell SECOND (30-min one-click window) → account/referral THIRD.
+
+### Stack Default (ELI-012)
+Hydrogen + RR7 (Stack B storefront mode) default. Liquid ONLY for: budget <$5K + theme exists, theme app extensions required, or merchant insists.
+
+### Anti-Patterns (Session 3 additions)
+1. Carousel hero with auto-advance (slides 2+ get near-zero engagement)
+2. Auto-play hero video with sound (instant bounce)
+3. Fake stock scarcity ('Limited stock', 'Selling fast', vague urgency without verified count ≤5)
+4. Split-layout PDP without explicit override reason
+5. Marketing-soft scarcity in any form (trains discount-waiting + erodes trust)
+
+### Cross-references
+- PDP design protocol: `~/.claude/skills/elio/ecom-pdp-design-protocol.md` (Session 3 patches)
+- Mobile protocol: `~/.claude/skills/elio/mobile-ecom-design-protocol.md` (Session 3 patches)
+- Hero patterns: `~/.claude/memory/design/ecom/hero-homepage-patterns.md`
+- Post-purchase patterns: `~/.claude/memory/design/ecom/post-purchase-patterns.md`
+- Stack decision: `~/.claude/memory/stacks/shopify/storefront/INDEX.md`

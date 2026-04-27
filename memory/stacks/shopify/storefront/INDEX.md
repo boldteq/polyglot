@@ -50,3 +50,40 @@ NEVER mix: do not use Polaris on storefront, do not use Hydrogen for SaaS, do no
 - Existing Shopify admin KB: `~/.claude/memory/stacks/shopify/INDEX.md`
 - Stack registry: `~/.claude/memory/stacks/STACK-REGISTRY.md`
 - Tokens (SaaS reference): `~/.claude/memory/design/core/`
+
+---
+
+## Curriculum v1 — Session 3 Patches (2026-04-27)
+
+**Source:** ELI-012 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-3-changelog.md`
+
+### Boldteq Stack Default (ELI-012)
+
+**Default for new Shopify ecom builds:** Hydrogen + RR7 (Stack B storefront mode).
+
+**Hydrogen + RR7 wins because:**
+- Modern React stack with full design system control
+- Decoder-pattern-compatible (custom layouts, tokens, motion)
+- Performance: LCP <2.0s achievable (Hydrogen + Oxygen edge)
+- Native Shopify integration (cart API, customer API, checkout)
+
+**Liquid theme acceptable ONLY when:**
+1. Budget tier <$5K AND existing Liquid theme covers requirements
+2. Theme app extensions required (Shopify-app-store rules force theme integration)
+3. Merchant explicitly insists on existing theme rebuild
+4. Migration project (existing Liquid → Liquid refresh)
+
+**Stack C (standalone storefront) only when:**
+- Headless commerce required (multi-channel inventory sync)
+- Non-Shopify backend (BigCommerce, Medusa, custom)
+- Maximum design freedom + custom checkout required
+
+**Decision flow:**
+```
+New ecom build on Shopify?
+├── Budget ≥$5K + new design system → Hydrogen + RR7 (default)
+├── Budget <$5K + Liquid theme exists → Liquid theme rebuild
+├── Theme app extensions required → Liquid theme
+├── Merchant insists → Liquid theme (document override)
+└── Headless / non-Shopify backend → Stack C standalone
+```
