@@ -1345,7 +1345,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SEQ-002
   agent: sequence
@@ -1358,7 +1358,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SEQ-003
   agent: sequence
@@ -1371,7 +1371,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SEQ-004
   agent: sequence
@@ -1384,7 +1384,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SEQ-005
   agent: sequence
@@ -1397,7 +1397,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SEQ-006
   agent: sequence
@@ -1410,7 +1410,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SEQ-007
   agent: sequence
@@ -1423,7 +1423,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SEQ-008
   agent: sequence
@@ -1436,7 +1436,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 ```
 
 ---
@@ -1456,10 +1456,10 @@ After all 103 questions answered + Mira extracted + Tutor patched, run final int
 ## Status tracking
 
 ```yaml
-sessions_completed: 7
+sessions_completed: 8 (CURRICULUM COMPLETE)
 total_questions: 103
-questions_answered: 95
-questions_extracted: 95
+questions_answered: 103
+questions_extracted: 103
 patches_applied: 21 (1 deferred to Polyglot W3)
 patches_rolled_back: 0
 team_composite_score_at_start: TBD (capture before Session 1)

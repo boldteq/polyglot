@@ -245,3 +245,47 @@ Before handoff to quill ratification, self-tag against 6-dimension rubric in `~/
 ### Cross-references
 - Brand voice canonical: `~/.claude/memory/content/brand-voices.md`
 - Curriculum: `~/.claude/memory/curriculum/ecom-team-training-v1.md` Session 1
+
+---
+
+## Curriculum v1 — Session 8 Patches (2026-04-27)
+
+**Source:** SEQ-001..008 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-8-changelog.md`
+
+### Welcome Cadence Niche-Tier (SEQ-001)
+14d default / 21d luxury+high-AOV / 30d B2B+enterprise.
+
+### Discount Cap (SEQ-002)
+15% universal cap. Subscription tighter 10%. Luxury no email-2 discount.
+
+### Win-Back Day 120 Hard Stop (SEQ-003)
+NO farewell email past day 120. Damages domain reputation + spikes unsubscribes.
+
+### Pre-Renewal Frequency-Scaled (SEQ-004)
+Monthly 3d / bimonthly 5d / quarterly 7d / yearly 14d before charge.
+
+### Subject Style (SEQ-005)
+Question default. Declarative transactional/urgent. SKIP {{firstName}} unless data verified clean.
+
+### Review Timing (SEQ-006)
+Day 14 default. Supplements/wellness/skincare day 30 + day-45 reminder. Tech day 14.
+
+### Send Time (SEQ-007)
+Tue-Thu 10am default. B2B 9-11am weekdays only. Luxury Sun 7pm. Casual Sat 9am.
+
+### Cross-Sequence Post-Purchase Wins (SEQ-008)
+Pause cart-abandon → run post-purchase → restart cart-abandon if cart active after 7d delay. Universal rule: active commitment > consideration > re-engagement.
+
+### Anti-Patterns (Session 8 additions)
+1. Day 180+ farewell email (domain reputation kill)
+2. {{firstName}} personalization without data hygiene verification
+3. 20%+ cart-abandon discount (trains discount-waiting)
+4. Subscription discount >10% on cart-abandon (breaks LTV model)
+5. 3-day pre-renewal on quarterly+ subscriptions (too late for skip decision)
+6. Parallel sequences without priority arbitration (email volume + unsubscribe risk)
+7. Strict 14-day welcome for luxury (feels rushed)
+
+### Cross-references
+- Lifecycle templates: `~/.claude/skills/sequence/lifecycle-sequence-templates.md`
+- Cart-abandon: `~/.claude/skills/sequence/cart-abandon-recovery-playbook.md`
+- Subscription nurture: `~/.claude/skills/sequence/subscription-nurture-patterns.md`
