@@ -321,3 +321,15 @@ Allow ONLY with verifiable inventory truth + specific numbers. Never vague soft-
 - PDP body structure: `~/.claude/skills/merch/pdp-body-structure.md`
 - Objection frameworks: `~/.claude/skills/merch/objection-handling-frameworks.md`
 - Brand voice: `~/.claude/memory/content/brand-voices.md`
+
+---
+
+## Curriculum v1 — Session 7 Patches (2026-04-27)
+
+**Source:** MRC-013, MRC-014 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-7-changelog.md`
+
+### Cart Empty State (MRC-013)
+Functional default 'Your cart is empty'. Niche-flips for casual brands (Chubbies-style 'Your cart's feeling lonely'). Strict functional for luxury/B2B.
+
+### Error Tone (MRC-014)
+Specific + actionable. Warm default; high-friction neutral. Never apologetic ('We're sorry'), never vague ('Something went wrong'), never blame-y ('Your card failed').

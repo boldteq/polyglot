@@ -244,3 +244,50 @@ When a copy test (spark/merch) ALSO requires your mechanic spec, do NOT bundle. 
 
 ### Cross-references
 - Catalyst scope-split protocol: `~/.claude/skills/catalyst/scope-split-enforcement.md` (bundle-split rule)
+
+---
+
+## Curriculum v1 — Session 7 Patches (2026-04-27)
+
+**Source:** XCR-001..012 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-7-changelog.md`
+
+### Cart Back Button (XCR-001)
+Close drawer on back. Restore via #cart-open URL hash on forward nav.
+
+### Free-Ship Raw vs Display (XCR-002)
+Store raw AOV-derived value. Display rounds to $5. Logic fires on raw value.
+
+### Upsell Fallback Chain (XCR-003)
+related-by-tag → bestsellers same-category → recently-viewed → HIDE. Never unrelated bestsellers.
+
+### Subscription-Default Criterion (XCR-004)
+ALL 3: cancel-flow save ≥30% AND monthly churn ≤8% AND pause self-serve.
+
+### Abandon Min Cart (XCR-005)
+0.6 × median-niche-AOV. Apparel $30 / supplements $20 / beauty $18 / CPG $12 / home $45.
+
+### Post-Purchase Complementary-Only (XCR-006)
+Tag-related complement. NEVER same-category replacement.
+
+### Order Bump Above Payment (XCR-007)
+Default above payment. Above review only when payment lacks order summary. NEVER both.
+
+### Bundle Discount Tiers (XCR-008)
+2p 10% / 3p 15% / 5p 20% / 10p 25%. Cap 25%. Luxury / high-AOV cap 15%.
+
+### Stockout UX (XCR-009)
+Disabled greyed swatch + diagonal strikethrough + 'Notify me when back' email capture.
+
+### 3-Step Cancel Flow (XCR-010)
+(1) Reason picker → (2) Contextual save (pause/reduce/discount/swap based on reason) → (3) Confirm cancel OR save.
+
+### Shipping Default (XCR-011)
+Preselect Standard (free at threshold). Express/Overnight opt-in upgrades.
+
+### Returning Customer After-Submit (XCR-012)
+After-submit detection (single API call). Real-time only at 1M+ visitors/mo.
+
+### Cross-references
+- Cart/checkout mechanics: `~/.claude/skills/ecom-cro/cart-checkout-mechanics.md`
+- Upsell/bundle: `~/.claude/skills/ecom-cro/upsell-bundle-patterns.md`
+- Subscription: `~/.claude/skills/ecom-cro/subscription-mechanics.md`
