@@ -567,7 +567,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-014
   agent: elio
@@ -580,7 +580,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-015
   agent: elio
@@ -593,7 +593,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-016
   agent: elio
@@ -606,7 +606,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-017
   agent: elio
@@ -619,7 +619,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-ELI-018
   agent: elio
@@ -632,7 +632,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-TOK-001
   agent: token
@@ -645,7 +645,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-TOK-002
   agent: token
@@ -658,7 +658,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-TOK-003
   agent: token
@@ -671,7 +671,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-TOK-004
   agent: token
@@ -684,7 +684,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-TOK-005
   agent: token
@@ -697,7 +697,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-TOK-006
   agent: token
@@ -710,7 +710,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-TOK-007
   agent: token
@@ -723,7 +723,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-TOK-008
   agent: token
@@ -736,7 +736,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 ```
 
 ---
@@ -1456,10 +1456,10 @@ After all 103 questions answered + Mira extracted + Tutor patched, run final int
 ## Status tracking
 
 ```yaml
-sessions_completed: 3
+sessions_completed: 4
 total_questions: 103
-questions_answered: 37
-questions_extracted: 37
+questions_answered: 51
+questions_extracted: 51
 patches_applied: 21 (1 deferred to Polyglot W3)
 patches_rolled_back: 0
 team_composite_score_at_start: TBD (capture before Session 1)

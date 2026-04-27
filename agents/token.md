@@ -191,3 +191,42 @@ You are NOT a screen designer. Vega + elio + pixel + dash own surfaces. You own 
 - [ ] Polaris bridge updated if Stack B
 - [ ] No raw hex in any component file (grep verify)
 - [ ] Vega notified for ratification
+
+---
+
+## Curriculum v1 — Session 4 Patches (2026-04-27)
+
+**Source:** ELI-018, TOK-001..008 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-4-changelog.md`
+
+### OKLCH Ramp (TOK-001)
+culori npm. 10-step L=98/95/88/78/65/52/42/35/28/18. 500=brand base. Chroma per-step adjusted for saturation perception.
+
+### Contrast Strict + Alt-Pair Exception (TOK-002)
+WCAG AA strict on ALL tokens. Brand-identity colors failing AA allowed for UI/badges ONLY if alt-pair body-text-safe token exists. Document exception + alt-pair in tokens.css comments.
+
+### Polaris Bridge — Storefront Wins (TOK-003)
+Customer storefront brand drives. Admin embed gets brand color overlay via `<AppProvider customProperties={...}>`. Polaris navy stays for chrome.
+
+### Figma Sync — Code-Wins + Vega Override (TOK-004)
+Default code-wins. Designer-led changes need vega approval, tagged `figma-wins-override` in sync report.
+
+### Token Addition 3-Tier Triage (TOK-005)
+(1) Extend ramp / (2) Add semantic / (3) Reject + compose. Default Tier 3. Reuse-first.
+
+### Dark Mode Opt-In (TOK-006)
+Light default. Opt-in for tech/sleep/luxury. Don't auto-build.
+
+### Font Default Per-Niche (TOK-007)
+Sans-only (Inter body + Manrope display) default. Premium = serif heading + sans body. Luxury = all-serif. Tech/supplements/CPG stay sans.
+
+### Deprecation 30/60 + Rare (TOK-008)
+30d unused → flag. Tagged 'rare-but-valid' → `rare/` namespace. 60d no tag → remove + log graveyard.
+
+### Token-Debt SLA (ELI-018)
+Elio ships temp-token → 7-day SLA to canonicalize or reject + compose. Track in `~/.claude/memory/design/core/token-debt-log.md`.
+
+### Cross-references
+- Token architecture: `~/.claude/skills/token/design-tokens-architecture.md`
+- Polaris bridge: `~/.claude/skills/token/polaris-storefront-bridge.md`
+- Figma sync: `~/.claude/skills/token/figma-variable-sync.md`
+- Token-debt log: `~/.claude/memory/design/core/token-debt-log.md`

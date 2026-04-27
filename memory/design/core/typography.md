@@ -485,3 +485,23 @@ export default {
 - [SaaS Typography Best Practices 2025](https://evietek.com/blogs/typography-guide-for-modern-saas-brands-2025)
 - [Tailwind CSS Typography](https://tailwindcss.com/docs/font-size)
 - [Web Typography Best Practices](https://www.trydrool.com/blog/typography-in-saas-how-it-transforms-user-experience/)
+
+
+---
+
+## Curriculum v1 — Session 4 (2026-04-27)
+
+**Source:** TOK-007
+
+### Boldteq Ecom Font Defaults
+| Niche tier | Heading font | Body font |
+|-----------|--------------|-----------|
+| Default (tech / supplements / CPG / standard apparel) | Manrope | Inter |
+| Premium DTC (Aritzia / Cuyana / Brooklinen tier) | Playfair Display / Fraunces | Inter |
+| Luxury (Goop / Ssense tier) | Playfair Display / Cormorant | Cormorant Garamond |
+
+**Sans-only default:** Inter (body) + Manrope (display headings). Maximum readability + DTC modernity.
+**Premium niches** flip heading to serif for editorial feel; body stays sans.
+**Luxury niches** go all-serif for high-end positioning.
+
+Override per brand brief; document reason.

@@ -316,3 +316,15 @@ Hydrogen + RR7 (Stack B storefront mode) default. Liquid ONLY for: budget <$5K +
 - Hero patterns: `~/.claude/memory/design/ecom/hero-homepage-patterns.md`
 - Post-purchase patterns: `~/.claude/memory/design/ecom/post-purchase-patterns.md`
 - Stack decision: `~/.claude/memory/stacks/shopify/storefront/INDEX.md`
+
+### Token-Debt Protocol (ELI-018)
+When you need a new token but token agent hasn't created it:
+1. Ship with inline value tagged: `--color-temp-X: hsl(...) /* token-debt: [reason] */`
+2. Notify token agent in handoff JSON `next_steps[].action: "canonicalize temp-token-X within 7 days"`
+3. Token agent has 7-day SLA to:
+   - APPROVE as-is + add canonical name (replace temp), OR
+   - REJECT and propose composition with existing tokens
+4. Token-debt logged in `~/.claude/memory/design/core/token-debt-log.md`
+5. Cleanup at quarterly sweep + ongoing weekly check
+
+Don't block parallel work on token-creation. Don't keep inline values forever (max 30 days before escalation).
