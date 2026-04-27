@@ -140,25 +140,93 @@ For each brand teardown, decoder writes a section like this:
 
 ## Cross-brand pattern library (the actual playbook)
 
-After 10+ brand teardowns in a category, decoder synthesizes cross-brand patterns into this section. Example placeholders:
+---
 
-### Hero patterns that convert (target: ≥ 7/10 brands use)
-- TBD (decoder fills after Cohort 4 audit)
+### SUPPLEMENT NICHE — Validated Patterns (2026-04-27)
 
-### Pricing patterns that convert
-- TBD
+*Source: decoder supplement niche batch — AG1, Ritual, Hims, Care/of, Magic Spoon, Liquid IV.*
+*All patterns observed in 3+ brands. Evidence tags below.*
 
-### Onboarding patterns that convert
-- TBD
+---
 
-### Email patterns that convert
-- TBD
+#### SUP-PAT-001 — Subscription Default with Cancel Framing
+**Confidence:** 5/6 brands (AG1, Ritual, Hims, Care/of, Liquid IV)
+**Pattern:** Subscription is the default purchase path. Cancel/pause language is explicit, prominent, and placed near the subscribe CTA — not buried in FAQ. Exact phrases observed: "Cancel anytime" (AG1), "Pause or cancel at any time" (Liquid IV), "Update or cancel anytime" (AG1 campaign page), no-phone-call framing (Hims).
+**Actionability:** Default the subscribe toggle to selected. Place "cancel anytime, no fees" within 1 element of the subscribe CTA button. Do not put cancellation policy in FAQ only.
+**Scope:** Supplement DTC brands, subscription box brands, any recurring-purchase product.
+**Anti-patterns:** Hiding cancel policy in FAQ/footer only. Using "lock-in" language anywhere near the subscribe toggle. Not offering self-serve cancellation.
 
-### CTA copy patterns that convert
-- TBD
+---
 
-### Friction-reduction patterns
-- TBD
+#### SUP-PAT-002 — Review Volume Stat Above Fold (Exact Number + Qualifier)
+**Confidence:** 3/6 brands (AG1 "50,000+ verified 5-star reviews", Magic Spoon "80,000+ 5-Star Reviews", Liquid IV review prominence)
+**Pattern:** Exact review count with "5-star" qualifier placed in hero zone — not just a star rating widget. The number is stated explicitly ("50,000+") as a vanity metric standalone, not embedded in a reviews section.
+**Actionability:** Place exact review count string (e.g., "47,000+ verified 5-star reviews") in hero copy or directly adjacent to primary CTA. Use "verified" qualifier. Round to the nearest thousand but do not round up.
+**Scope:** Supplement DTC brands with >1,000 reviews. Not appropriate below that threshold — use testimonials instead.
+**Anti-patterns:** Star rating widget only (no count). Review count buried below fold. Rounding to suspiciously round numbers (e.g., "50,000 exactly" reads fake).
+
+---
+
+#### SUP-PAT-003 — Safety Certification Above Fold (Premium / Athlete Positioning)
+**Confidence:** 3/6 brands (AG1: NSF Certified for Sport, Ritual: Clean Label Project Certified, Hims: Physician-backed + Certificate of Analysis)
+**Pattern:** Third-party safety certification placed in the hero zone — not footer, not PDP only — before any efficacy claim. The cert sits alongside or directly below the primary CTA.
+**Supplement cert hierarchy (by authority level):**
+1. NSF Certified for Sport — highest trust for athlete ICP (tests for banned substances)
+2. Informed Sport / Informed Choice — strong alternative to NSF, especially in EU markets
+3. USP Verified Mark — pharmaceutical-grade trust (Ritual uses this on flagship product)
+4. Clean Label Project Certified — strong for wellness/women ICP (purity, not just label accuracy)
+5. GMP Certified — floor-level trust, expected not differentiating
+6. Non-GMO / Vegan / Gluten Free — dietary attributes, not safety certs; use for CPG positioning
+**Actionability:** For premium/athlete ICP: place NSF or Informed Sport badge above fold, adjacent to review count. For wellness/women ICP: Clean Label Project or USP Verified. For CPG/mass positioning: dietary attribute badges (Vegan, GF, Non-GMO) in a 4-badge strip below hero.
+**Scope:** Supplement brands. The specific cert should match the ICP — NSF for sport/performance, Clean Label for wellness/women, USP Verified for medical-adjacent.
+**Anti-patterns:** Placing cert badges only in footer trust bar. Showing a cert in hero without the cert body being hyperlinked (unverified = unbelieved). Using GMP as a differentiator above fold — it's baseline, not premium.
+
+---
+
+#### SUP-PAT-004 — Ingredient Count / Transparency Compression
+**Confidence:** 4/6 brands (AG1 "75 ingredients", Ritual "100% traceable", Care/of per-vitamin citations, Magic Spoon spec bullets)
+**Pattern:** A specific ingredient count or transparency claim used as a headline-adjacent compression argument. The claim signals completeness or verifiability without requiring the customer to read the label.
+**Observed formulas:**
+- AG1: "75 ingredients" — count signals completeness ("nothing missing")
+- Ritual: "100% Ingredients Made Traceable" — verifiability signals integrity ("nothing hidden")
+- Care/of: Per-vitamin science citations with linked studies — specificity signals depth
+- Magic Spoon: "12-14g complete protein · 0-2g Sugar · Sweet & Delicious" — three spec bullets in outcome-first order
+**Actionability:** Choose one formula per ICP. Athlete/biohacker ICP: count formula ("75 ingredients in one scoop"). Educated-skeptic ICP: traceability formula ("Every ingredient traced to its source"). Mass/CPG ICP: spec-bullet formula (benefit + number + sensory proof).
+**Scope:** Supplements, functional foods, any product where ingredient complexity is both a selling point and a barrier.
+**Anti-patterns:** Ingredient list as PDP section only. "All-natural" language without a specific count or traceable claim. Generic "backed by science" without a study count, investment dollar, or linked citation.
+
+---
+
+#### SUP-PAT-005 — Subscribe Lock-In Hook (Beyond Discount %)
+**Confidence:** 4/6 brands (AG1: Welcome Kit free gifts on first sub, Ritual: bundle 30% + new-customer offer, Magic Spoon: VIP + free bowl set, Liquid IV: per-unit cost display)
+**Pattern:** Subscription CTA has a secondary hook beyond the savings percentage — a free gift, VIP status, or per-unit cost math — that makes the subscription path asymmetrically valuable vs one-time.
+**Observed lock-in hooks:**
+- AG1: Welcome Kit (free Vitamin D3+K2 + 5 travel packs) exclusively on first subscription order
+- Ritual: "Welcome Offer" 30% bundle discount framed as new-customer-only
+- Magic Spoon: "VIP access" + free bowl set on subscription
+- Liquid IV: "$1.09/Stick" (sub) vs "$1.56/Stick" (one-time) — per-unit math makes savings visceral
+**Actionability:** Stack savings% + one concrete hook. Options: free gift with first order (physical product), VIP identity label, per-unit cost display below the savings %. Free gift outperforms VIP label for first-time buyers; per-unit display outperforms both for math-oriented buyers (fitness/health niche).
+**Scope:** Supplement subscriptions. Works across price points — not luxury-only.
+**Anti-patterns:** Savings % alone without a concrete hook. Free gift offer that applies to both one-time and subscribe (eliminates asymmetry). VIP label without any accompanying benefit statement.
+
+---
+
+### SUPPLEMENT NICHE — Hero Archetype Map (2026-04-27)
+
+Five archetypes observed across the 6-brand supplement batch. Use this map to match archetype to ICP.
+
+| Archetype | Brand | ICP | Primary Trust Lever | When to Use |
+|-----------|-------|-----|---------------------|-------------|
+| Split hero (lifestyle + clinical) | AG1 | Athlete / biohacker | NSF cert + celebrity athlete | When ICP is performance-aspirational and safety-conscious |
+| Clinical / transparency hero | Ritual | Skeptical educated women 25-40 | Traceability + named scientist team | When ICP has been burned by vague "clean" claims |
+| Clinical / spec-hero | Hims | Men 25-45 with specific condition | Physician-backed + CoA | When supplement is adjacent to prescription category |
+| Quiz-funnel / personalization hero | Care/of | Anyone who feels overwhelmed by choice | Personalization proof + per-SKU science | When choice paralysis is the #1 acquisition barrier |
+| Lifestyle / nostalgia + CPG hero | Magic Spoon | Adults who miss comfort foods | Press logos + review volume | When palatability objection outweighs safety objection |
+| Product / lifestyle hero | Liquid IV | Casual health / active lifestyle | Dietary attribute certs + per-unit math | When ICP is CPG-priced and mass-market distribution |
+
+---
+
+### (Cohort 4 will populate additional brand teardowns — supplement batch locked 2026-04-27)
 
 ---
 
