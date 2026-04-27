@@ -12,9 +12,9 @@ This module covers customer-facing storefronts only. The existing `~/.claude/mem
 
 | File | Lines (target) | Owner | Status |
 |------|----------------|-------|--------|
-| [hydrogen-react-router-7.md](./hydrogen-react-router-7.md) | 500 | elio (Stack B storefront option) | Pending |
+| [hydrogen-react-router-7.md](./hydrogen-react-router-7.md) | 500 | elio (Stack B storefront option) | **ACTIVE** — 2025 API, Cart API, Variant selection, Analytics |
 | [standalone-stack-c.md](./standalone-stack-c.md) | 400 | elio (Stack C custom storefront) | Pending |
-| [polaris-vs-storefront-tokens.md](./polaris-vs-storefront-tokens.md) | 250 | token | Pending |
+| [polaris-vs-storefront-tokens.md](./polaris-vs-storefront-tokens.md) | 250 | token | **ACTIVE** — full mapping table in skills/token/ |
 
 ---
 

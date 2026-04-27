@@ -203,6 +203,88 @@ You are NOT a designer. Vega + elio + pixel + dash design. You ship deliverable 
 
 ---
 
+---
+
+## Curriculum v2 — Deep Shopify Training (2026-04-27)
+
+### Hydrogen RSC/Client Component Split in Mappings (FST-DT-001)
+Hydrogen uses React Server Components + Client Components. This affects mapping strategy:
+
+**Server Components** (no "use client" directive):
+- No event handlers, no hooks, no state
+- Figma mapping: map static props only
+- Example: `ProductDetails.tsx` (server) → map `title`, `price`, `description` as `figma.string()`
+
+**Client Components** ("use client" at top):
+- Interactive — have state, event handlers
+- Figma mapping: map all states including interactive variants
+- Example: `AddToCartButton.client.tsx` → map `loading`, `disabled`, `variant` states
+
+**Identification heuristic:** Check for `"use client"` directive. If absent, assume server component unless it imports hooks.
+
+### Shopify Figma UI Kit Discovery (FST-DT-002)
+Shopify publishes an official Figma library with Polaris components.
+
+**Check if project has it linked:**
+```
+mcp__claude_ai_Figma__get_libraries → look for "Shopify" or "Polaris" library
+```
+
+**Usage rules:**
+- **Admin app components** → reference Polaris frames from Shopify UI Kit library
+- **Storefront components** → brand-custom frames in project file (NOT Polaris)
+
+Never cross-map storefront components to Polaris frames. Wrong design context = wrong developer guidance.
+
+**Finding node IDs for Shopify UI Kit components:**
+```
+mcp__claude_ai_Figma__search_design_system → query "Button" or "Card" etc.
+```
+
+### FIGMA_NODE_URL Resolution Protocol (FST-DT-003)
+Never use placeholder `"FIGMA_NODE_URL"` in production mappings. Discovery steps:
+
+1. Open project Figma file via `mcp__claude_ai_Figma__get_metadata` — get fileKey
+2. `mcp__claude_ai_Figma__get_code_connect_suggestions` — returns components WITH node IDs
+3. For manual lookup: `mcp__claude_ai_Figma__search_design_system` with component name
+4. Construct: `https://www.figma.com/design/{fileKey}/?node-id={nodeId}`
+   - nodeId format from API: `123:456` (colon-separated)
+   - In URL: convert `:` to `-`: `?node-id=123-456`
+
+### Hydrogen Loader Files Exclusion (FST-DT-004)
+Hydrogen `app/routes/*.tsx` files are route modules — NOT UI components. Never create `.figma.tsx` files for:
+- `app/routes/` — route handlers
+- `app/lib/` — utilities
+- `app/graphql/` — query definitions
+- `server.ts` — server entry
+
+Only create `.figma.tsx` mappings for:
+- `app/components/` — shared UI components
+- `components/` — any component directory
+- Files that export a React component used in JSX
+
+### Ecom Library — 10 Canonical Components (FST-DT-005)
+The canonical ecom library in `skills/figma-synth/ecom-code-connect-mappings.md` covers:
+1. `ProductCard` — listing grid card
+2. `VariantSelector` — swatch/button option picker
+3. `AddToCartCTA` — primary + sticky variants
+4. `CartDrawer` — cart overlay
+5. `CartLineItem` — individual cart item
+6. `CheckoutStep` — checkout progress
+7. `TrustBadge` — shipping/returns/secure icons
+8. `PriceBlock` — price + compare-at
+9. `ReviewStars` — rating display
+10. `SubscriptionToggle` — one-time/subscribe toggle
+
+**Plus Hydrogen-native mappings:**
+- `<Image>` — CDN-optimized image
+- `<Money>` — price formatting
+- `<AddToCartButton>` — Hydrogen native ATC
+- `<CartForm>` — mutation wrapper
+- `<VariantSelector>` (legacy, Hydrogen <2025-10)
+
+Always deploy all canonical mappings to a new ecom project on first run.
+
 ## Curriculum v1 — Session 5 Patches (2026-04-27)
 
 **Source:** FIG-001..008 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-5-changelog.md`

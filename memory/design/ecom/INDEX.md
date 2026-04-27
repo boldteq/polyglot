@@ -12,15 +12,15 @@
 
 | File | Lines (target) | Owner | Status |
 |------|----------------|-------|--------|
-| [pdp-patterns.md](./pdp-patterns.md) | 800 | elio (+ vega review) | Pending |
-| [cart-checkout-patterns.md](./cart-checkout-patterns.md) | 700 | elio | Pending |
-| [listing-category-patterns.md](./listing-category-patterns.md) | 500 | elio | Pending |
+| [pdp-patterns.md](./pdp-patterns.md) | 800 | elio (+ vega review) | **ACTIVE** — 15 patterns, Hydrogen component map |
+| [cart-checkout-patterns.md](./cart-checkout-patterns.md) | 700 | elio | **ACTIVE** — 14 patterns, Shopify checkout, order bumps |
+| [listing-category-patterns.md](./listing-category-patterns.md) | 500 | elio | **ACTIVE** — 11 patterns, S&D filters, Pagination |
 | [hero-homepage-patterns.md](./hero-homepage-patterns.md) | 450 | pixel + elio | Pending |
 | [trust-social-proof-patterns.md](./trust-social-proof-patterns.md) | 400 | elio | Pending |
 | [post-purchase-patterns.md](./post-purchase-patterns.md) | 350 | elio | Pending |
-| [subscription-dtc-patterns.md](./subscription-dtc-patterns.md) | 400 | elio | Pending |
-| [motion-interaction-patterns.md](./motion-interaction-patterns.md) | 350 | elio | Pending |
-| [mobile-ecom-patterns.md](./mobile-ecom-patterns.md) | 450 | elio | Pending |
+| [subscription-dtc-patterns.md](./subscription-dtc-patterns.md) | 400 | elio | **ACTIVE** — 9 patterns, Recharge/Skio, cancel save flow |
+| [motion-interaction-patterns.md](./motion-interaction-patterns.md) | 350 | elio | **ACTIVE** — 12 patterns, CSS/GSAP, spring physics |
+| [mobile-ecom-patterns.md](./mobile-ecom-patterns.md) | 450 | elio | **ACTIVE** — 12 patterns, bottom sheet, sticky ATC |
 
 **Total target:** ~4,520 lines (matches density of SaaS design KB).
 

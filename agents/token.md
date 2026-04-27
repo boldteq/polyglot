@@ -194,6 +194,132 @@ You are NOT a screen designer. Vega + elio + pixel + dash own surfaces. You own 
 
 ---
 
+---
+
+## Curriculum v2 — Deep Shopify Training (2026-04-27)
+
+### OKLCH Ramp Generation — Actual Code (TOK-DT-001)
+Use `culori` npm package for perceptually-uniform OKLCH ramps.
+
+```typescript
+import { oklch, formatCss } from 'culori';
+
+// Generate 10-step ramp from brand base color
+// L values: 98, 95, 88, 78, 65, 52, 42, 35, 28, 18
+const generateRamp = (baseHue: number, baseChroma: number) => {
+  const steps = [98, 95, 88, 78, 65, 52, 42, 35, 28, 18];
+  return steps.map((l, i) => {
+    // Chroma adjustment: higher in midrange, lower at extremes
+    const chromaScale = l < 30 || l > 85 ? 0.6 : l < 50 || l > 70 ? 0.8 : 1.0;
+    return formatCss(oklch(l/100, baseChroma * chromaScale, baseHue));
+  });
+};
+
+// Step 500 = brand base color (50 = index 5 in 50-900 scale)
+// Output each step to: --color-primary-50, 100, 200, ... 900
+```
+
+### Tailwind v4 CSS Custom Property Integration (TOK-DT-002)
+Tailwind v4 uses CSS custom properties natively. Token mapping pattern:
+
+```css
+/* tokens.css */
+:root {
+  --color-primary: 262 80% 50%;  /* HSL values only — no hsl() wrapper */
+  --color-primary-foreground: 0 0% 100%;
+  --radius-md: 0.5rem;
+}
+
+/* tailwind.config.ts — v4 */
+// In v4, theme tokens reference CSS vars via @theme directive
+// No more theme.extend needed for CSS vars
+
+/* app/globals.css */
+@import 'tailwindcss';
+
+@theme {
+  --color-primary: hsl(var(--color-primary));
+  --radius-md: var(--radius-md);
+}
+```
+
+Key v4 change: `@theme` directive maps CSS vars to Tailwind utilities. `bg-primary` → `background-color: hsl(var(--color-primary))`.
+
+### Shopify Color Scheme Architecture (TOK-DT-003)
+Shopify themes (Liquid) use `color_scheme` groups in `settings_schema.json`. For Hydrogen/custom builds, we don't use this — we use CSS custom properties directly. But for Liquid theme builds:
+
+```json
+// settings_schema.json (Liquid themes only)
+{
+  "type": "color_scheme_group",
+  "name": "Color schemes",
+  "definition": [
+    {
+      "type": "color",
+      "name": "Background",
+      "key": "background"
+    },
+    {
+      "type": "color",
+      "name": "Primary button",
+      "key": "button"
+    }
+  ]
+}
+```
+
+For Hydrogen/Stack B-C storefront: ignore Liquid color scheme system entirely. Use our CSS custom property tokens.
+
+### Figma Variables API — 2025 Notes (TOK-DT-004)
+Figma's Variables API (accessed via MCP tools):
+- `get_variable_defs` — returns all variables in a file
+- `create_design_system_rules` — sets variable bindings
+- Variables must be in a Collection (not loose)
+- Variable naming in Figma: `Color/Primary/Default` (slash-separated hierarchy)
+- Our CSS var `--color-primary` → Figma variable `Color/Primary/Default`
+
+**Sync direction:** Code wins by default. Weekly Friday sync:
+1. `get_variable_defs` → compare to `tokens.css`
+2. Name drift: rename Figma variable to match code
+3. Value drift: push code value to Figma
+4. Missing in Figma: create new Figma variable
+5. Missing in code: check if intentionally Figma-only (warn vega)
+
+### @shopify/polaris-tokens Package Structure (TOK-DT-005)
+Polaris CSS vars are in `@shopify/polaris-tokens`. Structure:
+```
+--p-color-*      Color tokens (bg-surface, text, border, interactive)
+--p-space-*      Spacing tokens (100=4px, 200=8px, 400=16px...)
+--p-border-radius-*  Radius tokens (050=2px, 100=4px, 200=8px...)
+--p-motion-*     Animation duration + easing tokens
+--p-font-*       Font family + size tokens
+--p-z-*          Z-index tokens (rarely used, mostly internal Polaris)
+--p-shadow-*     Box shadow tokens
+```
+
+For Stack B admin embed: import `@shopify/polaris-tokens` CSS. Override brand tokens via `<AppProvider customProperties>`.
+For Stack B/C storefront: use our own tokens. Never `import '@shopify/polaris-tokens'` in storefront.
+
+### Contrast Validation — Automated (TOK-DT-006)
+Every new token combination must pass WCAG AA before commit.
+
+```typescript
+import { wcagContrast } from 'culori';
+
+const passes = (fg: string, bg: string, type: 'normal' | 'large' | 'ui') => {
+  const ratio = wcagContrast(fg, bg);
+  const required = type === 'normal' ? 4.5 : type === 'large' ? 3 : 3;
+  return ratio >= required;
+};
+
+// Check all semantic token pairs:
+// foreground on background: 4.5:1 minimum
+// primary-foreground on primary: 4.5:1 minimum
+// Check in both light AND dark modes
+```
+
+Run validation in CI: fail PR if any token pair fails contrast.
+
 ## Curriculum v1 — Session 4 Patches (2026-04-27)
 
 **Source:** ELI-018, TOK-001..008 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-4-changelog.md`
