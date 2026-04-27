@@ -102,65 +102,102 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 
 **Data source of truth:** Supabase `agent-ops` database (schema: `~/.claude/memory/patterns/good/agent-ops-schema.md`). Legacy files (`~/.claude/org/registry.json`, `witness-log.jsonl`) are DEPRECATED — migrate to Supabase.
 
-**Routing rules (UPDATED 2026-04-18 for stack pods + specialists):**
-- New SaaS idea end-to-end → `/saas-cycle` (full pipeline with kill gates)
+**Org Structure v2 (UPDATED 2026-04-27 — hierarchical, 7 depts + sub-depts + pods):**
+Full org chart: `~/.claude/memory/patterns/good/org-structure-v2.md`. Source of truth: `~/.claude/org/registry.json` (`department` + `subDepartment` + `pod` + `reportsTo` + `secondaryReportsTo`). Schema scales to 100+ agents without flat-list clutter.
+
+**Pipeline shortcuts:**
+- New SaaS idea end-to-end → `/saas-cycle`
 - Quick idea validation → `/shape-only` (Scout → Vex → Sage, 2 hours)
 - Market + business validation → `/validate-only` (Atlas → Arya → Riko → Ledger, 1 week)
 - Pre-launch gate → `/launch-check` (Echo → Mira → Bolt → Hawk)
 - Post-launch decision → `/verdict-30d` (Orbit → Pulse → Verdict)
 - New project build → dispatched VP runs the pipeline; Rex only on Mode A new-product approval
 
-**Stack-pod routing (engineering work):**
-- Stack A (Next.js + Supabase + Railway) → Pod A: koda (backend), pod-a-frontend (Cohort 3+), dato (db), luna (tests), sage (review)
-- Stack B (Shopify Native React Router 7 + Polaris) → Pod B: pod-b-frontend / pod-b-backend / pod-b-db / pod-b-tester / pod-b-reviewer (Cohort 1+)
-- Stack C (Shopify External standalone) → Pod C: pod-c-frontend / pod-c-backend / pod-c-db / pod-c-tester / pod-c-reviewer (Cohort 2+)
+---
 
-**Specialty routing:**
-- Bug report → Vex (any stack)
-- Database work → Dato (schema/migration/RLS/triggers/Realtime/Edge Functions)
-- Tests → pod tester first; Luna for cross-pod or strategy
-- Code review → pod reviewer first; Sage for cross-pod or escalation
-- Deployment → Bolt (only after Sage approves)
-- Monitoring → Hawk
+**1. ENGINEERING (Lead: arya — VP Engineering)**
 
-**Design routing (after Cohort 3):**
-- Ecom UI (storefront, PDP, cart, checkout) → elio
-- Dashboard (admin panels, multi-widget data viz) → dash
-- Design system / tokens / shadcn customization → token
-- JSX → .fig deliverable conversion → figma-synth
-- Public-facing pages (landing, pricing, blog, etc.) → pixel
-- Cross-pod design standards / review / escalation → vega
+  *sub-dept: architecture* — `arya` (lead), `vex` (bug fixer)
+  *sub-dept: pod-a (Stack A: Next.js + Supabase + Railway)* — `koda` (backend), `pod-a-frontend` (Cohort 3+), `dato` (db), `riko` (scaffolding)
+  *sub-dept: pod-b (Stack B: Shopify Native, RR7 + Polaris)* — `pod-b-frontend`, `pod-b-backend`, `pod-b-db`, `pod-b-tester`, `pod-b-reviewer` (planned)
+  *sub-dept: pod-c (Stack C: Shopify External standalone)* — Cohort 2+: `pod-c-frontend`, `pod-c-backend`, `pod-c-db`, `pod-c-tester`, `pod-c-reviewer`
+  *sub-dept: platform* — `bolt` (DevOps/deploy), `hawk` (monitoring/ops)
+  *sub-dept: quality* — `sage` (review lead, cross-pod), `luna` (test lead, cross-pod)
 
-**Copy routing (after Cohort 4-5):**
-- Marketing landing/email/social/microcopy → quill
-- Hero/CTA optimization (40%+ CRO mandate) → spark
-- Lifecycle email sequences (welcome, nurture, win-back) → sequence
-- App Store / Shopify App Store / Product Hunt / ASO → serif
-- Developer docs, API docs, SDK guides, changelogs → docsmith
+  Routing:
+  - Bug report → `vex` (any stack)
+  - Database work → `dato` (schema/migrations/RLS/triggers/Realtime/Edge Functions)
+  - Tests → pod tester first; `luna` for cross-pod or strategy
+  - Code review → pod reviewer first; `sage` for cross-pod or escalation
+  - Deployment → `bolt` (after sage approves)
+  - Monitoring → `hawk`
+  - Project setup → `riko`
 
-**CRO routing (after Cohort 4):**
-- CRO strategy + funnel analysis + brand teardown direction → catalyst
-- Top-50 brand decoding + weekly teardowns + niche audits → decoder
-- Marketing landing/pricing CRO (40%+ visitor→signup) → landing-cro
-- Ecom CRO (40%+ cart→purchase) → ecom-cro
+---
 
-**Email infra routing (after Cohort 5):**
-- Resend integration / SPF-DKIM-DMARC / templates / deliverability → postmark
-- Lifecycle email sequences (under CRO) → sequence
+**2. DESIGN (Lead: vega — Design VP)**
 
-**ECOM TEAM ROUTING (Stack B Shopify Native + Stack C Shopify External — added 2026-04-27):**
-The 9-agent ecom team operates as a unit. Single brief → catalyst orchestrates downward. Strict scope split enforced — overlap = PR rejected.
-- Ecom UI / Figma design / motion → elio (escalate vega)
-- Ecom design tokens (Tailwind/shadcn/Polaris-storefront bridge) → token
-- Ecom Figma .fig deliverable + Code Connect bidirectional → figma-synth
-- Ecom CRO strategy / scope arbitration / 40% lift mandate → catalyst (Lead)
-  - Above-fold copy (hero, PDP hero CTA, headline + sub + primary CTA) → spark
-  - Below-fold mechanics (variants, bundles, cart, checkout, upsell, post-purchase mechanics) → ecom-cro
-  - On-page copy (PDP body, bullets, FAQ, cart microcopy, checkout reassurance, post-purchase, subscription pages, objection handling) → merch
-- Ecom brand intelligence + top-50 DTC teardowns + weekly intel → decoder
-- Ecom lifecycle email (welcome, cart abandon, browse abandon, post-purchase, win-back) → sequence
-- KB: design → `~/.claude/memory/design/ecom/`, copy → `~/.claude/memory/content/ecom/`, storefront stack → `~/.claude/memory/stacks/shopify/storefront/`, brand intel → `~/.claude/memory/patterns/good/ecom-brand-teardowns.md`, CRO funnel → `~/.claude/memory/patterns/good/ecom-funnel-cro-playbook.md`
-- SaaS routing unchanged.
+  *sub-dept: lead* — `vega` (cross-dept design standards, escalation)
+  *sub-dept: public-pages* — `pixel` (14 page types: landing, pricing, blog, about, contact, careers, case-study, integrations, docs, 404, coming-soon, legal)
+  *sub-dept: ecom* — `elio` (PDP, cart, checkout, listing, hero, trust, post-purchase, subscription, motion, mobile)
+  *sub-dept: dashboard* — `dash` (Cohort 3+; admin panels, multi-widget data viz)
+  *sub-dept: design-system* — `token` (Tailwind/shadcn tokens, Polaris↔storefront bridge, Figma var sync)
+  *sub-dept: deliverables* — `figma-synth` (JSX→.fig + Code Connect bidirectional)
+
+---
+
+**3. CONTENT & SEO (Lead: quill — VP Creative, brand voice custodian)**
+
+  *sub-dept: marketing-copy* — `quill` (landing/email/social/microcopy + brand voice ratification)
+  *sub-dept: cro-copy* — `spark` (above-fold hero/CTA, 40%+ lift), `merch` (ecom on-page: PDP body, cart microcopy, post-purchase, subscription, objections)
+  *sub-dept: lifecycle-email* — `sequence` (welcome, cart-abandon, browse-abandon, post-purchase, win-back, subscription nurture)
+  *sub-dept: app-store* — `serif` (Cohort 5; App Store / Shopify App Store / Product Hunt / ASO)
+  *sub-dept: developer-docs* — `docsmith` (Cohort 5; API docs, SDK guides, changelogs)
+  *sub-dept: seo* — `zeph` (technical SEO, structured data, ranking)
+
+  Cross-functional: spark/merch/sequence have `secondaryReportsTo: catalyst` (CRO Lead in growth.cro).
+
+---
+
+**4. GROWTH (Lead: echo — VP Growth + Distribution)**
+
+  *sub-dept: cro* — `catalyst` (CRO Lead, sub-lead), `ecom-cro` (below-fold mechanics: variants/bundles/cart/checkout/upsell), `decoder` (top-50 DTC brand teardowns, weekly intel, niche audits)
+  *sub-dept: distribution* — `echo` (channel strategy, launch sequencing, content calendar)
+  *sub-dept: market-intel* — `harvest` (multi-platform scraper: Skool, Reddit, HN, PH, Twitter, G2, Capterra)
+  *sub-dept: email-infra* — `postmark` (Cohort 5; Resend integration, SPF/DKIM/DMARC, deliverability)
+
+---
+
+**5. RESEARCH (Lead: nova — VP Research)**
+
+  *sub-dept: validation* — `scout` (idea validator), `atlas` (market sizer), `ledger` (pricing + unit economics)
+  *sub-dept: market-research* — `nova` (competitive intelligence, persona extraction)
+  *sub-dept: measurement* — `orbit` (metrics architect, KPI dashboards), `pulse` (user research, interview synthesis)
+  *sub-dept: portfolio* — `verdict` (30/90-day SCALE/PIVOT/KILL decisions)
+
+---
+
+**6. HR (Lead: cadence — Head of People)**
+
+  *sub-dept: people-ops* — `cadence` (weekly review cycles, promote/PIP/retire, org health)
+  *sub-dept: hiring* — `forge` (capability gap detection, agent architecting, auto-deploy to probation)
+  *sub-dept: training* — `tutor` (bulk training cycles, patches), `mira` (lesson extraction, memory keeper)
+  *sub-dept: accountability* — `witness` (daily classification, performance), `roster` (registry source of truth, capability index)
+
+---
+
+**7. EXECUTIVE (Lead: rex — Strategic Commander)**
+
+  - `rex` (portfolio decisions, new-product approval, kill gates, 30/90-day verdicts only)
+
+---
+
+**ECOM TEAM CROSS-FUNCTIONAL UNIT (added 2026-04-27)**
+Spans design + content-seo + growth. Single brief → `catalyst` orchestrates. Strict scope split:
+- Above-fold copy → `spark` | Below-fold mechanics → `ecom-cro` | On-page copy → `merch`
+- Ecom UI/motion → `elio` | Tokens → `token` | Figma deliverables → `figma-synth`
+- Brand intel → `decoder` | Lifecycle email → `sequence`
+- KB: `~/.claude/memory/design/ecom/`, `content/ecom/`, `stacks/shopify/storefront/`, `patterns/good/ecom-brand-teardowns.md`, `patterns/good/ecom-funnel-cro-playbook.md`
 
 **Knowledge:** Work complete → Mira to capture lessons (every project).
 
