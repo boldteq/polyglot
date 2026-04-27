@@ -16,6 +16,7 @@ Index loaded every session. Check before starting any task.
 - ★ **[Local Autocomplete Setup](patterns/good/local-autocomplete-setup.md)** — Continue.dev + Ollama + Qwen (VS Code tab-complete only, NEVER Polyglot dispatch)
 - ★ **[Mira Bug Ingestion Schema](patterns/good/mira-bug-ingestion-schema.md)** — JSONL schema for structured bug capture + auto-clustering
 - ★ **[Gold Examples](patterns/good/gold-examples.md)** — First-output quality anchors per agent (Scout/Atlas/Koda/Vega/Quill/Sage/Echo/Verdict)
+- ★ **[HR Constitution v1](patterns/good/hr-constitution-v1.md)** — **BINDING for all 6 HR agents** (Cadence, Witness, Tutor, Forge, Roster, Mira). 50 ratified Q-decisions across 10 themes: arbitration, RACI, freshness SLAs, wrongful-action guards, real-time vs batch, probation, patch attribution, memory hygiene, cost safety, org health metrics. Custodian: Cadence. Drafter: Mira. Amendment: §Q50. Schema additions: `agent-ops-schema.md` §"HR Constitution v1 — Schema Additions".
 - ★ **[Executable Auto-Fix Loop](patterns/good/executable-auto-fix-loop.md)** — Class-based retry caps (Builder 5 / Gate 3), cost breakers, escalation JSON, git autonomy rules
 - ★ **[Executable Validation Gates](patterns/good/executable-validation-gates.md)** — 7 runnable scripts: Koda done-gate, Sage audit, Luna check, Vega diff, Bolt preflight, Hawk postdeploy
 - ★ **[Stack A Scaffold Dry Run](patterns/good/stack-a-scaffold-dryrun.md)** — 7-phase Rankora rebuild rehearsal: Next 16 proxy cookies async, RLS SQL, Dodo HMAC, BullMQ, Rex dispatch JSON

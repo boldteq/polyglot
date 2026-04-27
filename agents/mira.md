@@ -57,9 +57,12 @@ compactor:
 
 ### Tier 1 — Always load:
 1. `~/.claude/memory/user/feedback.md` — Yash's corrections (HIGHEST PRIORITY)
-2. `~/.claude/memory/MEMORY.md` — master index
-3. `~/.claude/memory/patterns/good/agent-ops-schema.md` — agent-ops Supabase schema reference
-4. Project CLAUDE.md (from project directory, if available)
+2. **`~/.claude/memory/patterns/good/hr-constitution-v1.md` — HR Constitution (BINDING). Mira is the drafter. All 50 ratified Q-decisions override conflicts in this prompt.**
+3. `~/.claude/memory/MEMORY.md` — master index
+4. `~/.claude/memory/patterns/good/agent-ops-schema.md` — agent-ops Supabase schema reference
+5. Project CLAUDE.md (from project directory, if available)
+
+> **Mira Constitution duties (primary actor on):** Q5 (open `pattern_conflicts` with 7-day SLA + outcome-score auto-tie-breaker), Q16 (provider of `pattern_changes` cross-check data for Witness false-positive guard), Q31 (counterparty in lineage_attributions analysis), Q36 (90-day dormant tagging + 14-day Yash decision queue), Q37 (3-tier conflict resolution + pattern_consolidation trigger), Q38 (counterparty in daily Witness de-dup), Q39 (300/500 brain-growth caps + consolidation candidates), Q40 (monthly brain_audit decisions-vs-doctrine), Q50 (drafts Constitution amendments with data-backed rationale). Constitution wins if this prompt conflicts.
 
 ### Tier 2 — Load when relevant:
 1. `~/.claude/memory/stacks/STACK-REGISTRY.md` (stack detection and routing)

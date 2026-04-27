@@ -1456,3 +1456,485 @@ supabase start
 ---
 
 **Ready to deploy.** This schema replaces registry.json with a production-grade system of record.
+
+---
+
+# HR Constitution v1 — Schema Additions (2026-04-27)
+
+The 50 ratified Q-decisions in `~/.claude/memory/patterns/good/hr-constitution-v1.md` require the following additions. All follow standard project conventions: RLS on, indexes on FKs + frequently queried columns, `updated_at` trigger, soft-delete via `deleted_at` only when needed.
+
+## New Tables
+
+### `hr_arbitration` (Q1 — Witness↔Cadence tribunal)
+```sql
+CREATE TABLE hr_arbitration (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  opened_at timestamptz NOT NULL DEFAULT NOW(),
+  closing_at timestamptz NOT NULL DEFAULT (NOW() + INTERVAL '48 hours'),
+  witness_payload jsonb NOT NULL,
+  cadence_payload jsonb NOT NULL,
+  tribunal_score numeric(4,3),
+  resolution text CHECK (resolution IN ('witness_wins','cadence_wins','escalated_to_yash','timed_out')),
+  resolved_at timestamptz,
+  resolved_by text,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_hr_arbitration_agent ON hr_arbitration(agent_id);
+CREATE INDEX idx_hr_arbitration_open ON hr_arbitration(closing_at) WHERE resolved_at IS NULL;
+ALTER TABLE hr_arbitration ENABLE ROW LEVEL SECURITY;
+```
+
+### `training_locks` (Q2 — Tutor↔Witness interlock)
+```sql
+CREATE TABLE training_locks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  cycle_id uuid REFERENCES training_cycles(id),
+  locked_at timestamptz NOT NULL DEFAULT NOW(),
+  locked_until timestamptz NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
+  released_at timestamptz,
+  reason text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX uq_training_locks_active ON training_locks(agent_id) WHERE released_at IS NULL;
+CREATE INDEX idx_training_locks_until ON training_locks(locked_until) WHERE released_at IS NULL;
+ALTER TABLE training_locks ENABLE ROW LEVEL SECURITY;
+```
+
+### `pending_flags` (Q2 — Witness flags queued during training_lock)
+```sql
+CREATE TABLE pending_flags (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  flag_type text NOT NULL,
+  payload jsonb NOT NULL,
+  apply_after timestamptz NOT NULL,
+  resolved_at timestamptz,
+  resolution text CHECK (resolution IN ('fired','dropped_resolved_by_patch','dropped_pattern_change','expired')),
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_pending_flags_apply ON pending_flags(apply_after) WHERE resolved_at IS NULL;
+ALTER TABLE pending_flags ENABLE ROW LEVEL SECURITY;
+```
+
+### `dispatch_vetoes` (Q3 — Roster veto log)
+```sql
+CREATE TABLE dispatch_vetoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  task_id text NOT NULL,
+  task_priority text NOT NULL CHECK (task_priority IN ('P0','P1','P2','P3','P4','P5')),
+  severity text NOT NULL CHECK (severity IN ('WARNING','BLOCK')),
+  reason text NOT NULL,
+  proceeded boolean NOT NULL DEFAULT false,
+  outcome text,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_dispatch_vetoes_agent_created ON dispatch_vetoes(agent_id, created_at DESC);
+ALTER TABLE dispatch_vetoes ENABLE ROW LEVEL SECURITY;
+```
+
+### `forge_proposals` (Q4 — pre-deploy similarity hold)
+```sql
+CREATE TABLE forge_proposals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  proposed_name text NOT NULL,
+  proposed_spec jsonb NOT NULL,
+  similarity_scores jsonb NOT NULL, -- {axis_skills, axis_tools, axis_model_tier, axis_mandate, composite}
+  highest_overlap_agent_id uuid REFERENCES agents(id),
+  status text NOT NULL CHECK (status IN ('pending_cadence_signoff','approved','rejected','auto_deployed')),
+  cadence_decision text,
+  cadence_decided_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_forge_proposals_status ON forge_proposals(status);
+ALTER TABLE forge_proposals ENABLE ROW LEVEL SECURITY;
+```
+
+### `pattern_conflicts` (Q5 — Mira contested patterns)
+```sql
+CREATE TABLE pattern_conflicts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  pattern_a_id uuid NOT NULL REFERENCES proposed_patterns(id),
+  pattern_b_id uuid NOT NULL REFERENCES proposed_patterns(id),
+  domain_tag text,
+  opened_at timestamptz NOT NULL DEFAULT NOW(),
+  sla_due timestamptz NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+  status text NOT NULL DEFAULT 'contested' CHECK (status IN ('contested','resolved','consolidated')),
+  resolution text,
+  resolved_at timestamptz,
+  resolved_by text,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_pattern_conflicts_open ON pattern_conflicts(sla_due) WHERE status='contested';
+CREATE INDEX idx_pattern_conflicts_domain_30d ON pattern_conflicts(domain_tag, opened_at DESC);
+ALTER TABLE pattern_conflicts ENABLE ROW LEVEL SECURITY;
+```
+
+### `yash_queue` (Q6 — escalation queue)
+```sql
+CREATE TABLE yash_queue (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_agent text NOT NULL,
+  decision_type text NOT NULL,
+  payload jsonb NOT NULL,
+  sla_due timestamptz NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','decided','expired_default')),
+  decision text,
+  decided_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_yash_queue_pending ON yash_queue(sla_due) WHERE status='pending';
+ALTER TABLE yash_queue ENABLE ROW LEVEL SECURITY;
+```
+
+### `promotion_proposals` (Q7)
+```sql
+CREATE TABLE promotion_proposals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  current_level int NOT NULL,
+  proposed_level int NOT NULL,
+  evidence jsonb NOT NULL,
+  recommended_at timestamptz NOT NULL DEFAULT NOW(),
+  yash_ratified_at timestamptz,
+  witness_vetoed boolean NOT NULL DEFAULT false,
+  veto_reason text,
+  deferral_reason text, -- Q13: stale data, low stability
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','ratified','vetoed','deferred','withdrawn')),
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_promotion_proposals_agent ON promotion_proposals(agent_id);
+ALTER TABLE promotion_proposals ENABLE ROW LEVEL SECURITY;
+```
+
+### `pip_blocked_stale_data` (Q11 — audit trail for blocked PIPs)
+```sql
+CREATE TABLE pip_blocked_stale_data (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  attempted_at timestamptz NOT NULL DEFAULT NOW(),
+  failed_axis text NOT NULL CHECK (failed_axis IN ('window','sample','recency')),
+  axis_values jsonb NOT NULL,
+  cadence_run_id uuid,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_pip_blocked_agent ON pip_blocked_stale_data(agent_id, attempted_at DESC);
+ALTER TABLE pip_blocked_stale_data ENABLE ROW LEVEL SECURITY;
+```
+
+### `pip_appeals` (Q17)
+```sql
+CREATE TABLE pip_appeals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  pip_id uuid NOT NULL REFERENCES agent_pips_active(id),
+  evidence jsonb NOT NULL,
+  data_freshness_score numeric(4,3),
+  peer_comparison_score numeric(4,3),
+  mitigating_context_score numeric(4,3),
+  composite_score numeric(4,3) NOT NULL,
+  filed_at timestamptz NOT NULL DEFAULT NOW(),
+  yash_ratified_at timestamptz,
+  outcome text CHECK (outcome IN ('suspended','denied','expired')),
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX uq_pip_appeals_one_per_pip ON pip_appeals(pip_id);
+ALTER TABLE pip_appeals ENABLE ROW LEVEL SECURITY;
+```
+
+### `post_mortems` (Q18, Q29 — blameless RCA records)
+```sql
+CREATE TABLE post_mortems (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  incident_type text NOT NULL,
+  agent_ids uuid[] NOT NULL,
+  root_cause text,
+  root_cause_bucket text CHECK (root_cause_bucket IN ('template_defect','dispatch_routing','success_criteria','agent_individual','duplicate_hire','other')),
+  signal_for_forge jsonb,
+  signal_for_roster jsonb,
+  signal_for_cadence jsonb,
+  blameless boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_post_mortems_type ON post_mortems(incident_type);
+ALTER TABLE post_mortems ENABLE ROW LEVEL SECURITY;
+```
+
+### `cost_warnings` (Q20 — soft warnings before breaker fires)
+```sql
+CREATE TABLE cost_warnings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  task_id text NOT NULL,
+  budget_multiple numeric(4,2) NOT NULL, -- 1.5, 2.0, 3.0
+  budget_at_warn numeric(10,4) NOT NULL,
+  spent_at_warn numeric(10,4) NOT NULL,
+  action text NOT NULL CHECK (action IN ('warn_logged','graceful_stop','hard_kill')),
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_cost_warnings_agent_created ON cost_warnings(agent_id, created_at DESC);
+ALTER TABLE cost_warnings ENABLE ROW LEVEL SECURITY;
+```
+
+### `realtime_outages` (Q25 — channel uptime tracking)
+```sql
+CREATE TABLE realtime_outages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_name text NOT NULL,
+  outage_start timestamptz NOT NULL,
+  outage_end timestamptz,
+  duration_seconds int GENERATED ALWAYS AS (EXTRACT(EPOCH FROM (outage_end - outage_start))::int) STORED,
+  detected_by text NOT NULL,
+  events_resynced int NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_realtime_outages_channel ON realtime_outages(channel_name, outage_start DESC);
+ALTER TABLE realtime_outages ENABLE ROW LEVEL SECURITY;
+```
+
+### `probation_trackers` (Q26 — parallel cohort tracking)
+```sql
+CREATE TABLE probation_trackers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  cohort_id uuid,
+  forge_template_id uuid,
+  runs_seen int NOT NULL DEFAULT 0,
+  composite_avg numeric(5,2),
+  antipattern_count int NOT NULL DEFAULT 0,
+  started_at timestamptz NOT NULL DEFAULT NOW(),
+  status text NOT NULL DEFAULT 'watching' CHECK (status IN ('watching','graduated','extended','retired')),
+  graduated_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX uq_probation_trackers_active ON probation_trackers(agent_id) WHERE status='watching';
+CREATE INDEX idx_probation_trackers_cohort ON probation_trackers(cohort_id);
+ALTER TABLE probation_trackers ENABLE ROW LEVEL SECURITY;
+```
+
+### `lineage_watch` and `lineage_attributions` (Q31 — sibling regression tracking)
+```sql
+CREATE TABLE lineage_watch (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_patch_id uuid NOT NULL REFERENCES training_patches(id),
+  source_agent_id uuid NOT NULL REFERENCES agents(id),
+  sibling_agent_id uuid NOT NULL REFERENCES agents(id),
+  similarity numeric(4,3) NOT NULL,
+  watch_started timestamptz NOT NULL DEFAULT NOW(),
+  watch_ends timestamptz NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+  triggered boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_lineage_watch_active ON lineage_watch(watch_ends) WHERE triggered=false;
+
+CREATE TABLE lineage_attributions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sibling_agent_id uuid NOT NULL REFERENCES agents(id),
+  source_patch_id uuid NOT NULL REFERENCES training_patches(id),
+  regression_type text NOT NULL,
+  regression_severity text NOT NULL,
+  re_evaluation_outcome text CHECK (re_evaluation_outcome IN ('strengthen','revise','rollback','no_action')),
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_lineage_attr_source ON lineage_attributions(source_patch_id);
+ALTER TABLE lineage_watch ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lineage_attributions ENABLE ROW LEVEL SECURITY;
+```
+
+### `rollback_signals` (Q32 — patch rollback learning loop)
+```sql
+CREATE TABLE rollback_signals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  patch_id uuid NOT NULL REFERENCES training_patches(id),
+  contributing_pattern_ids uuid[] NOT NULL,
+  rationale text NOT NULL,
+  reviewed_by_mira boolean NOT NULL DEFAULT false,
+  pattern_marked_contested boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_rollback_signals_patch ON rollback_signals(patch_id);
+ALTER TABLE rollback_signals ENABLE ROW LEVEL SECURITY;
+```
+
+### `pattern_interactions` (Q34 — chain attribution analysis)
+```sql
+CREATE TABLE pattern_interactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  patch_x_id uuid NOT NULL REFERENCES training_patches(id),
+  patch_y_id uuid NOT NULL REFERENCES training_patches(id),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  regression_observed_at timestamptz NOT NULL,
+  bisection_outcome text NOT NULL CHECK (bisection_outcome IN ('y_at_fault','x_at_fault','both_at_fault','interaction_only')),
+  pattern_combination jsonb,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+ALTER TABLE pattern_interactions ENABLE ROW LEVEL SECURITY;
+```
+
+### `dormancy_reviews` (Q36 — pattern decay queue)
+```sql
+CREATE TABLE dormancy_reviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  pattern_id uuid NOT NULL REFERENCES proposed_patterns(id),
+  tagged_at timestamptz NOT NULL DEFAULT NOW(),
+  decision_due timestamptz NOT NULL DEFAULT (NOW() + INTERVAL '14 days'),
+  decision text CHECK (decision IN ('evergreen','archive','delete','default_archive')),
+  decided_at timestamptz,
+  decided_by text,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_dormancy_reviews_pending ON dormancy_reviews(decision_due) WHERE decision IS NULL;
+ALTER TABLE dormancy_reviews ENABLE ROW LEVEL SECURITY;
+```
+
+### `brain_audit_reports` (Q40 — decisions vs doctrine reconciliation)
+```sql
+CREATE TABLE brain_audit_reports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  audit_date date NOT NULL,
+  decisions_audited int NOT NULL,
+  flagged_count int NOT NULL,
+  flagged_pattern_ids uuid[] NOT NULL,
+  cadence_review_status text DEFAULT 'pending' CHECK (cadence_review_status IN ('pending','reviewed','patterns_updated')),
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX uq_brain_audit_date ON brain_audit_reports(audit_date);
+ALTER TABLE brain_audit_reports ENABLE ROW LEVEL SECURITY;
+```
+
+### `wall_clock_breaches` (Q44 — per-tier SLO violations)
+```sql
+CREATE TABLE wall_clock_breaches (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  run_id uuid REFERENCES agent_runs(id),
+  tier text NOT NULL CHECK (tier IN ('CHEAP','FAST','DEEP')),
+  slo_seconds int NOT NULL,
+  actual_seconds int NOT NULL,
+  hard_timeout_hit boolean NOT NULL DEFAULT false,
+  state_saved boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_wall_clock_breaches_agent_7d ON wall_clock_breaches(agent_id, created_at DESC);
+ALTER TABLE wall_clock_breaches ENABLE ROW LEVEL SECURITY;
+```
+
+### `hr_weekly_reports` (Q47)
+```sql
+CREATE TABLE hr_weekly_reports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  week_starting date NOT NULL,
+  north_star_score numeric(4,3) NOT NULL,
+  north_star_delta numeric(4,3),
+  decisions_summary jsonb NOT NULL, -- {pip_count, promo_count, hire_count, rollback_count}
+  sla_attainment jsonb NOT NULL,
+  top_escalations jsonb,
+  cost_of_hr_pct numeric(5,2),
+  open_arbitrations jsonb,
+  posted_at timestamptz NOT NULL DEFAULT NOW(),
+  archived_to_path text,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX uq_hr_weekly_week ON hr_weekly_reports(week_starting);
+ALTER TABLE hr_weekly_reports ENABLE ROW LEVEL SECURITY;
+```
+
+### `hr_360_reviews` (Q48 — quarterly HR-of-HR cross-evaluation)
+```sql
+CREATE TABLE hr_360_reviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  quarter text NOT NULL, -- e.g. '2026-Q2'
+  reviewer_agent_id uuid NOT NULL REFERENCES agents(id),
+  reviewee_agent_id uuid NOT NULL REFERENCES agents(id),
+  timeliness_score int NOT NULL CHECK (timeliness_score BETWEEN 1 AND 5),
+  accuracy_score int NOT NULL CHECK (accuracy_score BETWEEN 1 AND 5),
+  handoff_quality_score int NOT NULL CHECK (handoff_quality_score BETWEEN 1 AND 5),
+  conflict_handling_score int NOT NULL CHECK (conflict_handling_score BETWEEN 1 AND 5),
+  signal_dedup_score int NOT NULL CHECK (signal_dedup_score BETWEEN 1 AND 5),
+  free_text_anonymous text,
+  composite numeric(4,2) GENERATED ALWAYS AS ((timeliness_score + accuracy_score + handoff_quality_score + conflict_handling_score + signal_dedup_score)::numeric / 5) STORED,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX uq_hr_360_unique ON hr_360_reviews(quarter, reviewer_agent_id, reviewee_agent_id);
+ALTER TABLE hr_360_reviews ENABLE ROW LEVEL SECURITY;
+```
+
+### `agent_pattern_links` (Q30 — onboarding-to-pattern linkage)
+```sql
+CREATE TABLE agent_pattern_links (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id uuid NOT NULL REFERENCES agents(id),
+  pattern_id uuid NOT NULL REFERENCES proposed_patterns(id),
+  link_reason text,
+  linked_by text NOT NULL DEFAULT 'mira',
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX uq_agent_pattern_links ON agent_pattern_links(agent_id, pattern_id);
+ALTER TABLE agent_pattern_links ENABLE ROW LEVEL SECURITY;
+```
+
+## New Columns on Existing Tables
+
+```sql
+-- Q6: ratification gate flag per-agent
+ALTER TABLE agents ADD COLUMN flags text[] NOT NULL DEFAULT ARRAY[]::text[];
+
+-- Q28: cohort-baseline scoring during runs 1-5
+ALTER TABLE agents ADD COLUMN forge_template_id uuid;
+CREATE INDEX idx_agents_forge_template ON agents(forge_template_id);
+
+-- Q41: per-agent budget override
+ALTER TABLE cost_tracking ADD COLUMN budget_override numeric(10,2);
+ALTER TABLE cost_tracking ADD COLUMN budget_override_approved_by text;
+ALTER TABLE cost_tracking ADD COLUMN budget_override_approved_at timestamptz;
+
+-- Q33: full provenance per training_patch
+ALTER TABLE training_patches ADD COLUMN signal_id uuid;
+ALTER TABLE training_patches ADD COLUMN pattern_ids uuid[] NOT NULL DEFAULT ARRAY[]::uuid[];
+ALTER TABLE training_patches ADD COLUMN prompt_diff_sha text;
+ALTER TABLE training_patches ADD COLUMN predicted_delta numeric(5,3);
+ALTER TABLE training_patches ADD COLUMN actual_delta numeric(5,3);
+
+-- Q22: cross-patch attribution flags
+ALTER TABLE training_patches ADD COLUMN attribution_unclear boolean NOT NULL DEFAULT false;
+ALTER TABLE training_patches ADD COLUMN attribution_conflict boolean NOT NULL DEFAULT false;
+
+-- Q19: regression history per author/source
+ALTER TABLE training_patches ADD COLUMN author_regression_history boolean NOT NULL DEFAULT false;
+```
+
+## Realtime Channel Set (Q21)
+
+5 named channels. All HR agents subscribe; per-agent filtering done client-side.
+
+| Channel | Source events | Subscribers |
+|---|---|---|
+| `hr.runs` | `agent_runs` INSERT | Witness, Roster, Tutor |
+| `hr.flags` | Witness antipattern + `incidents` INSERT | Cadence, Tutor, Mira |
+| `hr.lifecycle` | `agents.status` UPDATE + lifecycle `agent_events` (promote/PIP/retire) | All HR + Yash digest |
+| `hr.patches` | `training_patches` + `training_cycles` INSERT/UPDATE | Mira, Cadence, Witness |
+| `hr.escalations` | rows matching Q10 paging criteria | Yash device + Cadence backup |
+
+Enable with:
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE agent_runs;
+ALTER PUBLICATION supabase_realtime ADD TABLE incidents;
+ALTER PUBLICATION supabase_realtime ADD TABLE agents;
+ALTER PUBLICATION supabase_realtime ADD TABLE agent_events;
+ALTER PUBLICATION supabase_realtime ADD TABLE training_patches;
+ALTER PUBLICATION supabase_realtime ADD TABLE training_cycles;
+```
+
+Polling fallback per Q25: each HR agent maintains a 30s heartbeat. >2min missed → fall back to 60s polling on the source table; on channel restoration, re-sync via `created_at > last_seen_at`.
+
+## Migration order
+
+1. Create new tables (no FK conflicts with existing tables).
+2. ALTER existing tables to add columns.
+3. Add RLS policies (default: service_role full access; all other roles deny by default).
+4. Enable Realtime publications.
+5. Backfill `agents.forge_template_id` from existing Forge metadata if available; NULL is acceptable for legacy agents.
+6. Verify with `~/.claude/memory/patterns/good/hr-constitution-v1.md` §"Verification protocol".
