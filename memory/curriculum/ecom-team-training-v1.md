@@ -1476,3 +1476,81 @@ last_updated: 2026-04-27 (post-session-1)
 - Handoff schema: `~/.claude/memory/patterns/good/ecom-handoff-schema.md` (NEW)
 - Coordination: `~/.claude/memory/patterns/good/ecom-team-coordination.md` (NEW)
 - Supabase: `training_cycles`, `training_patches`, `training_signals` per `agent-ops-schema.md`
+
+---
+---
+
+# 🎉 CURRICULUM CYCLE v1 COMPLETE — 2026-04-27
+
+**Final stats:**
+- 103 / 103 questions answered (100%)
+- 125 patches applied to disk
+- 8 / 8 sessions complete
+- 0 drift incidents
+- 0 patches rolled back
+- ~46 files modified across `agents/`, `skills/`, `memory/content/ecom/`, `memory/design/ecom/`, `memory/patterns/good/`, `memory/stacks/shopify/storefront/`, `memory/content/brand-voices.md`
+
+**Patch breakdown by session:**
+| Session | Focus | Q | Patches |
+|---------|-------|---|---------|
+| 1 | META + decoder | 13 | 21 |
+| 2 | catalyst CRO strategy | 12 | 16 |
+| 3 | elio PDP + hero | 12 | 14 |
+| 4 | elio cart/motion + token | 14 | 16 |
+| 5 | spark + figma-synth | 18 | 20 |
+| 6 | merch PDP body + objections | 12 | 13 |
+| 7 | merch microcopy + ecom-cro mechanics | 14 | 16 |
+| 8 | sequence | 8 | 9 |
+| **TOTAL** | **all 9 agents trained** | **103** | **125** |
+
+**Per-agent training depth:**
+| Agent | Patches received | Skill files updated | Coverage |
+|-------|------------------|---------------------|----------|
+| decoder | 8 | 3 | brand teardowns + niche audit + pattern-extraction |
+| elio | 16 | 4 | PDP + cart + checkout + motion + mobile + tokens |
+| token | 9 | 3 | OKLCH ramp + Polaris bridge + Figma sync + addition gate |
+| figma-synth | 9 | 3 | JSX→.fig + Code Connect + ecom mappings |
+| catalyst | 14 | 3 | CRO strategy + scope split + ICE prioritization |
+| spark | 11 | 3 | hero formulas + CTA + above-fold psychology |
+| ecom-cro | 13 | 3 | cart mechanics + upsell/bundle + subscription |
+| merch | 14 | 3 | PDP body + objections + microcopy |
+| sequence | 9 | 3 | lifecycle templates + cart-abandon + subscription nurture |
+
+**Cumulative composite-score impact (estimated):**
+- Pre-curriculum baseline: agents seeded from generic competitive research
+- Post-curriculum: each agent has Yash-specific brand voice + niche calibration + scope rules + decision defaults
+- Expected composite-score lift: +1.5 average (from baseline ~6.0 to ~7.5 target)
+
+## What's next (post-curriculum)
+
+### W3 — Polyglot pipeline ship (per Phase 2 plan)
+- Implement `Polyglot/src/lib/orchestrations/ecom-team-pipeline.js`
+- Add `/api/dispatch/readiness/:agentId` endpoint
+- Wire OrgChart UI readiness badge
+- Implement `Polyglot/src/lib/handoff-validate.js` for ecom-handoff-schema.md enforcement (banned-words regex, voice scorecard, decoder evidence)
+
+### W4 — End-to-end test
+- Mock brief: "Build PDP for hypothetical DTC apparel brand X"
+- Dispatch ecom-team-pipeline
+- All 9 agents fire in correct sequence with structured handoff JSON
+- Output: Figma file + .tsx + copy variants + CRO rationale + handoff to pod-frontend
+
+### W4 — Cadence promotion review
+- Composite scores per agent in Supabase
+- Peer comparison within sub-departments
+- Promote-or-extend decision per agent
+- Yash approval on production-tier promotions
+
+### Post-W4 — Live ecom client
+- First real client brief or internal Boldteq ecom build
+- Track first-try success rate, gate pass rate, rework cycles
+- Compare to existing pixel/quill SaaS baseline
+- Target: ≥7.5 composite avg across team within 60 days of full hire
+
+## Curriculum impact validation (post-W4)
+
+After first live client:
+- Re-extract any Yash corrections to existing patches (P0 priority for Tutor)
+- Update curriculum v2 with refined answers based on field experience
+- Run Mira gold-pattern extraction → promote 5 highest-leverage patterns into `~/.claude/memory/patterns/good/` permanently
+- Schedule curriculum v2 cycle if patches need refinement (target: 12-week refresh cadence)
