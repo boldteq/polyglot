@@ -265,3 +265,59 @@ Before handoff, self-tag against 6-dimension rubric in `~/.claude/memory/content
 ### Cross-references
 - Brand voice canonical: `~/.claude/memory/content/brand-voices.md`
 - Curriculum: `~/.claude/memory/curriculum/ecom-team-training-v1.md` Session 1
+
+---
+
+## Curriculum v1 — Session 6 Patches (2026-04-27)
+
+**Source:** MRC-001..012 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-6-changelog.md`
+
+### Feature-First Push-Back (MRC-001)
+Client insists on feature-list-first → push back with decoder evidence + offer 14-day A/B test. Refuses test → ship benefits-first default. Refuses default → document override in retainer. Never silently comply.
+
+### Paragraph Cap (MRC-002)
+60w default. 100w flex for luxury/editorial. Hard ceiling 100.
+
+### Bullet Count Tier (MRC-003)
+3 (apparel/fashion/CPG sleek) / 4 (default) / 5 (supplements/tech proof-heavy). Cap 5.
+
+### Inline 5 Max + Smart Anchor FAQ (MRC-004)
+Always 5-inline cap. FAQ overflow with smart anchor links.
+
+### Supplements Order (MRC-005)
+Safety > Efficacy > Interactions > Money-back > Cancellation.
+
+### Spec Table Jargon (MRC-006)
+Use jargon when audience expects (skincare/supplements/tech). Tooltip glossary for one-word defs. Plain language apparel/CPG.
+
+### Inline = Severity, FAQ = Logistics (MRC-007)
+Inline = top 5 purchase-blocking. FAQ = lower-severity + logistics.
+
+### Founder Story = OFF on PDP (MRC-008)
+PDP excludes founder story default. /about + welcome email 2 own it. Exception: 1-line credential near trust trio for founder-credentialed niches.
+
+### Returns Tone (MRC-009)
+Confident-warm default. Corporate-precise B2B/luxury/high-AOV.
+
+### Review Extraction (MRC-010)
+Liberal with attribution (first name + verified). Explicit consent for full quotes. Logged in extracted-reviews-log.md.
+
+### Comparison Tables (MRC-011)
+Allow ONLY for disruption brands + high-consideration. NEVER name competitors. Use 'Other [category]'.
+
+### Scarcity Discipline (MRC-012)
+Allow ONLY with verifiable inventory truth + specific numbers. Never vague soft-scarcity.
+
+### Anti-Patterns (Session 6 additions)
+1. Feature-list-first PDP body (auto-reject; benefits-first mandatory unless retainer override)
+2. Naming competitors directly in comparison tables (legal + brand risk)
+3. Vague soft-scarcity ('Limited', 'Selling fast', 'Almost gone' without numbers)
+4. Founder story on every PDP (PDP = purchase decision, not brand discovery)
+5. Inline objection count >5 (forces priority discipline + scan-flow)
+6. Plain-language strip of niche-expected jargon (loses credibility with informed shoppers)
+7. Review paraphrase without attribution (misrepresentation risk)
+
+### Cross-references
+- PDP body structure: `~/.claude/skills/merch/pdp-body-structure.md`
+- Objection frameworks: `~/.claude/skills/merch/objection-handling-frameworks.md`
+- Brand voice: `~/.claude/memory/content/brand-voices.md`

@@ -755,7 +755,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SPK-002
   agent: spark
@@ -768,7 +768,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SPK-003
   agent: spark
@@ -781,7 +781,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SPK-004
   agent: spark
@@ -794,7 +794,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SPK-005
   agent: spark
@@ -807,7 +807,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SPK-006
   agent: spark
@@ -820,7 +820,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SPK-007
   agent: spark
@@ -833,7 +833,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SPK-008
   agent: spark
@@ -846,7 +846,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SPK-009
   agent: spark
@@ -859,7 +859,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-SPK-010
   agent: spark
@@ -872,7 +872,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-FIG-001
   agent: figma-synth
@@ -885,7 +885,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-FIG-002
   agent: figma-synth
@@ -898,7 +898,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-FIG-003
   agent: figma-synth
@@ -911,7 +911,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-FIG-004
   agent: figma-synth
@@ -924,7 +924,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-FIG-005
   agent: figma-synth
@@ -937,7 +937,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-FIG-006
   agent: figma-synth
@@ -950,7 +950,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-FIG-007
   agent: figma-synth
@@ -963,7 +963,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-FIG-008
   agent: figma-synth
@@ -976,7 +976,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 ```
 
 ---
@@ -995,7 +995,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-002
   agent: merch
@@ -1008,7 +1008,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-003
   agent: merch
@@ -1021,7 +1021,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-004
   agent: merch
@@ -1034,7 +1034,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-005
   agent: merch
@@ -1047,7 +1047,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-006
   agent: merch
@@ -1060,7 +1060,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-007
   agent: merch
@@ -1073,7 +1073,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-008
   agent: merch
@@ -1086,7 +1086,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-009
   agent: merch
@@ -1099,7 +1099,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-010
   agent: merch
@@ -1112,7 +1112,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-011
   agent: merch
@@ -1125,7 +1125,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 
 - id: ECOM-MRC-012
   agent: merch
@@ -1138,7 +1138,7 @@
   yash_answer: ""
   mira_lesson_extracted: ""
   tutor_patch_id: ""
-  status: pending
+  status: applied
 ```
 
 ---
@@ -1456,10 +1456,10 @@ After all 103 questions answered + Mira extracted + Tutor patched, run final int
 ## Status tracking
 
 ```yaml
-sessions_completed: 4
+sessions_completed: 6
 total_questions: 103
-questions_answered: 51
-questions_extracted: 51
+questions_answered: 81
+questions_extracted: 81
 patches_applied: 21 (1 deferred to Polyglot W3)
 patches_rolled_back: 0
 team_composite_score_at_start: TBD (capture before Session 1)

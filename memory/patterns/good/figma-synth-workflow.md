@@ -175,3 +175,31 @@ Conversion is done when:
 - [ ] Client (if external) has been notified with view-only Figma link
 - [ ] Run logged to `agent_runs` with composite_score > 80
 - [ ] No PAT or secret leaked in logs
+
+---
+
+## Curriculum v1 — Session 5 Patches (2026-04-27)
+
+**Source:** FIG-005 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-5-changelog.md`
+
+### Client Deliverable Scope — IP Protection (FIG-005)
+**What client receives in Figma deliverable:**
+- ✅ Final design frames at scale (mobile / tablet / desktop)
+- ✅ Component instances using Code-Connect-mapped components
+- ✅ Design tokens as Figma variables synced from project tokens.css
+- ✅ Code Connect bidirectional links (designer-to-dev handoff)
+
+**What client does NOT receive:**
+- ❌ Boldteq design library backend (decoder patterns, niche-specific design DNA)
+- ❌ Patterns / playbooks (memory/design/ecom/* knowledge)
+- ❌ Skills files (skills/elio/*, skills/figma-synth/*)
+- ❌ Unrelated work from other client projects
+
+**Why:** Boldteq library = competitive moat. Client gets clean handoff for their build; Boldteq retains methodology IP.
+
+**Implementation:**
+1. Create dedicated client Figma file (separate from Boldteq library)
+2. Copy ONLY deliverable frames + their component dependencies
+3. Sync tokens via `mcp__claude_ai_Figma__create_design_system_rules`
+4. Register Code Connect mappings on client file
+5. Verify: `mcp__claude_ai_Figma__get_libraries` returns only deliverable scope

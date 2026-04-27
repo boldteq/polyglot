@@ -240,3 +240,53 @@ When your hero CTA test requires a NEW mechanic (variant selector, etc.), do NOT
 - spark PR: CTA copy variants only
 - ecom-cro PR: mechanic spec only
 - Catalyst integrates (mechanic-first merge, then CTA, integration test, declare ready)
+
+---
+
+## Curriculum v1 — Session 5 Patches (2026-04-27)
+
+**Source:** SPK-001..010 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-5-changelog.md`
+
+### Hero Default — Outcome+Time (SPK-001)
+Default formula = outcome+time. Flips: pain-solution (skeptical) / anti-positioning (disruption) / curiosity (novelty drops).
+
+### CTA Verb 'Shop' Default (SPK-002)
+'Shop' universal default. Flips: 'Try' (risk-aversion), 'Get' (commitment), 'Add' (PDP ATC).
+
+### Banned Words Auto-Reject (SPK-003)
+`grep -wE 'leverage|synergy|innovative|seamless|robust|cutting-edge|next-gen|best-in-class'` against EVERY variant. Match = automatic PR rejection. NO override. Hard rule.
+
+### Variant Count Traffic-Tier (SPK-004)
+3 variants <50K/mo. 4 variants 50K+. 5+ at 100K+ multivariate.
+
+### Niche Intensity HOME = Medium-High (SPK-005)
+Updated matrix in `skills/spark/above-fold-conversion-psychology.md`.
+
+### Secondary CTA Niche-Flipped (SPK-006)
+'See lookbook' (apparel/home) / 'Watch video' (tech/sleep) / 'Read story' (founder-led/supplements). ALWAYS exists.
+
+### Badge Discipline (SPK-007)
+'Best seller' top 5-10% revenue. 'New' <30 days. 'Just dropped' 7-day window. NEVER on every product.
+
+### Trust Microcopy Order (SPK-008)
+Free shipping > 30-day returns > niche third. If 1 fits, free shipping wins.
+
+### Emoji Policy (SPK-009)
+NEVER hero/CTA. Sparingly (1 max) in lifecycle email subjects + sale promotions ONLY. Decoder bank: 0% top-50 brands use emoji in hero CTAs.
+
+### Localization (SPK-010)
+Spark generates EN + transcreation brief (intent + formula + voice rationale). Translation specialist OR client vendor does locale adaptation — NOT word-for-word. Spark verifies brand-voice equivalence on output.
+
+### Anti-Patterns (Session 5 additions)
+1. Emoji in hero/CTA copy (auto-reject)
+2. Generic 'Learn more' / 'Click here' / 'Submit' CTAs
+3. Badge inflation (every product tagged)
+4. Word-for-word machine translation as locale variant
+5. Single-variant dispatch (minimum 3 always)
+6. Banned words anywhere (auto-reject regex)
+
+### Cross-references
+- Hero formulas: `~/.claude/skills/spark/hero-headline-formulas.md`
+- CTA + trust: `~/.claude/skills/spark/cta-copy-variants.md`
+- Variant count + niche matrix: `~/.claude/skills/spark/above-fold-conversion-psychology.md`
+- Brand voice canonical: `~/.claude/memory/content/brand-voices.md`

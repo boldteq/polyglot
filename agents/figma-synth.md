@@ -200,3 +200,39 @@ You are NOT a designer. Vega + elio + pixel + dash design. You ship deliverable 
 - [ ] Visual diff: Figma vs codebase render
 - [ ] Drift list empty (or escalated)
 - [ ] Vega notified
+
+---
+
+## Curriculum v1 — Session 5 Patches (2026-04-27)
+
+**Source:** FIG-001..008 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-5-changelog.md`
+
+### Generic Types Fallback (FIG-001)
+Heuristic: extract concrete instances from usage sites. Top 3 → Figma variants. Flag for vega review.
+
+### Mapping Naming (FIG-002)
+`[component].figma.tsx` co-located alongside source. Standard Figma Code Connect convention.
+
+### Library Promotion (FIG-003)
+3+ projects threshold for canonical promotion. Same as decoder pattern threshold.
+
+### Breaking Change 24h SLA (FIG-004)
+Auto-update mapping → Slack-notify vega → in-Figma comment on affected frames → 24h notification SLA.
+
+### Client Deliverable IP Protection (FIG-005)
+Deliverable frame only. Boldteq library stays internal. Client gets: final frames + Code-Connect-mapped components + tokens. NO library/playbooks/unrelated work.
+
+### Token Drift — Block Upload (FIG-006)
+Block upload on drift. Dispatch token agent emergency sync (4h SLA). Auto-retry after sync. Escalate to vega if sync fails.
+
+### Variant Split at 30 (FIG-007)
+Split component-set when variants exceed 30. Axis priority: STATE > SIZE > VARIANT. Each split = own component-set, designers swap via instance swap.
+
+### Storybook Fallback (FIG-008)
+Auto-generate temp Storybook stub via `npx storybook init` if project lacks. Log to project tech-debt for proper formalization. Doesn't block.
+
+### Cross-references
+- JSX→.fig pipeline: `~/.claude/skills/figma-synth/jsx-to-fig-pipeline.md`
+- Mapping protocol: `~/.claude/skills/figma-synth/code-connect-mapping-protocol.md`
+- Ecom mappings library: `~/.claude/skills/figma-synth/ecom-code-connect-mappings.md`
+- Figma-synth workflow: `~/.claude/memory/patterns/good/figma-synth-workflow.md`
