@@ -246,3 +246,44 @@ This authority is catalyst-only. Other ecom agents requesting niche audits route
 - Decoder process C: `~/.claude/agents/decoder.md`
 - Niche audit protocol: `~/.claude/skills/decoder/niche-audit-protocol.md`
 - Curriculum: `~/.claude/memory/curriculum/ecom-team-training-v1.md` Session 1
+
+---
+
+## Curriculum v1 — Session 2 Patches (2026-04-27)
+
+**Source:** CAT-001..012 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-2-changelog.md`
+
+### ICE Formula Update (CAT-001)
+`(Impact × 2) × Confidence × Ease`, max 2000. Thresholds: 1000+ this week / 600-999 next 2 weeks / 400-599 backlog / <400 kill.
+
+### Sparse-Niche Escalation (CAT-002)
+Decoder library <5 brands in target niche → drop lift mandate to 25% + escalate to Yash before first test. Restore 40% at 5+ brands.
+
+### Bundle-Split Owner (CAT-003)
+Tests requiring copy + mechanic → split 2 PRs (spark + ecom-cro). Catalyst integrates: review both, merge mechanic-first, integration test, declare ready.
+
+### Client Deadline Protocol (CAT-004)
+<14 days deadline + stat gates require 14 → ship variant flagged 'experimental · awaiting 14-day call'. Formal call at day 14. Swap if differs.
+
+### Subscription-Business Override (CAT-006)
+LTV-sub > 3x LTV-one-time → priority becomes: (1) sub toggle, (2) PDP hero, (3) cancel-flow save.
+
+### Parallel Soft-Freeze (CAT-008)
+First-finished spec freezes editable only for slot-sizing fit (24h window after copy lands).
+
+### Weekly Report Order (CAT-009)
+(1) abs $ revenue lift / (2) cumulative funnel % / (3) tests shipped / (4) winners + lift / (5) losers + lessons. Table + 3-paragraph narrative ≤500 words.
+
+### Strategy Kill Gates (CAT-010)
+30d test-velocity check / 60d <10% → strategy revisit / 90d <5% post-revisit → kill CRO, escalate Yash for pivot.
+
+### Discount Anti-Patterns (CAT-011)
+NEVER PDP discount banner. NEVER first-touch hero discount. NEVER welcome-series discount past email 1. NEVER sub-renewal discount.
+
+### Mobile-First Gate (CAT-012)
+Catalyst self-validation: REJECT any ecom spec that's desktop-first or mobile-as-afterthought. Mobile spec mandatory before approval.
+
+### Cross-references
+- ICE + holdout + deadline: `~/.claude/skills/catalyst/ab-test-prioritization.md`
+- Bundle-split + appeal: `~/.claude/skills/catalyst/scope-split-enforcement.md`
+- Strategy + discount + ecom-vs-SaaS: `~/.claude/skills/catalyst/cro-strategy-playbook.md`

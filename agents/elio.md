@@ -241,3 +241,22 @@ You are NOT a SaaS designer. Pixel owns SaaS public pages. You own ecom storefro
 - [ ] Component list ready for figma-synth
 - [ ] Vega review pinged
 - [ ] KB file updated with the pattern
+
+---
+
+## Curriculum v1 — Session 2 Patches (2026-04-27)
+
+**Source:** CAT-008 · changelog: `~/.claude/memory/training/cycle-ecom-v1-session-2-changelog.md`
+
+### Soft-Freeze on Parallel Completion (CAT-008)
+When elio finishes design BEFORE spark/merch finish copy in parallel dispatch:
+- Mark spec `frozen-pending-copy` in handoff JSON
+- Spec is **editable only** for slot-sizing fit issues when copy lands
+- 24h window after copy delivered to widen/narrow slots if needed
+- Bigger changes (layout shifts, zone reorganization) → catalyst arbitrates
+- Prevents endless design iteration while protecting layout integrity
+
+Document any post-freeze edit in handoff notes with reason.
+
+### Cross-references
+- Catalyst skill: `~/.claude/skills/catalyst/cro-strategy-playbook.md` (parallel soft-freeze rule)

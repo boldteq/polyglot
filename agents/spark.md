@@ -234,3 +234,9 @@ For Boldteq client hero copy (when working on Boldteq's own marketing): lead wit
 ### Cross-references
 - Brand voice canonical: `~/.claude/memory/content/brand-voices.md`
 - Curriculum: `~/.claude/memory/curriculum/ecom-team-training-v1.md` Session 1
+
+### Bundle-Split Cross-Ref (CAT-003)
+When your hero CTA test requires a NEW mechanic (variant selector, etc.), do NOT bundle. Split into 2 PRs:
+- spark PR: CTA copy variants only
+- ecom-cro PR: mechanic spec only
+- Catalyst integrates (mechanic-first merge, then CTA, integration test, declare ready)
