@@ -317,6 +317,102 @@ Hydrogen + RR7 (Stack B storefront mode) default. Liquid ONLY for: budget <$5K +
 - Post-purchase patterns: `~/.claude/memory/design/ecom/post-purchase-patterns.md`
 - Stack decision: `~/.claude/memory/stacks/shopify/storefront/INDEX.md`
 
+---
+
+## Curriculum v2 — Deep Shopify Training (2026-04-27)
+
+**Source:** Deep training sweep · Shopify Hydrogen 2025-10 API + real DTC teardowns
+
+### Hydrogen 2025 API Changes — Variant Selection (ELI-DT-001)
+`<VariantSelector>` component deprecated in Shopify Hydrogen 2025-10 API.
+
+**New pattern:**
+```tsx
+import { getProductOptions, getSelectedProductOptions } from '@shopify/hydrogen';
+
+const selectedOptions = getSelectedProductOptions(request);
+const productOptions = getProductOptions({ product, selectedOptions });
+// productOptions returns: [{ name, values: [{ value, isAvailable, isActive, to, search }] }]
+```
+
+Always use `to` (URL string) + `<Link>` for variant switching — keeps URL shareable + SEO-correct. Never use JS state-only variant switching; bots can't index variants.
+
+Also use: `encodedVariantExistence` + `encodedVariantAvailability` fields on `ProductOption` for efficient in-stock/sold-out rendering without extra queries.
+
+### Optimistic Cart Pattern (ELI-DT-002)
+Hydrogen 2025+ ships `useOptimisticCart()` hook for instant UI feedback before server confirmation.
+
+```tsx
+const optimisticCart = useOptimisticCart(cart);
+// Shows immediate count increment + line item appearance before server round-trip
+```
+
+Spec requirement: every PDP and cart drawer MUST use optimistic cart UI. No latency-visible add-to-cart. This is table-stakes for ecom conversion — 150ms+ delay costs measurable CVR.
+
+Design implication: ATC button state sequence = idle → pending (spinner, 200ms debounce) → optimistic success (check icon, 1s) → confirmed. Never block UI >200ms.
+
+### Shopify Checkout Extensibility Surfaces (ELI-DT-003)
+Checkout UI Extensions (Shopify Plus ONLY) — spec these zones in designs when client is Plus:
+
+| Extension target | Position | What to spec |
+|------------------|----------|--------------|
+| `purchase.checkout.payment-method-list.render-after` | After payment options | Order bump product card |
+| `purchase.checkout.shipping-option-list.render-after` | After shipping options | Shipping upgrade upsell |
+| `purchase.checkout.contact.render-after` | After email | Loyalty/points opt-in |
+| `purchase.checkout.cart-line-list.render-after` | Below cart lines | "You may also like" |
+| `purchase.post-purchase.render` | Post-purchase page | One-click upsell (separate API) |
+
+Always flag in spec: "Checkout Extensibility — Shopify Plus required." Non-Plus clients get Shopify's native checkout with no customization.
+
+### Hydrogen Image Component — LCP Optimization (ELI-DT-004)
+Hero image MUST use these attrs — LCP is the #1 Core Web Vital for ecom PDPs:
+
+```tsx
+<Image
+  data={product.featuredImage}
+  loading="eager"          // NOT lazy — this is the LCP element
+  fetchpriority="high"     // browser hint to prioritize
+  sizes="(min-width: 1024px) 800px, 100vw"  // responsive srcset
+  aspectRatio="4/5"        // reserve space — prevents CLS
+/>
+```
+
+LCP budget: ≤2.0s on Oxygen edge (Hydrogen), ≤2.5s on custom hosting. Hero image = 95% of LCP failures. Spec image dimensions, always.
+
+### Collection Page Pagination — Hydrogen Pattern (ELI-DT-005)
+Hydrogen ships `<Pagination>` component + `getPaginationVariables()` for cursor-based collection pagination.
+
+**Design decision:** Hybrid — "Load More" button (not infinite auto-scroll, not traditional page numbers).
+
+Why: infinite scroll kills back-button (user loses position). Page numbers require full page reload. "Load More" = best of both: URL-cursor preserved, position maintained on back.
+
+```
+• Default: 24 products per load (grid breakpoint sweet spot)
+• "Load More" button appears when hasNextPage === true
+• URL updates with cursor (supports back button + sharing)
+• Mobile: same pattern — bottom of grid
+```
+
+Anti-pattern: infinite auto-scroll on ecom. Kills back button. Loses conversion attribution. Baymard Institute 2025 best practice = Load More button.
+
+### Trust Trio Elevation — Skeptical Niche (ELI-DT-006)
+From decoder bank: supplements + wellness + luxury = ABOVE ATC placement = 8-15% lift.
+
+New confirmation: Liquid Death uses trust signals as brand differentiation ("Certified B Corp", "Made in USA", "No BS").
+
+Emerging pattern from 2025 decoder sweep: **ingredient transparency cards** for supplements/beauty — expandable section showing each ingredient with source + amount. Higher trust = higher repeat purchase (Ritual, AG1).
+
+Spec this surface when client = supplements/wellness/beauty: ingredient card component + "Why we use X" expandable per ingredient.
+
+### Stock Indicator Rules (ELI-DT-007 — reinforcement of ELI-003)
+Decoder 2025 sweep confirms fake urgency erodes brand trust. Observable pattern:
+- Allbirds: NO stock indicator (removed — it caused customer service complaints)
+- Glossier: "Leaving Soon" badge on discontinuing items only (real, not fake)
+- Gymshark: "SELLING OUT FAST" only during actual sale events with inventory verified
+
+**Rule:** Show stock count ONLY when verified inventory ≤5. Above 5: hide entirely. Never fake urgency.
+**Exception:** "Leaving Soon" or "Discontinuing" badges acceptable when product is genuinely being discontinued.
+
 ### Token-Debt Protocol (ELI-018)
 When you need a new token but token agent hasn't created it:
 1. Ship with inline value tagged: `--color-temp-X: hsl(...) /* token-debt: [reason] */`
