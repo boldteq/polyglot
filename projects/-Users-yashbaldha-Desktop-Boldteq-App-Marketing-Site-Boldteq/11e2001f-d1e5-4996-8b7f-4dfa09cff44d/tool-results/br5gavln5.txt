@@ -1,0 +1,671 @@
+                </div>
+                <div class="pricing-table-header">
+                  <div class="subheading-large-7 text-color-brand-orange">Growth</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="pricing-header-last">
+                    <div class="subheading-large-7 text-color-brand-orange">Pro</div>
+                    <div class="price-toggle hide w-embed"><svg width="16" height="10" viewbox="0 0 16 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1.25 1.25L8 8L14.75 1.25" stroke="url(#paint0_linear_1576_484)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <defs>
+                          <lineargradient id="paint0_linear_1576_484" x1="8" y1="8" x2="8" y2="1.25" gradientunits="userSpaceOnUse">
+                            <stop stop-color="#21CFFF"></stop>
+                            <stop offset="1" stop-color="#019AE6"></stop>
+                          </lineargradient>
+                        </defs>
+                      </svg></div>
+                  </div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Monthly delivery capacity</strong></div>
+                  <div data-tooltip="Total design &amp; dev hours your team delivers each month." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 40 hours</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 80 hours</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 140 hours</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Task handling</strong></div>
+                  <div data-tooltip="Number of tasks we can actively work on at the same time." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">1 task</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">2 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Task management &amp;<br>Communication</strong></div>
+                  <div data-tooltip="Centralized workspace to submit, track, and discuss every task." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Quality assurance</strong></div>
+                  <div data-tooltip="Internal review level applied before any work reaches you." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Enhanced</div>
+                </div>
+                <div class="pricing-table-cell left no-border overflow-mob">
+                  <div class="paragraph-regular-14"><strong>Platforms supported </strong><span title="This is a tooltip text" class="tooltip-icon hide">i</span></div>
+                  <div data-tooltip="Number of CMS/platforms (e.g. Shopify, WordPress) we deliver on." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">1 platform</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">2 platforms</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 platforms</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Delivery model</strong></div>
+                  <div data-tooltip="How your execution team is structured and assigned to your account." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Semi-dedicated pod</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Turnaround time</strong></div>
+                  <div data-tooltip="How quickly tasks move from submission to final delivery." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Reporting</strong></div>
+                  <div data-tooltip="Summaries and insights on delivery progress and task performance." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Advanced</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Rollover</strong></div>
+                  <div data-tooltip="Unused hours carried over to the next billing period." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div data-w-tab="Tab 2" class="w-tab-pane">
+            <div class="w-layout-grid pricing-grid new">
+              <div class="pricing-card-2 white-card">
+                <div class="column-x-small-10 center-col">
+                  <div class="price-sub-ott">
+                    <h6 class="h6-heading-5 plan-name">Starter</h6>
+                  </div>
+                  <div class="price-badge-out">
+                    <h3 class="h3-heading-3">$899/month</h3>
+                    <p class="compare-price">$999.00</p>
+                    <p class="price-green-badge hide">10% off</p>
+                  </div>
+                  <div class="price-badge-out hide">
+                    <h3 class="h3-heading-3">$719/month</h3><img loading="lazy" src="images/Ellipse-270.svg" alt="dot icon" class="eclipse">
+                    <p class="paragraph-small-27 text-color-tertiary">when paid quarterly</p>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary hide">Organize your daily task for free</p>
+                  <p class="paragraph-small-27 text-color-tertiary">Agencies replacing first execution hire</p>
+                </div>
+                <div>
+                  <div class="column-small-5">
+                    <div class="paragraph-x-small-13 text-color-tertiary"><strong>Everything in onboarding, plus:</strong></div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">40 hrs / month</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">1 task at a time</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Single platform</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Smart Client Workspace</div>
+                    </div>
+                  </div>
+                </div>
+                <a href="https://portal.boldteq.com/services/starter-mwma05bdxjhzji0zwzav/checkout?variation=9" class="button-pricing w-inline-block">
+                  <div>Get Started</div>
+                </a>
+              </div>
+              <div class="pricing-card-2 center-pcard">
+                <div class="p-top-dv"><img loading="lazy" src="images/Layer_2.svg" alt="flash icon">
+                  <p class="most-popular">Most Popular</p>
+                </div>
+                <div class="column-x-small-10 center-col">
+                  <div class="price-sub-ott">
+                    <h6 class="h6-heading-5 plan-name">Growth</h6>
+                  </div>
+                  <div class="price-badge-out">
+                    <h3 class="h3-heading-3">$1799/month</h3>
+                    <p class="compare-price">$1999.00</p>
+                    <p class="price-green-badge hide">10% off</p>
+                  </div>
+                  <div class="price-badge-out hide">
+                    <h3 class="h3-heading-3">$1349/month</h3><img loading="lazy" src="images/Ellipse-270.svg" alt="dot icon" class="eclipse">
+                    <p class="paragraph-small-27 text-color-tertiary">when paid quarterly</p>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary hide">Organize your daily task for free</p>
+                  <p class="paragraph-small-27 text-color-tertiary">Agencies scaling delivery</p>
+                </div>
+                <div>
+                  <div class="pricing-price-wrapper">
+                    <p class="paragraph-small-27 text-color-tertiary hide">/billed yearly <strong class="sky-bold-b">$5</strong> when billed monthly</p>
+                  </div>
+                  <div class="column-small-5">
+                    <div class="paragraph-x-small-13 text-color-tertiary"><strong>Everything in Starter, plus:</strong></div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">80 hrs / month</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Dual-lane execution</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Multi-platform delivery</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Smart Client Workspace</div>
+                    </div>
+                  </div>
+                </div>
+                <a href="https://portal.boldteq.com/services/growth-0kjv8vdq1slacrk0eujt/checkout?variation=11" class="button-pricing sky-prcing-button w-inline-block">
+                  <div>Get Started</div>
+                </a>
+              </div>
+              <div class="pricing-card-2 white-card">
+                <div class="column-x-small-10 center-col">
+                  <div class="price-sub-ott">
+                    <h6 class="h6-heading-5 plan-name">Pro</h6>
+                  </div>
+                  <div class="price-badge-out">
+                    <h3 class="h3-heading-3">$3149/month</h3>
+                    <p class="compare-price">$3499.00</p>
+                    <p class="price-green-badge hide">10% off</p>
+                  </div>
+                  <div class="price-badge-out hide">
+                    <div class="price-badge-out">
+                      <h3 class="h3-heading-3">$2249/month</h3><img loading="lazy" src="images/Ellipse-270.svg" alt="dot icon" class="eclipse">
+                      <p class="paragraph-small-27 text-color-tertiary">when paid quarterly</p>
+                    </div>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary hide">Organize your daily task for free</p>
+                  <p class="paragraph-small-27 text-color-tertiary">High-volume / mature agencies</p>
+                </div>
+                <div>
+                  <div class="pricing-price-wrapper">
+                    <p class="paragraph-small-27 text-color-tertiary hide">/billed yearly <strong class="sky-bold-b">$5</strong> when billed monthly</p>
+                  </div>
+                  <div class="column-small-5">
+                    <div class="paragraph-x-small-13 text-color-tertiary"><strong>Everything in Growth, plus:</strong></div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">140 hrs / month</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Three-lane execution</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Advanced reporting</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Smart Client Workspace</div>
+                    </div>
+                  </div>
+                </div>
+                <a href="https://portal.boldteq.com/services/pro-c8jtfwr3tdjelxvygqrz/checkout?variation=38" class="button-pricing w-inline-block">
+                  <div>Get Started</div>
+                </a>
+              </div>
+            </div>
+            <div class="pricing-table-wrapper margin-less">
+              <div class="w-layout-grid pricing-table new">
+                <div class="pricing-table-header left">
+                  <div class="subheading-large-7">Basic Features</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="subheading-large-7">Starter</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="subheading-large-7 text-color-brand-orange">Growth</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="pricing-header-last">
+                    <div class="subheading-large-7 text-color-brand-orange">Pro</div>
+                    <div class="price-toggle hide w-embed"><svg width="16" height="10" viewbox="0 0 16 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1.25 1.25L8 8L14.75 1.25" stroke="url(#paint0_linear_1576_484)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <defs>
+                          <lineargradient id="paint0_linear_1576_484" x1="8" y1="8" x2="8" y2="1.25" gradientunits="userSpaceOnUse">
+                            <stop stop-color="#21CFFF"></stop>
+                            <stop offset="1" stop-color="#019AE6"></stop>
+                          </lineargradient>
+                        </defs>
+                      </svg></div>
+                  </div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Monthly delivery capacity</strong></div>
+                  <div data-tooltip="Total design &amp; dev hours your team delivers each month." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 40 hours</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 80 hours</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 140 hours</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Task handling</strong></div>
+                  <div data-tooltip="Number of tasks we can actively work on at the same time." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">1 task</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">2 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Task management &amp; <br>Communication</strong></div>
+                  <div data-tooltip="Centralized workspace to submit, track, and discuss every task." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Quality assurance</strong></div>
+                  <div data-tooltip="Internal review level applied before any work reaches you." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Enhanced</div>
+                </div>
+                <div class="pricing-table-cell left no-border">
+                  <div class="paragraph-regular-14"><strong>Platforms supported</strong></div>
+                  <div data-tooltip="Number of CMS/platforms (e.g. Shopify, WordPress) we deliver on." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">1 platform</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">2 platforms</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 platforms</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Delivery model</strong></div>
+                  <div data-tooltip="How your execution team is structured and assigned to your account." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Semi-dedicated pod</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Turnaround time</strong></div>
+                  <div data-tooltip="How quickly tasks move from submission to final delivery." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Reporting</strong></div>
+                  <div data-tooltip="Summaries and insights on delivery progress and task performance." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Advanced</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Rollover</strong></div>
+                  <div data-tooltip="Unused hours carried over to the next billing period." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div data-w-tab="Tab 3" class="w-tab-pane">
+            <div class="w-layout-grid pricing-grid new">
+              <div class="pricing-card-2 white-card">
+                <div class="column-x-small-10 center-col">
+                  <div class="price-sub-ott">
+                    <h6 class="h6-heading-5 plan-name">Starter</h6>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary hide">Organize your daily task for free</p>
+                  <div class="price-badge-out">
+                    <h3 class="h3-heading-3">$799/month</h3>
+                    <p class="compare-price">$999.00</p>
+                    <p class="price-green-badge hide">10% off</p>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary">Agencies replacing first execution hire</p>
+                </div>
+                <div>
+                  <div class="column-small-5">
+                    <div class="paragraph-x-small-13 text-color-tertiary"><strong>Everything in onboarding, plus:</strong></div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">40 hrs / month</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">1 task at a time</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Single platform</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Smart Client Workspace</div>
+                    </div>
+                  </div>
+                </div>
+                <a href="https://portal.boldteq.com/services/starter-mwma05bdxjhzji0zwzav/checkout?variation=9" class="button-pricing w-inline-block">
+                  <div>Get Started</div>
+                </a>
+              </div>
+              <div class="pricing-card-2 center-pcard">
+                <div class="p-top-dv"><img loading="lazy" src="images/Layer_2.svg" alt="flash icon">
+                  <p class="most-popular">Most Popular</p>
+                </div>
+                <div class="column-x-small-10 center-col">
+                  <div class="price-sub-ott">
+                    <h6 class="h6-heading-5 plan-name">Growth</h6>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary hide">when paid annually</p>
+                  <div class="price-badge-out">
+                    <h3 class="h3-heading-3">$1599/month</h3>
+                    <p class="compare-price">$1999.00</p>
+                    <p class="price-green-badge hide">10% off</p>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary">Agencies scaling delivery</p>
+                </div>
+                <div>
+                  <div class="pricing-price-wrapper">
+                    <p class="paragraph-small-27 text-color-tertiary hide">/billed yearly <strong class="sky-bold-b">$5</strong> when billed monthly</p>
+                  </div>
+                  <div class="column-small-5">
+                    <div class="paragraph-x-small-13 text-color-tertiary"><strong>Everything in Starter, plus:</strong></div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">80 hrs / month</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Dual-lane execution</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Multi-platform delivery</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Smart Client Workspace</div>
+                    </div>
+                  </div>
+                </div>
+                <a href="https://portal.boldteq.com/services/growth-0kjv8vdq1slacrk0eujt/checkout?variation=11" class="button-pricing sky-prcing-button w-inline-block">
+                  <div>Get Started</div>
+                </a>
+              </div>
+              <div class="pricing-card-2 white-card">
+                <div class="column-x-small-10 center-col">
+                  <div class="price-sub-ott">
+                    <h6 class="h6-heading-5 plan-name">Pro</h6>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary hide">Organize your daily task for free</p>
+                  <div class="price-badge-out">
+                    <h3 class="h3-heading-3">$2799/month</h3>
+                    <p class="compare-price">$3499.00</p>
+                    <p class="price-green-badge hide">10% off</p>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary">High-volume / mature agencies</p>
+                </div>
+                <div>
+                  <div class="pricing-price-wrapper">
+                    <p class="paragraph-small-27 text-color-tertiary hide">/billed yearly <strong class="sky-bold-b">$5</strong> when billed monthly</p>
+                  </div>
+                  <div class="column-small-5">
+                    <div class="paragraph-x-small-13 text-color-tertiary"><strong>Everything in Growth, plus:</strong></div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">140 hrs / month</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Three-lane execution</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Advanced reporting</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Smart Client Workspace</div>
+                    </div>
+                  </div>
+                </div>
+                <a href="https://portal.boldteq.com/services/pro-c8jtfwr3tdjelxvygqrz/checkout?variation=38" class="button-pricing w-inline-block">
+                  <div>Get Started</div>
+                </a>
+              </div>
+            </div>
+            <div class="pricing-table-wrapper margin-less">
+              <div class="w-layout-grid pricing-table new">
+                <div class="pricing-table-header left">
+                  <div class="subheading-large-7">Basic Features</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="subheading-large-7">Starter</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="subheading-large-7 text-color-brand-orange">Growth</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="pricing-header-last">
+                    <div class="subheading-large-7 text-color-brand-orange">Pro</div>
+                    <div class="price-toggle hide w-embed"><svg width="16" height="10" viewbox="0 0 16 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1.25 1.25L8 8L14.75 1.25" stroke="url(#paint0_linear_1576_484)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <defs>
+                          <lineargradient id="paint0_linear_1576_484" x1="8" y1="8" x2="8" y2="1.25" gradientunits="userSpaceOnUse">
+                            <stop stop-color="#21CFFF"></stop>
+                            <stop offset="1" stop-color="#019AE6"></stop>
+                          </lineargradient>
+                        </defs>
+                      </svg></div>
+                  </div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Monthly delivery capacity</strong></div>
+                  <div data-tooltip="Total design &amp; dev hours your team delivers each month." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 40 hours</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 80 hours</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 140 hours</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Task handling</strong></div>
+                  <div data-tooltip="Number of tasks we can actively work on at the same time." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">1 task</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">2 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Task management &amp; <br>Communication</strong></div>
+                  <div data-tooltip="Centralized workspace to submit, track, and discuss every task." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Quality assurance</strong></div>
+                  <div data-tooltip="Internal review level applied before any work reaches you." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Enhanced</div>
+                </div>
+                <div class="pricing-table-cell left no-border">
+                  <div class="paragraph-regular-14"><strong>Platforms supported</strong></div>
+                  <div data-tooltip="Number of CMS/platforms (e.g. Shopify, WordPress) we deliver on." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">1 platform</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">2 platforms</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 platforms</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Delivery model</strong></div>
+                  <div data-tooltip="How your execution team is structured and assigned to your account." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Semi-dedicated pod</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Turnaround time</strong></div>
+                  <div data-tooltip="How quickly tasks move from submission to final delivery." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Reporting</strong></div>
+                  <div data-tooltip="Summaries and insights on delivery progress and task performance." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Advanced</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Rollover</strong></div>
+                  <div data-tooltip="Unused hours carried over to the next billing period." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="blue-sec pricing-blue-sec margin-btm-0">
+    <div class="container-large-3">
+      <div class="book-section remove-pattern">
+        <div class="w-layout-grid heading-grid-small margin-bottom-0">
+          <div class="column-regular column-left">
+            <h2 class="heading-2 white margin-top-0 hd-s left-mob">Need Something More Flexible?</h2>
+            <p class="paragraph white text-left">Create a custom subscription based on your workload, turnaround needs, and workflow.</p>
+            <div class="w-layout-hflex custom-plan-dlexdiv">
+              <div class="white-li-icon">
+                <div class="li-check-sky"><img src="images/Group-1.svg" loading="lazy" alt="Check Icon" class="circle-tick"></div>
+                <p class="paragraph-small white">Flexible capacity</p>
+              </div>
+              <div class="white-li-icon">
+                <div class="li-check-sky"><img src="images/Group-1.svg" loading="lazy" width="14" alt="Check Icon" class="circle-tick"></div>
+                <p class="paragraph-small white">Custom turnaround</p>
+              </div>
+              <div class="white-li-icon">
+                <div class="li-check-sky"><img src="images/Group-1.svg" loading="lazy" alt="Check Icon" class="circle-tick"></div>
+                <p class="paragraph-small white">Multiple projects or brands</p>
+              </div>
+              <div class="white-li-icon">
+                <div class="li-check-sky"><img src="images/Group-1.svg" loading="lazy" alt="Check Icon" class="circle-tick"></div>
+                <p class="paragraph-small white">Simple monthly pricing</p>
+              </div>
+            </div>
+            <a href="contact.html" class="sky-button">Build Your Custom Plan</a>
+          </div>
+          <div id="w-node-b8ee6067-1179-ff94-3dc2-e3bd676ee237-3658027d" class="max-width-small center hide-mob">
+            <div class="column-regular right"></div>
+          </div>
+        </div>
+      </div>
+    </div>

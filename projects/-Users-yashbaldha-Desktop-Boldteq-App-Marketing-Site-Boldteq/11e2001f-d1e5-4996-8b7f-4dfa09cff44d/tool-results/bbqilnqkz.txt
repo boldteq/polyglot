@@ -1,0 +1,801 @@
+                  <div class="paragraph-regular-14">2 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Task management &amp; <br>Communication</strong></div>
+                  <div data-tooltip="Centralized workspace to submit, track, and discuss every task." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Quality assurance</strong></div>
+                  <div data-tooltip="Internal review level applied before any work reaches you." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Enhanced</div>
+                </div>
+                <div class="pricing-table-cell left no-border">
+                  <div class="paragraph-regular-14"><strong>Platforms supported</strong></div>
+                  <div data-tooltip="Number of CMS/platforms (e.g. Shopify, WordPress) we deliver on." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">1 platform</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">2 platforms</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 platforms</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Delivery model</strong></div>
+                  <div data-tooltip="How your execution team is structured and assigned to your account." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Semi-dedicated pod</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Turnaround time</strong></div>
+                  <div data-tooltip="How quickly tasks move from submission to final delivery." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Reporting</strong></div>
+                  <div data-tooltip="Summaries and insights on delivery progress and task performance." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Advanced</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Rollover</strong></div>
+                  <div data-tooltip="Unused hours carried over to the next billing period." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div data-w-tab="Tab 3" class="w-tab-pane">
+            <div class="w-layout-grid pricing-grid new">
+              <div class="pricing-card-2 white-card">
+                <div class="column-x-small-10 center-col">
+                  <div class="price-sub-ott">
+                    <h6 class="h6-heading-5 plan-name">Starter</h6>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary hide">Organize your daily task for free</p>
+                  <div class="price-badge-out">
+                    <h3 class="h3-heading-3">$799/month</h3>
+                    <p class="compare-price">$999.00</p>
+                    <p class="price-green-badge hide">10% off</p>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary">Agencies replacing first execution hire</p>
+                </div>
+                <div>
+                  <div class="column-small-5">
+                    <div class="paragraph-x-small-13 text-color-tertiary"><strong>Everything in onboarding, plus:</strong></div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">40 hrs / month</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">1 task at a time</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Single platform</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Smart Client Workspace</div>
+                    </div>
+                  </div>
+                </div>
+                <a href="https://portal.boldteq.com/services/starter-mwma05bdxjhzji0zwzav/checkout?variation=9" class="button-pricing w-inline-block">
+                  <div>Get Started</div>
+                </a>
+              </div>
+              <div class="pricing-card-2 center-pcard">
+                <div class="p-top-dv"><img loading="lazy" src="images/Layer_2.svg" alt="flash icon">
+                  <p class="most-popular">Most Popular</p>
+                </div>
+                <div class="column-x-small-10 center-col">
+                  <div class="price-sub-ott">
+                    <h6 class="h6-heading-5 plan-name">Growth</h6>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary hide">when paid annually</p>
+                  <div class="price-badge-out">
+                    <h3 class="h3-heading-3">$1599/month</h3>
+                    <p class="compare-price">$1999.00</p>
+                    <p class="price-green-badge hide">10% off</p>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary">Agencies scaling delivery</p>
+                </div>
+                <div>
+                  <div class="pricing-price-wrapper">
+                    <p class="paragraph-small-27 text-color-tertiary hide">/billed yearly <strong class="sky-bold-b">$5</strong> when billed monthly</p>
+                  </div>
+                  <div class="column-small-5">
+                    <div class="paragraph-x-small-13 text-color-tertiary"><strong>Everything in Starter, plus:</strong></div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">80 hrs / month</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Dual-lane execution</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Multi-platform delivery</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Smart Client Workspace</div>
+                    </div>
+                  </div>
+                </div>
+                <a href="https://portal.boldteq.com/services/growth-0kjv8vdq1slacrk0eujt/checkout?variation=11" class="button-pricing sky-prcing-button w-inline-block">
+                  <div>Get Started</div>
+                </a>
+              </div>
+              <div class="pricing-card-2 white-card">
+                <div class="column-x-small-10 center-col">
+                  <div class="price-sub-ott">
+                    <h6 class="h6-heading-5 plan-name">Pro</h6>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary hide">Organize your daily task for free</p>
+                  <div class="price-badge-out">
+                    <h3 class="h3-heading-3">$2799/month</h3>
+                    <p class="compare-price">$3499.00</p>
+                    <p class="price-green-badge hide">10% off</p>
+                  </div>
+                  <p class="paragraph-small-27 text-color-tertiary">High-volume / mature agencies</p>
+                </div>
+                <div>
+                  <div class="pricing-price-wrapper">
+                    <p class="paragraph-small-27 text-color-tertiary hide">/billed yearly <strong class="sky-bold-b">$5</strong> when billed monthly</p>
+                  </div>
+                  <div class="column-small-5">
+                    <div class="paragraph-x-small-13 text-color-tertiary"><strong>Everything in Growth, plus:</strong></div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">140 hrs / month</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Three-lane execution</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Advanced reporting</div>
+                    </div>
+                    <div class="pricing-feature"><img loading="lazy" src="images/Vector-20.svg" alt="check icon" class="icon">
+                      <div class="caption-small-2">Smart Client Workspace</div>
+                    </div>
+                  </div>
+                </div>
+                <a href="https://portal.boldteq.com/services/pro-c8jtfwr3tdjelxvygqrz/checkout?variation=38" class="button-pricing w-inline-block">
+                  <div>Get Started</div>
+                </a>
+              </div>
+            </div>
+            <div class="pricing-table-wrapper margin-less">
+              <div class="w-layout-grid pricing-table new">
+                <div class="pricing-table-header left">
+                  <div class="subheading-large-7">Basic Features</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="subheading-large-7">Starter</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="subheading-large-7 text-color-brand-orange">Growth</div>
+                </div>
+                <div class="pricing-table-header">
+                  <div class="pricing-header-last">
+                    <div class="subheading-large-7 text-color-brand-orange">Pro</div>
+                    <div class="price-toggle hide w-embed"><svg width="16" height="10" viewbox="0 0 16 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1.25 1.25L8 8L14.75 1.25" stroke="url(#paint0_linear_1576_484)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <defs>
+                          <lineargradient id="paint0_linear_1576_484" x1="8" y1="8" x2="8" y2="1.25" gradientunits="userSpaceOnUse">
+                            <stop stop-color="#21CFFF"></stop>
+                            <stop offset="1" stop-color="#019AE6"></stop>
+                          </lineargradient>
+                        </defs>
+                      </svg></div>
+                  </div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Monthly delivery capacity</strong></div>
+                  <div data-tooltip="Total design &amp; dev hours your team delivers each month." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 40 hours</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 80 hours</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">upto 140 hours</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Task handling</strong></div>
+                  <div data-tooltip="Number of tasks we can actively work on at the same time." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">1 task</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">2 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 parallel tasks</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Task management &amp; <br>Communication</strong></div>
+                  <div data-tooltip="Centralized workspace to submit, track, and discuss every task." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Smart Client Workspace</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Quality assurance</strong></div>
+                  <div data-tooltip="Internal review level applied before any work reaches you." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Enhanced</div>
+                </div>
+                <div class="pricing-table-cell left no-border">
+                  <div class="paragraph-regular-14"><strong>Platforms supported</strong></div>
+                  <div data-tooltip="Number of CMS/platforms (e.g. Shopify, WordPress) we deliver on." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">1 platform</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">2 platforms</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">3 platforms</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Delivery model</strong></div>
+                  <div data-tooltip="How your execution team is structured and assigned to your account." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Semi-dedicated pod</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Turnaround time</strong></div>
+                  <div data-tooltip="How quickly tasks move from submission to final delivery." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Faster</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Reporting</strong></div>
+                  <div data-tooltip="Summaries and insights on delivery progress and task performance." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Basic</div>
+                </div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Advanced</div>
+                </div>
+                <div class="pricing-table-cell left">
+                  <div class="paragraph-regular-14"><strong>Rollover</strong></div>
+                  <div data-tooltip="Unused hours carried over to the next billing period." class="tooltip"><img loading="lazy" src="images/icons8-info-48.png" alt="More information" class="tooltip-ico"></div>
+                </div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell"><img loading="lazy" src="images/Mask-group.svg" alt="cross icon"></div>
+                <div class="pricing-table-cell">
+                  <div class="paragraph-regular-14">Standard</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="blue-sec pricing-blue-sec margin-btm-0">
+    <div class="container-large-3">
+      <div class="book-section remove-pattern">
+        <div class="w-layout-grid heading-grid-small margin-bottom-0">
+          <div class="column-regular column-left">
+            <h2 class="heading-2 white margin-top-0 hd-s left-mob">Need Something More Flexible?</h2>
+            <p class="paragraph white text-left">Create a custom subscription based on your workload, turnaround needs, and workflow.</p>
+            <div class="w-layout-hflex custom-plan-dlexdiv">
+              <div class="white-li-icon">
+                <div class="li-check-sky"><img src="images/Group-1.svg" loading="lazy" alt="Check Icon" class="circle-tick"></div>
+                <p class="paragraph-small white">Flexible capacity</p>
+              </div>
+              <div class="white-li-icon">
+                <div class="li-check-sky"><img src="images/Group-1.svg" loading="lazy" width="14" alt="Check Icon" class="circle-tick"></div>
+                <p class="paragraph-small white">Custom turnaround</p>
+              </div>
+              <div class="white-li-icon">
+                <div class="li-check-sky"><img src="images/Group-1.svg" loading="lazy" alt="Check Icon" class="circle-tick"></div>
+                <p class="paragraph-small white">Multiple projects or brands</p>
+              </div>
+              <div class="white-li-icon">
+                <div class="li-check-sky"><img src="images/Group-1.svg" loading="lazy" alt="Check Icon" class="circle-tick"></div>
+                <p class="paragraph-small white">Simple monthly pricing</p>
+              </div>
+            </div>
+            <a href="contact.html" class="sky-button">Build Your Custom Plan</a>
+          </div>
+          <div id="w-node-b8ee6067-1179-ff94-3dc2-e3bd676ee237-3658027d" class="max-width-small center hide-mob">
+            <div class="column-regular right"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section id="roi-calc" class="roi-sec">
+    <div class="w-embed w-script">
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>BoldTeq ROI Calculator - See Your Potential Savings</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ff:           'Roobert PRO', -apple-system, system-ui, sans-serif;
+  --page:         #fff;
+  --white:        #ffffff;
+  --border:       #e8eaed;
+  --border-s:     #d1d5db;
+  --t1:           #2b2b2b;
+  --t2:           #2b2b2b;
+  --t3:           #2b2b2b;
+  --blue:         #05bafe;
+  --blue-h:       #0088c7;
+  --blue-bg:      #21cfff12;
+  --blue-bdr:     #05bafe;
+  --green:        #059669;
+  --green-bg:     #ecfdf5;
+  --green-bdr:    #a7f3d0;
+  --amber:        #d97706;
+  --amber-bg:     #fffbeb;
+  --red:          #dc2626;
+  --sh-sm:        0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --sh-md:        0 4px 16px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.04);
+  --sh-lg:        0 0 5px rgba(0,0,0,.10);
+  --r-sm:         8px;
+  --r-md:         12px;
+  --r-lg:         16px;
+  --r-xl:         20px;
+}
+body{
+  font-family:var(--ff);
+  background:var(--page);
+  color:var(--t1);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+}
+.bt-section{
+  width:100%;
+  padding:88px 24px 96px;
+  background:var(--white);
+  position:relative;
+  overflow:hidden;
+}
+.bt-inner{max-width:1280px;margin:0 auto;position:relative;z-index:1}
+/* Header */
+.bt-header{text-align:center;margin-bottom:52px}
+.bt-eyebrow{
+	display:inline-flex;
+	align-items:center;
+	gap:7px;
+	margin-bottom:18px;
+	color: #21cfff;
+    text-transform: capitalize;
+    font-weight: 500;
+    font-size: 14px;
+    background-color: #21cfff12;
+    border: 1.5px solid #05bafe;
+    border-radius: 20px;
+    line-height: 24px;
+    padding: 2px 13px;
+}
+.bt-eyebrow span:nth-child(2) {
+    background: linear-gradient(90deg,#21cfff,#019ae6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.bt-eyebrow-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.bt-h2{
+  font-size:clamp(28px,4vw,40px);
+  font-weight:700;
+  color:#082753;
+  letter-spacing:-.025em;
+  line-height:1.12;
+  margin-bottom:10px;
+  margin-top:0;
+}
+.bt-h2 span{color:var(--blue);    background: linear-gradient(90deg, #21cfff, #019ae6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; }
+.bt-desc{
+  font-size:16px;
+  color:var(--t2);
+  max-width:500px;
+  margin:0 auto 24px;
+  line-height:1.65;
+}
+/* Quick Scenarios */
+.bt-preset-label{
+  text-align:center;
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+  color:var(--t3);
+  margin-bottom:10px;
+  margin-top:44px;
+}
+.bt-presets{
+  display:flex;
+  gap:8px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-bottom:32px;
+}
+.bt-preset{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:9px 18px;
+  background:var(--white);
+  border:1.5px solid var(--border-s);
+  border-radius:100px;
+  font-family:var(--ff);
+  font-size:14px;
+  font-weight:600;
+  color:var(--t2);
+  cursor:pointer;
+  transition:all .18s;
+  white-space:nowrap;
+}
+.bt-preset-icon{font-size:16px}
+.bt-preset:hover{
+  border-color:var(--blue);
+  color:var(--blue);
+  background:var(--blue-bg);
+}
+.bt-preset.active{
+  border-color:var(--blue);
+  background:var(--blue);
+  color:#fff;
+  box-shadow:0 3px 10px rgba(0,156,224,.25);
+}
+/* Main Card */
+.bt-card{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:var(--r-xl);
+  box-shadow:var(--sh-lg);
+  overflow:hidden;
+}
+.bt-cols{display:grid;grid-template-columns:1fr 1fr;gap:0}
+/* Left Panel */
+.bt-left{
+  padding:40px;
+  border-right:1px solid var(--border);
+  background:var(--white);
+}
+.bt-col-title{
+  font-size:15px;
+  font-weight:700;
+  color:var(--t1);
+  margin-bottom:28px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.bt-col-icon{
+  width:34px;
+  height:34px;
+  border-radius:var(--r-sm);
+  background:var(--blue-bg);
+  border:1px solid var(--blue-bdr);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  flex-shrink:0;
+}
+/* Plan Selection */
+.bt-plan-block{
+  background:var(--page);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:18px;
+  margin-bottom:26px;
+}
+.bt-section-lbl{
+  font-size:14px;
+  font-weight:500;
+  color:var(--t3);
+  margin-bottom:10px;
+}
+.bt-billing{
+  display:flex;
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  padding:3px;
+  margin-bottom:10px;
+}
+.bt-bill-btn{
+  flex:1;
+  padding:7px 4px;
+  border-radius:6px;
+  border:none;
+  font-family:var(--ff);
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .15s;
+  background:transparent;
+  color:var(--t3);
+  white-space:nowrap;
+}
+.bt-bill-btn.active{
+  background:var(--blue);
+  color:#fff;
+  box-shadow:0 2px 6px rgba(0,156,224,.30);
+}
+.bt-plans{display:flex;gap:6px}
+.bt-plan-btn{
+  flex:1;
+  padding:9px 4px;
+  border:1.5px solid var(--border-s);
+  border-radius:var(--r-sm);
+  background:var(--white);
+  font-family:var(--ff);
+  font-size:11px;
+  font-weight:700;
+  color:var(--t3);
+  cursor:pointer;
+  transition:all .15s;
+  text-align:center;
+}
+.bt-plan-btn.active{
+  border-color:var(--blue);
+  background:var(--blue-bg);
+  color:var(--blue);
+}
+.bt-plan-name{
+  display:block;
+  font-size:16px;
+  margin-bottom:1px;
+  color:inherit;
+}
+.bt-plan-price{
+  display:block;
+  font-size:14px;
+  font-weight:500;
+  opacity:.75;
+}
+/* Input Fields */
+.bt-field{margin-bottom:22px}
+.bt-field-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:9px;
+}
+.bt-label{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:16px;
+  font-weight:500;
+  color:var(--t2);
+}
+.bt-badge{
+  font-size:13px;
+  font-weight:700;
+  color:var(--blue);
+  background:var(--blue-bg);
+  border:1px solid var(--blue-bdr);
+  border-radius:6px;
+  padding:2px 9px;
+  font-family:var(--ff);
+}
+/* Range Slider */
+.bt-range{
+  width:100%;
+  height:6px;
+  appearance:none;
+  -webkit-appearance:none;
+  border-radius:6px;
+  outline:none;
+  cursor:pointer;
+}
+.bt-range::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:#fff;
+  border:2.5px solid var(--blue);
+  box-shadow:0 0 0 3px rgba(0,156,224,.12),var(--sh-sm);
+  cursor:pointer;
+  transition:box-shadow .15s;
+}
+.bt-range::-webkit-slider-thumb:hover{
+  box-shadow:0 0 0 5px rgba(0,156,224,.15),var(--sh-sm);
+}
+.bt-range::-moz-range-thumb{
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:#fff;
+  border:2.5px solid var(--blue);
+  cursor:pointer;
+}
+.bt-range-ends{
+  display:flex;
+  justify-content:space-between;
+  margin-top:4px;
+  font-size:14px;
+  color:var(--t3);
+}
+/* Text Input */
+.bt-wrap{position:relative}
+.bt-pfx{
+  position:absolute;
+  left:13px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:14px;
+  font-weight:700;
+  color:var(--t3);
+  pointer-events:none;
+}
+.bt-input{
+  width:100%;
+  background:var(--white);
+  border:1.5px solid var(--border-s);
+  border-radius:var(--r-sm);
+  font-family:var(--ff);
+  font-size:14px;
+  font-weight:400;
+  color:var(--t1);
+  padding:11px 12px 11px 30px;
+  outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.bt-input:focus{
+  border-color:var(--blue);
+  box-shadow:0 0 0 3px rgba(0,156,224,.10);
+}
+.bt-err{
+  color:var(--red);
+  font-size:11.5px;
+  margin-top:5px;
+  display:none;
+}
+/* Tooltip */
+.tip{position:relative;display:inline-flex;align-items:center;margin-left:4px}
+.tip-btn{
+  width:15px;
+  height:15px;
+  border-radius:50%;
+  border:1.5px solid var(--border-s);
+  background:transparent;
+  color:var(--t3);
+  font-size:9px;
+  font-weight:800;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-family:var(--ff);
+  line-height:1;
+  transition:border-color .15s,color .15s;
+}
+.tip-btn:hover{
+  border-color:var(--blue);
+  color:var(--blue);
+}
+.tip-box{
+  display:none;
+  position:absolute;
+  bottom:calc(100% + 8px);
+  left:50%;
+  transform:translateX(-50%);
+  background:var(--t1);
+  color:#fff;
+  font-size:11.5px;
+  padding:10px 14px;
+  border-radius:var(--r-sm);
+  width:210px;
+  z-index:200;
+  line-height:1.55;
+  box-shadow:var(--sh-md);
+  white-space:normal;
+  font-weight:400;
+}
+.tip:hover .tip-box,.tip-btn:focus+.tip-box{display:block}
+.tip-arr{
+  position:absolute;
+  top:100%;
+  left:50%;
+  transform:translateX(-50%);
+  border-left:5px solid transparent;
+  border-right:5px solid transparent;
+  border-top:5px solid var(--t1);
+}
+/* Right Panel - Results */
+.bt-right{
+  padding:40px;
+  background:var(--page);
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+/* Hero Savings Card */
+.bt-hero{
+  background:var(--blue);
+  border-radius:var(--r-lg);
+  padding:24px 26px;
+  position:relative;
+  overflow:hidden;
+}
+.bt-hero::after{
+  content:'';
+  position:absolute;
+  top:-40px;
+  right:-40px;
+  width:160px;
+  height:160px;
+  border-radius:50%;
+  background:rgba(255,255,255,.08);
