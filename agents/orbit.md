@@ -1,5 +1,5 @@
 ---
-name: "\U0001F4CA Orbit — Metrics Architect"
+name: "\U0001F4CA Orbit — Head of Analytics"
 description: >-
   Defines measurement frameworks for launched products. Designs north-star
   metric, activation event, retention cohort plans, KPI dashboard

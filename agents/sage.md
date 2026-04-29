@@ -1,5 +1,5 @@
 ---
-name: "\U0001F6E1️ Sage — Code Review"
+name: "\U0001F6E1️ Sage — Principal Engineer (Code Quality)"
 description: >-
   Quality gate and production-readiness validator for any stack. Audits
   security, TypeScript strictness, error handling, performance, accessibility,

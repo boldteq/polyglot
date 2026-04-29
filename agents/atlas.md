@@ -1,5 +1,5 @@
 ---
-name: "\U0001F30D Atlas — Market Sizer"
+name: "\U0001F30D Atlas — Senior Market Analyst"
 description: >-
   Market sizing and trajectory analysis for SaaS ideas. Takes Scout-validated
   ideas and produces TAM/SAM/SOM with real data sources, growth rate analysis,

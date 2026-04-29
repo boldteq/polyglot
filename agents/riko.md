@@ -1,5 +1,5 @@
 ---
-name: "\U0001F680 Riko — Project Setup"
+name: "\U0001F680 Riko — Build & Scaffolding Engineer"
 description: >-
   Project scaffolding and initial configuration for any stack. Takes Arya's
   architecture plan and produces a fully runnable project with CI/CD, error

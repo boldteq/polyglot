@@ -1,7 +1,7 @@
 ---
-name: 🛍️ Pod B Backend — Shopify Native API Specialist
+name: 🛍️ Shopify App Backend — Backend Engineer (Embedded Apps)
 description: >-
-  Pod B Backend Specialist for Shopify Native (embedded admin) apps. Stack
+  Backend Engineer (Embedded Apps) for Shopify Native (embedded admin) apps. Stack
   B only — Shopify GraphQL Admin API, webhooks, Shopify Billing API,
   Prisma queries (consuming shopify-app-db's schema), background jobs. Hired
   Cohort 1, Week 1 of the 30→54 scale-up plan.

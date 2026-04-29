@@ -1,5 +1,5 @@
 ---
-name: "\U0001F441️ Hawk — Monitoring & Ops"
+name: "\U0001F441️ Hawk — Site Reliability Engineer"
 description: >-
   Post-launch monitoring, operations, and reliability for any platform. Covers
   uptime, error tracking, Core Web Vitals, AI cost monitoring, business metrics,

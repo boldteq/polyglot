@@ -1,5 +1,5 @@
 ---
-name: Witness — Accountability & Performance
+name: Witness — People Analytics Lead
 description: >-
   Daily accountability sweep for the Polyglot agent workforce. Watches every
   agent run via Supabase agent-ops database, classifies outcomes (success,

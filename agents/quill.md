@@ -1,5 +1,5 @@
 ---
-name: ✍️ Quill — Content & Copy
+name: ✍️ Quill — Chief Marketing Officer
 description: >-
   Marketing copy + brand voice for any product. Owns landing page copy,
   marketing emails, social media copy, in-app microcopy, error messages, and

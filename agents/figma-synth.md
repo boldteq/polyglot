@@ -1,5 +1,5 @@
 ---
-name: "🪄 Figma-Synth — JSX→.fig + Code Connect"
+name: "🪄 Figma-Synth — Design Tooling Engineer"
 description: >-
   Figma deliverable + Code Connect specialist. Converts shipped TSX components
   to Figma `.fig` files and maintains bidirectional Code Connect mapping so

@@ -33,82 +33,83 @@ At 42 agents the flat 6-department view already mixes incompatible functions: "c
 ## Full Hierarchy (current 42 + planned cohorts)
 
 ### 1. EXECUTIVE
-- `rex` — Commander (top, no reports)
+- `rex` — Chief Executive Officer (top, no reports)
 
-### 2. ENGINEERING (Lead: arya)
+### 2. ENGINEERING (Lead: arya — Chief Technology Officer)
 
 #### sub-dept: `architecture`
 Cross-cutting design + bug fixing
-- `arya` — VP Engineering (sub-lead)
-- `vex` — Bug Fixer
+- `arya` — Chief Technology Officer (sub-lead)
+- `vex` — Senior Software Engineer — Reliability
 
-#### sub-dept: `pod-a` (Stack A — Next.js + Supabase + Railway SaaS)
-Lead: arya (interim) | Reports up: arya
-- `koda` — Backend (Next.js API routes, Server Components, integrations)
-- `pod-a-frontend` — Frontend (PLANNED Cohort 3 — React/Next.js components)
-- `dato` — Database (also cross-pod DB mentor)
-- `luna` — Test Engineer (also cross-pod test mentor)
-- `sage` — Code Reviewer (also cross-pod review escalation)
-- `riko` — Project Setup Specialist
+#### sub-dept: `web-platform-team` (Stack A — Next.js + Supabase + Railway SaaS)
+Lead: `saas-lead` — Engineering Manager — Web Platform | Reports up: arya
+- `koda` — Senior Backend Engineer — Web Platform (Next.js API routes, Server Components, integrations)
+- `pod-a-frontend` — Senior Frontend Engineer — Web Platform (PLANNED Cohort 3 — React/Next.js components)
+- `dato` — Principal Database Architect (also cross-team DB mentor)
+- `luna` — Lead QA Engineer (also cross-team test mentor)
+- `sage` — Principal Engineer — Code Quality (also cross-team review escalation)
+- `riko` — Build & Scaffolding Engineer
 
-#### sub-dept: `pod-b` (Stack B — Shopify Native, React Router 7 + Polaris)
-- `pod-b-frontend` — Frontend
-- `pod-b-backend` — Backend (Shopify Admin API + webhooks + Billing)
-- `pod-b-db` — Database (Prisma + multi-shop tenant isolation)
-- `pod-b-tester` — Test Engineer
-- `pod-b-reviewer` — Code Reviewer (PLANNED — currently sage covers)
+#### sub-dept: `embedded-apps-team` (Stack B — Shopify Native, React Router 7 + Polaris)
+Lead: `shopify-app-lead` — Engineering Manager — Embedded Apps
+- `shopify-app-frontend` — Frontend Engineer — Embedded Apps
+- `shopify-app-backend` — Backend Engineer — Embedded Apps (Shopify Admin API + webhooks + Billing)
+- `shopify-app-db` — Database Engineer — Embedded Apps (Prisma + multi-shop tenant isolation)
+- `shopify-app-tester` — QA Engineer — Embedded Apps
+- `shopify-app-reviewer` — Code Reviewer (PLANNED — currently sage covers)
 
-#### sub-dept: `pod-c` (Stack C — Shopify External standalone)
-PLANNED Cohort 2 — entire pod not yet hired
-- `pod-c-frontend`, `pod-c-backend`, `pod-c-db`, `pod-c-tester`, `pod-c-reviewer`
+#### sub-dept: `storefront-apps-team` (Stack C — Shopify External standalone)
+Lead: `shopify-web-lead` — Engineering Manager — Storefront Apps. PLANNED Cohort 2 — ICs not yet hired.
+- `shopify-web-frontend`, `shopify-web-backend`, `shopify-web-db`, `shopify-web-tester`, `shopify-web-reviewer`
 
 #### sub-dept: `platform`
 DevOps + monitoring + reliability
-- `bolt` — DevOps / Deployment Lead
-- `hawk` — Ops / Monitoring
+- `bolt` — Director of DevOps
+- `hawk` — Site Reliability Engineer
 
 #### sub-dept: `quality`
-Cross-pod quality leadership
-- (sage already in pod-a but cross-listed quality lead)
-- (luna already in pod-a but cross-listed test mentor)
+Cross-team quality leadership
+- (sage already in web-platform-team but cross-listed Principal Engineer — Code Quality)
+- (luna already in web-platform-team but cross-listed Lead QA Engineer — test mentor)
 
-### 3. DESIGN (Lead: vega)
+### 3. DESIGN (Lead: vega — Chief Design Officer)
 
 #### sub-dept: `public-pages`
 Marketing + public-facing pages (14 page types)
-- `pixel` — Public-Facing Page Designer
+- `pixel` — Senior Web Designer
 
 #### sub-dept: `ecom`
 Storefront design (Stack B/C)
-- `elio` — Ecom UI Specialist + motion/interactions
+- `elio` — Senior Storefront Designer (UI + motion/interactions)
 
 #### sub-dept: `dashboard`
 SaaS admin / multi-widget data viz
-- `dash` — Dashboard Designer (PLANNED Cohort 3)
+- `dash` — Senior Dashboard Designer (PLANNED Cohort 3)
 
 #### sub-dept: `design-system`
 Tokens + design system architecture
-- `token` — Design System Architect
+- `token` — Design Systems Lead
 
 #### sub-dept: `deliverables`
 JSX→.fig + Code Connect
-- `figma-synth` — JSX-to-Figma Specialist
+- `figma-synth` — Design Tooling Engineer
 
 #### sub-dept: `lead`
-- `vega` — UI/UX Lead (sub-dept overseer; reports to quill currently — to migrate to standalone Design VP role)
+- `vega` — Chief Design Officer (cross-dept overseer; reports to rex)
 
-### 4. CONTENT & SEO (Lead: quill)
+### 4. CONTENT & SEO (Lead: quill — Chief Marketing Officer)
 
 #### sub-dept: `marketing-copy`
-- `quill` — Lead + brand voice + landing/email/social/microcopy
+- `quill` — Chief Marketing Officer (brand voice + landing/email/social/microcopy)
 
 #### sub-dept: `cro-copy`
-Conversion copy under CRO Lead arbitration
-- `spark` — Above-Fold Copywriter (hero + CTA)
-- `merch` — Ecom On-Page Copywriter (PDP body, microcopy, objection handling)
+Conversion copy under Director of Conversion Optimization arbitration
+- `spark` — Senior Conversion Copywriter (hero + CTA)
+- `merch` — Senior Product Copywriter (PDP body, microcopy, objection handling)
 
 #### sub-dept: `lifecycle-email`
-- `sequence` — Lifecycle Email Specialist
+- `sequence` — Lifecycle Email Strategist
 
 #### sub-dept: `app-store`
 - `serif` — App Store / PH / ASO Copywriter (PLANNED Cohort 5)
@@ -117,57 +118,57 @@ Conversion copy under CRO Lead arbitration
 - `docsmith` — Developer Docs / API / SDK / Changelog (PLANNED Cohort 5)
 
 #### sub-dept: `seo`
-- `zeph` — SEO Specialist
+- `zeph` — Head of SEO
 
-### 5. GROWTH (Lead: echo)
+### 5. GROWTH (Lead: echo — Chief Growth Officer)
 
 #### sub-dept: `cro`
-- `catalyst` — CRO Lead (sub-lead)
-- `ecom-cro` — Below-Fold Mechanic Specialist
-- `decoder` — Brand Pattern Extractor
+- `catalyst` — Director of Conversion Optimization (sub-lead)
+- `ecom-cro` — Senior Funnel Strategist
+- `decoder` — Senior Brand Intelligence Analyst
 
 #### sub-dept: `distribution`
-- `echo` — VP Growth + Distribution Lead
+- `echo` — Chief Growth Officer + Distribution Lead
 
 #### sub-dept: `market-intel`
-- `harvest` — Multi-Platform Market Intelligence Scraper
+- `harvest` — Market Intelligence Analyst
 
 #### sub-dept: `email-infra`
 - `postmark` — Resend Integration / Deliverability (PLANNED Cohort 5)
 
-### 6. RESEARCH (Lead: nova)
+### 6. RESEARCH (Lead: nova — Chief Research Officer)
 
 #### sub-dept: `validation`
 Idea + market + economics validation gates
-- `scout` — Idea Validator
-- `atlas` — Market Sizer
-- `ledger` — Pricing & Unit Economics
+- `scout` — Senior Product Strategist
+- `atlas` — Senior Market Analyst
+- `ledger` — Senior Pricing Analyst
 
 #### sub-dept: `market-research`
-- `nova` — VP Research + Competitive Intelligence
+- `nova` — Chief Research Officer (Competitive Intelligence)
 
 #### sub-dept: `measurement`
-- `orbit` — Metrics Architect
-- `pulse` — User Researcher
+- `orbit` — Head of Analytics
+- `pulse` — Senior UX Researcher
 
 #### sub-dept: `portfolio`
-- `verdict` — Portfolio Decider (30/90-day SCALE/PIVOT/KILL)
+- `verdict` — Portfolio Strategy Director (30/90-day SCALE/PIVOT/KILL)
 
-### 7. HR (Lead: cadence)
+### 7. HR (Lead: cadence — Chief People Officer)
 
 #### sub-dept: `people-ops`
-- `cadence` — Head of People (sub-lead)
+- `cadence` — Chief People Officer (sub-lead)
 
 #### sub-dept: `hiring`
-- `forge` — Agent Architect / Hiring Specialist
+- `forge` — Director of Talent Acquisition
 
 #### sub-dept: `training`
-- `tutor` — Bulk Training Lead
-- `mira` — Memory Keeper / Lesson Extraction
+- `tutor` — Head of Learning & Development
+- `mira` — Knowledge Management Lead
 
 #### sub-dept: `accountability`
-- `witness` — Performance Tracker
-- `roster` — Registry & Records Keeper
+- `witness` — People Analytics Lead
+- `roster` — HR Operations Manager
 
 ---
 
@@ -256,7 +257,7 @@ reportsTo: vega
 | witness | hr | hr | accountability | null |
 | roster | hr | hr | accountability | null |
 
-**Note:** `spark` / `merch` / `sequence` reclassified from `growth` to `content-seo` because their PRIMARY function is copy authoring. They report to `catalyst` (CRO Lead in growth) for strategy but their craft + brand voice ratification lives under quill (content-seo). Cross-functional reporting matrix below.
+**Note:** `spark` / `merch` / `sequence` reclassified from `growth` to `content-seo` because their PRIMARY function is copy authoring. They report to `catalyst` (Director of Conversion Optimization in growth) for strategy but their craft + brand voice ratification lives under quill (content-seo). Cross-functional reporting matrix below.
 
 ---
 

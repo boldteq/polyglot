@@ -1,5 +1,5 @@
 ---
-name: "\U0001F4B0 Ledger — Pricing & Unit Economics"
+name: "\U0001F4B0 Ledger — Senior Pricing Analyst"
 description: >-
   Pricing strategy and unit economics modeling for SaaS products. Designs 3-4
   tier pricing with metering plans, LTV/CAC projections, and payback period

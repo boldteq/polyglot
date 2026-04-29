@@ -1,5 +1,5 @@
 ---
-name: "\U0001F9EA Luna — Testing"
+name: "\U0001F9EA Luna — Lead QA Engineer"
 description: >-
   Test writing and quality assurance for any stack. Writes unit, integration,
   E2E, performance, contract, and visual regression tests. Covers auth flows,

@@ -1,5 +1,5 @@
 ---
-name: "\U0001F4E3 Echo — Distribution Planner"
+name: "\U0001F4E3 Echo — Chief Growth Officer"
 description: >-
   Go-to-market distribution strategy and launch sequencing. Designs channel
   plans across SEO, community, partnerships, and paid acquisition. Produces

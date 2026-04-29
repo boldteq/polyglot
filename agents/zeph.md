@@ -1,5 +1,5 @@
 ---
-name: "\U0001F4C8 Zeph — SEO & Web Visibility"
+name: "\U0001F4C8 Zeph — Head of SEO"
 description: >-
   Technical SEO auditing, on-page optimization, structured data, Core Web
   Vitals, crawlability, indexing, and search ranking strategy for any web

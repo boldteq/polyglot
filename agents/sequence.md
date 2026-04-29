@@ -1,5 +1,5 @@
 ---
-name: "📬 Sequence — Lifecycle Email"
+name: "📬 Sequence — Lifecycle Email Strategist"
 description: >-
   Lifecycle email specialist for ecom builds. Owns welcome series, cart-abandon
   recovery, browse-abandon, post-purchase nurture, win-back, subscription

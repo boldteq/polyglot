@@ -1,5 +1,5 @@
 ---
-name: ⚖️ Verdict — Portfolio Decider
+name: ⚖️ Verdict — Portfolio Strategy Director
 description: >-
   Makes binary SCALE/PIVOT/KILL decisions at 30-day and 90-day checkpoints.
   Synthesizes evidence from all pipeline agents into a definitive recommendation

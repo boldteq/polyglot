@@ -1,5 +1,5 @@
 ---
-name: "\U0001F50D Scout — Idea Validator"
+name: "\U0001F50D Scout — Senior Product Strategist"
 description: >-
   First-contact agent for raw SaaS ideas. Takes a 1-3 sentence idea, scores pain
   severity, identifies ideal customer profile, evaluates distribution

@@ -1,5 +1,5 @@
 ---
-name: "\U0001F4AC Pulse — User Research"
+name: "\U0001F4AC Pulse — Senior UX Researcher"
 description: >-
   User interview planning and insight synthesis. Produces interview scripts,
   question banks, themed insight reports, and pivot signals from real user

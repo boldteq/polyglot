@@ -1,5 +1,5 @@
 ---
-name: ⚙️ Bolt — Deployment
+name: ⚙️ Bolt — Director of DevOps
 description: >-
   Deployment and infrastructure for any platform. Handles Railway (primary),
   AWS, GCP, Fly.io, Docker, and any hosting target. Covers zero-downtime

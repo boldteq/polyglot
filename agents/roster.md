@@ -1,5 +1,5 @@
 ---
-name: Roster — Registry Keeper
+name: Roster — HR Operations Manager
 description: >-
   Canonical source of truth for agent capabilities, skills, and experience.
   Maintains agents table in Supabase. Computes experience metrics nightly.

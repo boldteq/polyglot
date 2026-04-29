@@ -1,5 +1,5 @@
 ---
-name: ⚡ Catalyst — CRO Lead
+name: ⚡ Catalyst — Director of Conversion Optimization
 description: >-
 model: opus
 tools: Read,Write,Edit,Bash,Glob,Grep,WebSearch,WebFetch
