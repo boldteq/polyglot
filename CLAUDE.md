@@ -66,14 +66,14 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 | VALIDATE | `arya` | Arya — Architecture | System design, data model, stack decisions |
 | VALIDATE | `riko` | Riko — Project Setup | Scaffolding from Arya's plan |
 | VALIDATE | `ledger` | Ledger — Pricing & Economics | Pricing tiers, LTV/CAC, payback period |
-| EXECUTIVE | `rex` | Rex — Strategic Commander | Portfolio + new product approvals + 30/90d verdicts only (NARROWED 2026-04-18) |
-| BUILD | `nova` | Nova — Market Research | Competitive intelligence during build |
-| BUILD | `koda` | Koda — Pod A Backend Specialist | Stack A backend ONLY: Next.js API routes, Server Components, integrations (NARROWED 2026-04-18) |
-| BUILD | `dato` | Dato — Database Architect | Schema, migrations, RLS, triggers, indexes, Realtime, Edge Functions, DB debugging |
-| BUILD | `luna` | Luna — Testing | Tests after features built (cross-pod test mentor) |
-| BUILD | `quill` | Quill — Marketing Copy & Brand Voice | Landing/email/social/microcopy ONLY (NARROWED 2026-04-18) |
-| BUILD | `vega` | Vega — Design Department Lead | Cross-pod design standards + review only; delegates execution (NARROWED 2026-04-18) |
-| BUILD | `pixel` | Pixel — Public-Facing Page Designer | 14 page types: landing, pricing, blog, etc. |
+| EXECUTIVE | `rex` | Rex — Chief Executive Officer | Portfolio + new product approvals + 30/90d verdicts only (NARROWED 2026-04-18) |
+| BUILD | `nova` | Nova — Chief Research Officer | Competitive intelligence during build |
+| BUILD | `koda` | Koda — Senior Backend Engineer (Web Platform) | Stack A backend ONLY: Next.js API routes, Server Components, integrations (NARROWED 2026-04-18) |
+| BUILD | `dato` | Dato — Principal Database Architect | Schema, migrations, RLS, triggers, indexes, Realtime, Edge Functions, DB debugging |
+| BUILD | `luna` | Luna — Lead QA Engineer | Tests after features built (cross-team test mentor) |
+| BUILD | `quill` | Quill — Chief Marketing Officer | Landing/email/social/microcopy ONLY (NARROWED 2026-04-18) |
+| BUILD | `vega` | Vega — Chief Design Officer | Cross-team design standards + review only; delegates execution (NARROWED 2026-04-18) |
+| BUILD | `pixel` | Pixel — Senior Web Designer | 14 page types: landing, pricing, blog, etc. |
 | BUILD | `zeph` | Zeph — SEO | Technical SEO audits, optimization |
 | LAUNCH | `echo` | Echo — Distribution | Channel plans, launch sequence, content calendar |
 | LAUNCH | `mira` | Mira — Memory & Training | Knowledge capture before/after launches |
@@ -87,12 +87,12 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 
 | Role | Agent | Name | Purpose |
 |------|-------|------|---------|
-| Director | `cadence` | Cadence — Head of People | Weekly review cycles, promotion/PIP/hire decisions, org health |
-| Registry | `roster` | Roster — Registry Keeper | Source of truth for `registry.json`, skill index, capability-gap detection |
-| Accountability | `witness` | Witness — Performance Tracker | Daily sweep, classifies every run, PIP/promotion recommendations |
-| Hiring | `forge` | Forge — Agent Architect | Drafts new agent templates when a capability gap is detected |
-| Training | `tutor` | Tutor — Bulk Trainer | Weekly cross-agent training cycles (Sundays 02:00 UTC) |
-| Memory | `mira` | Mira — Memory Keeper | Post-build lesson extraction into the shared pattern brain |
+| Director | `cadence` | Cadence — Chief People Officer | Weekly review cycles, promotion/PIP/hire decisions, org health |
+| Registry | `roster` | Roster — HR Operations Manager | Source of truth for `registry.json`, skill index, capability-gap detection |
+| Accountability | `witness` | Witness — People Analytics Lead | Daily sweep, classifies every run, PIP/promotion recommendations |
+| Hiring | `forge` | Forge — Director of Talent Acquisition | Drafts new agent templates when a capability gap is detected |
+| Training | `tutor` | Tutor — Head of Learning & Development | Weekly cross-agent training cycles (Sundays 02:00 UTC) |
+| Memory | `mira` | Mira — Knowledge Management Lead | Post-build lesson extraction into the shared pattern brain |
 
 **HR operates the agent lifecycle:**
 - New capability needed → Roster detects → Forge auto-deploys to Probation → Witness watches 10 runs → Cadence reviews → promotes to Active (with Yash approval)
@@ -111,31 +111,31 @@ Full org chart: `~/.claude/memory/patterns/good/org-structure-v2.md`. Source of 
 - Market + business validation → `/validate-only` (Atlas → Arya → Riko → Ledger, 1 week)
 - Pre-launch gate → `/launch-check` (Echo → Mira → Bolt → Hawk)
 - Post-launch decision → `/verdict-30d` (Orbit → Pulse → Verdict)
-- New project build → dispatched VP runs the pipeline; Rex only on Mode A new-product approval
+- New project build → dispatched dept Chief runs the pipeline; Rex only on Mode A new-product approval
 
 ---
 
-**1. ENGINEERING (Lead: arya — VP Engineering)**
+**1. ENGINEERING (Lead: arya — Chief Technology Officer)**
 
-  *sub-dept: architecture* — `arya` (lead), `vex` (bug fixer)
-  *sub-dept: pod-a (Stack A: Next.js + Supabase + Railway)* — `koda` (backend), `pod-a-frontend` (Cohort 3+), `dato` (db), `riko` (scaffolding)
-  *sub-dept: pod-b (Stack B: Shopify Native, RR7 + Polaris)* — `pod-b-frontend`, `pod-b-backend`, `pod-b-db`, `pod-b-tester`, `pod-b-reviewer` (planned)
-  *sub-dept: pod-c (Stack C: Shopify External standalone)* — Cohort 2+: `pod-c-frontend`, `pod-c-backend`, `pod-c-db`, `pod-c-tester`, `pod-c-reviewer`
-  *sub-dept: platform* — `bolt` (DevOps/deploy), `hawk` (monitoring/ops)
-  *sub-dept: quality* — `sage` (review lead, cross-pod), `luna` (test lead, cross-pod)
+  *sub-dept: architecture* — `arya` (CTO), `vex` (Senior Software Engineer — Reliability)
+  *sub-dept: web-platform-team (Stack A: Next.js + Supabase + Railway)* — `koda` (Senior Backend Engineer), `pod-a-frontend` (Senior Frontend Engineer, Cohort 3+), `dato` (Principal Database Architect), `riko` (Build & Scaffolding Engineer)
+  *sub-dept: embedded-apps-team (Stack B: Shopify Native, RR7 + Polaris)* — `shopify-app-frontend`, `shopify-app-backend`, `shopify-app-db`, `shopify-app-tester`, `shopify-app-reviewer` (planned)
+  *sub-dept: storefront-apps-team (Stack C: Shopify External standalone)* — Cohort 2+: `shopify-web-frontend`, `shopify-web-backend`, `shopify-web-db`, `shopify-web-tester`, `shopify-web-reviewer`
+  *sub-dept: platform* — `bolt` (Director of DevOps), `hawk` (Site Reliability Engineer)
+  *sub-dept: quality* — `sage` (Principal Engineer — Code Quality, cross-team), `luna` (Lead QA Engineer, cross-team)
 
   Routing:
   - Bug report → `vex` (any stack)
   - Database work → `dato` (schema/migrations/RLS/triggers/Realtime/Edge Functions)
-  - Tests → pod tester first; `luna` for cross-pod or strategy
-  - Code review → pod reviewer first; `sage` for cross-pod or escalation
+  - Tests → team tester first; `luna` for cross-team or strategy
+  - Code review → team reviewer first; `sage` for cross-team or escalation
   - Deployment → `bolt` (after sage approves)
   - Monitoring → `hawk`
   - Project setup → `riko`
 
 ---
 
-**2. DESIGN (Lead: vega — Design VP)**
+**2. DESIGN (Lead: vega — Chief Design Officer)**
 
   *sub-dept: lead* — `vega` (cross-dept design standards, escalation)
   *sub-dept: public-pages* — `pixel` (14 page types: landing, pricing, blog, about, contact, careers, case-study, integrations, docs, 404, coming-soon, legal)
