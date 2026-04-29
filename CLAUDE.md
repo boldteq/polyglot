@@ -120,18 +120,37 @@ Full org chart: `~/.claude/memory/patterns/good/org-structure-v2.md`. Source of 
   *sub-dept: architecture* — `arya` (CTO), `vex` (Senior Software Engineer — Reliability)
   *sub-dept: web-platform-team (Stack A: Next.js + Supabase + Railway)* — `koda` (Senior Backend Engineer), `pod-a-frontend` (Senior Frontend Engineer, Cohort 3+), `dato` (Principal Database Architect), `riko` (Build & Scaffolding Engineer)
   *sub-dept: embedded-apps-team (Stack B: Shopify Native, RR7 + Polaris)* — `shopify-app-frontend`, `shopify-app-backend`, `shopify-app-db`, `shopify-app-tester`, `shopify-app-reviewer` (planned)
-  *sub-dept: storefront-apps-team (Stack C: Shopify External standalone)* — Cohort 2+: `shopify-web-frontend`, `shopify-web-backend`, `shopify-web-db`, `shopify-web-tester`, `shopify-web-reviewer`
+  *sub-dept: storefront-apps-team (Stack C: Shopify External standalone, Hydrogen RR7)* — Cohort 2+: `shopify-web-frontend`, `shopify-web-backend`, `shopify-web-db`, `shopify-web-tester`, `shopify-web-reviewer`
+  *sub-dept: shopify-website-team (Stack D: Liquid Themes + Online Store 2.0 + Shopify CLI + GitHub workflow — client-owned themes)* — `atrium` (Storefront Engineering Director, Pod D lead), `stitch` (Design-to-Theme Converter — Figma→Liquid via MCP), `loom` (Liquid Theme Developer), `conduit` (Storefront Data Integration Engineer), `lattice` (Content Modeling Architect — metafields/metaobjects), `mantle` (Theme Release Engineer — CLI + GitHub deploys), `lumen` (Theme Quality Engineer — Lighthouse/theme-check/a11y/cross-browser), `onyx` (Theme Code Reviewer)
   *sub-dept: platform* — `bolt` (Director of DevOps), `hawk` (Site Reliability Engineer)
   *sub-dept: quality* — `sage` (Principal Engineer — Code Quality, cross-team), `luna` (Lead QA Engineer, cross-team)
 
   Routing:
   - Bug report → `vex` (any stack)
-  - Database work → `dato` (schema/migrations/RLS/triggers/Realtime/Edge Functions)
+  - Database work (Postgres/Supabase) → `dato` (schema/migrations/RLS/triggers/Realtime/Edge Functions)
+  - Shopify metafield/metaobject schema → `lattice` (Pod D)
   - Tests → team tester first; `luna` for cross-team or strategy
   - Code review → team reviewer first; `sage` for cross-team or escalation
-  - Deployment → `bolt` (after sage approves)
+  - Deployment (web apps) → `bolt` (after sage approves)
+  - Deployment (Shopify Liquid themes) → `mantle` (Pod D)
   - Monitoring → `hawk`
   - Project setup → `riko`
+
+  **Stack-pod routing (Shopify work):**
+  - Embedded admin app (Polaris) → Pod B (shopify-app-*)
+  - Hydrogen / headless storefront (RR7) → Pod C (shopify-web-*)
+  - Liquid theme on client-owned Shopify (CLI + GitHub) → Pod D (atrium → stitch → loom → conduit → lattice → mantle → lumen → onyx)
+  - Mixed (admin app + theme + headless) → atrium intakes, splits across pods
+
+  **Pod D (Shopify Website) entry points:**
+  - Client requests Liquid theme work (new build / refresh / section addition / migration) → `atrium` intakes
+  - Figma → Liquid conversion (after elio/pixel sign-off) → `stitch`
+  - Liquid templates / theme JS / CSS → `loom`
+  - Storefront API + Admin API + 3rd-party app integrations → `conduit`
+  - Metafield namespace + metaobject schema → `lattice`
+  - Shopify CLI workflow (theme push/pull/dev/check) + GitHub deploys → `mantle`
+  - Theme QA (Lighthouse + theme-check + customizer + cross-browser + a11y) → `lumen`
+  - Final theme review (Liquid quality + Figma diff + brand fidelity) → `onyx`
 
 ---
 

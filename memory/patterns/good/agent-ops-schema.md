@@ -1938,3 +1938,138 @@ Polling fallback per Q25: each HR agent maintains a 30s heartbeat. >2min missed 
 4. Enable Realtime publications.
 5. Backfill `agents.forge_template_id` from existing Forge metadata if available; NULL is acceptable for legacy agents.
 6. Verify with `~/.claude/memory/patterns/good/hr-constitution-v1.md` §"Verification protocol".
+
+---
+
+# Pod D — Shopify Website Department Schema (2026-04-30)
+
+Pod D introduces client-work tracking. Distinct from internal Boldteq products (which use existing tables).
+
+## New Table: `client_projects`
+
+Tracks each client engagement run by Pod D from intake → live publish → retired.
+
+```sql
+CREATE TABLE client_projects (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_name text NOT NULL,
+  client_handle text NOT NULL,  -- short-code for namespace use, e.g. 'acme'
+  shopify_store_domain text NOT NULL,  -- e.g. acme.myshopify.com
+  github_repo_url text,
+  project_type text NOT NULL CHECK (project_type IN ('new_theme','theme_refresh','section_addition','migration')),
+  budget_tier text NOT NULL CHECK (budget_tier IN ('under_5k','5k_to_15k','over_15k')),
+  status text NOT NULL DEFAULT 'intake' CHECK (status IN ('intake','figma_loop','figma_loop_silent','converting','qa','uat','uat_silent','live','retired','retired_duplicate')),
+  designer_assignment text CHECK (designer_assignment IN ('elio','pixel','both')),
+  stack_decision text NOT NULL DEFAULT 'liquid' CHECK (stack_decision IN ('liquid','hydrogen_escalated_to_pod_c')),
+  pod_d_lead_agent_id uuid REFERENCES agents(id),
+  client_uat_contact text,
+  publish_authorization_protocol text NOT NULL DEFAULT 'written_signoff_required',
+  scope_summary text NOT NULL,
+  deadline timestamptz NOT NULL,
+  figma_signoff_proof text,
+  client_publish_signoff_proof text,
+  rollback_snapshot_path text,
+  started_at timestamptz NOT NULL DEFAULT NOW(),
+  figma_loop_completed_at timestamptz,
+  qa_passed_at timestamptz,
+  uat_started_at timestamptz,
+  published_at timestamptz,
+  retired_at timestamptz,
+  total_figma_revisions int NOT NULL DEFAULT 0,
+  total_lumen_blockers_first_qa int,
+  total_onyx_review_cycles int NOT NULL DEFAULT 0,
+  total_mantle_rollbacks int NOT NULL DEFAULT 0,
+  duration_days int GENERATED ALWAYS AS (EXTRACT(DAY FROM (COALESCE(retired_at, published_at, NOW()) - started_at))::int) STORED,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX uq_client_projects_active_per_store ON client_projects(shopify_store_domain) WHERE status NOT IN ('retired','retired_duplicate');
+CREATE INDEX idx_client_projects_status ON client_projects(status);
+CREATE INDEX idx_client_projects_lead ON client_projects(pod_d_lead_agent_id);
+CREATE INDEX idx_client_projects_deadline ON client_projects(deadline) WHERE status NOT IN ('live','retired','retired_duplicate');
+ALTER TABLE client_projects ENABLE ROW LEVEL SECURITY;
+```
+
+## New Table: `theme_publishes`
+
+Audit trail of every Pod D theme publish for rollback + post-mortem visibility (separate from `agent_events` for query speed).
+
+```sql
+CREATE TABLE theme_publishes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_project_id uuid NOT NULL REFERENCES client_projects(id),
+  published_by_agent_id uuid REFERENCES agents(id),  -- mantle
+  authorized_by_agent_id uuid REFERENCES agents(id),  -- atrium
+  prior_theme_id text NOT NULL,
+  new_theme_id text NOT NULL,
+  rollback_snapshot_path text NOT NULL,
+  publish_started_at timestamptz NOT NULL DEFAULT NOW(),
+  publish_completed_at timestamptz,
+  smoke_test_passed boolean,
+  rollback_executed boolean NOT NULL DEFAULT false,
+  rollback_reason text,
+  rollback_executed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_theme_publishes_project ON theme_publishes(client_project_id, publish_started_at DESC);
+CREATE INDEX idx_theme_publishes_rollback_chain ON theme_publishes(client_project_id, publish_started_at) WHERE rollback_executed = true;
+ALTER TABLE theme_publishes ENABLE ROW LEVEL SECURITY;
+```
+
+The rollback-chain index supports HR Constitution Q9 query: rollbacks_in_7d > 2 → page Yash.
+
+## New Table: `code_connect_mappings`
+
+Tracks Figma↔Liquid component mappings stitch maintains per client repo.
+
+```sql
+CREATE TABLE code_connect_mappings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_project_id uuid NOT NULL REFERENCES client_projects(id),
+  figma_component_url text NOT NULL,
+  figma_node_id text NOT NULL,
+  liquid_template_path text NOT NULL,  -- e.g. 'blocks/testimonial-card.liquid'
+  prop_mapping jsonb NOT NULL,  -- { figma_prop: liquid_setting_id }
+  authored_by_agent_id uuid REFERENCES agents(id),  -- stitch
+  last_used_at timestamptz,
+  use_count int NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_code_connect_project ON code_connect_mappings(client_project_id);
+ALTER TABLE code_connect_mappings ENABLE ROW LEVEL SECURITY;
+```
+
+## New Realtime Channel
+
+Add `pod-d.client-projects` to existing 5 HR Realtime channels (Q21):
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE client_projects;
+ALTER PUBLICATION supabase_realtime ADD TABLE theme_publishes;
+```
+
+Subscribers: atrium (all events), Yash digest (rollback chains, deadline-at-risk events).
+
+## Seed Data — 8 Pod D Agents
+
+```sql
+INSERT INTO agents (name, title, model, level, status, department, sub_department, pod, reports_to, secondary_reports_to, hired_at, forge_template_id, flags)
+VALUES
+  ('atrium','Storefront Engineering Director','opus',1,'deployed','engineering','shopify-website-team','pod-d','arya',NULL,NOW(),NULL,ARRAY[]::text[]),
+  ('stitch','Design-to-Theme Converter','opus',1,'deployed','engineering','shopify-website-team','pod-d','atrium','elio',NOW(),NULL,ARRAY[]::text[]),
+  ('loom','Liquid Theme Developer','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium',NULL,NOW(),NULL,ARRAY[]::text[]),
+  ('conduit','Storefront Data Integration Engineer','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium',NULL,NOW(),NULL,ARRAY[]::text[]),
+  ('lattice','Content Modeling Architect','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium','dato',NOW(),NULL,ARRAY[]::text[]),
+  ('mantle','Theme Release Engineer','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium','bolt',NOW(),NULL,ARRAY[]::text[]),
+  ('lumen','Theme Quality Engineer','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium','luna',NOW(),NULL,ARRAY[]::text[]),
+  ('onyx','Theme Code Reviewer','opus',1,'deployed','engineering','shopify-website-team','pod-d','atrium','sage',NOW(),NULL,ARRAY[]::text[]);
+```
+
+All 8 enter probation per HR Constitution Q26 + Q27. Witness spawns parallel `probation_trackers` upon first run from each.
+
+## Migration order (Pod D additions)
+
+1. Run schema additions in order: `client_projects` → `theme_publishes` → `code_connect_mappings`
+2. Add Realtime publications.
+3. Insert 8 agents into `agents` table.
+4. Witness creates 8 `probation_trackers` rows (status='watching') automatically on first run from each agent.

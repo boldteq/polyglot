@@ -59,9 +59,26 @@ Lead: `shopify-app-lead` — Engineering Manager — Embedded Apps
 - `shopify-app-tester` — QA Engineer — Embedded Apps
 - `shopify-app-reviewer` — Code Reviewer (PLANNED — currently sage covers)
 
-#### sub-dept: `storefront-apps-team` (Stack C — Shopify External standalone)
+#### sub-dept: `storefront-apps-team` (Stack C — Shopify External standalone, Hydrogen RR7)
 Lead: `shopify-web-lead` — Engineering Manager — Storefront Apps. PLANNED Cohort 2 — ICs not yet hired.
 - `shopify-web-frontend`, `shopify-web-backend`, `shopify-web-db`, `shopify-web-tester`, `shopify-web-reviewer`
+
+#### sub-dept: `shopify-website-team` (Stack D — Liquid Themes + Online Store 2.0 + Shopify CLI, client-owned themes via GitHub workflow) — DEPLOYED 2026-04-30
+Lead: `atrium` — Storefront Engineering Director (Pod D lead, reports to arya).
+8-agent specialist roster:
+- `atrium` (Pod lead, opus, leadership) — client brief intake, sprint planning, Figma-loop coordination, sign-off gates, UAT loop, cross-pod handoffs
+- `stitch` (Design-to-Theme Converter, opus, analyst) — reads approved Figma via MCP → outputs Liquid skeleton + section/block schema + settings_schema.json + handoff notes for loom
+- `loom` (Liquid Theme Developer, sonnet, builder) — refines stitch's skeleton; writes production Liquid templates, sections, blocks, theme JS (vanilla + Alpine), CSS/Tailwind
+- `conduit` (Storefront Data Integration Engineer, sonnet, builder) — Storefront API + Admin API queries, 3rd-party app integrations (Klaviyo / Judge.me / Loox / Recharge / Yotpo)
+- `lattice` (Content Modeling Architect, sonnet, architect) — metafield namespaces + metaobject definitions + validation rules. Mentored by Dato cross-pod.
+- `mantle` (Theme Release Engineer, sonnet, builder) — Shopify CLI workflows, GitHub repo per client, theme branch strategy, deploy + rollback. Mentored by Bolt cross-pod.
+- `lumen` (Theme Quality Engineer, sonnet, analyst, GATE class) — Lighthouse + theme-check + customizer + cross-browser + a11y. Mentored by Luna cross-pod.
+- `onyx` (Theme Code Reviewer, opus, reviewer, GATE class) — final review before mantle pushes. Mentored by Sage cross-pod.
+
+Stack: Liquid + Online Store 2.0 + theme JS (vanilla + Alpine) + Tailwind/CSS + Shopify CLI + GitHub Actions.
+Boundary vs Pod C: Hydrogen → Pod C; Liquid themes (especially client-owned via CLI) → Pod D.
+12-step workflow: brief → Figma → conversion → loom refine → QA → review → staging push → UAT → publish → post-mortem.
+Inherits HR Constitution v1 Tier 1 from day 1. Forge Q4 similarity gate confirmed zero collisions.
 
 #### sub-dept: `platform`
 DevOps + monitoring + reliability

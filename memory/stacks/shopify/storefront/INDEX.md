@@ -1,7 +1,12 @@
 # Shopify Storefront Stack — Master Index
 
 **Status:** SCAFFOLD — populated W2 by elio + token.
-**Owner:** elio (UI) + token (design system bridge)
+**Owners (design):** elio (UI) + token (design system bridge)
+**Owners (engineering — added 2026-04-30):**
+- Hydrogen storefronts (Stack C) → Pod C (`shopify-web-frontend` / `shopify-web-backend` / `shopify-web-db` / `shopify-web-tester` / `shopify-web-reviewer`)
+- Liquid themes via Shopify CLI on client-owned stores (Stack D) → Pod D (`atrium` / `stitch` / `loom` / `conduit` / `lattice` / `mantle` / `lumen` / `onyx`)
+- Decision tree: client wants headless + budget ≥$5k + custom React → Hydrogen Pod C. Client owns Shopify store + wants Liquid theme work via CLI → Pod D regardless of budget.
+
 **Counterpart:** `~/.claude/memory/stacks/shopify/INDEX.md` (existing — Shopify ADMIN, do not confuse)
 
 This module covers customer-facing storefronts only. The existing `~/.claude/memory/stacks/shopify/` tree is admin-side (Polaris Web Components, embedded admin, GraphQL Admin API). Storefront is a different surface, different stack choices, different design tokens.
