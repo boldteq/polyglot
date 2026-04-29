@@ -94,6 +94,38 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 | Training | `tutor` | Tutor — Head of Learning & Development | Weekly cross-agent training cycles (Sundays 02:00 UTC) |
 | Memory | `mira` | Mira — Knowledge Management Lead | Post-build lesson extraction into the shared pattern brain |
 
+### Shopify Web Department (Pod D — client-owned Liquid themes via Shopify CLI + GitHub workflow, deployed 2026-04-30)
+
+| Role | Agent | Name | Purpose |
+|------|-------|------|---------|
+| Director | `atrium` | Atrium — Storefront Engineering Director | Pod D lead. Client brief intake, sprint planning, Figma-loop coordination, sign-off gates, UAT loop, cross-pod handoffs. Reports to Arya. |
+| Design→Code Bridge | `stitch` | Stitch — Design-to-Theme Converter | Reads approved Figma via MCP → outputs Liquid skeleton + section/block schema + `settings_schema.json` + handoff notes for loom. KEY bridge role. |
+| Frontend (Liquid) | `loom` | Loom — Liquid Theme Developer | Refines stitch's skeleton. Liquid templates, sections, blocks, `theme.liquid`, JSON templates, theme JS (vanilla + Alpine), CSS/Tailwind theme styling. |
+| Backend (APIs) | `conduit` | Conduit — Storefront Data Integration Engineer | Storefront API + Admin API queries, 3rd-party app integrations (Klaviyo / Judge.me / Loox / Recharge / Yotpo), Liquid filters, Web Pixels events. |
+| Content Schema | `lattice` | Lattice — Content Modeling Architect | Metafield namespaces + metaobject definitions + validation rules. Mentored by `dato` cross-pod. |
+| Release Engineer | `mantle` | Mantle — Theme Release Engineer | Shopify CLI workflows (`theme push/pull/dev/check/share`), GitHub repo per client, theme branch strategy (dev/staging/prod-live/prod-unpublished), client-account access mgmt, deploy + rollback. Mentored by `bolt` cross-pod. |
+| QA Engineer | `lumen` | Lumen — Theme Quality Engineer | 5-gate QA: Lighthouse (LCP <2.5s) + theme-check + customizer settings smoke + cross-browser (Safari iOS / Chrome Android / Firefox / Edge) + axe accessibility. Mentored by `luna` cross-pod. |
+| Code Reviewer | `onyx` | Onyx — Theme Code Reviewer | Final review before mantle pushes. Liquid quality + Online Store 2.0 best practices + perf budget + Figma-vs-built visual diff + brand fidelity. Mentored by `sage` cross-pod. |
+
+**Pod D workflow (12-step):** Yash → atrium intake → designer (elio/pixel) → Figma → client review → atrium triggers stitch → stitch + lattice parallel → loom + conduit integrate → lumen QA → onyx review → mantle staging push → client UAT → atrium authorize → mantle live publish → mira post-mortem.
+
+**Pod D entry points:**
+- Client requests new Liquid theme / theme refresh / section addition / migration → `atrium` intakes
+- Figma → Liquid conversion (after elio/pixel sign-off) → `stitch`
+- Liquid templates / theme JS / CSS → `loom`
+- Storefront API + Admin API + 3rd-party apps → `conduit`
+- Metafield / metaobject schema → `lattice`
+- Shopify CLI / GitHub deploy / rollback → `mantle`
+- Theme QA (Lighthouse + theme-check + customizer + cross-browser + a11y) → `lumen`
+- Final theme review (Liquid + Figma diff + brand fidelity) → `onyx`
+
+**Boundary vs siblings:**
+- Pod B (`shopify-app-*`) — embedded admin apps (Polaris + RR7 + Prisma)
+- Pod C (`shopify-web-*`) — Hydrogen / headless / standalone storefront (≥$5k budget + custom React)
+- **Pod D (atrium/stitch/loom/conduit/lattice/mantle/lumen/onyx) — Liquid themes on client-owned Shopify stores via CLI + GitHub workflow (any budget tier)**
+
+**Pod D inheritance:** All 8 agents bind HR Constitution v1 (Cadence/Witness/Forge/Tutor/Mira/Roster) Tier 1 from day 1. Forge Q4 similarity gate confirmed zero collisions. Witness Q26 parallel `probation_trackers` watch first 10 runs. Cadence Q27 5-axis graduation gate. Q41 budgets: opus tier (atrium/stitch/onyx) = $40/wk, sonnet tier (loom/conduit/lattice/mantle/lumen) = $15/wk. Pod weekly ceiling: $195.
+
 **HR operates the agent lifecycle:**
 - New capability needed → Roster detects → Forge auto-deploys to Probation → Witness watches 10 runs → Cadence reviews → promotes to Active (with Yash approval)
 - Weekly Monday 09:00 UTC → Cadence review: promotes, PIPs, retires, queues training
@@ -307,8 +339,8 @@ Full routing table: `~/.claude/memory/patterns/good/yash-model-routing.md`.
 
 | Tier | Model | Current agents |
 |------|-------|----------------|
-| **DEEP** (never downgrade) | `claude-opus-4-6` | Arya, Yash, Sage, Vex, Verdict |
-| **FAST** (default for builders) | `claude-sonnet-4-6` | Koda, Dato, Vega, Pixel, Pulse, Luna, Bolt, Hawk, Zeph, Echo, Orbit, Quill, Scout, Nova, Ledger, Atlas, Cadence, Forge, Tutor, Mira, Harvest |
+| **DEEP** (never downgrade) | `claude-opus-4-6` | Arya, Yash, Sage, Vex, Verdict, **Atrium, Stitch, Onyx** (Pod D opus tier) |
+| **FAST** (default for builders) | `claude-sonnet-4-6` | Koda, Dato, Vega, Pixel, Pulse, Luna, Bolt, Hawk, Zeph, Echo, Orbit, Quill, Scout, Nova, Ledger, Atlas, Cadence, Forge, Tutor, Mira, Harvest, **Loom, Conduit, Lattice, Mantle, Lumen** (Pod D sonnet tier) |
 | **CHEAP** (back-office) | `claude-haiku-4-5-20251001` | **Witness, Roster** |
 
 **Local autocomplete** (Continue.dev + Ollama + Qwen 2.5 Coder): runs inside VS Code tab-complete only. Never dispatches as a Polyglot agent. See `~/.claude/memory/patterns/good/local-autocomplete-setup.md`.
