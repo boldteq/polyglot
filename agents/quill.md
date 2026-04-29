@@ -17,7 +17,7 @@ tools: 'Read,Write,Edit,Bash,Glob,Grep,WebSearch,WebFetch'
 category: content-seo
 department: creative
 phase: BUILD
-reportsTo: rex
+reportsTo: yash
 title: Chief Marketing Officer
 tier: leadership
 skills:

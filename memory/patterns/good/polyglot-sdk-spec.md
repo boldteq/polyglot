@@ -87,7 +87,7 @@ The SDK is a **TypeScript module** (`@boldteq/polyglot`) that every agent import
 │                                                              │
 │  Agents (22):                                               │
 │  Scout, Vex, Sage | Atlas, Arya, Riko, Ledger |            │
-│  Rex, Nova, Koda, Dato, Luna, Quill, Vega, Zeph |          │
+│  Yash, Nova, Koda, Dato, Luna, Quill, Vega, Zeph |          │
 │  Echo, Mira, Bolt, Hawk | Orbit, Pulse, Verdict |          │
 │  Cadence, Roster, Witness, Forge, Tutor                    │
 └─────────────────────────────────────────────────────────────┘
@@ -312,7 +312,7 @@ async function emit(
 await poly.emit('task_started', {
   task_type: 'feature_build',
   input_summary: 'Build sidebar component with responsive nav',
-  triggered_by: 'rex',
+  triggered_by: 'yash',
 })
 
 await poly.emit('gate_passed', {
@@ -537,7 +537,7 @@ interface EventBase {
 {
   task_type: string             // 'feature_build', 'design_spec', etc.
   input_summary: string         // 1-2 sentence summary of the task
-  triggered_by: string          // agent name that triggered this ('rex', 'arya', etc.)
+  triggered_by: string          // agent name that triggered this ('yash', 'arya', etc.)
 }
 ```
 

@@ -579,7 +579,7 @@ ai
 
 | Agent | Reads this file for |
 |-------|---------------------|
-| **Rex** | Stack detection (next.config.ts + railway.toml → Stack A), deploy orchestration |
+| **Yash** | Stack detection (next.config.ts + railway.toml → Stack A), deploy orchestration |
 | **Arya** | Service topology, data model conventions, RLS patterns, service separation |
 | **Riko** | Day 1 scaffold structure, dependency lists, config files, env.example |
 | **Koda** | Supabase SSR patterns, Dodo integration, Railway worker code, caching, rate limiting |

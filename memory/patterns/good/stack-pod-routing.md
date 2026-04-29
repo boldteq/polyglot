@@ -2,7 +2,7 @@
 
 **Created:** 2026-04-18, v1.0.
 **Plan:** `~/.claude/plans/hr-team-agent-can-melodic-dolphin.md`.
-**Loaded by:** Rex, Arya, Forge (during cohort design), Roster (when assigning tasks).
+**Loaded by:** Yash, Arya, Forge (during cohort design), Roster (when assigning tasks).
 
 ---
 
@@ -61,7 +61,7 @@ This file is the routing source-of-truth. Read it BEFORE dispatching any enginee
 
 ## Stack detection (auto-routing)
 
-Rex / Arya / Roster use this matrix to detect which pod owns a task:
+Yash / Arya / Roster use this matrix to detect which pod owns a task:
 
 | File markers in repo root | Pod | Routing target |
 |---|---|---|
@@ -102,7 +102,7 @@ Mentorship is async: pod-X-tester writes a test, asks Luna for review on a Boldt
 
 ---
 
-## Routing decision tree (for Rex / Arya)
+## Routing decision tree (for Yash / Arya)
 
 ```
 Task arrives →

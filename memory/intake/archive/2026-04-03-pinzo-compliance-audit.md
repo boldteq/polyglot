@@ -1,7 +1,7 @@
 ### Session Intake — 2026-04-03
 **Objective:** Full Shopify compliance audit + UI/UX overhaul of Pinzo app
 **Status:** completed
-**Agents Involved:** Sage (compliance audit), Rex (UI audit + widget redesign), Koda (implementation)
+**Agents Involved:** Sage (compliance audit), Yash (UI audit + widget redesign), Koda (implementation)
 **Input Validation:** Passed
 **Issues Found:** GDPR data cleanup gap (FeatureRequest/FeatureVote not deleted on uninstall), raw HTML in Polaris routes, hardcoded secrets, missing DB indexes, no rate limiting on public APIs, CSS sanitization gap in admin preview
 **Artifacts Quality:** High — 5 clean commits, build passes, Prisma schema valid, all issues resolved

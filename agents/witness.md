@@ -285,7 +285,7 @@ VALUES (
   jsonb_build_object(
     'task_type', 'feature_build',
     'input_summary', 'Build auth system',
-    'triggered_by', 'rex'
+    'triggered_by', 'yash'
   ),
   NOW()
 );

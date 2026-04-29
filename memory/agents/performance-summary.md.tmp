@@ -7,7 +7,7 @@
 **Changes shipped:**
 1. **Per-agent first-load manifest** — all 21 agents now prepended with explicit memory file list. Zero memory lookup latency on dispatch.
 2. **Full autonomy rules** (`patterns/good/full-autonomy-rules.md`) — escalation whitelist reduced to 7 reasons. Everything else auto-decided via Decision Simulator. Expected ask-rate: 0-1 per build (down from 8-12).
-3. **Rex model routing table** (`patterns/good/rex-model-routing.md`) — DEEP/FAST/CHEAP per agent per task class. Expected cost/build: $8-12 (down from $30-60). Always-DEEP: Arya, Rex, Sage, Verdict, Vex.
+3. **Yash model routing table** (`patterns/good/yash-model-routing.md`) — DEEP/FAST/CHEAP per agent per task class. Expected cost/build: $8-12 (down from $30-60). Always-DEEP: Arya, Yash, Sage, Verdict, Vex.
 4. **Mira bug ingestion schema** (`patterns/good/mira-bug-ingestion-schema.md`) — structured JSONL (`lessons/bugs.jsonl`) with auto-clustering into antipatterns.md.
 5. **Gold examples** (`patterns/good/gold-examples.md`) — first-output quality anchors for Scout/Atlas/Koda/Vega/Quill/Sage/Echo/Verdict.
 6. **Decision Simulator** (`user/decision-simulator.md`) — 90%+ of Yash-defaults pre-answered.
@@ -25,7 +25,7 @@
 - `~/.claude/memory/user/decision-simulator.md`
 - `~/.claude/memory/starters/boldteq-saas-starter.md`
 - `~/.claude/memory/patterns/good/full-autonomy-rules.md`
-- `~/.claude/memory/patterns/good/rex-model-routing.md`
+- `~/.claude/memory/patterns/good/yash-model-routing.md`
 - `~/.claude/memory/patterns/good/mira-bug-ingestion-schema.md`
 - `~/.claude/memory/patterns/good/gold-examples.md`
 - `~/.claude/memory/lessons/bugs.jsonl` (empty, ready for first append)

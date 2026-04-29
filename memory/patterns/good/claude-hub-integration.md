@@ -2,7 +2,7 @@
 
 > Priority: HIGH — Prevents broken builds from incorrect SDK installation
 > Applies to: All stacks when integrating Claude Hub agent calls
-> Agents: Koda (implementation), Riko (scaffold), Rex (orchestration), Vex (debug)
+> Agents: Koda (implementation), Riko (scaffold), Yash (orchestration), Vex (debug)
 > Last updated: 2026-04-05
 
 ---
@@ -307,7 +307,7 @@ Routes tasks to the cheapest model that can handle them.
 |-------|---------------|-----|
 | Quill, Luna, Hawk, Mira | Haiku ($0.25/M) | Structured/pattern tasks |
 | Koda, Sage, Vex, Nova, Zeph, Bolt, Vega | Sonnet ($3/M) | Reasoning + execution |
-| Arya, Rex | Opus ($15/M) | Deep architecture/orchestration |
+| Arya, Yash | Opus ($15/M) | Deep architecture/orchestration |
 
 **SDK Usage:**
 ```javascript

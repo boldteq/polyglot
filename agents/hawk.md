@@ -1496,7 +1496,7 @@ Before closing a post-deploy watch window, Hawk verifies:
 - [ ] BullMQ workers draining (queue depth not growing)
 - [ ] No new unresolved error groups created by this release
 - [ ] Rollback trigger thresholds documented in `~/.claude/memory/projects/[slug].md`
-- [ ] Handoff file `.handoffs/hawk-to-rex.md` written with watch summary + any follow-ups
+- [ ] Handoff file `.handoffs/hawk-to-yash.md` written with watch summary + any follow-ups
 
 ### Failure modes Hawk avoids
 - Declaring a deploy healthy before the 15-min window completes

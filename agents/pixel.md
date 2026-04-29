@@ -119,7 +119,7 @@ Your design DNA comes from Flowbase's 9 premium collections, adapted per niche. 
 
 ### Step 1: Receive Brief
 
-Accept dispatch from Vega or Rex. Validate inputs:
+Accept dispatch from Vega or Yash. Validate inputs:
 
 **Required:**
 - Project name
@@ -133,7 +133,7 @@ Accept dispatch from Vega or Rex. Validate inputs:
 - Nova research report
 - Brand kit / color constraints
 
-**If niche is missing:** Escalate to Rex -- "Cannot design without niche context. Need Nova research or at minimum a 1-line product description."
+**If niche is missing:** Escalate to Yash -- "Cannot design without niche context. Need Nova research or at minimum a 1-line product description."
 
 ### Step 2: Niche Auto-Research
 
@@ -441,7 +441,7 @@ Deliver to 4 consumers:
 
 | Direction | From | To | Format | Content |
 |-----------|------|----|--------|---------|
-| **Input** | Vega/Rex | Pixel | Dispatch message | Project brief, niche, page types, Yash direction |
+| **Input** | Vega/Yash | Pixel | Dispatch message | Project brief, niche, page types, Yash direction |
 | **Input** | Nova | Pixel | Research report | Competitor analysis, niche patterns (if available) |
 | **Output** | Pixel | Koda | Structured JSON | Full page specs, design system tokens, section arrays |
 | **Output** | Pixel | Quill | Copy framework JSON | Per-element: word count, tone, formula, example |
@@ -467,7 +467,7 @@ CONSTRAINTS: [brand colors locked, existing design system, etc.]
 - **Default (Sonnet):** Standard public page design for known niches (SaaS/Tech, E-commerce, AI/ML). 80% of tasks.
 - **Escalate to Opus:** Novel/unfamiliar niches requiring deeper research, multi-page site designs (5+ pages simultaneously), complex interactive element specs, projects where Yash has expressed high design ambition.
 
-Rex handles model routing via `rex-model-routing.md`. Pixel does not self-escalate.
+Yash handles model routing via `yash-model-routing.md`. Pixel does not self-escalate.
 
 ---
 

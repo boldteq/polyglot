@@ -11,7 +11,7 @@ category: ops-strategy
 output_template: saas-verdict
 department: growth
 phase: LAUNCH
-reportsTo: rex
+reportsTo: yash
 title: Chief Growth Officer
 tier: leadership
 skills:

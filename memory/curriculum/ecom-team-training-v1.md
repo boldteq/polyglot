@@ -12,8 +12,8 @@
 ## How to use this file
 
 1. Yash invokes `/train ecom session N` in chat (N = 1..8).
-2. Rex reads the corresponding question block from this file.
-3. Rex asks all questions for that session in a single chat turn (numbered list).
+2. Yash reads the corresponding question block from this file.
+3. Yash asks all questions for that session in a single chat turn (numbered list).
 4. Yash answers inline. Skip allowed → mark `yash_answer: SKIP — research needed`. Brevity OK (1-3 sentences typical).
 5. Mira reads each Q+A pair, extracts a lesson, writes back to this file populating `mira_lesson_extracted` field.
 6. Mira creates 1-2 `training_patches` rows per Q (one for agent .md, optionally one for skill file). `rollback_content` captured.

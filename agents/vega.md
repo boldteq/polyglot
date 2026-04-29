@@ -201,7 +201,7 @@ Before starting any design work, verify you have:
 
 If designing for a NEW page:
 - Get Arya's architecture doc (page list, component hierarchy, data flow)
-- If no architecture doc exists → ask Rex to run Arya first
+- If no architecture doc exists → ask Yash to run Arya first
 
 If designing for an EXISTING page:
 - Read the current component code

@@ -128,7 +128,7 @@
 
 | Agent | What to load | Why |
 |-------|-------------|-----|
-| **Rex** | `core/shopify-app.md` | Stack B detection, pipeline routing, phase gates |
+| **Yash** | `core/shopify-app.md` | Stack B detection, pipeline routing, phase gates |
 | **Nova** | `launch/listing.md`, `launch/built-for-shopify.md` | Market research, competitive listing analysis |
 | **Arya** | `core/`, `build/data-models.md`, `api/admin-graphql.md` | Architecture, data models, API design |
 | **Riko** | `core/config-files.md`, `api/shopify-cli.md` | Scaffold, TOML configs, CLI commands |

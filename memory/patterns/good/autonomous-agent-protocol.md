@@ -21,7 +21,7 @@ After: User says "build settings page" → agent auto-researches best patterns �
 ### When to Research vs Build
 
 ```
-INPUT RECEIVED FROM USER OR REX
+INPUT RECEIVED FROM USER OR YASH
   │
   ├─ Is task fully specified? (scope, design, data model, acceptance criteria)
   │   └─ YES (≥80% clear) → Skip research → BUILD
@@ -214,7 +214,7 @@ Attempt 3: Agent creates detailed bug report and escalates:
   - What failed
   - Error output
   - Hypothesis for root cause
-  → Escalate to Rex → Rex routes to Vex for deep debugging
+  → Escalate to Yash → Yash routes to Vex for deep debugging
   → If Vex can't fix in 2 cycles → escalate to Yash
 ```
 
@@ -263,7 +263,7 @@ DESIGN QUALITY:
 
 ## 6. AGENT-SPECIFIC AUTONOMOUS BEHAVIORS
 
-### Rex (Commander)
+### Yash (Commander)
 ```
 BEFORE dispatching agents:
   1. Read project CLAUDE.md → understand current state
@@ -394,7 +394,7 @@ The ultimate goal: user says ONE thing, agents do EVERYTHING.
 ```
 USER: "Build a settings page"
 
-REX auto-decides:
+YASH auto-decides:
   1. What kind of settings? → Read CLAUDE.md → find existing data model
   2. Route to Vega → design spec from component-compositions.md (Settings composition)
   3. Route to Koda → build from Vega's spec

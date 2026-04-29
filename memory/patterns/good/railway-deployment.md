@@ -255,7 +255,7 @@ curl https://app.[domain].com/api/health
 ```
 
 **Post-rollback:**
-1. Bolt marks deployment as rolled back in `.rex-state.json`
+1. Bolt marks deployment as rolled back in `.yash-state.json`
 2. Vex triages what caused the rollback
 3. Mira logs the incident to `memory/incidents/`
 4. Fix branched from `main`, merged back, redeployed
@@ -358,7 +358,7 @@ create policy "anyone can read health" on _health for select using (true);
 
 | Agent | Railway responsibility |
 |-------|------------------------|
-| **Rex** | Stack detection via `railway.toml`, orchestrate deploy gates |
+| **Yash** | Stack detection via `railway.toml`, orchestrate deploy gates |
 | **Arya** | Service topology (web + workers), env var list, private networking plan |
 | **Riko** | Write `railway.toml`, `next.config.ts` standalone output, `/api/health` route, `_health` migration |
 | **Koda** | Workers code (BullMQ + IORedis with private URL), rate limiting with Upstash, caching strategy |

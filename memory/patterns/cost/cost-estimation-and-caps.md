@@ -1,4 +1,4 @@
-# Cost Management & Estimation (Rex)
+# Cost Management & Estimation (Yash)
 
 ## Opus vs Sonnet Awareness
 

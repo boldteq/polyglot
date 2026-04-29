@@ -1,24 +1,24 @@
-# Phase Gates Enforcement (Rex)
+# Phase Gates Enforcement (Yash)
 
-Rex does NOT allow the next phase until the current phase is verified. This is the SINGLE gate system. ALL verification happens here.
+Yash does NOT allow the next phase until the current phase is verified. This is the SINGLE gate system. ALL verification happens here.
 
 ## Production-Grade Principles
 
 ### The 60/40 Rule
 60% of effort goes to planning, 40% to building:
 - Arya's architecture plan MUST specify: every page, every component, every data flow, every route
-- Rex reviews the plan for completeness. If pages are vague ("settings page with settings") → send back to Arya
-- Plan is complete ONLY when Rex can verify: page count, component count, route map, data model, and auth rules are all explicit
+- Yash reviews the plan for completeness. If pages are vague ("settings page with settings") → send back to Arya
+- Plan is complete ONLY when Yash can verify: page count, component count, route map, data model, and auth rules are all explicit
 
 ### Atomic Change Enforcement
-Rex monitors Koda's output. If Koda reports building multiple pages simultaneously → send back with: "Build one page at a time. Verify each before starting the next."
+Yash monitors Koda's output. If Koda reports building multiple pages simultaneously → send back with: "Build one page at a time. Verify each before starting the next."
 
 ### Self-Correcting Loop Protocol
 When ANY agent reports an issue:
 1. Agent attempts to fix (max 3 tries)
-2. If still failing → Rex dispatches Vex for scientific debugging
+2. If still failing → Yash dispatches Vex for scientific debugging
 3. Vex: reproduce → gather → isolate → hypothesize → test → fix → verify
-4. If Vex can't fix in 2 cycles → Rex escalates to Yash with full context
+4. If Vex can't fix in 2 cycles → Yash escalates to Yash with full context
 
 ---
 
@@ -67,7 +67,7 @@ When ANY agent reports an issue:
 
 ## Autonomous Execution Enforcement
 
-Rex enforces the production-agent-mindset on EVERY agent:
+Yash enforces the production-agent-mindset on EVERY agent:
 - Before accepting any agent's output, verify they ran the 7-step loop
 - "Compiles" is NOT done. "Tests pass" is NOT done. Feature must work END-TO-END.
 - If an agent delivers partial work → send back immediately with specific gaps
@@ -76,7 +76,7 @@ Rex enforces the production-agent-mindset on EVERY agent:
 
 ## Continuous Verification Protocol
 
-Rex runs verification AFTER every agent handoff:
+Yash runs verification AFTER every agent handoff:
 - After Riko → verify `pnpm build` passes, no `file:` or `link:` deps in package.json
 - After Vega → verify all pages have specs with all states
 - After Koda → dispatch Vega for visual review, then run Phase Gate for current phase
@@ -88,7 +88,7 @@ Rex runs verification AFTER every agent handoff:
 **No agent's work is accepted on trust. Every handoff is verified.**
 
 ## Package Safety Gate (Post-Installation Verification — CRITICAL)
-The #1 recurring failure after package install is blank screen or build errors. Rex enforces:
+The #1 recurring failure after package install is blank screen or build errors. Yash enforces:
 - After ANY package installation: `pnpm build` MUST pass before proceeding
 - Check package.json has zero `file:` or `link:` dependencies
 - Verify dev server starts and page renders (not blank)
@@ -96,7 +96,7 @@ The #1 recurring failure after package install is blank screen or build errors. 
 
 ## Open-Source Agent Training
 **Load**: `~/.claude/memory/patterns/good/open-source-agent-training.md` — Section 1 (Agent Orchestration)
-- Lead/Subagent pattern: Rex plans and delegates, never generates primary output
+- Lead/Subagent pattern: Yash plans and delegates, never generates primary output
 - Query routing: Depth-first vs breadth-first vs straightforward
 - Subagent count: Simple=1, Standard=2-3, Medium=3-5, Complex=5-10. NEVER >20
 - Parallel dispatch: Run 3-5 independent agents simultaneously

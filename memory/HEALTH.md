@@ -55,7 +55,7 @@ Goal: propagate Pass 2 executable protocols to memory, global CLAUDE.md, and the
 
 Completed:
 - **21/21 agents** now explicitly reference `patterns/good/executable-auto-fix-loop.md` at dispatch (verified via grep sweep — zero misses)
-- **rex.md** hardened with class caps table, dispatch contract JSON, circuit breaker on `caps_exceeded`, never-main rule, Stack A/B routing
+- **yash.md** hardened with class caps table, dispatch contract JSON, circuit breaker on `caps_exceeded`, never-main rule, Stack A/B routing
 - **12 untouched agents** (atlas, bolt, hawk, ledger, luna, orbit, pulse, riko, scout, verdict, vex, zeph) patched with uniform "(b) Executable Loop Integration" block — class-tagged (Riko=builder, Bolt/Hawk/Luna=gate, rest=insight) with mandatory loads, cap enforcement, git autonomy
 - **7 Pass-2 agents** (arya, vega, sage, nova, echo, mira, quill) patched with "(c) Uniform Executable Loop Loader" block to name-reference the pattern file (koda already referenced both)
 - **global CLAUDE.md** — Memory Brain section updated: mandatory loads for `executable-auto-fix-loop.md` + `executable-validation-gates.md` + `user/feedback.md` before any task
@@ -79,7 +79,7 @@ User-approved scope: **Pinzo (Shopify) + Rankora (Next.js rebuild)** · **scaffo
 **Tier 1 — Pre-build essentials:**
 1. `projects/pinzo-brand-kit.md` — positioning, voice DNA, #1F3A2B/#E4B343 palette, 4 pillars, Sage brand gate
 2. `projects/rankora-brand-kit.md` — evidence-first voice, #0B1220/#3B82F6/#FACC15 yellow reserved for resume quotes, §8 EU AI Act hard rules (never "bias-free"/"unbiased"/"fair")
-3. `patterns/good/stack-a-scaffold-dryrun.md` — 7-phase Rankora rebuild rehearsal (Next 16.2.3 proxy cookies async, RLS SQL, Dodo HMAC timing-safe, BullMQ `maxRetriesPerRequest: null`, Rex dispatch JSON, 7 propagated lessons)
+3. `patterns/good/stack-a-scaffold-dryrun.md` — 7-phase Rankora rebuild rehearsal (Next 16.2.3 proxy cookies async, RLS SQL, Dodo HMAC timing-safe, BullMQ `maxRetriesPerRequest: null`, Yash dispatch JSON, 7 propagated lessons)
 4. `patterns/good/shopify-app-store-submission-runbook.md` — 18 checklist items (GDPR webhooks, Polaris-only, CSP, Lighthouse delta, etc.) with runnable verify bash + `submit-gate.sh`
 
 **Tier 2 — Business rails (parallel, 2×2):**
@@ -120,7 +120,7 @@ Outstanding: none for this pass. Next gate = Rankora cutover rehearsal week of 2
 2. **Pseudocode verification:** "Self-correcting loops" were Python pseudocode, not real shell commands
 3. **No blast-radius analysis:** Agents edited files without checking what depended on them → cascading breakage
 4. **Legacy references:** `lovable-execution-model.md`, `npm run build`, Lovable folder structures still in agent instructions
-5. **No fix-verify enforcement:** Rex accepted "done" from agents without proof they ran `pnpm tsc` / `pnpm build`
+5. **No fix-verify enforcement:** Yash accepted "done" from agents without proof they ran `pnpm tsc` / `pnpm build`
 
 **What changed:**
 
@@ -132,7 +132,7 @@ Outstanding: none for this pass. Next gate = Rankora cutover rehearsal week of 2
 - **First-Load Manifest:** Reduced from 12-16 files to 4-5 essential Tier 1 files + optional Tier 2. Every agent's manifest is now customized to its role.
 - **Package manager:** All `npm run build` → `pnpm build`, `npm install` → `pnpm install` (130+ replacements across all agents)
 - **Lovable references:** All `lovable-execution-model.md` → `nextjs-debugging-and-fix-protocol.md`. Lovable section headers renamed to "Legacy" or "Production-Grade"
-- **Rex dispatch rule:** Rex now REQUIRES verification output (terminal paste) from any code agent before accepting "done"
+- **Yash dispatch rule:** Yash now REQUIRES verification output (terminal paste) from any code agent before accepting "done"
 - **Fix-verify loop:** Real bash commands embedded in Koda and Vex — no more pseudocode
 
 ### Verification sweep:
@@ -168,7 +168,7 @@ Factory score: **9.18 → projected 9.5** pending empirical validation on next P
 
 **System registration:**
 - `CLAUDE.md` — Dato added to agent roster (BUILD phase) + 2 routing rules (Database work → Dato, DB bug → Dato via Vex)
-- `rex.md` — Dato Dispatch Rule (dispatch BEFORE Koda for DB tasks) + verification requirement
+- `yash.md` — Dato Dispatch Rule (dispatch BEFORE Koda for DB tasks) + verification requirement
 - `MEMORY.md` — `supabase-database-mastery.md` entry added to Critical section
 
 **Agent count:** 21 → **22** (Dato is the first new agent since the initial roster)

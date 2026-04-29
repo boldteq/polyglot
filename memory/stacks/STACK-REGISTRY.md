@@ -80,7 +80,7 @@ If a stack has custom verification steps (e.g., Shopify's `shopify app dev` chec
 2. Load design tokens from stack file
 3. Stack B (Shopify) = Polaris only, no Tailwind
 
-### For orchestration agents (Rex, Arya, Riko):
+### For orchestration agents (Yash, Arya, Riko):
 1. Detect stack at project start
 2. Route to correct scaffold, architecture, and deployment patterns
 3. Never mix stack patterns (e.g., no Polaris in Stack A, no shadcn in Stack B)

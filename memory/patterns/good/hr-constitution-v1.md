@@ -395,7 +395,7 @@ Rollback executes by `signal_id` (reverts entire signal-cluster, not just one di
 ## Q43 — Multi-agent cost attribution
 **Decision:** Token-accurate attribution.
 - Each agent's `cost_tracking` row gets exactly the tokens it generated/consumed.
-- Orchestration overhead (Rex/dispatcher) attributed to `_overhead` synthetic agent.
+- Orchestration overhead (Yash/dispatcher) attributed to `_overhead` synthetic agent.
 - Joint-task indicator: `task.collaborators[]` length >1, used for collaboration-cost analysis in weekly health report.
 
 ## Q44 — Per-tier wall-clock SLOs

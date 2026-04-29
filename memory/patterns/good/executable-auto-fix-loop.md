@@ -14,7 +14,7 @@ This file is the single source of truth for C1/C2/C3 (self-research, auto-fix, r
 |---|---|---|---|---|
 | **BUILDER** | Koda, Riko, Vega, Quill, Vex | 5 | 25 min | $5 |
 | **GATE** | Sage, Luna, Bolt, Hawk | 3 | 15 min | $3 |
-| **PLANNER** | Arya, Rex, Nova, Scout, Atlas, Ledger, Verdict | 3 | 15 min | $3-4 |
+| **PLANNER** | Arya, Yash, Nova, Scout, Atlas, Ledger, Verdict | 3 | 15 min | $3-4 |
 | **INSIGHT** | Pulse, Orbit, Echo, Mira, Zeph | 3 | 10 min | $3 |
 
 (Exception: Arya's cap is $4, 90 min — architecture is high-leverage. Locked in arya.md.)
@@ -138,9 +138,9 @@ Per-dispatch cost is tracked by the runtime. When a dispatch exceeds its cap:
 1. **Halt immediately** — don't finish the current step.
 2. **Checkpoint** — write current output to `<project>/.arya-checkpoint.json` (or agent-specific file).
 3. **Summarize** — agent writes 1-paragraph "what's done vs pending" to stdout.
-4. **Escalate** — Rex receives the checkpoint and decides: retry with higher cap, split into smaller tasks, or escalate to Yash.
+4. **Escalate** — Yash receives the checkpoint and decides: retry with higher cap, split into smaller tasks, or escalate to Yash.
 
-The per-BUILD cap is $15 total across all agents. Rex tracks running total and prioritizes gates (Sage, Luna) over polish (Vega iteration) if budget is thin.
+The per-BUILD cap is $15 total across all agents. Yash tracks running total and prioritizes gates (Sage, Luna) over polish (Vega iteration) if budget is thin.
 
 ---
 
@@ -152,7 +152,7 @@ Timers persist across retries in the same dispatch — 5 retries inside 25 min i
 
 ---
 
-## Escalation payload (what Rex receives when a loop gives up)
+## Escalation payload (what Yash receives when a loop gives up)
 
 ```json
 {
@@ -169,7 +169,7 @@ Timers persist across retries in the same dispatch — 5 retries inside 25 min i
 }
 ```
 
-Rex reads this and decides next move per `patterns/good/rex-model-routing.md`.
+Yash reads this and decides next move per `patterns/good/yash-model-routing.md`.
 
 ---
 
@@ -196,9 +196,9 @@ Koda may run up to **3 concurrent features** per sprint (per Yash 2026-04-11). E
 1. Gets its own branch
 2. Gets its own auto-fix loop with independent retry counters
 3. Uses file-level locks in `.koda/locks/<path>` to prevent two features editing the same file
-4. Reports back to Rex independently; Rex serializes merges
+4. Reports back to Yash independently; Yash serializes merges
 
-If two Koda threads need the same file → the later thread waits, Rex serializes.
+If two Koda threads need the same file → the later thread waits, Yash serializes.
 
 ---
 

@@ -81,7 +81,7 @@ If you're exceeding the target, you're being verbose. Cut.
 
 | Agent | Rule |
 |-------|------|
-| Rex | Dispatch commands only. No motivational speeches. |
+| Yash | Dispatch commands only. No motivational speeches. |
 | Nova | Tables and bullets. No narrative research papers. |
 | Arya | Schema + API spec. No "let me explain why..." |
 | Koda | Code only. Comments where non-obvious. Zero chat. |
@@ -155,7 +155,7 @@ Every file load costs tokens. Agents MUST be selective:
 2. **Batch edits** — if editing 3 sections of one file, do all in one session (don't read-edit-read-edit-read-edit)
 3. **One build, not many** — accumulate code changes, then run `pnpm tsc && pnpm lint && pnpm build` once
 4. **Grep before Read** — if looking for a specific thing, grep first (cheap), then read only the matching file
-5. **Parallelize agents** — Rex dispatches multiple agents concurrently when tasks are independent
+5. **Parallelize agents** — Yash dispatches multiple agents concurrently when tasks are independent
 6. **Skip redundant verification** — if `pnpm build` passes, don't also run `pnpm tsc` separately (build includes typecheck)
 
 ### Session Anti-Patterns That Burn Tokens
@@ -168,7 +168,7 @@ Every file load costs tokens. Agents MUST be selective:
 | Running `pnpm build` after every single file change | Batch all changes, build once at the end |
 | Re-reading a file after writing to it | Write succeeded if no error. Move on. |
 | Loading stack file when not writing code | Skip it — research/planning tasks don't need stack details |
-| Multiple agents loading the same pattern files | Rex should pass context between agents, not have each reload |
+| Multiple agents loading the same pattern files | Yash should pass context between agents, not have each reload |
 | Writing long commit messages | 1-line conventional commit: `feat(auth): add Google OAuth` |
 
 ---
@@ -278,7 +278,7 @@ Every task, regardless of which agent handles it, follows this mandatory loop:
 
 ## Agent-Specific Application
 
-### Rex (Commander)
+### Yash (Commander)
 - Autonomous loop means: verify EVERY agent's output before passing downstream
 - Never accept "done" without evidence. "Compiles" is NOT done. "Tests pass" is NOT done.
 - Run functional verification: does the feature actually work end-to-end?
@@ -460,7 +460,7 @@ When an approach FAILS (build error, wrong pattern, impossible constraint):
 5. REBUILD — Start fresh with a different architecture
    - Don't carry broken assumptions forward
    - Document what failed and why for Mira
-6. ESCALATE — If 3 attempts fail → flag to Rex with full context
+6. ESCALATE — If 3 attempts fail → flag to Yash with full context
    - What was tried
    - What failed
    - What the blocker is

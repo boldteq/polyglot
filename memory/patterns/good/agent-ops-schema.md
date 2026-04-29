@@ -170,7 +170,7 @@ CREATE TABLE agent_runs (
 );
 
 COMMENT ON TABLE agent_runs IS 'Every agent task execution. Central table for performance analysis.';
-COMMENT ON COLUMN agent_runs.run_id IS 'Unique run identifier from orchestration system (e.g., "rex-2026-04-14-001")';
+COMMENT ON COLUMN agent_runs.run_id IS 'Unique run identifier from orchestration system (e.g., "yash-2026-04-14-001")';
 COMMENT ON COLUMN agent_runs.classification IS 'SUCCESS | FAILURE | TIMEOUT | REGRESSION | ANTIPATTERN | ESCALATED';
 COMMENT ON COLUMN agent_runs.composite_score IS 'Computed on INSERT via trigger, 0–100';
 ```
@@ -549,7 +549,7 @@ CREATE POLICY "agent_runs_service_role" ON agent_runs
   WITH CHECK (auth.role() = 'service_role');
 
 COMMENT ON TABLE agent_runs IS 'Every agent task execution. Central table for performance analysis.';
-COMMENT ON COLUMN agent_runs.run_id IS 'Unique run identifier from orchestration system (e.g., "rex-2026-04-14-001")';
+COMMENT ON COLUMN agent_runs.run_id IS 'Unique run identifier from orchestration system (e.g., "yash-2026-04-14-001")';
 COMMENT ON COLUMN agent_runs.classification IS 'SUCCESS | FAILURE | TIMEOUT | REGRESSION | ANTIPATTERN | ESCALATED';
 COMMENT ON COLUMN agent_runs.composite_score IS 'Computed on INSERT via trigger, 0–100';
 

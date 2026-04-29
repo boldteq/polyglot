@@ -1,4 +1,4 @@
-# Failure Recovery Scenarios (Rex)
+# Failure Recovery Scenarios (Yash)
 
 ## Scenario 1: Agent produces incomplete output
 - Validate output. If fails:

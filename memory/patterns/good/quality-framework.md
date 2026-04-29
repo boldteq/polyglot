@@ -262,7 +262,7 @@ If a hotfix makes things worse:
 
 ### Incident Response Flow
 ```
-Detection (Hawk) → Triage (Rex) → Diagnose (Vex) → Fix → Verify (Hawk) → Postmortem (Mira)
+Detection (Hawk) → Triage (Yash) → Diagnose (Vex) → Fix → Verify (Hawk) → Postmortem (Mira)
 ```
 
 ---

@@ -98,7 +98,7 @@ priority: critical
 - **Date:** 2026-03 (initial directive)
 - **Context:** Yash gives short briefs and expects full execution, not questions
 - **Rule:** Don't ask for permission on obvious next steps. Don't recap. Don't explain what you're about to do — just do it.
-- **Applies to:** All agents, especially Rex
+- **Applies to:** All agents, especially Yash
 
 ### Show Work, Not Words
 - **Date:** 2026-03 (initial directive)
@@ -116,7 +116,7 @@ priority: critical
 - **Rule:** Every SaaS architecture MUST include: admin panel with user management, billing integration with real Dodo Payments plans, complete page/route map with component details, and dashboard with real data fetching — not just empty shells
 - **Rule:** "Build succeeds" does NOT mean "app works" — agents must verify every page loads with real content before claiming done
 - **Rule:** No agent can claim "done" without functional proof — navigate to the page, use the feature, show evidence
-- **Applies to:** All agents, especially Arya (architecture), Koda (building), Sage (review), Rex (orchestration)
+- **Applies to:** All agents, especially Arya (architecture), Koda (building), Sage (review), Yash (orchestration)
 
 ---
 
@@ -186,7 +186,7 @@ priority: critical
   3. Same applies to other ecosystems: `pip index versions <pkg>`, `cargo search <pkg>`, `gem list <pkg> --remote --exact`, `go list -m -versions <mod>`.
   4. If you cannot verify (no network, offline), say so **explicitly** instead of guessing: "Could not verify latest — assuming X, verify before install."
   5. When stating a version, include the source: "Next.js 16.2.3 (confirmed via `npm view next version` on 2026-04-10)."
-- **Applies to:** ALL agents — Arya (architecture), Riko (scaffold), Koda (build), Rex (orchestration), Nova (research). Especially critical for any plan that specifies a scaffold command or `package.json` content.
+- **Applies to:** ALL agents — Arya (architecture), Riko (scaffold), Koda (build), Yash (orchestration), Nova (research). Especially critical for any plan that specifies a scaffold command or `package.json` content.
 
 ---
 
@@ -196,7 +196,7 @@ priority: critical
 - **Date:** 2026-04-11
 - **Context:** During Training Pass 2, a project name was fabricated as a "live training ground" and inserted into memory, agent scenarios, HEALTH.md, and the claude-hub HTML without Yash approving it as a real product. Yash deleted it twice and required a full erase.
 - **Rule:** Agents may NOT invent project names, fabricate live training targets, or insert imaginary products into any registry, memory file, agent scenario, or HTML dashboard. A project only exists in memory if (a) Yash named it explicitly, or (b) it has a real directory under `~/Desktop/Boldteq App/`. If an agent needs an example for a scenario, use generic placeholders like "new Shopify quiz app" or "a product recommendation app" — never assign a proper name.
-- **Applies to:** ALL agents — especially Arya, Koda, Rex, Mira (which rebuilds project registries), and any scenario or example block in agent training data.
+- **Applies to:** ALL agents — especially Arya, Koda, Yash, Mira (which rebuilds project registries), and any scenario or example block in agent training data.
 
 ### Agent Class Caps Are Non-Negotiable
 - **Date:** 2026-04-11 (Training Pass 2)
@@ -214,7 +214,7 @@ priority: critical
 - **Date:** 2026-04-10 (locked), 2026-04-11 (reaffirmed)
 - **Context:** Stack A master file is `stacks/saas-nextjs-supabase-railway.md`. Legacy Vercel+Stripe stack is archived at `stacks/_archive/saas-nextjs-supabase.md` — do not auto-load.
 - **Rule:** For any Boldteq internal SaaS build, the stack is non-negotiable: Next.js 16.2.3, React 19, TypeScript strict, Tailwind 4, shadcn/ui, Supabase (SSR), Dodo Payments (never Stripe for internal), Railway (never Vercel), BullMQ + Redis for jobs. Stack B (Shopify) uses Shopify Billing API — never Dodo, never Stripe.
-- **Applies to:** Arya, Riko, Koda, Rex, Bolt.
+- **Applies to:** Arya, Riko, Koda, Yash, Bolt.
 
 ---
 

@@ -513,7 +513,7 @@ Save this file to `~/Desktop/Boldteq App/<AppName>/scripts/submit-gate.sh` and w
 
 ### If rejected
 - Bolt reads the rejection reason verbatim into `projects/<app>-submission-log.md`
-- Rex dispatches Vex (debug) → Koda (fix) → Sage (re-gate) → Bolt (resubmit)
+- Yash dispatches Vex (debug) → Koda (fix) → Sage (re-gate) → Bolt (resubmit)
 - Every rejection reason becomes a new item appended to this runbook — the checklist only grows
 
 ### If approved

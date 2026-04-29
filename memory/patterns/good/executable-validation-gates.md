@@ -133,7 +133,7 @@ exit 0
 3. Run `./scripts/koda-done-gate.sh`
 4. If all pass → push, open draft PR, handoff to Sage
 5. If any fail → enter auto-fix loop (max 5 retries), fix first failure, rerun gate
-6. If still failing after 5 → escalate to Rex with the escalation payload
+6. If still failing after 5 → escalate to Yash with the escalation payload
 
 ---
 

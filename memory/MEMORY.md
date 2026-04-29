@@ -12,7 +12,7 @@ Index loaded every session. Check before starting any task.
 - ★ **[Decision Simulator](user/decision-simulator.md)** — Pre-resolved Yash defaults (stack/pricing/design/copy/launch/budget). Consult BEFORE escalating to Yash.
 - ★ **[Full Autonomy Rules](patterns/good/full-autonomy-rules.md)** — When agents ask Yash vs. when they decide (whitelist of 7 escalation reasons, everything else is auto-decided)
 - ★ **[Boldteq SaaS Starter](starters/boldteq-saas-starter.md)** — Master spec for <10-min Stack A scaffold (GitHub template repo)
-- ★ **[Rex Model Routing](patterns/good/rex-model-routing.md)** — DEEP/FAST/CHEAP model tier table per agent + budget guardrails (Haiku Phase 1 shipped 2026-04-22: Witness + Roster)
+- ★ **[Yash Model Routing](patterns/good/yash-model-routing.md)** — DEEP/FAST/CHEAP model tier table per agent + budget guardrails (Haiku Phase 1 shipped 2026-04-22: Witness + Roster)
 - ★ **[Local Autocomplete Setup](patterns/good/local-autocomplete-setup.md)** — Continue.dev + Ollama + Qwen (VS Code tab-complete only, NEVER Polyglot dispatch)
 - ★ **[Mira Bug Ingestion Schema](patterns/good/mira-bug-ingestion-schema.md)** — JSONL schema for structured bug capture + auto-clustering
 - ★ **[Gold Examples](patterns/good/gold-examples.md)** — First-output quality anchors per agent (Scout/Atlas/Koda/Vega/Quill/Sage/Echo/Verdict)
@@ -20,7 +20,7 @@ Index loaded every session. Check before starting any task.
 - ★ **[Org Structure v2](patterns/good/org-structure-v2.md)** — **CANONICAL org chart** (2026-04-27). 7 departments × sub-departments × pods. Replaces flat 6-dept structure. Source-of-truth fields: registry.json `department` + `subDepartment` + `pod` + `secondaryReportsTo`. Scales to 100+ agents. Migration map for all 42 current agents included. Cross-functional matrix for ecom team (catalyst/spark/merch/sequence dual reporting).
 - ★ **[Executable Auto-Fix Loop](patterns/good/executable-auto-fix-loop.md)** — Class-based retry caps (Builder 5 / Gate 3), cost breakers, escalation JSON, git autonomy rules
 - ★ **[Executable Validation Gates](patterns/good/executable-validation-gates.md)** — 7 runnable scripts: Koda done-gate, Sage audit, Luna check, Vega diff, Bolt preflight, Hawk postdeploy
-- ★ **[Stack A Scaffold Dry Run](patterns/good/stack-a-scaffold-dryrun.md)** — 7-phase Rankora rebuild rehearsal: Next 16 proxy cookies async, RLS SQL, Dodo HMAC, BullMQ, Rex dispatch JSON
+- ★ **[Stack A Scaffold Dry Run](patterns/good/stack-a-scaffold-dryrun.md)** — 7-phase Rankora rebuild rehearsal: Next 16 proxy cookies async, RLS SQL, Dodo HMAC, BullMQ, Yash dispatch JSON
 - ★ **[Shopify App Store Submission Runbook](patterns/good/shopify-app-store-submission-runbook.md)** — 18-item checklist with runnable verify bash + `submit-gate.sh`
 - ★ **[Legal Baseline Templates](patterns/good/legal-baseline-templates.md)** — Stack A ToS/Privacy/DPA, Stack B Shopify deltas, Rankora EU AI Act rider, Sage `legal-check.sh`
 - ★ **[Next.js Debugging & Fix Protocol](patterns/good/nextjs-debugging-and-fix-protocol.md)** — **THE master protocol**: fix-verify loop (pnpm tsc→lint→build→test), Next.js 16 gotchas (async cookies/headers/params, Server Components, metadata API), Supabase gotchas (RLS debugging, server vs client), Shopify gotchas, common fix patterns, escalation rules. ALL code agents load this.

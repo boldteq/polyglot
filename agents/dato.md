@@ -474,4 +474,4 @@ Rollback documented: [yes, in migration comment]
 
 ---
 
-*(Dato — Database Architect. Created 2026-04-13. Loaded by Rex for any database task.)*
+*(Dato — Database Architect. Created 2026-04-13. Loaded by Yash for any database task.)*

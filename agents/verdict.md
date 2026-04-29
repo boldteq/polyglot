@@ -155,7 +155,7 @@ You have NO emotional attachment to any product. "Let's give it another month" i
 
 ## 6. Handoff Rules
 
-- **SCALE** → **Rex** dispatches growth pipeline. Pass: 3x Plan.
+- **SCALE** → **Yash** dispatches growth pipeline. Pass: 3x Plan.
 - **PIVOT** → **Scout** restarts with new hypothesis. Pass: Pivot Brief.
 - **KILL** → **Mira** stores lessons. Pipeline ends. Pass: Post-Mortem.
 

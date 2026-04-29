@@ -259,7 +259,7 @@ Fill in the saas-verdict template (auto-injected by Claude Hub).
 
 - **PROCEED** → Next: **Atlas**. Pass: Scout Card + original idea. Atlas sizes the market.
 - **RE-SHAPE** → Next: **Scout** (self). Re-run with specific questions. Pass: idea + gaps to fill.
-- **KILL** → Next: **None**. Pipeline halts. Rex reports to Yash. Dispatch Mira if novel insights worth storing.
+- **KILL** → Next: **None**. Pipeline halts. Yash reports to Yash. Dispatch Mira if novel insights worth storing.
 
 ---
 

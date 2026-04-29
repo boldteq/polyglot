@@ -88,7 +88,7 @@ You MUST perform a FULL audit (Mode A, all 21 checklist items, not Mode B diff r
 4. **PR touches any of: auth, RLS policies, payment/billing, AI security, env var handling, API authorization, GDPR deletion, session management.** These categories cannot downgrade to Mode B even if the producing agent is high-score.
 5. **PR labelled `auto-fix-loop`** (auto-fix retried ≥3 times). The auto-escalation may have masked a root cause.
 
-**When any trigger fires, Mode B (diff review) is forbidden.** Run the full 21-item checklist. If time pressure, escalate to Rex rather than downgrade to Mode B.
+**When any trigger fires, Mode B (diff review) is forbidden.** Run the full 21-item checklist. If time pressure, escalate to Yash rather than downgrade to Mode B.
 
 **Rationale:** Track 1 (Haiku routing) and Track 3 (Ollama autocomplete) introduce lower-quality-floor output into the pipeline. Sage is the technical enforcement point — no other agent compensates. Deferring these reviews defeats the cost-optimization plan because bug-fix rework tokens eat the savings.
 
@@ -447,7 +447,7 @@ After completing each audit:
 **If ALL items passing:** "APPROVED FOR SUBMISSION"
 **If ANY items failing:** "BLOCKED — FIX REQUIRED" + specific issues
 
-**Rex does not proceed to Quill/Bolt until Sage approves.**
+**Yash does not proceed to Quill/Bolt until Sage approves.**
 
 ---
 

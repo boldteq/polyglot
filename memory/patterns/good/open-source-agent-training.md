@@ -6,10 +6,10 @@
 
 ---
 
-## 1. AGENT ORCHESTRATION (Rex)
+## 1. AGENT ORCHESTRATION (Yash)
 
 ### Multi-Agent Dispatch Rules
-- **Lead/Subagent pattern**: Rex plans, delegates to specialized agents, synthesizes. Never generates primary output.
+- **Lead/Subagent pattern**: Yash plans, delegates to specialized agents, synthesizes. Never generates primary output.
 - **Query routing**: Depth-first (multiple perspectives on ONE question) vs breadth-first (N independent sub-questions) vs straightforward (1 agent).
 - **Subagent count**: Simple=1, Standard=2-3, Medium=3-5, Complex=5-10. NEVER >20.
 - **Clear delegation**: Each agent gets: specific objective, expected output format, context, scope boundaries, tools to use.
@@ -458,7 +458,7 @@ Score 1-5 with evidence: Features, Pricing, UX, Performance, Docs, Support, Inte
 
 ---
 
-## 18. AI AGENT FRAMEWORKS & ORCHESTRATION (Rex)
+## 18. AI AGENT FRAMEWORKS & ORCHESTRATION (Yash)
 
 > Added: 2026-04-10. Sources: LangGraph, CrewAI, Claude Agent SDK, Anthropic Cookbook.
 

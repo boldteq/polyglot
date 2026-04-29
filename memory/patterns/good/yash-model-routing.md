@@ -1,6 +1,6 @@
-# Rex — Model & Cost Routing Decision Table
+# Yash — Model & Cost Routing Decision Table
 
-**Owner:** Rex (commander)
+**Owner:** Yash (commander)
 **Purpose:** Deterministic table for which model each agent runs on, per task class. Removes the "which model?" question from every dispatch.
 **Locked:** 2026-04-11
 
@@ -26,7 +26,7 @@
 | **Ledger** | FAST | Multi-currency, enterprise contract modeling | Fixed 3-tier output |
 | **Arya** | **DEEP** | Always deep — architecture is high-leverage | Never |
 | **Riko** | CHEAP | Scaffold hits a template edge case → FAST | Default: CHEAP (it's mostly file copying) |
-| **Rex** | **DEEP** | Always — Rex orchestrates | Never |
+| **Yash** | **DEEP** | Always — Yash orchestrates | Never |
 | **Koda** | FAST | Distributed systems, complex state machines, auth flows → DEEP | Pure CRUD generation → CHEAP |
 | **Vega** | FAST | First-time brand design, accessibility audit needing tradeoffs → DEEP | Spacing/color nits → CHEAP |
 | **Quill** | FAST | Landing page hero + pricing copy → DEEP | Button labels, empty states → CHEAP |
@@ -89,8 +89,8 @@ An agent auto-upgrades to the next tier if any of these are true during executio
 ## Budget guardrails
 
 - **Per-build budget:** $15 in model spend for a full Mode A (new product) pass. Alert Yash if exceeded.
-- **Per-agent budget:** $3 per dispatch. If an agent burns $3, Rex pauses and reassesses.
-- **Monthly cap:** $500 across all agents combined. Hawk monitors actual spend; if >80% by day 20, Rex switches all defaults one tier down.
+- **Per-agent budget:** $3 per dispatch. If an agent burns $3, Yash pauses and reassesses.
+- **Monthly cap:** $500 across all agents combined. Hawk monitors actual spend; if >80% by day 20, Yash switches all defaults one tier down.
 
 ---
 
@@ -103,7 +103,7 @@ An agent auto-upgrades to the next tier if any of these are true during executio
 
 ---
 
-## How Rex uses this table
+## How Yash uses this table
 
 ```pseudo
 function dispatch(agent_name, task):
@@ -124,5 +124,5 @@ function dispatch(agent_name, task):
 ## Delta
 
 - **Before:** every agent ran on Opus by default, burning $30-60 per build.
-- **After:** weighted mix lands at ~$8-12 per Mode A build, with DEEP only for Arya/Rex/Sage/Verdict/Vex.
+- **After:** weighted mix lands at ~$8-12 per Mode A build, with DEEP only for Arya/Yash/Sage/Verdict/Vex.
 - **Quality guard:** upgrade triggers ensure the cheap-tier fallback never ships broken work.

@@ -1,7 +1,7 @@
 # Ecom Team Coordination — Pipeline + Readiness Gate
 
 **Date:** 2026-04-27
-**Owner:** rex (authority) + cadence (HR custodian) + bolt (Polyglot infra)
+**Owner:** yash (authority) + cadence (HR custodian) + bolt (Polyglot infra)
 **Sponsor:** Yash
 **Status:** spec ready · pipeline ships W3 · readiness gate enforcing W4
 
@@ -373,7 +373,7 @@ Data sourced from `getReadiness(agentId)` batched in `getOrgChart()` response.
 
 | File | Status | Lines | Owner |
 |------|--------|-------|-------|
-| `Polyglot/src/lib/orchestrations/ecom-team-pipeline.js` | NEW | ~250 | bolt-style infra (or rex direct) |
+| `Polyglot/src/lib/orchestrations/ecom-team-pipeline.js` | NEW | ~250 | bolt-style infra (or yash direct) |
 | `Polyglot/src/lib/handoff-validate.js` | NEW | ~150 | validation against ecom-handoff-schema.md |
 | `Polyglot/src/routes/orchestrations.js` | MODIFY | +30 | register pipeline template |
 | `Polyglot/src/routes/dispatch.js` | MODIFY | +60 | add readiness endpoint |

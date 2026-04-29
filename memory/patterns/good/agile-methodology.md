@@ -15,7 +15,7 @@ Boldteq runs multiple SaaS products simultaneously. This isn't a single-team Scr
 ### Phases
 ```
 INTAKE → RESEARCH → ARCHITECTURE → BUILD → QA/SEO → SHIP → MONITOR → ITERATE
- (Rex)    (Nova)      (Arya)       (Koda)  (Luna/   (Bolt)  (Hawk)    (All)
+ (Yash)    (Nova)      (Arya)       (Koda)  (Luna/   (Bolt)  (Hawk)    (All)
                                             Sage/
                                             Zeph)
 ```
@@ -23,7 +23,7 @@ INTAKE → RESEARCH → ARCHITECTURE → BUILD → QA/SEO → SHIP → MONITOR �
 ### Phase Durations (Target)
 | Phase | Duration | Gate |
 |-------|----------|------|
-| Intake | 1 hour | Rex validates brief, assigns project slug |
+| Intake | 1 hour | Yash validates brief, assigns project slug |
 | Research | 2-4 hours | Nova delivers go/no-go with TAM, competitors, positioning |
 | Architecture | 2-4 hours | Arya delivers data model, API spec, stack decision |
 | Build Sprint 1 | 2-3 days | Core features: auth, billing, main value prop |
@@ -56,8 +56,8 @@ Traditional 2-week sprints are too slow for a factory. Boldteq uses 3-day micro-
 - Afternoon: Fix issues from review, final polish
 - End of day: Deploy-ready (Bolt proceeds if Sage approves)
 
-### Sprint Planning (Rex Orchestrates)
-1. Rex breaks the project into sprint-sized chunks
+### Sprint Planning (Yash Orchestrates)
+1. Yash breaks the project into sprint-sized chunks
 2. Each sprint has a clear deliverable ("auth + billing working" not "work on auth")
 3. Dependencies mapped: what blocks what
 4. Risk items identified: what might take longer than expected
@@ -67,7 +67,7 @@ Traditional 2-week sprints are too slow for a factory. Boldteq uses 3-day micro-
 - What shipped since last checkpoint
 - What's blocked
 - Quality metrics (test coverage, build status, Sage score)
-- Rex adjusts plan if behind schedule
+- Yash adjusts plan if behind schedule
 
 ---
 
@@ -97,7 +97,7 @@ QUEUED → ACTIVE → PAUSED → SHIPPED → MAINTAINING
 When switching between active projects:
 1. Mira saves current project state to `memory/projects/[slug].md`
 2. All in-progress work committed with descriptive message
-3. Rex loads new project context from memory
+3. Yash loads new project context from memory
 4. Agents read project-specific CLAUDE.md + relevant memory files
 5. No assumptions carried over — fresh context from memory only
 
@@ -173,7 +173,7 @@ If Yash says "simple" → still estimate properly, ship fast
 ## 6. Ceremonies (Lightweight)
 
 ### Sprint Kickoff (5 min)
-- Rex presents sprint goal and assigned work items
+- Yash presents sprint goal and assigned work items
 - Agents confirm they have what they need
 - Blockers surfaced immediately
 
@@ -235,15 +235,15 @@ After every sprint:
 ## 8. Communication Protocol
 
 ### Yash ↔ Agent Team
-- Yash gives brief → Rex interprets and orchestrates
+- Yash gives brief → Yash interprets and orchestrates
 - Status updates: only when blocked or at major milestones
 - No status meetings — progress visible through shipped work
 - Corrections logged immediately to `user/feedback.md`
 
 ### Agent ↔ Agent
-- Structured handoff format (defined in Rex)
+- Structured handoff format (defined in Yash)
 - No free-form messages — always structured data
-- Blockers escalated to Rex within 1 retry
+- Blockers escalated to Yash within 1 retry
 - Memory updates routed through Mira
 
 ---
@@ -253,12 +253,12 @@ After every sprint:
 ### Metrics That Matter
 | Metric | Target | Tracked By |
 |--------|--------|------------|
-| Time to v1 ship | < 10 business days | Rex |
+| Time to v1 ship | < 10 business days | Yash |
 | Bugs post-launch (P0/P1) | 0 in first week | Hawk |
 | Test coverage | ≥ 80% | Luna |
 | Sage approval rate | ≥ 90% first pass | Sage |
 | Memory reuse rate | Increasing per project | Mira |
-| Build cost (compute) | Decreasing per project | Rex |
+| Build cost (compute) | Decreasing per project | Yash |
 
 ### Improvement Flywheel
 ```

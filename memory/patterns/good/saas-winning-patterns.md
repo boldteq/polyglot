@@ -1075,7 +1075,7 @@ Use these to calibrate your product:
 - Koda building new feature → check "Speed & Performance" section
 - Vega designing new page → check "Pricing & Monetization" or "Component & UI Patterns"
 - Arya making architecture decision → check "Product-Specific Playbooks" for precedent
-- Rex evaluating product readiness → check "Benchmarks Table" to validate metrics
+- Yash evaluating product readiness → check "Benchmarks Table" to validate metrics
 
 ---
 

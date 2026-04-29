@@ -89,7 +89,7 @@ In handoff documents:
 When two agents disagree, the agent earlier in the pipeline has authority:
 
 ```
-Rex (Commander) > Arya (Architecture) > Riko (Setup) > Vega (Design) > Koda (Build) > Luna (Test) > Sage (Review) > Bolt (Deploy) > Hawk (Monitor)
+Yash (Commander) > Arya (Architecture) > Riko (Setup) > Vega (Design) > Koda (Build) > Luna (Test) > Sage (Review) > Bolt (Deploy) > Hawk (Monitor)
 ```
 
 **Rules:**
@@ -99,4 +99,4 @@ Rex (Commander) > Arya (Architecture) > Riko (Setup) > Vega (Design) > Koda (Bui
 4. If upstream agent's spec is ambiguous → downstream agent fills default AND documents it
 5. NEVER silently override an upstream agent's decision — document why if you deviate
 
-**Exception:** Specialist override — if Sage finds a P0 security vulnerability that Arya's architecture introduced, Sage can escalate directly to Rex to override Arya. This is the only case where downstream overrides upstream.
+**Exception:** Specialist override — if Sage finds a P0 security vulnerability that Arya's architecture introduced, Sage can escalate directly to Yash to override Arya. This is the only case where downstream overrides upstream.

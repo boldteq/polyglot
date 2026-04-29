@@ -1603,7 +1603,7 @@ This document is part of the Boldteq Quality Framework. After every deploy:
    - `patterns/avoid/antipatterns.md` with new failure modes
    - `patterns/good/quality-framework.md` with lessons learned
    - `stacks/[stack].md` with stack-specific insights
-3. **Rex** (orchestrator) reviews Mira's updates for next project
+3. **Yash** (orchestrator) reviews Mira's updates for next project
 
 ---
 

@@ -155,7 +155,7 @@ Boldteq products run in 3 modes:
 | Switcher needed? | NO | YES (switch between their workspaces) | YES (switch between client workspaces + agency admin view) |
 | Default for new Boldteq product | — | — | Multi-tenant unless product-specific reason |
 
-Rex/Arya set `saas_mode: 'single' | 'multi-tenant' | 'agency'` in the project CLAUDE.md. Pod frontends read this and scaffold the right shell.
+Yash/Arya set `saas_mode: 'single' | 'multi-tenant' | 'agency'` in the project CLAUDE.md. Pod frontends read this and scaffold the right shell.
 
 ### Workspace switcher placement
 **Top-LEFT of the sidebar header.** NOT in the account menu. Reasons:

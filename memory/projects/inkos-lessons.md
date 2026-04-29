@@ -64,7 +64,7 @@ When Sage flags fixes in Sprint N, a "fix Koda" agent addresses those while a "b
 
 ### 2D. API 500 Errors Recovered by Checking Partial State
 
-When a sprint's build partially failed (e.g., missing column caused a 500), Rex dispatched a fix agent that first checked what was already built and correct, then surgically fixed only the broken parts. Avoids the temptation to rewrite entire files.
+When a sprint's build partially failed (e.g., missing column caused a 500), Yash dispatched a fix agent that first checked what was already built and correct, then surgically fixed only the broken parts. Avoids the temptation to rewrite entire files.
 
 ### 2E. Batch Sage Audits Are Worse Than Per-Sprint Audits
 

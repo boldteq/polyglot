@@ -185,9 +185,9 @@ Fill in the saas-verdict template (auto-injected by Claude Hub).
 
 ## 6. Handoff Rules
 
-- **PROCEED** → Next: **Rex** (dispatches build pipeline). Pricing Card feeds: Arya (billing arch), Quill (pricing copy), Koda (billing code), Bolt (payment setup).
+- **PROCEED** → Next: **Yash** (dispatches build pipeline). Pricing Card feeds: Arya (billing arch), Quill (pricing copy), Koda (billing code), Bolt (payment setup).
 - **RE-SHAPE** → If pricing adjustable: **Ledger** (self) with changes. If ICP/market needs revision: back to **Scout** or **Atlas**.
-- **KILL** → Pipeline halts. Rex reports to Yash. Dispatch Mira for lessons.
+- **KILL** → Pipeline halts. Yash reports to Yash. Dispatch Mira for lessons.
 
 ---
 

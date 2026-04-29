@@ -7,7 +7,7 @@
 **Changes shipped:**
 1. **Per-agent first-load manifest** — all 21 agents now prepended with explicit memory file list. Zero memory lookup latency on dispatch.
 2. **Full autonomy rules** (`patterns/good/full-autonomy-rules.md`) — escalation whitelist reduced to 7 reasons. Everything else auto-decided via Decision Simulator. Expected ask-rate: 0-1 per build (down from 8-12).
-3. **Rex model routing table** (`patterns/good/rex-model-routing.md`) — DEEP/FAST/CHEAP per agent per task class. Expected cost/build: $8-12 (down from $30-60). Always-DEEP: Arya, Rex, Sage, Verdict, Vex.
+3. **Yash model routing table** (`patterns/good/yash-model-routing.md`) — DEEP/FAST/CHEAP per agent per task class. Expected cost/build: $8-12 (down from $30-60). Always-DEEP: Arya, Yash, Sage, Verdict, Vex.
 4. **Mira bug ingestion schema** (`patterns/good/mira-bug-ingestion-schema.md`) — structured JSONL (`lessons/bugs.jsonl`) with auto-clustering into antipatterns.md.
 5. **Gold examples** (`patterns/good/gold-examples.md`) — first-output quality anchors for Scout/Atlas/Koda/Vega/Quill/Sage/Echo/Verdict.
 6. **Decision Simulator** (`user/decision-simulator.md`) — 90%+ of Yash-defaults pre-answered.
@@ -25,7 +25,7 @@
 - `~/.claude/memory/user/decision-simulator.md`
 - `~/.claude/memory/starters/boldteq-saas-starter.md`
 - `~/.claude/memory/patterns/good/full-autonomy-rules.md`
-- `~/.claude/memory/patterns/good/rex-model-routing.md`
+- `~/.claude/memory/patterns/good/yash-model-routing.md`
 - `~/.claude/memory/patterns/good/mira-bug-ingestion-schema.md`
 - `~/.claude/memory/patterns/good/gold-examples.md`
 - `~/.claude/memory/lessons/bugs.jsonl` (empty, ready for first append)
@@ -95,7 +95,7 @@ last_updated: 2026-04-06
 
 ---
 
-## Rex (Orchestration / UI Audit)
+## Yash (Orchestration / UI Audit)
 
 | Metric | Value |
 |--------|-------|
@@ -159,7 +159,7 @@ last_updated: 2026-04-06
 
 ### 2026-04-10: Batch Training — All Remaining 18 Agents
 **Trigger:** System audit showing 7 agents missing React Router 7 refs, 10 missing design-vision.md refs, 8 missing handoff protocols
-**Applied to:** Vega, Rex, Quill, Luna, Bolt, Hawk, Vex, Zeph, Nova, Riko, Mira, Scout, Atlas, Ledger, Echo, Orbit, Pulse, Verdict
+**Applied to:** Vega, Yash, Quill, Luna, Bolt, Hawk, Vex, Zeph, Nova, Riko, Mira, Scout, Atlas, Ledger, Echo, Orbit, Pulse, Verdict
 
 **Common updates across all 18 agents:**
 1. **Auto-Learn Integration** — Every agent now records task results to Claude Hub learning API (`POST /api/learning/record`)
@@ -177,7 +177,7 @@ last_updated: 2026-04-06
 - **Zeph:** CWV/SEO overlap, OpenGraph brand color verification
 - **Nova:** Visual/color research mandate for every competitive report
 - **Riko:** Design-vision.md scaffolding, design token scaffolding (0.5rem, Inter font)
-- **Rex:** Full handoff chain documentation, design-vision flow enforcement, Stack B detection
+- **Yash:** Full handoff chain documentation, design-vision flow enforcement, Stack B detection
 - **Mira:** Learning API integration for performance analysis, training effectiveness tracking
 - **Scout/Atlas/Ledger/Echo/Orbit/Pulse/Verdict:** Foundational handoff protocols, stack awareness, auto-learn
 
@@ -218,19 +218,19 @@ last_updated: 2026-04-06
 
 **Expected impact:** Vega becomes the blocking gate that prevents design debt, color drift, and a11y failures from reaching production. Koda's retry rate on design-related fixes should drop significantly because specs are now complete (all 4 states + responsive + dark + a11y upfront).
 
-**Next deep training:** Rex (orchestrator — needs handoff chain enforcement + Stack detection logic)
+**Next deep training:** Yash (orchestrator — needs handoff chain enforcement + Stack detection logic)
 
 *(Updated by Mira — 2026-04-10, deep training pass 4)*
 
-### 2026-04-10: Deep Training — Rex (Operating Protocol v2)
-**Trigger:** Rex is the entry point for every mode. Batch updates gave it handoff awareness, but the detailed orchestration logic (mode detection, gate enforcement, failure recovery, state tracking) was still ad-hoc.
+### 2026-04-10: Deep Training — Yash (Operating Protocol v2)
+**Trigger:** Yash is the entry point for every mode. Batch updates gave it handoff awareness, but the detailed orchestration logic (mode detection, gate enforcement, failure recovery, state tracking) was still ad-hoc.
 
 **12 decisions locked in with Yash:**
 1. Mode detection: PATTERN MATCH + CONFIRM (3-step protocol, default to most destructive on ambiguity)
 2. Yash Gate: STRICT — always pause after Arya, no bypass, no confidence threshold
 3. Failure handling: RETRY ONCE → VEX → HALT (max 3 cycles, full retry log)
-4. Parallelism: PARALLEL WHERE SAFE (explicit dependency graph in .rex-state.json, Koda+Quill, Luna+Sage can run concurrently)
-5. State tracking: `.rex-state.json` per project (survives session restart, full schema with agents/gates/failures/retries/cost)
+4. Parallelism: PARALLEL WHERE SAFE (explicit dependency graph in .yash-state.json, Koda+Quill, Luna+Sage can run concurrently)
+5. State tracking: `.yash-state.json` per project (survives session restart, full schema with agents/gates/failures/retries/cost)
 6. Stack detection: FILE MARKERS + CONFIRM (detection matrix for Stack A/A-Lovable/B/C/D based on config files)
 7. Vega Gate: STRICT — no deploy without PASS or PASS_WITH_NOTES, max 3 review cycles
 8. Handoff files: `.handoffs/` at project root (gitignored, per-mode required files, memory mirror on close)
@@ -239,12 +239,12 @@ last_updated: 2026-04-06
 11. Cost/model routing: PER-AGENT DEFAULTS with override (Opus for Arya/Sage/Vex/Verdict, Sonnet for most, Haiku for Riko/Bolt/Mira, dynamic via learning API)
 12. Auto-launch: IF ALL GATES PASS (staging auto on Mode A first, prod auto on Mode B/C if <5 files + no migrations, Mode E always auto to prod, rollback on >1% error rate)
 
-**Added to rex.md (~550 lines):**
+**Added to yash.md (~550 lines):**
 - Section 1: Mode detection 3-step protocol with keyword matrix
 - Section 2: Yash Gate template with explicit halt/approve/revise options
 - Section 3: Failure protocol (retry → Vex → halt) with state logging
 - Section 4: Parallelism dependency graph with safe pairs list
-- Section 5: `.rex-state.json` schema (full JSON template)
+- Section 5: `.yash-state.json` schema (full JSON template)
 - Section 6: Stack detection matrix (config file → stack)
 - Section 7: Vega Gate loop with max 3 cycles
 - Section 8: Handoff file naming convention + per-mode required files + template
@@ -255,14 +255,14 @@ last_updated: 2026-04-06
 - Section 13: 5 validation scenarios for Yash to run
 - Section 14: 12 hard protocol rules (never break)
 
-**Expected impact:** Rex becomes predictable and debuggable. Every pipeline run leaves a `.rex-state.json` audit trail. Failures surface with Vex analysis instead of silent retries. Cost tracked per-project. Yash Gate is strict so nothing ships without architecture approval.
+**Expected impact:** Yash becomes predictable and debuggable. Every pipeline run leaves a `.yash-state.json` audit trail. Failures surface with Vex analysis instead of silent retries. Cost tracked per-project. Yash Gate is strict so nothing ships without architecture approval.
 
 **Next deep training:** Nova (color research mandate + competitor analysis depth)
 
-*(Updated by Mira — 2026-04-10, deep training pass 4 — Rex complete)*
+*(Updated by Mira — 2026-04-10, deep training pass 4 — Yash complete)*
 
 ### 2026-04-10: Deep Training — Nova (Operating Protocol v2)
-**Trigger:** Vega + Rex both depend on Nova's output. Previous nova.md had generic "do competitor research" instructions with no depth standard, no color mandate, no caching, no output schema.
+**Trigger:** Vega + Yash both depend on Nova's output. Previous nova.md had generic "do competitor research" instructions with no depth standard, no color mandate, no caching, no output schema.
 
 **12 decisions locked in with Yash:**
 1. Competitor count: TOP 10 DIRECT + 3-5 ADJACENT (wide scan, deep on 1-5, medium on 6-10)
@@ -312,7 +312,7 @@ last_updated: 2026-04-06
 6. Shopify: SHOPIFY CLI TEMPLATE (`npm init @shopify/app@latest -- --template=react-router`) + Boldteq additions (GDPR webhooks, billing helper, CLAUDE.md, .handoffs/)
 7. Dependencies: CORE UPFRONT (Next/React/TS/Supabase/Tailwind/shadcn/Zod/RHF/Vitest/Playwright/jest-axe/Husky), feature deps per-sprint (Stripe/Resend/Tiptap/Recharts/Framer/AI SDK)
 8. Env vars: GENERATE FULL .env.example with APP/DATABASE/AUTH/BILLING/EMAIL/SENTRY/POSTHOG/AI/DEV sections + inline comments
-9. Git: FULL INIT + Boldteq .gitignore (incl. .handoffs/, .rex-state.json, .vega-screenshots/, .nova-cache.json) + standardized first commit + gh repo create --private + main/develop branches
+9. Git: FULL INIT + Boldteq .gitignore (incl. .handoffs/, .yash-state.json, .vega-screenshots/, .nova-cache.json) + standardized first commit + gh repo create --private + main/develop branches
 10. CLAUDE.md: FULL TEMPLATE (Overview, Architecture, Data Model, Page Map, Folder Structure, Env Vars, Running Locally, Testing, Agent Routing, Known Issues)
 11. .handoffs/: CREATE + gitignore + README.md (naming convention + handoff format + memory mirror note)
 12. Playwright: FULL DAY 1 SETUP — playwright.config.ts (5 device projects) + scripts/vega-review.ts (4 viewports × 2 color schemes × N routes → .vega-screenshots/[timestamp]/)
@@ -356,7 +356,7 @@ last_updated: 2026-04-06
 - ✅ patterns/_archive/lovable/ created
 
 **All 21 agents retrained (migration footer appended):**
-- Phase 2 critical (deep rewrites): Rex, Arya, Riko, Koda, Bolt, Sage, Vega, Luna, Hawk, Vex
+- Phase 2 critical (deep rewrites): Yash, Arya, Riko, Koda, Bolt, Sage, Vega, Luna, Hawk, Vex
 - Phase 3 light touch: Nova, Quill, Zeph, Mira, Scout, Atlas, Ledger, Echo, Orbit, Pulse, Verdict
 
 **Deep training decisions locked:**
@@ -374,7 +374,7 @@ last_updated: 2026-04-06
 - Zeph cross-reference to archived lovable-execution-model.md fixed → nextjs-production-infra.md
 - All lingering Lovable references in Koda are inside legacy sections explicitly superseded by its footer
 
-**Impact:** Every new Boldteq SaaS from 2026-04-10 forward ships on Stack A. No exceptions. Rex detects stack via file markers (`railway.toml` + `next.config.ts` → Stack A; `shopify.app.toml` → Stack B; `vite.config.ts` + port 8080 → legacy Lovable maintenance only).
+**Impact:** Every new Boldteq SaaS from 2026-04-10 forward ships on Stack A. No exceptions. Yash detects stack via file markers (`railway.toml` + `next.config.ts` → Stack A; `shopify.app.toml` → Stack B; `vite.config.ts` + port 8080 → legacy Lovable maintenance only).
 
 **System score:** 99 → 99.5/100 (migration complete, agents aligned, zero forbidden stacks in active paths)
 **Agents score:** 97 → 98/100
@@ -420,7 +420,7 @@ last_updated: 2026-04-06
 **Remaining opportunities for future training passes:**
 - Codify the `.handoffs/` directory structure in CLAUDE.md as a first-class pattern
 - Build integration tests that validate agent outputs match their handoff formats
-- Create a "new build dry-run" to validate the full Scout → Atlas → Nova → Ledger → Arya → Rex → Koda pipeline end-to-end on a practice idea
+- Create a "new build dry-run" to validate the full Scout → Atlas → Nova → Ledger → Arya → Yash → Koda pipeline end-to-end on a practice idea
 - Customize Cowork skills (brand-voice, engineering, sales, etc.) with Boldteq context — user declined this scope for this session
 
 *(Logged by Mira — 2026-04-10 Phase 3 deep training session)*
@@ -455,7 +455,7 @@ Report: `outputs/audit-2026-04-11/report.md` (mirrored to `agents/audit-2026-04-
 - Inline Auto-Fix Loop (max 3 retries → escalate)
 - Inline Smart Defaults table (10 default values to avoid "ask user" friction)
 - First-Output Quality Anchor
-- Escalation Triggers to Rex
+- Escalation Triggers to Yash
 - References to `validation-gates.md` + `universal-auto-fix-loop.md` + `universal-smart-defaults.md`
 
 ### P1 Deep Expansions
@@ -489,7 +489,7 @@ Report: `outputs/audit-2026-04-11/report.md` (mirrored to `agents/audit-2026-04-
 ### Gaps still open
 - Mira structured bug-memory ingestion schema (P3, deferred)
 - Factory-wide first-output quality template GOLD examples (universal anchor added but agent-specific examples still pending)
-- Rex cost/model routing decision table (still prose)
+- Yash cost/model routing decision table (still prose)
 
 ---
 
@@ -503,7 +503,7 @@ Report: `outputs/audit-2026-04-11/report.md` (mirrored to `agents/audit-2026-04-
 
 **Root cause hypothesis:** Model sometimes emits a plan as if it were execution when tool-call budget or context pressure is high. Mira to track frequency over next 10 Koda dispatches.
 
-**Fix pattern for dispatchers (Rex / pod leads):** After every Koda dispatch on a write task, verify at least one of: (a) grep shows the expected symbol in the target file, (b) `git diff --stat` shows the expected file in the change list, (c) typecheck/build caught a new error that implies the edit landed. Handoff alone is insufficient evidence.
+**Fix pattern for dispatchers (Yash / pod leads):** After every Koda dispatch on a write task, verify at least one of: (a) grep shows the expected symbol in the target file, (b) `git diff --stat` shows the expected file in the change list, (c) typecheck/build caught a new error that implies the edit landed. Handoff alone is insufficient evidence.
 
 ### Sage — stale finding risk on concurrent writes
 

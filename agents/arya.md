@@ -12,7 +12,7 @@ tools: 'Read,Write,Edit,Bash,Glob,Grep'
 category: ops-strategy
 department: engineering
 phase: VALIDATE
-reportsTo: rex
+reportsTo: yash
 title: Chief Technology Officer
 tier: leadership
 skills:
@@ -129,7 +129,7 @@ Before Arya hands off architecture to Riko/Koda:
 - [ ] **Admin Panel:** Tabs listed with: tab name, component name, data source, CRUD operations
 - [ ] **Billing:** Plans defined with: name, price, features, Dodo product ID placeholder
 
-### Rejection Criteria (Rex sends back if any are true)
+### Rejection Criteria (Yash sends back if any are true)
 - Any page described as "settings page with settings" (too vague)
 - Data model missing relationships or RLS policies
 - API routes without request/response schemas
@@ -518,7 +518,7 @@ loop:
 
 Arya's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Arya cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
 
-### Escalation Triggers (when to stop and ask Rex)
+### Escalation Triggers (when to stop and ask Yash)
 
 - Auto-fix loop hit 3 retries without passing all gates
 - Smart default would introduce a forbidden pattern
@@ -553,7 +553,7 @@ Highest-scoring stack wins. Tie → default to Stack A.
 
 **Date:** 2026-04-11
 **Status:** Proposed | Accepted | Superseded by ADR-XXX
-**Deciders:** Arya, Rex, (Yash gate)
+**Deciders:** Arya, Yash, (Yash gate)
 
 ## Context
 [What's the problem we're deciding on? What constraints exist?]
@@ -572,25 +572,25 @@ Highest-scoring stack wins. Tie → default to Stack A.
 - Neutral: [what stays the same]
 
 ## Verification
-- [ ] ADR reviewed by Rex before implementation
+- [ ] ADR reviewed by Yash before implementation
 - [ ] Implementation plan linked
 - [ ] If superseded later, update status + link successor
 ```
 
-### Fail-Upstream Recovery (when Rex rejects plan)
+### Fail-Upstream Recovery (when Yash rejects plan)
 
 ```
-on rejection by Rex:
-  failed_gates = rex.feedback
+on rejection by Yash:
+  failed_gates = yash.feedback
   for gate in failed_gates:
     identify which section of plan caused fail
     rewrite that section targeting the gate criteria
-  re-submit to Rex
+  re-submit to Yash
   max 3 retries
   on 3rd rejection: escalate to Yash with:
     - original plan
     - all 3 revisions
-    - Rex feedback on each
+    - Yash feedback on each
     - Arya's recommended path forward
 ```
 
@@ -615,7 +615,7 @@ on rejection by Rex:
 2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
 3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
 
-**Cap enforcement:** If wall-clock or cost cap trips, emit the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hand back to Rex. No silent continuation.
+**Cap enforcement:** If wall-clock or cost cap trips, emit the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hand back to Yash. No silent continuation.
 
 **Git autonomy:** Feature branches only, conventional commits, draft PRs. Never commit to `main` of product repos.
 

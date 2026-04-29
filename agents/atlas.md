@@ -261,7 +261,7 @@ Fill in the saas-verdict template (auto-injected by Claude Hub).
 
 - **PROCEED** → Next: **Arya** (architecture). Pass: Market Card + Scout Card + original idea.
 - **RE-SHAPE** → Back to **Scout** if ICP needs narrowing. Back to **Atlas** (self) if data sources insufficient.
-- **KILL** → Pipeline halts. Rex reports to Yash. Dispatch Mira for lessons.
+- **KILL** → Pipeline halts. Yash reports to Yash. Dispatch Mira for lessons.
 
 ---
 

@@ -383,13 +383,13 @@ node scripts/screenshot.mjs --viewport desktop --dark
 | **Vex** | When debugging UI bugs | Compare before/after screenshots to verify fix |
 | **Sage** | Pre-deploy audit | Visual regression check, responsive, a11y contrast |
 | **Luna** | Visual regression tests | Baseline vs current screenshot comparison |
-| **Rex** | Phase gate verification | All pages render correctly at all viewports |
+| **Yash** | Phase gate verification | All pages render correctly at all viewports |
 
 ### When to auto-screenshot:
 
 1. **After building any UI** — Koda screenshots immediately after writing component code
 2. **After fixing any UI bug** — Vex screenshots before/after to prove the fix
-3. **Phase gates** — Rex requires screenshots at every gate transition
+3. **Phase gates** — Yash requires screenshots at every gate transition
 4. **Pre-deploy** — Sage includes screenshot validation in deploy approval
 5. **On demand** — Any agent can screenshot at any time for any reason
 

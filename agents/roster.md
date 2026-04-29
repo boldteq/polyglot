@@ -188,7 +188,7 @@ WHERE status IN ('active', 'deployed', 'probation');
 
 ## Capability Gap Detection (SQL-Based Skill Matching)
 
-When Rex calls you with a task brief, answer: "Can we do this with the current team?"
+When Yash calls you with a task brief, answer: "Can we do this with the current team?"
 
 Roster uses SQL-based skill matching with fixed thresholds (0.8 for strong coverage, 0.5 for trainable, 0.3 for baseline) to assess team readiness against required skills.
 
@@ -275,7 +275,7 @@ VALUES ($1, $2, $3, $4, now());
 
 ## Task Assignment Blocking (VETO Power)
 
-Rex MUST call `checkAssignment()` before dispatching any agent to a task.
+Yash MUST call `checkAssignment()` before dispatching any agent to a task.
 
 ### Conditions You VETO
 

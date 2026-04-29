@@ -1,7 +1,7 @@
 # Ecom Team Handoff JSON Schema v1
 
 **Date:** 2026-04-27
-**Owner:** rex (authority) + cadence (custodian)
+**Owner:** yash (authority) + cadence (custodian)
 **Status:** ENFORCING starting W4 (advisory W2-W3)
 **Replaces:** text-based markdown handoffs in `.handoffs/[from]-to-[to]-[ts].md`
 **Applies to:** all 9 ecom team agents (decoder, catalyst, elio, token, figma-synth, spark, ecom-cro, merch, sequence)
@@ -24,7 +24,7 @@ Text-based handoffs in `.handoffs/` are unparseable — Polyglot orchestration c
 type AgentId =
   | "decoder" | "catalyst" | "elio" | "token" | "figma-synth"
   | "spark" | "ecom-cro" | "merch" | "sequence"
-  | "vega" | "quill" | "rex" | "cadence";  // upstream/escalation
+  | "vega" | "quill" | "yash" | "cadence";  // upstream/escalation
 
 type Surface =
   | "pdp" | "cart" | "checkout" | "listing" | "hero"
@@ -254,7 +254,7 @@ interface EcomHandoff {
       "enum": [
         "decoder", "catalyst", "elio", "token", "figma-synth",
         "spark", "ecom-cro", "merch", "sequence",
-        "vega", "quill", "rex", "cadence"
+        "vega", "quill", "yash", "cadence"
       ]
     }
   }
@@ -293,7 +293,7 @@ interface EcomHandoff {
 | `test-result` | `catalyst` | broadcast | requires lift % + statistical gate evidence in `notes` |
 | `patch` | `tutor` | one agent | `next_steps[0].action` includes `rollback_content` reference |
 | `lifecycle-email` | `sequence` | `pod-backend` or `postmark` | `voice_scorecard >= 8` |
-| `escalation` | any | `cadence` or `rex` | severity must include `critical` or `high` |
+| `escalation` | any | `cadence` or `yash` | severity must include `critical` or `high` |
 
 ---
 

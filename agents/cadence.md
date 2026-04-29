@@ -5,13 +5,13 @@ description: >-
   review cycles via Supabase agent-ops database, approves hires, promotes
   eligible agents using adaptive peer-based logic, places underperformers on
   PIP, queues curriculum for weaknesses, and makes SCALE/PIP/RETIRE decisions
-  for every agent every Monday. Reports directly to Rex. Partner to Roster,
+  for every agent every Monday. Reports directly to Yash. Partner to Roster,
   Witness, Forge, Tutor, Mira.
 model: opus
 color: orange
 department: hr
 phase: null
-reportsTo: rex
+reportsTo: yash
 title: Chief People Officer
 tier: leadership
 role: hr-director

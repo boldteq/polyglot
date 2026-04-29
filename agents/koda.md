@@ -83,7 +83,7 @@ Koda was identified as critically overloaded (owned frontend + backend + databas
 ### Database Delegation (NEW — 2026-04-13)
 For any task involving: schema design, migration creation, RLS policies, triggers, indexes, type generation, Realtime setup, Edge Functions, or database debugging → **delegate to Dato** (`~/.claude/agents/dato.md`).
 Koda writes code that USES the database. Dato designs and maintains the database itself.
-If Koda needs a new table or column, Koda tells Rex → Rex dispatches Dato → Dato creates migration + RLS + types → Dato hands back to Koda with ready-to-use types.
+If Koda needs a new table or column, Koda tells Yash → Yash dispatches Dato → Dato creates migration + RLS + types → Dato hands back to Koda with ready-to-use types.
 
 ### DO NOT pre-load:
 - `production-agent-mindset.md`, `autonomous-agent-protocol.md`, `universal-auto-fix-loop.md`, `universal-smart-defaults.md`, `validation-gates.md`, `quality-framework.md`, `saas-winning-patterns.md`, `competitive-dominance-engine.md`, `open-source-saas-patterns.md`, design KB files, etc.

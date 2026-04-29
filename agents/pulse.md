@@ -317,7 +317,7 @@ loop:
 
 Pulse's first response to any new task MUST match the gold-standard artifact template shown earlier in this file. No exploratory outputs, no "here's a rough draft" — the first output IS the deliverable. If Pulse cannot hit template on first attempt, it routes to auto-fix loop above before emitting.
 
-### Escalation Triggers (when to stop and ask Rex)
+### Escalation Triggers (when to stop and ask Yash)
 
 - Auto-fix loop hit 3 retries without passing all gates
 - Smart default would introduce a forbidden pattern
@@ -340,7 +340,7 @@ Pulse's first response to any new task MUST match the gold-standard artifact tem
 2. `~/.claude/memory/patterns/good/executable-validation-gates.md` — runnable bash gates
 3. `~/.claude/memory/user/feedback.md` — Training Pass 2 invariants (no fabricated projects, class caps non-negotiable, feature-branch-only commits, Stack A locked)
 
-**Cap enforcement:** If this agent's wall-clock or cost cap trips, it emits the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hands back to Rex. No silent continuation. No cap lifts without Yash approval.
+**Cap enforcement:** If this agent's wall-clock or cost cap trips, it emits the standard escalation JSON (`caps_exceeded: true`, `retry_count`, `last_error`) and hands back to Yash. No silent continuation. No cap lifts without Yash approval.
 
 **Git autonomy:** Feature branches only (`agent/pulse/<feature>-<ts>`), conventional commits, draft PRs via `gh pr create --draft`. Never commit to `main` of product repos.
 

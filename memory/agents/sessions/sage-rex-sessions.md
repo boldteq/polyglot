@@ -1,11 +1,11 @@
 ---
-name: Sage & Rex Session Detail
-description: Detailed per-session performance logs for Sage and Rex
+name: Sage & Yash Session Detail
+description: Detailed per-session performance logs for Sage and Yash
 type: metrics
 last_updated: 2026-04-06
 ---
 
-# Sage & Rex — Detailed Session Logs
+# Sage & Yash — Detailed Session Logs
 
 ---
 
@@ -17,7 +17,7 @@ Correctly identified GDPR data cleanup gap, missing DB indexes, hardcoded secret
 
 ---
 
-## Rex (Orchestration / UI Audit)
+## Yash (Orchestration / UI Audit)
 
 ### 2026-04-03 — Pinzo — Full UI audit + widget redesign
 **Output Quality:** clean | **Retries:** 0

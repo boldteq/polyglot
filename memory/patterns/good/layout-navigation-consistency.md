@@ -4,7 +4,7 @@
 > Problem: Pages render without sidebar/navigation, breaking app consistency
 > Root cause: No enforced layout wrapper at router level — each page must manually include sidebar
 > Applies to: ALL stacks (Lovable/Vite, Next.js, Shopify, any app with sidebar navigation)
-> Agents: Koda (build), Vex (debug), Luna (test), Sage (audit), Rex (gate)
+> Agents: Koda (build), Vex (debug), Luna (test), Sage (audit), Yash (gate)
 > Last updated: 2026-04-05
 
 ---
@@ -299,8 +299,8 @@ grep -n "path:" src/components/JobSidebar.tsx  # or wherever nav items are defin
 - **Pre-deploy check:** Verify every registered route has sidebar wrapper (except known public routes).
 - **Cross-reference audit:** Compare route count vs sidebar nav item count. They should match (minus public routes).
 
-### Rex (Orchestrator)
-- **Phase gate:** After Koda finishes any page work, Rex verifies: "Does every authenticated route render with sidebar and header?" If not → send back to Koda.
+### Yash (Orchestrator)
+- **Phase gate:** After Koda finishes any page work, Yash verifies: "Does every authenticated route render with sidebar and header?" If not → send back to Koda.
 - **Never accept "page is done"** without layout verification proof.
 
 ---

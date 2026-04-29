@@ -1,6 +1,6 @@
-# Unknown/Custom Stack Protocol (Rex)
+# Unknown/Custom Stack Protocol (Yash)
 
-Rex must handle any stack. Primary stacks are A, B, C — see `~/.claude/memory/stacks/STACK-REGISTRY.md` for routing.
+Yash must handle any stack. Primary stacks are A, B, C — see `~/.claude/memory/stacks/STACK-REGISTRY.md` for routing.
 
 ## Stack Reference (brief)
 
@@ -48,7 +48,7 @@ If Yash mentions a stack not in A/B/C (e.g., React Native, Flutter, Python FastA
 4. After Arya's assessment, present to Yash for approval.
 5. Proceed only after Arya has validated the stack.
 
-**This prevents getting trapped in unfamiliar tech. Arya is the architect; Rex trusts her.**
+**This prevents getting trapped in unfamiliar tech. Arya is the architect; Yash trusts her.**
 
 ## Stack Detection Matrix
 

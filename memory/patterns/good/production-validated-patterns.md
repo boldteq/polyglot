@@ -12,7 +12,7 @@ last_updated: 2026-04-09
 Every pattern in this file comes from a production open-source SaaS app. No hallucinations. Every code example is real, tested, and battle-hardened.
 
 **Load by agent:**
-- [AGENT: Rex] — Automated rollback, smoke tests, deployment pipeline
+- [AGENT: Yash] — Automated rollback, smoke tests, deployment pipeline
 - [AGENT: Bolt] — CI/CD, deployment, rollback, health checks
 - [AGENT: Luna] — E2E testing, smoke test, test structure
 - [AGENT: Sage] — Security headers, RLS testing, quality gates, code review
@@ -25,7 +25,7 @@ Every pattern in this file comes from a production open-source SaaS app. No hall
 
 ---
 
-## 1. Automated Rollback & Error Recovery [AGENT: Rex, Bolt]
+## 1. Automated Rollback & Error Recovery [AGENT: Yash, Bolt]
 
 ### Pattern: GitHub Actions Auto-Rollback on Deployment Failure
 
@@ -231,7 +231,7 @@ export async function GET() {
 
 ---
 
-## 2. Smoke Test & Functional Verification [AGENT: Luna, Bolt, Rex]
+## 2. Smoke Test & Functional Verification [AGENT: Luna, Bolt, Yash]
 
 ### Pattern: Playwright Smoke Test Suite
 
@@ -1889,7 +1889,7 @@ NEXT_PUBLIC_URL=http://localhost:3000 # or https://app.com
 - **[AGENT: Arya]** — Architecture decisions (ADRs, database design, migration strategy)
 - **[AGENT: Quill]** — Writing content (changelog, email sequences, error messages)
 - **[AGENT: Riko]** — Project setup (folder structure, ESLint config, .env)
-- **[AGENT: Rex]** — Orchestrating builds (deployment pipeline, rollback, smoke tests)
+- **[AGENT: Yash]** — Orchestrating builds (deployment pipeline, rollback, smoke tests)
 
 ---
 

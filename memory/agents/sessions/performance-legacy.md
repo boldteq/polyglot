@@ -23,7 +23,7 @@ type: metrics
 **Output Quality:** good (caught real issues, one false lead from stale memory)
 **Retries Required:** 1 (GDPR TOML attempt -> Partner Dashboard correction)
 
-### 2026-04-03 -- Pinzo -- Rex Performance
+### 2026-04-03 -- Pinzo -- Yash Performance
 **Task:** Full UI audit + widget redesign
 **Claimed output:** 100% Polaris compliance, widget redesign with visual grouping, storefront sync
 **Actual output:** All claims verified -- raw HTML replaced, widget redesigned with 4 grouped sections, Liquid template updated in sync
@@ -57,7 +57,7 @@ type: metrics
 - Best at: Identifying real compliance gaps (GDPR data cleanup, CSS sanitization, hardcoded secrets)
 - Note: The GDPR TOML error was caused by incorrect memory, not agent logic. After memory correction, Sage's finding quality was high.
 
-### Rex (Orchestration / UI Audit)
+### Yash (Orchestration / UI Audit)
 - Sessions tracked: 1
 - Clean first-try rate: 100% (1/1)
 - Avg retries: 0
@@ -190,7 +190,7 @@ type: metrics
 - Best at: Identifying real compliance gaps (GDPR data cleanup, CSS sanitization, hardcoded secrets)
 - Note: The GDPR TOML error was caused by incorrect memory, not agent logic.
 
-### Rex (Orchestration / UI Audit)
+### Yash (Orchestration / UI Audit)
 - Sessions tracked: 1
 - Clean first-try rate: 100% (1/1)
 - Avg retries: 0

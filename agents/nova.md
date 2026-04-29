@@ -11,7 +11,7 @@ tools: 'Read,Bash,Glob,Grep,WebSearch,WebFetch'
 category: research
 department: research
 phase: BUILD
-reportsTo: rex
+reportsTo: yash
 title: Chief Research Officer
 tier: leadership
 skills:

@@ -1,4 +1,4 @@
-# Quality Gate Checklist (Rex — Before "Done")
+# Quality Gate Checklist (Yash — Before "Done")
 
 ## Technical Checklist (Sage verifies)
 
@@ -27,7 +27,7 @@
 - [ ] GDPR (if applicable): privacy policy, deletion endpoint, data retention policy
 - [ ] Documentation: CLAUDE.md created with architecture decisions
 
-## Process Checklist (Rex verifies)
+## Process Checklist (Yash verifies)
 
 - [ ] All agents executed in correct order (no skips)
 - [ ] All handoffs used structured format
@@ -38,7 +38,7 @@
 - [ ] On-call coverage confirmed (if launch)
 - [ ] Launch communications ready (if Mode E)
 
-## Functional Verification Checklist (Rex runs before completion)
+## Functional Verification Checklist (Yash runs before completion)
 
 - [ ] App starts with `pnpm dev` and responds on localhost
 - [ ] ALL pages from Arya's architecture load with real content (no empty stubs)

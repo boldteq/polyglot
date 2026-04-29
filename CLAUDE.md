@@ -44,7 +44,7 @@ Each completed project trains the agent team so the next one builds faster.
 
 **Org scale-up plan in motion:** `~/.claude/plans/hr-team-agent-can-melodic-dolphin.md`
 
-Current: 30 agents → Target: 54 agents in 6 weekly cohorts of 5. Decompositions of overloaded agents (Quill, Koda, Vega, Rex) completed Week 0 to release token-efficiency capacity BEFORE new specialists hire.
+Current: 30 agents → Target: 54 agents in 6 weekly cohorts of 5. Decompositions of overloaded agents (Quill, Koda, Vega, Yash) completed Week 0 to release token-efficiency capacity BEFORE new specialists hire.
 
 **New departments after scale-up:**
 - **Engineering Teams** — 3 stack-specific engineering teams (Web Platform Team: Next.js, Embedded Apps Team: Shopify Native, Storefront Apps Team: Shopify External). Each team has 5 specialists (Frontend, Backend, DB, Tester, Reviewer). Web Platform Team repurposes Koda/Dato/Luna/Sage; Embedded + Storefront Apps Teams are net-new.
@@ -66,7 +66,7 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 | VALIDATE | `arya` | Arya — Architecture | System design, data model, stack decisions |
 | VALIDATE | `riko` | Riko — Project Setup | Scaffolding from Arya's plan |
 | VALIDATE | `ledger` | Ledger — Pricing & Economics | Pricing tiers, LTV/CAC, payback period |
-| EXECUTIVE | `rex` | Rex — Chief Executive Officer | Portfolio + new product approvals + 30/90d verdicts only (NARROWED 2026-04-18) |
+| EXECUTIVE | `yash` | Yash — Chief Executive Officer | Portfolio + new product approvals + 30/90d verdicts only (NARROWED 2026-04-18) |
 | BUILD | `nova` | Nova — Chief Research Officer | Competitive intelligence during build |
 | BUILD | `koda` | Koda — Senior Backend Engineer (Web Platform) | Stack A backend ONLY: Next.js API routes, Server Components, integrations (NARROWED 2026-04-18) |
 | BUILD | `dato` | Dato — Principal Database Architect | Schema, migrations, RLS, triggers, indexes, Realtime, Edge Functions, DB debugging |
@@ -111,7 +111,7 @@ Full org chart: `~/.claude/memory/patterns/good/org-structure-v2.md`. Source of 
 - Market + business validation → `/validate-only` (Atlas → Arya → Riko → Ledger, 1 week)
 - Pre-launch gate → `/launch-check` (Echo → Mira → Bolt → Hawk)
 - Post-launch decision → `/verdict-30d` (Orbit → Pulse → Verdict)
-- New project build → dispatched dept Chief runs the pipeline; Rex only on Mode A new-product approval
+- New project build → dispatched dept Chief runs the pipeline; Yash only on Mode A new-product approval
 
 ---
 
@@ -186,9 +186,9 @@ Full org chart: `~/.claude/memory/patterns/good/org-structure-v2.md`. Source of 
 
 ---
 
-**7. EXECUTIVE (Lead: rex — Chief Executive Officer)**
+**7. EXECUTIVE (Lead: yash — Chief Executive Officer)**
 
-  - `rex` (portfolio decisions, new-product approval, kill gates, 30/90-day verdicts only)
+  - `yash` (portfolio decisions, new-product approval, kill gates, 30/90-day verdicts only)
 
 ---
 
@@ -284,11 +284,11 @@ Yash pays $200/mo. Every wasted token is wasted money.
 - Do all the work. Say almost nothing about it.
 
 **Model tier discipline (2026-04-22 — Haiku Phase 1):**
-Full routing table: `~/.claude/memory/patterns/good/rex-model-routing.md`.
+Full routing table: `~/.claude/memory/patterns/good/yash-model-routing.md`.
 
 | Tier | Model | Current agents |
 |------|-------|----------------|
-| **DEEP** (never downgrade) | `claude-opus-4-6` | Arya, Rex, Sage, Vex, Verdict |
+| **DEEP** (never downgrade) | `claude-opus-4-6` | Arya, Yash, Sage, Vex, Verdict |
 | **FAST** (default for builders) | `claude-sonnet-4-6` | Koda, Dato, Vega, Pixel, Pulse, Luna, Bolt, Hawk, Zeph, Echo, Orbit, Quill, Scout, Nova, Ledger, Atlas, Cadence, Forge, Tutor, Mira, Harvest |
 | **CHEAP** (back-office) | `claude-haiku-4-5-20251001` | **Witness, Roster** |
 

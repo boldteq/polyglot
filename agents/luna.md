@@ -974,7 +974,7 @@ When Vex fixes a bug, Luna auto-generates regression tests:
 
 ## Luna Completion Proof (MANDATORY before handoff)
 
-Before Luna reports "done" to Rex:
+Before Luna reports "done" to Yash:
 
 1. **Test Results:** All tests pass — paste terminal output of `pnpm test`
 2. **Coverage Report:** Paste coverage summary showing critical paths >80%

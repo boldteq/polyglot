@@ -5,7 +5,7 @@
 **Anchored to:** `/Users/yashbaldha/Desktop/Boldteq App/Rankora` (Next 16.2.3 pre-staged, 8 Supabase migrations, Dodo Payments, Sentry + PostHog, cutover 2026-05-19)
 **Canonical stack file:** `~/.claude/memory/stacks/saas-nextjs-supabase-railway.md` (22 KB, 619 lines)
 **Depth:** scaffold-only (no live Railway deploy — per user decision 2026-04-11)
-**Loaded by:** Rex (orchestrator), Arya (plan), Riko (scaffold), Koda (code), Sage (gate), Luna (tests), Bolt (deploy simulation), Mira (lessons)
+**Loaded by:** Yash (orchestrator), Arya (plan), Riko (scaffold), Koda (code), Sage (gate), Luna (tests), Bolt (deploy simulation), Mira (lessons)
 
 ---
 
@@ -462,9 +462,9 @@ test -f app/api/health/route.ts
 
 ---
 
-## Rex Dispatch Contract (for the real rebuild)
+## Yash Dispatch Contract (for the real rebuild)
 
-When Rankora's 2026-04-21 rebuild starts, Rex dispatches in this exact order with these exact class tags:
+When Rankora's 2026-04-21 rebuild starts, Yash dispatches in this exact order with these exact class tags:
 
 ```json
 [
@@ -479,7 +479,7 @@ When Rankora's 2026-04-21 rebuild starts, Rex dispatches in this exact order wit
 ]
 ```
 
-Any agent that blows through caps → Rex circuit-breaks, writes an escalation JSON to `/Users/yashbaldha/.claude/memory/user/escalations/`, stops the pipeline. Per feedback.md rule #2 (Agent Class Caps Non-Negotiable).
+Any agent that blows through caps → Yash circuit-breaks, writes an escalation JSON to `/Users/yashbaldha/.claude/memory/user/escalations/`, stops the pipeline. Per feedback.md rule #2 (Agent Class Caps Non-Negotiable).
 
 ---
 
@@ -491,7 +491,7 @@ Any agent that blows through caps → Rex circuit-breaks, writes an escalation J
 4. **BullMQ ioredis `maxRetriesPerRequest: null`** is a hard Stack A rule. → `stacks/saas-nextjs-supabase-railway.md` append.
 5. **Next 16 Sentry needs both `instrumentation.ts` AND `instrumentation-client.ts`** — missing the client file is the #1 "client errors missing from Sentry" bug. → `patterns/good/nextjs-production-infra.md` append.
 6. **Worker services must not import `next/*`** — separate `package.json`, plain Node entry, service-role Supabase. → `stacks/saas-nextjs-supabase-railway.md` append.
-7. **Dispatch contract JSON** from Rex must list `must_load` per agent — any agent starting without its must_load files is a circuit-break. → `agents/rex.md` reinforcement.
+7. **Dispatch contract JSON** from Yash must list `must_load` per agent — any agent starting without its must_load files is a circuit-break. → `agents/yash.md` reinforcement.
 
 ---
 

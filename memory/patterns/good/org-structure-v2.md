@@ -1,7 +1,7 @@
 # Boldteq Org Structure v2 — Department + Sub-Department Hierarchy
 
 **Date:** 2026-04-27
-**Owner:** rex (strategic) + cadence (HR custodian)
+**Owner:** yash (strategic) + cadence (HR custodian)
 **Replaces:** flat 6-department structure (executive / engineering / creative / growth / research / hr)
 **Scope target:** scale 42 agents → 100+ without losing clarity
 **Source of truth fields:** `~/.claude/org/registry.json` per-agent `department` + `subDepartment` + `pod` (optional)
@@ -18,7 +18,7 @@ At 42 agents the flat 6-department view already mixes incompatible functions: "c
 
 | # | Department | Lead | Sub-departments | Current size | Target @ 100 |
 |---|-----------|------|-----------------|--------------|--------------|
-| 1 | `executive` | rex | — | 1 | 1-2 |
+| 1 | `executive` | yash | — | 1 | 1-2 |
 | 2 | `engineering` | arya | pod-a, pod-b, pod-c, platform, architecture, quality | 13 | 30+ |
 | 3 | `design` | vega | public-pages, ecom, dashboard, design-system, deliverables | 5 | 12+ |
 | 4 | `content-seo` | quill | marketing-copy, cro-copy, lifecycle-email, app-store, developer-docs, seo | 5 | 12+ |
@@ -33,7 +33,7 @@ At 42 agents the flat 6-department view already mixes incompatible functions: "c
 ## Full Hierarchy (current 42 + planned cohorts)
 
 ### 1. EXECUTIVE
-- `rex` — Chief Executive Officer (top, no reports)
+- `yash` — Chief Executive Officer (top, no reports)
 
 ### 2. ENGINEERING (Lead: arya — Chief Technology Officer)
 
@@ -96,7 +96,7 @@ JSX→.fig + Code Connect
 - `figma-synth` — Design Tooling Engineer
 
 #### sub-dept: `lead`
-- `vega` — Chief Design Officer (cross-dept overseer; reports to rex)
+- `vega` — Chief Design Officer (cross-dept overseer; reports to yash)
 
 ### 4. CONTENT & SEO (Lead: quill — Chief Marketing Officer)
 
@@ -214,7 +214,7 @@ reportsTo: vega
 
 | Agent | OLD department | NEW department | NEW subDepartment | pod |
 |-------|---------------|----------------|-------------------|-----|
-| rex | executive | executive | (none) | null |
+| yash | executive | executive | (none) | null |
 | arya | engineering | engineering | architecture | null |
 | vex | engineering | engineering | architecture | null |
 | koda | engineering | engineering | pod-a | pod-a |

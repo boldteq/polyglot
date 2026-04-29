@@ -904,7 +904,7 @@ curl https://app.[domain].com/api/health
 ```
 
 **Post-rollback protocol:**
-1. Mark in `.rex-state.json`: `rollbacks: [{ service, env, previous, current, reason, timestamp }]`
+1. Mark in `.yash-state.json`: `rollbacks: [{ service, env, previous, current, reason, timestamp }]`
 2. Dispatch Vex to root cause
 3. Create `ROLLBACK-[date].md` in `.handoffs/` with details
 4. Mira logs to `memory/incidents/`

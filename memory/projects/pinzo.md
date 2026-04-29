@@ -87,7 +87,7 @@ created: 2026-04-03
 ## Session History
 
 ### 2026-04-03: Compliance Audit + UI Overhaul
-**Agents:** Sage (audit), Rex (UI audit + widget redesign), Koda (implementation)
+**Agents:** Sage (audit), Yash (UI audit + widget redesign), Koda (implementation)
 **Work:**
 - Full Shopify compliance audit (GDPR, rate limiting, security)
 - Rate limiting on all 3 public API routes

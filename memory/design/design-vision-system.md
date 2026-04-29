@@ -29,7 +29,7 @@ With this system:
 Every project gets a `design-vision.md` file in its root. This is the single source of truth for visual direction.
 
 ### Auto-Generation Trigger
-When Rex dispatches Vega for the FIRST time on a new project, Vega MUST:
+When Yash dispatches Vega for the FIRST time on a new project, Vega MUST:
 1. Check if `design-vision.md` exists in the project root
 2. If NO → generate it using the protocol below
 3. If YES → load it before any design work
@@ -199,7 +199,7 @@ VEGA AUTO-VISION PROTOCOL:
 
 6. Override with Yash's input if provided
 7. Write design-vision.md to project root
-8. Announce to Rex: "Design Vision Brief created — [3-word summary]"
+8. Announce to Yash: "Design Vision Brief created — [3-word summary]"
 ```
 
 ---
@@ -340,7 +340,7 @@ DARK / DEVELOPER
 
 ## Part 5: How Agents Consume the Design Vision
 
-### Rex (Orchestrator)
+### Yash (Orchestrator)
 - After Nova completes research, check if design-vision.md exists
 - If not, dispatch Vega to create it BEFORE any build work
 - Include design-vision.md in every Vega/Koda dispatch context

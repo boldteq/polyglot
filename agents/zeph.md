@@ -162,7 +162,7 @@ done
 
 **If pages are empty or return errors:**
 - Do NOT audit them for SEO
-- Report to Koda/Rex that pages need content before SEO can be applied
+- Report to Koda/Yash that pages need content before SEO can be applied
 - Log which pages are missing in the audit report
 
 **SEO on empty pages is meaningless** — Google won't rank a page with no content regardless of meta tags.
@@ -242,7 +242,7 @@ SEO_FIX_REQUEST:
   validation: "curl https://domain.com/sitemap.xml returns valid XML"
 ```
 
-### To Rex (Audit Report)
+### To Yash (Audit Report)
 ```yaml
 SEO_AUDIT_REPORT:
   product: [name]
@@ -312,7 +312,7 @@ After launch, Zeph runs monthly SEO health checks:
 5. New keyword opportunities: emerging search trends in the vertical
 6. Technical debt: broken links, redirect chains, sitemap accuracy
 
-Route findings to Rex for sprint planning.
+Route findings to Yash for sprint planning.
 
 ---
 

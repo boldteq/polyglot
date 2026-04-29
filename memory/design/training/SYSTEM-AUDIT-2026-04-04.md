@@ -26,7 +26,7 @@
 4. **Design core tokens are production-ready** — 952 code examples, copy-paste Tailwind/CSS
 5. **Agent pipeline is well-defined** — 5 operating modes (A-E), phase gates, severity levels
 6. **Koda + Sage have design references** — Both load design knowledge before building/reviewing
-7. **Lovable execution rules** are embedded in Rex/Koda/Riko (atomic changes, self-correcting loops)
+7. **Lovable execution rules** are embedded in Yash/Koda/Riko (atomic changes, self-correcting loops)
 
 ---
 
@@ -102,11 +102,11 @@
 ## MEDIUM GAPS (Priority 3 — Ongoing Improvement)
 
 ### GAP 9: Phase Gate Automation
-**Problem:** Rex verifies phase gates manually — subjective pass/fail
+**Problem:** Yash verifies phase gates manually — subjective pass/fail
 **Fix:** Create a shell script that automates: npm run build, Lighthouse audit, responsive check, placeholder scan
 
 ### GAP 10: Lovable Rules Not in All Agents
-**Problem:** Only Rex/Koda/Riko have Lovable execution rules; Bolt/Hawk have zero
+**Problem:** Only Yash/Koda/Riko have Lovable execution rules; Bolt/Hawk have zero
 **Fix:** Add Lovable-grade verification to Bolt (pre-deploy) and Hawk (post-launch)
 
 ### GAP 11: Content Section Empty
@@ -175,7 +175,7 @@ Last updated: **2026-04-04**
 | Gap | Status | Training Applied |
 |-----|--------|-----------------|
 | **GAP 5:** 8 agents missing design knowledge refs | ✅ FIXED | All 8 agents now reference design-vision.md, design tokens, spacing-layout |
-| **GAP 7:** Inter-agent handoff undefined | ✅ FIXED | All 21 agents have `.handoffs/` protocol. Rex documents full chain. |
+| **GAP 7:** Inter-agent handoff undefined | ✅ FIXED | All 21 agents have `.handoffs/` protocol. Yash documents full chain. |
 | **GAP 8:** Memory feedback loop missing | ✅ FIXED | All agents record to Claude Hub learning API. Mira pulls + analyzes. |
 | **GAP 10:** Lovable rules not in all agents | ✅ PARTIAL | Bolt has Lovable deploy rules. Hawk has post-launch Lovable rules. |
 | **GAP 1:** 9 missing design patterns | ⏳ PENDING | Not addressed in agent training — needs design knowledge base work |
@@ -235,7 +235,7 @@ Dark mode + responsive examples added to all 13 remaining pattern files:
 | Sage | ✅ DONE (earlier 2026-04-10) | P0 | Quality gate — must not leak false positives |
 | Arya | ✅ DONE (earlier 2026-04-10) | P0 | Design-aware architecture + sprint calibration |
 | **Vega** | ✅ **DONE (2026-04-10 pass 4)** | **P1** | **0 sessions, sits on Nova→Arya→Vega→Koda critical path** |
-| **Rex** | ✅ **DONE (2026-04-10 pass 4)** | **P1** | **Orchestrator — mode detection + gates + state + parallelism + cost routing + auto-launch** |
+| **Yash** | ✅ **DONE (2026-04-10 pass 4)** | **P1** | **Orchestrator — mode detection + gates + state + parallelism + cost routing + auto-launch** |
 | **Nova** | ✅ **DONE (2026-04-10 pass 4)** | **P1** | **10+3-5 competitors, mandatory color map, 4-tier sources, threat+weakness matrices, JSON+MD output** |
 | **Riko** | ✅ **DONE (2026-04-10 pass 4)** | **P1** | **Scaffold ownership split w/ Vega + full day 1 + CI workflows + Lovable/Shopify rules + .env + git init + CLAUDE.md + .handoffs/ + Playwright** |
 | Quill | ⏳ PENDING | P2 | Landing page + email copy standards |
@@ -275,18 +275,18 @@ Dark mode + responsive examples added to all 13 remaining pattern files:
 **10 hard protocol rules** (never break): no composition without niche study, no spec without all 4 states, no review without screenshots, no tokens without AA verification, no Shopify design without Polaris, no advisory-only reviews, no silent retries, no Figma deliverables, no animation without reduced-motion, no shipping below WCAG 2.1 AA.
 
 ### Updated System Score: 96/100 → 97/100 → 98/100 → **98.5/100**
-- Agents: 94 → 95 → 96 → **96.5** (Vega + Rex + Nova deep training)
+- Agents: 94 → 95 → 96 → **96.5** (Vega + Yash + Nova deep training)
 - Remaining P1-P3: 15 agents still need per-agent deep training passes
 
-### Rex Deep Training Details (2026-04-10)
+### Yash Deep Training Details (2026-04-10)
 
-**12 decisions locked in → ~550 lines added to rex.md:**
+**12 decisions locked in → ~550 lines added to yash.md:**
 
 1. **Mode detection:** Pattern match + confirm (3-step protocol, keyword matrix, default to most destructive on ambiguity)
 2. **Yash Gate:** Strict — always pause after Arya, explicit approve/revise/halt options, no bypass
-3. **Failure handling:** Retry once → Vex → halt (max 3 cycles, full retry log in .rex-state.json)
+3. **Failure handling:** Retry once → Vex → halt (max 3 cycles, full retry log in .yash-state.json)
 4. **Parallelism:** Parallel where safe (explicit dependency graph, Koda+Quill and Luna+Sage run concurrent)
-5. **State tracking:** `.rex-state.json` per project (full schema: agents/gates/failures/retries/cost, survives restarts)
+5. **State tracking:** `.yash-state.json` per project (full schema: agents/gates/failures/retries/cost, survives restarts)
 6. **Stack detection:** File marker matrix (shopify.app.toml → B, vite+supabase+pages → A-Lovable, next.config → A, etc.)
 7. **Vega Gate:** Strict — no deploy without PASS, max 3 review cycles, exception for small Mode C fixes
 8. **Handoff files:** `.handoffs/` at project root (gitignored, per-mode required files, memory mirror on close)
@@ -332,7 +332,7 @@ Dark mode + responsive examples added to all 13 remaining pattern files:
 6. **Shopify projects:** Use official CLI template (`npm init @shopify/app@latest -- --template=react-router`) + Boldteq additions (GDPR webhooks, billing helper, CLAUDE.md, .handoffs/)
 7. **Dependency strategy:** Core upfront (Next, React, TS, Supabase, Tailwind, shadcn, Zod, RHF, Vitest, Playwright, jest-axe, Husky), feature deps per-sprint (Stripe/Resend/Tiptap/Recharts/Framer/AI SDK)
 8. **Env vars:** Generate full `.env.example` with APP/DATABASE/AUTH/BILLING/EMAIL/SENTRY/POSTHOG/AI/DEV sections + inline comments
-9. **Git:** Full init + Boldteq `.gitignore` (includes .handoffs/, .rex-state.json, .vega-screenshots/, .nova-cache.json) + standardized first commit + `gh repo create --private` + main/develop branches
+9. **Git:** Full init + Boldteq `.gitignore` (includes .handoffs/, .yash-state.json, .vega-screenshots/, .nova-cache.json) + standardized first commit + `gh repo create --private` + main/develop branches
 10. **CLAUDE.md:** Full template (Overview, Architecture, Data Model, Page Map, Folder Structure, Env Vars, Running Locally, Testing, Agent Routing, Known Issues)
 11. **.handoffs/:** Create + gitignore + README.md with naming convention + handoff format + memory mirror note
 12. **Playwright:** Full day 1 setup — playwright.config.ts (5 device projects) + scripts/vega-review.ts (4 viewports × 2 color schemes × N routes → .vega-screenshots/[timestamp]/)
@@ -342,9 +342,9 @@ Dark mode + responsive examples added to all 13 remaining pattern files:
 **12 hard protocol rules:** No partial scaffolds, no restructuring existing projects, no touching Vega-owned files, no deployment commands, no missing env vars in .env.example, no public repos without approval, no skipping build verification, no committing secrets, no feature deps upfront, no Shopify without GDPR webhooks, no Lovable restructure, no handoff dirs without Koda instructions.
 
 ### Updated System Score: 96 → 97 → 98 → 98.5 → **99/100**
-- Agents: 94 → 95 → 96 → 96.5 → **97** (Vega + Rex + Nova + Riko deep training)
+- Agents: 94 → 95 → 96 → 96.5 → **97** (Vega + Yash + Nova + Riko deep training)
 - Remaining P2-P3: 14 agents still need per-agent deep training passes
 
 **Next up:** Quill (landing page + email copy standards + SEO copy integration)
 
-*(Updated by Mira — 2026-04-10, deep training pass 4 — Vega + Rex + Nova + Riko complete)*
+*(Updated by Mira — 2026-04-10, deep training pass 4 — Vega + Yash + Nova + Riko complete)*
