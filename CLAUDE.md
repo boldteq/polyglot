@@ -146,47 +146,47 @@ Full org chart: `~/.claude/memory/patterns/good/org-structure-v2.md`. Source of 
 
 ---
 
-**3. CONTENT & SEO (Lead: quill — VP Creative, brand voice custodian)**
+**3. CONTENT & SEO (Lead: quill — Chief Marketing Officer, brand voice custodian)**
 
   *sub-dept: marketing-copy* — `quill` (landing/email/social/microcopy + brand voice ratification)
-  *sub-dept: cro-copy* — `spark` (above-fold hero/CTA, 40%+ lift), `merch` (ecom on-page: PDP body, cart microcopy, post-purchase, subscription, objections)
-  *sub-dept: lifecycle-email* — `sequence` (welcome, cart-abandon, browse-abandon, post-purchase, win-back, subscription nurture)
+  *sub-dept: cro-copy* — `spark` (Senior Conversion Copywriter, above-fold hero/CTA, 40%+ lift), `merch` (Senior Product Copywriter — ecom on-page: PDP body, cart microcopy, post-purchase, subscription, objections)
+  *sub-dept: lifecycle-email* — `sequence` (Lifecycle Email Strategist — welcome, cart-abandon, browse-abandon, post-purchase, win-back, subscription nurture)
   *sub-dept: app-store* — `serif` (Cohort 5; App Store / Shopify App Store / Product Hunt / ASO)
   *sub-dept: developer-docs* — `docsmith` (Cohort 5; API docs, SDK guides, changelogs)
-  *sub-dept: seo* — `zeph` (technical SEO, structured data, ranking)
+  *sub-dept: seo* — `zeph` (Head of SEO — technical SEO, structured data, ranking)
 
-  Cross-functional: spark/merch/sequence have `secondaryReportsTo: catalyst` (CRO Lead in growth.cro).
+  Cross-functional: spark/merch/sequence have `secondaryReportsTo: catalyst` (Director of Conversion Optimization in growth.cro).
 
 ---
 
-**4. GROWTH (Lead: echo — VP Growth + Distribution)**
+**4. GROWTH (Lead: echo — Chief Growth Officer + Distribution)**
 
-  *sub-dept: cro* — `catalyst` (CRO Lead, sub-lead), `ecom-cro` (below-fold mechanics: variants/bundles/cart/checkout/upsell), `decoder` (top-50 DTC brand teardowns, weekly intel, niche audits)
+  *sub-dept: cro* — `catalyst` (Director of Conversion Optimization, sub-lead), `ecom-cro` (Senior Funnel Strategist — variants/bundles/cart/checkout/upsell), `decoder` (Senior Brand Intelligence Analyst — top-50 DTC brand teardowns, weekly intel, niche audits)
   *sub-dept: distribution* — `echo` (channel strategy, launch sequencing, content calendar)
-  *sub-dept: market-intel* — `harvest` (multi-platform scraper: Skool, Reddit, HN, PH, Twitter, G2, Capterra)
+  *sub-dept: market-intel* — `harvest` (Market Intelligence Analyst — Skool, Reddit, HN, PH, Twitter, G2, Capterra)
   *sub-dept: email-infra* — `postmark` (Cohort 5; Resend integration, SPF/DKIM/DMARC, deliverability)
 
 ---
 
-**5. RESEARCH (Lead: nova — VP Research)**
+**5. RESEARCH (Lead: nova — Chief Research Officer)**
 
-  *sub-dept: validation* — `scout` (idea validator), `atlas` (market sizer), `ledger` (pricing + unit economics)
+  *sub-dept: validation* — `scout` (Senior Product Strategist — idea validator), `atlas` (Senior Market Analyst), `ledger` (Senior Pricing Analyst — pricing + unit economics)
   *sub-dept: market-research* — `nova` (competitive intelligence, persona extraction)
-  *sub-dept: measurement* — `orbit` (metrics architect, KPI dashboards), `pulse` (user research, interview synthesis)
-  *sub-dept: portfolio* — `verdict` (30/90-day SCALE/PIVOT/KILL decisions)
+  *sub-dept: measurement* — `orbit` (Head of Analytics — KPI dashboards), `pulse` (Senior UX Researcher — interview synthesis)
+  *sub-dept: portfolio* — `verdict` (Portfolio Strategy Director — 30/90-day SCALE/PIVOT/KILL)
 
 ---
 
-**6. HR (Lead: cadence — Head of People)**
+**6. HR (Lead: cadence — Chief People Officer)**
 
   *sub-dept: people-ops* — `cadence` (weekly review cycles, promote/PIP/retire, org health)
-  *sub-dept: hiring* — `forge` (capability gap detection, agent architecting, auto-deploy to probation)
-  *sub-dept: training* — `tutor` (bulk training cycles, patches), `mira` (lesson extraction, memory keeper)
-  *sub-dept: accountability* — `witness` (daily classification, performance), `roster` (registry source of truth, capability index)
+  *sub-dept: hiring* — `forge` (Director of Talent Acquisition — capability gap detection, agent architecting)
+  *sub-dept: training* — `tutor` (Head of Learning & Development — bulk training cycles), `mira` (Knowledge Management Lead — lesson extraction)
+  *sub-dept: accountability* — `witness` (People Analytics Lead — daily classification), `roster` (HR Operations Manager — registry source of truth)
 
 ---
 
-**7. EXECUTIVE (Lead: rex — Strategic Commander)**
+**7. EXECUTIVE (Lead: rex — Chief Executive Officer)**
 
   - `rex` (portfolio decisions, new-product approval, kill gates, 30/90-day verdicts only)
 
