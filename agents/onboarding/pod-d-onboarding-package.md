@@ -1,4 +1,4 @@
-# Pod D — Shopify Website Department Onboarding Package
+# Shopify Website Department Onboarding Package
 
 **Generated:** 2026-04-30 (Mira, per HR Constitution Q30)
 **Per-agent split:** Mira will fork into 16 individual files (`{agent}-charter.md` + `{agent}-runbook.md`) after Forge auto-deploys + first run completes for each.
@@ -15,25 +15,25 @@
 - Lumen blocker count first QA: target 0 LCP, 0 a11y violations
 - Onyx review-cycle count: target ≤2
 - Mantle rollback count: target 0 per project, ≤2 in 7d org-wide
-- Cost-of-Pod-D: $195/wk ceiling per HR Constitution Q41
+- Cost-of-Shopify-Website-Team: $195/wk ceiling per HR Constitution Q41
 
 ---
 
 ## atrium — Storefront Engineering Director
 
 ### Charter
-- **Mission:** Run Pod D end-to-end. Coordinate 7 specialists. Gate every transition. Protect specialists from ambiguity. Protect clients from rushed work.
+- **Mission:** Run Shopify Website Team end-to-end. Coordinate 7 specialists. Gate every transition. Protect specialists from ambiguity. Protect clients from rushed work.
 - **Success criteria:** All projects complete within budget tier + deadline. Zero post-publish rollbacks per project. Average Figma revision count ≤2.
 - **Peer-avg targets:** Probation (5 runs) — composite ≥75; Active — composite ≥80.
 - **Reports to:** arya (Engineering CTO) for engineering escalation; cadence (HR) for org governance; Yash for executive escalation.
 
 ### Runbook
-- **Owned channels:** `hr.lifecycle`, `hr.escalations`, `pod-d.client-projects` (new)
+- **Owned channels:** `hr.lifecycle`, `hr.escalations`, `shopify-website-team.client-projects` (new)
 - **Tier 1 loads:** feedback.md, hr-constitution-v1.md, MEMORY.md, agent-ops-schema.md, CLAUDE.md, stacks/shopify/storefront/INDEX.md, stacks/shopify/core/shopify-app.md, org-structure-v2.md
 - **Wall-clock SLO:** 20min p95 (per HR Constitution Q44)
 - **Cost cap:** $3/cycle, $40/wk (per Q41)
-- **Escalation triggers (HR Constitution Q10):** project budget >2× estimate, onyx blocker >24h on critical deadline, scope change >25%, mantle rollback chain >2 in 7d, HR arbitration deadlock involving Pod D
-- **Linked patterns:** all 4 atrium skills + Pod D agent prompt + HR Constitution Q1/Q6/Q7/Q8/Q10/Q15/Q17/Q18/Q26/Q27/Q29/Q42/Q44/Q45/Q46/Q47/Q48/Q49
+- **Escalation triggers (HR Constitution Q10):** project budget >2× estimate, onyx blocker >24h on critical deadline, scope change >25%, mantle rollback chain >2 in 7d, HR arbitration deadlock involving Shopify Website Team
+- **Linked patterns:** all 4 atrium skills + Shopify Website Team agent prompt + HR Constitution Q1/Q6/Q7/Q8/Q10/Q15/Q17/Q18/Q26/Q27/Q29/Q42/Q44/Q45/Q46/Q47/Q48/Q49
 
 ---
 
@@ -46,7 +46,7 @@
 - **Reports to:** atrium primary; secondary `elio` (design system mentor).
 
 ### Runbook
-- **Owned channels:** `pod-d.client-projects`, `hr.patches`
+- **Owned channels:** `shopify-website-team.client-projects`, `hr.patches`
 - **Tier 1 loads:** feedback.md, hr-constitution-v1.md, MEMORY.md, stacks/shopify/storefront/INDEX.md, stacks/shopify/api/liquid.md, design/ecom/INDEX.md, figma-to-liquid-conversion-protocol.md, CLAUDE.md
 - **MCP tools required:** Full `mcp__claude_ai_Figma__*` suite
 - **Wall-clock SLO:** 25min p95
@@ -64,7 +64,7 @@
 - **Reports to:** atrium.
 
 ### Runbook
-- **Owned channels:** `pod-d.client-projects`, `hr.patches`
+- **Owned channels:** `shopify-website-team.client-projects`, `hr.patches`
 - **Tier 1 loads:** feedback.md, hr-constitution-v1.md, MEMORY.md, stacks/shopify/storefront/INDEX.md, stacks/shopify/api/liquid.md, stacks/shopify/build/online-store.md, patterns/good/shopify-app-patterns.md, CLAUDE.md
 - **Wall-clock SLO:** 25min p95
 - **Cost cap:** $5/cycle, $15/wk
@@ -81,7 +81,7 @@
 - **Reports to:** atrium.
 
 ### Runbook
-- **Owned channels:** `pod-d.client-projects`
+- **Owned channels:** `shopify-website-team.client-projects`
 - **Tier 1 loads:** feedback.md, hr-constitution-v1.md, MEMORY.md, stacks/shopify/api/storefront.md, stacks/shopify/api/admin.md, stacks/shopify/core/shopify-app.md, patterns/good/shopify-app-patterns.md, CLAUDE.md
 - **Wall-clock SLO:** 25min p95
 - **Cost cap:** $5/cycle, $15/wk
@@ -98,7 +98,7 @@
 - **Reports to:** atrium primary; secondary `dato` (content modeling mentor).
 
 ### Runbook
-- **Owned channels:** `pod-d.client-projects`
+- **Owned channels:** `shopify-website-team.client-projects`
 - **Tier 1 loads:** feedback.md, hr-constitution-v1.md, MEMORY.md, stacks/shopify/api/admin.md, stacks/shopify/api/storefront.md, supabase-database-mastery.md (Dato), shopify-metafield-metaobject-modeling.md, CLAUDE.md
 - **Wall-clock SLO:** 25min p95
 - **Cost cap:** $5/cycle, $15/wk
@@ -115,7 +115,7 @@
 - **Reports to:** atrium primary; secondary `bolt` (deployment mentor).
 
 ### Runbook
-- **Owned channels:** `pod-d.client-projects`, `hr.lifecycle` (publish events)
+- **Owned channels:** `shopify-website-team.client-projects`, `hr.lifecycle` (publish events)
 - **Tier 1 loads:** feedback.md, hr-constitution-v1.md, MEMORY.md, stacks/shopify/storefront/INDEX.md, shopify-extension-deployment-stack-b.md (Bolt), railway-deployment.md, shopify-cli-theme-workflow.md, CLAUDE.md
 - **Wall-clock SLO:** 25min p95
 - **Cost cap:** $5/cycle, $15/wk
@@ -132,7 +132,7 @@
 - **Reports to:** atrium primary; secondary `luna` (test strategy mentor).
 
 ### Runbook
-- **Owned channels:** `pod-d.client-projects`, `hr.flags` (QA blockers)
+- **Owned channels:** `shopify-website-team.client-projects`, `hr.flags` (QA blockers)
 - **Tier 1 loads:** feedback.md, hr-constitution-v1.md, MEMORY.md, stacks/shopify/storefront/INDEX.md, visual-validation-protocol.md (Luna), patterns/good/shopify-app-patterns.md, storefront-theme-qa-protocol.md, CLAUDE.md
 - **Wall-clock SLO:** 10min p95 (GATE class)
 - **Cost cap:** $1/cycle, $15/wk
@@ -149,7 +149,7 @@
 - **Reports to:** atrium primary; secondary `sage` (audit-checklist mentor).
 
 ### Runbook
-- **Owned channels:** `pod-d.client-projects`, `hr.flags`, `hr.escalations`
+- **Owned channels:** `shopify-website-team.client-projects`, `hr.flags`, `hr.escalations`
 - **Tier 1 loads:** feedback.md, hr-constitution-v1.md, MEMORY.md, stacks/shopify/storefront/INDEX.md, shopify-app-audit-checklist-stack-b-blocking.md (Sage), visual-validation-protocol.md, liquid-code-review-checklist.md, CLAUDE.md
 - **Wall-clock SLO:** 20min p95 (GATE class, opus)
 - **Cost cap:** $3/cycle, $40/wk

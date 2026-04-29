@@ -19,7 +19,7 @@ At 42 agents the flat 6-department view already mixes incompatible functions: "c
 | # | Department | Lead | Sub-departments | Current size | Target @ 100 |
 |---|-----------|------|-----------------|--------------|--------------|
 | 1 | `executive` | yash | — | 1 | 1-2 |
-| 2 | `engineering` | arya | pod-a, pod-b, pod-c, platform, architecture, quality | 13 | 30+ |
+| 2 | `engineering` | arya | web-platform-team, shopify-app-team, shopify-storefront-team, platform, architecture, quality | 13 | 30+ |
 | 3 | `design` | vega | public-pages, ecom, dashboard, design-system, deliverables | 5 | 12+ |
 | 4 | `content-seo` | quill | marketing-copy, cro-copy, lifecycle-email, app-store, developer-docs, seo | 5 | 12+ |
 | 5 | `growth` | echo | cro, distribution, market-intel, email-infra | 7 | 12+ |
@@ -45,7 +45,7 @@ Cross-cutting design + bug fixing
 #### sub-dept: `web-platform-team` (Stack A — Next.js + Supabase + Railway SaaS)
 Lead: `saas-lead` — Engineering Manager — Web Platform | Reports up: arya
 - `koda` — Senior Backend Engineer — Web Platform (Next.js API routes, Server Components, integrations)
-- `pod-a-frontend` — Senior Frontend Engineer — Web Platform (PLANNED Cohort 3 — React/Next.js components)
+- `web-platform-frontend` — Senior Frontend Engineer — Web Platform (PLANNED Cohort 3 — React/Next.js components)
 - `dato` — Principal Database Architect (also cross-team DB mentor)
 - `luna` — Lead QA Engineer (also cross-team test mentor)
 - `sage` — Principal Engineer — Code Quality (also cross-team review escalation)
@@ -64,7 +64,7 @@ Lead: `shopify-web-lead` — Engineering Manager — Storefront Apps. PLANNED Co
 - `shopify-web-frontend`, `shopify-web-backend`, `shopify-web-db`, `shopify-web-tester`, `shopify-web-reviewer`
 
 #### sub-dept: `shopify-website-team` (Stack D — Liquid Themes + Online Store 2.0 + Shopify CLI, client-owned themes via GitHub workflow) — DEPLOYED 2026-04-30
-Lead: `atrium` — Storefront Engineering Director (Pod D lead, reports to arya).
+Lead: `atrium` — Storefront Engineering Director (Shopify Website Team lead, reports to arya).
 8-agent specialist roster:
 - `atrium` (Pod lead, opus, leadership) — client brief intake, sprint planning, Figma-loop coordination, sign-off gates, UAT loop, cross-pod handoffs
 - `stitch` (Design-to-Theme Converter, opus, analyst) — reads approved Figma via MCP → outputs Liquid skeleton + section/block schema + settings_schema.json + handoff notes for loom
@@ -76,7 +76,7 @@ Lead: `atrium` — Storefront Engineering Director (Pod D lead, reports to arya)
 - `onyx` (Theme Code Reviewer, opus, reviewer, GATE class) — final review before mantle pushes. Mentored by Sage cross-pod.
 
 Stack: Liquid + Online Store 2.0 + theme JS (vanilla + Alpine) + Tailwind/CSS + Shopify CLI + GitHub Actions.
-Boundary vs Pod C: Hydrogen → Pod C; Liquid themes (especially client-owned via CLI) → Pod D.
+Boundary vs Shopify Storefront Team: Hydrogen → Shopify Storefront Team; Liquid themes (especially client-owned via CLI) → Shopify Website Team.
 12-step workflow: brief → Figma → conversion → loom refine → QA → review → staging push → UAT → publish → post-mortem.
 Inherits HR Constitution v1 Tier 1 from day 1. Forge Q4 similarity gate confirmed zero collisions.
 
@@ -198,7 +198,7 @@ Idea + market + economics validation gates
   "id": "elio",
   "department": "design",          // top-level (REQUIRED)
   "subDepartment": "ecom",         // sub-level (REQUIRED for new agents 2026-04-27+)
-  "pod": null,                     // pod-a / pod-b / pod-c / null (only for engineering)
+  "pod": null,                     // web-platform-team / shopify-app-team / shopify-storefront-team / null (only for engineering)
   "tier": "creative",
   "title": "Ecom UI Specialist",
   "reportsTo": "vega",
@@ -234,15 +234,15 @@ reportsTo: vega
 | yash | executive | executive | (none) | null |
 | arya | engineering | engineering | architecture | null |
 | vex | engineering | engineering | architecture | null |
-| koda | engineering | engineering | pod-a | pod-a |
-| dato | engineering | engineering | pod-a | pod-a |
+| koda | engineering | engineering | web-platform-team | web-platform-team |
+| dato | engineering | engineering | web-platform-team | web-platform-team |
 | luna | engineering | engineering | quality | null (cross-pod) |
 | sage | engineering | engineering | quality | null (cross-pod) |
-| riko | engineering | engineering | pod-a | pod-a |
-| pod-b-frontend | engineering | engineering | pod-b | pod-b |
-| pod-b-backend | engineering | engineering | pod-b | pod-b |
-| pod-b-db | engineering | engineering | pod-b | pod-b |
-| pod-b-tester | engineering | engineering | pod-b | pod-b |
+| riko | engineering | engineering | web-platform-team | web-platform-team |
+| shopify-app-frontend | engineering | engineering | shopify-app-team | shopify-app-team |
+| shopify-app-backend | engineering | engineering | shopify-app-team | shopify-app-team |
+| shopify-app-db | engineering | engineering | shopify-app-team | shopify-app-team |
+| shopify-app-tester | engineering | engineering | shopify-app-team | shopify-app-team |
 | bolt | engineering | engineering | platform | null |
 | hawk | engineering | engineering | platform | null |
 | vega | creative | design | lead | null |
@@ -289,7 +289,7 @@ Some agents have dual reporting — primary craft lead + cross-functional tactic
 | sequence | content-seo (quill) | growth-cro (catalyst) |
 | decoder | growth-cro (catalyst) | research-market (nova) |
 | harvest | growth-market-intel (echo) | research-market (nova) |
-| dato | engineering-pod-a (arya) | engineering-cross-pod-db-mentor |
+| dato | engineering-web-platform-team (arya) | engineering-cross-shopify-website-teamb-mentor |
 | luna | engineering-quality (sage/arya) | engineering-cross-pod-test-mentor |
 | sage | engineering-quality (arya) | engineering-cross-pod-review-escalation |
 
@@ -309,9 +309,9 @@ Schema field: `secondaryReportsTo` (optional in registry.json).
 - New strategic pillar approved by Yash (e.g., future "Sales", "Customer Success", "Legal")
 
 ### When to add a pod
-- Pods are reserved for engineering stack-specific clusters (pod-a / pod-b / pod-c)
+- Pods are reserved for engineering stack-specific clusters (web-platform-team / shopify-app-team / shopify-storefront-team)
 - Other departments don't currently use pods
-- New stack added → new pod (e.g., pod-d if AI-only stack ever splits from Stack A)
+- New stack added → new pod (e.g., shopify-website-team if AI-only stack ever splits from Stack A)
 
 ### When to merge sub-departments
 - Sub-dept has ≤2 agents for >90 days AND function overlaps with adjacent sub-dept

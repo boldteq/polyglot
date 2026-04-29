@@ -63,7 +63,7 @@ Colour Mill · IKU · Oh Snap! Pickles · Mistercap's · Red Clay Hot Sauce · P
 }
 ```
 **Rationale:** Pod-frontend reads JSON for component contract; figma-synth uses figma_node_ids for code-connect; zero translation loss between design and implementation.
-**Cross-impact:** figma-synth handoff schema aligns. pod-b-frontend + pod-c-frontend consume JSON directly.
+**Cross-impact:** figma-synth handoff schema aligns. shopify-app-frontend + shopify-storefront-frontend consume JSON directly.
 
 ---
 
@@ -134,7 +134,7 @@ Click '+' on product card → opens compact modal (image + variant selector + qt
 
 ### ELI-DT2-R12-004 — Account Login = Shop Login + Magic Link + Customer Account API
 Primary: Shop Login button (Shopify-native, autofills). Secondary: 'Continue with email' → magic link. No password. Backed by Shopify Customer Account API.
-**Cross-impact:** AccountLogin canonical. pod-b-frontend uses createCustomerAccountClient. Hydrogen account_.login.tsx route pattern.
+**Cross-impact:** AccountLogin canonical. shopify-app-frontend uses createCustomerAccountClient. Hydrogen account_.login.tsx route pattern.
 
 ---
 

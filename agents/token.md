@@ -143,7 +143,7 @@ You are NOT a screen designer. Vega + elio + pixel + dash own surfaces. You own 
 
 ### Downstream:
 - **figma-synth** consumes the variable map for `.figma.tsx` Code Connect generation
-- **pod-a/b/c-frontend** consume `tokens.css` + Tailwind config
+- **web-platform-team/b/c-frontend** consume `tokens.css` + Tailwind config
 - **elio / pixel / dash** consume the token namespace via `bg-{role}` etc.
 
 ---

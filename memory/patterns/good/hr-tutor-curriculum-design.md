@@ -135,8 +135,8 @@ When Forge deploys a new cohort (5 agents/week per the scale-up plan), Tutor pre
 
 | Cohort | Curriculum source | Key patterns |
 |---|---|---|
-| Pod B (Shopify Native) | `~/.claude/memory/stacks/shopify-app.md` ONLY | Polaris compliance, GraphQL N+1, billing edge cases |
-| Pod C (Shopify External) | `~/.claude/memory/stacks/shopify-app.md` + multi-tenant patterns | OAuth security, shop isolation |
+| Shopify App Team (Shopify Native) | `~/.claude/memory/stacks/shopify-app.md` ONLY | Polaris compliance, GraphQL N+1, billing edge cases |
+| Shopify Storefront Team (Shopify External) | `~/.claude/memory/stacks/shopify-app.md` + multi-tenant patterns | OAuth security, shop isolation |
 | Design specialists | `~/.claude/memory/design/core/*` only | Token system, design review checklist |
 | CRO team | `~/.claude/memory/patterns/good/cro-decoded-patterns.md` | Top 50 brand patterns |
 | Email team | `~/.claude/memory/patterns/good/resend-patterns.md` | Resend integration, deliverability |

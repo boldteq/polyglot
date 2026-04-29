@@ -1,6 +1,6 @@
 # Hydrogen + React Router 7 — Shopify Storefront Stack
 
-**Owner:** elio (UI) + pod-b-frontend (implementation)
+**Owner:** elio (UI) + shopify-app-frontend (implementation)
 **Scope:** Customer-facing storefront on top of Shopify (Stack B storefront mode)
 **NOT for:** Admin embed (use Polaris), SaaS dashboard (use Stack A)
 **Last updated:** 2026-04-27 — Curriculum v2 deep training

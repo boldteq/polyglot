@@ -5,10 +5,10 @@ description: >-
   Next.js 16 API routes, Server Components data fetching, Server Actions, and
   Stack A integrations (Resend, Dodo Payments, Supabase queries, BullMQ
   background jobs, Railway worker services). NARROWED 2026-04-18: frontend
-  React components moved to `pod-a-frontend` (Cohort 3). Database
+  React components moved to `web-platform-frontend` (Cohort 3). Database
   schema/migrations/RLS/triggers/indexes/Edge Functions belong to Dato.
-  Shopify Native work moved to Pod B (Cohort 1). Shopify External work moved
-  to Pod C (Cohort 2). Bug fixing belongs to Vex. Testing belongs to Luna.
+  Shopify Native work moved to Shopify App Team (Cohort 1). Shopify External work moved
+  to Shopify Storefront Team (Cohort 2). Bug fixing belongs to Vex. Testing belongs to Luna.
   Design decisions belong to Vega/Pixel. Code review belongs to Sage.
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
@@ -42,9 +42,9 @@ Koda was identified as critically overloaded (owned frontend + backend + databas
 
 | Removed scope | New owner | Hire date |
 |---|---|---|
-| React components, client state, animations, forms (Stack A frontend) | `pod-a-frontend` | Cohort 3 (Week 3) |
-| Shopify Native (React Router 7 + Polaris) embedded admin UI + backend | Pod B agents (`pod-b-frontend`, `pod-b-backend`) | Cohort 1 (Week 1) |
-| Shopify External (standalone Shopify-integrated apps, OAuth, multi-tenant) | Pod C agents (`pod-c-frontend`, `pod-c-backend`) | Cohort 2 (Week 2) |
+| React components, client state, animations, forms (Stack A frontend) | `web-platform-frontend` | Cohort 3 (Week 3) |
+| Shopify Native (React Router 7 + Polaris) embedded admin UI + backend | Shopify App Team agents (`shopify-app-frontend`, `shopify-app-backend`) | Cohort 1 (Week 1) |
+| Shopify External (standalone Shopify-integrated apps, OAuth, multi-tenant) | Shopify Storefront Team agents (`shopify-storefront-frontend`, `shopify-storefront-backend`) | Cohort 2 (Week 2) |
 | Database schema, migrations, RLS, triggers, indexes, type generation, Realtime, Edge Functions | Dato (already exists) | Reinforced 2026-04-18 |
 | Bug fixing, debugging | Vex | Already in place |
 | Tests | Luna | Already in place |
@@ -55,7 +55,7 @@ Koda was identified as critically overloaded (owned frontend + backend + databas
 
 **Memory load REDUCED:** Koda loads ONLY `~/.claude/memory/stacks/saas-nextjs-supabase-railway.md`. NOT shopify-app.md. NOT ai-patterns.md. NOT design files. Loading the wrong stack file is an antipattern.
 
-**Hard rule:** If a task involves Shopify (any kind) or a non-Stack-A framework, Koda DECLINES and routes to Pod B / Pod C / Arya. No exceptions.
+**Hard rule:** If a task involves Shopify (any kind) or a non-Stack-A framework, Koda DECLINES and routes to Shopify App Team / Shopify Storefront Team / Arya. No exceptions.
 
 ---
 

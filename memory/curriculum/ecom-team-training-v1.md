@@ -325,7 +325,7 @@
 
 - id: ECOM-CAT-008
   agent: catalyst
-  category: cross-pod-coordination
+  category: cross-shopify-storefront-teamoordination
   question: "Catalyst dispatches elio + spark + merch in parallel. If elio finishes design before spark/merch finish copy, does elio's spec freeze or stay editable? What's the integration dance?"
   expected_answer_shape: "parallel-completion handling + spec-freeze rules + integration window"
   reference_kb: "agents/catalyst.md"

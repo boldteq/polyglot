@@ -3,9 +3,9 @@
 **Status:** SCAFFOLD — populated W2 by elio + token.
 **Owners (design):** elio (UI) + token (design system bridge)
 **Owners (engineering — added 2026-04-30):**
-- Hydrogen storefronts (Stack C) → Pod C (`shopify-web-frontend` / `shopify-web-backend` / `shopify-web-db` / `shopify-web-tester` / `shopify-web-reviewer`)
-- Liquid themes via Shopify CLI on client-owned stores (Stack D) → Pod D (`atrium` / `stitch` / `loom` / `conduit` / `lattice` / `mantle` / `lumen` / `onyx`)
-- Decision tree: client wants headless + budget ≥$5k + custom React → Hydrogen Pod C. Client owns Shopify store + wants Liquid theme work via CLI → Pod D regardless of budget.
+- Hydrogen storefronts (Stack C) → Shopify Storefront Team (`shopify-web-frontend` / `shopify-web-backend` / `shopify-web-db` / `shopify-web-tester` / `shopify-web-reviewer`)
+- Liquid themes via Shopify CLI on client-owned stores (Stack D) → Shopify Website Team (`atrium` / `stitch` / `loom` / `conduit` / `lattice` / `mantle` / `lumen` / `onyx`)
+- Decision tree: client wants headless + budget ≥$5k + custom React → Hydrogen Shopify Storefront Team. Client owns Shopify store + wants Liquid theme work via CLI → Shopify Website Team regardless of budget.
 
 **Counterpart:** `~/.claude/memory/stacks/shopify/INDEX.md` (existing — Shopify ADMIN, do not confuse)
 
@@ -40,10 +40,10 @@ Critical: Polaris is for ADMIN ONLY. Storefront tokens come from project design 
 
 | Use case | Stack | Notes |
 |----------|-------|-------|
-| Embedded Shopify admin app | Stack B (Pod B) | Polaris Web Components, Admin GraphQL |
+| Embedded Shopify admin app | Stack B (Shopify App Team) | Polaris Web Components, Admin GraphQL |
 | Storefront on top of Shopify (Hydrogen) | Stack B (storefront mode) | Hydrogen + Oxygen, RR7 |
-| Standalone ecom (any backend) | Stack C (Pod C) | Custom RR7 + Tailwind/shadcn |
-| Boldteq SaaS dashboard | Stack A (Pod A) | Next.js 16 + Supabase |
+| Standalone ecom (any backend) | Stack C (Shopify Storefront Team) | Custom RR7 + Tailwind/shadcn |
+| Boldteq SaaS dashboard | Stack A (Web Platform Team) | Next.js 16 + Supabase |
 
 NEVER mix: do not use Polaris on storefront, do not use Hydrogen for SaaS, do not use Next.js for embedded admin.
 

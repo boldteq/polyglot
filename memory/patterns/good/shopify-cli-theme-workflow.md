@@ -1,12 +1,12 @@
 # Shopify CLI Theme Workflow
 
-**Owner:** mantle (Pod D)
+**Owner:** mantle (Shopify Website Team)
 **Cross-pod consumers:** loom, lumen, atrium, bolt
-**Status:** v1.0 (foundational; refined after first 5 Pod D deploys)
+**Status:** v1.0 (foundational; refined after first 5 Shopify Website Team deploys)
 
 ## Purpose
 
-Standardize Shopify CLI usage across all Pod D client themes. Replaces ad-hoc theme push patterns. Enforces safety (snapshots, rollback, no Friday deploys).
+Standardize Shopify CLI usage across all Shopify Website Team client themes. Replaces ad-hoc theme push patterns. Enforces safety (snapshots, rollback, no Friday deploys).
 
 ## Setup (per machine, once)
 

@@ -1941,13 +1941,13 @@ Polling fallback per Q25: each HR agent maintains a 30s heartbeat. >2min missed 
 
 ---
 
-# Pod D — Shopify Website Department Schema (2026-04-30)
+# Shopify Website Department Schema (2026-04-30)
 
-Pod D introduces client-work tracking. Distinct from internal Boldteq products (which use existing tables).
+Shopify Website Team introduces client-work tracking. Distinct from internal Boldteq products (which use existing tables).
 
 ## New Table: `client_projects`
 
-Tracks each client engagement run by Pod D from intake → live publish → retired.
+Tracks each client engagement run by Shopify Website Team from intake → live publish → retired.
 
 ```sql
 CREATE TABLE client_projects (
@@ -1992,7 +1992,7 @@ ALTER TABLE client_projects ENABLE ROW LEVEL SECURITY;
 
 ## New Table: `theme_publishes`
 
-Audit trail of every Pod D theme publish for rollback + post-mortem visibility (separate from `agent_events` for query speed).
+Audit trail of every Shopify Website Team theme publish for rollback + post-mortem visibility (separate from `agent_events` for query speed).
 
 ```sql
 CREATE TABLE theme_publishes (
@@ -2042,7 +2042,7 @@ ALTER TABLE code_connect_mappings ENABLE ROW LEVEL SECURITY;
 
 ## New Realtime Channel
 
-Add `pod-d.client-projects` to existing 5 HR Realtime channels (Q21):
+Add `shopify-website-team.client-projects` to existing 5 HR Realtime channels (Q21):
 ```sql
 ALTER PUBLICATION supabase_realtime ADD TABLE client_projects;
 ALTER PUBLICATION supabase_realtime ADD TABLE theme_publishes;
@@ -2050,24 +2050,24 @@ ALTER PUBLICATION supabase_realtime ADD TABLE theme_publishes;
 
 Subscribers: atrium (all events), Yash digest (rollback chains, deadline-at-risk events).
 
-## Seed Data — 8 Pod D Agents
+## Seed Data — 8 Shopify Website Team Agents
 
 ```sql
 INSERT INTO agents (name, title, model, level, status, department, sub_department, pod, reports_to, secondary_reports_to, hired_at, forge_template_id, flags)
 VALUES
-  ('atrium','Storefront Engineering Director','opus',1,'deployed','engineering','shopify-website-team','pod-d','arya',NULL,NOW(),NULL,ARRAY[]::text[]),
-  ('stitch','Design-to-Theme Converter','opus',1,'deployed','engineering','shopify-website-team','pod-d','atrium','elio',NOW(),NULL,ARRAY[]::text[]),
-  ('loom','Liquid Theme Developer','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium',NULL,NOW(),NULL,ARRAY[]::text[]),
-  ('conduit','Storefront Data Integration Engineer','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium',NULL,NOW(),NULL,ARRAY[]::text[]),
-  ('lattice','Content Modeling Architect','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium','dato',NOW(),NULL,ARRAY[]::text[]),
-  ('mantle','Theme Release Engineer','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium','bolt',NOW(),NULL,ARRAY[]::text[]),
-  ('lumen','Theme Quality Engineer','sonnet',1,'deployed','engineering','shopify-website-team','pod-d','atrium','luna',NOW(),NULL,ARRAY[]::text[]),
-  ('onyx','Theme Code Reviewer','opus',1,'deployed','engineering','shopify-website-team','pod-d','atrium','sage',NOW(),NULL,ARRAY[]::text[]);
+  ('atrium','Storefront Engineering Director','opus',1,'deployed','engineering','shopify-website-team','shopify-website-team','arya',NULL,NOW(),NULL,ARRAY[]::text[]),
+  ('stitch','Design-to-Theme Converter','opus',1,'deployed','engineering','shopify-website-team','shopify-website-team','atrium','elio',NOW(),NULL,ARRAY[]::text[]),
+  ('loom','Liquid Theme Developer','sonnet',1,'deployed','engineering','shopify-website-team','shopify-website-team','atrium',NULL,NOW(),NULL,ARRAY[]::text[]),
+  ('conduit','Storefront Data Integration Engineer','sonnet',1,'deployed','engineering','shopify-website-team','shopify-website-team','atrium',NULL,NOW(),NULL,ARRAY[]::text[]),
+  ('lattice','Content Modeling Architect','sonnet',1,'deployed','engineering','shopify-website-team','shopify-website-team','atrium','dato',NOW(),NULL,ARRAY[]::text[]),
+  ('mantle','Theme Release Engineer','sonnet',1,'deployed','engineering','shopify-website-team','shopify-website-team','atrium','bolt',NOW(),NULL,ARRAY[]::text[]),
+  ('lumen','Theme Quality Engineer','sonnet',1,'deployed','engineering','shopify-website-team','shopify-website-team','atrium','luna',NOW(),NULL,ARRAY[]::text[]),
+  ('onyx','Theme Code Reviewer','opus',1,'deployed','engineering','shopify-website-team','shopify-website-team','atrium','sage',NOW(),NULL,ARRAY[]::text[]);
 ```
 
 All 8 enter probation per HR Constitution Q26 + Q27. Witness spawns parallel `probation_trackers` upon first run from each.
 
-## Migration order (Pod D additions)
+## Migration order (Shopify Website Team additions)
 
 1. Run schema additions in order: `client_projects` → `theme_publishes` → `code_connect_mappings`
 2. Add Realtime publications.

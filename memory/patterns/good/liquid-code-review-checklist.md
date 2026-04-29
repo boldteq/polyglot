@@ -1,6 +1,6 @@
 # Liquid Code Review Checklist
 
-**Owner:** onyx (Pod D)
+**Owner:** onyx (Shopify Website Team)
 **Cross-pod consumers:** loom, sage (mentor)
 **Status:** v1.0 (foundational; refined per project + Sage Stack B mentor sessions)
 

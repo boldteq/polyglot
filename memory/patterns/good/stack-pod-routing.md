@@ -16,11 +16,11 @@ This file is the routing source-of-truth. Read it BEFORE dispatching any enginee
 
 ## The 3 stacks and their pods
 
-### Pod A — Next.js + Supabase + Railway
+### Web Platform Team — Next.js + Supabase + Railway
 - **Stack file:** `~/.claude/memory/stacks/saas-nextjs-supabase-railway.md`
 - **Used for:** All NEW Boldteq SaaS products (internal + agency)
 - **Pod members (5):**
-  - `pod-a-frontend` — React 19 + Tailwind 4 + shadcn (Cohort 3)
+  - `web-platform-frontend` — React 19 + Tailwind 4 + shadcn (Cohort 3)
   - `koda` — Backend: API routes, Server Components, Server Actions, integrations (NARROWED)
   - `dato` — Database: Supabase Postgres, RLS, migrations, types
   - `luna` — Tests: Vitest + Playwright (also cross-pod mentor)
@@ -31,28 +31,28 @@ This file is the routing source-of-truth. Read it BEFORE dispatching any enginee
   - `~/.claude/memory/patterns/good/billing-patterns.md` (Dodo Payments)
   - `~/.claude/memory/patterns/good/resend-patterns.md`
 
-### Pod B — Shopify Native (embedded admin app)
+### Shopify App Team — Shopify Native (embedded admin app)
 - **Stack file:** `~/.claude/memory/stacks/shopify-app.md`
 - **Used for:** Shopify apps that embed in the merchant admin (React Router 7 + Polaris Web Components)
 - **Pod members (5, all hired Cohort 1 / Week 1):**
-  - `pod-b-frontend` — React Router 7 + Polaris Web Components UI
-  - `pod-b-backend` — Shopify GraphQL Admin API, webhooks, Shopify Billing API
-  - `pod-b-db` — Prisma schema for multi-shop tenancy
-  - `pod-b-tester` — Vitest + Playwright for embedded apps + billing flows
-  - `pod-b-reviewer` — Code review specific to Shopify Native: Polaris compliance, GraphQL N+1, billing edge cases
+  - `shopify-app-frontend` — React Router 7 + Polaris Web Components UI
+  - `shopify-app-backend` — Shopify GraphQL Admin API, webhooks, Shopify Billing API
+  - `shopify-app-db` — Prisma schema for multi-shop tenancy
+  - `shopify-app-tester` — Vitest + Playwright for embedded apps + billing flows
+  - `shopify-app-reviewer` — Code review specific to Shopify Native: Polaris compliance, GraphQL N+1, billing edge cases
 - **Memory each loads (besides their own .md):**
   - `~/.claude/memory/stacks/shopify-app.md`
   - Polaris Web Components docs (loaded on demand when Polaris-specific question)
 
-### Pod C — Shopify External (standalone Shopify-integrated app)
+### Shopify Storefront Team — Shopify External (standalone Shopify-integrated app)
 - **Stack file:** `~/.claude/memory/stacks/shopify-app.md` (core) + external-specific patterns
 - **Used for:** Standalone Shopify apps that do NOT embed in merchant admin (customer-facing flows, OAuth, multi-tenant API)
 - **Pod members (5, all hired Cohort 2 / Week 2):**
-  - `pod-c-frontend` — Standalone React UI (customer-facing flows)
-  - `pod-c-backend` — Shopify OAuth, public app webhooks, multi-tenant API design
-  - `pod-c-db` — Postgres schema for multi-tenant external apps, shop isolation
-  - `pod-c-tester` — E2E tests for OAuth flows, multi-shop scenarios
-  - `pod-c-reviewer` — Code review specific to External Shopify: tenant isolation, OAuth security
+  - `shopify-storefront-frontend` — Standalone React UI (customer-facing flows)
+  - `shopify-storefront-backend` — Shopify OAuth, public app webhooks, multi-tenant API design
+  - `shopify-storefront-db` — Postgres schema for multi-tenant external apps, shop isolation
+  - `shopify-storefront-tester` — E2E tests for OAuth flows, multi-shop scenarios
+  - `shopify-storefront-reviewer` — Code review specific to External Shopify: tenant isolation, OAuth security
 - **Memory each loads:**
   - `~/.claude/memory/stacks/shopify-app.md`
   - External-specific patterns (TBD — Cohort 2 onboarding will define)
@@ -65,9 +65,9 @@ Yash / Arya / Roster use this matrix to detect which pod owns a task:
 
 | File markers in repo root | Pod | Routing target |
 |---|---|---|
-| `next.config.ts` + `railway.toml` + `lib/supabase/` | Pod A | koda or pod-a-frontend (depending on task) |
-| `shopify.app.toml` + `app/routes/` (React Router 7) + Polaris imports | Pod B | pod-b-frontend or pod-b-backend |
-| `shopify.app.toml` + standalone (no merchant admin embedding) | Pod C | pod-c-frontend or pod-c-backend |
+| `next.config.ts` + `railway.toml` + `lib/supabase/` | Web Platform Team | koda or web-platform-frontend (depending on task) |
+| `shopify.app.toml` + `app/routes/` (React Router 7) + Polaris imports | Shopify App Team | shopify-app-frontend or shopify-app-backend |
+| `shopify.app.toml` + standalone (no merchant admin embedding) | Shopify Storefront Team | shopify-storefront-frontend or shopify-storefront-backend |
 | `next.config.*` WITHOUT `railway.toml` | Legacy Stack A (Vite-origin Rankora/CROBOT) | Maintenance only — koda |
 | Unknown markers | Forge gap detection | Arya investigates → may propose new pod |
 
@@ -79,11 +79,11 @@ If a project mixes stacks (e.g., a Next.js admin + a Shopify Native embed), the 
 
 These are enforced by Forge in `hr-forge-spec-template-enforcement.md` validation:
 
-1. **Pod A agents NEVER load shopify-app.md.** Loading it pollutes their context with irrelevant patterns and re-introduces Koda-style bloat.
-2. **Pod B/C agents NEVER load saas-nextjs-supabase-railway.md.** Same reason.
+1. **Web Platform Team agents NEVER load shopify-app.md.** Loading it pollutes their context with irrelevant patterns and re-introduces Koda-style bloat.
+2. **Shopify App Team/C agents NEVER load saas-nextjs-supabase-railway.md.** Same reason.
 3. **No agent loads multiple stack files.** Single-stack memory loading is the #1 token-efficiency mechanism.
-4. **Pod-specific bugs route within the pod first.** Vex triages bugs cross-stack, but Pod B bugs go to pod-b-reviewer first; Pod A bugs go to Sage first.
-5. **Cross-pod knowledge transfer happens through Mira patterns, not direct memory loading.** If Pod B discovers something useful for Pod A, Mira extracts it into a stack-agnostic pattern in `~/.claude/memory/patterns/good/`. Then both pods can load THAT pattern without loading each other's stack files.
+4. **Pod-specific bugs route within the pod first.** Vex triages bugs cross-stack, but Shopify App Team bugs go to shopify-app-reviewer first; Web Platform Team bugs go to Sage first.
+5. **Cross-pod knowledge transfer happens through Mira patterns, not direct memory loading.** If Shopify App Team discovers something useful for Web Platform Team, Mira extracts it into a stack-agnostic pattern in `~/.claude/memory/patterns/good/`. Then both pods can load THAT pattern without loading each other's stack files.
 
 ---
 
@@ -107,9 +107,9 @@ Mentorship is async: pod-X-tester writes a test, asks Luna for review on a Boldt
 ```
 Task arrives →
   Stack detection (file markers + project CLAUDE.md):
-    → Stack A → Pod A
-    → Stack B → Pod B
-    → Stack C → Pod C
+    → Stack A → Web Platform Team
+    → Stack B → Shopify App Team
+    → Stack C → Shopify Storefront Team
     → Unknown → Arya investigates
   ↓
   Within pod, dispatch by task type:
@@ -128,7 +128,7 @@ Task arrives →
 
 ## Anti-patterns (NEVER do these)
 
-1. **Never assign a Stack A task to Pod B/C.** Even if Pod B/C are idle. Specialization > utilization.
+1. **Never assign a Stack A task to Shopify App Team/C.** Even if Shopify App Team/C are idle. Specialization > utilization.
 2. **Never let one agent load 2+ stack files.** That's the Koda problem we just fixed.
 3. **Never bypass pod review on the way to deploy.** Pod reviewer signs off first; Sage is the cross-pod gate, not the only gate.
 4. **Never split a single feature across pods unless architecturally necessary.** Splitting causes coordination overhead. If a feature truly spans stacks (e.g., a Shopify app that calls a Stack A SaaS API), Arya owns the architecture; pods build their respective parts in parallel.

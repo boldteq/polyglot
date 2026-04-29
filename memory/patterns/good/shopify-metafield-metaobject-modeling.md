@@ -1,6 +1,6 @@
 # Shopify Metafield + Metaobject Modeling
 
-**Owner:** lattice (Pod D)
+**Owner:** lattice (Shopify Website Team)
 **Cross-pod consumers:** conduit, loom, dato (mentor)
 **Status:** v1.0 (foundational; expanded after first 5 client content models)
 
@@ -56,7 +56,7 @@ For metaobjects:
 
 ## Standard Metaobject Library
 
-For every Pod D client storefront, define these 10 metaobjects when applicable:
+For every Shopify Website Team client storefront, define these 10 metaobjects when applicable:
 
 1. `testimonial`
 2. `team_member`

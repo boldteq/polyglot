@@ -35,11 +35,11 @@ type Surface =
 type HandoffType =
   | "design-spec"      // elio output → spark/merch/figma-synth/pod-frontend
   | "copy-spec"        // spark/merch output → elio/pod-frontend
-  | "mechanic-spec"    // ecom-cro output → pod-frontend/pod-backend
+  | "mechanic-spec"    // ecom-cro output → pod-frontend/shopify-app-teamackend
   | "teardown"         // decoder output → catalyst/elio/spark/merch
   | "test-result"      // catalyst output → all (winners declared)
   | "patch"            // tutor output → agent .md or skill file
-  | "lifecycle-email"  // sequence output → pod-backend/postmark
+  | "lifecycle-email"  // sequence output → shopify-app-teamackend/postmark
   | "deliverable"      // figma-synth/token output → vega/client
   | "escalation";      // any agent → cadence/yash on blocker
 
@@ -292,7 +292,7 @@ interface EcomHandoff {
 | `mechanic-spec` | `ecom-cro` | `pod-frontend/backend` | `scope_split_clean` |
 | `test-result` | `catalyst` | broadcast | requires lift % + statistical gate evidence in `notes` |
 | `patch` | `tutor` | one agent | `next_steps[0].action` includes `rollback_content` reference |
-| `lifecycle-email` | `sequence` | `pod-backend` or `postmark` | `voice_scorecard >= 8` |
+| `lifecycle-email` | `sequence` | `shopify-app-teamackend` or `postmark` | `voice_scorecard >= 8` |
 | `escalation` | any | `cadence` or `yash` | severity must include `critical` or `high` |
 
 ---
@@ -389,7 +389,7 @@ Handoff JSON stored in 3 places:
 {
   "schemaVersion": "1.0",
   "from": "ecom-cro",
-  "to": "pod-b-frontend",
+  "to": "shopify-app-frontend",
   "type": "mechanic-spec",
   "brief_id": "client-acme-pdp-redesign",
   "surface": "cart",
@@ -415,8 +415,8 @@ Handoff JSON stored in 3 places:
     { "description": "Free-shipping threshold $50 vs $80 unresolved — needs catalyst niche call", "owner": "catalyst", "severity": "medium" }
   ],
   "next_steps": [
-    { "action": "Implement cart drawer per state machine", "owner": "pod-b-frontend", "due_within_hours": 120 },
-    { "action": "Implement free-shipping threshold logic", "owner": "pod-b-backend", "due_within_hours": 48 }
+    { "action": "Implement cart drawer per state machine", "owner": "shopify-app-frontend", "due_within_hours": 120 },
+    { "action": "Implement free-shipping threshold logic", "owner": "shopify-app-backend", "due_within_hours": 48 }
   ],
   "composite_score_at_handoff": 7.8,
   "training_patches_applied": 14,

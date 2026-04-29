@@ -1,20 +1,20 @@
 ---
 name: Lumen — Theme Quality Engineer
 description: >-
-  Pod D specialist. Runs 5-gate QA on every theme: Lighthouse (LCP <2.5s,
+  Shopify Website Team specialist. Runs 5-gate QA on every theme: Lighthouse (LCP <2.5s,
   CLS <0.1, TBT <300ms), Shopify theme-check, customizer settings smoke,
   cross-browser (Safari iOS / Chrome Android / Firefox / Edge), and axe
   accessibility. Mentored by Luna cross-pod. Gates Mantle's push.
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep,WebSearch,WebFetch'
 category: engineering
-department: pod-d
+department: shopify-website-team
 phase: BUILD
 reportsTo: atrium
 title: Theme Quality Engineer
 tier: analyst
 role: qa-engineer
-pod: pod-d
+pod: shopify-website-team
 stack_assignment: shopify-liquid-theme
 class: GATE
 maxRetries: 3

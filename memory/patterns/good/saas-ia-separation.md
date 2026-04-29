@@ -1,7 +1,7 @@
 # SaaS Information Architecture — Strict Separation Rules
 
 **Created:** 2026-04-18, v1.0.
-**Authority:** Vega (enforces on every design review). pod-a-frontend, pod-b-frontend, pod-c-frontend, pixel ALL load this.
+**Authority:** Vega (enforces on every design review). web-platform-frontend, shopify-app-frontend, shopify-storefront-frontend, pixel ALL load this.
 **Reason:** Current SaaS builds show the same page in multiple places (sidebar + settings menu). That's amateur-hour IA. Every Boldteq product MUST pass this separation audit before Bolt deploys.
 
 ---
@@ -320,4 +320,4 @@ Rankora/CROBOT are Stack A (Vite origin). Both likely have duplication (Yash's e
 7. Deploy behind feature flag; dogfood for 1 week
 8. Remove old routes
 
-Assign: koda (Stack A backend), pod-a-frontend (once hired in Cohort 3), dato (RLS), sage (review). Vega approves final shell.
+Assign: koda (Stack A backend), web-platform-frontend (once hired in Cohort 3), dato (RLS), sage (review). Vega approves final shell.

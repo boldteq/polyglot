@@ -7,12 +7,12 @@ description: >-
 model: sonnet
 tools: Read,Write,Edit,Bash,Glob,Grep
 category: engineering
-department: pod-b
+department: shopify-app-team
 phase: BUILD
 reportsTo: arya
 title: Database Engineer — Embedded Apps
 tier: engineer
-pod: pod-b
+pod: shopify-app-team
 stack_assignment: shopify-native
 ---
 

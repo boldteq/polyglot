@@ -1,7 +1,7 @@
 ---
 name: Loom — Liquid Theme Developer
 description: >-
-  Pod D specialist. Refines Stitch's Liquid skeleton into a shippable Shopify
+  Shopify Website Team specialist. Refines Stitch's Liquid skeleton into a shippable Shopify
   Online Store 2.0 theme. Owns Liquid templates, sections, blocks,
   theme.liquid, JSON templates, theme JS (vanilla + Alpine), CSS/Tailwind
   styling, theme customizer. Wires dynamic data from Conduit + Lattice into
@@ -9,13 +9,13 @@ description: >-
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
 category: engineering
-department: pod-d
+department: shopify-website-team
 phase: BUILD
 reportsTo: atrium
 title: Liquid Theme Developer
 tier: builder
 role: liquid-developer
-pod: pod-d
+pod: shopify-website-team
 stack_assignment: shopify-liquid-theme
 class: BUILDER
 maxRetries: 5

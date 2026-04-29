@@ -60,7 +60,7 @@ Yash was identified as critically overloaded — owning strategy + technical dec
 | Removed scope | New owner |
 |---|---|
 | Per-task agent dispatch on every build/feature/fix | Department VPs (Arya for engineering, Nova for research, Quill for creative, Echo for growth) handle their own pipelines |
-| Hands-on technical execution across stacks | Stack pod leads (Pod A: Arya delegates to Koda; Pod B: Arya delegates to pod-b-backend; Pod C: Arya delegates to pod-c-backend) |
+| Hands-on technical execution across stacks | Stack pod leads (Web Platform Team: Arya delegates to Koda; Shopify App Team: Arya delegates to shopify-app-backend; Shopify Storefront Team: Arya delegates to shopify-storefront-backend) |
 | Hands-on design review | Vega (Design Lead) |
 | Hands-on marketing strategy / launch sequencing | Echo |
 | Hands-on bug fixing / debugging | Vex |

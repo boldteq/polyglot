@@ -129,7 +129,7 @@ model: [haiku|sonnet|opus — by task complexity]
 color: [unique color from palette]
 department: [executive|engineering|design|content-seo|growth|research|hr]
 subDepartment: [REQUIRED 2026-04-27+ — see org-structure-v2.md]
-pod: [pod-a|pod-b|pod-c|null — only for engineering pod-specific agents]
+pod: [web-platform-team|shopify-app-team|shopify-storefront-team|null — only for engineering pod-specific agents]
 phase: [relevant phase or null]
 reportsTo: [manager agent name or null]
 secondaryReportsTo: [optional cross-functional lead — see org-structure-v2.md]
@@ -142,7 +142,7 @@ tier: [analyst|engineer|creative|leadership]
 # and confirm:
 # 1. Which of 7 departments? (executive/engineering/design/content-seo/growth/research/hr)
 # 2. Which sub-department within that dept? If none fits, propose a new sub-dept and document why
-# 3. Pod (engineering only): pod-a / pod-b / pod-c / null
+# 3. Pod (engineering only): web-platform-team / shopify-app-team / shopify-storefront-team / null
 # 4. reportsTo: the lead/sub-lead in that sub-dept
 # 5. secondaryReportsTo: cross-functional matrix lead if dual-reporting
 # 6. Sub-dept size check: if target sub-dept ≥8 agents, propose splitting before adding

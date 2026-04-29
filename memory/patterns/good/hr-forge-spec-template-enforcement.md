@@ -12,7 +12,7 @@
 1. `~/.claude/memory/user/feedback.md`
 2. `~/.claude/memory/patterns/good/agent-ops-schema.md`
 3. This file
-4. The stack/department-specific memory file the new agent will load (Pod B → shopify-app.md ONLY; design → design/core/*; CRO → cro-decoded-patterns.md; etc.)
+4. The stack/department-specific memory file the new agent will load (Shopify App Team → shopify-app.md ONLY; design → design/core/*; CRO → cro-decoded-patterns.md; etc.)
 
 Cap: ≤ 7K tokens. Forge writes spec, doesn't research.
 
@@ -35,12 +35,12 @@ description: [single mandate sentence ≤ 200 chars]
 model: sonnet | opus | haiku
 tools: [comma-separated tool list]
 category: [engineering | research | creative | growth | hr | executive]
-department: [pod-a | pod-b | pod-c | research | design | cro | email | hr]
+department: [web-platform-team | shopify-app-team | shopify-storefront-team | research | design | cro | email | hr]
 phase: [SHAPE | VALIDATE | BUILD | LAUNCH | MEASURE | DECIDE | null]
 reportsTo: [name]
 title: [Title]
 tier: [engineer | analyst | leadership | creative]
-pod: [pod-a | pod-b | pod-c | null]   # NEW field for pod assignment
+pod: [web-platform-team | shopify-app-team | shopify-storefront-team | null]   # NEW field for pod assignment
 stack_assignment: [nextjs-supabase-railway | shopify-native | shopify-external | multi | null]
 ---
 
@@ -78,8 +78,8 @@ ap_count=$(awk '/## 9. Anti-Patterns/,/##/{print}' "$AGENT_FILE" | grep -c '^[0-
 [[ $ap_count -ge 5 ]] || { echo "INSUFFICIENT ANTI-PATTERNS: $ap_count (<5)"; exit 1; }
 
 # 4. Memory Load Manifest matches pod isolation
-# Pod A agents: only saas-nextjs-supabase-railway.md from /stacks/
-# Pod B/C agents: only shopify-app.md from /stacks/
+# Web Platform Team agents: only saas-nextjs-supabase-railway.md from /stacks/
+# Shopify App Team/C agents: only shopify-app.md from /stacks/
 # (cross-pod loading is the #1 antipattern at scale)
 ```
 
@@ -190,9 +190,9 @@ Each pod loads ONLY its own stack's memory. Cross-pod memory loading is the #1 a
 
 | Pod | Stack | Memory files allowed | Memory files FORBIDDEN |
 |---|---|---|---|
-| Pod A | Next.js + Supabase + Railway | `stacks/saas-nextjs-supabase-railway.md`, `patterns/good/auth-patterns.md`, `patterns/good/billing-patterns.md`, `patterns/good/resend-patterns.md` | `stacks/shopify*`, `stacks/ai-patterns.md` |
-| Pod B | Shopify Native | `stacks/shopify-app.md` (core only) | `stacks/saas-nextjs*`, `stacks/shopify/external/*` |
-| Pod C | Shopify External | `stacks/shopify-app.md` + `stacks/shopify/external/*` | `stacks/saas-nextjs*`, `stacks/shopify/native/*` |
+| Web Platform Team | Next.js + Supabase + Railway | `stacks/saas-nextjs-supabase-railway.md`, `patterns/good/auth-patterns.md`, `patterns/good/billing-patterns.md`, `patterns/good/resend-patterns.md` | `stacks/shopify*`, `stacks/ai-patterns.md` |
+| Shopify App Team | Shopify Native | `stacks/shopify-app.md` (core only) | `stacks/saas-nextjs*`, `stacks/shopify/external/*` |
+| Shopify Storefront Team | Shopify External | `stacks/shopify-app.md` + `stacks/shopify/external/*` | `stacks/saas-nextjs*`, `stacks/shopify/native/*` |
 | Design specialists | `design/core/*`, `design/patterns/*` | NOT stack files |
 | CRO team | `patterns/good/cro-decoded-patterns.md`, `saas-winning-patterns.md`, `saas-growth-onboarding.md` | NOT stack files |
 

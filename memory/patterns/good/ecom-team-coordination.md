@@ -213,7 +213,7 @@ module.exports = {
     },
   ],
   finalHandoff: {
-    to: 'pod-b-frontend', // or pod-c-frontend for Stack C
+    to: 'shopify-app-frontend', // or shopify-storefront-frontend for Stack C
     artifact: 'full-ecom-build-spec',
   },
 };

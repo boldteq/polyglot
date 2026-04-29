@@ -2,7 +2,7 @@
 
 **Created:** 2026-04-18, v1.0.
 **Owned by:** `postmark` agent (hired Cohort 5).
-**Loaded by:** postmark + any Pod A/B/C backend agent integrating Resend.
+**Loaded by:** postmark + any Web Platform Team/B/C backend agent integrating Resend.
 
 ---
 

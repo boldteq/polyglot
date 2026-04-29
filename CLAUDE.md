@@ -94,11 +94,11 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 | Training | `tutor` | Tutor — Head of Learning & Development | Weekly cross-agent training cycles (Sundays 02:00 UTC) |
 | Memory | `mira` | Mira — Knowledge Management Lead | Post-build lesson extraction into the shared pattern brain |
 
-### Shopify Web Department (Pod D — client-owned Liquid themes via Shopify CLI + GitHub workflow, deployed 2026-04-30)
+### Shopify Web Department (Shopify Website Team — client-owned Liquid themes via Shopify CLI + GitHub workflow, deployed 2026-04-30)
 
 | Role | Agent | Name | Purpose |
 |------|-------|------|---------|
-| Director | `atrium` | Atrium — Storefront Engineering Director | Pod D lead. Client brief intake, sprint planning, Figma-loop coordination, sign-off gates, UAT loop, cross-pod handoffs. Reports to Arya. |
+| Director | `atrium` | Atrium — Storefront Engineering Director | Shopify Website Team lead. Client brief intake, sprint planning, Figma-loop coordination, sign-off gates, UAT loop, cross-pod handoffs. Reports to Arya. |
 | Design→Code Bridge | `stitch` | Stitch — Design-to-Theme Converter | Reads approved Figma via MCP → outputs Liquid skeleton + section/block schema + `settings_schema.json` + handoff notes for loom. KEY bridge role. |
 | Frontend (Liquid) | `loom` | Loom — Liquid Theme Developer | Refines stitch's skeleton. Liquid templates, sections, blocks, `theme.liquid`, JSON templates, theme JS (vanilla + Alpine), CSS/Tailwind theme styling. |
 | Backend (APIs) | `conduit` | Conduit — Storefront Data Integration Engineer | Storefront API + Admin API queries, 3rd-party app integrations (Klaviyo / Judge.me / Loox / Recharge / Yotpo), Liquid filters, Web Pixels events. |
@@ -107,9 +107,9 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 | QA Engineer | `lumen` | Lumen — Theme Quality Engineer | 5-gate QA: Lighthouse (LCP <2.5s) + theme-check + customizer settings smoke + cross-browser (Safari iOS / Chrome Android / Firefox / Edge) + axe accessibility. Mentored by `luna` cross-pod. |
 | Code Reviewer | `onyx` | Onyx — Theme Code Reviewer | Final review before mantle pushes. Liquid quality + Online Store 2.0 best practices + perf budget + Figma-vs-built visual diff + brand fidelity. Mentored by `sage` cross-pod. |
 
-**Pod D workflow (12-step):** Yash → atrium intake → designer (elio/pixel) → Figma → client review → atrium triggers stitch → stitch + lattice parallel → loom + conduit integrate → lumen QA → onyx review → mantle staging push → client UAT → atrium authorize → mantle live publish → mira post-mortem.
+**Shopify Website Team workflow (12-step):** Yash → atrium intake → designer (elio/pixel) → Figma → client review → atrium triggers stitch → stitch + lattice parallel → loom + conduit integrate → lumen QA → onyx review → mantle staging push → client UAT → atrium authorize → mantle live publish → mira post-mortem.
 
-**Pod D entry points:**
+**Shopify Website Team entry points:**
 - Client requests new Liquid theme / theme refresh / section addition / migration → `atrium` intakes
 - Figma → Liquid conversion (after elio/pixel sign-off) → `stitch`
 - Liquid templates / theme JS / CSS → `loom`
@@ -120,11 +120,11 @@ All agents live in `~/.claude/agents/`. They are always available. Use them proa
 - Final theme review (Liquid + Figma diff + brand fidelity) → `onyx`
 
 **Boundary vs siblings:**
-- Pod B (`shopify-app-*`) — embedded admin apps (Polaris + RR7 + Prisma)
-- Pod C (`shopify-web-*`) — Hydrogen / headless / standalone storefront (≥$5k budget + custom React)
-- **Pod D (atrium/stitch/loom/conduit/lattice/mantle/lumen/onyx) — Liquid themes on client-owned Shopify stores via CLI + GitHub workflow (any budget tier)**
+- Shopify App Team (`shopify-app-*`) — embedded admin apps (Polaris + RR7 + Prisma)
+- Shopify Storefront Team (`shopify-web-*`) — Hydrogen / headless / standalone storefront (≥$5k budget + custom React)
+- **Shopify Website Team (atrium/stitch/loom/conduit/lattice/mantle/lumen/onyx) — Liquid themes on client-owned Shopify stores via CLI + GitHub workflow (any budget tier)**
 
-**Pod D inheritance:** All 8 agents bind HR Constitution v1 (Cadence/Witness/Forge/Tutor/Mira/Roster) Tier 1 from day 1. Forge Q4 similarity gate confirmed zero collisions. Witness Q26 parallel `probation_trackers` watch first 10 runs. Cadence Q27 5-axis graduation gate. Q41 budgets: opus tier (atrium/stitch/onyx) = $40/wk, sonnet tier (loom/conduit/lattice/mantle/lumen) = $15/wk. Pod weekly ceiling: $195.
+**Shopify Website Team inheritance:** All 8 agents bind HR Constitution v1 (Cadence/Witness/Forge/Tutor/Mira/Roster) Tier 1 from day 1. Forge Q4 similarity gate confirmed zero collisions. Witness Q26 parallel `probation_trackers` watch first 10 runs. Cadence Q27 5-axis graduation gate. Q41 budgets: opus tier (atrium/stitch/onyx) = $40/wk, sonnet tier (loom/conduit/lattice/mantle/lumen) = $15/wk. Pod weekly ceiling: $195.
 
 **HR operates the agent lifecycle:**
 - New capability needed → Roster detects → Forge auto-deploys to Probation → Witness watches 10 runs → Cadence reviews → promotes to Active (with Yash approval)
@@ -150,31 +150,31 @@ Full org chart: `~/.claude/memory/patterns/good/org-structure-v2.md`. Source of 
 **1. ENGINEERING (Lead: arya — Chief Technology Officer)**
 
   *sub-dept: architecture* — `arya` (CTO), `vex` (Senior Software Engineer — Reliability)
-  *sub-dept: web-platform-team (Stack A: Next.js + Supabase + Railway)* — `koda` (Senior Backend Engineer), `pod-a-frontend` (Senior Frontend Engineer, Cohort 3+), `dato` (Principal Database Architect), `riko` (Build & Scaffolding Engineer)
+  *sub-dept: web-platform-team (Stack A: Next.js + Supabase + Railway)* — `koda` (Senior Backend Engineer), `web-platform-frontend` (Senior Frontend Engineer, Cohort 3+), `dato` (Principal Database Architect), `riko` (Build & Scaffolding Engineer)
   *sub-dept: embedded-apps-team (Stack B: Shopify Native, RR7 + Polaris)* — `shopify-app-frontend`, `shopify-app-backend`, `shopify-app-db`, `shopify-app-tester`, `shopify-app-reviewer` (planned)
   *sub-dept: storefront-apps-team (Stack C: Shopify External standalone, Hydrogen RR7)* — Cohort 2+: `shopify-web-frontend`, `shopify-web-backend`, `shopify-web-db`, `shopify-web-tester`, `shopify-web-reviewer`
-  *sub-dept: shopify-website-team (Stack D: Liquid Themes + Online Store 2.0 + Shopify CLI + GitHub workflow — client-owned themes)* — `atrium` (Storefront Engineering Director, Pod D lead), `stitch` (Design-to-Theme Converter — Figma→Liquid via MCP), `loom` (Liquid Theme Developer), `conduit` (Storefront Data Integration Engineer), `lattice` (Content Modeling Architect — metafields/metaobjects), `mantle` (Theme Release Engineer — CLI + GitHub deploys), `lumen` (Theme Quality Engineer — Lighthouse/theme-check/a11y/cross-browser), `onyx` (Theme Code Reviewer)
+  *sub-dept: shopify-website-team (Stack D: Liquid Themes + Online Store 2.0 + Shopify CLI + GitHub workflow — client-owned themes)* — `atrium` (Storefront Engineering Director, Shopify Website Team lead), `stitch` (Design-to-Theme Converter — Figma→Liquid via MCP), `loom` (Liquid Theme Developer), `conduit` (Storefront Data Integration Engineer), `lattice` (Content Modeling Architect — metafields/metaobjects), `mantle` (Theme Release Engineer — CLI + GitHub deploys), `lumen` (Theme Quality Engineer — Lighthouse/theme-check/a11y/cross-browser), `onyx` (Theme Code Reviewer)
   *sub-dept: platform* — `bolt` (Director of DevOps), `hawk` (Site Reliability Engineer)
   *sub-dept: quality* — `sage` (Principal Engineer — Code Quality, cross-team), `luna` (Lead QA Engineer, cross-team)
 
   Routing:
   - Bug report → `vex` (any stack)
   - Database work (Postgres/Supabase) → `dato` (schema/migrations/RLS/triggers/Realtime/Edge Functions)
-  - Shopify metafield/metaobject schema → `lattice` (Pod D)
+  - Shopify metafield/metaobject schema → `lattice` (Shopify Website Team)
   - Tests → team tester first; `luna` for cross-team or strategy
   - Code review → team reviewer first; `sage` for cross-team or escalation
   - Deployment (web apps) → `bolt` (after sage approves)
-  - Deployment (Shopify Liquid themes) → `mantle` (Pod D)
+  - Deployment (Shopify Liquid themes) → `mantle` (Shopify Website Team)
   - Monitoring → `hawk`
   - Project setup → `riko`
 
   **Stack-pod routing (Shopify work):**
-  - Embedded admin app (Polaris) → Pod B (shopify-app-*)
-  - Hydrogen / headless storefront (RR7) → Pod C (shopify-web-*)
-  - Liquid theme on client-owned Shopify (CLI + GitHub) → Pod D (atrium → stitch → loom → conduit → lattice → mantle → lumen → onyx)
+  - Embedded admin app (Polaris) → Shopify App Team (shopify-app-*)
+  - Hydrogen / headless storefront (RR7) → Shopify Storefront Team (shopify-web-*)
+  - Liquid theme on client-owned Shopify (CLI + GitHub) → Shopify Website Team (atrium → stitch → loom → conduit → lattice → mantle → lumen → onyx)
   - Mixed (admin app + theme + headless) → atrium intakes, splits across pods
 
-  **Pod D (Shopify Website) entry points:**
+  **Shopify Website Team (Shopify Website) entry points:**
   - Client requests Liquid theme work (new build / refresh / section addition / migration) → `atrium` intakes
   - Figma → Liquid conversion (after elio/pixel sign-off) → `stitch`
   - Liquid templates / theme JS / CSS → `loom`
@@ -263,7 +263,7 @@ All accumulated knowledge lives in `~/.claude/memory/`.
 2. Load the matching stack or pattern file
 3. **MANDATORY:** Load `patterns/good/executable-auto-fix-loop.md` — class-based retry caps, cost breakers, escalation JSON, git autonomy rules (every agent, every run)
 4. **MANDATORY:** Load `patterns/good/executable-validation-gates.md` — runnable bash gates for Koda/Sage/Luna/Vega/Bolt/Hawk
-5. **MANDATORY for any agent touching SaaS UI or navigation:** Load `patterns/good/saas-ia-separation.md` — strict sidebar/settings/account/top-bar separation, workspace switcher pattern for multi-tenant + agency modes, no-duplicate-nav audit, RLS on workspace-scoped tables (Vega + pod frontends + pixel + Koda/pod-b-frontend/pod-c-frontend)
+5. **MANDATORY for any agent touching SaaS UI or navigation:** Load `patterns/good/saas-ia-separation.md` — strict sidebar/settings/account/top-bar separation, workspace switcher pattern for multi-tenant + agency modes, no-duplicate-nav audit, RLS on workspace-scoped tables (Vega + pod frontends + pixel + Koda/shopify-app-frontend/shopify-storefront-frontend)
 6. Check `user/feedback.md` for corrections (highest priority, overrides everything else)
 7. Apply known good patterns. Explicitly avoid known antipatterns.
 
@@ -339,8 +339,8 @@ Full routing table: `~/.claude/memory/patterns/good/yash-model-routing.md`.
 
 | Tier | Model | Current agents |
 |------|-------|----------------|
-| **DEEP** (never downgrade) | `claude-opus-4-6` | Arya, Yash, Sage, Vex, Verdict, **Atrium, Stitch, Onyx** (Pod D opus tier) |
-| **FAST** (default for builders) | `claude-sonnet-4-6` | Koda, Dato, Vega, Pixel, Pulse, Luna, Bolt, Hawk, Zeph, Echo, Orbit, Quill, Scout, Nova, Ledger, Atlas, Cadence, Forge, Tutor, Mira, Harvest, **Loom, Conduit, Lattice, Mantle, Lumen** (Pod D sonnet tier) |
+| **DEEP** (never downgrade) | `claude-opus-4-6` | Arya, Yash, Sage, Vex, Verdict, **Atrium, Stitch, Onyx** (Shopify Website Team opus tier) |
+| **FAST** (default for builders) | `claude-sonnet-4-6` | Koda, Dato, Vega, Pixel, Pulse, Luna, Bolt, Hawk, Zeph, Echo, Orbit, Quill, Scout, Nova, Ledger, Atlas, Cadence, Forge, Tutor, Mira, Harvest, **Loom, Conduit, Lattice, Mantle, Lumen** (Shopify Website Team sonnet tier) |
 | **CHEAP** (back-office) | `claude-haiku-4-5-20251001` | **Witness, Roster** |
 
 **Local autocomplete** (Continue.dev + Ollama + Qwen 2.5 Coder): runs inside VS Code tab-complete only. Never dispatches as a Polyglot agent. See `~/.claude/memory/patterns/good/local-autocomplete-setup.md`.

@@ -171,7 +171,7 @@ You are Merch, the Boldteq Software Factory's ecom on-page copy specialist. You 
 - **elio** receives final copy for typographic integration
 - **ecom-cro** receives slot fills
 - **figma-synth** receives final copy for `.figma.tsx` example renders
-- **pod-b-frontend / pod-c-frontend** receive copy strings to ship
+- **shopify-app-frontend / shopify-storefront-frontend** receive copy strings to ship
 
 ### Handoff JSON:
 ```json

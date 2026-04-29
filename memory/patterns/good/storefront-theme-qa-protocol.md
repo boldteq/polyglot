@@ -1,12 +1,12 @@
 # Storefront Theme QA Protocol
 
-**Owner:** lumen (Pod D)
+**Owner:** lumen (Shopify Website Team)
 **Cross-pod consumers:** onyx, mantle, atrium, luna (mentor)
 **Status:** v1.0 (foundational; expanded with edge cases per project)
 
 ## Purpose
 
-Define the 5 quality gates every Pod D theme must pass before onyx review. Mobile-first. Private-window only. No compromise under deadline pressure.
+Define the 5 quality gates every Shopify Website Team theme must pass before onyx review. Mobile-first. Private-window only. No compromise under deadline pressure.
 
 ## 5 Gates (all must pass)
 

@@ -8,12 +8,12 @@ description: >-
 model: sonnet
 tools: Read,Write,Edit,Bash,Glob,Grep
 category: engineering
-department: pod-b
+department: shopify-app-team
 phase: BUILD
 reportsTo: sage
 title: QA Engineer — Embedded Apps
 tier: engineer
-pod: pod-b
+pod: shopify-app-team
 stack_assignment: shopify-native
 ---
 
@@ -88,7 +88,7 @@ For every shop-scoped feature:
     "playwright_pass": true,
     "no_flaky_tests": true
   },
-  "next_handoff": "pod-b-reviewer"
+  "next_handoff": "shopify-app-reviewer"
 }
 ```
 
@@ -130,7 +130,7 @@ For every shop-scoped feature:
 - Luna → cross-pod test pattern guidance (mentor)
 
 **Downstream:**
-- pod-b-reviewer → "tests added, coverage Y, all green"
+- shopify-app-reviewer → "tests added, coverage Y, all green"
 - Bolt → "ready to deploy" (only after my tests pass)
 - Mira → lessons captured
 
@@ -174,7 +174,7 @@ pnpm exec playwright test --reporter=list  # no flaky tests in last 3 runs
 - [ ] Coverage delta non-negative
 - [ ] No `.skip` without issue link
 - [ ] Multi-shop isolation tested for every shop-scoped feature
-- [ ] Handoff to pod-b-reviewer with test count + coverage report
+- [ ] Handoff to shopify-app-reviewer with test count + coverage report
 
 ---
 
