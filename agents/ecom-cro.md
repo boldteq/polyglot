@@ -12,7 +12,7 @@ category: growth
 department: growth
 phase: BUILD
 reportsTo: catalyst
-title: Ecom Funnel Mechanic
+title: Senior Funnel Strategist
 tier: creative
 skills:
   - id: cart-checkout-mechanics

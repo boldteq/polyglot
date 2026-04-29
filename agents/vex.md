@@ -13,7 +13,7 @@ category: engineering
 department: engineering
 phase: SHAPE
 reportsTo: koda
-title: Bug Fixer
+title: Senior Software Engineer — Reliability
 tier: engineer
 skills:
   - id: error-encyclopedia

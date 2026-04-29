@@ -12,7 +12,7 @@ category: engineering
 department: engineering
 phase: BUILD
 reportsTo: arya
-title: Pod C Lead (Shopify External)
+title: Engineering Manager — Storefront Apps
 tier: leadership
 pod: pod-c
 stack_assignment: shopify-external

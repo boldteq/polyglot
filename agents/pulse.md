@@ -13,7 +13,7 @@ output_template: saas-verdict
 department: research
 phase: MEASURE
 reportsTo: orbit
-title: User Researcher
+title: Senior UX Researcher
 tier: analyst
 skills:
   - id: deep-training-2026-04-10-pulse-user-research-playbook

@@ -11,7 +11,7 @@ category: design
 department: creative
 phase: BUILD
 reportsTo: vega
-title: Design System Architect
+title: Design Systems Lead
 tier: creative
 skills:
   - id: design-tokens-architecture

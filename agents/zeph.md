@@ -12,7 +12,7 @@ category: content-seo
 department: creative
 phase: BUILD
 reportsTo: quill
-title: SEO Specialist
+title: Head of SEO
 tier: creative
 skills:
   - id: deep-training-2026-04-10-zeph-seo-playbook-stack-a

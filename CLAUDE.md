@@ -47,9 +47,9 @@ Each completed project trains the agent team so the next one builds faster.
 Current: 30 agents → Target: 54 agents in 6 weekly cohorts of 5. Decompositions of overloaded agents (Quill, Koda, Vega, Rex) completed Week 0 to release token-efficiency capacity BEFORE new specialists hire.
 
 **New departments after scale-up:**
-- **Stack Pods** — 3 stack-specific engineering pods (Pod A: Next.js, Pod B: Shopify Native, Pod C: Shopify External). Each pod has 5 specialists (Frontend, Backend, DB, Tester, Reviewer). Pod A repurposes Koda/Dato/Luna/Sage; Pods B + C are net-new.
-- **Design Specialists** — 4 specialists under Vega (Lead): elio (ecom), dash (dashboard), token (design system), figma-synth (JSX→.fig)
-- **CRO Team** — 5 specialists under new CRO Lead `catalyst`: decoder (brand pattern teardowns), spark (hero/CTA), landing-cro (marketing CRO), ecom-cro (ecom funnel), sequence (lifecycle email)
+- **Engineering Teams** — 3 stack-specific engineering teams (Web Platform Team: Next.js, Embedded Apps Team: Shopify Native, Storefront Apps Team: Shopify External). Each team has 5 specialists (Frontend, Backend, DB, Tester, Reviewer). Web Platform Team repurposes Koda/Dato/Luna/Sage; Embedded + Storefront Apps Teams are net-new.
+- **Design Specialists** — 4 specialists under Vega (Chief Design Officer): elio (ecom), dash (dashboard), token (design system), figma-synth (JSX→.fig)
+- **Conversion Optimization Team** — 5 specialists under Director of Conversion Optimization `catalyst`: decoder (brand pattern teardowns), spark (hero/CTA), landing-cro (marketing CRO), ecom-cro (ecom funnel), sequence (lifecycle email)
 - **Email Infrastructure** — 2 specialists: postmark (Resend transactional infra) + sequence (lifecycle sequences, sits under CRO)
 - **Quill Decomposition Hires** — serif (App Store / PH / ASO copy), docsmith (developer docs / API)
 

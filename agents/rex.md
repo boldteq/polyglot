@@ -18,7 +18,7 @@ category: ops-strategy
 department: executive
 phase: null
 reportsTo: null
-title: Commander
+title: Chief Executive Officer
 tier: leadership
 skills:
   - id: deploy-gate-updates-rex-enforces

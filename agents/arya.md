@@ -13,7 +13,7 @@ category: ops-strategy
 department: engineering
 phase: VALIDATE
 reportsTo: rex
-title: VP Engineering
+title: Chief Technology Officer
 tier: leadership
 skills:
   - id: design-system-architecture-mandatory-for-every-project

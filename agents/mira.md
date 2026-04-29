@@ -13,7 +13,7 @@ category: hr
 department: hr
 phase: LAUNCH
 reportsTo: cadence
-title: Memory Keeper
+title: Knowledge Management Lead
 tier: analyst
 role: memory-keeper
 skills:

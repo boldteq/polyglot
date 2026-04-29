@@ -12,7 +12,7 @@ output_template: saas-verdict
 department: research
 phase: VALIDATE
 reportsTo: nova
-title: Market Sizer
+title: Senior Market Analyst
 tier: analyst
 skills:
   - id: deep-training-2026-04-10-atlas-market-sizing-playbook

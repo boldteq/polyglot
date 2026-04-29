@@ -19,7 +19,7 @@ category: design
 department: creative
 phase: BUILD
 reportsTo: vega
-title: Public-Facing Page Designer
+title: Senior Web Designer
 tier: creative
 skills:
   - id: flowbase-design-dna

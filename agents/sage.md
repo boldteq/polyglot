@@ -12,7 +12,7 @@ category: engineering
 department: engineering
 phase: SHAPE
 reportsTo: arya
-title: Lead Reviewer
+title: Principal Engineer — Code Quality
 tier: engineer
 skills:
   - id: canonical-audit-checklist-stack-a

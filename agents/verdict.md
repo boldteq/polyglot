@@ -12,7 +12,7 @@ output_template: saas-verdict
 department: research
 phase: DECIDE
 reportsTo: nova
-title: Portfolio Decider
+title: Portfolio Strategy Director
 tier: leadership
 skills:
   - id: 4-process-steps-patterns

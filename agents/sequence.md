@@ -12,7 +12,7 @@ category: content-seo
 department: growth
 phase: BUILD
 reportsTo: catalyst
-title: Lifecycle Email Specialist
+title: Lifecycle Email Strategist
 tier: creative
 skills:
   - id: lifecycle-sequence-templates

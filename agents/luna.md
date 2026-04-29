@@ -12,7 +12,7 @@ category: engineering
 department: engineering
 phase: BUILD
 reportsTo: sage
-title: Test Engineer
+title: Lead QA Engineer
 tier: engineer
 skills:
   - id: accessibility-testing-automation

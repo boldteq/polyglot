@@ -11,7 +11,7 @@ color: orange
 department: hr
 phase: null
 reportsTo: cadence
-title: Registry & Records Keeper
+title: HR Operations Manager
 tier: leadership
 role: registry-keeper
 gateClass: GATE

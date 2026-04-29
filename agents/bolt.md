@@ -12,7 +12,7 @@ category: engineering
 department: engineering
 phase: LAUNCH
 reportsTo: arya
-title: DevOps Lead
+title: Director of DevOps
 tier: engineer
 skills:
   - id: bolt-auto-fix-loop-domain-specific-patterns

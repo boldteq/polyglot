@@ -16,7 +16,7 @@ category: design
 department: creative
 phase: BUILD
 reportsTo: quill
-title: UI/UX Designer
+title: Chief Design Officer
 tier: creative
 skills:
   - id: admin-panel-design-standards-patterns

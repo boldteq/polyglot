@@ -12,7 +12,7 @@ output_template: saas-verdict
 department: research
 phase: SHAPE
 reportsTo: nova
-title: Idea Validator
+title: Senior Product Strategist
 tier: analyst
 skills:
   - id: deep-training-2026-04-10-scout-idea-validation-playbook

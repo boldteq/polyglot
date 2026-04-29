@@ -11,7 +11,7 @@ color: orange
 department: hr
 phase: null
 reportsTo: cadence
-title: Accountability & Performance
+title: People Analytics Lead
 tier: analyst
 role: accountability-tracker
 category: hr

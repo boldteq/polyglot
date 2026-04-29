@@ -11,7 +11,7 @@ category: engineering
 department: pod-b
 phase: BUILD
 reportsTo: sage
-title: Test Engineer
+title: QA Engineer — Embedded Apps
 tier: engineer
 pod: pod-b
 stack_assignment: shopify-native

@@ -12,7 +12,7 @@ color: gold
 department: hr
 phase: null
 reportsTo: cadence
-title: Bulk Training Lead
+title: Head of Learning & Development
 tier: leadership
 role: bulk-trainer
 class: builder

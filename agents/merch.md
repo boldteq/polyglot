@@ -13,7 +13,7 @@ category: content-seo
 department: growth
 phase: BUILD
 reportsTo: catalyst
-title: Ecom On-Page Copywriter
+title: Senior Product Copywriter
 tier: creative
 skills:
   - id: pdp-body-structure

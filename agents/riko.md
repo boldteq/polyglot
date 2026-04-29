@@ -12,7 +12,7 @@ category: engineering
 department: engineering
 phase: VALIDATE
 reportsTo: arya
-title: Project Setup Specialist
+title: Build & Scaffolding Engineer
 tier: engineer
 skills:
   - id: day-1-deliverables-riko-creates-all-in-one-pass

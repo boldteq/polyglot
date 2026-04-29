@@ -13,7 +13,7 @@ category: engineering
 department: engineering
 phase: BUILD
 reportsTo: arya
-title: Pod A Lead (Stack A SaaS)
+title: Engineering Manager — Web Platform
 tier: leadership
 pod: pod-a
 stack_assignment: nextjs-supabase-railway

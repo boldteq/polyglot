@@ -11,7 +11,7 @@ color: teal
 department: growth
 phase: null
 reportsTo: echo
-title: Market Intelligence Scraper
+title: Market Intelligence Analyst
 tier: analyst
 category: research
 ---

@@ -14,7 +14,7 @@ category: research
 department: growth
 phase: BUILD
 reportsTo: vega
-title: Brand Pattern Extractor
+title: Senior Brand Intelligence Analyst
 tier: analyst
 skills:
   - id: top-50-dtc-teardown-format

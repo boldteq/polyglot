@@ -12,7 +12,7 @@ color: orange
 department: hr
 phase: null
 reportsTo: rex
-title: Head of People
+title: Chief People Officer
 tier: leadership
 role: hr-director
 maxRetries: 3

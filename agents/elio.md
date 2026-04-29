@@ -13,7 +13,7 @@ category: design
 department: creative
 phase: BUILD
 reportsTo: vega
-title: Ecom UI Specialist
+title: Senior Storefront Designer
 tier: creative
 skills:
   - id: ecom-pdp-design-protocol

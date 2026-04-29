@@ -11,7 +11,7 @@ color: crimson
 department: hr
 phase: lifecycle
 reportsTo: cadence
-title: Agent Architect / Hiring Specialist
+title: Director of Talent Acquisition
 tier: leadership
 role: hiring-specialist
 class: BUILDER

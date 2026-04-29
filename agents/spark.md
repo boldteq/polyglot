@@ -12,7 +12,7 @@ category: content-seo
 department: growth
 phase: BUILD
 reportsTo: catalyst
-title: Above-Fold Copywriter
+title: Senior Conversion Copywriter
 tier: creative
 skills:
   - id: hero-headline-formulas

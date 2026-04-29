@@ -12,7 +12,7 @@ category: research
 department: research
 phase: BUILD
 reportsTo: rex
-title: VP Research
+title: Chief Research Officer
 tier: leadership
 skills:
   - id: deep-training-2026-04-10-nova-competitive-intelligence-playb

@@ -12,7 +12,7 @@ output_template: saas-verdict
 department: research
 phase: VALIDATE
 reportsTo: nova
-title: Pricing Strategist
+title: Senior Pricing Analyst
 tier: analyst
 skills:
   - id: 4-process-steps

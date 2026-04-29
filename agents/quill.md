@@ -18,7 +18,7 @@ category: content-seo
 department: creative
 phase: BUILD
 reportsTo: rex
-title: VP Creative
+title: Chief Marketing Officer
 tier: leadership
 skills:
   - id: deep-training-2026-04-10-quill-copy-playbook-stack-a

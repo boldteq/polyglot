@@ -12,7 +12,7 @@ output_template: saas-verdict
 department: research
 phase: MEASURE
 reportsTo: nova
-title: Metrics Architect
+title: Head of Analytics
 tier: analyst
 skills:
   - id: deep-training-2026-04-10-orbit-metrics-architecture-playbook

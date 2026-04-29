@@ -12,7 +12,7 @@ category: design
 department: creative
 phase: BUILD
 reportsTo: vega
-title: JSX-to-Figma Specialist
+title: Design Tooling Engineer
 tier: creative
 skills:
   - id: jsx-to-fig-pipeline

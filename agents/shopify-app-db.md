@@ -10,7 +10,7 @@ category: engineering
 department: pod-b
 phase: BUILD
 reportsTo: arya
-title: Database Specialist
+title: Database Engineer — Embedded Apps
 tier: engineer
 pod: pod-b
 stack_assignment: shopify-native

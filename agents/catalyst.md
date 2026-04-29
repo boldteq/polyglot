@@ -7,7 +7,7 @@ category: growth
 department: growth
 phase: BUILD
 reportsTo: echo
-title: CRO Lead
+title: Director of Conversion Optimization
 tier: leadership
 skills: 
 - id: ab-test-prioritization

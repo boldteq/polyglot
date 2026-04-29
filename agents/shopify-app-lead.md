@@ -13,7 +13,7 @@ category: engineering
 department: engineering
 phase: BUILD
 reportsTo: arya
-title: Pod B Lead (Shopify Native)
+title: Engineering Manager — Embedded Apps
 tier: leadership
 pod: pod-b
 stack_assignment: shopify-native

@@ -12,7 +12,7 @@ output_template: saas-verdict
 department: growth
 phase: LAUNCH
 reportsTo: rex
-title: VP Growth
+title: Chief Growth Officer
 tier: leadership
 skills:
   - id: deep-training-2026-04-10-echo-distribution-playbook

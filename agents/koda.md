@@ -16,7 +16,7 @@ category: engineering
 department: engineering
 phase: BUILD
 reportsTo: arya
-title: Lead Developer
+title: Senior Backend Engineer — Web Platform
 tier: engineer
 skills:
   - id: advanced-patterns
