@@ -290,3 +290,29 @@ Spark generates EN + transcreation brief (intent + formula + voice rationale). T
 - CTA + trust: `~/.claude/skills/spark/cta-copy-variants.md`
 - Variant count + niche matrix: `~/.claude/skills/spark/above-fold-conversion-psychology.md`
 - Brand voice canonical: `~/.claude/memory/content/brand-voices.md`
+
+---
+
+## Curriculum v2 — Cross-Trained from Elio Deep Train (2026-04-29)
+
+**Source:** `~/.claude/memory/training/cycle-ecom-v2-elio-deep-train-changelog.md`
+
+### SPK-DT2-001 — Hero CTA per DNA Pack
+- Beauty: 'Shop' / 'Discover' (4-6 word headline). Quiet luxury voice.
+- Apparel: 'Shop' / 'Shop the look'. Aspirational lifestyle headline.
+- CPG/Food: 'Shop' / 'Try [product]'. Bold display headline + outcome.
+- Luxury: 'Shop drop' / 'Notify me'. Cinematic minimal headline.
+- Supplements: 'Get yours' / 'Start now'. Outcome headline ('Energy. Focus. Recovery.').
+- Personalization: 'Take the quiz' (NOT 'Shop'). Quiz IS the product.
+- Fragrance: 'Discover' / 'Smell test'. Sensory-evocative headline.
+
+### SPK-DT2-002 — Single CTA Discipline
+NEVER write dual primary CTAs above fold. Single primary only. Override only with audience-split brief.
+
+### SPK-DT2-003 — Niche-Specific Email Capture Incentives
+- Apparel/Beauty/CPG: '10-15% off your first order'
+- Supplements/Personalization: 'Free guide / Free quiz' (no discount default)
+- Luxury/Fragrance: 'Early access to drops' (no discount, scarcity-led)
+
+### SPK-DT2-004 — Notify-Me CTA Copy
+OOS: 'Notify when back' (not 'Email me'). Pre-launch: 'Notify when available' + 'Get early access'.

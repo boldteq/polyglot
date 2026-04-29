@@ -319,6 +319,54 @@ Hydrogen + RR7 (Stack B storefront mode) default. Liquid ONLY for: budget <$5K +
 
 ---
 
+## Curriculum v2 — Elio Deep Train Rounds 2-13 (2026-04-29)
+
+**Source:** commercecream.com 37-brand catalog · changelog: `~/.claude/memory/training/cycle-ecom-v2-elio-deep-train-changelog.md`
+**52 patches across 13 rounds. Summary below; full detail in changelog.**
+
+### 5 DNA Packs (Rounds 2-7, +2 sub-variants Rounds 6, 8)
+| DNA Pack | Hero default | PDP order | Type system | Reference brands |
+|----------|--------------|-----------|-------------|------------------|
+| Beauty | Product macro on cream BG | Benefits → How-to-use → Ingredients → Reviews | Light serif display + sans body | Rhode, Glossier, Ilia, Aesop |
+| Apparel | Full-bleed lifestyle + minimal overlay | Standard PDP + sticky size guide | Clean sans (GT America / Inter) | OV, Vuori, lululemon, Bombas |
+| CPG/Food | Product on bold flat color | Above-fold nutrition card + below-fold ingredient | Bold display + casual sans | Magic Spoon, Liquid Death, Recess |
+| Luxury | Editorial film still + countdown | Vertical-scroll gallery + minimal cart | Serif display + extreme whitespace | Kith, Aimé Leon Dore, SSENSE |
+| Supplements | Product + science credibility strip | Full ingredient cards (each = card) | Sans + ingredient-card serif | AG1, Ritual, Mother Science |
+| Personalization (sub-Beauty) | Quiz-first hero (not Shop-first) | Custom formula card + ingredient cards | Beauty type system | Prose, Curology, Function of Beauty |
+| Fragrance (sub-Beauty) | Abstract sensory + bottle macro inset | Top/Heart/Base notes + scent family tag | Beauty type + mono accent | DedCool, snif, D.S. & Durga |
+
+### CRO Mechanics (Round 9)
+- Free-shipping bar: top of cart drawer, 3 states, positive frame ('Add $X for free shipping')
+- Cart upsell: hybrid Shopify Recommendations API + manual pinned products
+- Hero CTA: single primary only (no dual CTAs above fold)
+- Exit-intent: desktop only, mouse-leave trigger, 7-day cookie
+
+### UX Element Defaults (Round 10)
+- Sticky ATC: IntersectionObserver + fade in/out
+- Mobile gallery: CSS scroll-snap (no JS)
+- Image zoom: niche-adaptive (apparel=hover-magnify, beauty/CPG=lightbox)
+- OOS variant: strikethrough + opacity 0.4 + hover label
+
+### Reviews + Search + Email (Round 11)
+- Reviews: above-fold snippet + below-fold full module
+- UGC: below reviews, shop-the-look tagging
+- Search: full-screen overlay + live results + recent + popular
+- Email capture: footer always + delayed 45s pop-up + niche-specific incentive
+
+### Nav + Quick-add + Footer + Login (Round 12)
+- Nav: niche-adaptive (apparel=mega-menu, CPG/beauty=simple inline)
+- Quick-add: inline mini-PDP modal
+- Footer: 4-col (Shop / Help / Brand / Connect)
+- Login: Shop Login + magic link (no password)
+
+### Trust + Pre-order + Loading + Perf (Round 13)
+- Trust badges: trio at PDP + cart + checkout (layered)
+- Pre-order: notify-me email capture + drop countdown
+- Loading: skeleton screens + blur-up images + no spinners
+- Perf: LCP ≤2.0s (Hydrogen) / ≤2.5s (custom), CLS ≤0.1, JS ≤200KB
+
+---
+
 ## Curriculum v2 — Elio Deep Train Round 1 Foundation (2026-04-29)
 
 **Source:** commercecream.com 37-brand catalog · changelog: `~/.claude/memory/training/cycle-ecom-v2-elio-deep-train-changelog.md`

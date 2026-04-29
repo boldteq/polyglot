@@ -67,6 +67,77 @@ Colour Mill · IKU · Oh Snap! Pickles · Mistercap's · Red Clay Hot Sauce · P
 
 ---
 
+## Round 13 — Trust + Pre-order + Loading + Performance
+
+### ELI-DT2-R13-001 — Trust Badges = Trust Trio Below ATC (Above for Skeptical) + Cart + Checkout Layered
+PDP: 3-icon trust trio (free shipping / returns / reviews) below ATC for default niches, ABOVE ATC for supplements/wellness/luxury (ELI-004). Cart drawer: secure checkout + return policy. Checkout footer: SSL + payment icons. Layered at decision points.
+**Cross-impact:** TrustTrio canonical + 3 placement variants. Reinforces ELI-004 placement rule.
+
+### ELI-DT2-R13-002 — Pre-order / Waitlist = Notify-Me Email Capture + Drop Countdown
+OOS variants: replace ATC with 'Notify when back' email capture. Pre-launch: countdown timer + 'Notify when available' + early-access incentive. ecom-cro auto-emails on restock. Reference: Kith drops.
+**Cross-impact:** NotifyMeForm canonical. ecom-cro back-in-stock email automation. spark writes notify CTA + restock email.
+
+### ELI-DT2-R13-003 — Loading States = Skeleton + Blur-Up + No Spinners
+Listing: product card skeleton (animate-pulse). Cart: line item skeleton. Images: Hydrogen `<Image>` blur-up native. NO spinners.
+**Cross-impact:** SkeletonComponents canonical. motion-interaction-patterns.md authoritative.
+
+### ELI-DT2-R13-004 — Performance Budget = LCP ≤2.0s (Hydrogen) / ≤2.5s (Custom), CLS ≤0.1, JS ≤200KB
+Hydrogen on Oxygen edge: LCP ≤2.0s achievable. Custom Stack C: ≤2.5s. CLS ≤0.1. JS bundle: 200KB compressed per PDP route.
+**Cross-impact:** Performance budget enforced in code review (sage). pod-frontend ships size-limit config matching budgets. catalyst rejects designs that violate budget at brief stage.
+
+---
+
+## Summary — Elio Curriculum v2 Deep Train (2026-04-29)
+
+**Total:** 13 rounds · 52 questions · all answered with recommended option · all patches captured.
+
+**5 DNA packs locked:**
+- Beauty (Round 2) — Rhode anchor
+- Apparel (Round 3) — Outdoor Voices anchor
+- CPG/Food (Round 4) — Magic Spoon anchor
+- Luxury (Round 5) — Kith anchor
+- Supplements (Round 7) — AG1/Ritual anchor
+
+**2 sub-DNA variants:**
+- Personalization (Round 6) — Prose anchor (variant of Beauty)
+- Fragrance (Round 8) — DedCool/snif anchor (variant of Beauty)
+
+**Element-deep training:**
+- Round 9: CRO mechanics (free-ship, upsell, hero CTA, exit-intent)
+- Round 10: UX details (sticky ATC, gallery swipe, zoom, OOS variant)
+- Round 11: Reviews + UGC + search + email capture
+- Round 12: Navigation + quick-add + footer + account
+- Round 13: Trust + pre-order + loading + performance
+
+**Parallel impact (other agents trained via Elio's design decisions):**
+- **catalyst** (CRO Lead): scope arbitration rules, ELI-010 enforcement gates, perf budget enforcement
+- **spark** (above-fold copy): hero copy formulas per DNA, single-CTA discipline, niche incentive copy
+- **merch** (on-page copy): PDP body order per DNA, ingredient card copy template, microcopy templates
+- **ecom-cro** (mechanics): bundle math, free-ship threshold, upsell logic, sample-credit logic, subscription default rules
+- **token** (design tokens): 5 DNA pack starter token bundles, motion overrides per pack
+- **figma-synth** (Code Connect): canonical component library expansion, niche-specific variants
+- **decoder** (intel): commerce cream catalog added to source bank
+- **sequence** (lifecycle email): notify-me automation hookup, captures consumed into welcome series
+
+
+### ELI-DT2-R12-001 — Header Nav = Niche-Adaptive
+Apparel/fashion (many SKUs) = mega-menu with category cards + featured collections. CPG/beauty (few SKUs) = simple inline (Shop / About / Reviews / Account). Fits catalog complexity.
+**Cross-impact:** Header component variant by DNA pack. Apparel = MegaMenu, CPG/Beauty = SimpleNav.
+
+### ELI-DT2-R12-002 — Quick-add = Inline Mini-PDP Modal
+Click '+' on product card → opens compact modal (image + variant selector + qty + ATC). Stays on listing page after add. AOV +15-25%. Reference: OV, Aritzia, Bombas.
+**Cross-impact:** QuickAddModal canonical. ecom-cro owns post-add cart drawer trigger logic.
+
+### ELI-DT2-R12-003 — Footer = 4-col + Email + Brand Strip
+4 columns: Shop / Help / Brand / Connect. Below: email signup + payment icons + cert badges + copyright.
+**Cross-impact:** Footer canonical 4-col layout. merch writes footer category copy.
+
+### ELI-DT2-R12-004 — Account Login = Shop Login + Magic Link + Customer Account API
+Primary: Shop Login button (Shopify-native, autofills). Secondary: 'Continue with email' → magic link. No password. Backed by Shopify Customer Account API.
+**Cross-impact:** AccountLogin canonical. pod-b-frontend uses createCustomerAccountClient. Hydrogen account_.login.tsx route pattern.
+
+---
+
 ## Round 11 — Reviews + UGC + Search + Email Capture
 
 ### ELI-DT2-R11-001 — Reviews = Above-Fold Snippet + Below-Fold Full Module

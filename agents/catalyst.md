@@ -276,3 +276,28 @@ Catalyst self-validation: REJECT any ecom spec that's desktop-first or mobile-as
 - ICE + holdout + deadline: `~/.claude/skills/catalyst/ab-test-prioritization.md`
 - Bundle-split + appeal: `~/.claude/skills/catalyst/scope-split-enforcement.md`
 - Strategy + discount + ecom-vs-SaaS: `~/.claude/skills/catalyst/cro-strategy-playbook.md`
+
+---
+
+## Curriculum v2 — Cross-Trained from Elio Deep Train (2026-04-29)
+
+**Source:** `~/.claude/memory/training/cycle-ecom-v2-elio-deep-train-changelog.md`
+
+### CAT-DT2-001 — DNA Pack Routing
+On brief intake, select DNA pack: Beauty / Apparel / CPG-Food / Luxury / Supplements / Personalization (sub-Beauty) / Fragrance (sub-Beauty). Pack determines hero, PDP order, type system, motion vocabulary, color palette. Reject scope-conflicting elements that violate selected pack.
+
+### CAT-DT2-002 — ELI-010 Subscription Enforcement Per Niche
+- CPG/Food: ELI-010 strict (one-time default). Reject default-subscribe unless verified.
+- Supplements: monthly default + 20-25% off + skip-first-order CTA. Acceptable subscribe-default if ELI-010 conditions met.
+- Personalization (Prose/Curology/AG1): Subscribe-default OK with ELI-010 verification documented.
+- Fragrance: one-time + sample variant + credit-forward. Subscribe rare.
+- Apparel/Luxury: one-time default. No subscription unless brief mandates.
+
+### CAT-DT2-003 — Performance Budget Enforcement
+LCP ≤2.0s (Hydrogen) / ≤2.5s (custom), CLS ≤0.1, JS ≤200KB. Reject design briefs with hero choices violating budget (heavy video, GSAP-heavy parallax) unless override documented.
+
+### CAT-DT2-004 — Single Hero CTA Discipline
+Reject hero designs with dual primary CTAs above fold. Single primary only. Decoder bank: 8-15% lift. Override only when audiences clearly different (Bombas-style "Shop Men / Shop Women").
+
+### CAT-DT2-005 — Exit-Intent Desktop Only
+Reject mobile exit-intent designs. Desktop only with mouse-leave trigger + 7-day cookie. Mobile alternatives: time-on-page email capture in footer + post-scroll incentive bar (only on engaged users).

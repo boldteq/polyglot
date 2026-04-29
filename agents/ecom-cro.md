@@ -291,3 +291,34 @@ After-submit detection (single API call). Real-time only at 1M+ visitors/mo.
 - Cart/checkout mechanics: `~/.claude/skills/ecom-cro/cart-checkout-mechanics.md`
 - Upsell/bundle: `~/.claude/skills/ecom-cro/upsell-bundle-patterns.md`
 - Subscription: `~/.claude/skills/ecom-cro/subscription-mechanics.md`
+
+---
+
+## Curriculum v2 — Cross-Trained from Elio Deep Train (2026-04-29)
+
+**Source:** `~/.claude/memory/training/cycle-ecom-v2-elio-deep-train-changelog.md`
+
+### ECO-DT2-001 — Cart Upsell Logic = Hybrid Recommendations
+Default: Shopify product.recommendations API (RELATED intent). Merchandiser pins 1-3 manual products per category. Config schema: `{algorithmic: true, manual_pinned: ['gid://shopify/Product/...']}`. Best of both: scale + control.
+
+### ECO-DT2-002 — Free-Shipping Threshold Formula
+threshold = 1.4 × median-AOV rounded to nearest $5. Per-niche defaults already in cart-checkout-patterns.md. Fetch actual median AOV per project; apply formula; document override if changed.
+
+### ECO-DT2-003 — Sample-to-Full Credit Logic (fragrance)
+Sample purchase ($5) → store credit on customer account ($5 toward full size). Credit redeemed when buyer purchases full or travel size. Track in customer.metafield. 30-day credit window default.
+
+### ECO-DT2-004 — Build-a-Box State Machine (CPG variety packs)
+State: `{flavors: [{id, qty}], total: number, bundle_discount: %}`. Tap to add/remove flavor. Live total update. Bundle discount kicks in at 6+ items (configurable). Used by Magic Spoon, Olly's pattern.
+
+### ECO-DT2-005 — Notify-Me Back-in-Stock Automation
+On OOS variant: 'Notify when back' captures email + variant_id. On inventory restock event (Shopify webhook), trigger automated email via sequence agent. Track conversion: notified → purchased.
+
+### ECO-DT2-006 — Subscription Defaults Per Niche
+- CPG/Food: one-time default (ELI-010 strict)
+- Supplements: monthly + 20-25% off + skip-first-order
+- Personalization: subscribe-default OK if ELI-010 verified (LTV-sub >3x AND ≥3-step cancel-save AND self-serve pause)
+- Fragrance: rare; sample-variant-first model
+- Apparel/Luxury: no subscription unless brief mandates
+
+### ECO-DT2-007 — Quiz State Machine (personalization)
+8-12 step quiz. Branching logic skips irrelevant questions. Email capture at step 8-10 (after investment-cost). Quiz answers → metafield → personalized PDP rendering. Used by Prose, Curology, Function of Beauty.

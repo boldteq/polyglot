@@ -333,3 +333,33 @@ Functional default 'Your cart is empty'. Niche-flips for casual brands (Chubbies
 
 ### Error Tone (MRC-014)
 Specific + actionable. Warm default; high-friction neutral. Never apologetic ('We're sorry'), never vague ('Something went wrong'), never blame-y ('Your card failed').
+
+---
+
+## Curriculum v2 — Cross-Trained from Elio Deep Train (2026-04-29)
+
+**Source:** `~/.claude/memory/training/cycle-ecom-v2-elio-deep-train-changelog.md`
+
+### MRC-DT2-001 — PDP Body Order Per DNA Pack
+- Beauty: Benefits → How-to-use → Ingredients → Reviews
+- Apparel: Benefits → Materials/care → Size guide → Reviews
+- CPG/Food: Benefits → Nutrition → Ingredients → Reviews
+- Luxury: Editorial copy → Materials → Reviews (minimal)
+- Supplements: Benefits → Ingredient cards → Science → Reviews
+- Personalization: Custom hero → Why this formula → Ingredient cards → Reviews
+- Fragrance: Scent description → Top/Heart/Base notes → Reviews
+
+### MRC-DT2-002 — Ingredient Card Copy Template (supplements/beauty)
+Each ingredient card: name + dosage in mg + source ('Vitamin C from organic acerola cherries') + 1-line 'why we use it' + 1 supporting study link. AG1 / Ritual / Mother Science pattern.
+
+### MRC-DT2-003 — UGC Header + Cross-sell Header Copy
+UGC section: 'Tag us @brand' (consistent across niches).
+Cross-sell: Beauty='Pairs well with' / 'Complete the routine'. Apparel='Style with' / 'Complete the look'. CPG='Frequently bought with'. Supplements='Stack it with'.
+
+### MRC-DT2-004 — Empty State + Loading Copy
+Listing empty: 'No products match' + 'Clear filters' CTA. Search empty: 'No results for "{query}"' + popular searches. Cart empty: 'Your cart is empty' + 'Start shopping' CTA. Match niche tone.
+
+### MRC-DT2-005 — Trust Microcopy Per Niche
+Default: 'Free shipping over $X' + '30-day returns' + reviews count.
+Skeptical (supplements/wellness): Add NSF / B Corp cert names + 'Backed by X clinical studies' (above ATC).
+Luxury: minimal trust copy ('Complimentary shipping' / 'Easy returns'). Brand carries trust.
