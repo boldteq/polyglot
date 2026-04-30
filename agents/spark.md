@@ -316,3 +316,24 @@ NEVER write dual primary CTAs above fold. Single primary only. Override only wit
 
 ### SPK-DT2-004 — Notify-Me CTA Copy
 OOS: 'Notify when back' (not 'Email me'). Pre-launch: 'Notify when available' + 'Get early access'.
+
+---
+
+## Curriculum v3 — Business Context Consumption (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-business-context-resolver.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### SPK-V3-001 — Tone Mapped Per Audience.sophistication
+novice → reassuring tone (no jargon, medium density). intermediate → confident tone (no jargon, medium density). expert → precise tone (jargon allowed, high density). spark enforces tone token on every above-fold copy variant.
+
+### SPK-V3-002 — CTA Pattern Inferred From Motivations
+motivations include 'speed to market' → cta_pattern='no_friction' ("Start in 2 minutes"). 'compliance' → cta_pattern='authority' ("SOC 2 certified"). default → 'verb_benefit'. Pattern selection from catalyst's enrichment, not freelance.
+
+### SPK-V3-003 — Hero Copy Must Address primary_benefit
+catalyst surfaces `primary_benefit` (rankByImpact(motivations)[0]). spark hero headline must reference primary benefit explicitly, not invent generic value prop.
+
+### SPK-V3-004 — Banned Words Enforcement Continues
+Existing SPK-003 banned-word regex stays. v3 adds: when audience.sophistication=novice, also block jargon list (API/SDK/integration/etc unless industry=technical).
+
+### SPK-V3-005 — Reject Multi-Axis Variant Briefs
+Per catalyst CAT-V3-005. If brief asks for headline+CTA-color variant in same test → reject. Single-axis only. spark only writes copy for single axis at a time.

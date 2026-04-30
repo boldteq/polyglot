@@ -1034,3 +1034,105 @@ for (const row of orphans) {
 
 ---
 *Per-Tax-Line Attribution + Reaper + Reconciliation Phase C (Plan-S17) appendix added 2026-04-30. Files touched: 16 (5 parallel tracks A/B/C/D/E) + 3 (Sage fix tracks H1 drift Leg 3 + H2 test fidelity + M2 UNKNOWN fallback log). Sage verdict: APPROVE-WITH-FIXES → APPROVE after H1 (drift_check Leg 3 for tax_line) + H2 (export production reconcileCommissionSplits + import in test) + M2 (UNKNOWN fallback error log + no-locations warn log) all folded into S17 commit. Tax accrual ledger production-ready for quarterly remittance.*
+
+---
+
+## Appendix — Tip Routing + Refund Tax Reversal Sprint (Plan-S18, 2026-04-30)
+
+> **Scope:** Tip routing modes (direct vs studio pool) + refund proportional reversal extended to per-tax-line + drift Leg 4. **5 parallel tracks (A/B/C/D/E) + Sage audit + 2 fix dispatches.** First sprint where the symmetric accrual/release ledger is complete.
+
+### CC38. Tip routing modes — `tip_pool_enabled` flag drives `application_fee_amount` calculation
+**Pattern from Track A:** Two routing modes, configurable per studio:
+
+| Mode | `tip_pool_enabled` | application_fee_amount | Where tip lands |
+|------|-------------------|------------------------|-----------------|
+| Direct (default) | `false` | `applicationFeeCents` (commission share only) | Artist's connected account via destination charge |
+| Studio pool | `true` | `applicationFeeCents + tipAmountCents` | Studio's connected account, distributed later |
+| No artist Connect | either | `baseAmountCents + tipAmountCents` (everything to studio) | Studio account via payroll path |
+
+**Rule:** Tip routing is a per-studio policy decision — encode it as a boolean column on `studios`, read at charge-creation time, embed in PI metadata (`inkos_tip_destination: 'studio' | 'artist'`) for downstream verification + audit. Pool distribution cron is a separate sprint (S20+).
+
+**Generalize:** Any per-studio billing-policy decision (tip pool, commission floor, deposit minimum) belongs as a column on `studios` — not a hardcoded constant, not per-booking metadata. The studio is the policy boundary.
+
+### CC39. Symmetric ledger pattern — every accrual needs a matching release
+**Pattern reinforced in S18:** S17 shipped `tax_remittance_accrue` (additive). S18 ships `tax_remittance_release` (subtractive). Together they're the symmetric pair — accrual on PI succeeded, release on refund.
+
+```
+PI succeeded → tax_remittance_accrue(jurisdiction, period, +amount) → ledger.collected += amount
+Refund      → tax_remittance_release(jurisdiction, period, -amount) → ledger.collected -= amount
+```
+
+**Both sides must:**
+1. Be idempotent on a unique key (replay-safe).
+2. Have bounds checks (release ≤ collected; accrual prevents overflow).
+3. Be tracked for audit (releases get a tracking table `tax_remittance_releases` with idempotency_key UNIQUE).
+4. Use `SELECT FOR UPDATE` on the ledger row (concurrent refund + accrual race safety).
+
+**Rule:** Never ship an accrual RPC without the matching release RPC in the same epic. If the accrual is in S17 and the release lands in S18, the gap is a tax-overcollection window. Sage will catch.
+
+**Generalize:** Any ledger-style table (loyalty points, credits, deposits, tax) needs paired write directions in the same architectural milestone. Track the asymmetric exposure as a known gap if cross-sprint sequencing is unavoidable.
+
+### CC40. Composite-ID encoding for replay idempotency in derived rows
+**Pattern from Track C:** Refund-driven reversals of `kind='tax_line'` rows encode the refund context into the synthetic ID:
+
+```sql
+tax_line_id = 'refund:<refund_id>:<original_tax_line_id>'
+```
+
+Combined with a UNIQUE partial index:
+```sql
+CREATE UNIQUE INDEX uniq_commission_splits_tax_line_reversal
+  ON commission_splits (parent_split_id, tax_line_id)
+  WHERE kind = 'reversal' AND tax_line_id LIKE 'refund:%';
+```
+
+Replay of the same refund inserts the SAME synthetic key → UNIQUE conflict → idempotent return.
+
+**Rule:** When a derived row needs replay idempotency but no natural unique key exists, encode the trigger context (e.g., refund_id) into a string column with a discriminator prefix. UNIQUE partial index where the discriminator matches enforces replay safety at the schema level.
+
+**Caveat:** Verify the encoding delimiters don't collide with the encoded fields. Stripe IDs are colon-free (`re_xxx`, `tax_line_xxx`), so `:` works. For arbitrary user input → use a hash + salt instead.
+
+### CC41. `application_fee_amount` clamp — Stripe rejects when fee > amount
+**Pitfall caught by Sage S18 H2:** Stripe's PaymentIntent.create requires `application_fee_amount ≤ amount`. With deposit drawdown reducing the charge amount (`amount = base + tip - drawdown`), the unclamped fee can overflow:
+
+- No-Connect mode: fee = `base + tip` → overflows when `drawdown > 0`
+- Pool mode: fee = `applicationFeeCents + tip` → overflows when `drawdown > base × pct / 100`
+- Default mode: fee = `applicationFeeCents` → overflows when `drawdown > tip + commission_share`
+
+**Fix:** clamp + log:
+```ts
+const effectiveApplicationFee = Math.min(rawApplicationFee, amountChargedCents);
+if (effectiveApplicationFee !== rawApplicationFee) {
+  logger.warn({ raw_fee, amount, drawdown }, 'clamped application_fee_amount');
+}
+```
+
+**Rule:** Whenever `application_fee_amount` is computed from independent components (base, tip, commission), clamp to actual charge amount. The clamp is a safety net for combinations that overflow. Log the clamp event so reconciliation can detect mis-priced charges (e.g., a rare clamp = study; a frequent clamp = pricing model bug).
+
+**Generalize:** Any external API field with documented bounds (Stripe `application_fee_amount ≤ amount`, max metadata key length, max array size) needs both clamping AND logging when the clamp engages — invisible clamping hides pricing-model bugs.
+
+### CC42. Drift detection cardinality matches available source-of-truth
+**Pitfall caught by Sage S18 H1:** Track C's drift Leg 4 was specced to return per-refund granularity (`refund_id`, `payment_intent_id`, `studio_id`, `missing_jurisdictions`). But there's no `stripe_refunds` table in our schema — refunds aren't mirrored locally yet. SQL has no source for `refund_id`, so it emitted `''` (empty string) or omitted the field entirely. TS contract claimed `refund_id: string` non-null → contract drift.
+
+**Fix:** drop `refund_id` from contract type, accept per-charge granularity as the cardinality (a charge with multiple partial refunds collapses to one drift row). Add a comment in both the contract type AND SQL function noting the limitation. Plan for true per-refund granularity in a later sprint when `stripe_refunds` table lands.
+
+**Rule:** Drift detection cardinality is bounded by the source-of-truth tables available. Don't claim per-X granularity if X isn't mirrored in DB. Either:
+1. Accept lower cardinality (per-charge instead of per-refund) and document.
+2. Add the source-of-truth table first, THEN do the drift detection.
+
+**Generalize:** Contract types must match what the SQL actually emits. If Sage detects a field claimed in TS but absent in SQL, that's contract drift — fix one side or the other before commit.
+
+### CC43. Multi-mode toggle UX with editorial copy
+**Pattern from Track A's `TipPoolToggle`:** When a setting has two named modes (not just on/off), use radio cards with explanatory copy, not a simple Switch toggle:
+
+- Each mode has: **Onyx headline name** (e.g., "Direct to artist") + **Stone body copy** explaining what the mode does + when to choose it.
+- Onyx primary "Save" CTA enables only when dirty.
+- Stone-tinted toast on save: "Tip routing updated." (no exclamations)
+- No emojis. No "Amazing!".
+
+**Rule:** Settings UX with named modes deserves named cards, not toggles. Toggle = "this thing is on/off." Radio cards = "you have two valid choices; here's what each does." For brand-compliant InkOS surfaces, this matches the editorial tone — no UX shortcuts.
+
+**Generalize:** Any binary setting where both states are valid business choices (not "feature on/off") gets multi-mode UX. Sage + brand-guardian flag any unjustified Switch component used for multi-mode settings.
+
+---
+*Tip Routing + Refund Tax Reversal (Plan-S18) appendix added 2026-04-30. Files touched: 14 (5 parallel tracks A/B/C/D/E with Track B applied directly after agent stuck in plan mode) + 2 (Sage fix tracks H1 contract drift + H2 fee clamp). Sage verdict: APPROVE-WITH-FIXES → APPROVE after H1 (drop `refund_id` from `RefundMissingTaxReversal` contract type + cron interface, accept per-charge granularity) + H2 (`Math.min(rawApplicationFee, amountChargedCents)` clamp with warn log) all folded into S18 commit. Symmetric ledger accrual/release pair complete. 4-leg drift surface live. Refund flow now reverses parent split + per-tax-line children + tax_remittance_ledger atomically (with reconciliation safety net). Real money round-trip production-ready.*

@@ -255,3 +255,24 @@ Default cadence (1 full + 5 quick scans/week) holds. Catalyst can dispatch `nich
 - Pattern extraction rubric: `~/.claude/skills/decoder/pattern-extraction-rubric.md` (Session 1 patches: drift, promotion-gate, universal-DTC, demotion, peer-pattern)
 - Teardown format: `~/.claude/skills/decoder/top-50-dtc-teardown-format.md` (Session 1 patches: priority order, 6/8 threshold, quarterly review)
 - Curriculum: `~/.claude/memory/curriculum/ecom-team-training-v1.md` Session 1
+
+---
+
+## Curriculum v3 — Pattern Library Feed (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-memory-architecture.md` (§4.1.3) · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### DEC-V3-001 — Brand Teardown Patterns Feed pattern_library Candidates
+Every decoder teardown extracts patterns into mira's pattern_library as `candidate` status. Required fields: id, description, surface_types[], audience_types[], sample_size (initial = brands observed), win_rate (initial = null until first A/B test).
+
+### DEC-V3-002 — Pattern Graduation Threshold Awareness
+Patterns stay candidate until win_rate ≥0.6 AND sample_size ≥30 (per MIR-V3-004). decoder's job is to extract well-evidenced candidates; mira owns graduation. Don't mark patterns canonical from teardowns alone — A/B validation required.
+
+### DEC-V3-003 — Cross-Surface Pattern Tagging
+Every pattern tagged with surface_types[] (PDP/cart/checkout/listing/hero) AND audience_types[] (B2B SaaS / DTC ecom / luxury / supplements). Enables targeted pattern_library queries from agent runtime.
+
+### DEC-V3-004 — Last-Validated Timestamp Maintenance
+Patterns include `last_validated` field. On teardown re-run (e.g., brand re-teardown after 12 months), update timestamp. Stale patterns (>18 months unvalidated) flagged for re-extraction.
+
+### DEC-V3-005 — Vector Embeddings on Pattern Descriptions
+Pattern description gets vector embedding (Supabase pgvector) for semantic search. Enables mira's `find_similar_pattern()` query during agent runtime — match new design intent to past pattern wins.

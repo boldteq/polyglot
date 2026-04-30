@@ -1532,3 +1532,27 @@ Before closing a post-deploy watch window, Hawk verifies:
 - **Stack A Monitoring Stack (Next.js 16 + Supabase + Railway)** — triggers: _stack, monitoring, next, supabase, railway, payment, auth, session_ → `~/.claude/skills/hawk/stack-a-monitoring-stack-next-js-16-supabase-railway.md`
 - **sentry** — triggers: _sentry, deploy, railway, ci, nextjs, ui, tools_ → `~/.claude/skills/hawk/tools/sentry.md`
 - **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/hawk/training-history.md`
+
+---
+
+## Curriculum v3 — Telemetry + RUM (2026-04-30)
+
+**Sources:** `~/.claude/memory/patterns/good/v3-engine-contract-spec.md` (§14.4) + `~/.claude/memory/patterns/good/v3-performance-pass-rules.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### HWK-V3-001 — Real User Monitoring (RUM) for Web Vitals
+Every deployed v3 project must surface LCP/INP/CLS RUM data into telemetry pipeline. Web Vitals API + analytics adapter (PostHog/GA4/Shopify Analytics) capture p75 metrics. Without RUM, perf regressions invisible.
+
+### HWK-V3-002 — Telemetry Fields Required Per Run
+Per v3 §14.4: input fingerprint (hashed), stage durations, score deltas across iterations, components reused vs created, pattern library hits, final scores, post-deploy LCP/INP/CLS p75. Hawk validates fields present before run accepted as healthy.
+
+### HWK-V3-003 — Auto-Rollback on >20% LCP Regression
+Per BLT-V3-005. Hawk monitors RUM 1h windows post-deploy. If LCP_p75 regresses >20% vs prior deploy → triggers bolt rollback. Threshold per project (configurable in `.design-agent/`).
+
+### HWK-V3-004 — Outcome Telemetry → Mira Feedback Loop
+Hawk feeds variant outcome data (control_value, treatment_value, sample_size) to mira's outcomes tier nightly. Closes learning loop: deployed variants → measured → feeds pattern_library win-rate updates.
+
+### HWK-V3-005 — Cost-Ceiling Alert on Breach
+Per v3 §14.3 (max 8 LLM calls / 3 iterations / 4 variants per axis). Hawk alerts when threshold approached (>80% of any limit). Prevents silent failure into `cost_ceiling_exceeded` halts.
+
+### HWK-V3-006 — Override-Emit Audit Surfaces in Hawk Dashboard
+Components flagged `emitted_below_threshold` in manifest surface in Hawk's incident view. High-flag patterns indicate spec/template upstream issues. Hawk feeds insights to vega's review queue per VEG-V3-005.

@@ -363,3 +363,24 @@ Listing empty: 'No products match' + 'Clear filters' CTA. Search empty: 'No resu
 Default: 'Free shipping over $X' + '30-day returns' + reviews count.
 Skeptical (supplements/wellness): Add NSF / B Corp cert names + 'Backed by X clinical studies' (above ATC).
 Luxury: minimal trust copy ('Complimentary shipping' / 'Easy returns'). Brand carries trust.
+
+---
+
+## Curriculum v3 — Business Context Consumption (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-business-context-resolver.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### MRC-V3-001 — Density Per Sophistication
+novice + intermediate → medium density (≤80 words per body paragraph, 3-5 bullets). expert → high density (≤120 words, 5-7 bullets, jargon allowed). Char counts adjusted accordingly.
+
+### MRC-V3-002 — Objection Rebuttal Copy Per Dictionary Mapping
+catalyst maps objection → zone (data-security → cta_callout, integration-time → how-it-works, price → comparison_block, feature-bloat → anti-features_block, etc.). merch generates rebuttal copy for the matched zone. Reject objection without resolved zone.
+
+### MRC-V3-003 — Differentiation Callout Copy
+When catalyst surfaces `differentiation_callout` (auto-included on direct competitors): merch writes headline 'Why teams choose us over [Competitor1]' + bullet list from `competitors.differentiation` array. Each bullet ≤14 words.
+
+### MRC-V3-004 — Anti-Features Block (when "feature bloat" objection)
+Reserve dedicated 'What we deliberately don't do' block. List 3-5 features intentionally NOT built. Honest minimalism positioning. Used when objection includes feature-bloat OR when audience mentions complexity-aversion.
+
+### MRC-V3-005 — Char-Count Audit on All Copy Slots
+Every copy slot has char_limit (per Elio v2 cycle handoff JSON). merch enforces — over-limit copy auto-rejected. Pre-check before submitting to elio gate.

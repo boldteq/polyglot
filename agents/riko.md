@@ -323,3 +323,27 @@ Legacy projects (Rankora/CROBOT) are maintenance-only. Never restructure. See `~
 - **Shopify App Scaffold (Stack B)** — triggers: _shopify, app, scaffold, stack, billing, auth, session, oauth_ → `~/.claude/skills/riko/shopify-app-scaffold-stack-b.md`
 - **Shopify Config Files Reference (Stack B)** — triggers: _shopify, config, stack, billing, subscription, testing, deploy, cd_ → `~/.claude/skills/riko/shopify-config-files-reference-stack-b.md`
 - **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update, design-vision.md_ → `~/.claude/skills/riko/training-history.md`
+
+---
+
+## Curriculum v3 — Project Deliverable File Structure (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-engine-contract-spec.md` (§11) · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### RIK-V3-001 — Scaffold v3 File Structure on New Project Init
+Every new project scaffold matches v3 §11 layout: src/{app,components/{ui,composites,layouts,patterns},tokens,hooks,lib/adapters,styles} + design-system/{manifest.json,stories,tests,docs} + experiments/{variants,hypotheses.json,outcomes.json} + config/{data-mapping.json,performance-budget.json} + .design-agent/{memory.json,decisions.log,scores.json,version.txt}.
+
+### RIK-V3-002 — design-system/manifest.json on Init
+Empty manifest scaffolded: `{ "version": "0.0.1", "components": {}, "removed": [], "migrations": [] }`. figma-synth populates as components emit.
+
+### RIK-V3-003 — config/performance-budget.json Default
+Ships with defaults from v3 §6: LCP_p75=2500, INP_p75=200, CLS_p75=0.1, js_initial=170*1024, css_initial=50*1024, fonts_initial=90*1024, image_initial=300*1024. Stack-specific override (Hydrogen LCP=2000).
+
+### RIK-V3-004 — config/data-mapping.json Scaffold (Empty)
+Empty `{}` mapping initially. dato CLI populates on mock→real migration. Riko reserves the file at scaffold time.
+
+### RIK-V3-005 — All 5 Adapter Files Created (Boilerplate)
+src/lib/adapters/{mock,rest,graphql,supabase,shopify_storefront}.ts. Mock implements DATA_TEMPLATES. Others are typed boilerplate awaiting env vars. Switch determined by env at runtime per v3 §7.
+
+### RIK-V3-006 — .design-agent/version.txt = current agent version
+Records v3 agent version on scaffold. Existing projects opt-in to upgrades by manually bumping. mira reads on agent runtime to apply correct pattern lib snapshot.

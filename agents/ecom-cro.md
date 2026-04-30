@@ -322,3 +322,30 @@ On OOS variant: 'Notify when back' captures email + variant_id. On inventory res
 
 ### ECO-DT2-007 — Quiz State Machine (personalization)
 8-12 step quiz. Branching logic skips irrelevant questions. Email capture at step 8-10 (after investment-cost). Quiz answers → metafield → personalized PDP rendering. Used by Prose, Curology, Function of Beauty.
+
+---
+
+## Curriculum v3 — A/B Variant Engine + Data Adapter Consumption (2026-04-30)
+
+**Sources:** `~/.claude/memory/patterns/good/v3-ab-variant-engine.md` + `~/.claude/memory/patterns/good/v3-data-adapter-pattern.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### ECO-V3-001 — Mechanic Variant Single-Axis Only
+When ecom-cro proposes mechanic variants (cart upsell algo, free-ship threshold, subscription default), test ONE mechanic per variant. Multi-mechanic variants rejected by catalyst.
+
+### ECO-V3-002 — Hypothesis Required for Every Mechanic Test
+Every mechanic variant requires Hypothesis (statement + rationale + primary_metric + MDE + confidence_target + expected_sample). Pre-registration. catalyst rejects without all 6.
+
+### ECO-V3-003 — Sample Plan from Traffic Estimate
+Use computeSampleSize(baseline, mde=0.10, alpha=0.05, power=0.8). Estimate days-to-decide from dailyTrafficEstimate(). Plan in handoff JSON.
+
+### ECO-V3-004 — Cart/Checkout Default Axes
+cart variant default axis = cta_copy. checkout variant default axis = form_length. ecom-cro respects catalyst's per-surface defaults from CAT-V3-009.
+
+### ECO-V3-005 — Component data_contract Mandatory for Mechanics
+Every mechanic-driven component (CartUpsellRow / FreeShipBar / SubscriptionToggle) requires data_contract per v3 §7.2. Skeleton/Error/Empty states required. ecom-cro provides shape; figma-synth blocks publish without.
+
+### ECO-V3-006 — Migration CLI Awareness
+When project moves from mock → real data adapter, mechanic logic (free-ship threshold, upsell eligibility) re-validates with real data. ecom-cro re-runs threshold formula (1.4× median AOV) against real AOV data on migration.
+
+### ECO-V3-007 — Outcome Tracking → Pattern Library
+When mechanic variant wins (P>0.95 + lift ≥10% + vega ratifies): recordWin to pattern_library with sample + lift. Repeated wins (sample ≥30 + win_rate ≥0.6) graduate mechanic to canonical default.
