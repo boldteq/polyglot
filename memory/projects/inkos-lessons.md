@@ -562,3 +562,82 @@ Bolt's pre-deploy checklist includes this step explicitly. Add a CI check: `git 
 
 ---
 *Messages v1 sprint appendix added 2026-04-23.*
+
+---
+
+## Appendix — Stripe Connect Foundation Sprint (Plan-S13, 2026-04-30)
+
+> **Sprint numbering note:** The 75-sprint plan at `~/.claude/plans/so-this-is-whole-parallel-pillow.md` numbers Stripe Connect Foundation as **S13** (first epic, first sprint). This is the **14th chronological sprint** in repo history (after Sprints 0–12 + Messages v1). When in doubt, refer to plan numbering for forward planning, chronology for git history.
+
+### CC1. Contract-first prevents drift — proven on first dual-stack sprint
+**Pattern:** Author `lib/payments/contracts.ts` (RPC `Args`/`Result` interfaces + branded `CentsAmount` type + `RPC` constant of canonical function names) BEFORE Dato writes the migration. Then Dato mirrors the spec into SQL with parameter names converted to `p_snake_case`. Sage diff-audits both files against each other.
+
+**Result:** Sage's S13 audit caught name-vs-semantics drift (`upsert_from_webhook` was actually UPDATE-only) on first review — fixed in the same sprint, didn't bleed into S14. **No runtime drift bugs.** This is the antipattern (1A — RPC parameter mismatches) prevented by design rather than caught after the fact.
+
+**Rule:** Every new sprint that introduces a new RPC layer starts with the contract file. Dato is read-only on the contract; payments-lead authors it.
+
+### CC2. RPC name must match semantics, not aspiration
+**Anti-pattern from Sage audit:** A Postgres function literally named `*_upsert_from_webhook` that internally does UPDATE-only and `RAISE EXCEPTION` on missing row. Anyone reading the name assumes ON CONFLICT semantics and writes a webhook handler that doesn't catch the exception.
+
+**Rule:** If the function does UPDATE-only, name it `*_update_from_webhook`. If it does true upsert, name it `*_upsert_from_webhook`. The name is a contract with the caller. Mismatch causes 500s on edge cases.
+
+**Reinforced:** Sage's H1 finding renamed the RPC pre-S14, before any caller existed. This is a generalizable rule for RPC-naming hygiene.
+
+### CC3. DOWN section function signatures must match `CREATE` exactly
+**Pitfall:** PostgreSQL identifies functions by `(name, arg_types_in_order)`. A `DROP FUNCTION IF EXISTS foo(uuid, text, text, ...)` silently no-ops if the actual signature is `foo(uuid, text, uuid, ...)`. The migration "rolls back successfully" but leaves the function in the schema. A re-apply hits `CREATE OR REPLACE` and works, but if the next sprint changes the signature, rollback is broken.
+
+**Rule:** Every Dato migration's DOWN section must list each `DROP FUNCTION` with the exact arg-type tuple from the matching `CREATE FUNCTION`. Sage scans for this in refactor sprints. Also: never use `DROP FUNCTION foo CASCADE` without the arg list — it works for the most-recent overload but is brittle.
+
+### CC4. CHECK-constraint design for ledger reversals — asymmetric is idiomatic
+**Pattern:** For ledger-style tables that need to insert negative amounts ONLY for reversal rows:
+```sql
+CONSTRAINT commission_splits_base_pos CHECK (kind = 'reversal' OR base_amount_cents >= 0)
+CONSTRAINT commission_splits_tip_pos  CHECK (kind = 'reversal' OR tip_amount_cents >= 0)
+CONSTRAINT commission_splits_reversal_parent_check CHECK (
+  (kind = 'reversal' AND parent_split_id IS NOT NULL) OR
+  (kind <> 'reversal' AND parent_split_id IS NULL)
+)
+```
+Negative amounts allowed *only* when `kind = 'reversal'`, and reversals *must* point to a parent. Avoids needing a separate reversal table.
+
+**Reinforced:** This pattern handles 70/30 commission splits, refund-driven reversals, and dispute-loss clawbacks in the same table. S14 will validate via Luna replay tests.
+
+### CC5. Tip-only splits need explicit guard against base-amount reversals
+**Pitfall caught by Sage H3:** A `commission_splits` row with `kind='tip'` has `base_amount_cents=0` (tips are tip-only by design). The `commission_split_reverse` RPC accepts a `p_reverse_amount_cents` parameter — if a caller mistakenly passes a non-zero base reverse on a tip parent, the bounds check `IF p_reverse_amount_cents > v_parent.base_amount_cents` throws (because parent base is 0), but only for positive values. The intent is silently lost on edge cases.
+
+**Rule:** Add an explicit guard in the reversal RPC:
+```sql
+IF v_parent.kind = 'tip' AND p_reverse_amount_cents <> 0 THEN
+  RAISE EXCEPTION 'commission_split_reverse: tip parent reversals must use tip cents only';
+END IF;
+```
+Generalize: when an RPC accepts multiple amount kinds (base + tip), validate that the kind being reversed matches the parent's kind. Document each invariant in the contract jsdoc.
+
+### CC6. GRANT comments must distinguish authenticated vs service-role server-action
+**Pitfall:** A migration comment `GRANT: service_role only (webhook + server action)` is misleading. A "server action" runs in `authenticated` role by default. To call a `service_role`-only RPC, the action must explicitly construct a service-role client. Future engineers reading the comment will write a server action, get a permission-denied error, and waste an hour.
+
+**Rule:** GRANT comments specify the exact role context: `service_role only (webhook handler + server-side service-role client)`. Drop the ambiguous "server action" phrasing.
+
+### CC7. `webhook_events` is the first write of every webhook handler
+**Pattern:** Every webhook handler's first SQL operation is:
+```sql
+INSERT INTO webhook_events (source, event_id, ...) VALUES (...)
+ON CONFLICT (source, event_id) DO NOTHING
+RETURNING id;
+```
+If RETURNING produces no row, the event is a replay — return 200 immediately, do not process. This is risk #1 (dual-rail webhook reconciliation) collapsed to a one-line invariant.
+
+**Reinforced:** Sage caught (M1) that the existing Dodo webhook handler does direct `.from('webhook_events').insert()` rather than going through `webhook_event_insert` RPC. Functionally fine (uses unique constraint), but breaks INVARIANT 3. S14 refactors Dodo handler to RPC for parity, then INVARIANT 3 becomes a Sage grep rule for all future webhook handlers.
+
+### CC8. Dual-stack payments — Dodo (L1) and Stripe Connect (L2) must never share a module
+**Architecture rule:** `lib/dodo/` is L1 SaaS subscriptions only. `lib/stripe/` (NEW from Sprint 13/14) is L2 in-studio marketplace only. `lib/payments/contracts.ts` is the only shared file — and it contains pure types, no runtime imports of either SDK.
+
+**Rule:** Sage scans for `import.*dodo` AND `import.*stripe` in the same file → hard fail. The two rails serve different layers and conflating them is the path to mixed-up tax / split / dispute reasoning. Plan §5 documents this separation.
+
+### CC9. Money is `bigint`/`CentsAmount`, never `numeric`/`float`
+**Reinforced rule:** All money columns are `bigint` (int8) in Postgres, mapped to `CentsAmount` (branded `number`) in TypeScript. Never `numeric`, never `int4` (overflow risk on accumulator tables like `tax_remittance_ledger`), never JS `number` for money in app code (branded type is enforced at compile time).
+
+**Pattern:** `lib/payments/contracts.ts` exports `CentsAmount` as a branded type and a `cents()` constructor with `Number.isInteger` guard. Money math uses banker's rounding when splitting (e.g., `splitCents(100, [70, 30])` → `[70, 30]`, not `[70, 30.0000001]` from float). The `splitCents` helper lands in S15.
+
+---
+*Stripe Connect Foundation (Plan-S13) appendix added 2026-04-30. Migration: `supabase/migrations/20260505100000_payments_l2_stripe_connect_schema.sql`. Contract: `lib/payments/contracts.ts`. Audit verdict: APPROVE-WITH-FIXES — all 4 High findings folded into S13 commit.*
