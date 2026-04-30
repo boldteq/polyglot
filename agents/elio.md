@@ -490,3 +490,24 @@ When you need a new token but token agent hasn't created it:
 5. Cleanup at quarterly sweep + ongoing weekly check
 
 Don't block parallel work on token-creation. Don't keep inline values forever (max 30 days before escalation).
+
+---
+
+## Curriculum v3 — Business Context Consumption + Perf Budget Gate (2026-04-30)
+
+**Sources:** `~/.claude/memory/patterns/good/v3-business-context-resolver.md` + `~/.claude/memory/patterns/good/v3-performance-pass-rules.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### ELI-V3-001 — Consume Catalyst's ContextEnrichment
+On brief intake, read catalyst's resolved enrichment: cro_priorities, must_address (objections + zones), differentiation_callout, primary_benefit. Reserve zones per dictionary mapping. Reject layout that omits required CRO blocks.
+
+### ELI-V3-002 — Design-Stage Perf Budget Gate
+Reject design briefs that violate budget at intake (heavy hero video, GSAP-heavy parallax, image count > tier limit). Surface in handoff JSON: `perf_budget_check: { ok: bool, violations: [] }`. Forces fix-before-build, not fix-after-build.
+
+### ELI-V3-003 — Image Format Default = AVIF + WebP Fallback
+Every image spec includes: format='avif', fallback='webp', explicit width/height (CLS=0), aspectRatio reservation. Hero: loading='eager' fetchpriority='high'. Below-fold: loading='lazy' decoding='async'.
+
+### ELI-V3-004 — Component Lazy-Load Decision in Spec
+Mark each component zone in spec with strategy: above-fold=static SSR / below-fold=dynamic SSR / modal-trigger=client-only. >30KB component bundles auto-marked dynamic. Pod-frontend reads strategy from spec.
+
+### ELI-V3-005 — Critical CSS Zone Designation
+Every spec marks 3 zones for critical CSS extraction: hero + topbar + page_header. Build pipeline (sage/bolt) extracts these zones for inline; rest async-loads.

@@ -301,3 +301,36 @@ Reject hero designs with dual primary CTAs above fold. Single primary only. Deco
 
 ### CAT-DT2-005 — Exit-Intent Desktop Only
 Reject mobile exit-intent designs. Desktop only with mouse-leave trigger + 7-day cookie. Mobile alternatives: time-on-page email capture in footer + post-scroll incentive bar (only on engaged users).
+
+---
+
+## Curriculum v3 — Business Context Resolver + A/B Variant Engine (2026-04-30)
+
+**Sources:** `~/.claude/memory/patterns/good/v3-business-context-resolver.md` + `~/.claude/memory/patterns/good/v3-ab-variant-engine.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### CAT-V3-001 — Goal → CRO Hard Enforcement
+Brief without required CRO patterns per goal → catalyst rejects. Map per v3 §3.2 (signups → cta_above_fold + social_proof_band + risk_reversal + reduce_form_fields, etc.). spark/elio/merch implement required blocks.
+
+### CAT-V3-002 — Audience Sophistication 3-Tier Tone Map
+novice=reassuring + medium density + no jargon. intermediate=confident + medium density + no jargon. expert=precise + high density + jargon allowed. spark + merch enforce per audience field.
+
+### CAT-V3-003 — Objection Dictionary Auto-Maps Placement
+data-security → cta_callout / integration-time → how-it-works / price → comparison_block / feature-bloat → anti-features_block / vendor-lock-in → export_portability / wasted-time → guarantee / compliance → cert_badges / support-quality → team_credentials. elio reserves slot per matched objection. merch generates rebuttal.
+
+### CAT-V3-004 — Competitor Diff Callout Auto-Inclusion
+When `competitors.direct.length > 0`: auto-include differentiation block with headline `Why teams choose us over [Competitor1]` placed `after_features`. merch writes points from `competitors.differentiation` array.
+
+### CAT-V3-005 — Single-Axis Variant Discipline (HARD REJECT)
+Multi-axis variants forbidden. catalyst auto-rejects requests that mutate >1 axis. Enforces clean lift attribution. Sequential testing only.
+
+### CAT-V3-006 — Hypothesis Schema All 6 Fields Required
+Every variant: statement + rationale + primary_metric + MDE + confidence_target + expected_sample. Pre-registration prevents p-hacking. catalyst rejects without all 6.
+
+### CAT-V3-007 — Bayesian Winner Threshold P>0.95 + MDE ≥0.10
+Treatment wins when posterior probability >95% AND minimum detectable effect ≥10%. Below: inconclusive. Industry standard for ecom A/B.
+
+### CAT-V3-008 — Winner Promotion Requires Vega Ratification
+Auto-promote when winner=treatment + lift ≥10% + vega.ratify(). Three-gate prevents silent visual changes. mira updates pattern_library with proof on promotion.
+
+### CAT-V3-009 — Per-Surface Default Axis Suggestion
+hero=headline / PDP=hero_visual / pricing=pricing_structure / cart=cta_copy / checkout=form_length / listing=layout_pattern / social_proof=social_proof_type / trust=trust_placement. catalyst auto-suggests; designer overrides allowed.

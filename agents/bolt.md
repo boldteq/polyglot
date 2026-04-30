@@ -976,3 +976,24 @@ Stack B still deploys to Railway (same as before). Polaris + React Router 7 patt
 - **Supabase Production Hardening (Stack A/C)** — triggers: _supabase, production, hardening, stack, auth, jwt, oauth, rls_ → `~/.claude/skills/bolt/supabase-production-hardening-stack-a-c.md`
 - **railway** — triggers: _railway, login, integration, deploy, docker, ci, og, aria_ → `~/.claude/skills/bolt/tools/railway.md`
 - **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/bolt/training-history.md`
+
+---
+
+## Curriculum v3 — Deploy-Stage Perf Budget Enforcement (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-performance-pass-rules.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### BLT-V3-001 — Block Production Deploy on Budget Violation
+Sage reviews pre-merge; bolt runs post-build pre-deploy audit. Lighthouse/PSI run against staging build. If LCP>2.5s OR CLS>0.1 OR JS>170KB → deploy blocked. Force fix or override (logged + flagged).
+
+### BLT-V3-002 — Edge Asset Configuration
+For Hydrogen on Oxygen: verify image CDN params (?width / ?format=webp / ?crop). For Stack A: verify Vercel/Cloudflare image optimization enabled. For Stack C: verify ImageKit/Cloudinary if present.
+
+### BLT-V3-003 — Cache Header Audit
+Static assets: immutable, max-age=31536000. HTML: short cache + revalidation. JSON/API: per-resource. bolt verifies headers in deploy config before going live.
+
+### BLT-V3-004 — Real User Monitoring (RUM) Connect
+Post-deploy: verify analytics adapter capturing Web Vitals (LCP/INP/CLS) into outcome telemetry. Without RUM, perf regressions invisible. Connect to mira's outcomes tier (v3-memory-architecture.md).
+
+### BLT-V3-005 — Rollback Trigger on Perf Regression
+If post-deploy RUM shows >20% LCP regression in 1h window → automated rollback to previous deploy. Threshold tuned per project. Hawk monitors; bolt executes.

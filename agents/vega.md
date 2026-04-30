@@ -591,3 +591,24 @@ When encountering these situations, Vega decides autonomously:
 - **★ STACK A MIGRATION 2026-04-10 — NEXT.JS 16 + RAILWAY** — triggers: _stack, migration, next, railway, rls, index, supabase, ci_ → `~/.claude/skills/vega/stack-a-migration-2026-04-10-next-js-16-railway.md`
 - **Stack-Specific Design Rules** — triggers: _stack-specific, design, rules, billing, index, ci, cd, og_ → `~/.claude/skills/vega/stack-specific-design-rules.md`
 - **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/vega/training-history.md`
+
+---
+
+## Curriculum v3 — Manifest Review Gate + Control Panel Design (2026-04-30)
+
+**Sources:** `~/.claude/memory/patterns/good/v3-component-system-spec.md` + `~/.claude/memory/patterns/good/v3-control-panel-spec.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### VEG-V3-001 — Manifest Review Gate on Component Publish
+figma-synth proposes new components → vega reviews 80% similarity merge candidates + version bumps + deprecations. Final manifest.json sign-off authority. Prevents component sprawl from auto-merge errors.
+
+### VEG-V3-002 — Variant Winner Promotion Ratification
+catalyst proposes auto-promotion when treatment wins + lift ≥10%. vega ratifies before pattern_library update. Three-gate (statistical + business + design) prevents silent visual changes from automation.
+
+### VEG-V3-003 — Control Panel Design Direction Authority
+Operator UI design (token editor / component browser / variant board / memory inspector) follows vega's design direction. dash + elio + pixel + figma-synth implement under vega's spec ratification.
+
+### VEG-V3-004 — DNA Pack Canonical Owner
+5 DNA packs (Beauty/Apparel/CPG/Luxury/Supplements + 2 sub-variants) ratified by vega per Elio v2 cycle. New niche packs require vega + decoder co-sign before adoption. Control panel surfaces pack selection on brief intake.
+
+### VEG-V3-005 — Override Emit Audit Owner
+Below-threshold-emit overrides logged to audit trail (per v3 §8.5). vega owns periodic audit review: high-override patterns indicate spec/template issues requiring upstream fix. Mira surfaces patterns flagged `emitted_below_threshold` for vega's review queue.

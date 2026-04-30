@@ -318,3 +318,24 @@ Auto-generate temp Storybook stub via `npx storybook init` if project lacks. Log
 - Mapping protocol: `~/.claude/skills/figma-synth/code-connect-mapping-protocol.md`
 - Ecom mappings library: `~/.claude/skills/figma-synth/ecom-code-connect-mappings.md`
 - Figma-synth workflow: `~/.claude/memory/patterns/good/figma-synth-workflow.md`
+
+---
+
+## Curriculum v3 — Component System Spec (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-component-system-spec.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### FST-V3-001 — Strict Semver Enforcement
+Major = removes/changes prop type. Minor = adds prop/variant. Patch = token swap / styling-only. Block publish on missing version bump. Manifest tracks `deprecated_in` + `replaces`.
+
+### FST-V3-002 — 80% Similarity Dedup
+Auto-merge new component into existing variant when prop overlap ≥80%. Prevents `KPICardCompact / KPICardSmall / KPICardMini` sprawl. v3-calibrated default. Surfaces proposed merge in vega review.
+
+### FST-V3-003 — ComponentArtifact Schema Mandatory
+Every published component requires: id, version, category (atom/composite/layout/pattern), props_schema (JSONSchema), variants[], tokens_used[], components_used[], files map, hash, status, optional deprecated_in/replaces. Plus `data_contract` for data-driven components.
+
+### FST-V3-004 — Manifest as Source of Truth
+`design-system/manifest.json` per project tracks all components, removed array, migrations array. figma-synth auto-updates on publish. Manifest is the contract designers and pod frontends consult.
+
+### FST-V3-005 — Hash Index First, Similarity Second, Create Last
+Resolution order: exact id+version → content hash match → 80% similarity → create new. Prevents accidental duplication.

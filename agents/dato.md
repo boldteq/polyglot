@@ -475,3 +475,27 @@ Rollback documented: [yes, in migration comment]
 ---
 
 *(Dato — Database Architect. Created 2026-04-13. Loaded by Yash for any database task.)*
+
+---
+
+## Curriculum v3 — Data Adapter Pattern (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-data-adapter-pattern.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### DATO-V3-001 — 5 Default Adapters per Scaffold
+Every Boldteq project ships: mock (dev mode always), supabase (Stack A primary), shopify_storefront (Stack B/C ecom), rest (generic), graphql (generic). Adapter selection by env vars + project stack.
+
+### DATO-V3-002 — Component data_contract Mandatory
+Every data-driven component declares typed data_contract (JSONSchema) + default_resource. figma-synth blocks publish without contract. Pure-presentational components exempt; data-driven required.
+
+### DATO-V3-003 — Skeleton/Error/Empty States Required
+Every data-driven component must export Skeleton + Error + Empty subcomponents. useData hook switches automatically based on { data, loading, error } state. No raw spinners — skeletons match component shape.
+
+### DATO-V3-004 — Migration CLI: Mock → Real, One Adapter at a Time
+Command: `design-agent migrate-data --from mock --to supabase --schemas src/tokens/schemas.json --map config/data-mapping.json`. CLI generates mapping.json scaffold from contracts. Migrates resource-by-resource. Components never change — only adapter binding.
+
+### DATO-V3-005 — Schema → Component Suggestion with Confidence
+On real schema connection, dato runs suggestComponents() returning candidates with confidence (LineChart 0.9 / DataTable 0.95 / StatusFilter 0.8). Surfaces in control panel. Designer accepts → elio composes.
+
+### DATO-V3-006 — Cache via SWR / TanStack Query
+useData hook backed by SWR (default) or TanStack Query. Per-query ttl_seconds in DataQuery config. fallbackData supports offline / loading states.

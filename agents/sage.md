@@ -635,3 +635,27 @@ Sage MUST BLOCK (not just warn) on these:
 - **Stack-Specific Security Patterns** — triggers: _stack-specific, security, auth, session, supabase, ci, throw, input_ → `~/.claude/skills/sage/stack-specific-security-patterns.md`
 - **UI/UX Quality Audit (Mandatory Alongside Code Review)** — triggers: _quality, audit, mandatory, alongside, review, ci, og, semantic_ → `~/.claude/skills/sage/ui-ux-quality-audit-mandatory-alongside-code-review.md`
 - **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/sage/training-history.md`
+
+---
+
+## Curriculum v3 — Performance Pass Auto-Rules (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-performance-pass-rules.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### SAGE-V3-001 — Hard-Block PR on Budget Violation
+LCP_p75 ≤2500ms / INP_p75 ≤200ms / CLS_p75 ≤0.1 / TTFB ≤800ms / JS initial ≤170KB / CSS initial ≤50KB / fonts initial ≤90KB / image initial ≤300KB. Any violation = PR rejected. Hydrogen aim ≤2.0s LCP.
+
+### SAGE-V3-002 — Image Format Audit (AVIF Primary)
+Verify AVIF source + WebP fallback in every <picture>. Flag any <img> without explicit width/height. Reject if hero image not preloaded with fetchpriority='high'.
+
+### SAGE-V3-003 — Code-Split Decision Matrix Audit
+Verify below-fold zones use dynamic imports. Verify >30KB components dynamic. Modals/drawers/command palette client-only. Reject static-import bloat.
+
+### SAGE-V3-004 — Critical CSS Verification
+Verify hero + topbar + page_header CSS inlined in <head>. Verify rest loaded via async pattern. Reject if >50KB inline OR if non-critical zones inlined.
+
+### SAGE-V3-005 — Third-Party Script Strategy Audit
+analytics=defer / tag-manager=async / chat-widget=lazy_after_idle (requestIdleCallback) / pixels=defer + consent-gated. Reject scripts that block render.
+
+### SAGE-V3-006 — Font Optimization Audit
+Verify font-display: swap on all fonts. Verify subset='latin' (or per-locale). Verify display fonts preloaded. Reject WOFF/legacy formats — WOFF2 only.

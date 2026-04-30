@@ -805,3 +805,118 @@ useEffect(() => {
 
 ---
 *Connect Onboarding (Plan-S15) appendix added 2026-04-30. Files touched: 22 (track a/b/c/d) + 9 (fix tracks). Sage verdict: BLOCK → APPROVE after CRIT-1 (test fixtures) + CRIT-2 (country plumbing) + HIGH-1 (test isolation) + HIGH-2 (account_id URL leak) + HIGH-3 (UNIQUE partial indexes) + HIGH-4 (return handler verification) all folded into S15 commit.*
+
+---
+
+## Appendix — Destination Charges + Deposit SAGA Sprint (Plan-S16, 2026-04-30)
+
+> **Scope:** End-to-end session charge flow with capability gate runtime block, country sanity check, deposit pool atomic settlement (SAGA pattern), commission splits, refunds with INVARIANT 5 enforcement, webhook SAGA confirmation. **5 parallel tracks (A/B/C/D/E) + Sage audit + 2 fix dispatches** — first sprint where real cards charge real money.
+
+### CC24. Schema bridge pattern when existing table doesn't match new spec
+**Pattern from Track C:** Existing `project_deposit_transactions` (from `20260422100200_project_deposit_transactions.sql`) had column shape:
+- `type` (received | applied | refunded | consumed)
+- `amount_cents` (single column)
+- `applied_to_session_id`
+
+Plan §6.5 had specified different shape:
+- `kind` (split | reversal | adjustment | tip)
+- `draw_cents`
+- `session_id`
+- `status` enum + `idempotency_key` + `parent_transaction_id` + `confirmed_at` + `rolled_back_at`
+
+Track C's solution: **additive bridge** — added all new columns alongside old ones via `ADD COLUMN IF NOT EXISTS`. Extended `type` CHECK to include new value `'saga_hold'`. SAGA rows insert with `type='saga_hold'` to bypass the existing INSERT trigger (which only handles `received|applied|refunded|consumed`). RPCs do their own `UPDATE projects SET deposit_applied_cents` for atomicity.
+
+**Rule:** When extending an existing table for a new feature epic, prefer additive ALTER + CHECK extension over destructive renames. Bridge the old/new naming via the new RPCs; document in migration comments. Avoid breaking the existing trigger chain.
+
+**Generalize:** Any table touched by both legacy code paths and new feature work — additive only. Renames require coordinated multi-sprint deprecation cycles.
+
+### CC25. Plan column names don't survive contact with reality — ALWAYS read the actual migration
+**Pitfall caught by Sage S16 H1:** Plan §6 listed 4 deposit pool columns (`deposit_pool_cents_in/applied/available/refundable`). Actual S13 schema went with **2 columns** (`deposit_pool_cents` + `deposit_applied_cents`) with available computed. Track E (Luna) wrote test fixtures using the plan's 4-column names. DB-gated tests would have silently failed the moment anyone set `DATABASE_URL` — `column "deposit_pool_cents_in" does not exist`.
+
+**Rule:** Before writing test fixtures or RPCs against an existing table:
+1. `grep -E "ADD COLUMN|CREATE TABLE.*<table>" supabase/migrations/` to find the actual schema.
+2. Cross-reference the column names in your code against what the migration ACTUALLY shipped, not what the plan specified.
+3. If they differ, either match the migration OR file an addendum migration with explicit column rename.
+
+**Reinforced from CC19:** Test fixture column drift is invisible at typecheck time (DB types not regenerated yet during sprint). Only DB-runtime catches it. Sage scan for fixture vs migration drift becomes a refactor-sprint discipline.
+
+### CC26. Stripe SDK literal version drift — features removed across major versions
+**Pitfall noted by Track A:** `automatic_tax: { enabled: true }` was a valid PaymentIntent.create param in earlier Stripe SDK versions but removed from the type signature in v22 (`'2026-04-22.dahlia'`). Track A caught at compile time; Stripe Tax STILL works at runtime (configured via Stripe Dashboard on the connected account), but the explicit toggle field is gone.
+
+**Mitigation:** Tax computation moves to webhook side. On `payment_intent.succeeded`, the charge object's tax breakdown gets read and mirrored into `stripe_charges.tax_amount_cents` via `stripe_charge_update_status_from_webhook` RPC.
+
+**Rule:** When pinning a Stripe API version, check the major-version migration guide for removed/renamed fields. Don't assume backward compat. Document deviations in code comments AND lessons.
+
+**Generalize:** Any external SDK with versioned API contracts — pin the version literal, document removed features, move to alternate paths (webhook-side compute, dashboard config, etc.).
+
+### CC27. SAGA pattern for marketplace charges — apply BEFORE external API, rollback on failure
+**Canonical pattern from S16:**
+
+```
+1. capability gate check        → 403 if not allowed (no Stripe call)
+2. country sanity check          → 422 on drift (no Stripe call)
+3. SAGA STEP 1: apply_deposit_to_session RPC (writes pending_apply row, decrements available)
+4. stripe.paymentIntents.create  → wraps in withIdempotencyKey()
+   ├─ On error → CATCH → rollback_deposit_application RPC (re-credits pool)
+   └─ On success → mirror in stripe_charges via stripe_charge_record RPC
+5. (async) webhook payment_intent.succeeded → SAGA STEP 2: confirm_deposit_application RPC
+   (or) payment_intent.payment_failed | canceled → SAGA STEP 2: rollback_deposit_application RPC
+```
+
+**Why it works:** the deterministic `idempotencyKeyFor()` ensures Stripe returns the same PI on retry. The SAGA's `idempotency_key` UNIQUE on `project_deposit_transactions` ensures the apply RPC is also idempotent. So both the local DB write AND the external API call dedupe on retry — safe to rethrow at any failure point.
+
+**Reaper safety net:** orphan `pending_apply` rows older than 30 minutes (process killed mid-flight) get swept by a reaper cron in S17. Index `idx_project_deposit_transactions_reaper` partial WHERE `status='pending_apply'` makes this a fast scan.
+
+**Rule:** Any flow that mutates local DB state THEN calls an external service must follow this shape. The catch block IS the rollback path. The webhook IS the confirmation path. Both must be idempotent. The reaper is the safety net for process death between local commit and webhook delivery.
+
+### CC28. `supabase.from` cast pattern needs `.bind(supabase)` for test-mock compatibility
+**Pitfall caught during S16 H2 fix:** Track D's `handleChargeRefunded` declared:
+```ts
+const fromUntyped = supabase.from as unknown as (table: string) => { ... };
+fromUntyped('stripe_charges')...
+```
+Works against the real Supabase client (where `from` is callable). FAILS against Vitest mocks where `supabase.from = vi.fn()` — calling `fromUntyped('table')` invokes `from.call(undefined, 'table')` which loses the bound `this`.
+
+**Fix:** declare with explicit bind:
+```ts
+const fromUntyped = supabase.from.bind(supabase) as unknown as (table: string) => { ... };
+```
+
+This works against BOTH real client and mocks because `bind(supabase)` returns a callable function that carries the right `this` regardless of how it's invoked.
+
+**Rule:** When casting `supabase.from` (or any method-as-callable pattern) to a different signature, always `.bind(supabase)` first. Same applies to `supabase.rpc.bind(supabase)` if the same pattern is used elsewhere. Test mocks don't preserve method binding the same way real clients do.
+
+### CC29. "Reconciliation cron will catch" claims must be VERIFIED, not assumed
+**Pitfall caught by Sage S16 H2:** Track A's `stripe_charge_record` failure path logged CRITICAL and continued without throwing, with comment "reconciliation cron will catch this." Sage verified the existing `payments-reconciliation.ts` cron at `workers/cron/`: it only LOGS drift, doesn't INSERT missing rows. Refund flow then 404s on the missing charge row → real-money-at-rest gap.
+
+**Fix shipped in S16:** rethrow on `chargeRecErr`. The PI is idempotent (deterministic `idempotencyKeyFor()`), so caller surfaces 502 → Stripe retries on next webhook → second pass succeeds.
+
+**Rule:** Before committing any code path with comment "X will be repaired by Y," GREP Y's actual implementation to verify the repair logic exists. Aspirational comments compound — Sage's recent verdicts have flagged 3 in 4 sprints (S14, S16, S15-D2 audit).
+
+**Generalize:** Any safety-net assumption needs a Luna test that asserts the safety net actually catches the failure mode being claimed.
+
+### CC30. INVARIANT enforcement via literal boolean + Sage grep, not config or options
+**Pattern reinforced for INVARIANT 5:** `lib/stripe/refunds.ts` Stripe refund call:
+```ts
+stripe.refunds.create({
+  payment_intent,
+  amount,
+  reverse_transfer: true,            // INVARIANT 5: literal true, no branches
+  refund_application_fee: true,      // INVARIANT 5: literal true, no branches
+  ...
+});
+```
+
+**Why literal:** Sage scans for `reverse_transfer: true` AND `refund_application_fee: true` literally. If either is replaced with `reverse_transfer: opts?.reverseTransfer ?? true` or `...refundOpts`, the literal grep MISSES the override path.
+
+**Rule:** For invariants that MUST hold across all call sites, encode them as inline literal values, not as defaults that can be overridden. The grep becomes the gate.
+
+**Generalize:**
+- INVARIANT 4 `application_fee_amount: ...` — value can vary, but the field must be PRESENT (Sage greps for the key, not the value).
+- INVARIANT 2 `metadata.inkos_idempotency_key: key` AND `{ idempotencyKey: key }` request option — both literal, both grepable.
+- INVARIANT 5 `reverse_transfer: true` + `refund_application_fee: true` — both literal `true`, both grepable.
+
+When any invariant is "always X" without exception, write it as inline literal. When the code's flexibility is the trap, sacrifice flexibility for greppability.
+
+---
+*Destination Charges + Deposit SAGA (Plan-S16) appendix added 2026-04-30. Files touched: 17 (5 parallel tracks A/B/C/D/E) + 3 (Sage fix tracks H1/H2/H3 + Track D bug). Sage verdict: APPROVE-WITH-FIXES → APPROVE after H1 (test column names), H2 (rethrow chargeRecErr), H3 (.todo→it conversions), and Luna-discovered Track D `fromUntyped` TypeError all folded into S16 commit. INVARIANTS 2/4/5 confirmed grep-enforced. SAGA atomicity verified: apply→PI→catch-rollback→webhook-confirm chain holds. Real money flows production-ready.*

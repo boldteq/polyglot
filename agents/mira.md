@@ -274,3 +274,30 @@ After every knowledge extraction run, Mira MUST verify:
 - **Training Process** — triggers: _training, process, session, testing, ci, og, error, validation_ → `~/.claude/skills/mira/training-process-patterns.md`
 - **Training history (dated archaeology)** — triggers: _training, history, protocol, migration, update_ → `~/.claude/skills/mira/training-history.md`
 - **Templates and rubrics** — triggers: _template, rubric, framework, report, schedule, retrospective_ → `~/.claude/skills/mira/templates-and-rubrics.md`
+
+---
+
+## Curriculum v3 — 4-Tier Memory Architecture (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-memory-architecture.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### MIR-V3-001 — 4-Tier Memory Service
+Tier 1: user_prefs (per-user durable). Tier 2: project_state (per-project durable). Tier 3: pattern_library (cross-project learned). Tier 4: outcomes (variant winners + analytics). All loaded on agent runtime via loadMemoryContext().
+
+### MIR-V3-002 — Storage = Supabase Only
+Postgres = user_prefs + project_state + manifests + outcomes. pgvector = semantic similar-project search. Storage = emitted artifact files. Single platform. RLS on all tables. user_id-scoped policies.
+
+### MIR-V3-003 — User Pref Auto-Lock at 80%/10
+When user picks same value ≥8/10 recent projects → promote to user_prefs.default_*. Auto-applies to next brief unless overridden via control panel.
+
+### MIR-V3-004 — Pattern Graduation: win_rate ≥0.6 + sample ≥30
+Pattern stays candidate until win_rate threshold met AND sample size ≥30 instances. Below: candidate only. Above: graduates to canonical pattern_library status. Conservative + reliable.
+
+### MIR-V3-005 — Outcome Winner Threshold P>0.95 + MDE ≥0.10
+Bayesian P(treatment wins) > 0.95 AND minimum detectable effect ≥0.10. Below: inconclusive. Industry-standard rigor.
+
+### MIR-V3-006 — Nightly Graduation Pass
+Mira runs nightly: outcomes → win-rate recompute → pattern graduation. Feeds patterns into next-day generation as priors.
+
+### MIR-V3-007 — Vector Search Top-K = 3 for Similar Projects
+On project load: vector.search returns top-3 similar past projects (cosine similarity on embedding column). Used as priors for new generation.

@@ -633,3 +633,27 @@ on rejection by Yash:
 - **Process** — triggers: _process_ → `~/.claude/skills/arya/process-patterns.md`
 - **ARYA TRAINING VALIDATION SCENARIOS** — triggers: _arya, training, validation, scenarios_ → `~/.claude/skills/arya/arya-training-validation-scenarios-patterns.md`
 - **Output: Architecture Handoff Document** — triggers: _output, architecture, handoff, document, arya, must, include, sections_ → `~/.claude/skills/arya/output-architecture-handoff-document.md`
+
+---
+
+## Curriculum v3 — Adapter Architecture + Control Panel System Design (2026-04-30)
+
+**Sources:** `~/.claude/memory/patterns/good/v3-data-adapter-pattern.md` + `~/.claude/memory/patterns/good/v3-control-panel-spec.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### ARYA-V3-001 — Adapter Registry as Architectural Indirection Layer
+Every architecture plan includes ADAPTERS registry (mock/supabase/shopify_storefront/rest/graphql). Components depend on the registry, not concrete adapters. This indirection enables mock→real migration without touching components — a v3 first-class architectural concern.
+
+### ARYA-V3-002 — Memory Backend Architecture = Supabase 4-Tier
+Every architecture plan provisions: user_prefs + project_state + pattern_library + outcomes tables (per `v3-memory-architecture.md`). pgvector enabled on project_state.embedding column. RLS user_id-scoped on all 4 tables.
+
+### ARYA-V3-003 — Control Panel = Polyglot UI Extension (Not New App)
+Operator UI extends existing Polyglot agent-ops UI rather than separate app. New routes under `/v3/projects/:id/*` (tokens/components/generate/variants/memory/scores). Reuses existing agent-ops Supabase tables + adds v3-specific tables.
+
+### ARYA-V3-004 — Cost Ceiling Per Generation Run
+Architecture plans include cost-ceiling enforcement: max 8 LLM calls / max 3 self-improvement iterations / max 4 variants per axis. Halt with `cost_ceiling_exceeded` when exceeded. Telemetry captures cost per stage.
+
+### ARYA-V3-005 — Determinism via Seed Parameter
+Non-deterministic stages (variant generation, mock data templates) accept `seed` parameter. Same input + seed → same output. Required for reproducibility + A/B test re-runs.
+
+### ARYA-V3-006 — Versioned Agent Runs
+Architecture tracks `agent_version` per generation. Existing projects opt-into new agent versions explicitly via manifest. Migration path: pattern library snapshots versioned per release.

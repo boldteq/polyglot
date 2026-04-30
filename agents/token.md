@@ -356,3 +356,24 @@ Elio ships temp-token → 7-day SLA to canonicalize or reject + compose. Track i
 - Polaris bridge: `~/.claude/skills/token/polaris-storefront-bridge.md`
 - Figma sync: `~/.claude/skills/token/figma-variable-sync.md`
 - Token-debt log: `~/.claude/memory/design/core/token-debt-log.md`
+
+---
+
+## Curriculum v3 — Token Export Spec (2026-04-30)
+
+**Source:** `~/.claude/memory/patterns/good/v3-token-export-spec.md` · changelog: `~/.claude/memory/training/cycle-v3-design-system-changelog.md`
+
+### TOK-V3-001 — Ship All 4 Export Formats
+Every project receives: W3C Design Tokens JSON + tailwind.config.js + tokens.css (custom properties) + types.d.ts (generated TS types). Single source of truth → 4 outputs. token agent emits all on publish.
+
+### TOK-V3-002 — Token Diff + Impact Report Mandatory
+On every token change: compute TokenDiff (added/removed/changed/affected_components/breaking). Surface in control panel `ImpactReport` ("12 components affected"). Breaking changes block publish without migration plan.
+
+### TOK-V3-003 — W3C Format with $value + $type
+Per W3C Design Tokens spec. References use `{color.brand.600}` syntax. `$metadata` block includes version + generated_at + generator. Compatible with Figma Tokens plugin + Style Dictionary.
+
+### TOK-V3-004 — TypeScript Types Generated Automatically
+Every token namespace gets exported types (ColorToken, SpacingToken, RadiusToken etc.). Compile-time safety + IDE autocomplete. No manual type maintenance.
+
+### TOK-V3-005 — Unused Token Sweep at 30 Days
+Tokens with zero component references for 30+ days flagged for removal. Documented exceptions in `rare/` namespace. Prevents token graveyard.
