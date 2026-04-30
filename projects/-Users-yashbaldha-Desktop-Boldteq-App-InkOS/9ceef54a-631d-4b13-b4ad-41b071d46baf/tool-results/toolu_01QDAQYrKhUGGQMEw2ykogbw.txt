@@ -1,0 +1,844 @@
+User has approved your plan. You can now start coding. Start with updating your todo list if applicable
+
+Your plan has been saved to: /Users/yashbaldha/.claude/plans/so-this-is-whole-parallel-pillow.md
+You can refer back to it if needed during implementation.
+
+## Approved Plan (edited by user):
+# InkOS — Full Product Build Plan (Sprint 13 → Sprint 87)
+
+> **Plan ID:** `so-this-is-whole-parallel-pillow`
+> **Authored:** 2026-04-30
+> **Repo:** `/Users/yashbaldha/Desktop/Boldteq App/InkOS`
+> **Reference document:** `InkOS_In_Practice.pdf` (60-page operations guide — three-persona walkthrough of Maya, Miles, Karisa across the koi sleeve project)
+> **Brand reference:** `InkOS_Brand_Board.pdf` v1.0 (locked April 2026 — Bone/Onyx/Stone/Rust palette, Inter + Instrument Serif typography)
+> **Project lessons:** `~/.claude/memory/projects/inkos-lessons.md` (must be loaded on every touch — recurring antipatterns)
+
+---
+
+## 1. Context
+
+InkOS is a multi-tenant SaaS replacing the **9 disconnected tools** (Instagram DMs, WhatsApp, email, Google Calendar, Venmo, Stripe, Notes app, Dropbox, group SMS) most tattoo studios glue together. The PDF defines a target product across **three personas** (studio owner Maya, resident artist Miles, client Karisa) walking through a complete **5-session koi sleeve** lifecycle — from first DM through final session through year-later VIP referral.
+
+The product is currently **Sprint 12 complete, launch-ready**: 72 migrations, 511 routes, 286 components, 46 tests. The PDF reveals a **wider target than the existing Sprint 0–12 scope** delivered. This plan closes the gap.
+
+**Why this scope:**
+- Yash explicitly requested 50–100 sprints, production-grade, "Lovable-quality" refactor cadence baked in.
+- Tax handling has to be best-in-class (MoR for SaaS + per-state line-itemed for in-studio).
+- Nothing missed → No. 1 tool worldwide ambition.
+
+**Final sprint count:** **75 sprints (S13–S87)**, organized into **11 epics** with **10 refactor sprints baked in** at every 5–7 feature sprints. Splittable XL sprints (S16, S48, S64) may push to **78** if expanded.
+
+---
+
+## 2. Locked Decisions (from clarification round)
+
+| # | Decision | Locked Choice | Reason |
+|---|----------|---------------|--------|
+| **1** | L1 (SaaS billing) tax + payments | **Dodo Payments** (current, MoR) | Already shipped Sprint 4. MoR handles US sales tax + EU VAT + UK + AU automatically. Zero migration. |
+| **2** | L2 (in-studio billing) marketplace | **Stripe Connect Express** (NEW) | PDF money model (deposit pool + 70/30 splits + tip routing + dispute defense + 1099-NEC) requires marketplace primitives. Dodo doesn't offer Connect-equivalent. |
+| **3** | Public portfolio domain | **`portfolio.inkos.studio/[studio]/[artist]`** subdomain | Per PDF spec. Wildcard DNS + `proxy.ts` host rewrite. SEO-isolated. Enterprise gets custom domain CNAME. |
+| **4** | Project-specific agents | **5 InkOS leads** at `.claude/agents/` inside repo | 50–100 sprints × generic agents = repeated mistakes. Specialist depth on Dodo+Stripe Connect dual stack, REACH/MoCRA, brand. |
+
+**Resulting payment topology:**
+```
+L1 (SaaS):     Studio → Dodo → InkOS              (Dodo MoR handles tax filing globally)
+L2 (in-studio): Karisa → Stripe Connect platform → split
+                          ↓
+                  70% Miles + 30% Sable & Sparrow + tip + Stripe-Tax line ledger
+```
+
+---
+
+## 3. Current State — Audit Summary
+
+Detailed audit in conversation log. Headline findings:
+
+### Module compliance vs PDF (16 modules)
+
+| # | Module | Status | Notes |
+|---|--------|--------|-------|
+| 1 | Dashboard | ✅ EXISTS | KPI tiles + Live Now widget at `/dashboard` |
+| 2 | Inbox | 🟡 PARTIAL | Multi-channel webhooks live (IG, WhatsApp, SMS, Email, webchat) — channel-tagged UI badges + AI drafts MISSING |
+| 3 | Calendar | ✅ EXISTS | Multi-artist columns, deposit-gated booking, drag-resched, lunch/break auto-blocks |
+| 4 | Messages | ✅ EXISTS | Per-client unified thread view |
+| 5 | Projects | ✅ EXISTS | Deposit pool (in/applied/available/refundable on `projects` table); photo timeline slot_type enum added 2026-04-30 |
+| 6 | Clients | 🟡 PARTIAL | 7 of 8 tabs exist; **Financial tab data integration MISSING; persistent allergies banner UI MISSING** |
+| 7 | Team | ✅ EXISTS | 3 artist types, 3 comp models, BBP cert, license, 1099/W-2 flag |
+| 8 | Flash & Portfolio | 🟡 PARTIAL | Routes at `/p/[studio]/[artist]` — **subdomain `portfolio.inkos.studio` MISSING; bookable flash deposit-gated MISSING** |
+| 9 | Flash Events | ✅ EXISTS | Pop-up days + cron auto-cancel + landing pages |
+| 10 | Forms | ✅ EXISTS | 8 templates, magic-link delivery, signed digitally |
+| 11 | Payments | 🟡 PARTIAL | Dodo wired (L1 only). **Stripe Connect L2 ENTIRELY MISSING** — no destination charges, no marketplace splits, no 1099-NEC, no dispute defense pack |
+| 12 | Inventory | ✅ EXISTS | REACH-EU compliance log, low-stock alerts. **Session-start fail-fast MISSING** |
+| 13 | Analytics | ✅ EXISTS | 6 report tabs at `/reports/*` (named differently; PDF calls it `/analytics`) |
+| 14 | Marketing | ✅ EXISTS | Win-back, loyalty, birthday, review capture |
+| 15 | AI Assist | 🟡 PARTIAL | Only design-tagger + moodboards. **3 PDF jobs (inbound drafts, consult summary, aftercare gen) ENTIRELY MISSING** |
+| 16 | Settings | ✅ EXISTS | Studio identity, hours, locations, tax rates, integrations, GDPR |
+
+### Critical workflows
+
+| Workflow | Status |
+|----------|--------|
+| 30-min pre-session briefing push | ❌ MISSING |
+| iPad kiosk pre-session intake | 🟡 PARTIAL (consent kiosk only) |
+| Day-14 healed photo SMS prompt | ✅ EXISTS |
+| Client portal via SMS magic link | ❌ MISSING |
+| Project completion automation (30d, 7d review, 3mo referral, 6mo win-back, birthday) | 🟡 PARTIAL |
+| Multi-tenancy (studio_id RLS) | ✅ EXISTS |
+
+### Recurring antipatterns to avoid (from `inkos-lessons.md`)
+
+1. **Hand-edited `lib/supabase/types.ts`** — #1 bug source across 13 sprints. Always `pnpm db:types` after any migration.
+2. **RPC parameter mismatches** — define RPC contracts as shared TS interfaces BEFORE Dato writes SQL.
+3. **`asChild` on base-nova components** — base-ui requires `render`, never `asChild`.
+4. **Missing rate limits on routes** — every API route must call `authedRatelimit` / `apiRatelimit` / `publicBookingReadRatelimit` before DB queries.
+5. **Public routes using session client** — must use `createPublicClient()` from `@/lib/supabase/public`.
+6. **`unstable_cache` capturing authenticated clients** — JWT leaks across requests. Cache results, not invocations.
+7. **Dodo webhook spec** — `standardwebhooks` headers + `Webhook.verify()`, never plain HMAC.
+8. **Feature gate key drift** — all keys live in `lib/billing/feature-gate.ts` `KNOWN_FEATURE_KEYS` constant.
+9. **Stub RPCs must match final signature** — shape change breaks downstream silently.
+10. **Batch audits hide compounding bugs** — Sage runs after EVERY sprint, no batching.
+
+---
+
+## 4. Target State — PDF Spec Compliance
+
+Build the full **16 modules across 5 clusters** with the **3-persona narrative** as the verification standard.
+
+### The 4 brand rules (rejection criteria)
+
+Any output that breaks these rules gets hard-rejected:
+
+1. **Editorial polish, not corporate template.** Magazine editor built a CRM. Serif italic accents. Bone background, never sterile white. Never generic SaaS purple. Never Fresha-energetic. Never rainbow-gradient heroes.
+2. **Rust is earned, never decorative.** Every `#B23A2B` must answer: *active state, live indicator, or critical anchor?* If no — not Rust.
+3. **Onyx buttons carry the workflow.** Primary CTAs are Onyx. Rust is reserved for destructive moments only.
+4. **Serif shows up in moments, not paragraphs.** Page titles + italic emphasis only. Inter carries the workload.
+
+### The promise (in one paragraph)
+
+InkOS exists to make it impossible for a tattoo studio to lose track of a person, a project, a payment, an allergy, or a photo. Maya gets her Monday Dashboard. Miles gets the 30-min phone briefing. Karisa never opens an app. Every flow built has to survive the question: *would Maya, Miles, or Karisa notice anything wrong here?*
+
+### Pricing tier matrix (synced with PDF)
+
+| Tier | Price | Users | Modules unlocked beyond base |
+|------|-------|-------|------------------------------|
+| Solo | $29/mo | 1 | 8 core only |
+| Studio | $59/mo | 5 | + Inventory + Analytics + Marketing |
+| Pro | $99/mo | 15 | + AI Assist + advanced Analytics + multi-location |
+| Enterprise | $199/mo | unlimited | + white-label + API access + SSO + multi-location reporting |
+
+---
+
+## 5. Dual-Stack Payment Architecture
+
+### 5.1 — L1 (Dodo, current, do not refactor)
+
+| Concern | Implementation |
+|---------|----------------|
+| Client | `lib/dodo/client.ts` (lazy-init Proxy singleton, never construct at module-eval) |
+| Webhook | `app/api/webhooks/dodo/route.ts` — `standardwebhooks` spec, `timingSafeEqual` HMAC |
+| Subscription lifecycle | `subscription.active|cancelled|failed|renewed`, `payment.succeeded|failed` — webhook-only writes via service-role |
+| Customer portal | `lib/dodo/portal.ts` returns `{ link }` (NOT `{ url }`) |
+| Tax | Dodo handles globally (MoR) — receipts branded as Dodo |
+
+### 5.2 — L2 (Stripe Connect Express, NEW)
+
+**Connected account model: ONE Express account per studio + optional second Express account per artist who opts into direct payouts.** This avoids the W-2 pseudo-employer trap (IRS ABC test) and mirrors Vagaro/Mindbody mechanics.
+
+**Studio onboarding flow:**
+1. Owner clicks "Enable in-studio payments" in `/settings/payments`.
+2. Server creates Express account: `stripe.accounts.create({ type: 'express', country, capabilities: { card_payments, transfers, tax_reporting_us_1099_nec } })`.
+3. Server stores `stripe_connected_accounts` row, returns `account_links.create()` URL → studio redirects to Stripe-hosted KYC.
+4. Webhook `account.updated` flips `onboarding_status` → `active` when `charges_enabled` and `payouts_enabled` are true.
+5. Until KYC complete, Bone/Onyx-tinted banner on `/dashboard`.
+
+**Artist onboarding flow:** Same shape, separate account per artist. Until artist completes KYC, their commission accrues to studio's connected balance and the studio pays them via existing payroll (1099 or W-2 path).
+
+**Charge flow (destination charge model):**
+```ts
+stripe.paymentIntents.create({
+  amount: total_cents,                         // base + tip + tax
+  currency: 'usd',
+  customer: client_stripe_customer_id,
+  payment_method: pm_id,
+  confirm: true,
+  application_fee_amount: studio_commission_cents,  // 30% in 70/30
+  transfer_data: { destination: artist_connected_account_id },
+  on_behalf_of: artist_connected_account_id,
+  automatic_tax: { enabled: true },            // Stripe Tax for US per-state
+  metadata: {
+    studio_id, artist_id, booking_id, project_id, session_id,
+    deposit_pool_drawdown_cents,
+    inkos_idempotency_key                      // dedupe in webhook reconciliation
+  }
+})
+```
+
+**Deposit pool atomic settlement:**
+- `projects.deposit_pool_cents_available` = source of truth.
+- RPC `apply_deposit_to_session(project_id, session_id, draw_cents)` runs in single transaction:
+  1. Verify `available >= draw_cents`.
+  2. Decrement `available`, increment `applied`, insert `project_deposit_transactions` row with `kind='applied'`.
+  3. PaymentIntent `amount` = `(session_total - draw_cents)` — only balance is charged.
+  4. SAGA pattern: deposit txn flagged `pending_apply`, flips to `applied` only on `payment_intent.succeeded` webhook.
+- Deposit-only charges (collected at booking creation) hit studio's connected balance with NO `transfer_data` — sit in studio float until applied.
+
+**Tip routing:** Tips captured in same PaymentIntent as session charge (line `tip_amount_cents`). `application_fee_amount` excludes tip → 100% of tip flows to artist's `transfer_data.destination`. Studios that pool tips can override → tip goes to studio account, daily transfer cron splits per pool rule.
+
+**Tax line items:** `automatic_tax: { enabled: true }` enables Stripe Tax. Covers all US states + most EU/CA/AU. For uncovered jurisdictions (rural EU regions, tribal-land tattoo taxes), fallback to `tax_rates: [tx_id]` populated manually per location in `/settings/tax`. Tax amount recorded on charge metadata AND in `tax_remittance_ledger` for monthly remittance.
+
+**Per-state US tattoo-service tax matrix:** NYC 4.5% local + 8.875% retail · NJ 6.625% services · CA/TX/FL/PA/GA exempt for services · IA/MA tax permanent makeup · UK 20% VAT above £90k · CA 5–15% GST/HST/PST · AU 10% GST above AU$75k.
+
+**Refund flow:**
+```ts
+stripe.refunds.create({
+  payment_intent,
+  amount,
+  reverse_transfer: true,            // claws artist's share back
+  refund_application_fee: true       // returns studio's commission
+})
+```
+Mirror by inserting `commission_splits` row with `kind='reversal'` and re-incrementing `deposit_pool_cents_available` if pool-originated.
+
+**Dispute flow:**
+1. Webhook `charge.dispute.created` → insert `stripe_disputes`.
+2. Enqueue BullMQ job `assemble-dispute-defense-pack`.
+3. Job pulls signed consent + photo release + all session photos + chat history snapshot + deposit policy text + receipt → bundles into one PDF, uploads to private Storage.
+4. Submit evidence via `stripe.disputes.update()` 24h before `evidence_due_by`.
+5. If lost: Stripe debits studio's balance; mirror via `commission_splits` reversal clawing artist share, OR if artist balance negative, log to `payroll` for next-cycle deduction.
+
+**1099-NEC export:** Annual cron at year-end queries `stripe.transfers.list` per artist's connected account, groups by tax year, exports CSV with `name, TIN/SSN/EIN, federal_id, state_id, total_paid, address` to `/admin/tax-exports`. For studios on studio-pool model (artist no own connected account), 1099-NEC generated from `commission_splits` table directly. Stripe also offers `tax_reporting_us_1099_nec` capability — enable on every connected account and cross-check.
+
+### 5.3 — Webhook reconciliation (both rails)
+
+```sql
+CREATE TABLE webhook_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source TEXT NOT NULL CHECK (source IN ('dodo', 'stripe')),
+  event_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  signature_verified BOOL NOT NULL,
+  processed_at TIMESTAMPTZ,
+  error TEXT,
+  retry_count INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (source, event_id)
+);
+```
+
+- `INSERT ... ON CONFLICT (source, event_id) DO NOTHING` is first write of every webhook handler — replay returns 200 immediately.
+- Reject events older than 5 minutes (timestamp header check).
+- Hourly reconciliation cron: list active Dodo subs vs `subscriptions` table; list Stripe charges in last 25h vs `stripe_charges` — flag drift to `/admin/payments/reconciliation`.
+- `BullMQ` queue `webhook-replay` per source, 3× retry exponential (30s, 5m, 1h), then dead-letter for manual.
+
+### 5.4 — Failure modes
+
+| Mode | Detection | Handling |
+|------|-----------|----------|
+| `restricted_soon` | `account.updated` webhook | Onyx banner on dashboard, link to KYC. Charges still work. |
+| Cross-border FX | `presentment_currency` ≠ `settlement_currency` | Record both `amount_cents` (settled) and `presentment_amount_cents`. |
+| Dispute lost | `charge.dispute.closed` `status=lost` | `commission_splits` reversal; if artist balance negative, log to payroll deduction. |
+| Refund after payout | `requires_action` for transfer reversal | Always pass `reverse_transfer: true`. |
+| Tax remittance failure | Stripe Tax API error | Don't block charge; queue ledger row `status=manual_review`. |
+| Webhook signature mismatch | `timingSafeEqual` fails | Log to `audit_log`, return 401, alert via Hawk. |
+
+---
+
+## 6. Data Model Evolution
+
+### 6.1 — New tables (Stripe Connect)
+
+- `stripe_connected_accounts` — `id, studio_id, account_id, type (studio|artist), artist_id (nullable), onboarding_status, capabilities JSONB, country, default_currency, restricted_reason, requirements_due_by, created_at, updated_at`
+- `stripe_charges` — `id, studio_id, payment_intent_id, charge_id, transfer_id, application_fee_id, status, currency, amount_cents, tax_amount_cents, application_fee_cents, net_artist_cents, booking_id, project_id, session_id, client_id, deposit_drawdown_cents, idempotency_key UNIQUE, created_at`
+- `stripe_disputes` — `id, studio_id, dispute_id, charge_id, reason, status, amount_cents, evidence_due_by, defense_pack_url, submission_status, submitted_at, resolved_at, resolved_amount_cents`
+- `tax_remittance_ledger` — `id, studio_id, location_id, jurisdiction, period, amount_collected_cents, amount_remitted_cents, remittance_date, remittance_reference, status`
+- `commission_splits` — `id, studio_id, booking_id, session_id, artist_id, base_amount_cents, commission_pct, tip_amount_cents, applied_from_pool_cents, stripe_transfer_id, kind (split|reversal|adjustment), parent_split_id`
+- `dispute_defense_packs` — `id, dispute_id, signed_consent_url, photo_release_url, session_photos_urls[], chat_history_url, deposit_policy_text, receipt_url, bundle_pdf_url, generated_at`
+- `nec_1099_exports` — `id, studio_id, year, artist_id, total_paid_cents, federal_id_last4, state_id_last4, csv_url, pdf_url, generated_at, source (stripe|inkos_internal)`
+- `webhook_events` — see §5.3
+
+### 6.2 — Schema evolution to existing tables
+
+- `bookings` — ADD `stripe_charge_id, stripe_transfer_id, commission_split_id, tax_amount_cents`
+- `studios` — ADD `stripe_connected_account_id, l2_payments_enabled_at`
+- `artists` (or `studio_members`) — ADD `stripe_connected_account_id, payouts_self_enabled`
+- `payments` (existing Dodo-mirror) — ADD `provider ENUM('dodo' | 'stripe_connect')`
+
+### 6.3 — Sessions as first-class entity
+
+- `sessions` — `id, studio_id, project_id, session_number, status (planned|in_progress|completed|cancelled|no_show), planned_at, started_at, completed_at, planned_hours, actual_hours, pre_session_briefing_payload JSONB, pre_session_briefing_pushed_at, pre_session_briefing_read_at, notes, created_at`
+- `session_bookings (session_id, booking_id)` — many-to-many bridge
+- `session_photos` — `id, session_id, project_progress_photo_id, capture_phase (reference|stencil|mid_session|end_session|day_14_healed), captured_at`
+
+### 6.4 — Persistent allergies banner
+
+- `client_medical_flags` — `id, studio_id, client_id, flag_type (allergy|medication|condition|sensitivity), severity (informational|warning|critical), description, source (intake_form|artist_added|client_self), cleared_at, cleared_by, cleared_reason, created_at`
+- Banner reads `WHERE cleared_at IS NULL AND severity IN ('warning','critical')`
+- Every clear audit-logged; `cleared_reason` required.
+
+### 6.5 — Client portal
+
+- `client_portal_sessions` — `id, token UNIQUE, client_id, studio_id, scopes[], expires_at, used_at, created_at, ip_address, user_agent`
+- Token = signed JWT (HS256), 15-min expiry. Public `/portal/[token]` validates via `createPublicClient` + RPC `client_portal_get_view(token)`.
+
+### 6.6 — Pre-session briefing
+
+- `pre_session_briefings` — `id, session_id UNIQUE, studio_id, payload JSONB, pushed_at, read_at, delivered_via (push|sms|email), retry_count`
+- BullMQ cron `pre-session-briefing-builder` runs every 5 min: finds sessions with `planned_at` in [now+25, now+35] without briefing.
+
+### 6.7 — AI Assist
+
+- `ai_drafts` — `id, conversation_id, message_id (nullable, set on accept), draft_text, model, prompt_version, tokens_in, tokens_out, cost_cents, accepted_at, accepted_by, edited_text, created_at`
+- `ai_voice_profiles` — `id, studio_id, artist_id (nullable for studio-wide), tone_fingerprint JSONB (vocab, sentence length, emoji rate, exclamation rate, formality score), example_message_ids[], computed_at`
+- Nightly cron 03:00 studio-tz pulls last 30 days sent messages, computes fingerprint.
+
+### 6.8 — Loyalty + referrals
+
+- `loyalty_ledger` — `id, studio_id, client_id, points_delta, reason, reference_id, balance_after, created_at`
+- `loyalty_tiers` — `id, studio_id, name, min_points, perks JSONB`
+- `referral_codes` — `id, studio_id, code UNIQUE, client_id (referrer), reward_kind, reward_value, expires_at, max_redemptions, redemptions_count`
+- `referral_redemptions` — `id, code_id, referred_client_id, booking_id, reward_applied_cents, created_at`
+
+### 6.9 — Marketing flow runs
+
+- `marketing_flow_runs` — `id, studio_id, flow_kind (win_back|birthday|review|referral|win_back_2|post_session_aftercare), client_id, trigger_at, fired_at, channel, message_id, idempotency_key UNIQUE per (flow_kind, client_id, trigger_window)`
+
+---
+
+## 7. Five InkOS-Specific Agents
+
+All five live at `/Users/yashbaldha/Desktop/Boldteq App/InkOS/.claude/agents/[name].md`. Each loads PDF + CLAUDE.md + inkos-lessons.md as Tier 1 (always-loaded) plus its domain Tier 2.
+
+### 7.1 — `inkos-payments-lead`
+
+**Role:** Owns dual-stack money path end-to-end.
+
+**Domain ownership:**
+1. Dodo subscription lifecycle, plan upgrades, dunning, customer portal
+2. Stripe Connect onboarding (studio + artist Express), capabilities, KYC banners
+3. Stripe charge flow: PaymentIntents, destination charges, application_fee, transfer_data, on_behalf_of, automatic_tax
+4. Deposit pool atomic operations (RPC `apply_deposit_to_session` + SAGA pattern)
+5. Commission splits, tip routing, refunds with `reverse_transfer`, dispute defense pack assembly, 1099-NEC export, tax remittance ledger
+
+**Tier 2 loads:** `lib/dodo/`, `lib/billing/feature-gate.ts`, `lib/projects/deposit.ts`, `app/api/webhooks/dodo/route.ts`, all migrations matching `*subscription*|*plan*|*payment*|*deposit*|*commission*|*stripe*|*tax*`
+
+**Tools:** Read, Edit, Bash (read-only + `pnpm db:types|test`), Grep, Glob
+
+**Reports to:** Yash (executive); Atlas (architecture); Sage (gate); coordinates with Dato + Koda
+
+**Boundaries (does NOT do):** UI design (Vega/Pixel), copy (Quill/Brand Guardian), schema migrations (Dato writes after spec), compliance/tax-law interpretation (Compliance Lead), inbox/AI Assist drafts (Inbox Lead)
+
+**Quality gates:**
+- Webhook idempotency proven via test (replay same event_id → no double-write)
+- All Stripe calls include `metadata.inkos_idempotency_key`
+- `application_fee_amount` always set (never undefined)
+- Refund path covered for both pre-payout and post-payout cases
+- All money values stored as `cents INT`, never `numeric`/`float`
+- Reconciliation cron has dead-letter queue
+
+**Escalation:** Tax rate uncertainty → Compliance Lead. Customer-facing rendering → Vega. Sage hard-fail → Vex. Stripe production incident → Hawk.
+
+### 7.2 — `inkos-inbox-lead`
+
+**Role:** Owns omnichannel inbox + AI Assist as a single coherent surface.
+
+**Domain ownership:**
+1. Multi-channel webhook reconciliation (Instagram, WhatsApp, Twilio SMS, Resend email inbound, webchat) → unified `conversations` + `messages`
+2. AI Assist 3 jobs: drafts in voice, conversation summary, aftercare auto-reply
+3. `ai_voice_profiles` nightly training cron + draft acceptance audit
+4. Channel-mismatch warnings (Send Message modal)
+5. Conversation lifecycle: triage routing, auto-reply rules
+
+**Tier 2 loads:** `lib/messaging/`, `lib/inbox/`, `lib/ai/`, `app/api/webhooks/{instagram,whatsapp,twilio,resend-inbound,webchat}/route.ts`, migrations matching `*conversation*|*messages*|*marketing*|*ai*`
+
+**Tools:** Read, Edit, Bash (read-only), Grep
+
+**Reports to:** Yash; Arya (AI architecture); Sage
+
+**Boundaries:** No payments code, no calendar/booking surfaces, no brand/copy critique
+
+**Quality gates:**
+- Every channel webhook has signature verification + idempotency on `webhook_events`
+- AI draft cost tracking (token counts + cents) on every call
+- No `console.log` (use `lib/logger.ts`)
+- Voice profile rebuild is idempotent (same input → same fingerprint hash)
+- Send modal respects channel-mismatch warning before send
+- "Never sends autonomously" guard is code-level invariant tested in Luna
+
+**Escalation:** Cost spike → Yash. Voice drift complaints → Brand Guardian. New channel architecture → Atlas.
+
+### 7.3 — `inkos-canvas-lead`
+
+**Role:** Owns calendar + booking + session + photo-timeline domain — the "canvas" where the studio's day plays out.
+
+**Domain ownership:**
+1. Calendar rendering: multi-artist columns, drag-resched, auto-blocks, deposit-gate banner
+2. Bookings + sessions table (NEW first-class entity)
+3. 30-min pre-session briefing push (build + delivery cron)
+4. iPad kiosk pre-session intake flow (consent re-confirm, allergy review, photo release)
+5. Photo timeline: refs/stencil/fresh/healed, Day-14 SMS prompt
+
+**Tier 2 loads:** `lib/projects/`, `lib/bookings/`, all migrations matching `*projects*|*sessions*|*calendar*|*bookings*|*photo*`, `components/booking/`
+
+**Tools:** Read, Edit, Bash (read-only), Grep
+
+**Reports to:** Yash; Atlas; Sage
+
+**Boundaries:** No money math beyond deposit-pool RPC contract. No marketing flows. No raw SQL — defers to Dato.
+
+**Quality gates:**
+- `EXCLUDE USING gist` constraint on bookings holds (no double-booking same artist same time)
+- Sessions table writes are RPC-only (audit-critical)
+- Pre-session briefing push is idempotent (same session → same payload hash)
+- All photos signed-URL access via storage policy, not public-read
+
+**Escalation:** Push notification provider issue → Hawk. Brand on briefing UI → Vega. Compliance on photo release → Compliance Lead.
+
+### 7.4 — `inkos-compliance-lead`
+
+**Role:** Single owner of legal, regulatory, audit obligations across InkOS.
+
+**Domain ownership:**
+1. EU REACH ink registry + MoCRA US ink compliance
+2. BBP cert tracking, state license tracking, age-of-consent per state, minor consent w/ guardian
+3. 1099 vs W-2 classification (IRS ABC test) per artist relationship
+4. GDPR/CCPA data deletion flow + photo release granular toggles
+5. Audit log integrity (no untrusted-source rows), dispute defense pack legal sufficiency
+
+**Tier 2 loads:** `lib/audit.ts`, `lib/consent/`, `lib/payroll/` (W-9 encryption + 1099 logic), `components/reach/`, migrations matching `*audit*|*consent*|*reach*|*payroll*`
+
+**Tools:** Read, Edit, Bash (read-only), Grep
+
+**Reports to:** Yash; Atlas; Sage; coordinates with Payments Lead on 1099-NEC
+
+**Boundaries:** No UI design (Vega). No charge mechanics (Payments Lead). No copy voice review (Quill/Brand Guardian).
+
+**Quality gates:**
+- Every audit-critical write goes through an RPC, never direct insert
+- Photo release toggles persist as immutable history (append-only)
+- Minor consent flow blocks booking creation until guardian signs
+- 1099 ABC test classification recorded with date + reasoning per artist
+- GDPR delete actually purges (not soft-delete) where law requires
+
+**Escalation:** Legal interpretation past obvious → Yash (loop counsel). Tax rate setup → Payments Lead. Schema change → Dato + Atlas.
+
+### 7.5 — `inkos-brand-guardian`
+
+**Role:** Defends InkOS visual + voice system on every PR. Hard-fails any deviation.
+
+**Domain ownership:**
+1. 4-color palette enforcement (Bone/Onyx/Stone/Rust only)
+2. 2-font discipline (Inter workhorse, Instrument Serif italic for moments only)
+3. Voice rules (editorial, no exclamations, no "Amazing!", no emojis in subject lines)
+4. Spacing/shadow tokens (no Tailwind defaults, only `shadow-soft/card/lift`)
+5. Tabular-nums on every number; 4 brand rules; email templates; receipt PDFs; portfolio public pages; landing page copy
+
+**Tier 2 loads:** `app/globals.css`, `InkOS_Brand_Board.pdf`, `components/ui/` (token-customized shadcn), `lib/portfolio/`, `lib/email/` (templates)
+
+**Tools:** Read, Edit, Grep, Glob
+
+**Reports to:** Yash (final brand authority); pairs with Vega + Quill + Pixel
+
+**Boundaries:** No business logic, no data layer, no migrations. Only critiques + token replacements.
+
+**Quality gates (PR must pass before merge):**
+- `grep -E '#[0-9A-Fa-f]{3,8}'` on `components/` returns zero matches outside `app/globals.css`
+- `grep -E 'shadow-(sm|md|lg|xl|2xl)'` returns zero
+- `grep -E '!|Amazing|🔥'` in user-facing strings returns zero
+- All numeric KPIs render with `font-variant-numeric: tabular-nums`
+- Instrument Serif used only in `display`, `page-title`, or italic emphasis
+- One Rust accent per viewport (manual review on storyboard)
+
+**Escalation:** Genuine new color need → Yash + Vega (must lock in CLAUDE.md before adoption). Voice ambiguity → Quill. Shadow/spacing token gap → Vega.
+
+### 7.6 — Knowledge graph (tiered loading)
+
+**Tier 1 (always loaded for all 5 agents):**
+- `/Users/yashbaldha/Desktop/Boldteq App/InkOS/CLAUDE.md`
+- `/Users/yashbaldha/.claude/memory/projects/inkos-lessons.md`
+- `InkOS_In_Practice.pdf` (table of contents only at Tier 1; chapters at Tier 2 per agent)
+
+**Tier 2:** Per-agent domain files listed in §7.1–7.5.
+
+**Tier 3 (loaded only on explicit need):**
+- Specific sprint handoffs in `/.handoffs/`
+- Demo seed scripts (`/scripts/seed/demo/`) when reproducing customer scenario
+- Specific migration files when inspecting historical schema
+- Other global agents' files (`atlas`, `arya`, `dato`, `sage`, `vega`, `quill`) only when escalating
+
+---
+
+## 8. Sprint Roadmap — 75 Sprints (S13–S87) Across 11 Epics
+
+### Notation
+
+- Lead agents: `payments-lead`, `inbox-lead`, `canvas-lead`, `compliance-lead`, `brand-guardian` (the 5 InkOS leads). Globals: Dato, Koda, Vega, Pixel, Quill, Luna, Sage, Bolt, Vex, Hawk.
+- Complexity: S=1 day, M=2–3 days, L=4–7 days, XL=needs splitting.
+- Risk: HIGH/MED/LOW with one-line reason.
+
+### EPIC 1 — Stripe Connect Marketplace Foundation (S13–S22)
+
+**Goal:** Replace single-rail Dodo billing with dual-rail (Dodo SaaS L1 + Stripe Connect L2). Ship entire in-studio money pipeline.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 13 | Connect schema + RLS | `stripe_connect_accounts`, `payment_intents`, `tax_lines`, `commission_splits`, `tip_routes`, `disputes`, `dispute_evidence_packs` tables. RLS per studio. RPC contracts written before code. | none | Dato | L | HIGH — schema cascades |
+| 14 | Dual-webhook reconciler | Stripe webhook endpoint. `webhook_events` table merging Dodo + Stripe. Idempotency by `event_id`. Replay tooling. | S13 | payments-lead | L | HIGH — dual-rail risk #1 |
+| 15 | Connect onboarding flow | Express vs Standard locked to Express. Studio Connect onboarding inside `/settings/billing`. Webhook for `account.updated`. Capability gating. | S14 | payments-lead | M | MED — non-US friction |
+| 16 | Destination charges + deposits | `create_payment_intent_with_destination` RPC. Deposit-pool draw + new charge atomic in single PI. Deposit ledger reconciliation. | S15 | payments-lead | XL — split S16a/S16b | HIGH — atomicity |
+| 17 | Commission splits per Stripe Tax line | `calculate_commission_split` RPC. Per-line allocation. Banker's rounding. Split previewed in UI before charge. | S16b | payments-lead | L | MED |
+| 18 | Tip routing + refund proportional reversal | Tip 100% to artist via separate transfer. Refund reverses commissions proportionally. Partial refund. | S17 | payments-lead | L | MED |
+| 19 | Stripe Tax integration | Per-state US tattoo-service matrix (NYC 4.5% local, NJ 6.625%, CA/TX/FL/PA exempt for services, IA/MA permanent makeup). Retail vs service line distinction. | S13 (parallel S14–S18) | compliance-lead | L | HIGH — regulatory drift |
+| 20 | 1099-NEC year-end export | Per-artist 1099-NEC PDF. Threshold check ($600). Studio-aggregate CSV. W-2 vs 1099 misclassification warning. | S17, S19 | compliance-lead | M | HIGH — state-by-state |
+| 21 | Dispute defense pack auto-bundling | One-click bundle: signed consent + photo release + every session photo + chat history + deposit policy + receipt → Stripe submission. `dispute_evidence_packs` worker. | S16b, S17 | payments-lead | L | MED — Stripe API limits |
+| 22 | **REFACTOR** — payments stack audit | Type-zero, Lighthouse, full Sage, /train, migration squash. ZERO new features. | S13–S21 | Sage | M | LOW |
+
+### EPIC 2 — AI Assist & Inbox Channel Layer (S24–S30)
+
+**Goal:** Ship 3 never-autonomous AI Assist jobs, channel-tagged inbox UI, voice-learning, AI cost monitoring.
+
+> S23 absorbed into S22 refactor.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 24 | AI Assist scaffolding + cost ledger | `ai_jobs`, `ai_costs`, `ai_voice_profiles` tables. Per-studio cost cap. Pro tier AI quota. "Never sends autonomously" guard pattern with required human approval. | S22 | inbox-lead | L | HIGH — hallucination liability |
+| 25 | Job 1: Inbound reply drafts in studio voice | Webhook → BullMQ → Claude → draft only. Voice profile prompt. UI surfaces draft in inbox composer. | S24 | inbox-lead | L | MED — voice quality |
+| 26 | Job 2: Consult-to-3-bullet summary | Transcribe consult notes → 3-bullet summary. Saved on client record. Editable. | S24 | inbox-lead | M | LOW |
+| 27 | Job 3: Aftercare auto-gen from session data | Pull session piece (location, ink, allergies, healing notes) → personalized aftercare PDF + SMS. Never auto-sends. | S24, S39 (soft) | inbox-lead | L | MED |
+| 28 | Channel-tagged inbox UI | IG/WhatsApp/SMS/Email per-message badges. Thread-channel-aware composer. `messages.channel` enforcement. | S22 | inbox-lead | M | LOW |
+| 29 | Send Message channel-mismatch warning modal | Pre-send check: client opted out of SMS but composer set to SMS → modal blocks send + suggests alternative. | S28 | inbox-lead | M | LOW |
+| 30 | Voice-learning per artist + studio | Train per-artist + per-studio tone from prior sent messages. Prompt-injection guard. Opt-in toggle. | S25, S29 | inbox-lead | L | MED — tone drift |
+
+### EPIC 3 — Client Safety & Portal (S31–S37)
+
+**Goal:** Persistent allergies banner, SMS magic-link client portal, 30-min pre-session briefing push, Financial tab integration. **End of Tier 1 launch-blocker chain.**
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 31 | **REFACTOR** — post-AI-Assist hardening | Type-zero, Lighthouse, Sage, /train, migrations squash. AI cost ledger drift audit. | S30 | Sage | M | LOW |
+| 32 | Persistent allergies banner | Across all 8 client tabs (incl Financial). RPC `clear_allergy_banner` audit-logged. Edit flow audit-logged. Never-clear-without-reason-text. | S31 | compliance-lead | L | HIGH — false-clear is risk #7 |
+| 33 | SMS magic link auth + portal scaffold | `/portal/[token]` public. Magic link RPC. Rate-limited. Token TTL + one-time use. `client_portal_sessions` table. | S31 | Koda | L | MED — replay |
+| 34 | Client portal pages | Project view, deposit pool balance, photo timeline (read-only), next appointment, aftercare, consent read-only. Mobile-first (Karisa journey). | S33 | Pixel + canvas-lead | L | MED — token-scoped RLS |
+| 35 | 30-min pre-session briefing push | BullMQ `pre_session_briefing` job scheduled 30 min before each booking. Payload: allergies + pinned notes + last 3 sessions + deposit pool + outstanding forms. SMS + push to artist app. | S32 | Koda | M | LOW |
+| 36 | Financial tab data integration | Existing `financial/page.tsx` shell wired to deposit pool balance, lifetime spend, outstanding balance, recent payments, refund history, 1099-NEC link (artist view only). | S20, S32 | Koda | M | LOW |
+| 37 | **REFACTOR** — client safety stack audit | Type-zero, Lighthouse, Sage, /train, migrations squash. Audit allergy banner coverage on all 8 tabs by snapshot test. | S32–S36 | Sage | M | LOW |
+
+**🚀 LAUNCH READY at end of S37.** Tier 1 complete. Critical-path estimate: 22 sprints × 1.5 days avg = ~5 calendar weeks.
+
+### EPIC 4 — Sessions, Projects & Photo Timeline (S38–S45)
+
+**Goal:** Promote sessions to first-class table. Complete photo timeline. Project completion automation.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 38 | Brand pass on Tier-1 surfaces | brand-guardian audits dashboard, inbox, client detail, portal against 4 brand rules. Rust-uses-per-viewport count. Tabular-nums everywhere. | S37 | brand-guardian | M | LOW |
+| 39 | Sessions promoted to first-class table | `sessions` table. Migrate from `bookings`-inferred. FK from photos, notes, aftercare. Backfill RPC. Preserve project↔booking link. | S37 | Dato | L | HIGH — production data migration |
+| 40 | Photo timeline slot_type semantics | Reference / progress / final / healed slots wired. UI per-slot upload. Healed-photo blocked until 30 days post. | S39 | canvas-lead | M | LOW |
+| 41 | 30-day final-healed prompt | Cron job triggers prompt to artist + client at session+30. Auto-creates photo timeline `healed` slot. | S40, S35 | Koda | M | LOW |
+| 42 | Photo release confirmation flow | Post-session client portal CTA "I authorize release of healed photo". Consent stored as event with timestamp + IP. | S40, S34 | compliance-lead | M | LOW |
+| 43 | Day-7 review prompt + loyalty credit | Day-7 SMS prompt. Review submission auto-credits loyalty points. Loyalty ledger. | S41 | Koda | M | LOW |
+| 44 | 3-month referral + 6-month win-back + birthday card | All three lifecycle automations. `lifecycle_jobs` table. Quill-owned copy. Opt-out per-client per-channel. | S43 | Quill + Koda | L | LOW |
+| 45 | **REFACTOR** — sessions+lifecycle audit | Type-zero, Lighthouse, Sage, /train, migrations squash, photo storage cost projection. | S39–S44 | Sage | M | MED — risk #5 storage |
+
+### EPIC 5 — Public Surface & Portfolio Subdomain (S46–S52)
+
+**Goal:** Ship `portfolio.inkos.studio/[studio]/[artist]` via wildcard DNS + proxy host rewrite. Enterprise CNAME. Full kiosk. Flash deposit-gated claim. Flash event landing pages.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 46 | Portfolio subdomain wildcard DNS + proxy.ts host rewrite | `*.portfolio.inkos.studio` wildcard A record. `proxy.ts` parses host → rewrites to `/p/[studio]/[artist]`. Existing `/p` route adapted. | S45 | Bolt + Koda | L | HIGH — risk #8 DNS ops |
+| 47 | Enterprise custom domain CNAME | Per-studio CNAME table. Verification flow. SSL via platform cert manager. Fallback to subdomain. | S46 | Bolt | L | MED — cert provisioning |
+| 48 | Kiosk pre-session intake | Phone-lookup → 3 forms → single-finger signature canvas → SHA-256 hash + timestamp. Offline-capable PWA shell. Print-to-PDF receipt. | S37 | canvas-lead | XL — split S48a/S48b | MED — UX on cheap tablets |
+| 49 | Flash deposit-gated claim | Flash item bookable from public flash page. Stripe deposit hold. Auto-release on no-show after T+72h. | S22 | payments-lead | M | LOW |
+| 50 | Flash Events full landing pages | Public event pages with public booking widget. Capacity caps. Waitlist. Quill-owned copy structure. | S46, S49 | Pixel + Quill | L | LOW |
+| 51 | SEO + structured data for portfolio + flash | JSON-LD per artist + flash event. OG images dynamic. Sitemap auto-update. | S50 | Pixel | M | LOW |
+| 52 | **REFACTOR** — public surface audit | Type-zero, Lighthouse (LCP <2.5s mandatory on portfolio), Sage, /train, migrations squash. | S46–S51 | Sage | M | LOW |
+
+### EPIC 6 — Compliance, Tax & Reporting Refactor (S53–S59)
+
+**Goal:** REACH-EU fail-fast. Tax sub-ledger quarterly export. /reports → /analytics rename + Mailchimp sync. Multi-location consolidated reporting.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 53 | Inventory REACH-EU fail-fast at session start | Block "Start Session" CTA if any non-compliant ink for EU client. Reason surfaced. Override requires owner role + reason text logged. | S52 | compliance-lead | M | HIGH — risk #3 |
+| 54 | Tax sub-ledger quarterly export per location | Quarterly tax report per location per jurisdiction. CSV + PDF. Auto-emailed Q+1. | S19, S52 | compliance-lead | M | MED |
+| 55 | /reports → /analytics rename + redirect | Rename module per PDF spec. 301 redirects from `/reports/*`. Nav-config updated. Dashboard widgets re-pointed. | S52 | Koda | S | LOW |
+| 56 | Mailchimp segment one-way sync | From Analytics segments push to Mailchimp. Per-studio Mailchimp API key. Backfill + delta sync. Opt-out respected. | S55 | Koda | M | MED — API drift |
+| 57 | Multi-location consolidated reporting | Enterprise tier: cross-location rollup analytics. Location filter chips. Location-aware RLS. | S55 | compliance-lead | L | MED |
+| 58 | Audit log full-coverage sweep | Sage scan: every audit-critical mutation flows through `logAuditAction`. Close gaps in payments, allergies, consent, payroll. | S57 | Sage | M | HIGH — risk #7 |
+| 59 | **REFACTOR** — compliance+analytics audit | Type-zero, Lighthouse, Sage, /train, migrations squash, RLS re-audit on tax sub-ledger. | S53–S58 | Sage | M | LOW |
+
+### EPIC 7 — Enterprise Tier & White-Label (S60–S66)
+
+**Goal:** White-label theming, public API + scoped tokens, SSO (SAML+OIDC), Enterprise feature flags wired through registry.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 60 | White-label theming engine | Per-studio token override layer in globals.css. Logo upload. Primary color override (locked to brand-spirit constraints — owner can shift Rust hue but not introduce gradients). Preview mode. | S59 | brand-guardian + Vega | L | MED — brand guardrails |
+| 61 | Public API scaffolding | API gateway under `/api/v1/*`. Scoped tokens (`api_tokens` table). Rate-limit per token. OpenAPI spec generated. | S59 | Koda | L | MED |
+| 62 | Public API endpoints (read) | Bookings, clients, payments, inventory read endpoints with token-scoped RLS. Pagination + cursors. | S61 | Koda | L | MED |
+| 63 | Public API endpoints (write) + webhooks | Write endpoints for bookings, clients. Outbound webhooks for studios. Signed (timingSafeEqual) like Dodo pattern. | S62 | Koda | L | MED |
+| 64 | SSO (SAML + OIDC) | Per-studio IdP config. SCIM provisioning optional. Enterprise gate. Fallback to email/password. | S59 | Koda | XL — split S64a/S64b | HIGH — auth-critical |
+| 65 | Enterprise feature-key wiring | Add `white_label_themes`, `api_v1`, `api_webhooks`, `sso_saml`, `sso_oidc`, `consolidated_reporting` to KNOWN_FEATURE_KEYS. Dual-layer enforcement. | S60–S64 | Koda | S | MED — risk #10 gate drift |
+| 66 | **REFACTOR** — Enterprise stack audit | Type-zero, Lighthouse, Sage, /train, migrations squash, feature-gate drift scan. | S60–S65 | Sage | M | LOW |
+
+### EPIC 8 — International & Multi-Currency (S67–S71)
+
+**Goal:** Multi-currency (GBP/EUR/AUD) via Stripe Connect cross-border. i18n. Region-aware tax. Currency-correct ledger.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 67 | Multi-currency ledger refactor | All money columns get currency code. Ledger stored in minor units. Stripe Connect cross-border markets enabled. | S66 | payments-lead | L | HIGH — currency-correctness |
+| 68 | i18n scaffolding | next-intl wired. Locales en-US, en-GB, en-AU, fr, de. Copy extraction. Locale-aware date/number formatting (tabular-nums preserved). | S66 | Quill + Koda | L | MED |
+| 69 | Translated copy + Quill voice in fr/de | Quill rewrites all microcopy in fr/de preserving editorial tone. Native review pass. | S68 | Quill | L | MED — voice integrity |
+| 70 | Region-aware tax + UK VAT + EU OSS | Stripe Tax extended to GB VAT, EU OSS scheme, AU GST. Per-region invoice format. | S67, S19 | compliance-lead | L | HIGH — VAT/OSS complexity |
+| 71 | **REFACTOR** — i18n + multi-currency audit | Type-zero, Lighthouse all locales, Sage, /train, migrations squash. | S67–S70 | Sage | M | LOW |
+
+### EPIC 9 — Workforce & Onboarding Polish (S72–S77)
+
+**Goal:** Guest artist invite + 80/20 + travel/lodging carve-out + auto-deactivate. Apprentice supervised workflow + 50/50 ramp. Studio onboarding wizard.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 72 | Guest artist invite + 80/20 + travel/lodging | Invite flow. 80/20 split override. Travel/lodging carve-out per visit. Auto-deactivate on end_date cron. | S71 | Koda | M | LOW |
+| 73 | Apprentice supervised workflow | Apprentice role. Restricted Stripe Connect access. Mandatory supervisor sign-off on consent. 50/50 ramp split with configurable milestones. | S71 | payments-lead | L | MED |
+| 74 | Studio onboarding wizard part 1: Connect + tax | Stripe Connect onboarding inline. Tax registration per state collected. W-9 / W-8BEN encrypted upload. | S71 | payments-lead | L | MED — risk #2 |
+| 75 | Studio onboarding wizard part 2: BBP cert + state license | BBP cert upload + expiry tracking. State license verification per artist. Renewal reminders. | S74 | compliance-lead | M | MED |
+| 76 | Studio onboarding wizard part 3: brand + portfolio | Brand kit setup (logo, primary color in white-label bounds). Portfolio subdomain claim. First artist seeded. | S74, S60 | Pixel + brand-guardian | M | LOW |
+| 77 | **REFACTOR** — workforce audit | Type-zero, Lighthouse, Sage, /train, migrations squash, RLS re-audit on apprentice scope. | S72–S76 | Sage | M | LOW |
+
+### EPIC 10 — Performance, Security, Mobile, A11y Hardening (S78–S83)
+
+**Goal:** Lighthouse LCP <2.5s + CLS <0.1 across all 16 modules. RLS re-audit. Audit log full coverage. GDPR/CCPA right-to-delete RPC battle-tested. Mobile-first re-audit on Karisa journey. WCAG 2.1 AA.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 78 | Performance hardening pass | Lighthouse LCP <2.5s + CLS <0.1 across all 16 modules. Bundle analyzer. Route-level code splitting. Image lazy loading audit. | S77 | Bolt + Vega | L | LOW |
+| 79 | Security RLS re-audit | Every table re-walked for RLS. Service-role usage minimized. Magic-link replay tests. Rate-limit coverage 100%. | S77 | Sage + compliance-lead | L | HIGH |
+| 80 | GDPR/CCPA right-to-delete RPC battle-test | `delete_studio_data`, `delete_client_data` RPCs. Cascade audit. 7-day soft-delete window. PITR-aware export-before-delete. Integration test. | S79 | compliance-lead | L | HIGH |
+| 81 | Mobile-first re-audit (Karisa journey) | Every flow phone-first: client portal, booking, kiosk intake, artist on-the-floor. Touch-target audit ≥44px. Off-canvas patterns. | S78 | Pixel | L | MED |
+| 82 | WCAG 2.1 AA across all 16 modules | Axe + Pa11y CI gate. Keyboard traps. Focus-visible audit. ARIA live regions for allergies banner. Screen-reader pass on consent forms. | S78, S81 | Pixel + Sage | L | MED |
+| 83 | **REFACTOR** — hardening pass audit | Type-zero, Lighthouse, Sage, /train, migrations squash, security re-scan. | S78–S82 | Sage | M | LOW |
+
+### EPIC 11 — Brand, Demo, PDF & DR Final Pass (S84–S87)
+
+**Goal:** Maya/Miles/Karisa demo personas + 5-session koi sleeve. Brand polish global pass. PDF generation suite. Backup/DR.
+
+| # | Name | Scope | Deps | Lead | Cx | Risk |
+|---|------|-------|------|------|----|------|
+| 84 | Maya/Miles/Karisa demo personas + 5-session koi sleeve | Replace generic Inkhaus demo: Maya (studio owner) + Miles (artist) + Karisa (client) personas. 5-session koi sleeve project with allergies banner triggered, deposit pool with mid-project top-up, photo timeline filled (refs → progress × 3 → final → healed). Deterministic seed. | S83 | Koda + Quill | L | LOW |
+| 85 | Brand polish global pass | brand-guardian audits every screen against 4 brand rules. Rust-per-viewport ≤2. Tabular-nums on every number. Semantic tokens only (no hex literals). Serif moments only on titles + emphasis. NOW sweep bar verified on dashboard timeline. | S84 | brand-guardian + Vega | L | LOW |
+| 86 | PDF generation suite | Receipts, 1099-NEC, REACH compliance certificates, dispute defense packages — all via react-pdf in BullMQ workers. Signed-URL delivery. Cached. | S20, S21, S53, S54 | Koda | L | MED |
+| 87 | Backup/DR + per-studio export | Full per-studio data dump (SQL + storage). Automated daily snapshots. PITR runbook + restore drill. "Studio leaving" workflow. | S86 | Bolt + Dato | L | HIGH — risk #9 |
+
+---
+
+## 9. Sequencing Logic
+
+**Why epics are ordered this way:**
+
+1. **Epic 1 (Stripe Connect) first** — every later money-touching feature (deposit pool in portal S34, flash deposit-gate S49, lifecycle credits S43, multi-currency S67, apprentice splits S73, dispute packs S86) depends on Connect rail. Building any earlier means rework.
+2. **Epic 2 (AI Assist) before Epic 3 (Client Safety)** — inbound-reply-draft job lives in inbox UI that Epic 2 also rebuilds. Building portal first forces second pass on inbox.
+3. **Epic 3 (Allergies + Portal + Briefing + Financial)** — closes Tier 1 launch-blocker chain. Critical path ends at S37.
+4. **Epic 4 (Sessions table promotion)** runs after launch-critical because it's a data-shape migration. Earlier risks losing Tier 1 velocity.
+5. **Epic 5 (Public surface)** depends on portal foundation (S33) and brand pass (S38). Unblocks Enterprise custom domain (S47 → S60+).
+6. **Epic 6 (Compliance/Tax/Analytics)** depends on payments + sessions. Tax sub-ledger needs Connect. REACH fail-fast needs sessions table.
+7. **Epic 7 (Enterprise)** depends on multi-location data shapes from Epic 6 (#57).
+8. **Epic 8 (i18n + multi-currency)** intentionally after Enterprise — cross-border Connect needs Connect at maturity.
+9. **Epic 9 (Workforce + Onboarding)** depends on every prior epic — onboarding wizard touches Connect, brand, license, BBP, tax.
+10. **Epic 10 (Hardening)** is penultimate — can't harden until features complete. Earlier = re-hardening every sprint.
+11. **Epic 11 (Brand/Demo/PDF/DR)** is final polish layer. Demo personas must reflect *finished* product.
+
+**What can run in parallel:**
+- S13 (schema) ‖ S14 (webhook wiring) once Dato finalizes RPC signatures.
+- S19 (Stripe Tax) ‖ S14–S18 — tax matrix is independent of charge flow.
+- S26 (consult summary) ‖ S25 (reply drafts) — independent AI jobs.
+- S39 (sessions table) ‖ S40 (photo slots) only if Dato writes both migrations cleanly.
+- S46 (subdomain) ‖ S48 (kiosk) — different surfaces.
+- S60 (white-label) ‖ S61–S63 (API) — can fan out.
+- S68 (i18n) ‖ S69 (fr/de copy) once locale shells exist.
+
+**Hard dependency edges:**
+- S13 → everything in Epic 1
+- S22 (refactor gate) → Epic 2 start
+- S37 → Epic 4 start
+- S39 → S40 → S41 → S42 → S43 → S44 (lifecycle is sequential)
+- S65 (feature-key wiring) → Epic 7 launchable
+
+---
+
+## 10. Quality Gates — Every Sprint
+
+Run in same order, every sprint, no exceptions. **If any gate fails, sprint is NOT closed. No "fix in next sprint" — fix in *this* sprint or extend.**
+
+1. **`pnpm typecheck`** — zero errors.
+2. **`pnpm build`** — zero warnings.
+3. **Sage diff audit** — zero CRITICAL findings; HIGH findings logged with explicit defer rationale.
+4. **Luna test pass** — new tests for new code (unit + integration where applicable + Playwright for any new public flow).
+5. **Demo seed regenerated and verified** — `pnpm db:seed:demo:reset && pnpm db:seed:demo:verify` exits 0; new feature visible on demo studio.
+6. **`inkos-lessons.md` updated** — any new lesson surfaced (RPC mismatch, drift, gotcha) appended with sprint reference.
+
+### Refactor sprints (10 total: S22, S31, S37, S45, S52, S59, S66, S71, S77, S83)
+
+Every 5–7 feature sprints. Each refactor sprint:
+- Type checker zero-warnings audit + `pnpm db:types` regenerated
+- Lighthouse performance audit (every changed route, LCP <2.5s, CLS <0.1, INP <200ms)
+- Sage full-codebase review in diff mode against last refactor checkpoint
+- Lesson extraction via `/train` against last 5–7 sprints, updates `inkos-lessons.md`
+- Migration squash check — no orphans, no skipped numbers, all RPCs have shared TS interfaces, types regenerated
+
+---
+
+## 11. Critical Path to Launch (Tier 1)
+
+```
+S13 → S14 → S15 → S16 → S17 → S18 → S19 → S20 → S21 → S22 (refactor)
+  → S24 → S25 → S26 → S27 (AI Assist 3 jobs)
+  → S31 (refactor)
+  → S32 (allergies banner)
+  → S33 → S34 (client portal magic link)
+  → S35 (pre-session briefing)
+  → S36 (Financial tab)
+  → S37 (refactor — LAUNCH READY)
+```
+
+**22 sprints (S13 → S37).**
+
+| Pace | Days/sprint avg | Total days | Calendar weeks |
+|------|-----------------|-----------|----------------|
+| Optimistic | 1 | 22 | ~3 weeks |
+| Realistic | 1.5 | 33 | ~5 weeks |
+| Conservative (XL splits + risk slips) | 2 | 44 | ~6.5 weeks |
+
+**Launch window: 3–6.5 weeks from S13 start.**
+
+Remaining 53 sprints (S38–S87) deliver post-launch in production with paying customers live. Tier 2/3 are paid-customer-driven.
+
+---
+
+## 12. Risk Register — Top 10
+
+| # | Risk | Mitigation |
+|---|------|------------|
+| 1 | Dodo + Stripe dual webhook reconciliation | S14 ships unified `webhook_events` table keyed by `provider:event_id`. Reconciler in worker. Daily reconciliation report. Idempotency + replay tooling. Both providers processed through identical RPC contract pattern. |
+| 2 | Stripe Connect onboarding friction for non-US studios | S15 ships Express onboarding. S74 wizard collects country first and routes to correct Connect flow. Manual fallback path for high-friction jurisdictions. Explicit support runbook. |
+| 3 | REACH compliance regulatory drift | S53 codifies fail-fast at session start. Quarterly compliance review job. REACH ink registry has `last_verified_at`. brand-guardian + compliance-lead jointly own ink list updates. Hawk monitors ECHA bulletin RSS in S87+. |
+| 4 | 1099-NEC vs W-2 misclassification per state | S20 surfaces classification warning during artist onboarding (S74). Per-state matrix codified. Legal disclaimer required. No auto-classification — owner explicitly elects. |
+| 5 | Photo timeline storage cost at scale | S45 audit projects storage cost. S40 image pipeline forces `next/image` + AVIF/WebP. Cold-storage tier for healed-stage photos older than 1 year. Per-studio storage cap. Usage-based pricing on Enterprise. |
+| 6 | AI Assist hallucination liability | S24 "never sends autonomously" guard is code-level invariant tested in Luna. Every AI output flagged "AI-drafted, human-approved". Opt-out per studio. Cost cap auto-disables on quota. Legal disclaimer in product. |
+| 7 | Allergy banner false-clear (audit gap) | S32 RPC `clear_allergy_banner` requires reason text + role check + audit row. S58 audit log full-coverage sweep verifies coverage by snapshot test on every client tab. Hawk alert on suspicious clear patterns post-launch. |
+| 8 | Subdomain DNS ops at scale | S46 wildcard A record covers `*.portfolio.inkos.studio` — zero per-studio DNS work. S47 Enterprise CNAME gated and queued through Bolt-managed cert provisioner. Rate-limited cert issuance. Runbook. |
+| 9 | Migrating existing demo studios to new payment stack | S13 schema is additive (Stripe Connect tables alongside Dodo). Existing demo studio at id `1111…` migrated by S84 demo refresh. Production studios get `migrate_studio_to_connect` RPC with manual dry-run first. Old Dodo data preserved read-only. |
+| 10 | Cross-stack feature gate drift (23 keys + new ones) | Every new key added through S65 lands in `KNOWN_FEATURE_KEYS` constant. ESLint custom rule rejects hardcoded `plan === 'pro'`. Sage scans `requireFeatureRpc` server + `<FeatureGate>` UI dual-layer on every gated route. Refactor sprints include feature-gate drift scan as standard step. |
+
+---
+
+## 13. CLAUDE.md Updates Required (project file)
+
+Edit `/Users/yashbaldha/Desktop/Boldteq App/InkOS/CLAUDE.md` — these additions land in the **first sprint (S13)** so all subsequent sprints inherit:
+
+1. **§3 Pricing tier matrix:** sync with PDF tier definitions + Stripe Connect surcharge footnote (application_fee = platform commission, not customer-visible). Add new gates: `stripe_connect_payments` (Studio+), `client_portal` (Studio+), `pre_session_briefings` (Pro+), `ai_voice_drafts` (Pro+), `loyalty_program` (Studio+), `referral_program_v2` (Studio+).
+
+2. **§7 Architecture decisions:** add
+   - `7.9` Dual-stack payments — Dodo for L1 SaaS subscriptions only, Stripe Connect for L2 in-studio. Never mix.
+   - `7.10` Sessions are first-class — bookings are calendar slots, sessions are project-level events with own table.
+   - `7.11` Public portfolio uses subdomain `portfolio.inkos.studio/[studio]/[artist]` — wildcard DNS + `proxy.ts` host rewrite.
+   - `7.12` PDF (`InkOS_In_Practice.pdf`) is authoritative on payments, projects, calendar, forms — load on every touch.
+
+3. **§8 Forbidden:** add
+   - No manual commission splits outside Stripe Connect's `application_fee_amount` + `transfer_data` mechanics.
+   - No in-app payouts to artists (Stripe handles all artist payouts via connected accounts).
+   - No untested webhook handlers — every webhook has idempotency replay test.
+   - No direct writes to `subscriptions` or `stripe_charges` from app code — webhook-only.
+   - No hex literals in JSX OR email templates OR receipt PDFs (already there for components — extend).
+
+4. **§13 Agent routing — InkOS-specific block:**
+   - Anything touching `lib/dodo`, `lib/billing`, `app/api/webhooks/dodo`, `app/api/webhooks/stripe-connect`, `stripe_charges`, `commission_splits` → **`inkos-payments-lead`**
+   - Anything touching `lib/messaging`, `lib/inbox`, `app/api/webhooks/{instagram,whatsapp,twilio,resend-inbound,webchat}`, `ai_drafts`, `ai_voice_profiles` → **`inkos-inbox-lead`**
+   - Anything touching `lib/projects`, `lib/bookings`, sessions, calendar, photos → **`inkos-canvas-lead`**
+   - Anything touching `audit_log`, REACH, MoCRA, consent, GDPR, photo release, 1099 ABC test → **`inkos-compliance-lead`**
+   - Anything touching colors, fonts, shadows, copy voice, email templates, portfolio, landing → **`inkos-brand-guardian`**
+   - Conflicts → Atlas → Yash.
+
+5. **§9 Antipatterns — new "Dual-stack pitfalls" subsection:**
+   - Don't mix Dodo and Stripe abstractions in same module.
+   - Don't store money as `numeric` — always `cents INT`.
+   - Never call Stripe from a server component (only server actions / route handlers).
+   - Always set `inkos_idempotency_key` in metadata.
+
+6. **§17 New TIPS section** — "Where to look first by task type":
+   - Payments → `inkos-payments-lead` + PDF chapter 7
+   - Projects/calendar → `inkos-canvas-lead` + PDF chapter 4
+   - Inbox → `inkos-inbox-lead` + PDF chapter 6
+   - Compliance → `inkos-compliance-lead` + PDF chapter 9
+   - Brand → `inkos-brand-guardian` + Brand Board PDF
+
+---
+
+## 14. Critical Files (orientation set for every sprint)
+
+These five files are referenced or modified by the largest share of sprints:
+
+- `/Users/yashbaldha/Desktop/Boldteq App/InkOS/CLAUDE.md`
+- `/Users/yashbaldha/Desktop/Boldteq App/InkOS/lib/billing/feature-gate.ts`
+- `/Users/yashbaldha/Desktop/Boldteq App/InkOS/proxy.ts`
+- `/Users/yashbaldha/Desktop/Boldteq App/InkOS/app/globals.css`
+- `/Users/yashbaldha/Desktop/Boldteq App/InkOS/lib/supabase/types.ts` (regenerate via `pnpm db:types`, never hand-edit)
+
+---
+
+## 15. Verification Plan
+
+End-to-end verification at completion (S87 + post-launch checkpoint):
+
+1. **Persona walkthrough test** — Run the full PDF Maya/Miles/Karisa journey on the demo studio:
+   - Karisa DM → intake → consult booking → 5 sessions → year-later VIP rebook
+   - Verify allergies banner triggers, deposit pool flows correctly across all 5 sessions, photo timeline fills in (refs + stencil + 5 fresh + 5 healed = 14 images), commission splits land in correct connected accounts, 1099-NEC generates at year-end, dispute defense pack assembles in <30 seconds for any past charge.
+
+2. **Module compliance scoreboard** — All 16 modules at ✅ EXISTS verdict; every cross-cutting workflow at ✅ EXISTS.
+
+3. **Performance bar** — Lighthouse audit on every PDF-named module: LCP <2.5s, CLS <0.1, INP <200ms. Bone background, Onyx CTAs, Rust ≤2 per viewport.
+
+4. **Brand audit** — `grep -E '#[0-9A-Fa-f]{3,8}'` on all `components/` returns zero matches outside `app/globals.css`. No `shadow-(sm|md|lg|xl|2xl)`. Every number renders tabular-nums. Instrument Serif used only in `display`/`page-title`/italic emphasis.
+
+5. **Compliance audit** — REACH fail-fast triggers correctly for non-compliant ink + EU client. 1099-NEC export produces valid CSVs for the demo studio. GDPR delete RPC purges all client data for a flagged client (with PITR-aware export-before-delete).
+
+6. **Tax audit** — Sub-ledger reconciles to within $0.01 of Stripe's reported tax for any quarter. Quarterly export generates valid CSVs ready for accountant upload.
+
+7. **Webhook reconciliation drill** — Replay 100 random Stripe events; assert zero double-writes. Replay 100 random Dodo events; assert zero double-writes. Drop a webhook mid-flight; assert dead-letter queue catches and replays.
+
+8. **DR drill** — Restore demo studio from yesterday's snapshot. Verify all data intact (deposit pool balances, photos, consents, payment history). Time to restore < 30 minutes.
+
+---
+
+## 16. Out of Scope (deliberately deferred)
+
+These are real product surface but not in this 75-sprint plan:
+
+- **Native mobile apps** (iOS/Android) — current PDF describes phone-first web only.
+- **Voice/video consult booking** — calendar can hold, but no native video.
+- **AI image generation for stencils** — current AI Assist is text-only (drafts/summary/aftercare). Image gen is a future epic.
+- **Marketplace for guest artist matching** — referenced but not built (a separate product).
+- **Hardware integrations** (autoclaves, ink-mixing scales, RFID needle tracking).
+- **Insurance/financing for client tattoos** (Affirm-style, separate compliance burden).
+- **Multi-product line** (piercings, permanent makeup, scar camouflage) — schema can extend, but UX out of scope.
+
+---
+
+## 17. Plan Lifecycle
+
+- **Created:** 2026-04-30
+- **First sprint to start:** S13 (after CLAUDE.md updates land per §13)
+- **Tier 1 launch checkpoint:** S37 (target 3–6.5 weeks from S13 start)
+- **Full plan completion:** S87 (target ~6 months from S13 start at 1.5d/sprint)
+- **Plan review cadence:** every 5 refactor sprints (so every ~25 sprints) — confirm risk register, update sprint table for actual deliverables, append new lessons.
+- **Plan modification policy:** Yash + Atlas + the relevant InkOS lead must agree on any sprint reorder, scope cut, or new sprint insert. Append change log to bottom of this file.
+
+---
+
+## Change Log
+
+| Date | Change | Author |
+|------|--------|--------|
+| 2026-04-30 | Initial plan authored. 75 sprints, 11 epics, 5 InkOS agents, dual-stack payments locked. | Claude (Opus 4.7) |
+
