@@ -641,3 +641,74 @@ If RETURNING produces no row, the event is a replay — return 200 immediately, 
 
 ---
 *Stripe Connect Foundation (Plan-S13) appendix added 2026-04-30. Migration: `supabase/migrations/20260505100000_payments_l2_stripe_connect_schema.sql`. Contract: `lib/payments/contracts.ts`. Audit verdict: APPROVE-WITH-FIXES — all 4 High findings folded into S13 commit.*
+
+---
+
+## Appendix — Dual-Webhook Reconciler Sprint (Plan-S14, 2026-04-30)
+
+> **Scope:** New Stripe Connect webhook handler + Dodo handler refactored to use `webhook_event_insert` RPC + 55 RPC replay-safety tests + hourly reconciliation cron + BullMQ dead-letter queue with admin replay endpoint. **5 parallel tracks (A/B/C/D/F)** dispatched simultaneously, audited by Sage at end.
+
+### CC10. Webhook signature verification ordering is the reference impl
+**Pattern:** Every webhook entry point follows this exact order:
+1. Read raw body via `req.text()` (NOT `req.json()` — HMAC needs raw bytes).
+2. Read provider's signature header.
+3. Check env config presence → 503 if missing (per CC also documents inkos-lessons M5).
+4. IP-based rate limit → 429 if exceeded.
+5. Constant-time signature verification (Stripe: `stripe.webhooks.constructEvent`, Dodo: `standardwebhooks.Webhook.verify`). On fail → audit_log entry + 401.
+6. `webhook_event_insert` RPC (CC7 invariant). If `inserted=false` → 200 immediately, do NOT process.
+7. Switch on event.type → call appropriate RPC. On RPC failure → 500 (provider retries naturally).
+8. Return 200 on success with structured `{ received, event_id, event_type }`.
+
+**Reinforced:** Sage verified this ordering on both Stripe (new) and Dodo (refactored) handlers. Future webhook handlers (e.g., Mailchimp in S56, Twilio in marketing flows) MUST follow identical posture. Asymmetry between handlers = open attack surface.
+
+### CC11. Rate-limit posture must be symmetric across all webhook entry points
+**Antipattern caught by Sage H2:** Stripe handler had IP rate limit; Dodo handler did not. After Track B's RPC refactor, the Dodo handler still lacked the limiter — Sage flagged + Track B follow-up added it. Inconsistent rate limit posture between entry points lets attackers funnel junk traffic to the unlimited one.
+
+**Rule:** Every webhook handler imports `webhookRatelimit` from `lib/rate-limit.ts` and calls `webhookRatelimit.limit(getClientIp(req))` BEFORE signature verification. Sage scans every webhook route file for this in refactor sprints.
+
+### CC12. Workers cannot transitively import `next/*` — use structural types
+**Pitfall caught during S14 H3 fix:** Worker `webhook-replay.ts` needed to import `processStripeEvent` from `lib/payments/process-stripe-event.ts`. But `process-stripe-event.ts` originally imported `import type Stripe from 'stripe'` AND used `import type { createServiceRoleClient }` — the latter transitively pulled `next/headers` into the worker bundle via the type chain.
+
+**Fix:** Replaced `Stripe.Event` with a structural `StripeEventLike` interface (just the fields actually accessed). Replaced `ReturnType<typeof createServiceRoleClient>` with `SupabaseServiceClient` structural type. Now `processStripeEvent` accepts any object satisfying the shape — works in route handler AND worker.
+
+**Rule:** Any code intended for shared use between Next.js routes and Railway workers must use STRUCTURAL TYPES, not `import type` from packages that have non-type runtime impact. Specifically: never `import type X from '@stripe/stripe-node'` in shared code — define a local interface listing the fields you actually use. Same for Supabase client types when sharing with workers.
+
+### CC13. Path aliases in `workers/tsconfig.json` enable code reuse without duplication
+**Pattern:** Add `"paths": { "@/*": ["../*"] }` to `workers/tsconfig.json` so workers can import via the same `@/lib/...` alias as the Next.js app. Combined with CC12 (structural types), this lets a single `processStripeEvent` function serve both the route handler (signature-verified path) AND the BullMQ replay worker (signature-bypassed path).
+
+**Antipattern avoided:** Duplicating event-dispatch switch statements across route + worker. Drift between the two means new event types added to one path silently miss the other. Sage caught this as H3 — collapsed via the alias + extraction.
+
+**Generalizable:** Any time two sibling code paths (route + worker, route + cron, route + test) need to call the same business logic, extract to `lib/<domain>/<action>.ts` and import from both. Worker tsconfig path alias makes this frictionless.
+
+### CC14. Dodo and Stripe replay paths can use different mechanics — pick by complexity
+**Decision:** Stripe replay = direct `processStripeEvent` call from worker (after CC12+CC13 fixes). Dodo replay = HTTP roundtrip via `/api/webhooks/dodo/internal-replay` with `X-Replay-Secret` header.
+
+**Why asymmetric:** Stripe events deserialize cleanly from JSON to `Stripe.Event` shape (or our `StripeEventLike`). Dodo events go through Zod schema parsing first (`DodoEnvelopeSchema`), which is route-handler-tied. The HTTP roundtrip lets Dodo events re-enter via the same Zod path without duplicating parser logic in workers.
+
+**Rule:** When choosing replay mechanics for a new webhook source, ask: *"is the event format trivially reconstructable from JSON?"* If yes → direct in-worker processing. If no (Zod schemas, complex parsers, signing-key-per-event) → HTTP roundtrip with `timingSafeEqual` shared secret. Both patterns are documented; pick by event-format complexity.
+
+### CC15. Pino `Logger` generic types — drop the bound generic when accepting children
+**Pitfall caught by Sage H1 (worker typecheck blocker):** A function parameter typed as `jobLog: ReturnType<typeof logger.child>` resolves to `Logger<never, boolean>`, but pino's child accepts `Logger<string, boolean>` for child-of-child. Mismatch = TS2345 in workers, blocks deploy.
+
+**Rule:** Import `Logger` directly from pino: `import type { Logger } from 'pino'`. Use `jobLog: Logger` (no generic) when accepting an arbitrary pino child. Use `Logger<'mybind', false>` only when you specifically bind that key. Don't rely on `ReturnType` for pino types — too brittle.
+
+### CC16. Reconciliation cron is read-only by default; drift table is later epic
+**Pattern S14 chose:** Hourly cron at `:05` past every hour reads Dodo subs + Stripe charges, compares vs DB, logs drift via pino. **Zero DB writes in S14.** Drift table (`reconciliation_reports`) and admin dashboard widget deferred to a future epic.
+
+**Why:** Reconciliation logic is the dangerous part. Auto-remediation (e.g., auto-fixing `subscriptions.status` when Dodo says 'cancelled' and DB says 'active') is high-risk — wrong fix can clobber legitimate state. By logging only in S14 + S15, we observe drift patterns for 1-2 weeks before deciding which classes of drift are safe to auto-remediate.
+
+**Rule:** New reconciliation crons start read-only. Promote to write only after observing real drift patterns. The first thing a write-cron clobbers is the state you forgot existed.
+
+### CC17. Admin replay endpoint requires 4-layer gate
+**Pattern from `app/api/admin/webhooks/replay/route.ts`:** Every admin destructive endpoint follows:
+1. **Auth check:** `is_platform_admin` claim verified (not just authenticated).
+2. **Rate limit:** strict — 5 calls/minute (admin manual replays should be rare).
+3. **Existence check:** target row must exist; return 404 if missing.
+4. **Audit log:** every call logged via `logAuditAction({ event: 'admin_webhook_replay', ... })`.
+
+Internal replay endpoints (e.g., `/api/webhooks/dodo/internal-replay`) skip auth check (service-to-service trust) but ADD a 5th layer: `X-Replay-Secret` header verified via `timingSafeEqual` against env `WEBHOOK_REPLAY_INTERNAL_SECRET` (`.min(32)` length enforced).
+
+**Rule:** No admin-destructive endpoint ships with fewer than these 4 gates. Internal-only endpoints add the shared-secret layer. Both surface `audit_log` rows for security visibility.
+
+---
+*Dual-Webhook Reconciler (Plan-S14) appendix added 2026-04-30. Files touched: 22 across 5 tracks. Sage verdict: APPROVE-WITH-FIXES — H1 (Pino Logger generic), H2 (Dodo rate limit), H3 (Stripe dispatch dedup) all folded into S14 commit. Worker + project typecheck clean.*
