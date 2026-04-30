@@ -920,3 +920,117 @@ When any invariant is "always X" without exception, write it as inline literal. 
 
 ---
 *Destination Charges + Deposit SAGA (Plan-S16) appendix added 2026-04-30. Files touched: 17 (5 parallel tracks A/B/C/D/E) + 3 (Sage fix tracks H1/H2/H3 + Track D bug). Sage verdict: APPROVE-WITH-FIXES → APPROVE after H1 (test column names), H2 (rethrow chargeRecErr), H3 (.todo→it conversions), and Luna-discovered Track D `fromUntyped` TypeError all folded into S16 commit. INVARIANTS 2/4/5 confirmed grep-enforced. SAGA atomicity verified: apply→PI→catch-rollback→webhook-confirm chain holds. Real money flows production-ready.*
+
+---
+
+## Appendix — Per-Tax-Line Attribution + Reaper + Reconciliation Phase C (Plan-S17, 2026-04-30)
+
+> **Scope:** Tax mirror path on PI succeeded webhook + per-tax-line commission split inserts + tax_remittance_ledger accrual + orphan SAGA reaper cron + Phase C drift detection in reconciliation cron. **5 parallel tracks (A/B/C/D/E) + Sage audit + 3 fix dispatches.**
+
+### CC31. Tax mirror webhook pattern — read `amount_details.tax_breakdown` from PI payload, no Stripe API call
+**Pattern from Track A:** Stripe Tax computation happens server-side at PI succeed; the breakdown lands in the webhook payload at `event.data.object.amount_details.tax_breakdown[]`. Each entry has `{ amount, jurisdiction: { country, state? }, tax_rate_details? }`. The webhook handler reads this directly — NEVER calls `stripe.charges.retrieve()` to fetch the breakdown (CC: webhook hot path forbidden).
+
+**Webhook flow:**
+1. Read `taxTotal = pi.amount_details?.tax?.amount ?? 0`.
+2. Read `taxBreakdown = pi.amount_details?.tax_breakdown ?? []`.
+3. Update `stripe_charges.tax_amount_cents` via existing `STRIPE_CHARGE_UPDATE_STATUS_FROM_WEBHOOK` (extended in S17 to accept `p_tax_amount_cents`).
+4. Loop breakdown → per-line `COMMISSION_SPLIT_TAX_LINE_RECORD` + per-jurisdiction `TAX_REMITTANCE_ACCRUE`.
+5. Fallback when breakdown empty + tax > 0: single-line accrual under `'UNKNOWN'` jurisdiction (flagged for manual reclassification).
+
+**Rule:** When Stripe (or any external service) embeds breakdown data in webhook payload, USE IT. Never round-trip the API for data already in hand. Keeps webhook hot-path under 500ms.
+
+### CC32. Synthetic ID pattern when external system doesn't provide stable IDs
+**Pitfall caught in S17:** Stripe's `tax_breakdown[]` entries don't have stable IDs across replays. Without idempotency key, replay would create duplicate tax_line rows.
+
+**Fix:** Synthesize ID from caller's stable inputs:
+```ts
+const taxLineId = `${parentSplitId}:${jurisdiction}`;
+```
+
+UNIQUE partial index on `(parent_split_id, tax_line_id) WHERE kind='tax_line'` ensures replay returns existing row (idempotent) instead of inserting duplicate.
+
+**Rule:** When external system lacks stable IDs, derive synthetic ID from stable internal identifiers + the discriminator (jurisdiction, tax_type, etc). Pair with UNIQUE partial index.
+
+**Caveat (M3 from S17 audit):** synthetic key collision risk if the external system sends two entries with same discriminator (e.g., 2 tax breakdown entries both labeled `'US-NY'` but for different tax types). Future-proof by including tax_type or rate in the synthetic key when scope expands.
+
+### CC33. Backward-compat RPC extension via Postgres named-arg DEFAULTs
+**Pattern from Track D:** Extending an existing RPC's signature without breaking old callers:
+
+```sql
+DROP FUNCTION IF EXISTS my_rpc(arg1, arg2, arg3);          -- drop old signature
+CREATE OR REPLACE FUNCTION my_rpc(
+  p_arg1 type1,
+  p_arg2 type2,
+  p_arg3 type3,
+  p_new_field type4 DEFAULT NULL                           -- NEW with DEFAULT
+)
+```
+
+Postgres named-arg calls (`supabase.rpc('my_rpc', { p_arg1, p_arg2, p_arg3 })`) work transparently with DEFAULTs — old callers don't pass the new field, get NULL/DEFAULT.
+
+For UPDATE-style RPCs that should treat NULL as "don't update," use `COALESCE`:
+```sql
+UPDATE table SET field = COALESCE(p_new_field, field) WHERE id = p_id;
+```
+
+**Rule:** Always extend RPCs via DEFAULTs + COALESCE rather than versioning (`my_rpc_v2`). Saves a future deprecation cycle. Document the extended signature in contracts.ts but keep old call sites untouched until refactor sprint.
+
+### CC34. Drift_check RPCs must cover EVERY mirror failure path — repeated false-safety-net trap
+**Pitfall caught by Sage S17 H1:** Track A's webhook handler logs `'commission_split_tax_line_record failed — recoverable via reconciliation'` on RPC error WITHOUT throwing. But the existing `commission_splits_drift_check` had only 2 detection legs (PIs missing split, disputes missing reversal) — NO leg for tax_line drift. Sage caught the same false-safety-net pattern Sage flagged in S16 H2 (CC29).
+
+**Fix shipped in S17:** Add Leg 3 to `commission_splits_drift_check`:
+```sql
+-- Leg 3: succeeded charges with tax_amount_cents > 0 where parent split exists but no tax_line children
+SELECT ... FROM stripe_charges sc
+INNER JOIN commission_splits parent ON parent.booking_id = sc.booking_id AND parent.kind = 'split'
+LEFT JOIN commission_splits taxlines ON taxlines.parent_split_id = parent.id AND taxlines.kind = 'tax_line'
+WHERE sc.tax_amount_cents > 0 AND taxlines.id IS NULL;
+```
+
+Plus extended `CommissionSplitsDriftCheckResult` interface with `charges_missing_tax_line` field.
+
+**Rule:** For every code path with comment "X will be repaired by Y," GREP Y's actual implementation to verify the repair logic exists for THIS specific failure mode. Aspirational claims compound — Sage has flagged this anti-pattern in S14, S16, AND S17 now. Production discipline: add a Sage-scan rule that every "recoverable via reconciliation" comment must reference a specific drift check leg by name.
+
+### CC35. Test fidelity gap — inline copies of production functions defeat tests
+**Pitfall caught by Sage S17 H2:** Track E's Phase C test file declared an INLINE `reconcileCommissionSplitsInline` function with DIFFERENT error semantics than the production `reconcileCommissionSplits` — production throws on RPC error; inline returns empty drift + logs. All 4 tests passed against the inline version, but Phase C in `payments-reconciliation.ts` was effectively untested.
+
+**Fix:** export the production function from its module + import it directly in the test. Update assertions to match production semantics (`rejects.toThrow(...)` for the throw path).
+
+**Rule:** Tests must exercise PRODUCTION code, not inline reimplementations. If the test file declares `function inline*()` or `function *Inline()` parallel to the production code, that's a smell — either the function isn't exported (refactor to export) or the test was written before the function existed (rewrite test against the real one).
+
+**Sage scan rule:** grep test files for function declarations that match a production function name with `Inline` / `Local` / `Test` suffix → flag as potential test fidelity gap.
+
+### CC36. Reaper cron pattern for orphan SAGA rows
+**Pattern from Track B:** When a SAGA writes a `pending_*` row before an external API call, process death between write and confirmation leaves orphans. The fix: cron sweeps stale rows and rolls them back.
+
+```ts
+const cutoff = new Date(Date.now() - STALE_THRESHOLD_MINUTES * 60 * 1000).toISOString();
+const orphans = await supabase.from('saga_table')
+  .select('id')
+  .eq('status', 'pending_apply')
+  .lt('created_at', cutoff)
+  .limit(BATCH_SIZE);
+for (const row of orphans) {
+  await supabase.rpc(RPC.ROLLBACK_SAGA, { p_id: row.id, p_reason: 'reaper_timeout' });
+}
+```
+
+**Configuration constants:**
+- `STALE_THRESHOLD_MINUTES = 30` — long enough that legitimate Stripe API latency doesn't trigger, short enough that pool capacity isn't held overnight.
+- `BATCH_SIZE = 100` per 5-min run = max 1200 orphans/hour cleaned. Adequate for normal load; document if mass-failure events need bigger sweeps.
+
+**Rule:** Every SAGA pattern (apply → external → confirm/rollback) must have a matching reaper cron. Index the source table by `(status, created_at)` partial WHERE the pending status, so reaper queries are fast.
+
+### CC37. Phase C reconciliation pattern — concurrent + read-only + sample-logged
+**Pattern from Track C:** When adding a new reconciliation phase to an existing cron:
+1. Make the phase a separate function (`reconcileCommissionSplits`) that returns structured drift data.
+2. Wire into the cron's `Promise.all([phaseA, phaseB, phaseC])` — concurrent, no sequential latency penalty.
+3. Each phase has its own `.catch(...)` returning `{ error: message }` — failures isolated per-phase.
+4. Drift surfaces at WARN level when found, INFO when clean.
+5. Log the COUNT + first 5 sample IDs (not the full list — keeps log lines bounded).
+6. **Read-only** — no auto-repair (CC16 reinforced). Drift logs feed dashboards; remediation is manual or future-sprint.
+
+**Rule:** Reconciliation crons grow over time as new mirror paths land. Each new phase = (1) new RPC for drift detection + (2) new function in the cron + (3) wired into Promise.all + (4) sample-logged at warn. Don't merge phases — keep them isolated for failure containment.
+
+---
+*Per-Tax-Line Attribution + Reaper + Reconciliation Phase C (Plan-S17) appendix added 2026-04-30. Files touched: 16 (5 parallel tracks A/B/C/D/E) + 3 (Sage fix tracks H1 drift Leg 3 + H2 test fidelity + M2 UNKNOWN fallback log). Sage verdict: APPROVE-WITH-FIXES → APPROVE after H1 (drift_check Leg 3 for tax_line) + H2 (export production reconcileCommissionSplits + import in test) + M2 (UNKNOWN fallback error log + no-locations warn log) all folded into S17 commit. Tax accrual ledger production-ready for quarterly remittance.*
