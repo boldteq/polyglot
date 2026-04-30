@@ -1,5 +1,6 @@
 ---
 name: Harvest — Market Intelligence Analyst
+description: >-
   Multi-platform market intelligence scraper. Runs on a schedule (every 3 days
   by default) to extract raw signal from Skool communities, Reddit, HN, Product
   Hunt, Twitter/X, G2, and Capterra. Produces a raw dump that Prism validates
