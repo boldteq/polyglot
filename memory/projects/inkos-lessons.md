@@ -1136,3 +1136,111 @@ if (effectiveApplicationFee !== rawApplicationFee) {
 
 ---
 *Tip Routing + Refund Tax Reversal (Plan-S18) appendix added 2026-04-30. Files touched: 14 (5 parallel tracks A/B/C/D/E with Track B applied directly after agent stuck in plan mode) + 2 (Sage fix tracks H1 contract drift + H2 fee clamp). Sage verdict: APPROVE-WITH-FIXES → APPROVE after H1 (drop `refund_id` from `RefundMissingTaxReversal` contract type + cron interface, accept per-charge granularity) + H2 (`Math.min(rawApplicationFee, amountChargedCents)` clamp with warn log) all folded into S18 commit. Symmetric ledger accrual/release pair complete. 4-leg drift surface live. Refund flow now reverses parent split + per-tax-line children + tax_remittance_ledger atomically (with reconciliation safety net). Real money round-trip production-ready.*
+
+---
+
+## Appendix — Stripe Tax Integration Sprint (Plan-S19, 2026-04-30)
+
+> **Scope:** Largest sprint of EPIC 1 — invoice-backed flow + tax registrations CRUD + refund mirror table + EU OSS quarterly export. **5 parallel tracks (A/B/C/D/E) + Sage audit + 1 Critical fix.** 1335-line migration. ~22 files touched.
+
+### CC44. Invoice-backed flow for Stripe Tax — `automatic_tax` lives on Invoice, not PaymentIntent
+**Architecture pivot:** Stripe SDK v22 removed `automatic_tax: { enabled: true }` from `PaymentIntent.create` params. The same flag IS available on `Invoice.create`. To get authoritative `tax_breakdown[]` populated by Stripe Tax automatically, must route through Invoice → finalize → pay flow.
+
+**Flow:**
+```
+1. stripe.invoices.create({ automatic_tax: { enabled: true }, application_fee_amount, transfer_data, ... })
+2. stripe.invoiceItems.create per line (base + tip + drawdown as negative)
+3. stripe.invoices.finalizeInvoice(id) — Stripe computes tax, creates underlying PaymentIntent
+4. stripe.invoices.pay(id, { off_session: true }) — confirms PI server-side
+5. Mirror invoice in stripe_invoices via RPC.STRIPE_INVOICE_RECORD (throws on failure — CC29)
+```
+
+**Branching pattern (S20+):**
+- Studio HAS active tax registrations → Invoice flow (Stripe Tax computes per registered jurisdiction)
+- Studio HAS NO registrations → direct PaymentIntent flow (existing S16/S18 path, manual tax handling)
+
+`studioHasActiveTaxRegistrations(supabase, studioId)` helper exported from `lib/stripe/charges.ts` for branch decision. S19 ships helper + flow; S20 wires the branch.
+
+**Rule:** External SDK feature regressions across major versions can force entire architectural pivots. For S19, the pivot was charge → invoice. Document the trigger (SDK v22 removed flag) so future sprints understand WHY the flow exists.
+
+### CC45. Stripe Tax registrations are per-connected-account — mirror to DB for fast reads
+**Pattern from Track C:** Stripe stores tax registrations on the connected account: `stripe.tax.registrations.list({ status: 'all', limit: 100 }, { stripeAccount: connectedAccountId })`. Each entry has `country`, `country_options.us.state` (for state-level), `active_from`, `expires_at`, `status` (computed from dates).
+
+**Sync flow:**
+1. List from Stripe via `stripeAccount` header.
+2. For each: compute `jurisdiction = state ? '${country}-${state}' : country` (uppercase ISO 3166-1 alpha-2).
+3. Compute `status` from active_from + expires_at vs now: `'scheduled' | 'active' | 'expired'`.
+4. Mirror to `stripe_tax_registrations` via `RPC.STRIPE_TAX_REGISTRATION_RECORD` (UPSERT on `(studio_id, registration_id)`).
+
+**Rule:** External per-account Stripe data (registrations, tax IDs, customer payment methods) must be mirrored to local DB for two reasons: (1) fast UI reads without per-page Stripe API calls, (2) drift detection via reconciliation. Sync via opt-in admin "Refresh from Stripe" button + automatic sync on every onboarding event.
+
+**`coerceRegistrationStatus` defensive fallback:** unknown Stripe status values default to `'active'` + log warn. If Stripe introduces a new lifecycle state, fail-soft instead of crash. Track audit trail in lessons.
+
+### CC46. Four-table tax stack — full lifecycle traceable
+**Pattern reinforced over S13/S15/S17/S18/S19:**
+
+```
+stripe_tax_registrations  — jurisdiction config (S19)
+tax_remittance_ledger     — accrual on charge succeeded (S13)
+tax_remittance_releases   — re-credit on refund (S18)
+stripe_refunds            — refund mirror for true per-refund granularity (S19)
+```
+
+Plus the commission_splits hierarchy from S13/S17/S18:
+```
+commission_splits.kind = 'split' (parent base+tip artist payout)
+                       = 'tip' (tip-only row when pool mode)
+                       = 'tax_line' (per-jurisdiction tax attribution child)
+                       = 'reversal' (refund-driven negation, encoded refund_id in tax_line_id)
+                       = 'adjustment' (manual ledger correction)
+```
+
+**Drift_check** has 4 legs covering every gap between these tables. Reconciliation cron runs hourly; warn log surfaces drift counts + sample IDs.
+
+**Rule:** Tax/payment ledger work cumulative across sprints. Each new feature adds a table OR a column OR a kind enum value AND a corresponding drift detection leg. Never ship the table without the drift leg. Sage caught CC34 (Leg 3) + S18 H1 (Leg 4 cardinality) + S19 H1 (Leg 4 per-refund granularity) — repeated reinforcement that gaps in detection compound silently.
+
+### CC47. Per-refund Drift granularity requires `stripe_refunds` source-of-truth
+**Pitfall caught by Sage S18 H1 + closed by S19 Track B:** S18 Leg 4 emitted `refund_id: ''` empty placeholder because no `stripe_refunds` table existed. S18 had to drop `refund_id` from contract type. S19 added the table → Leg 4 rewritten to drive off `stripe_refunds`, `refund_id` restored to contract.
+
+**Generalize:** Drift detection cardinality is bounded by source-of-truth tables. When an entity X drives a derivative entity Y, a drift detector for Y must also have access to X. If X isn't mirrored locally, drift detection collapses to one cardinality higher (per-charge instead of per-refund).
+
+**Rule:** If you need per-X drift detection, add an X mirror table FIRST. Don't defer the table — defer the FEATURE that depends on the table. Sage will catch it eventually anyway.
+
+### CC48. RPC return jsonb shape MUST match contract `*Result` type — Sage greps both
+**Critical caught by Sage S19 C1:** `tax_oss_quarterly_export` RPC SQL emitted `total_eu_tax_cents` (single field) but contract declared `total_eu_collected_cents` + `total_eu_outstanding_cents` (two fields). RPC was missing per-jurisdiction `amount_outstanding_cents` field too. CSV builder read all three undefined → corrupted output for the most-used field.
+
+**Fix shipped:** new migration `20260511100000_payments_l2_tax_oss_export_fix.sql` drops + recreates the RPC with correct shape, adds `amount_outstanding_cents = collected - remitted` computation, adds top-level totals.
+
+**Rule:** Every RPC return `jsonb_build_object(...)` must be cross-referenced field-by-field against the contract `*Result` interface. Sage scan: grep `jsonb_build_object` keys in migration + grep contract type fields. Diff must be empty.
+
+**Generalize:** This is a specialization of CC1 (contract-first). Contract-first PREVENTS param drift (RPC inputs); RPC-output-vs-contract grep PREVENTS return drift. Add to sprint Sage audit checklist for every migration that creates a `RETURNS jsonb` function.
+
+### CC49. EU-27 jurisdiction filter pattern + canonical encoding
+**Pattern from Track B:** EU member jurisdictions can appear in two encodings:
+- Canonical: `'EU-DE'` (prefix discriminator)
+- Country-only: `'DE'` (when no state-level tax)
+
+Filter SQL: `(jurisdiction LIKE 'EU-%' OR substring(jurisdiction, 1, 2) = ANY(v_eu_codes))` where `v_eu_codes` is a 27-element array of post-Brexit EU member ISO codes (no GB, no Switzerland, no Norway).
+
+**Rule:** When jurisdiction encodings can vary across producers (manual seeding, Stripe Tax responses, legacy data), filter clauses must accept both forms. Document the canonical form in contracts.ts and migrate non-canonical rows in a separate cleanup sprint.
+
+### CC50. CSV admin export pattern — 5-layer gate + Content-Disposition attachment
+**Pattern from Track D:** Admin-only CSV export endpoints follow this shape:
+
+```
+1. requirePlatformAdmin(req) → 401 if anon, 403 if non-admin
+2. adminExportRatelimit.limit(ip) → 429 if rate-limited (5/60s for manual review)
+3. Zod body validation (year/quarter/studioId) → 400 on invalid
+4. Service-role supabase client + RPC call (read-only, STABLE)
+5. Build CSV from typed Result; emit Content-Disposition: attachment; filename="<resource>-<id>-<period>.csv"
+6. logAuditAction(userId, 'admin_<resource>_export', { studio_id, period }) before return
+```
+
+**Audit log + Content-Disposition** are non-negotiable on financial admin endpoints — both leave a trail (DB row + browser download history) that ties the admin to the action.
+
+**CSV escape:** S19 fields are bounded (ISO codes, integers, enum) → naive `.join(',')` safe. Add RFC 4180 quote-escape if free-text fields appear (notes, descriptions).
+
+**Rule:** Any admin-only data export gets all 5 layers. Skip rate limit and audit-log surfaces a security gap that Sage will flag immediately.
+
+---
+*Stripe Tax Integration (Plan-S19) appendix added 2026-04-30. Files touched: 22 (5 parallel tracks A/B/C/D/E) + 1 (Sage Critical fix C1: tax_oss_quarterly_export RPC return shape match). Migration line count: 1335 + 100 = 1435 SQL lines across 2 files. Sage verdict: BLOCK → APPROVE after C1 (RPC return shape match contract — added amount_outstanding_cents per jurisdiction + total_eu_collected_cents + total_eu_outstanding_cents top-level) folded into S19 commit. Stripe Tax foundation production-ready: registrations CRUD + Invoice flow scaffolding (branching wiring deferred to S20 per Track A note) + per-refund drift Leg 4 + EU OSS quarterly CSV export. Track A `studioHasActiveTaxRegistrations` exported but unwired — must be wired in S20 alongside 1099-NEC work.*

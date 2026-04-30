@@ -20,5 +20,6 @@
     }
   },
   "theme": "light",
-  "effortLevel": "max"
+  "effortLevel": "max",
+  "model": "sonnet"
 }
