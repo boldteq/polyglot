@@ -8,7 +8,8 @@ description: >-
 model: opus
 tools: 'Read,Write,Edit,Bash,Glob,Grep,mcp__claude_ai_Figma__get_design_context,mcp__claude_ai_Figma__get_screenshot,mcp__claude_ai_Figma__get_metadata,mcp__claude_ai_Figma__get_variable_defs,mcp__claude_ai_Figma__get_code_connect_map,mcp__claude_ai_Figma__search_design_system'
 category: engineering
-department: shopify-website-team
+department: engineering
+subDepartment: shopify-website-team
 phase: BUILD
 reportsTo: atrium
 title: Design-to-Theme Converter

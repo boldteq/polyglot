@@ -9,7 +9,8 @@ description: >-
 model: opus
 tools: 'Read,Write,Edit,Bash,Glob,Grep,WebSearch,WebFetch'
 category: engineering
-department: shopify-website-team
+department: engineering
+subDepartment: shopify-website-team
 phase: BUILD
 reportsTo: arya
 title: Storefront Engineering Director

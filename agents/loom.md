@@ -9,7 +9,8 @@ description: >-
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep'
 category: engineering
-department: shopify-website-team
+department: engineering
+subDepartment: shopify-website-team
 phase: BUILD
 reportsTo: atrium
 title: Liquid Theme Developer

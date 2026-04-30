@@ -8,7 +8,8 @@ description: >-
 model: sonnet
 tools: 'Read,Write,Edit,Bash,Glob,Grep,WebSearch,WebFetch'
 category: engineering
-department: shopify-website-team
+department: engineering
+subDepartment: shopify-website-team
 phase: BUILD
 reportsTo: atrium
 title: Theme Quality Engineer

@@ -8,7 +8,8 @@ description: >-
 model: sonnet
 tools: Read,Write,Edit,Bash,Glob,Grep
 category: engineering
-department: shopify-app-team
+department: engineering
+subDepartment: shopify-app-team
 phase: BUILD
 reportsTo: sage
 title: QA Engineer — Embedded Apps
