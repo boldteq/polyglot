@@ -1244,3 +1244,58 @@ Filter SQL: `(jurisdiction LIKE 'EU-%' OR substring(jurisdiction, 1, 2) = ANY(v_
 
 ---
 *Stripe Tax Integration (Plan-S19) appendix added 2026-04-30. Files touched: 22 (5 parallel tracks A/B/C/D/E) + 1 (Sage Critical fix C1: tax_oss_quarterly_export RPC return shape match). Migration line count: 1335 + 100 = 1435 SQL lines across 2 files. Sage verdict: BLOCK → APPROVE after C1 (RPC return shape match contract — added amount_outstanding_cents per jurisdiction + total_eu_collected_cents + total_eu_outstanding_cents top-level) folded into S19 commit. Stripe Tax foundation production-ready: registrations CRUD + Invoice flow scaffolding (branching wiring deferred to S20 per Track A note) + per-refund drift Leg 4 + EU OSS quarterly CSV export. Track A `studioHasActiveTaxRegistrations` exported but unwired — must be wired in S20 alongside 1099-NEC work.*
+
+---
+
+## CC51 — Invoice-created PIs don't inherit invoice metadata (S20)
+
+**Lesson:** When `stripe.invoices.pay()` creates a PaymentIntent internally, that PI's `metadata` is empty — Stripe does NOT copy the parent invoice's metadata. If your webhook handler reads `metadata.inkos_deposit_transaction_id` to confirm the deposit SAGA, it will silently miss on the invoice path.
+
+**Rule:** After `createSessionInvoice` returns the invoice's `paymentIntentId`, immediately call `stripe.paymentIntents.update(piId, { metadata: { inkos_deposit_transaction_id, ... } })` to backfill the metadata the existing PI webhook handlers expect. No idempotency key needed — metadata updates are idempotent.
+
+---
+
+## CC52 — SQL GROUP BY jsonb can yield duplicate rows (S20)
+
+**Lesson:** `GROUP BY ..., sca.capabilities` (where `capabilities` is `jsonb`) groups correctly, but if an artist has multiple rows in the joined table (e.g., one expired + one current `stripe_connected_accounts`), the join produces multiple rows per artist, each with a different capabilities value → GROUP BY doesn't collapse them → duplicate artist rows in the aggregate output.
+
+**Rule:** When aggregating per-entity with a LEFT JOIN to a 1:N relationship, use a scalar subquery with `ORDER BY created_at DESC LIMIT 1` instead of a JOIN. Never GROUP BY a jsonb column from a potentially-multi-row join.
+
+---
+
+## CC53 — Rate-limit keys on authenticated endpoints (S20)
+
+**Lesson:** Admin/owner endpoints that use `x-forwarded-for` IP as the rate-limit key are broken on Railway (proxied headers can be comma-separated, or multiple admins behind the same NAT share one bucket). Sage hard-flags this as C.
+
+**Rule:**
+- Admin endpoints: key on `auth.userId` (not IP)
+- Owner settings endpoints: key on `auth.user.id` (GET) or `auth.studioId` (POST — per-studio quota)
+- IP-based rate limiting is only appropriate for public unauthenticated endpoints
+
+---
+
+## CC54 — Return type integrity on branched flows (S20)
+
+**Lesson:** Returning a non-PI ID (invoice ID `in_xxx`) under a field typed as `paymentIntentId: string` is a type lie that causes FK mismatches downstream when callers save the value to `bookings.payment_intent_id`. TypeScript as-casts let it compile but break at the DB layer.
+
+**Rule:** If a code path genuinely can't produce a value the return type promises, throw instead of returning a surrogate. The callers handle the error; they cannot gracefully handle a wrong-type value silently stored.
+
+---
+
+## CC55 — COALESCE SUM for counts on empty sets (S20)
+
+**Lesson:** `SUM(some_int_column)` returns `NULL` (not 0) when the input table is empty. A TypeScript contract `count: number` receiving `null` breaks JSON consumers silently. `COUNT(*)` returns 0 correctly but `SUM` does not.
+
+**Rule:** Always `COALESCE(SUM(col), 0)::int` for any aggregate count in RPCs that is typed as `number` in the TS contract. Run the CC48 key-match check also for types (null vs number distinction).
+
+---
+
+## CC56 — Service-role bypass for reads is over-privileged (S20)
+
+**Lesson:** Using `createServiceRoleClient()` to read `nec_1099_exports` in a server component bypasses RLS — if the `studioId` derivation is ever wrong (e.g., multi-tenant logic bug), service-role would return the wrong studio's data without any RLS gate catching it.
+
+**Rule:** Use session-scoped `createClient()` + RLS for all reads in server components. Service-role is for writes that must bypass RLS (webhook handlers, admin mutation routes) and nothing else. The RLS on `nec_1099_exports` already has the correct owner+admin policies (S13).
+
+---
+
+*1099-NEC + Invoice Branch (Plan-S20) appendix added 2026-04-30. Files touched: 11 (4 parallel tracks A/B/C/D) + 2 fix passes (6 Sage findings folded: C1 rate-limit admin userId, C2 owner rate-limit, C3 COALESCE SUM null, C4+H12 PI metadata deposit gap, H5 throw vs fake ID, H6 owner-only GET, H7 artist_name join, H8 processing in StripeChargeStatus OK, H9 failedCount loop, H10 scalar subquery vs GROUP BY jsonb, H11 session client vs service-role). Sage verdict: BLOCK → APPROVE after all critical fixes folded. 12 tests pass. studioHasActiveTaxRegistrations branch fully wired. invoice.payment_failed + invoice.voided handlers added. nec_1099_aggregate RPC ships as service-role-only read-only aggregate.*
