@@ -1298,4 +1298,48 @@ Filter SQL: `(jurisdiction LIKE 'EU-%' OR substring(jurisdiction, 1, 2) = ANY(v_
 
 ---
 
+---
+
+## CC57 — `artists.profile_id` not `artists.user_id` (S20)
+
+**Lesson:** S20 Dato wrote `LEFT JOIN profiles p ON p.id = a.user_id` in `nec_1099_aggregate`. Column is `profile_id`, not `user_id`. Required a fix migration (`20260512100100_*`).
+
+**Rule:** Before any join involving `artists`, read the `artists` table migration to verify FK column name. Correct pattern: `LEFT JOIN profiles p ON p.id = a.profile_id`.
+
+---
+
+## CC58 — Run `supabase gen types` after every migration batch (S13–S21)
+
+**Lesson:** S13–S21 accumulated 47 CC28 casts (`as unknown as`) because `lib/supabase/types.ts` was never regenerated after 9 sprints of payment migrations. Nine tables missing from generated types: `stripe_disputes`, `dispute_defense_packs`, `stripe_connected_accounts`, `commission_splits`, `stripe_invoices`, `stripe_tax_registrations`, `stripe_refunds`, `tax_remittance_ledger`, `nec_1099_exports`.
+
+**Rule:** Run `supabase gen types typescript --project-id <id> --schema public > lib/supabase/types.ts` at the END of every sprint that adds tables. Remove all CC28 casts that sprint — don't let them accumulate.
+
+---
+
+## CC59 — `stripe_disputes.dispute_id` is Stripe's `dp_xxx` string, not internal UUID (S21)
+
+**Lesson:** `stripe_disputes` has two ID fields: `id` (UUID PK) and `dispute_id` (Stripe `dp_xxx` string). Queries must join on `dispute_id`, not `id`. Cron uses `.eq('dispute_id', disputeId)` where `disputeId` is the Stripe string.
+
+**Rule:** Never confuse `stripe_disputes.id` (internal UUID) with `stripe_disputes.dispute_id` (Stripe `dp_xxx` string FK). Always join on the Stripe string.
+
+---
+
+## CC60 — Role gate before studio-keyed rate-limit on expensive endpoints (S21)
+
+**Lesson:** S21 `disputes/[disputeId]/submit` had `expensiveRatelimit` (keyed to `studio_id`) running before the role check. Sage soft-warned. Authorized callers should consume rate budget; unauthorized should be 403'd before hitting the limiter.
+
+**Rule:** Order for service-calling endpoints: (1) auth extract → (2) role gate → (3) expensive rate-limit keyed to `studio_id`. IP-keyed public rate-limits may run first (cheap rejection). Studio-keyed expensive limits always run after role confirmation.
+
+---
+
+## CC61 — Update `lighthouserc.json` every sprint that adds a page route (S13–S21)
+
+**Lesson:** S22 recon found four payment routes (`/payments`, `/settings/payments`, `/settings/payments/tax-documents`, `/settings/payments/tax-registrations`) missing from Lighthouse audit config after being added in S13–S21. Lighthouse CI only catches regressions on audited routes.
+
+**Rule:** Every sprint that adds a `page.tsx` in `app/(app)/` must add its route to `lighthouserc.json` in the same sprint. Add it to the sprint checklist alongside `pnpm typecheck` and `pnpm build`.
+
+---
+
+*S21 Dispute Defense Pack appendix added 2026-05-01. S22 refactor lessons CC57–CC61 extracted.*
+
 *1099-NEC + Invoice Branch (Plan-S20) appendix added 2026-04-30. Files touched: 11 (4 parallel tracks A/B/C/D) + 2 fix passes (6 Sage findings folded: C1 rate-limit admin userId, C2 owner rate-limit, C3 COALESCE SUM null, C4+H12 PI metadata deposit gap, H5 throw vs fake ID, H6 owner-only GET, H7 artist_name join, H8 processing in StripeChargeStatus OK, H9 failedCount loop, H10 scalar subquery vs GROUP BY jsonb, H11 session client vs service-role). Sage verdict: BLOCK → APPROVE after all critical fixes folded. 12 tests pass. studioHasActiveTaxRegistrations branch fully wired. invoice.payment_failed + invoice.voided handlers added. nec_1099_aggregate RPC ships as service-role-only read-only aggregate.*
