@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boldteq Agent Workflow — Complete Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; color: #e0e0e0; line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+  h1 { font-size: 2rem; color: #fff; margin-bottom: 8px; }
+  .subtitle { color: #888; font-size: 1rem; margin-bottom: 40px; }
+  h2 { font-size: 1.4rem; color: #fff; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid #222; }
+  h3 { font-size: 1.1rem; color: #c0c0c0; margin: 24px 0 12px; }
+  p { color: #b0b0b0; margin-bottom: 12px; }
+  .highlight { color: #7c5cfc; font-weight: 600; }
+  .green { color: #34d399; }
+  .yellow { color: #fbbf24; }
+  .red { color: #f87171; }
+  .orange { color: #fb923c; }
+  .blue { color: #60a5fa; }
+
+  /* Status badges */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+  .badge-stable { background: #064e3b; color: #34d399; }
+  .badge-working { background: #1e3a5f; color: #60a5fa; }
+  .badge-missing { background: #4a1e1e; color: #f87171; }
+  .badge-partial { background: #4a3a1e; color: #fbbf24; }
+
+  /* Architecture diagram */
+  .arch-diagram { background: #111118; border: 1px solid #222; border-radius: 12px; padding: 32px; margin: 20px 0; }
+  .arch-row { display: flex; gap: 16px; margin: 12px 0; align-items: stretch; flex-wrap: wrap; }
+  .arch-box { background: #1a1a24; border: 1px solid #333; border-radius: 8px; padding: 16px; flex: 1; min-width: 200px; }
+  .arch-box.global { border-color: #7c5cfc; background: #1a1a2e; }
+  .arch-box.project { border-color: #34d399; background: #1a2420; }
+  .arch-box.hub { border-color: #60a5fa; background: #1a2030; }
+  .arch-box.app { border-color: #fb923c; background: #2a1a10; }
+  .arch-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 8px; }
+  .arch-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .arch-desc { font-size: 0.85rem; color: #888; }
+  .arch-arrow { text-align: center; color: #444; font-size: 1.5rem; margin: 4px 0; }
+
+  /* Agent grid */
+  .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin: 16px 0; }
+  .agent-card { background: #111118; border: 1px solid #222; border-radius: 8px; padding: 14px; }
+  .agent-card .name { font-weight: 700; color: #fff; font-size: 0.95rem; }
+  .agent-card .role { color: #888; font-size: 0.8rem; margin-top: 2px; }
+  .agent-card .model { font-size: 0.7rem; color: #7c5cfc; margin-top: 6px; }
+
+  /* Flow diagram */
+  .flow { background: #111118; border: 1px solid #222; border-radius: 12px; padding: 24px; margin: 16px 0; overflow-x: auto; }
+  .flow-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+  .flow-node { background: #1a1a2e; border: 1px solid #7c5cfc; border-radius: 6px; padding: 6px 14px; font-size: 0.85rem; color: #fff; white-space: nowrap; }
+  .flow-node.active { background: #7c5cfc; color: #fff; }
+  .flow-arrow { color: #444; font-size: 1.2rem; }
+  .flow-label { font-size: 0.8rem; color: #666; margin-bottom: 4px; font-weight: 600; }
+
+  /* Issue tracker */
+  .issue-list { margin: 16px 0; }
+  .issue { background: #111118; border: 1px solid #222; border-radius: 8px; padding: 14px 18px; margin: 8px 0; display: flex; gap: 12px; align-items: flex-start; }
+  .issue-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+  .issue-text { flex: 1; }
+  .issue-title { font-weight: 600; color: #fff; font-size: 0.9rem; }
+  .issue-desc { color: #888; font-size: 0.85rem; margin-top: 2px; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th { text-align: left; padding: 10px 14px; background: #111118; color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #222; }
+  td { padding: 10px 14px; border-bottom: 1px solid #1a1a24; font-size: 0.9rem; }
+  tr:hover td { background: #111118; }
+
+  .section-num { display: inline-block; background: #7c5cfc; color: #fff; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-size: 0.85rem; font-weight: 700; margin-right: 8px; }
+
+  code { background: #1a1a24; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; color: #c0c0c0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Boldteq Agent Workflow</h1>
+<p class="subtitle">Complete architecture — how agents work across all your apps</p>
+
+<!-- ========== SECTION 1 ========== -->
+<h2><span class="section-num">1</span> Where Agents Live</h2>
+<p>Agents are <code>.md</code> files with instructions. They exist in two scopes:</p>
+
+<div class="arch-diagram">
+  <div class="arch-row">
+    <div class="arch-box global">
+      <div class="arch-label">Global Agents — <code>~/.claude/agents/</code></div>
+      <div class="arch-title">12 Global Agents <span class="badge badge-stable">Stable</span></div>
+      <div class="arch-desc">Rex, Nova, Arya, Riko, Koda, Luna, Sage, Vex, Bolt, Hawk, Mira, Quill — available in EVERY project</div>
+    </div>
+  </div>
+  <div class="arch-arrow">↓ inherited by all projects</div>
+  <div class="arch-row">
+    <div class="arch-box project">
+      <div class="arch-label">Pinzo — <code>.claude/agents/</code></div>
+      <div class="arch-desc">widget-specialist</div>
+    </div>
+    <div class="arch-box project">
+      <div class="arch-label">Rankora — <code>.claude/agents/</code></div>
+      <div class="arch-desc">db-specialist, payment-specialist, ranking-specialist</div>
+    </div>
+    <div class="arch-box project">
+      <div class="arch-label">Size Chart — <code>.claude/agents/</code></div>
+      <div class="arch-desc">ai-engine</div>
+    </div>
+    <div class="arch-box project" style="opacity: 0.5">
+      <div class="arch-label">Store Locator / CROBOT</div>
+      <div class="arch-desc">No project agents yet</div>
+    </div>
+  </div>
+</div>
+
+<p><span class="highlight">How it works:</span> When Claude Code opens in any project, it sees <strong>Global agents + that project's agents</strong>. So in Pinzo you get 12 global + widget-specialist = 13 agents available.</p>
+
+<!-- ========== SECTION 2 ========== -->
+<h2><span class="section-num">2</span> Your Agent Team</h2>
+
+<div class="agent-grid">
+  <div class="agent-card">
+    <div class="name">Rex — Commander</div>
+    <div class="role">Master orchestrator. Give him a brief → he coordinates all agents in order.</div>
+    <div class="model">Model: opus (smartest, most expensive)</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Nova — Market Research</div>
+    <div class="role">Competitive analysis, pricing, feature benchmarks. Use BEFORE building.</div>
+    <div class="model">Model: sonnet</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Arya — Architecture</div>
+    <div class="role">System design, data models, API design, stack selection, sprint planning.</div>
+    <div class="model">Model: opus</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Riko — Project Setup</div>
+    <div class="role">Takes Arya's plan → scaffolds runnable project with CI/CD, config, seed data.</div>
+    <div class="model">Model: sonnet</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Koda — Feature Builder</div>
+    <div class="role">All production code. Frontend, backend, DB, integrations, AI streaming.</div>
+    <div class="model">Model: sonnet</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Luna — Testing</div>
+    <div class="role">Unit, integration, E2E tests. Auth flows, billing, AI, data validation.</div>
+    <div class="model">Model: sonnet</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Sage — Code Review</div>
+    <div class="role">Quality gate. Security, TypeScript, performance, GDPR, accessibility audit.</div>
+    <div class="model">Model: opus (critical gate — uses smartest model)</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Vex — Bug Fixer</div>
+    <div class="role">Diagnoses root causes. TypeScript errors, build failures, Shopify/Supabase bugs.</div>
+    <div class="model">Model: sonnet</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Bolt — Deployment</div>
+    <div class="role">Vercel, Railway, Supabase deploys. Zero-downtime migrations, launch checklists.</div>
+    <div class="model">Model: sonnet</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Hawk — Monitoring</div>
+    <div class="role">Post-launch health. Uptime, errors, Core Web Vitals, AI cost tracking.</div>
+    <div class="model">Model: sonnet</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Mira — Memory</div>
+    <div class="role">Extracts lessons after builds/fixes. Updates memory so agents learn permanently.</div>
+    <div class="model">Model: sonnet</div>
+  </div>
+  <div class="agent-card">
+    <div class="name">Quill — Content & Copy</div>
+    <div class="role">App store listings, landing pages, onboarding, emails, changelogs, SEO.</div>
+    <div class="model">Model: sonnet</div>
+  </div>
+</div>
+
+<!-- ========== SECTION 3 ========== -->
+<h2><span class="section-num">3</span> Rex's Workflow Modes</h2>
+<p>Rex is the entry point. He picks a mode based on your request and chains agents in order:</p>
+
+<div class="flow">
+  <div class="flow-label">MODE A: New Product Build</div>
+  <div class="flow-row">
+    <div class="flow-node active">Rex</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Nova (research)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Arya (architecture)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Riko (scaffold)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Koda (build)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Luna (test)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Sage (review)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Bolt (deploy)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Mira (learn)</div>
+  </div>
+</div>
+
+<div class="flow">
+  <div class="flow-label">MODE B: New Feature</div>
+  <div class="flow-row">
+    <div class="flow-node active">Rex</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Arya (scope)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Koda (build)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Luna (test)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Sage (review)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Bolt (deploy)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Mira (learn)</div>
+  </div>
+</div>
+
+<div class="flow">
+  <div class="flow-label">MODE C: Bug Fix / Maintenance</div>
+  <div class="flow-row">
+    <div class="flow-node active">Rex</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Vex (diagnose)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Koda (fix)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Luna (regression test)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Sage (verify)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Bolt (deploy)</div>
+  </div>
+</div>
+
+<div class="flow">
+  <div class="flow-label">MODE D: Launch / Go-Live</div>
+  <div class="flow-row">
+    <div class="flow-node active">Rex</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Sage (final audit)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Quill (store listing)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Bolt (deploy)</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node">Hawk (monitoring)</div>
+  </div>
+</div>
+
+<!-- ========== SECTION 4 ========== -->
+<h2><span class="section-num">4</span> How Agents Get Called (3 Methods)</h2>
+
+<div class="arch-diagram">
+  <div class="arch-row">
+    <div class="arch-box" style="border-color: #34d399;">
+      <div class="arch-title"><span class="green">Method 1:</span> Claude Code CLI</div>
+      <div class="arch-desc" style="margin-top: 8px;">
+        Open terminal → <code>cd ~/Desktop/Boldteq App/Pinzo</code> → run <code>claude</code><br><br>
+        Say: <em>"Use Quill to write the app store listing"</em><br>
+        or: <em>"Use Vex to fix this TypeScript error"</em><br><br>
+        Claude Code reads Global CLAUDE.md → sees agent roster → invokes the right agent as a subagent automatically.<br><br>
+        <strong>Status:</strong> <span class="badge badge-stable">Working</span> after CLAUDE.md fix
+      </div>
+    </div>
+  </div>
+  <div class="arch-row">
+    <div class="arch-box" style="border-color: #60a5fa;">
+      <div class="arch-title"><span class="blue">Method 2:</span> Polyglot Dashboard</div>
+      <div class="arch-desc" style="margin-top: 8px;">
+        Open <code>localhost:5173</code> → go to <strong>Playground</strong> → select agent → type prompt → run<br><br>
+        Uses the <code>POST /api/playground/run</code> endpoint.<br>
+        Polyglot loads agent .md → runs via <code>claude -p</code> CLI → streams result back.<br><br>
+        <strong>Status:</strong> <span class="badge badge-stable">Working</span>
+      </div>
+    </div>
+  </div>
+  <div class="arch-row">
+    <div class="arch-box" style="border-color: #fb923c;">
+      <div class="arch-title"><span class="orange">Method 3:</span> Polyglot Orchestration</div>
+      <div class="arch-desc" style="margin-top: 8px;">
+        Open <code>localhost:5173/orchestration</code> → build workflow graph → connect agents → run<br><br>
+        Visual drag-and-drop: chain multiple agents in sequence with dependencies.<br>
+        E.g.: Nova → Arya → Koda → Sage (like Rex's modes, but visual).<br><br>
+        <strong>Status:</strong> <span class="badge badge-stable">Working</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SECTION 5 ========== -->
+<h2><span class="section-num">5</span> How Discovery Works (Step by Step)</h2>
+
+<p>When you start a new Claude Code session in any project:</p>
+
+<table>
+  <thead>
+    <tr><th>Step</th><th>What Happens</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>1</strong></td>
+      <td>Claude Code reads <code>~/.claude/CLAUDE.md</code> (Global rules)</td>
+      <td>Sees the agent roster table with all 12 agents, their filenames, and routing rules</td>
+    </tr>
+    <tr>
+      <td><strong>2</strong></td>
+      <td>Claude Code reads <code>{project}/CLAUDE.md</code> (Project rules)</td>
+      <td>Sees project-specific patterns, stack, conventions</td>
+    </tr>
+    <tr>
+      <td><strong>3</strong></td>
+      <td>Claude Code scans <code>~/.claude/agents/*.md</code></td>
+      <td>Discovers 12 global agents</td>
+    </tr>
+    <tr>
+      <td><strong>4</strong></td>
+      <td>Claude Code scans <code>{project}/.claude/agents/*.md</code></td>
+      <td>Discovers project-specific agents (e.g. widget-specialist in Pinzo)</td>
+    </tr>
+    <tr>
+      <td><strong>5</strong></td>
+      <td>You give a task</td>
+      <td>Claude reads the routing rules from CLAUDE.md and picks the right agent</td>
+    </tr>
+    <tr>
+      <td><strong>6</strong></td>
+      <td>Claude invokes the agent as a <strong>subagent</strong></td>
+      <td>Agent gets its .md instructions as system prompt → executes the task</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ========== SECTION 6 ========== -->
+<h2><span class="section-num">6</span> Stability Assessment</h2>
+
+<div class="issue-list">
+  <div class="issue">
+    <div class="issue-icon">✅</div>
+    <div class="issue-text">
+      <div class="issue-title">Agent Files <span class="badge badge-stable">Stable</span></div>
+      <div class="issue-desc">All 12 global agents exist at <code>~/.claude/agents/</code>. Each has proper frontmatter (name, description, model). Files are well-structured with detailed instructions.</div>
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="issue-icon">✅</div>
+    <div class="issue-text">
+      <div class="issue-title">Polyglot Dashboard <span class="badge badge-stable">Stable</span></div>
+      <div class="issue-desc">Shows all 17 agents (12 global + 5 project). CRUD operations work. Playground and Orchestration functional. API at port 3847 responds.</div>
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="issue-icon">✅</div>
+    <div class="issue-text">
+      <div class="issue-title">Global CLAUDE.md Routing <span class="badge badge-stable">Fixed Today</span></div>
+      <div class="issue-desc">Was broken — had old agent names (factory, researcher, stack-shopify). You fixed it with correct filenames and routing rules. Now Claude Code auto-discovers agents.</div>
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="issue-icon">✅</div>
+    <div class="issue-text">
+      <div class="issue-title">CORS on Polyglot <span class="badge badge-working">Added Today</span></div>
+      <div class="issue-desc">Added CORS headers so local apps (Pinzo, etc.) can call Polyglot API. Required for Method 3 (app code calling agents).</div>
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="issue-icon">⚠️</div>
+    <div class="issue-text">
+      <div class="issue-title">Memory System <span class="badge badge-missing">Not Set Up</span></div>
+      <div class="issue-desc">Rex and Mira reference <code>~/.claude/memory/MEMORY.md</code> and <code>~/.claude/memory/stacks/</code> — but this directory <strong>doesn't exist</strong>. Mira can't save lessons, Rex can't load past knowledge. Agents work without it, but don't learn across sessions.</div>
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="issue-icon">⚠️</div>
+    <div class="issue-text">
+      <div class="issue-title">3 Apps Missing CLAUDE.md <span class="badge badge-partial">Partial</span></div>
+      <div class="issue-desc">CROBOT, Store Locator, and Size Chart & Recommender have <code>.claude/</code> dirs but only Pinzo and Rankora have <code>CLAUDE.md</code>. Without it, agents don't know that project's conventions.</div>
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="issue-icon">⚠️</div>
+    <div class="issue-text">
+      <div class="issue-title">Agent Chaining is Manual <span class="badge badge-partial">By Design</span></div>
+      <div class="issue-desc">Rex <em>describes</em> the workflow order (Nova → Arya → Koda etc.) but can't automatically spawn agents in sequence in Claude Code CLI. You either manually invoke each one, or use Polyglot's Orchestration UI for true chaining.</div>
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="issue-icon">ℹ️</div>
+    <div class="issue-text">
+      <div class="issue-title">Local Only — No Production Use</div>
+      <div class="issue-desc">Everything runs on your Mac via <code>claude -p</code> CLI (your Claude subscription). Zero extra cost. Works perfectly for development. Not for merchant-facing features.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SECTION 7 ========== -->
+<h2><span class="section-num">7</span> What To Fix Next (Priority Order)</h2>
+
+<table>
+  <thead>
+    <tr><th>#</th><th>Task</th><th>Impact</th><th>Effort</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Create <code>~/.claude/memory/</code> directory + MEMORY.md</td>
+      <td><span class="red">High</span> — Rex & Mira are broken without it</td>
+      <td>10 min</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Add CLAUDE.md to Size Chart, Store Locator, CROBOT</td>
+      <td><span class="yellow">Medium</span> — agents don't know project conventions</td>
+      <td>30 min each</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Test full Rex workflow end-to-end on one project</td>
+      <td><span class="yellow">Medium</span> — verify agents chain correctly</td>
+      <td>1 hour</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Add project-specific agents to Store Locator</td>
+      <td><span class="blue">Low</span> — global agents cover most needs</td>
+      <td>20 min each</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ========== SECTION 8 ========== -->
+<h2><span class="section-num">8</span> Full Architecture Map</h2>
+
+<div class="arch-diagram">
+  <pre style="color: #888; font-size: 0.8rem; line-height: 1.8; overflow-x: auto;">
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         YOUR MAC (Local Only)                          │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                    ~/.claude/ (Global Config)                    │   │
+│  │                                                                   │   │
+│  │   CLAUDE.md ──── Agent roster + routing rules                    │   │
+│  │                                                                   │   │
+│  │   agents/                                                         │   │
+│  │     ├── rex.md ─────── Commander (opus)                          │   │
+│  │     ├── nova.md ────── Market Research                           │   │
+│  │     ├── arya.md ────── Architecture (opus)                       │   │
+│  │     ├── riko.md ────── Project Setup                             │   │
+│  │     ├── koda.md ────── Feature Builder                           │   │
+│  │     ├── luna.md ────── Testing                                   │   │
+│  │     ├── sage.md ────── Code Review (opus)                        │   │
+│  │     ├── vex.md ─────── Bug Fixer                                 │   │
+│  │     ├── bolt.md ────── Deployment                                │   │
+│  │     ├── hawk.md ────── Monitoring                                │   │
+│  │     ├── mira.md ────── Memory & Training                         │   │
+│  │     └── quill.md ───── Content & Copy                            │   │
+│  │                                                                   │   │
+│  │   memory/ ─── ⚠️ MISSING (Rex & Mira need this)                 │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                              ↓ inherited                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐                │
+│  │  Pinzo   │ │ Rankora  │ │SizeChart │ │StoreLoc  │                │
+│  │          │ │          │ │          │ │          │                │
+│  │ widget-  │ │ db-spec  │ │ ai-      │ │ (no      │                │
+│  │ speciali │ │ payment- │ │ engine   │ │  project │                │
+│  │ st       │ │ spec     │ │          │ │  agents) │                │
+│  │          │ │ ranking- │ │          │ │          │                │
+│  │ CLAUDE.md│ │ spec     │ │ ⚠️ no    │ │ ⚠️ no    │                │
+│  │  ✅      │ │ CLAUDE.md│ │ CLAUDE.md│ │ CLAUDE.md│                │
+│  │          │ │  ✅      │ │          │ │          │                │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘                │
+│                              ↕ API                                     │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │              Polyglot (localhost:3847 / :5173)                  │   │
+│  │                                                                   │   │
+│  │  Dashboard ── View/create/edit all agents                        │   │
+│  │  Playground ── Test any agent with a prompt                      │   │
+│  │  Orchestration ── Chain agents visually                          │   │
+│  │  API ── GET/POST /api/global/agents, /api/playground/run         │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │              Claude Code CLI (claude -p)                          │   │
+│  │              Uses your Claude Pro/Max subscription                │   │
+│  │              ✅ FREE — no API costs                               │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+  </pre>
+</div>
+
+<p style="text-align: center; color: #666; margin-top: 40px; font-size: 0.85rem;">Generated for Boldteq — April 2026</p>
+
+</div>
+</body>
+</html>

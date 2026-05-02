@@ -1,0 +1,147 @@
+{
+  "name": "polyglot",
+  "displayName": "Polyglot — Boldteq Agent OS",
+  "description": "Run agents, orchestrations, and manage the Boldteq Software Factory from VS Code",
+  "version": "0.1.0",
+  "publisher": "boldteq",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "polyglot",
+          "title": "Polyglot",
+          "icon": "media/hub-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "polyglot": [
+        {
+          "id": "polyglot.agents",
+          "name": "Agents"
+        },
+        {
+          "id": "polyglot.orchestrations",
+          "name": "Orchestrations"
+        },
+        {
+          "id": "polyglot.history",
+          "name": "Run History"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "polyglot.runAgent",
+        "title": "Run Agent",
+        "category": "Polyglot",
+        "icon": "$(play)"
+      },
+      {
+        "command": "polyglot.runOrchestration",
+        "title": "Run Orchestration",
+        "category": "Polyglot",
+        "icon": "$(play)"
+      },
+      {
+        "command": "polyglot.refreshAgents",
+        "title": "Refresh Agents",
+        "category": "Polyglot",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "polyglot.refreshOrchestrations",
+        "title": "Refresh Orchestrations",
+        "category": "Polyglot",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "polyglot.refreshHistory",
+        "title": "Refresh History",
+        "category": "Polyglot",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "polyglot.viewRunDetail",
+        "title": "View Run Detail",
+        "category": "Polyglot"
+      },
+      {
+        "command": "polyglot.openHub",
+        "title": "Open Polyglot in Browser",
+        "category": "Polyglot",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "polyglot.checkStatus",
+        "title": "Check Hub Status",
+        "category": "Polyglot"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "polyglot.refreshAgents",
+          "when": "view == polyglot.agents",
+          "group": "navigation"
+        },
+        {
+          "command": "polyglot.refreshOrchestrations",
+          "when": "view == polyglot.orchestrations",
+          "group": "navigation"
+        },
+        {
+          "command": "polyglot.refreshHistory",
+          "when": "view == polyglot.history",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "polyglot.runAgent",
+          "when": "view == polyglot.agents",
+          "group": "inline"
+        },
+        {
+          "command": "polyglot.runOrchestration",
+          "when": "view == polyglot.orchestrations",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Polyglot",
+      "properties": {
+        "polyglot.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3847",
+          "description": "Polyglot server URL"
+        },
+        "polyglot.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically check hub connection on startup"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

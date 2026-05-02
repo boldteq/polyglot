@@ -1,0 +1,1 @@
+var e={playground:`bg-purple-500/20 text-purple-400`,orchestration:`bg-blue-500/20 text-blue-400`,schedule:`bg-green-500/20 text-green-400`,webhook:`bg-orange-500/20 text-orange-400`,sdk:`bg-gray-500/20 text-gray-400`,"ai-chat":`bg-pink-500/20 text-pink-400`,"project-chat":`bg-cyan-500/20 text-cyan-400`};export{e as t};

@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polyglot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F8F7F4; --bg2: #FFFFFF; --bg3: #F1EFE8;
+  --tx: #1A1A18; --tx2: #6B6A65; --tx3: #9C9B96;
+  --bd: rgba(0,0,0,0.08); --bd2: rgba(0,0,0,0.14);
+  --accent: #2D5BE3; --accent-bg: #EBF0FD; --accent-tx: #1E3FA0;
+  --green: #0F6E56; --green-bg: #E1F5EE;
+  --amber: #854F0B; --amber-bg: #FAEEDA;
+  --red: #A32D2D; --red-bg: #FCEBEB;
+  --purple: #534AB7; --purple-bg: #EEEDFE;
+  --coral: #993C1D; --coral-bg: #FAECE7;
+  --sans: 'DM Sans', -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --radius: 10px; --radius-lg: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615; --bg2: #1E1E1C; --bg3: #262624;
+    --tx: #E8E6DE; --tx2: #9C9B96; --tx3: #6B6A65;
+    --bd: rgba(255,255,255,0.08); --bd2: rgba(255,255,255,0.14);
+    --accent: #6B8EF0; --accent-bg: #1E2A4A; --accent-tx: #A3BBF7;
+    --green: #5DCAA5; --green-bg: #0A3028;
+    --amber: #EF9F27; --amber-bg: #2E2008;
+    --red: #F09595; --red-bg: #301515;
+    --purple: #AFA9EC; --purple-bg: #1E1C38;
+    --coral: #F0997B; --coral-bg: #2A1510;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--tx); min-height: 100vh; display: flex; }
+
+/* Sidebar */
+.sidebar { width: 260px; min-width: 260px; background: var(--bg2); border-right: 1px solid var(--bd); display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; }
+.sidebar-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--bd); }
+.sidebar-logo { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+.sidebar-logo span { width: 26px; height: 26px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: white; font-size: 13px; font-weight: 600; }
+.sidebar-sub { font-size: 11px; color: var(--tx3); margin-top: 4px; }
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 0; }
+.nav-section { padding: 6px 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--tx3); margin-top: 8px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 20px; font-size: 13px; cursor: pointer; color: var(--tx2); transition: all 0.15s; border-left: 2px solid transparent; }
+.nav-item:hover { background: var(--bg3); color: var(--tx); }
+.nav-item.active { background: var(--accent-bg); color: var(--accent-tx); border-left-color: var(--accent); font-weight: 500; }
+.nav-item .badge { margin-left: auto; background: var(--bg3); color: var(--tx3); font-size: 11px; padding: 1px 7px; border-radius: 10px; font-weight: 500; }
+.nav-item.active .badge { background: var(--accent); color: white; }
+.nav-icon { width: 16px; font-size: 14px; text-align: center; flex-shrink: 0; }
+.sidebar-footer { padding: 14px 20px; border-top: 1px solid var(--bd); font-size: 11px; color: var(--tx3); }
+
+/* Main */
+.main { flex: 1; min-width: 0; }
+.main-header { padding: 20px 32px 16px; border-bottom: 1px solid var(--bd); background: var(--bg2); position: sticky; top: 0; z-index: 10; }
+.main-title { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+.main-subtitle { font-size: 13px; color: var(--tx2); margin-top: 2px; }
+.main-content { padding: 24px 32px; max-width: 960px; }
+
+/* Cards */
+.card { background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 14px; transition: border-color 0.15s; }
+.card:hover { border-color: var(--bd2); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.card-title { font-size: 14px; font-weight: 600; }
+.card-desc { font-size: 13px; color: var(--tx2); line-height: 1.5; }
+.card-meta { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.tag { display: inline-flex; padding: 2px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+.tag-blue { background: var(--accent-bg); color: var(--accent-tx); }
+.tag-green { background: var(--green-bg); color: var(--green); }
+.tag-amber { background: var(--amber-bg); color: var(--amber); }
+.tag-purple { background: var(--purple-bg); color: var(--purple); }
+.tag-coral { background: var(--coral-bg); color: var(--coral); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-family: var(--sans); font-weight: 500; cursor: pointer; border: 1px solid var(--bd); background: var(--bg2); color: var(--tx); transition: all 0.15s; }
+.btn:hover { background: var(--bg3); border-color: var(--bd2); }
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-primary:hover { opacity: 0.9; }
+.btn-danger { background: var(--red-bg); color: var(--red); border-color: transparent; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-group { display: flex; gap: 8px; }
+
+/* Editor */
+.editor-wrap { margin-bottom: 14px; }
+.editor-label { font-size: 12px; font-weight: 500; color: var(--tx2); margin-bottom: 6px; }
+.editor-textarea { width: 100%; min-height: 300px; padding: 14px 16px; border: 1px solid var(--bd); border-radius: var(--radius); font-family: var(--mono); font-size: 13px; line-height: 1.7; background: var(--bg); color: var(--tx); resize: vertical; outline: none; }
+.editor-textarea:focus { border-color: var(--accent); }
+.editor-input { width: 100%; padding: 8px 12px; border: 1px solid var(--bd); border-radius: var(--radius); font-family: var(--sans); font-size: 13px; background: var(--bg); color: var(--tx); outline: none; }
+.editor-input:focus { border-color: var(--accent); }
+.editor-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+/* Agent grid */
+.agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+/* Empty state */
+.empty { text-align: center; padding: 60px 20px; color: var(--tx3); }
+.empty-icon { font-size: 32px; margin-bottom: 12px; }
+.empty-title { font-size: 15px; font-weight: 500; color: var(--tx2); margin-bottom: 4px; }
+.empty-desc { font-size: 13px; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: var(--bg2); border-radius: var(--radius-lg); width: 580px; max-width: 90vw; max-height: 85vh; overflow-y: auto; padding: 24px; }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+
+/* Setup */
+.setup-wrap { max-width: 480px; margin: 80px auto; text-align: center; }
+.setup-title { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.setup-desc { font-size: 14px; color: var(--tx2); margin-bottom: 24px; line-height: 1.6; }
+.dir-list { text-align: left; margin: 16px 0; }
+.dir-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg3); border-radius: 8px; margin-bottom: 6px; font-family: var(--mono); font-size: 12px; }
+.dir-item .remove { margin-left: auto; cursor: pointer; color: var(--red); font-size: 16px; }
+
+/* Toast */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--green); color: white; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* Stat cards */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.stat { background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--radius); padding: 14px 16px; }
+.stat-label { font-size: 11px; color: var(--tx3); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 500; }
+.stat-value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+
+/* Copy selector */
+.copy-select { padding: 6px 10px; border: 1px solid var(--bd); border-radius: 6px; font-size: 12px; font-family: var(--sans); background: var(--bg); color: var(--tx); outline: none; }
+
+.hidden { display: none !important; }
+
+/* ── Org Chart page ── */
+.org-wrap { display: flex; flex-direction: column; gap: 0; }
+.org-toolbar { background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--radius-lg); padding: 13px 15px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; }
+.org-top { display: flex; align-items: center; gap: 9px; }
+.org-search { flex: 1; padding: 7px 11px; border: 1px solid var(--bd); border-radius: 8px; font-family: var(--sans); font-size: 13px; background: var(--bg3); color: var(--tx); outline: none; }
+.org-search:focus { border-color: var(--accent); background: var(--bg2); }
+.org-result { font-size: 12px; color: var(--tx3); white-space: nowrap; }
+.vtgl { display: flex; gap: 3px; }
+.vb { padding: 5px 11px; border-radius: 7px; border: 1px solid var(--bd); background: var(--bg); color: var(--tx2); font-size: 12px; font-weight: 500; cursor: pointer; font-family: var(--sans); transition: all .15s; }
+.vb:hover { background: var(--bg3); color: var(--tx); }
+.vb.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.org-filter-row { display: flex; align-items: flex-start; gap: 8px; }
+.org-cat-lbl { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--tx3); white-space: nowrap; width: 50px; flex-shrink: 0; padding-top: 3px; }
+.org-pills { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.opill { padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1.5px solid transparent; transition: all .12s; user-select: none; }
+.opill.tech { background: var(--accent-bg); color: var(--accent-tx); }
+.opill.domain { background: var(--green-bg); color: var(--green); }
+.opill.wt { background: var(--purple-bg); color: var(--purple); }
+.opill.on.tech { background: var(--accent); color: #fff; }
+.opill.on.domain { background: var(--green); color: #fff; }
+.opill.on.wt { background: var(--purple); color: #fff; }
+.opill:hover { opacity: .78; }
+.org-active { display: flex; flex-wrap: wrap; gap: 5px; padding-top: 8px; border-top: 1px solid var(--bd); }
+.org-active:empty { display: none; padding: 0; border: none; }
+.achip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; cursor: pointer; transition: opacity .15s; }
+.achip:hover { opacity: .7; }
+.achip.tech { background: var(--accent-bg); color: var(--accent-tx); }
+.achip.domain { background: var(--green-bg); color: var(--green); }
+.achip.wt { background: var(--purple-bg); color: var(--purple); }
+/* Org agent cards */
+.ocard { background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--radius-lg); padding: 14px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.ocard:hover { border-color: var(--accent); box-shadow: 0 2px 10px rgba(45,91,227,.08); }
+.oc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.oc-name { font-size: 13px; font-weight: 600; letter-spacing: -.2px; }
+.oc-bdgs { display: flex; gap: 3px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.obadge { display: inline-flex; padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: 600; }
+.ob-opus { background: var(--amber-bg); color: var(--amber); }
+.ob-sonnet { background: var(--accent-bg); color: var(--accent-tx); }
+.ob-haiku { background: var(--bg3); color: var(--tx3); }
+.ob-lv { background: var(--bg3); color: var(--tx2); }
+.oc-role { font-size: 11px; color: var(--tx2); margin-bottom: 6px; }
+.oc-desc { font-size: 12px; color: var(--tx2); line-height: 1.5; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.oc-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 3px; }
+.ot { display: inline-flex; padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 500; cursor: pointer; transition: opacity .12s; }
+.ot:hover { opacity: .75; }
+.ot.tech { background: var(--accent-bg); color: var(--accent-tx); }
+.ot.domain { background: var(--green-bg); color: var(--green); }
+.ot.wt { background: var(--purple-bg); color: var(--purple); }
+.oc-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--bd); font-size: 11px; color: var(--tx3); }
+.odot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+/* Grouped section headings */
+.org-sg { margin-bottom: 22px; }
+.org-sg-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 7px; border-bottom: 2px solid var(--bd); }
+.org-sg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.org-sg-ttl { font-size: 14px; font-weight: 600; }
+.org-sg-cnt { font-size: 11px; color: var(--tx3); background: var(--bg3); padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+.org-sg-filter { margin-left: auto; font-size: 10px; font-weight: 600; cursor: pointer; padding: 2px 8px; border-radius: 5px; background: var(--accent-bg); color: var(--accent-tx); }
+/* List view */
+table.org-lv { width: 100%; border-collapse: collapse; }
+table.org-lv th { text-align: left; padding: 7px 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--tx3); border-bottom: 1px solid var(--bd); cursor: pointer; white-space: nowrap; user-select: none; }
+table.org-lv th:hover { color: var(--tx2); }
+table.org-lv td { padding: 9px 10px; border-bottom: 1px solid var(--bd); font-size: 12px; vertical-align: middle; }
+table.org-lv tr:hover td { background: var(--bg3); cursor: pointer; }
+table.org-lv tr:last-child td { border-bottom: none; }
+/* Agent detail panel */
+.op-ov { position: fixed; inset: 0; background: rgba(0,0,0,0); z-index: 80; pointer-events: none; transition: background .2s; }
+.op-ov.open { background: rgba(0,0,0,.3); pointer-events: all; }
+.op-panel { position: absolute; right: -440px; top: 0; bottom: 0; width: 420px; background: var(--bg2); border-left: 1px solid var(--bd); overflow-y: auto; transition: right .25s cubic-bezier(.4,0,.2,1); display: flex; flex-direction: column; }
+.op-ov.open .op-panel { right: 0; }
+.op-hdr { padding: 14px 18px 12px; border-bottom: 1px solid var(--bd); position: sticky; top: 0; background: var(--bg2); z-index: 1; flex-shrink: 0; }
+.op-name { font-size: 17px; font-weight: 600; letter-spacing: -.3px; padding-right: 32px; margin-bottom: 2px; }
+.op-title { font-size: 12px; color: var(--tx2); }
+.op-close { position: absolute; right: 14px; top: 14px; width: 27px; height: 27px; border-radius: 7px; border: 1px solid var(--bd); background: var(--bg); cursor: pointer; font-size: 14px; color: var(--tx2); display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.op-close:hover { background: var(--bg3); color: var(--tx); }
+.op-body { padding: 15px 18px; flex: 1; }
+.op-sec { margin-bottom: 15px; }
+.op-sec-title { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--tx3); margin-bottom: 7px; }
+.op-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tx2); margin-bottom: 4px; }
+.op-ml { color: var(--tx3); width: 88px; flex-shrink: 0; font-size: 11px; }
+.op-desc { font-size: 12px; color: var(--tx2); line-height: 1.6; }
+.op-tag-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+.op-rel { display: flex; flex-wrap: wrap; gap: 4px; }
+.op-rc { padding: 3px 9px; border-radius: 7px; border: 1px solid var(--bd); font-size: 11px; cursor: pointer; background: var(--bg3); color: var(--tx2); transition: all .15s; }
+.op-rc:hover { border-color: var(--accent); color: var(--accent-tx); }
+.sk-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.sk-lbl { font-size: 11px; color: var(--tx2); width: 88px; flex-shrink: 0; }
+.sk-bg { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+.sk-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.sk-pct { font-size: 10px; color: var(--tx3); width: 28px; text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo"><span>C</span> Polyglot</div>
+    <div class="sidebar-sub">Agent management dashboard</div>
+  </div>
+  <div class="sidebar-nav" id="nav"></div>
+  <div class="sidebar-footer" id="footer">Loading...</div>
+</div>
+
+<div class="main">
+  <div class="main-header">
+    <div class="main-title" id="page-title">Dashboard</div>
+    <div class="main-subtitle" id="page-subtitle">Overview of all agents and projects</div>
+  </div>
+  <div class="main-content" id="content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Org chart agent detail panel -->
+<div class="op-ov" id="orgPanelOv" onclick="if(event.target===this)orgClosePanel()">
+  <div class="op-panel">
+    <div class="op-hdr">
+      <div class="op-name" id="orgPanelName"></div>
+      <div class="op-title" id="orgPanelTitle"></div>
+      <div class="op-close" onclick="orgClosePanel()">✕</div>
+    </div>
+    <div class="op-body" id="orgPanelBody"></div>
+  </div>
+</div>
+
+<script>
+// --- State ---
+let state = {
+  config: null,
+  projects: [],
+  globalAgents: [],
+  globalClaudeMd: '',
+  currentPage: 'dashboard',
+  currentProject: null,
+  orgAgents: [],
+  orgDepts: {},
+  orgFilters: { tech: [], domain: [], 'work-type': [], q: '' },
+  orgView: 'grid',
+  orgSortCol: 'name',
+  orgSortDir: 1,
+};
+
+const ORG_TAXONOMY = {
+  tech:  { label: 'Tech',   cls: 'tech',   tags: ['shopify','nextjs','supabase','react','typescript','railway','figma','playwright','tailwind','polaris','hydrogen','postgresql','shadcn','postmark','sentry','posthog'] },
+  domain:{ label: 'Domain', cls: 'domain', tags: ['ecommerce','saas','design-system','devops','data','seo','conversion','market-research','portfolio','hr-ops','brand'] },
+  'work-type':{ label: 'Work', cls: 'wt', tags: ['design','coding','testing','copywriting','email','strategy','research','review','deploy','training','monitoring'] },
+};
+const ORG_DEPT_COLORS = { executive:'#a855f7',engineering:'#3b82f6',design:'#ec4899','content-seo':'#f97316',growth:'#10b981',research:'#06b6d4',hr:'#eab308',creative:'#9ca3af' };
+const ORG_DEPT_ORDER  = ['executive','engineering','design','content-seo','growth','research','hr'];
+
+// --- API ---
+const api = {
+  get: (url) => fetch(url).then(r => r.json()),
+  put: (url, body) => fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()),
+  post: (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()),
+  del: (url) => fetch(url, { method: 'DELETE' }).then(r => r.json()),
+};
+
+// --- Toast ---
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// --- Load Data ---
+async function loadAll() {
+  state.config = await api.get('/api/config');
+  if (!state.config.projectDirs || state.config.projectDirs.length === 0) {
+    renderSetup();
+    return;
+  }
+  state.projects = await api.get('/api/projects');
+  state.globalAgents = await api.get('/api/global/agents');
+  const gmd = await api.get('/api/global/claude-md');
+  state.globalClaudeMd = gmd.content;
+  renderNav();
+  renderPage();
+}
+
+// --- Setup ---
+function renderSetup() {
+  const dirs = state.config?.projectDirs || [];
+  document.getElementById('nav').innerHTML = '';
+  document.getElementById('footer').textContent = 'Setup required';
+  setPageHeader('Welcome', 'Add your project directories to get started');
+  document.getElementById('content').innerHTML = `
+    <div class="setup-wrap">
+      <div class="setup-title">Welcome to Polyglot</div>
+      <div class="setup-desc">Add the folders where your projects live. Polyglot will scan them and find all projects with Claude Code agents.</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input class="editor-input" id="dir-input" placeholder="~/projects" style="flex:1" />
+        <button class="btn btn-primary" onclick="addDir()">Add</button>
+      </div>
+      <div class="dir-list" id="dir-list">
+        ${dirs.map((d, i) => `<div class="dir-item">${d}<span class="remove" onclick="removeDir(${i})">×</span></div>`).join('')}
+      </div>
+      ${dirs.length > 0 ? `<button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="finishSetup()">Start scanning</button>` : ''}
+    </div>
+  `;
+}
+
+async function addDir() {
+  const input = document.getElementById('dir-input');
+  const dir = input.value.trim();
+  if (!dir) return;
+  const dirs = state.config?.projectDirs || [];
+  dirs.push(dir);
+  await api.post('/api/config/project-dirs', { dirs });
+  state.config.projectDirs = dirs;
+  input.value = '';
+  renderSetup();
+}
+
+async function removeDir(i) {
+  const dirs = state.config.projectDirs;
+  dirs.splice(i, 1);
+  await api.post('/api/config/project-dirs', { dirs });
+  renderSetup();
+}
+
+async function finishSetup() {
+  await loadAll();
+}
+
+// --- Navigation ---
+function renderNav() {
+  const nav = document.getElementById('nav');
+  const totalAgents = state.globalAgents.length + state.projects.reduce((s, p) => s + p.agentCount, 0);
+  let html = `
+    <div class="nav-section">Overview</div>
+    <div class="nav-item ${state.currentPage === 'dashboard' ? 'active' : ''}" onclick="goTo('dashboard')">
+      <span class="nav-icon">◉</span>Dashboard<span class="badge">${totalAgents}</span>
+    </div>
+    <div class="nav-section">Global</div>
+    <div class="nav-item ${state.currentPage === 'global-agents' ? 'active' : ''}" onclick="goTo('global-agents')">
+      <span class="nav-icon">⚡</span>Global agents<span class="badge">${state.globalAgents.length}</span>
+    </div>
+    <div class="nav-item ${state.currentPage === 'org-chart' ? 'active' : ''}" onclick="goTo('org-chart')">
+      <span class="nav-icon">⬡</span>Org chart<span class="badge">${state.orgAgents.length || state.globalAgents.length}</span>
+    </div>
+    <div class="nav-item ${state.currentPage === 'global-claude-md' ? 'active' : ''}" onclick="goTo('global-claude-md')">
+      <span class="nav-icon">📄</span>Global CLAUDE.md
+    </div>
+    <div class="nav-section">Projects (${state.projects.length})</div>
+  `;
+  for (const p of state.projects) {
+    const active = state.currentPage === 'project' && state.currentProject?.id === p.id;
+    html += `<div class="nav-item ${active ? 'active' : ''}" onclick="goToProject('${p.id}')">
+      <span class="nav-icon">◆</span>${p.name}<span class="badge">${p.agentCount}</span>
+    </div>`;
+  }
+  html += `
+    <div class="nav-section" style="margin-top:16px"></div>
+    <div class="nav-item" onclick="goTo('settings')">
+      <span class="nav-icon">⚙</span>Settings
+    </div>
+  `;
+  nav.innerHTML = html;
+  document.getElementById('footer').textContent = `${state.projects.length} projects · ${totalAgents} agents`;
+}
+
+// --- Page Router ---
+function setPageHeader(title, subtitle) {
+  document.getElementById('page-title').textContent = title;
+  document.getElementById('page-subtitle').textContent = subtitle || '';
+}
+
+function goTo(page) {
+  state.currentPage = page;
+  state.currentProject = null;
+  renderNav();
+  renderPage();
+}
+
+function goToProject(id) {
+  state.currentPage = 'project';
+  state.currentProject = state.projects.find(p => p.id === id);
+  renderNav();
+  renderPage();
+}
+
+function renderPage() {
+  const c = document.getElementById('content');
+  c.style.maxWidth = '';
+  orgClosePanel();
+  switch (state.currentPage) {
+    case 'dashboard': return renderDashboard(c);
+    case 'global-agents': return renderGlobalAgents(c);
+    case 'org-chart': return renderOrgChart(c);
+    case 'global-claude-md': return renderGlobalClaudeMd(c);
+    case 'project': return renderProject(c);
+    case 'settings': return renderSettings(c);
+  }
+}
+
+// --- Dashboard ---
+function renderDashboard(c) {
+  setPageHeader('Dashboard', 'Overview of all agents and projects');
+  const totalAgents = state.globalAgents.length + state.projects.reduce((s, p) => s + p.agentCount, 0);
+  const totalCommands = state.projects.reduce((s, p) => s + p.commands.length, 0);
+  const hasGlobalMd = state.globalClaudeMd ? 'Yes' : 'Not set';
+  c.innerHTML = `
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Total agents</div><div class="stat-value">${totalAgents}</div></div>
+      <div class="stat"><div class="stat-label">Global agents</div><div class="stat-value">${state.globalAgents.length}</div></div>
+      <div class="stat"><div class="stat-label">Projects</div><div class="stat-value">${state.projects.length}</div></div>
+      <div class="stat"><div class="stat-label">Commands</div><div class="stat-value">${totalCommands}</div></div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:15px;font-weight:600">All agents across projects</div>
+      </div>
+      <div class="agent-grid">
+        ${state.globalAgents.map(a => agentCard(a, 'Global', 'tag-purple')).join('')}
+        ${state.projects.map(p => p.agents.map(a => agentCard(a, p.name, 'tag-blue')).join('')).join('')}
+        ${totalAgents === 0 ? '<div class="empty"><div class="empty-icon">⚡</div><div class="empty-title">No agents found</div><div class="empty-desc">Create your first agent from the sidebar</div></div>' : ''}
+      </div>
+    </div>
+  `;
+}
+
+function agentCard(agent, scope, tagClass) {
+  return `<div class="card">
+    <div class="card-header">
+      <div class="card-title">${agent.name}</div>
+      <span class="tag ${tagClass}">${scope}</span>
+    </div>
+    <div class="card-desc">${agent.description || 'No description'}</div>
+    <div class="card-meta">
+      ${agent.model ? `<span class="tag tag-amber">${agent.model}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+// --- Global Agents ---
+async function renderGlobalAgents(c) {
+  setPageHeader('Global agents', 'These agents load for ALL projects in VS Code');
+  state.globalAgents = await api.get('/api/global/agents');
+  c.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:13px;color:var(--tx2)">Saved to ~/.claude/agents/ — available in every project</div>
+      <button class="btn btn-primary" onclick="showCreateAgent('global')">+ New agent</button>
+    </div>
+    <div class="agent-grid">
+      ${state.globalAgents.map(a => `<div class="card">
+        <div class="card-header">
+          <div class="card-title">${a.name}</div>
+          <div class="btn-group">
+            <button class="btn btn-sm" onclick="editAgent('global','${a.filename}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteAgent('global','${a.filename}')">Delete</button>
+          </div>
+        </div>
+        <div class="card-desc">${a.description || 'No description'}</div>
+        <div class="card-meta">
+          ${a.model ? `<span class="tag tag-amber">${a.model}</span>` : ''}
+          <span class="tag tag-purple">Global</span>
+        </div>
+      </div>`).join('')}
+      ${state.globalAgents.length === 0 ? '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚡</div><div class="empty-title">No global agents</div><div class="empty-desc">Create one to apply across all projects</div></div>' : ''}
+    </div>
+  `;
+}
+
+// --- Global CLAUDE.md ---
+async function renderGlobalClaudeMd(c) {
+  setPageHeader('Global CLAUDE.md', '~/.claude/CLAUDE.md — rules for all projects');
+  const data = await api.get('/api/global/claude-md');
+  c.innerHTML = `
+    <div class="card" style="padding:20px">
+      <div class="editor-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="editor-label">Edit your global rules (applies to every project)</div>
+          <button class="btn btn-primary" onclick="saveGlobalMd()">Save</button>
+        </div>
+        <textarea class="editor-textarea" id="global-md-editor" style="min-height:400px">${escHtml(data.content)}</textarea>
+      </div>
+      <div style="font-size:12px;color:var(--tx3)">${data.exists ? 'File exists' : 'File does not exist yet — will be created on save'}</div>
+    </div>
+  `;
+}
+
+async function saveGlobalMd() {
+  const content = document.getElementById('global-md-editor').value;
+  await api.put('/api/global/claude-md', { content });
+  state.globalClaudeMd = content;
+  toast('Global CLAUDE.md saved');
+}
+
+// --- Project Page ---
+async function renderProject(c) {
+  const p = state.currentProject;
+  if (!p) return;
+  setPageHeader(p.name, p.displayPath);
+  const claudeMd = await api.get(`/api/projects/${p.id}/claude-md`);
+  const agents = await api.get(`/api/projects/${p.id}/agents`);
+  const commands = await api.get(`/api/projects/${p.id}/commands`);
+  p.agents = agents;
+
+  c.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+      <span class="tag tag-blue">${agents.length} agents</span>
+      <span class="tag tag-green">${p.commands.length} commands</span>
+      <span class="tag tag-amber">${p.rules.length} rules</span>
+      <span class="tag ${claudeMd.exists ? 'tag-green' : 'tag-coral'}">${claudeMd.exists ? 'CLAUDE.md exists' : 'No CLAUDE.md'}</span>
+    </div>
+
+    <div style="font-size:15px;font-weight:600;margin-bottom:12px">CLAUDE.md</div>
+    <div class="card" style="padding:20px;margin-bottom:24px">
+      <div class="editor-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="editor-label">${p.displayPath}/CLAUDE.md</div>
+          <button class="btn btn-primary" onclick="saveProjectMd('${p.id}')">Save</button>
+        </div>
+        <textarea class="editor-textarea" id="project-md-editor" style="min-height:200px">${escHtml(claudeMd.content)}</textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:15px;font-weight:600">Sub-agents (${agents.length})</div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="showCreateAgent('${p.id}')">+ New agent</button>
+      </div>
+    </div>
+    <div class="agent-grid" style="margin-bottom:24px">
+      ${agents.map(a => `<div class="card">
+        <div class="card-header">
+          <div class="card-title">${a.name}</div>
+          <div class="btn-group">
+            <button class="btn btn-sm" onclick="editAgent('${p.id}','${a.filename}')">Edit</button>
+            <button class="btn btn-sm" onclick="copyAgentTo('${p.id}','${a.filename}')">Copy to...</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteAgent('${p.id}','${a.filename}')">Delete</button>
+          </div>
+        </div>
+        <div class="card-desc">${a.description || 'No description'}</div>
+        <div class="card-meta">
+          ${a.model ? `<span class="tag tag-amber">${a.model}</span>` : ''}
+          ${a.frontmatter?.tools ? `<span class="tag tag-green">${typeof a.frontmatter.tools === 'string' ? a.frontmatter.tools.split(',').length : Array.isArray(a.frontmatter.tools) ? a.frontmatter.tools.length : 0} tools</span>` : ''}
+        </div>
+      </div>`).join('')}
+      ${agents.length === 0 ? '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚡</div><div class="empty-title">No sub-agents</div><div class="empty-desc">Create one for this project</div></div>' : ''}
+    </div>
+
+    ${commands.length > 0 ? `
+      <div style="font-size:15px;font-weight:600;margin-bottom:12px">Slash commands (${commands.length})</div>
+      <div class="agent-grid" style="margin-bottom:24px">
+        ${commands.map(cmd => `<div class="card">
+          <div class="card-header"><div class="card-title">/${cmd.name}</div>
+          <button class="btn btn-sm" onclick="editCommand('${p.id}','${cmd.name}')">Edit</button></div>
+        </div>`).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+async function saveProjectMd(id) {
+  const content = document.getElementById('project-md-editor').value;
+  await api.put(`/api/projects/${id}/claude-md`, { content });
+  toast('Project CLAUDE.md saved');
+}
+
+// --- Agent CRUD ---
+function showCreateAgent(scope) {
+  const isGlobal = scope === 'global';
+  const scopeLabel = isGlobal ? 'Global (all projects)' : state.projects.find(p => p.id === scope)?.name;
+  showModal(`
+    <div class="modal-title">Create new agent</div>
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:16px">Scope: ${scopeLabel}</div>
+    <div class="editor-row">
+      <div class="editor-wrap"><div class="editor-label">Agent name (filename)</div><input class="editor-input" id="new-agent-name" placeholder="e.g. code-reviewer" /></div>
+      <div class="editor-wrap"><div class="editor-label">Model</div>
+        <select class="editor-input" id="new-agent-model">
+          <option value="sonnet">sonnet</option><option value="opus">opus</option><option value="haiku">haiku</option>
+        </select>
+      </div>
+    </div>
+    <div class="editor-wrap"><div class="editor-label">Description</div><input class="editor-input" id="new-agent-desc" placeholder="What does this agent do?" /></div>
+    <div class="editor-wrap"><div class="editor-label">Tools (comma-separated)</div><input class="editor-input" id="new-agent-tools" placeholder="Read, Write, Edit, Bash, Glob, Grep" value="Read, Write, Edit, Bash, Glob, Grep" /></div>
+    <div class="editor-wrap"><div class="editor-label">System prompt</div><textarea class="editor-textarea" id="new-agent-prompt" style="min-height:200px" placeholder="You are a specialist that..."></textarea></div>
+    <div class="btn-group" style="justify-content:flex-end">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createAgent('${scope}')">Create agent</button>
+    </div>
+  `);
+}
+
+async function createAgent(scope) {
+  const name = document.getElementById('new-agent-name').value.trim().toLowerCase().replace(/\s+/g, '-');
+  const model = document.getElementById('new-agent-model').value;
+  const desc = document.getElementById('new-agent-desc').value;
+  const tools = document.getElementById('new-agent-tools').value;
+  const prompt = document.getElementById('new-agent-prompt').value;
+  if (!name) return toast('Name is required');
+  const content = `---\nname: ${name}\ndescription: ${desc}\ntools: ${tools}\nmodel: ${model}\n---\n\n${prompt}`;
+  const url = scope === 'global' ? `/api/global/agents/${name}` : `/api/projects/${scope}/agents/${name}`;
+  await api.put(url, { content });
+  closeModal();
+  toast(`Agent "${name}" created`);
+  await loadAll();
+  renderPage();
+}
+
+async function editAgent(scope, filename) {
+  const url = scope === 'global' ? `/api/global/agents/${filename}` : `/api/projects/${scope}/agents/${filename}`;
+  const agent = await api.get(url);
+  showModal(`
+    <div class="modal-title">Edit: ${agent.name}</div>
+    <div class="editor-row">
+      <div class="editor-wrap"><div class="editor-label">Name</div><input class="editor-input" id="edit-agent-name" value="${escHtml(agent.frontmatter?.name || agent.filename)}" /></div>
+      <div class="editor-wrap"><div class="editor-label">Model</div>
+        <select class="editor-input" id="edit-agent-model">
+          <option value="sonnet" ${agent.model === 'sonnet' ? 'selected' : ''}>sonnet</option>
+          <option value="opus" ${agent.model === 'opus' ? 'selected' : ''}>opus</option>
+          <option value="haiku" ${agent.model === 'haiku' ? 'selected' : ''}>haiku</option>
+        </select>
+      </div>
+    </div>
+    <div class="editor-wrap"><div class="editor-label">Description</div><input class="editor-input" id="edit-agent-desc" value="${escHtml(agent.description)}" /></div>
+    <div class="editor-wrap"><div class="editor-label">Tools</div><input class="editor-input" id="edit-agent-tools" value="${escHtml(agent.frontmatter?.tools || '')}" /></div>
+    <div class="editor-wrap"><div class="editor-label">System prompt</div><textarea class="editor-textarea" id="edit-agent-prompt" style="min-height:250px">${escHtml(agent.body)}</textarea></div>
+    <div class="btn-group" style="justify-content:flex-end">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAgent('${scope}','${filename}')">Save changes</button>
+    </div>
+  `);
+}
+
+async function saveAgent(scope, filename) {
+  const name = document.getElementById('edit-agent-name').value.trim();
+  const model = document.getElementById('edit-agent-model').value;
+  const desc = document.getElementById('edit-agent-desc').value;
+  const tools = document.getElementById('edit-agent-tools').value;
+  const prompt = document.getElementById('edit-agent-prompt').value;
+  const content = `---\nname: ${name}\ndescription: ${desc}\ntools: ${tools}\nmodel: ${model}\n---\n\n${prompt}`;
+  const url = scope === 'global' ? `/api/global/agents/${filename}` : `/api/projects/${scope}/agents/${filename}`;
+  await api.put(url, { content });
+  closeModal();
+  toast(`Agent "${name}" saved`);
+  await loadAll();
+  renderPage();
+}
+
+async function deleteAgent(scope, filename) {
+  if (!confirm(`Delete agent "${filename}"?`)) return;
+  const url = scope === 'global' ? `/api/global/agents/${filename}` : `/api/projects/${scope}/agents/${filename}`;
+  await api.del(url);
+  toast(`Agent "${filename}" deleted`);
+  await loadAll();
+  renderPage();
+}
+
+function copyAgentTo(fromScope, agentName) {
+  const options = [`<option value="global">Global (all projects)</option>`];
+  for (const p of state.projects) {
+    if (p.id !== fromScope) options.push(`<option value="${p.id}">${p.name}</option>`);
+  }
+  showModal(`
+    <div class="modal-title">Copy "${agentName}" to...</div>
+    <div class="editor-wrap">
+      <div class="editor-label">Destination</div>
+      <select class="editor-input" id="copy-dest">${options.join('')}</select>
+    </div>
+    <div class="btn-group" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doCopyAgent('${fromScope}','${agentName}')">Copy</button>
+    </div>
+  `);
+}
+
+async function doCopyAgent(from, agentName) {
+  const to = document.getElementById('copy-dest').value;
+  await api.post('/api/copy-agent', { from, to, agentName });
+  closeModal();
+  toast(`Agent copied successfully`);
+  await loadAll();
+  renderPage();
+}
+
+async function editCommand(projectId, cmdName) {
+  const commands = await api.get(`/api/projects/${projectId}/commands`);
+  const cmd = commands.find(c => c.name === cmdName);
+  showModal(`
+    <div class="modal-title">Edit command: /${cmdName}</div>
+    <div class="editor-wrap"><div class="editor-label">Command content</div>
+    <textarea class="editor-textarea" id="edit-cmd-content" style="min-height:250px">${escHtml(cmd?.content || '')}</textarea></div>
+    <div class="btn-group" style="justify-content:flex-end">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCommand('${projectId}','${cmdName}')">Save</button>
+    </div>
+  `);
+}
+
+async function saveCommand(projectId, cmdName) {
+  const content = document.getElementById('edit-cmd-content').value;
+  await api.put(`/api/projects/${projectId}/commands/${cmdName}`, { content });
+  closeModal();
+  toast(`Command /${cmdName} saved`);
+}
+
+// --- Settings ---
+function renderSettings(c) {
+  setPageHeader('Settings', 'Configure project directories');
+  const dirs = state.config?.projectDirs || [];
+  c.innerHTML = `
+    <div class="card" style="padding:20px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px">Project directories</div>
+      <div style="font-size:13px;color:var(--tx2);margin-bottom:12px">Polyglot scans these folders for projects with .claude/ or CLAUDE.md</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input class="editor-input" id="settings-dir-input" placeholder="~/projects" style="flex:1" />
+        <button class="btn btn-primary" onclick="addSettingsDir()">Add</button>
+      </div>
+      <div class="dir-list">${dirs.map((d, i) => `<div class="dir-item">${d}<span class="remove" onclick="removeSettingsDir(${i})">×</span></div>`).join('')}</div>
+      <button class="btn" style="margin-top:12px" onclick="loadAll()">Rescan projects</button>
+    </div>
+    <div class="card" style="padding:20px;margin-top:14px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px">Paths</div>
+      <div style="font-size:13px;color:var(--tx2);line-height:1.8">
+        Claude dir: <code style="font-family:var(--mono);font-size:12px;background:var(--bg3);padding:2px 6px;border-radius:4px">${state.config?.claudeDir || '~/.claude'}</code><br>
+        Status: ${state.config?.claudeDirExists ? '<span style="color:var(--green)">exists</span>' : '<span style="color:var(--red)">not found</span>'}
+      </div>
+    </div>
+  `;
+}
+
+async function addSettingsDir() {
+  const input = document.getElementById('settings-dir-input');
+  const dir = input.value.trim();
+  if (!dir) return;
+  const dirs = state.config.projectDirs || [];
+  dirs.push(dir);
+  await api.post('/api/config/project-dirs', { dirs });
+  input.value = '';
+  await loadAll();
+  goTo('settings');
+}
+
+async function removeSettingsDir(i) {
+  const dirs = state.config.projectDirs;
+  dirs.splice(i, 1);
+  await api.post('/api/config/project-dirs', { dirs });
+  await loadAll();
+  goTo('settings');
+}
+
+// --- Org Chart ---
+async function renderOrgChart(c) {
+  setPageHeader('Org chart', 'Find agents by technology, domain, or work type');
+  c.style.maxWidth = 'none';
+  c.innerHTML = '<div class="loading" style="padding:40px;text-align:center;color:var(--tx3)">Loading agents…</div>';
+
+  try {
+    const [ad, dd] = await Promise.all([
+      api.get('/api/agents/directory?limit=200'),
+      api.get('/api/departments'),
+    ]);
+    state.orgAgents = ad.agents || [];
+    state.orgDepts = {};
+    (dd.departments || []).forEach(d => { state.orgDepts[d.id] = d; });
+  } catch (e) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load agents</div></div>';
+    return;
+  }
+
+  c.innerHTML = `<div class="org-wrap" id="orgWrap">
+    <div class="org-toolbar" id="orgToolbar"></div>
+    <div id="orgContent"></div>
+  </div>`;
+
+  orgRenderToolbar();
+  orgRenderContent();
+}
+
+function orgFiltered() {
+  const f = state.orgFilters;
+  return state.orgAgents.filter(a => {
+    const tg = a.tags || {};
+    for (const cat of ['tech','domain','work-type']) {
+      const sel = f[cat];
+      if (!sel || !sel.length) continue;
+      if (!sel.some(v => (tg[cat] || []).includes(v))) return false;
+    }
+    if (f.q) {
+      const q = f.q.toLowerCase();
+      if (!(a.name||'').toLowerCase().includes(q) && !(a.title||'').toLowerCase().includes(q) &&
+          !(a.description||'').toLowerCase().includes(q) && !a.id.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function orgRenderToolbar() {
+  const tb = document.getElementById('orgToolbar');
+  if (!tb) return;
+  const f = state.orgFilters;
+  const total = orgFiltered().length;
+
+  let filterRows = '';
+  for (const [catKey, cat] of Object.entries(ORG_TAXONOMY)) {
+    const pills = cat.tags.map(tv => {
+      const on = f[catKey].includes(tv) ? ' on' : '';
+      const cnt = state.orgAgents.filter(a => (a.tags?.[catKey] || []).includes(tv)).length;
+      if (!cnt && !on) return '';
+      return `<span class="opill ${cat.cls}${on}" onclick="orgToggleTag('${catKey}','${tv}')">${tv}</span>`;
+    }).join('');
+    filterRows += `<div class="org-filter-row">
+      <span class="org-cat-lbl">${cat.label}</span>
+      <div class="org-pills">${pills}</div>
+    </div>`;
+  }
+
+  const activeChips = [
+    ...f.tech.map(v => `<span class="achip tech" onclick="orgToggleTag('tech','${v}')">${v} ✕</span>`),
+    ...f.domain.map(v => `<span class="achip domain" onclick="orgToggleTag('domain','${v}')">${v} ✕</span>`),
+    ...f['work-type'].map(v => `<span class="achip wt" onclick="orgToggleTag('work-type','${v}')">${v} ✕</span>`),
+  ].join('');
+
+  tb.innerHTML = `
+    <div class="org-top">
+      <input class="org-search" id="orgSearch" placeholder="Search agents…" value="${escHtml(f.q)}" oninput="orgSearch(this.value)">
+      <span class="org-result">${total} / ${state.orgAgents.length}</span>
+      <div class="vtgl">
+        <button class="vb${state.orgView==='grid'?' on':''}" onclick="orgSetView('grid')">Grid</button>
+        <button class="vb${state.orgView==='list'?' on':''}" onclick="orgSetView('list')">List</button>
+        <button class="vb${state.orgView==='dept'?' on':''}" onclick="orgSetView('dept')">Department</button>
+        <button class="vb${state.orgView==='tech'?' on':''}" onclick="orgSetView('tech')">Tech Stack</button>
+      </div>
+      ${f.tech.length||f.domain.length||f['work-type'].length ? `<button class="btn btn-sm" onclick="orgClearFilters()">Clear</button>` : ''}
+    </div>
+    ${filterRows}
+    <div class="org-active">${activeChips}</div>`;
+}
+
+function orgCard(a) {
+  const tg = a.tags || {};
+  const tech = (tg.tech||[]).slice(0,4); const techMore = (tg.tech||[]).length - tech.length;
+  const dom  = (tg.domain||[]).slice(0,2);
+  const wt   = (tg['work-type']||[]).slice(0,2);
+  const dc = ORG_DEPT_COLORS[a.department] || '#9ca3af';
+  const mc = a.model==='opus'?'ob-opus':a.model==='haiku'?'ob-haiku':'ob-sonnet';
+  return `<div class="ocard" onclick="orgOpenPanel('${a.id}')">
+    <div class="oc-top">
+      <div class="oc-name">${escHtml(a.name||a.id)}</div>
+      <div class="oc-bdgs">
+        <span class="obadge ${mc}">${a.model||'sonnet'}</span>
+        ${a.levelTitle?`<span class="obadge ob-lv">${a.levelTitle}</span>`:''}
+        ${a.status==='probation'?`<span class="obadge ob-opus">new</span>`:''}
+      </div>
+    </div>
+    <div class="oc-role">${escHtml(a.title||'')} <span style="color:var(--tx3)">· ${a.department||''}</span></div>
+    <div class="oc-desc">${escHtml(a.description||'')}</div>
+    ${tech.length?`<div class="oc-tags">${tech.map(t=>`<span class="ot tech" onclick="event.stopPropagation();orgToggleTag('tech','${t}')">${t}</span>`).join('')}${techMore>0?`<span class="ot tech">+${techMore}</span>`:''}</div>`:''}
+    ${dom.length||wt.length?`<div class="oc-tags">${dom.map(t=>`<span class="ot domain" onclick="event.stopPropagation();orgToggleTag('domain','${t}')">${t}</span>`).join('')}${wt.map(t=>`<span class="ot wt" onclick="event.stopPropagation();orgToggleTag('work-type','${t}')">${t}</span>`).join('')}</div>`:''}
+    <div class="oc-foot">
+      <span style="display:flex;align-items:center;gap:5px"><span class="odot" style="background:${dc}"></span></span>
+      ${a.reportsTo?`<span>→ ${a.reportsTo}</span>`:''}
+    </div>
+  </div>`;
+}
+
+function orgRenderContent() {
+  const el = document.getElementById('orgContent');
+  if (!el) return;
+  const agents = orgFiltered();
+  if (state.orgView === 'grid') {
+    el.innerHTML = agents.length
+      ? `<div class="agent-grid">${agents.map(orgCard).join('')}</div>`
+      : '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No agents match</div></div>';
+  } else if (state.orgView === 'list') {
+    orgRenderList(el, agents);
+  } else if (state.orgView === 'dept') {
+    orgRenderByDept(el, agents);
+  } else {
+    orgRenderByTech(el, agents);
+  }
+}
+
+function orgRenderList(el, agents) {
+  if (!agents.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No agents match</div></div>'; return; }
+  const sc = state.orgSortCol, sd = state.orgSortDir;
+  const srt = [...agents].sort((a,b)=>{ let va=a[sc]||a.id, vb=b[sc]||b.id; return va<vb?-sd:va>vb?sd:0; });
+  const th = (c,l) => `<th onclick="orgSort('${c}')">${l}${sc===c?(sd>0?' ↑':' ↓'):''}</th>`;
+  el.innerHTML = `<div style="overflow-x:auto"><table class="org-lv"><thead><tr>${th('name','Agent')}${th('title','Role')}${th('department','Dept')}${th('levelTitle','Level')}<th>Tech tags</th><th>Domain tags</th></tr></thead><tbody>${srt.map(a=>{
+    const dc=ORG_DEPT_COLORS[a.department]||'#9ca3af';
+    return`<tr onclick="orgOpenPanel('${a.id}')">
+      <td style="font-weight:600"><span class="odot" style="background:${dc};margin-right:6px"></span>${escHtml(a.name||a.id)}</td>
+      <td style="color:var(--tx2)">${escHtml(a.title||'')}</td>
+      <td style="color:var(--tx2)">${a.department||''}</td>
+      <td>${a.levelTitle?`<span class="obadge ob-lv">${a.levelTitle}</span>`:''}</td>
+      <td><div class="oc-tags">${(a.tags?.tech||[]).slice(0,4).map(t=>`<span class="ot tech">${t}</span>`).join('')}</div></td>
+      <td><div class="oc-tags">${(a.tags?.domain||[]).slice(0,3).map(t=>`<span class="ot domain">${t}</span>`).join('')}</div></td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+function orgRenderByDept(el, agents) {
+  let html = '';
+  for (const did of ORG_DEPT_ORDER) {
+    const members = agents.filter(a => a.department === did);
+    if (!members.length) continue;
+    const dc = ORG_DEPT_COLORS[did]||'#9ca3af', dl = (state.orgDepts[did]?.label)||did;
+    html += `<div class="org-sg"><div class="org-sg-head"><span class="org-sg-dot" style="background:${dc}"></span><span class="org-sg-ttl">${dl}</span><span class="org-sg-cnt">${members.length} agents</span></div><div class="agent-grid">${members.map(orgCard).join('')}</div></div>`;
+  }
+  el.innerHTML = html || '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No agents match</div></div>';
+}
+
+function orgRenderByTech(el, agents) {
+  let html = '';
+  for (const tv of ORG_TAXONOMY.tech.tags) {
+    const members = agents.filter(a => (a.tags?.tech||[]).includes(tv));
+    if (!members.length) continue;
+    html += `<div class="org-sg"><div class="org-sg-head"><span class="org-sg-dot" style="background:var(--accent)"></span><span class="org-sg-ttl">${tv}</span><span class="org-sg-cnt">${members.length} agents</span><span class="org-sg-filter" onclick="orgToggleTag('tech','${tv}')">+ filter</span></div><div class="agent-grid">${members.map(orgCard).join('')}</div></div>`;
+  }
+  const noTech = agents.filter(a => !(a.tags?.tech||[]).length);
+  if (noTech.length) html += `<div class="org-sg"><div class="org-sg-head"><span class="org-sg-dot" style="background:var(--tx3)"></span><span class="org-sg-ttl">No tech tag</span><span class="org-sg-cnt">${noTech.length}</span></div><div class="agent-grid">${noTech.map(orgCard).join('')}</div></div>`;
+  el.innerHTML = html || '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No agents match</div></div>';
+}
+
+function orgToggleTag(cat, val) {
+  const arr = state.orgFilters[cat];
+  const idx = arr.indexOf(val);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(val);
+  orgRenderToolbar(); orgRenderContent();
+}
+
+function orgClearFilters() {
+  state.orgFilters = { tech: [], domain: [], 'work-type': [], q: '' };
+  orgRenderToolbar(); orgRenderContent();
+}
+
+let _orgSt;
+function orgSearch(v) {
+  clearTimeout(_orgSt);
+  _orgSt = setTimeout(() => { state.orgFilters.q = v.trim(); orgRenderToolbar(); orgRenderContent(); }, 120);
+}
+
+function orgSetView(v) {
+  state.orgView = v;
+  orgRenderToolbar(); orgRenderContent();
+}
+
+function orgSort(col) {
+  if (state.orgSortCol === col) state.orgSortDir *= -1; else { state.orgSortCol = col; state.orgSortDir = 1; }
+  orgRenderList(document.getElementById('orgContent'), orgFiltered());
+}
+
+function orgOpenPanel(id) {
+  const a = state.orgAgents.find(x => x.id === id);
+  if (!a) return;
+  const ov = document.getElementById('orgPanelOv');
+  if (!ov) return;
+  const tg = a.tags || {};
+  const allTech = tg.tech||[], allDom = tg.domain||[], allWt = tg['work-type']||[];
+  const samePod  = a.pod ? state.orgAgents.filter(x => x.pod===a.pod && x.id!==a.id) : [];
+  const sameTech = allTech.length ? state.orgAgents.filter(x => x.id!==a.id && (x.tags?.tech||[]).some(t=>allTech.includes(t))) : [];
+  const topSkills = Object.entries(a.skills||{}).sort((a,b)=>b[1].score-a[1].score).slice(0,6);
+  const mc = a.model==='opus'?'ob-opus':a.model==='haiku'?'ob-haiku':'ob-sonnet';
+
+  document.getElementById('orgPanelName').textContent  = a.name||a.id;
+  document.getElementById('orgPanelTitle').textContent = `${a.title||''} · ${a.department||''}`;
+
+  let body = `<div class="op-sec">
+    <div class="op-meta"><span class="op-ml">Model</span><span class="obadge ${mc}">${a.model||'sonnet'}</span></div>
+    <div class="op-meta"><span class="op-ml">Level</span>${a.levelTitle||'—'}</div>
+    <div class="op-meta"><span class="op-ml">Status</span>${a.status||'active'}</div>
+    ${a.reportsTo?`<div class="op-meta"><span class="op-ml">Reports to</span>${a.reportsTo}</div>`:''}
+    ${a.secondaryReportsTo?`<div class="op-meta"><span class="op-ml">Also reports</span>${a.secondaryReportsTo}</div>`:''}
+    ${a.pod?`<div class="op-meta"><span class="op-ml">Pod</span>${a.pod}</div>`:''}
+    ${a.hiredAt?`<div class="op-meta"><span class="op-ml">Hired</span>${a.hiredAt.slice(0,10)}</div>`:''}
+  </div>`;
+
+  if (a.description) body += `<div class="op-sec"><div class="op-sec-title">Description</div><div class="op-desc">${escHtml(a.description)}</div></div>`;
+
+  if (allTech.length||allDom.length||allWt.length) body += `<div class="op-sec">
+    <div class="op-sec-title">Tags</div>
+    ${allTech.length?`<div class="op-tag-row">${allTech.map(t=>`<span class="ot tech">${t}</span>`).join('')}</div>`:''}
+    ${allDom.length?`<div class="op-tag-row">${allDom.map(t=>`<span class="ot domain">${t}</span>`).join('')}</div>`:''}
+    ${allWt.length?`<div class="op-tag-row">${allWt.map(t=>`<span class="ot wt">${t}</span>`).join('')}</div>`:''}
+  </div>`;
+
+  if (topSkills.length) body += `<div class="op-sec"><div class="op-sec-title">Top Skills</div>${topSkills.map(([sk,d])=>`<div class="sk-row"><span class="sk-lbl">${sk}</span><div class="sk-bg"><div class="sk-fill" style="width:${Math.round(d.score*100)}%"></div></div><span class="sk-pct">${Math.round(d.score*100)}%</span></div>`).join('')}</div>`;
+
+  if (samePod.length) body += `<div class="op-sec"><div class="op-sec-title">Same Pod · ${a.pod}</div><div class="op-rel">${samePod.map(x=>`<span class="op-rc" onclick="orgOpenPanel('${x.id}')">${x.name||x.id}</span>`).join('')}</div></div>`;
+
+  if (sameTech.length) {
+    const show = sameTech.slice(0,12);
+    body += `<div class="op-sec"><div class="op-sec-title">Same Tech Stack · ${sameTech.length}</div><div class="op-rel">${show.map(x=>`<span class="op-rc" onclick="orgOpenPanel('${x.id}')">${x.name||x.id}</span>`).join('')}${sameTech.length>12?`<span style="font-size:11px;color:var(--tx3);padding:3px 6px">+${sameTech.length-12} more</span>`:''}</div></div>`;
+  }
+
+  document.getElementById('orgPanelBody').innerHTML = body;
+  ov.classList.add('open');
+}
+
+function orgClosePanel() { document.getElementById('orgPanelOv')?.classList.remove('open'); }
+
+// --- Modal ---
+function showModal(html) {
+  let overlay = document.getElementById('modal-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `<div class="modal">${html}</div>`;
+  overlay.style.display = 'flex';
+}
+
+function closeModal() {
+  const overlay = document.getElementById('modal-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+// --- Helpers ---
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// --- Init ---
+document.addEventListener('keydown', e => { if (e.key === 'Escape') orgClosePanel(); });
+loadAll();
+</script>
+</body>
+</html>

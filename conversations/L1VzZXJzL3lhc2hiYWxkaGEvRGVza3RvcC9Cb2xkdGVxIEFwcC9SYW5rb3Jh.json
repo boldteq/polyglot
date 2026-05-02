@@ -1,0 +1,22 @@
+[
+  {
+    "id": "mnrya15syq7rt",
+    "projectId": "L1VzZXJzL3lhc2hiYWxkaGEvRGVza3RvcC9Cb2xkdGVxIEFwcC9SYW5rb3Jh",
+    "title": "Idea",
+    "agentName": "scout",
+    "messages": [
+      {
+        "role": "user",
+        "content": "this is perfect saas idea ? like mantal alternative for smb audience",
+        "timestamp": "2026-04-09T20:49:47.180Z"
+      },
+      {
+        "role": "assistant",
+        "content": "## Scout Verdict: PASS on market — but Rankora already exists\n\nThe idea validates on fundamentals:\n\n| Gate | Result |\n|------|--------|\n| Pain | **7/10 PASS** — SMBs without recruiters manually screen 50-200+ resumes per role. Real, costly, frequent. |\n| ICP | **PASS** — Founders/HR generalists at 10-100 person companies. Credit card buyers ($20-100/mo). Found on LinkedIn in 2 min. |\n| Distribution | **PASS** — SEO (\"AI resume screener\"), PLG (free tier + shareable output), communities (r/recruiting, r/smallbusiness). |\n| Feature vs Company | **CONDITIONAL** — Standalone tools exist and charge money, but full ATS platforms bundle this. Differentiation = simplicity + price. |\n\n**But here's the thing — this IS Rankora.** You've already built it. It's code-complete with 21 edge functions, Dodo Payments billing, admin panel, credit system, and pgvector scoring.\n\n### What you actually need next:\n\n1. **Position as Manatal alternative** → Run **Quill** for landing page copy targeting SMBs switching from expensive ATS\n2. **Launch it** → Run `/launch-check` (Echo → Mira → Bolt → Hawk)\n3. **Add features** → Brief **Rex** with specifics\n\nWhich direction do you want to take?",
+        "timestamp": "2026-04-09T20:51:39.449Z"
+      }
+    ],
+    "createdAt": "2026-04-09T20:49:25.600Z",
+    "updatedAt": "2026-04-09T20:51:39.449Z"
+  }
+]

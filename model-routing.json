@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-28T00:00:00Z",
+  "tiers": {
+    "deep": {
+      "model": "claude-opus-4-7",
+      "shortName": "opus",
+      "agents": ["arya", "rex", "sage", "vex", "verdict"],
+      "rule": "Never downgrade. Reserved for high-stakes architecture, security review, root-cause debugging, portfolio decisions, strategic command.",
+      "estCostPer1MTokens": { "input": 15, "output": 75 },
+      "monthlyBudgetUsd": 800
+    },
+    "fast": {
+      "model": "claude-sonnet-4-6",
+      "shortName": "sonnet",
+      "agents": [
+        "atlas", "bolt", "cadence", "catalyst", "dato", "echo", "forge", "harvest",
+        "hawk", "koda", "ledger", "luna", "mira", "nova", "orbit", "pixel",
+        "pod-a-lead", "pod-b-lead", "pod-c-lead",
+        "pod-b-frontend", "pod-b-backend", "pod-b-db", "pod-b-tester",
+        "pulse", "quill", "riko", "scout", "tutor", "vega", "zeph"
+      ],
+      "rule": "Default tier for builders, specialists, and dept VPs. Downgrade to haiku only if task volume is high + outcome can be verified with cheap heuristics.",
+      "estCostPer1MTokens": { "input": 3, "output": 15 },
+      "monthlyBudgetUsd": 1200
+    },
+    "cheap": {
+      "model": "claude-haiku-4-5-20251001",
+      "shortName": "haiku",
+      "agents": ["roster", "witness"],
+      "rule": "Back-office: high-volume, structured, auditable. Daily sweeps, registry computes, capability indexing.",
+      "estCostPer1MTokens": { "input": 1, "output": 5 },
+      "monthlyBudgetUsd": 100
+    }
+  },
+  "downgradeRules": [
+    {
+      "trigger": "monthly_burn_above_pct",
+      "threshold": 110,
+      "action": "downgrade_fast_to_cheap_for_non_critical",
+      "exempt_tasks": ["billing", "auth", "deploy", "security_review"],
+      "description": "When monthly LLM spend > 110% of budget, downgrade non-critical sonnet runs to haiku"
+    },
+    {
+      "trigger": "agent_failure_rate_above",
+      "threshold": 0.4,
+      "action": "upgrade_one_tier",
+      "description": "If a haiku agent fails >40% of runs in a week, temporarily upgrade to sonnet for 50 runs to validate the issue isn't model capability"
+    }
+  ],
+  "enforcementMode": "advisory",
+  "enforcementModes": {
+    "advisory": "Log violations only, do not block dispatch",
+    "warn": "Log + emit warning event but allow run",
+    "block": "Refuse dispatch, return error to caller"
+  },
+  "totalMonthlyBudgetUsd": 2100,
+  "alertWhenBurnPct": [50, 75, 90, 100, 110],
+  "owner": "hawk",
+  "reviewer": "rex"
+}

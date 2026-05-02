@@ -1,0 +1,9 @@
+{
+  "name": "@boldteq/agents",
+  "version": "1.0.0",
+  "description": "Call any Boldteq Claude agent from any app",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "license": "UNLICENSED",
+  "private": true
+}

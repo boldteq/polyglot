@@ -1,0 +1,127 @@
+import { GraduationCap, Star, Award, Crown, Gem, Shield, Zap, Sparkles, UserX } from 'lucide-react'
+
+export interface LevelBadgeProps {
+  level: number | null | undefined
+  title?: string
+  yearsOfExperience?: number | null
+  status?: 'active' | 'probation' | 'pip' | 'pending' | 'retired'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  showYoE?: boolean
+  showIcon?: boolean
+}
+
+const LEVEL_ICONS: Record<number, typeof Star> = {
+  0: GraduationCap,
+  1: Star,
+  2: Star,
+  3: Award,
+  4: Shield,
+  5: Crown,
+  6: Zap,
+  7: Gem,
+  8: Sparkles,
+}
+
+const LEVEL_NAMES: Record<number, string> = {
+  0: 'Trainee',
+  1: 'Junior',
+  2: 'Mid',
+  3: 'Senior',
+  4: 'Lead',
+  5: 'Principal',
+  6: 'Staff',
+  7: 'Distinguished',
+  8: 'Fellow',
+}
+
+const LEVEL_COLORS: Record<number, { bg: string; text: string; ring: string }> = {
+  0: { bg: 'bg-zinc-500/10', text: 'text-zinc-400', ring: 'ring-zinc-500/20' },
+  1: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', ring: 'ring-emerald-500/20' },
+  2: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', ring: 'ring-emerald-500/25' },
+  3: { bg: 'bg-teal-500/15', text: 'text-teal-400', ring: 'ring-teal-500/25' },
+  4: { bg: 'bg-blue-500/15', text: 'text-blue-400', ring: 'ring-blue-500/25' },
+  5: { bg: 'bg-purple-500/15', text: 'text-purple-400', ring: 'ring-purple-500/25' },
+  6: { bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-400', ring: 'ring-fuchsia-500/25' },
+  7: { bg: 'bg-amber-500/15', text: 'text-amber-400', ring: 'ring-amber-500/25' },
+  8: { bg: 'bg-yellow-500/20', text: 'text-yellow-300', ring: 'ring-yellow-500/30' },
+}
+
+const SIZES = {
+  xs: { pad: 'px-1.5 py-0.5', text: 'text-[9px]', icon: 'w-2.5 h-2.5', gap: 'gap-1' },
+  sm: { pad: 'px-2 py-0.5', text: 'text-[10px]', icon: 'w-3 h-3', gap: 'gap-1' },
+  md: { pad: 'px-2.5 py-1', text: 'text-[11px]', icon: 'w-3.5 h-3.5', gap: 'gap-1.5' },
+  lg: { pad: 'px-3 py-1.5', text: 'text-xs', icon: 'w-4 h-4', gap: 'gap-2' },
+}
+
+export default function LevelBadge({
+  level,
+  title,
+  yearsOfExperience,
+  status = 'active',
+  size = 'sm',
+  showYoE = false,
+  showIcon = true,
+}: LevelBadgeProps) {
+  // Handle retired status first
+  if (status === 'retired') {
+    const s = SIZES[size]
+    return (
+      <span
+        className={`inline-flex items-center ${s.gap} ${s.pad} ${s.text} font-semibold rounded-full bg-zinc-500/5 text-zinc-500 ring-1 ring-zinc-500/10`}
+      >
+        {showIcon && <UserX className={s.icon} />}
+        Retired
+      </span>
+    )
+  }
+
+  if (level == null) {
+    const s = SIZES[size]
+    return (
+      <span className={`inline-flex items-center ${s.pad} ${s.text} text-text-muted`}>
+        —
+      </span>
+    )
+  }
+
+  const safeLevel = Math.max(0, Math.min(8, level))
+  const Icon = LEVEL_ICONS[safeLevel] || Star
+  const displayTitle = title || LEVEL_NAMES[safeLevel]
+  const colors = LEVEL_COLORS[safeLevel]
+  const s = SIZES[size]
+
+  // Special status overlays
+  const statusRing =
+    status === 'probation' ? 'ring-amber-500/40 ring-2' :
+    status === 'pip' ? 'ring-red-500/40 ring-2' :
+    status === 'pending' ? 'ring-sky-500/40 ring-2' :
+    colors.ring
+
+  return (
+    <span
+      className={`inline-flex items-center ${s.gap} ${s.pad} ${s.text} font-semibold rounded-full ring-1 ${colors.bg} ${colors.text} ${statusRing}`}
+      title={
+        status === 'probation' ? `${displayTitle} (on probation)` :
+        status === 'pip' ? `${displayTitle} (on PIP)` :
+        status === 'pending' ? `${displayTitle} (pending HR triage)` :
+        displayTitle
+      }
+    >
+      {showIcon && <Icon className={s.icon} />}
+      {displayTitle}
+      {showYoE && yearsOfExperience != null && (
+        <span className="opacity-70 font-normal">· {yearsOfExperience}y</span>
+      )}
+    </span>
+  )
+}
+
+export function levelName(level: number | null | undefined): string {
+  if (level == null) return '—'
+  return LEVEL_NAMES[Math.max(0, Math.min(8, level))] || 'Agent'
+}
+
+export function levelColors(level: number | null | undefined) {
+  if (level == null) return LEVEL_COLORS[0]
+  return LEVEL_COLORS[Math.max(0, Math.min(8, level))] || LEVEL_COLORS[0]
+}
