@@ -1,0 +1,258 @@
+app/(app)/inbox/actions.ts(7,15): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'InboxItemKind'.
+app/(app)/inbox/actions.ts(32,6): error TS2769: No overload matches this call.
+app/(app)/inbox/actions.ts(119,13): error TS2769: No overload matches this call.
+app/(app)/inbox/actions.ts(145,13): error TS2769: No overload matches this call.
+app/(app)/inbox/actions.ts(174,13): error TS2769: No overload matches this call.
+app/(app)/inbox/actions.ts(218,22): error TS6133: 'TwilioNotConfiguredError' is declared but its value is never read.
+app/(app)/inbox/page.tsx(109,28): error TS2339: Property 'item_kind' does not exist on type 'never'.
+app/(app)/inbox/page.tsx(109,43): error TS2339: Property 'item_id' does not exist on type 'never'.
+app/(app)/inbox/page.tsx(110,21): error TS2339: Property 'assigned_to' does not exist on type 'never'.
+app/(app)/inbox/page.tsx(111,23): error TS2339: Property 'snoozed_until' does not exist on type 'never'.
+app/(app)/inbox/page.tsx(112,21): error TS2339: Property 'archived_at' does not exist on type 'never'.
+app/(app)/inbox/page.tsx(113,21): error TS2339: Property 'resolved_at' does not exist on type 'never'.
+app/(app)/messages/[conversationId]/page.tsx(52,26): error TS2339: Property 'unread_count' does not exist on type 'ConversationWithClient'.
+app/(app)/projects/[id]/page.tsx(45,35): error TS2339: Property 'deposit_pool_cents' does not exist on type 'ProjectWithSessions'.
+app/(app)/projects/[id]/page.tsx(46,32): error TS2339: Property 'deposit_applied_cents' does not exist on type 'ProjectWithSessions'.
+app/(app)/projects/[id]/page.tsx(47,44): error TS2339: Property 'deposit_pool_cents' does not exist on type 'ProjectWithSessions'.
+app/(app)/projects/[id]/page.tsx(47,73): error TS2339: Property 'deposit_applied_cents' does not exist on type 'ProjectWithSessions'.
+app/(app)/settings/studio/policies/_components/BookingPoliciesClient.tsx(16,3): error TS2344: Type '"id" | "deposit_deadline_hours"' does not satisfy the constraint '"id" | "status" | "name" | "created_at" | "updated_at" | "slug" | "timezone" | "locale" | "currency" | "brand_color" | "logo_url" | "plan_id" | "custom_domain" | "custom_domain_verified" | ... 5 more ... | "powered_by_hidden"'.
+app/(app)/settings/studio/policies/_components/BookingPoliciesClient.tsx(26,62): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'number | (() => number)'.
+app/(app)/settings/studio/policies/page.tsx(28,28): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'deposit_deadline_hours' does not exist on 'studios'.">'.
+app/(app)/settings/studio/policies/page.tsx(28,63): error TS2339: Property 'deposit_deadline_hours' does not exist on type 'SelectQueryError<"column 'deposit_deadline_hours' does not exist on 'studios'.">'.
+app/api/bookings/[id]/extend-deadline/route.ts(105,7): error TS2322: Type 'string' is not assignable to type 'never'.
+app/api/bookings/[id]/extend-deadline/route.ts(107,7): error TS2322: Type 'null' is not assignable to type 'never'.
+app/api/studios/[id]/policies/route.ts(72,15): error TS2322: Type 'number' is not assignable to type 'never'.
+app/api/today/queue/route.ts(28,29): error TS18004: No value exists in scope for the shorthand property 'artistId'. Either declare one or provide an initializer.
+app/api/webhooks/twilio/route.ts(136,9): error TS2345: Argument of type '"twilio_phone_number"' is not assignable to parameter of type '"id" | "status" | "name" | "created_at" | "updated_at" | "slug" | "timezone" | "locale" | "currency" | "brand_color" | "logo_url" | "plan_id" | "custom_domain" | "custom_domain_verified" | ... 5 more ... | "powered_by_hidden"'.
+app/api/webhooks/twilio/route.ts(178,5): error TS2345: Argument of type '"find_or_create_conversation"' is not assignable to parameter of type '"stocktake" | "user_studio_ids" | "user_owns_service_studio" | "public_get_studio_by_slug" | "public_get_services_for_studio" | "public_get_artists_for_studio" | "public_get_availability" | ... 68 more ... | "redeem_referral"'.
+app/api/webhooks/twilio/route.ts(213,6): error TS2769: No overload matches this call.
+components/clients/ClientProjectsTab.tsx(62,37): error TS2339: Property 'id' does not exist on type 'ProjectListItem'.
+components/inbox/AssignUserPicker.tsx(74,23): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & NativeButtonProps & Omit<WithBaseUIEvent<DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>>, "color" | ... 3 more ... | "style"> & { ...; } & { ...; }'.
+components/inbox/BatchActionBar.tsx(3,10): error TS6133: 'useState' is declared but its value is never read.
+components/inbox/BatchActionBar.tsx(4,31): error TS6133: 'UserCheck' is declared but its value is never read.
+components/inbox/BatchActionBar.tsx(4,45): error TS6133: 'BellOff' is declared but its value is never read.
+components/inbox/BatchActionBar.tsx(7,1): error TS6192: All imports in import declaration are unused.
+components/inbox/BatchActionBar.tsx(14,15): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'InboxItemKind'.
+components/inbox/InboxClient.tsx(21,15): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'InboxItemKind'.
+components/inbox/InboxClient.tsx(163,17): error TS2532: Object is possibly 'undefined'.
+components/inbox/InboxClient.tsx(169,17): error TS2532: Object is possibly 'undefined'.
+components/inbox/InboxItemRow.tsx(43,15): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'InboxItemKind'.
+components/inbox/InboxItemRow.tsx(57,10): error TS7030: Not all code paths return a value.
+components/inbox/InboxItemRow.tsx(66,39): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
+components/inbox/InboxItemRow.tsx(75,41): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
+components/inbox/InboxItemRow.tsx(84,10): error TS7030: Not all code paths return a value.
+components/inbox/InboxItemRow.tsx(297,30): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & Props<unknown>'.
+components/inbox/InboxItemRow.tsx(325,29): error TS2322: Type '{ children: Element; asChild: true; className: string; }' is not assignable to type 'IntrinsicAttributes & MenuItemProps & { inset?: boolean; variant?: "default" | "destructive"; }'.
+components/messages/Composer.tsx(29,15): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'ConversationChannel'.
+components/messages/ThreadList.tsx(24,15): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'Conversation'.
+components/messages/ThreadList.tsx(24,29): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'ConversationChannel'.
+components/messages/ThreadList.tsx(49,12): error TS2339: Property 'display_name' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(49,38): error TS2339: Property 'display_name' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(54,15): error TS2339: Property 'external_identifier' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(75,26): error TS2339: Property 'unread_count' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(76,29): error TS2339: Property 'last_message_at' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(77,41): error TS2339: Property 'last_message_at' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(105,19): error TS2339: Property 'starred' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(113,38): error TS2339: Property 'channel' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(115,19): error TS2339: Property 'last_message_preview' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(115,48): error TS2339: Property 'external_identifier' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(122,21): error TS2339: Property 'unread_count' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(122,54): error TS2339: Property 'unread_count' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(151,13): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(194,41): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(206,38): error TS2339: Property 'channel' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(208,40): error TS2339: Property 'unread_count' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(209,42): error TS2339: Property 'starred' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(210,43): error TS2339: Property 'archived_at' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(211,42): error TS2339: Property 'archived_at' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(216,21): error TS2339: Property 'external_identifier' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(309,25): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(312,22): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(313,48): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadList.tsx(316,60): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(163,20): error TS2339: Property 'display_name' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(163,49): error TS2339: Property 'external_identifier' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(196,36): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(205,53): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(212,20): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(215,50): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(215,68): error TS2339: Property 'starred' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(217,34): error TS2339: Property 'starred' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(221,20): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(221,37): error TS2339: Property 'starred' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(262,44): error TS2339: Property 'channel' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(263,92): error TS2339: Property 'channel' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(264,29): error TS2339: Property 'assigned_to' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(300,72): error TS2339: Property 'starred' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(301,33): error TS2339: Property 'starred' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(359,40): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(361,33): error TS2339: Property 'channel' does not exist on type 'ConversationWithClient'.
+components/messages/ThreadPanel.tsx(378,42): error TS2339: Property 'id' does not exist on type 'ConversationWithClient'.
+components/projects/DepositTab.tsx(69,56): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/DepositTab.tsx(95,58): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/DepositTab.tsx(207,16): error TS2339: Property 'status' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(63,19): error TS2339: Property 'name' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(64,26): error TS2339: Property 'description' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(65,24): error TS2339: Property 'placement' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(66,20): error TS2339: Property 'style' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(67,35): error TS2339: Property 'total_sessions_planned' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(68,30): error TS2339: Property 'total_price_cents' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(69,27): error TS2339: Property 'moodboard_url' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(70,21): error TS2339: Property 'status' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(93,56): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(106,21): error TS2339: Property 'name' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(107,28): error TS2339: Property 'description' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(108,26): error TS2339: Property 'placement' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(109,22): error TS2339: Property 'style' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(110,37): error TS2339: Property 'total_sessions_planned' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(111,32): error TS2339: Property 'total_price_cents' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(112,29): error TS2339: Property 'moodboard_url' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(113,23): error TS2339: Property 'status' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(161,66): error TS2339: Property 'name' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(176,26): error TS2339: Property 'description' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(191,26): error TS2339: Property 'placement' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(215,26): error TS2339: Property 'style' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(215,56): error TS2339: Property 'style' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(215,74): error TS2339: Property 'style' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(236,26): error TS2339: Property 'total_sessions_planned' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(251,26): error TS2339: Property 'total_price_cents' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(252,34): error TS2339: Property 'total_price_cents' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(267,23): error TS2339: Property 'moodboard_url' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(269,33): error TS2339: Property 'moodboard_url' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(274,28): error TS2339: Property 'moodboard_url' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(300,26): error TS2339: Property 'status' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(307,24): error TS2339: Property 'started_at' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(307,56): error TS2339: Property 'started_at' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(313,20): error TS2339: Property 'completed_at' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(315,77): error TS2339: Property 'completed_at' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(320,81): error TS2339: Property 'created_at' does not exist on type 'ProjectWithSessions'.
+components/projects/DetailsTab.tsx(326,41): error TS2339: Property 'status' does not exist on type 'ProjectWithSessions'.
+components/projects/ProgressTab.tsx(50,59): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/ProgressTab.tsx(63,62): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectCard.tsx(31,46): error TS2339: Property 'status' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(37,13): error TS2339: Property 'total_sessions_planned' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(38,61): error TS2339: Property 'total_sessions_planned' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(42,13): error TS2339: Property 'deposit_pool_cents' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(44,52): error TS2339: Property 'deposit_pool_cents' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(49,13): error TS2339: Property 'deposit_pool_cents' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(51,17): error TS2339: Property 'deposit_pool_cents' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(57,34): error TS2339: Property 'id' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(67,18): error TS2339: Property 'cover_photo_url' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(70,26): error TS2339: Property 'cover_photo_url' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(71,26): error TS2339: Property 'name' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(94,86): error TS2339: Property 'name' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(95,20): error TS2339: Property 'placement' does not exist on type 'ProjectListItem'.
+components/projects/ProjectCard.tsx(96,80): error TS2339: Property 'placement' does not exist on type 'ProjectListItem'.
+components/projects/ProjectDetailShell.tsx(85,46): error TS2339: Property 'status' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(99,58): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(112,57): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(137,22): error TS2339: Property 'name' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(144,18): error TS2339: Property 'cover_photo_url' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(147,26): error TS2339: Property 'cover_photo_url' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(148,26): error TS2339: Property 'name' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(171,22): error TS2339: Property 'placement' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(172,64): error TS2339: Property 'placement' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(175,65): error TS2339: Property 'name' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(200,26): error TS2339: Property 'status' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectDetailShell.tsx(206,38): error TS2339: Property 'status' does not exist on type 'ProjectWithSessions'.
+components/projects/ProjectsListClient.tsx(227,41): error TS2339: Property 'id' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(284,42): error TS2339: Property 'total_sessions_planned' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(285,60): error TS2339: Property 'total_sessions_planned' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(288,61): error TS2339: Property 'status' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(289,55): error TS2339: Property 'status' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(289,74): error TS2339: Property 'status' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(293,30): error TS2339: Property 'id' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(296,63): error TS2339: Property 'id' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(301,30): error TS2339: Property 'name' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(303,28): error TS2339: Property 'placement' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(305,32): error TS2339: Property 'placement' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(315,28): error TS2339: Property 'deposit_pool_cents' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(316,46): error TS2339: Property 'deposit_pool_cents' does not exist on type 'ProjectListItem'.
+components/projects/ProjectsListClient.tsx(330,39): error TS2339: Property 'updated_at' does not exist on type 'ProjectListItem'.
+components/projects/ReferencesTab.tsx(49,55): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/ReferencesTab.tsx(62,58): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/ReferencesTab.tsx(86,60): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/ReferencesTab.tsx(118,34): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/SessionsTab.tsx(43,32): error TS2339: Property 'total_sessions_planned' does not exist on type 'ProjectWithSessions'.
+components/projects/SessionsTab.tsx(47,56): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/projects/SessionsTab.tsx(74,52): error TS2339: Property 'id' does not exist on type 'ProjectWithSessions'.
+components/today/RoleAwareHero.tsx(310,3): error TS6133: 'studioId' is declared but its value is never read.
+hooks/use-realtime-messages.ts(16,15): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'Conversation'.
+lib/messaging/mutations.ts(32,40): error TS2345: Argument of type '"mark_conversation_read"' is not assignable to parameter of type '"stocktake" | "user_studio_ids" | "user_owns_service_studio" | "public_get_studio_by_slug" | "public_get_services_for_studio" | "public_get_artists_for_studio" | "public_get_availability" | ... 68 more ... | "redeem_referral"'.
+lib/messaging/mutations.ts(52,13): error TS2345: Argument of type '{ assigned_to: string | null; }' is not assignable to parameter of type 'never'.
+lib/messaging/mutations.ts(72,13): error TS2345: Argument of type '{ archived_at: string; }' is not assignable to parameter of type 'never'.
+lib/messaging/mutations.ts(92,13): error TS2345: Argument of type '{ archived_at: null; }' is not assignable to parameter of type 'never'.
+lib/messaging/mutations.ts(113,13): error TS2345: Argument of type '{ starred: boolean; }' is not assignable to parameter of type 'never'.
+lib/messaging/mutations.ts(146,13): error TS2345: Argument of type '{ client_id: string; }' is not assignable to parameter of type 'never'.
+lib/messaging/queries.ts(10,15): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'Conversation'.
+lib/messaging/queries.ts(10,29): error TS2305: Module '"@/lib/supabase/types"' has no exported member 'ConversationChannel'.
+lib/messaging/queries.ts(170,9): error TS2345: Argument of type '"conversation_id"' is not assignable to parameter of type '"id" | "studio_id" | "client_id" | "booking_id" | "status" | "created_at" | "updated_at" | "body" | "metadata" | "error" | "channel" | "direction" | "template" | "subject" | "sent_at" | "delivered_at" | "opened_at" | "provider_message_id"'.
+lib/messaging/queries.ts(186,11): error TS2352: Conversion of type 'SelectQueryError<"column 'conversation_id' does not exist on 'client_communications'.">[]' to type 'ConversationMessage[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+lib/messaging/queries.ts(210,10): error TS2352: Conversion of type 'SelectQueryError<"column 'conversation_id' does not exist on 'client_communications'.">[]' to type 'ConversationMessage[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+lib/messaging/send.ts(105,46): error TS2345: Argument of type '"find_or_create_conversation"' is not assignable to parameter of type '"stocktake" | "user_studio_ids" | "user_owns_service_studio" | "public_get_studio_by_slug" | "public_get_services_for_studio" | "public_get_artists_for_studio" | "public_get_availability" | ... 68 more ... | "redeem_referral"'.
+lib/messaging/send.ts(117,3): error TS2322: Type 'string | number | true | { [key: string]: Json | undefined; } | Json[]' is not assignable to type 'string'.
+lib/messaging/send.ts(147,6): error TS2769: No overload matches this call.
+lib/messaging/send.ts(186,20): error TS2345: Argument of type '"send-sms"' is not assignable to parameter of type 'keyof JobPayloadMap'.
+lib/messaging/send.ts(218,6): error TS2769: No overload matches this call.
+lib/projects/mutations.ts(11,45): error TS2339: Property 'projects' does not exist on type '{ profiles: { Row: { id: string; email: string; full_name: string | null; avatar_url: string | null; is_platform_admin: boolean; created_at: string; updated_at: string; }; Insert: { id: string; email: string; ... 4 more ...; updated_at?: string; }; Update: { ...; }; Relationships: []; }; ... 64 more ...; external_ca...'.
+lib/projects/mutations.ts(12,54): error TS2339: Property 'project_references' does not exist on type '{ profiles: { Row: { id: string; email: string; full_name: string | null; avatar_url: string | null; is_platform_admin: boolean; created_at: string; updated_at: string; }; Insert: { id: string; email: string; ... 4 more ...; updated_at?: string; }; Update: { ...; }; Relationships: []; }; ... 64 more ...; external_ca...'.
+lib/projects/mutations.ts(13,58): error TS2339: Property 'project_progress_photos' does not exist on type '{ profiles: { Row: { id: string; email: string; full_name: string | null; avatar_url: string | null; is_platform_admin: boolean; created_at: string; updated_at: string; }; Insert: { id: string; email: string; ... 4 more ...; updated_at?: string; }; Update: { ...; }; Relationships: []; }; ... 64 more ...; external_ca...'.
+lib/projects/mutations.ts(26,50): error TS2339: Property 'projects' does not exist on type '{ profiles: { Row: { id: string; email: string; full_name: string | null; avatar_url: string | null; is_platform_admin: boolean; created_at: string; updated_at: string; }; Insert: { id: string; email: string; ... 4 more ...; updated_at?: string; }; Update: { ...; }; Relationships: []; }; ... 64 more ...; external_ca...'.
+lib/projects/mutations.ts(67,50): error TS2339: Property 'projects' does not exist on type '{ profiles: { Row: { id: string; email: string; full_name: string | null; avatar_url: string | null; is_platform_admin: boolean; created_at: string; updated_at: string; }; Insert: { id: string; email: string; ... 4 more ...; updated_at?: string; }; Update: { ...; }; Relationships: []; }; ... 64 more ...; external_ca...'.
+lib/projects/mutations.ts(83,13): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+lib/projects/mutations.ts(105,13): error TS2345: Argument of type '{ status: string; completed_at: string; }' is not assignable to parameter of type 'never'.
+lib/projects/mutations.ts(127,13): error TS2345: Argument of type '{ status: string; }' is not assignable to parameter of type 'never'.
+lib/projects/mutations.ts(153,15): error TS2353: Object literal may only specify known properties, and 'project_id' does not exist in type 'RejectExcessProperties<{ id?: string; studio_id?: string; client_id?: string; artist_id?: string; service_id?: string | null; location_id?: string | null; scheduled_at?: string; duration_min?: number; status?: "pending" | ... 4 more ... | "no_show"; ... 21 more ...; updated_at?: string; }, { ...; }>'.
+lib/projects/mutations.ts(174,15): error TS2353: Object literal may only specify known properties, and 'project_id' does not exist in type 'RejectExcessProperties<{ id?: string; studio_id?: string; client_id?: string; artist_id?: string; service_id?: string | null; location_id?: string | null; scheduled_at?: string; duration_min?: number; status?: "pending" | ... 4 more ... | "no_show"; ... 21 more ...; updated_at?: string; }, { ...; }>'.
+lib/projects/mutations.ts(210,6): error TS2769: No overload matches this call.
+lib/projects/mutations.ts(264,15): error TS2345: Argument of type '{ display_order: number; }' is not assignable to parameter of type 'never'.
+lib/projects/mutations.ts(303,6): error TS2769: No overload matches this call.
+lib/projects/mutations.ts(371,13): error TS2345: Argument of type '{ deposit_pool_cents: any; }' is not assignable to parameter of type 'never'.
+lib/projects/mutations.ts(372,35): error TS2339: Property 'deposit_pool_cents' does not exist on type 'never'.
+lib/projects/mutations.ts(406,30): error TS2339: Property 'deposit_applied_cents' does not exist on type 'never'.
+lib/projects/mutations.ts(407,28): error TS2339: Property 'deposit_pool_cents' does not exist on type 'never'.
+lib/projects/mutations.ts(415,15): error TS2345: Argument of type '{ deposit_applied_cents: any; }' is not assignable to parameter of type 'never'.
+lib/projects/queries.ts(5,52): error TS2339: Property 'projects' does not exist on type '{ profiles: { Row: { id: string; email: string; full_name: string | null; avatar_url: string | null; is_platform_admin: boolean; created_at: string; updated_at: string; }; Insert: { id: string; email: string; ... 4 more ...; updated_at?: string; }; Update: { ...; }; Relationships: []; }; ... 64 more ...; external_ca...'.
+lib/projects/queries.ts(6,61): error TS2339: Property 'project_references' does not exist on type '{ profiles: { Row: { id: string; email: string; full_name: string | null; avatar_url: string | null; is_platform_admin: boolean; created_at: string; updated_at: string; }; Insert: { id: string; email: string; ... 4 more ...; updated_at?: string; }; Update: { ...; }; Relationships: []; }; ... 64 more ...; external_ca...'.
+lib/projects/queries.ts(7,65): error TS2339: Property 'project_progress_photos' does not exist on type '{ profiles: { Row: { id: string; email: string; full_name: string | null; avatar_url: string | null; is_platform_admin: boolean; created_at: string; updated_at: string; }; Insert: { id: string; email: string; ... 4 more ...; updated_at?: string; }; Update: { ...; }; Relationships: []; }; ... 64 more ...; external_ca...'.
+lib/projects/queries.ts(122,48): error TS2339: Property 'id' does not exist on type 'never'.
+lib/projects/queries.ts(134,14): error TS2339: Property 'project_id' does not exist on type 'SelectQueryError<"column 'project_id' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(135,23): error TS2339: Property 'project_id' does not exist on type 'SelectQueryError<"column 'project_id' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(135,54): error TS2339: Property 'project_id' does not exist on type 'SelectQueryError<"column 'project_id' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(140,5): error TS2698: Spread types may only be created from object types.
+lib/projects/queries.ts(141,29): error TS2339: Property 'client' does not exist on type 'never'.
+lib/projects/queries.ts(141,42): error TS2339: Property 'client' does not exist on type 'never'.
+lib/projects/queries.ts(141,66): error TS2339: Property 'client' does not exist on type 'never'.
+lib/projects/queries.ts(142,37): error TS2339: Property 'primary_artist' does not exist on type 'never'.
+lib/projects/queries.ts(142,58): error TS2339: Property 'primary_artist' does not exist on type 'never'.
+lib/projects/queries.ts(142,90): error TS2339: Property 'primary_artist' does not exist on type 'never'.
+lib/projects/queries.ts(143,41): error TS2339: Property 'id' does not exist on type 'never'.
+lib/projects/queries.ts(144,36): error TS2339: Property 'deposit_pool_cents' does not exist on type 'never'.
+lib/projects/queries.ts(144,59): error TS2339: Property 'deposit_applied_cents' does not exist on type 'never'.
+lib/projects/queries.ts(201,11): error TS2345: Argument of type '"project_id"' is not assignable to parameter of type '"id" | "studio_id" | "service_id" | "artist_id" | "client_id" | "location_id" | "consent_submission_id" | "cancelled_by" | "status" | "created_at" | "updated_at" | "notes" | ... 20 more ... | "consent_signed_at"'.
+lib/projects/queries.ts(215,11): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(216,21): error TS2339: Property 'scheduled_at' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(217,23): error TS2339: Property 'session_number' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(218,15): error TS2339: Property 'status' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(219,20): error TS2339: Property 'price_cents' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(220,21): error TS2339: Property 'deposit_paid' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(221,22): error TS2339: Property 'deposit_cents' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(222,30): error TS2339: Property 'service' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(222,44): error TS2339: Property 'service' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(222,69): error TS2339: Property 'service' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(223,29): error TS2339: Property 'artist' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(223,42): error TS2339: Property 'artist' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(223,66): error TS2339: Property 'artist' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(227,5): error TS2698: Spread types may only be created from object types.
+lib/projects/queries.ts(228,29): error TS2339: Property 'client' does not exist on type 'never'.
+lib/projects/queries.ts(228,42): error TS2339: Property 'client' does not exist on type 'never'.
+lib/projects/queries.ts(228,66): error TS2339: Property 'client' does not exist on type 'never'.
+lib/projects/queries.ts(229,37): error TS2339: Property 'primary_artist' does not exist on type 'never'.
+lib/projects/queries.ts(229,58): error TS2339: Property 'primary_artist' does not exist on type 'never'.
+lib/projects/queries.ts(229,90): error TS2339: Property 'primary_artist' does not exist on type 'never'.
+lib/projects/queries.ts(307,11): error TS2345: Argument of type '"project_id"' is not assignable to parameter of type '"id" | "studio_id" | "service_id" | "artist_id" | "client_id" | "location_id" | "consent_submission_id" | "cancelled_by" | "status" | "created_at" | "updated_at" | "notes" | ... 20 more ... | "consent_signed_at"'.
+lib/projects/queries.ts(318,71): error TS2339: Property 'data' does not exist on type 'never'.
+lib/projects/queries.ts(321,19): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(322,23): error TS2339: Property 'session_number' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(323,21): error TS2339: Property 'scheduled_at' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.
+lib/projects/queries.ts(324,21): error TS2339: Property 'deposit_cents' does not exist on type 'SelectQueryError<"column 'session_number' does not exist on 'bookings'.">'.

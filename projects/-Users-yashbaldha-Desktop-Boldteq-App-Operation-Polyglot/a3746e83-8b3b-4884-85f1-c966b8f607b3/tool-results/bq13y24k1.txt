@@ -1,0 +1,2540 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-13T17:58:31.152Z",
+  "agents": {
+    "rex": {
+      "id": "rex",
+      "department": "executive",
+      "phase": null,
+      "reportsTo": null,
+      "title": "Commander",
+      "tier": "leadership",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 17.7,
+      "experiencePoints": 1773,
+      "progressToNext": 0.95,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 14.2,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 1,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 142.3,
+        "fileWords": 21805,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 2,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.92,
+          "hits": 35
+        },
+        "typescript": {
+          "score": 0.85,
+          "hits": 27
+        },
+        "nextjs": {
+          "score": 0.86,
+          "hits": 28
+        },
+        "supabase": {
+          "score": 0.96,
+          "hits": 41
+        },
+        "shopify": {
+          "score": 1,
+          "hits": 106
+        },
+        "billing": {
+          "score": 1,
+          "hits": 94
+        },
+        "auth": {
+          "score": 1,
+          "hits": 65
+        },
+        "testing": {
+          "score": 1,
+          "hits": 54
+        },
+        "design": {
+          "score": 0.93,
+          "hits": 37
+        },
+        "seo": {
+          "score": 0.78,
+          "hits": 20
+        },
+        "deployment": {
+          "score": 1,
+          "hits": 160
+        },
+        "ai": {
+          "score": 0.69,
+          "hits": 14
+        },
+        "marketing": {
+          "score": 1,
+          "hits": 51
+        },
+        "research": {
+          "score": 0.94,
+          "hits": 39
+        },
+        "debugging": {
+          "score": 1,
+          "hits": 76
+        },
+        "architecture": {
+          "score": 1,
+          "hits": 70
+        }
+      },
+      "weaknesses": [],
+      "computedAt": "2026-04-13T17:58:30.957Z"
+    },
+    "arya": {
+      "id": "arya",
+      "department": "engineering",
+      "phase": "VALIDATE",
+      "reportsTo": "rex",
+      "title": "VP Engineering",
+      "tier": "leadership",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 13.7,
+      "experiencePoints": 1372,
+      "progressToNext": 0.29,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 9.7,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 1.5,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 97.3,
+        "fileWords": 14256,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 3,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.91,
+          "hits": 34
+        },
+        "typescript": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "nextjs": {
+          "score": 0.81,
+          "hits": 23
+        },
+        "supabase": {
+          "score": 1,
+          "hits": 102
+        },
+        "shopify": {
+          "score": 1,
+          "hits": 82
+        },
+        "billing": {
+          "score": 1,
+          "hits": 142
+        },
+        "auth": {
+          "score": 1,
+          "hits": 128
+        },
+        "testing": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "design": {
+          "score": 0.94,
+          "hits": 38
+        },
+        "seo": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "deployment": {
+          "score": 1,
+          "hits": 53
+        },
+        "ai": {
+          "score": 0.84,
+          "hits": 26
+        },
+        "marketing": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "research": {
+          "score": 0.81,
+          "hits": 23
+        },
+        "debugging": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "architecture": {
+          "score": 1,
+          "hits": 103
+        }
+      },
+      "weaknesses": [
+        "debugging"
+      ],
+      "computedAt": "2026-04-13T17:58:30.977Z"
+    },
+    "koda": {
+      "id": "koda",
+      "department": "engineering",
+      "phase": "BUILD",
+      "reportsTo": "arya",
+      "title": "Lead Developer",
+      "tier": "engineer",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 6,
+      "levelTitle": "Staff",
+      "levelColor": "#a855f7",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 23.1,
+      "experiencePoints": 2311,
+      "progressToNext": 0.73,
+      "nextLevelTitle": "Distinguished",
+      "breakdown": {
+        "training": 18.6,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 2,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 186.1,
+        "fileWords": 25172,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 4,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 1,
+          "hits": 214
+        },
+        "typescript": {
+          "score": 1,
+          "hits": 136
+        },
+        "nextjs": {
+          "score": 0.93,
+          "hits": 37
+        },
+        "supabase": {
+          "score": 1,
+          "hits": 107
+        },
+        "shopify": {
+          "score": 1,
+          "hits": 202
+        },
+        "billing": {
+          "score": 1,
+          "hits": 115
+        },
+        "auth": {
+          "score": 1,
+          "hits": 84
+        },
+        "testing": {
+          "score": 0.92,
+          "hits": 35
+        },
+        "design": {
+          "score": 1,
+          "hits": 104
+        },
+        "seo": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "deployment": {
+          "score": 0.87,
+          "hits": 29
+        },
+        "ai": {
+          "score": 0.78,
+          "hits": 20
+        },
+        "marketing": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "research": {
+          "score": 0.96,
+          "hits": 41
+        },
+        "debugging": {
+          "score": 0.69,
+          "hits": 14
+        },
+        "architecture": {
+          "score": 0.53,
+          "hits": 7
+        }
+      },
+      "weaknesses": [],
+      "computedAt": "2026-04-13T17:58:30.997Z"
+    },
+    "vex": {
+      "id": "vex",
+      "department": "engineering",
+      "phase": "SHAPE",
+      "reportsTo": "koda",
+      "title": "Bug Fixer",
+      "tier": "engineer",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 4,
+      "levelTitle": "Lead",
+      "levelColor": "#3b82f6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 11.9,
+      "experiencePoints": 1189,
+      "progressToNext": 0.97,
+      "nextLevelTitle": "Principal",
+      "breakdown": {
+        "training": 8.4,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 1,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 84,
+        "fileWords": 12474,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 2,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 1,
+          "hits": 52
+        },
+        "typescript": {
+          "score": 0.69,
+          "hits": 14
+        },
+        "nextjs": {
+          "score": 0.71,
+          "hits": 15
+        },
+        "supabase": {
+          "score": 1,
+          "hits": 51
+        },
+        "shopify": {
+          "score": 0.93,
+          "hits": 37
+        },
+        "billing": {
+          "score": 0.99,
+          "hits": 48
+        },
+        "auth": {
+          "score": 1,
+          "hits": 62
+        },
+        "testing": {
+          "score": 0.77,
+          "hits": 19
+        },
+        "design": {
+          "score": 0.78,
+          "hits": 20
+        },
+        "deployment": {
+          "score": 1,
+          "hits": 72
+        },
+        "ai": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "marketing": {
+          "score": 0.28,
+          "hits": 2
+        },
+        "research": {
+          "score": 0.74,
+          "hits": 17
+        },
+        "debugging": {
+          "score": 1,
+          "hits": 167
+        }
+      },
+      "weaknesses": [
+        "marketing"
+      ],
+      "computedAt": "2026-04-13T17:58:31.007Z"
+    },
+    "sage": {
+      "id": "sage",
+      "department": "engineering",
+      "phase": "SHAPE",
+      "reportsTo": "arya",
+      "title": "Lead Reviewer",
+      "tier": "engineer",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 14.5,
+      "experiencePoints": 1454,
+      "progressToNext": 0.42,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 10,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 2,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 100.4,
+        "fileWords": 15695,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 4,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 1,
+          "hits": 57
+        },
+        "typescript": {
+          "score": 0.87,
+          "hits": 29
+        },
+        "nextjs": {
+          "score": 0.79,
+          "hits": 21
+        },
+        "supabase": {
+          "score": 0.99,
+          "hits": 48
+        },
+        "shopify": {
+          "score": 1,
+          "hits": 87
+        },
+        "billing": {
+          "score": 1,
+          "hits": 95
+        },
+        "auth": {
+          "score": 1,
+          "hits": 53
+        },
+        "testing": {
+          "score": 0.86,
+          "hits": 28
+        },
+        "design": {
+          "score": 0.9,
+          "hits": 33
+        },
+        "seo": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "deployment": {
+          "score": 1,
+          "hits": 50
+        },
+        "ai": {
+          "score": 0.64,
+          "hits": 11
+        },
+        "marketing": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "research": {
+          "score": 0.82,
+          "hits": 24
+        },
+        "debugging": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "architecture": {
+          "score": 0.71,
+          "hits": 15
+        }
+      },
+      "weaknesses": [],
+      "computedAt": "2026-04-13T17:58:31.017Z"
+    },
+    "luna": {
+      "id": "luna",
+      "department": "engineering",
+      "phase": "BUILD",
+      "reportsTo": "sage",
+      "title": "Test Engineer",
+      "tier": "engineer",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 14,
+      "experiencePoints": 1400,
+      "progressToNext": 0.33,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 9.5,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 2,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 95,
+        "fileWords": 13222,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 4,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.86,
+          "hits": 28
+        },
+        "typescript": {
+          "score": 1,
+          "hits": 61
+        },
+        "nextjs": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "supabase": {
+          "score": 0.79,
+          "hits": 21
+        },
+        "shopify": {
+          "score": 0.89,
+          "hits": 32
+        },
+        "billing": {
+          "score": 1,
+          "hits": 75
+        },
+        "auth": {
+          "score": 1,
+          "hits": 59
+        },
+        "testing": {
+          "score": 1,
+          "hits": 298
+        },
+        "design": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "seo": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "deployment": {
+          "score": 0.64,
+          "hits": 11
+        },
+        "ai": {
+          "score": 0.53,
+          "hits": 7
+        },
+        "marketing": {
+          "score": 0.28,
+          "hits": 2
+        },
+        "research": {
+          "score": 0.92,
+          "hits": 35
+        },
+        "debugging": {
+          "score": 0.92,
+          "hits": 35
+        }
+      },
+      "weaknesses": [
+        "seo",
+        "marketing"
+      ],
+      "computedAt": "2026-04-13T17:58:31.026Z"
+    },
+    "riko": {
+      "id": "riko",
+      "department": "engineering",
+      "phase": "VALIDATE",
+      "reportsTo": "arya",
+      "title": "Project Setup Specialist",
+      "tier": "engineer",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 16.5,
+      "experiencePoints": 1650,
+      "progressToNext": 0.75,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 12,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 2,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 120.1,
+        "fileWords": 15792,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 4,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 1,
+          "hits": 141
+        },
+        "typescript": {
+          "score": 1,
+          "hits": 55
+        },
+        "nextjs": {
+          "score": 0.9,
+          "hits": 33
+        },
+        "supabase": {
+          "score": 1,
+          "hits": 93
+        },
+        "shopify": {
+          "score": 1,
+          "hits": 130
+        },
+        "billing": {
+          "score": 1,
+          "hits": 100
+        },
+        "auth": {
+          "score": 1,
+          "hits": 85
+        },
+        "testing": {
+          "score": 1,
+          "hits": 166
+        },
+        "design": {
+          "score": 1,
+          "hits": 79
+        },
+        "seo": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "deployment": {
+          "score": 1,
+          "hits": 116
+        },
+        "ai": {
+          "score": 0.64,
+          "hits": 11
+        },
+        "marketing": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "research": {
+          "score": 0.8,
+          "hits": 22
+        },
+        "debugging": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "architecture": {
+          "score": 0.93,
+          "hits": 37
+        }
+      },
+      "weaknesses": [],
+      "computedAt": "2026-04-13T17:58:31.037Z"
+    },
+    "bolt": {
+      "id": "bolt",
+      "department": "engineering",
+      "phase": "LAUNCH",
+      "reportsTo": "arya",
+      "title": "DevOps Lead",
+      "tier": "engineer",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 13.4,
+      "experiencePoints": 1338,
+      "progressToNext": 0.23,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 8.9,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 2,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 88.8,
+        "fileWords": 12385,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 4,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "typescript": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "nextjs": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "supabase": {
+          "score": 0.94,
+          "hits": 38
+        },
+        "shopify": {
+          "score": 1,
+          "hits": 116
+        },
+        "billing": {
+          "score": 1,
+          "hits": 65
+        },
+        "auth": {
+          "score": 0.87,
+          "hits": 29
+        },
+        "testing": {
+          "score": 1,
+          "hits": 96
+        },
+        "design": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "seo": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "deployment": {
+          "score": 1,
+          "hits": 285
+        },
+        "ai": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "marketing": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "research": {
+          "score": 0.69,
+          "hits": 14
+        },
+        "debugging": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "architecture": {
+          "score": 0.18,
+          "hits": 1
+        }
+      },
+      "weaknesses": [
+        "architecture"
+      ],
+      "computedAt": "2026-04-13T17:58:31.046Z"
+    },
+    "hawk": {
+      "id": "hawk",
+      "department": "engineering",
+      "phase": "LAUNCH",
+      "reportsTo": "bolt",
+      "title": "Ops Monitor",
+      "tier": "engineer",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 4,
+      "levelTitle": "Lead",
+      "levelColor": "#3b82f6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 10.8,
+      "experiencePoints": 1078,
+      "progressToNext": 0.7,
+      "nextLevelTitle": "Principal",
+      "breakdown": {
+        "training": 6.8,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 1.5,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 67.9,
+        "fileWords": 9928,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 3,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.28,
+          "hits": 2
+        },
+        "typescript": {
+          "score": 0.64,
+          "hits": 11
+        },
+        "nextjs": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "supabase": {
+          "score": 0.85,
+          "hits": 27
+        },
+        "shopify": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "billing": {
+          "score": 0.82,
+          "hits": 24
+        },
+        "auth": {
+          "score": 0.78,
+          "hits": 20
+        },
+        "testing": {
+          "score": 0.77,
+          "hits": 19
+        },
+        "design": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "seo": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "deployment": {
+          "score": 1,
+          "hits": 105
+        },
+        "ai": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "marketing": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "research": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "debugging": {
+          "score": 0.97,
+          "hits": 44
+        }
+      },
+      "weaknesses": [
+        "react",
+        "marketing"
+      ],
+      "computedAt": "2026-04-13T17:58:31.054Z"
+    },
+    "nova": {
+      "id": "nova",
+      "department": "research",
+      "phase": "BUILD",
+      "reportsTo": "rex",
+      "title": "VP Research",
+      "tier": "leadership",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 12.6,
+      "experiencePoints": 1263,
+      "progressToNext": 0.11,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 9.6,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0.5,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 96.4,
+        "fileWords": 14160,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 1,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "typescript": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "nextjs": {
+          "score": 0.53,
+          "hits": 7
+        },
+        "supabase": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "shopify": {
+          "score": 1,
+          "hits": 76
+        },
+        "billing": {
+          "score": 1,
+          "hits": 61
+        },
+        "auth": {
+          "score": 0.53,
+          "hits": 7
+        },
+        "testing": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "design": {
+          "score": 0.67,
+          "hits": 13
+        },
+        "seo": {
+          "score": 0.64,
+          "hits": 11
+        },
+        "deployment": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "marketing": {
+          "score": 0.81,
+          "hits": 23
+        },
+        "research": {
+          "score": 0.96,
+          "hits": 42
+        },
+        "debugging": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "architecture": {
+          "score": 0.67,
+          "hits": 13
+        }
+      },
+      "weaknesses": [
+        "debugging"
+      ],
+      "computedAt": "2026-04-13T17:58:31.063Z"
+    },
+    "scout": {
+      "id": "scout",
+      "department": "research",
+      "phase": "SHAPE",
+      "reportsTo": "nova",
+      "title": "Idea Validator",
+      "tier": "analyst",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 3,
+      "levelTitle": "Senior",
+      "levelColor": "#10b981",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 6.1,
+      "experiencePoints": 608,
+      "progressToNext": 0.36,
+      "nextLevelTitle": "Lead",
+      "breakdown": {
+        "training": 3.6,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 35.9,
+        "fileWords": 5695,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.28,
+          "hits": 2
+        },
+        "nextjs": {
+          "score": 0.28,
+          "hits": 2
+        },
+        "supabase": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "shopify": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "billing": {
+          "score": 0.74,
+          "hits": 17
+        },
+        "auth": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "testing": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "design": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "seo": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "deployment": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "ai": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "research": {
+          "score": 1,
+          "hits": 71
+        },
+        "architecture": {
+          "score": 0.41,
+          "hits": 4
+        }
+      },
+      "weaknesses": [
+        "react",
+        "nextjs",
+        "ai"
+      ],
+      "computedAt": "2026-04-13T17:58:31.068Z"
+    },
+    "atlas": {
+      "id": "atlas",
+      "department": "research",
+      "phase": "VALIDATE",
+      "reportsTo": "nova",
+      "title": "Market Sizer",
+      "tier": "analyst",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 3,
+      "levelTitle": "Senior",
+      "levelColor": "#10b981",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 5.4,
+      "experiencePoints": 536,
+      "progressToNext": 0.12,
+      "nextLevelTitle": "Lead",
+      "breakdown": {
+        "training": 2.9,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 28.6,
+        "fileWords": 4415,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "supabase": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "shopify": {
+          "score": 0.67,
+          "hits": 13
+        },
+        "billing": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "auth": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "testing": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "design": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "deployment": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "research": {
+          "score": 0.92,
+          "hits": 36
+        },
+        "architecture": {
+          "score": 0.28,
+          "hits": 2
+        }
+      },
+      "weaknesses": [
+        "react",
+        "architecture"
+      ],
+      "computedAt": "2026-04-13T17:58:31.072Z"
+    },
+    "ledger": {
+      "id": "ledger",
+      "department": "research",
+      "phase": "VALIDATE",
+      "reportsTo": "nova",
+      "title": "Pricing Strategist",
+      "tier": "analyst",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 3,
+      "levelTitle": "Senior",
+      "levelColor": "#10b981",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 6,
+      "experiencePoints": 602,
+      "progressToNext": 0.34,
+      "nextLevelTitle": "Lead",
+      "breakdown": {
+        "training": 3.5,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 35.2,
+        "fileWords": 5611,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "nextjs": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "supabase": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "shopify": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "billing": {
+          "score": 1,
+          "hits": 84
+        },
+        "auth": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "testing": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "design": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "seo": {
+          "score": 0.28,
+          "hits": 2
+        },
+        "deployment": {
+          "score": 0.71,
+          "hits": 15
+        },
+        "ai": {
+          "score": 0.28,
+          "hits": 2
+        },
+        "marketing": {
+          "score": 0.77,
+          "hits": 19
+        },
+        "research": {
+          "score": 0.79,
+          "hits": 21
+        },
+        "architecture": {
+          "score": 0.56,
+          "hits": 8
+        }
+      },
+      "weaknesses": [
+        "nextjs",
+        "seo",
+        "ai"
+      ],
+      "computedAt": "2026-04-13T17:58:31.077Z"
+    },
+    "orbit": {
+      "id": "orbit",
+      "department": "research",
+      "phase": "MEASURE",
+      "reportsTo": "nova",
+      "title": "Metrics Architect",
+      "tier": "analyst",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 3,
+      "levelTitle": "Senior",
+      "levelColor": "#10b981",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 6.2,
+      "experiencePoints": 623,
+      "progressToNext": 0.41,
+      "nextLevelTitle": "Lead",
+      "breakdown": {
+        "training": 3.7,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 37.4,
+        "fileWords": 5501,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "nextjs": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "supabase": {
+          "score": 0.64,
+          "hits": 11
+        },
+        "shopify": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "billing": {
+          "score": 0.83,
+          "hits": 25
+        },
+        "auth": {
+          "score": 0.67,
+          "hits": 13
+        },
+        "testing": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "design": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "seo": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "deployment": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "marketing": {
+          "score": 0.66,
+          "hits": 12
+        },
+        "research": {
+          "score": 0.69,
+          "hits": 14
+        },
+        "architecture": {
+          "score": 0.46,
+          "hits": 5
+        }
+      },
+      "weaknesses": [
+        "seo"
+      ],
+      "computedAt": "2026-04-13T17:58:31.082Z"
+    },
+    "pulse": {
+      "id": "pulse",
+      "department": "research",
+      "phase": "MEASURE",
+      "reportsTo": "orbit",
+      "title": "User Researcher",
+      "tier": "analyst",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 3,
+      "levelTitle": "Senior",
+      "levelColor": "#10b981",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 6.8,
+      "experiencePoints": 684,
+      "progressToNext": 0.61,
+      "nextLevelTitle": "Lead",
+      "breakdown": {
+        "training": 3.8,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0.5,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 38.4,
+        "fileWords": 6096,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 1,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "supabase": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "shopify": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "billing": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "auth": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "testing": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "design": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "deployment": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "marketing": {
+          "score": 0.53,
+          "hits": 7
+        },
+        "research": {
+          "score": 1,
+          "hits": 65
+        },
+        "debugging": {
+          "score": 0.18,
+          "hits": 1
+        }
+      },
+      "weaknesses": [
+        "debugging"
+      ],
+      "computedAt": "2026-04-13T17:58:31.088Z"
+    },
+    "verdict": {
+      "id": "verdict",
+      "department": "research",
+      "phase": "DECIDE",
+      "reportsTo": "nova",
+      "title": "Portfolio Decider",
+      "tier": "leadership",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 3,
+      "levelTitle": "Senior",
+      "levelColor": "#10b981",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 6.7,
+      "experiencePoints": 669,
+      "progressToNext": 0.56,
+      "nextLevelTitle": "Lead",
+      "breakdown": {
+        "training": 3.7,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0.5,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 37,
+        "fileWords": 5936,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 1,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "supabase": {
+          "score": 0.53,
+          "hits": 7
+        },
+        "shopify": {
+          "score": 0.66,
+          "hits": 12
+        },
+        "billing": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "auth": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "testing": {
+          "score": 0.28,
+          "hits": 2
+        },
+        "design": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "seo": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "deployment": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "marketing": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "research": {
+          "score": 0.85,
+          "hits": 27
+        },
+        "debugging": {
+          "score": 0.56,
+          "hits": 8
+        }
+      },
+      "weaknesses": [
+        "testing",
+        "seo"
+      ],
+      "computedAt": "2026-04-13T17:58:31.093Z"
+    },
+    "quill": {
+      "id": "quill",
+      "department": "creative",
+      "phase": "BUILD",
+      "reportsTo": "rex",
+      "title": "VP Creative",
+      "tier": "leadership",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "pip",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 13.5,
+      "experiencePoints": 1346,
+      "progressToNext": 0.24,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 9.5,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 1.5,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 94.7,
+        "fileWords": 14223,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 3,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.85,
+          "hits": 27
+        },
+        "typescript": {
+          "score": 0.66,
+          "hits": 12
+        },
+        "nextjs": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "supabase": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "shopify": {
+          "score": 0.99,
+          "hits": 47
+        },
+        "billing": {
+          "score": 1,
+          "hits": 59
+        },
+        "auth": {
+          "score": 0.75,
+          "hits": 18
+        },
+        "testing": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "design": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "seo": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "deployment": {
+          "score": 0.53,
+          "hits": 7
+        },
+        "ai": {
+          "score": 0.28,
+          "hits": 2
+        },
+        "marketing": {
+          "score": 1,
+          "hits": 182
+        },
+        "research": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "debugging": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "architecture": {
+          "score": 0.18,
+          "hits": 1
+        }
+      },
+      "weaknesses": [
+        "ai",
+        "architecture"
+      ],
+      "computedAt": "2026-04-13T17:58:31.102Z",
+      "lastPromoted": "2026-04-13T17:57:26.174Z",
+      "lastReview": "2026-04-13T17:57:26.174Z",
+      "updatedAt": "2026-04-13T17:57:51.075Z",
+      "pip": {
+        "openedAt": "2026-04-13T17:57:51.074Z",
+        "deadline": "2026-04-27T17:57:51.074Z",
+        "reason": "Principal",
+        "openedBy": "cadence"
+      }
+    },
+    "vega": {
+      "id": "vega",
+      "department": "creative",
+      "phase": "BUILD",
+      "reportsTo": "quill",
+      "title": "UI/UX Designer",
+      "tier": "creative",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 13.5,
+      "experiencePoints": 1351,
+      "progressToNext": 0.25,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 9,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 2,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 90.1,
+        "fileWords": 12847,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 4,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.96,
+          "hits": 41
+        },
+        "typescript": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "nextjs": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "supabase": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "shopify": {
+          "score": 1,
+          "hits": 104
+        },
+        "billing": {
+          "score": 0.78,
+          "hits": 20
+        },
+        "auth": {
+          "score": 0.59,
+          "hits": 9
+        },
+        "testing": {
+          "score": 0.82,
+          "hits": 24
+        },
+        "design": {
+          "score": 1,
+          "hits": 130
+        },
+        "seo": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "deployment": {
+          "score": 0.75,
+          "hits": 18
+        },
+        "ai": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "marketing": {
+          "score": 0.71,
+          "hits": 15
+        },
+        "research": {
+          "score": 0.8,
+          "hits": 22
+        },
+        "debugging": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "architecture": {
+          "score": 0.75,
+          "hits": 18
+        }
+      },
+      "weaknesses": [
+        "ai"
+      ],
+      "computedAt": "2026-04-13T17:58:31.110Z"
+    },
+    "zeph": {
+      "id": "zeph",
+      "department": "creative",
+      "phase": "BUILD",
+      "reportsTo": "quill",
+      "title": "SEO Specialist",
+      "tier": "creative",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 4,
+      "levelTitle": "Lead",
+      "levelColor": "#3b82f6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 8.5,
+      "experiencePoints": 846,
+      "progressToNext": 0.12,
+      "nextLevelTitle": "Principal",
+      "breakdown": {
+        "training": 5,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 1,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 49.7,
+        "fileWords": 7230,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 2,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.53,
+          "hits": 7
+        },
+        "typescript": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "nextjs": {
+          "score": 0.66,
+          "hits": 12
+        },
+        "supabase": {
+          "score": 0.66,
+          "hits": 12
+        },
+        "shopify": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "billing": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "auth": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "testing": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "design": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "seo": {
+          "score": 1,
+          "hits": 173
+        },
+        "deployment": {
+          "score": 0.78,
+          "hits": 20
+        },
+        "marketing": {
+          "score": 0.67,
+          "hits": 13
+        },
+        "research": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "debugging": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "architecture": {
+          "score": 0.18,
+          "hits": 1
+        }
+      },
+      "weaknesses": [
+        "architecture"
+      ],
+      "computedAt": "2026-04-13T17:58:31.117Z"
+    },
+    "echo": {
+      "id": "echo",
+      "department": "growth",
+      "phase": "LAUNCH",
+      "reportsTo": "rex",
+      "title": "VP Growth",
+      "tier": "leadership",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 3,
+      "levelTitle": "Senior",
+      "levelColor": "#10b981",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 7.3,
+      "experiencePoints": 731,
+      "progressToNext": 0.77,
+      "nextLevelTitle": "Lead",
+      "breakdown": {
+        "training": 4.3,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0.5,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 43.2,
+        "fileWords": 6976,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 1,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.53,
+          "hits": 7
+        },
+        "typescript": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "supabase": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "shopify": {
+          "score": 0.78,
+          "hits": 20
+        },
+        "billing": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "auth": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "testing": {
+          "score": 0.5,
+          "hits": 6
+        },
+        "design": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "seo": {
+          "score": 0.74,
+          "hits": 17
+        },
+        "deployment": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "marketing": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "research": {
+          "score": 0.82,
+          "hits": 24
+        },
+        "debugging": {
+          "score": 0.18,
+          "hits": 1
+        }
+      },
+      "weaknesses": [
+        "debugging"
+      ],
+      "computedAt": "2026-04-13T17:58:31.123Z"
+    },
+    "harvest": {
+      "id": "harvest",
+      "department": "growth",
+      "phase": null,
+      "reportsTo": "echo",
+      "title": "Market Intelligence Scraper",
+      "tier": "analyst",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 2,
+      "levelTitle": "Mid",
+      "levelColor": "#34d399",
+      "canMentor": false,
+      "canShipProd": true,
+      "yearsOfExperience": 3.2,
+      "experiencePoints": 321,
+      "progressToNext": 0.1,
+      "nextLevelTitle": "Senior",
+      "breakdown": {
+        "training": 0.7,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 7.1,
+        "fileWords": 1017,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "shopify": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "auth": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "testing": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "ai": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "research": {
+          "score": 0.28,
+          "hits": 2
+        }
+      },
+      "weaknesses": [
+        "shopify",
+        "ai",
+        "research"
+      ],
+      "computedAt": "2026-04-13T17:58:31.127Z"
+    },
+    "forge": {
+      "id": "forge",
+      "department": "hr",
+      "phase": null,
+      "reportsTo": "cadence",
+      "title": "Agent Architect / Hiring Specialist",
+      "role": "hiring-specialist",
+      "tier": "leadership",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 2,
+      "levelTitle": "Mid",
+      "levelColor": "#34d399",
+      "canMentor": false,
+      "canShipProd": true,
+      "yearsOfExperience": 3.2,
+      "experiencePoints": 316,
+      "progressToNext": 0.08,
+      "nextLevelTitle": "Senior",
+      "breakdown": {
+        "training": 0.7,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 6.6,
+        "fileWords": 970,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "ai": {
+          "score": 0.18,
+          "hits": 1
+        }
+      },
+      "weaknesses": [
+        "ai"
+      ],
+      "computedAt": "2026-04-13T17:58:31.130Z"
+    },
+    "tutor": {
+      "id": "tutor",
+      "department": "hr",
+      "phase": null,
+      "reportsTo": "cadence",
+      "title": "Bulk Training Lead",
+      "role": "bulk-trainer",
+      "tier": "leadership",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 2,
+      "levelTitle": "Mid",
+      "levelColor": "#34d399",
+      "canMentor": false,
+      "canShipProd": true,
+      "yearsOfExperience": 3.1,
+      "experiencePoints": 314,
+      "progressToNext": 0.07,
+      "nextLevelTitle": "Senior",
+      "breakdown": {
+        "training": 0.6,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 6.4,
+        "fileWords": 942,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "nextjs": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "supabase": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "auth": {
+          "score": 0.18,
+          "hits": 1
+        }
+      },
+      "weaknesses": [
+        "react",
+        "nextjs",
+        "supabase",
+        "auth"
+      ],
+      "computedAt": "2026-04-13T17:58:31.133Z"
+    },
+    "mira": {
+      "id": "mira",
+      "department": "hr",
+      "phase": "LAUNCH",
+      "reportsTo": "cadence",
+      "title": "Memory Keeper",
+      "role": "memory-keeper",
+      "tier": "analyst",
+      "hiredAt": "2025-09-01T00:00:00Z",
+      "status": "active",
+      "level": 5,
+      "levelTitle": "Principal",
+      "levelColor": "#8b5cf6",
+      "canMentor": true,
+      "canShipProd": true,
+      "yearsOfExperience": 13,
+      "experiencePoints": 1304,
+      "progressToNext": 0.17,
+      "nextLevelTitle": "Staff",
+      "breakdown": {
+        "training": 7,
+        "runs": 0,
+        "tenure": 2.5,
+        "patterns": 3.5,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 70.4,
+        "fileWords": 10090,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 224.7,
+        "patternsContributed": 7,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "typescript": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "nextjs": {
+          "score": 0.72,
+          "hits": 16
+        },
+        "supabase": {
+          "score": 0.98,
+          "hits": 45
+        },
+        "shopify": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "billing": {
+          "score": 0.74,
+          "hits": 17
+        },
+        "auth": {
+          "score": 1,
+          "hits": 50
+        },
+        "testing": {
+          "score": 0.61,
+          "hits": 10
+        },
+        "design": {
+          "score": 0.46,
+          "hits": 5
+        },
+        "seo": {
+          "score": 0.64,
+          "hits": 11
+        },
+        "deployment": {
+          "score": 0.86,
+          "hits": 28
+        },
+        "ai": {
+          "score": 0.53,
+          "hits": 7
+        },
+        "marketing": {
+          "score": 0.56,
+          "hits": 8
+        },
+        "research": {
+          "score": 0.75,
+          "hits": 18
+        },
+        "debugging": {
+          "score": 0.86,
+          "hits": 28
+        },
+        "architecture": {
+          "score": 0.67,
+          "hits": 13
+        }
+      },
+      "weaknesses": [
+        "react"
+      ],
+      "computedAt": "2026-04-13T17:58:31.142Z"
+    },
+    "cadence": {
+      "id": "cadence",
+      "department": "hr",
+      "phase": null,
+      "reportsTo": "rex",
+      "title": "Head of People",
+      "role": "hr-director",
+      "tier": "leadership",
+      "hiredAt": "2026-04-11T00:00:00Z",
+      "status": "active",
+      "level": 0,
+      "levelTitle": "Trainee",
+      "levelColor": "#9ca3af",
+      "canMentor": false,
+      "canShipProd": false,
+      "yearsOfExperience": 0.6,
+      "experiencePoints": 60,
+      "progressToNext": 0.6,
+      "nextLevelTitle": "Junior",
+      "breakdown": {
+        "training": 0.6,
+        "runs": 0,
+        "tenure": 0,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 5.7,
+        "fileWords": 898,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 2.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {},
+      "weaknesses": [],
+      "computedAt": "2026-04-13T17:58:31.146Z"
+    },
+    "roster": {
+      "id": "roster",
+      "department": "hr",
+      "phase": null,
+      "reportsTo": "cadence",
+      "title": "Registry & Records Keeper",
+      "role": "registry-keeper",
+      "tier": "leadership",
+      "hiredAt": "2026-04-11T00:00:00Z",
+      "status": "active",
+      "level": 0,
+      "levelTitle": "Trainee",
+      "levelColor": "#9ca3af",
+      "canMentor": false,
+      "canShipProd": false,
+      "yearsOfExperience": 0.6,
+      "experiencePoints": 57,
+      "progressToNext": 0.57,
+      "nextLevelTitle": "Junior",
+      "breakdown": {
+        "training": 0.5,
+        "runs": 0,
+        "tenure": 0,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 5.4,
+        "fileWords": 838,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 2.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "react": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "shopify": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "billing": {
+          "score": 0.35,
+          "hits": 3
+        },
+        "deployment": {
+          "score": 0.18,
+          "hits": 1
+        }
+      },
+      "weaknesses": [
+        "react",
+        "shopify",
+        "deployment"
+      ],
+      "computedAt": "2026-04-13T17:58:31.149Z"
+    },
+    "witness": {
+      "id": "witness",
+      "department": "hr",
+      "phase": null,
+      "reportsTo": "cadence",
+      "title": "Accountability & Performance",
+      "role": "accountability-tracker",
+      "tier": "analyst",
+      "hiredAt": "2026-04-11T00:00:00Z",
+      "status": "active",
+      "level": 0,
+      "levelTitle": "Trainee",
+      "levelColor": "#9ca3af",
+      "canMentor": false,
+      "canShipProd": false,
+      "yearsOfExperience": 0.6,
+      "experiencePoints": 59,
+      "progressToNext": 0.59,
+      "nextLevelTitle": "Junior",
+      "breakdown": {
+        "training": 0.6,
+        "runs": 0,
+        "tenure": 0,
+        "patterns": 0,
+        "success": 0,
+        "antipatterns": 0
+      },
+      "stats": {
+        "fileSizeKb": 5.5,
+        "fileWords": 738,
+        "totalRuns": 0,
+        "successRuns": 0,
+        "failedRuns": 0,
+        "successRate": 0,
+        "avgDurationMs": 0,
+        "lastRunAt": null,
+        "ageDays": 2.7,
+        "patternsContributed": 0,
+        "antipatternsTriggered": 0
+      },
+      "skills": {
+        "typescript": {
+          "score": 0.18,
+          "hits": 1
+        },
+        "research": {
+          "score": 0.41,
+          "hits": 4
+        },
+        "debugging": {
+          "score": 0.35,
+          "hits": 3
+        }
+      },
+      "weaknesses": [
+        "typescript"
+      ],
+      "computedAt": "2026-04-13T17:58:31.152Z"
+    }
+  }
+}

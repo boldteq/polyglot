@@ -1,0 +1,934 @@
+-- =============================================================
+-- InkOS Sprint 4 — Billing & Deposits Layer
+-- Migration: 20260415000007_billing_deposits.sql
+-- Created: 2026-04-15
+--
+-- Rollback:
+--   DROP TRIGGER IF EXISTS on_booking_inserted_meter     ON public.bookings     CASCADE;
+--   DROP TRIGGER IF EXISTS on_artist_active_meter        ON public.artists      CASCADE;
+--   DROP TRIGGER IF EXISTS on_location_inserted_meter    ON public.locations    CASCADE;
+--   DROP FUNCTION IF EXISTS public.check_feature_access(uuid, text)               CASCADE;
+--   DROP FUNCTION IF EXISTS public.get_billing_summary(uuid)                      CASCADE;
+--   DROP FUNCTION IF EXISTS public.get_studio_subscription(uuid)                  CASCADE;
+--   DROP FUNCTION IF EXISTS public.increment_usage_meter(uuid, text, int)         CASCADE;
+--   DROP FUNCTION IF EXISTS public.handle_booking_meter()                         CASCADE;
+--   DROP FUNCTION IF EXISTS public.handle_artist_meter()                          CASCADE;
+--   DROP FUNCTION IF EXISTS public.handle_location_meter()                        CASCADE;
+--   DROP TABLE IF EXISTS public.refund_requests  CASCADE;
+--   DROP TABLE IF EXISTS public.feature_flags    CASCADE;
+--   DROP TABLE IF EXISTS public.usage_meters     CASCADE;
+--   DROP TABLE IF EXISTS public.payments         CASCADE;
+--   DROP TABLE IF EXISTS public.invoices         CASCADE;
+--   DROP TABLE IF EXISTS public.plans            CASCADE;
+--   ALTER TABLE public.subscriptions
+--     DROP COLUMN IF EXISTS billing_cycle,
+--     DROP COLUMN IF EXISTS trial_start,
+--     DROP COLUMN IF EXISTS trial_end,
+--     DROP COLUMN IF EXISTS current_period_start,
+--     DROP COLUMN IF EXISTS cancel_at_period_end,
+--     DROP COLUMN IF EXISTS cancelled_at,
+--     DROP COLUMN IF EXISTS price_cents,
+--     DROP COLUMN IF EXISTS currency,
+--     DROP COLUMN IF EXISTS quantity,
+--     DROP COLUMN IF EXISTS metadata;
+--   ALTER TABLE public.bookings
+--     DROP COLUMN IF EXISTS balance_payment_id,
+--     DROP COLUMN IF EXISTS balance_paid,
+--     DROP COLUMN IF EXISTS balance_paid_at,
+--     DROP COLUMN IF EXISTS total_paid_cents;
+--
+-- NOTE: CREATE INDEX (not CONCURRENTLY) is intentional — migrations run
+-- inside a transaction; CONCURRENTLY is not permitted inside transactions.
+-- These are new tables/columns with no live traffic, so plain CREATE INDEX
+-- is safe and instantaneous.
+-- =============================================================
+
+-- =============================================================
+-- SECTION 1 — EXTEND subscriptions TABLE
+-- =============================================================
+
+-- billing_cycle: monthly vs annual
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS billing_cycle text NOT NULL DEFAULT 'monthly'
+    CHECK (billing_cycle IN ('monthly', 'annual'));
+
+-- trial window
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS trial_start timestamptz;
+
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS trial_end timestamptz;
+
+-- period tracking (current_period_end already exists from bootstrap;
+-- current_period_start is new)
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS current_period_start timestamptz;
+
+-- cancel flag
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS cancel_at_period_end boolean NOT NULL DEFAULT false;
+
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS cancelled_at timestamptz;
+
+-- pricing snapshot at time of subscription
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS price_cents int NOT NULL DEFAULT 0;
+
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS currency text NOT NULL DEFAULT 'USD';
+
+-- per-seat quantity (future enterprise multi-seat)
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS quantity int NOT NULL DEFAULT 1;
+
+-- catch-all for Dodo extra fields
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}';
+
+-- Composite index: most common lookup — studio + subscription status
+CREATE INDEX IF NOT EXISTS idx_subscriptions_studio_status
+  ON public.subscriptions(studio_id, status);
+
+-- Unique index on dodo_subscription_id (already exists from bootstrap as a constraint;
+-- guard with IF NOT EXISTS to stay idempotent)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_dodo_subscription_id
+  ON public.subscriptions(dodo_subscription_id)
+  WHERE dodo_subscription_id IS NOT NULL;
+
+-- =============================================================
+-- SECTION 2 — plans TABLE (global pricing catalog)
+-- =============================================================
+-- Rollback: DROP TABLE IF EXISTS public.plans CASCADE;
+
+CREATE TABLE IF NOT EXISTS public.plans (
+  id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tier                text        NOT NULL CHECK (tier IN ('solo', 'studio', 'pro', 'enterprise')),
+  billing_cycle       text        NOT NULL CHECK (billing_cycle IN ('monthly', 'annual')),
+  dodo_product_id     text        NOT NULL,         -- placeholder, resolved from env at runtime
+  display_name        text        NOT NULL,
+  price_cents         int         NOT NULL,
+  currency            text        NOT NULL DEFAULT 'USD',
+  max_artists         int,                           -- null = unlimited
+  max_locations       int,                           -- null = unlimited
+  sms_monthly_quota   int,                           -- null = unlimited
+  ai_generations_quota int,                          -- null = unlimited; null on Solo/Studio
+  features            jsonb       NOT NULL DEFAULT '[]',  -- array of feature-key strings
+  sort_order          int         NOT NULL DEFAULT 0,
+  is_active           boolean     NOT NULL DEFAULT true,
+  created_at          timestamptz NOT NULL DEFAULT now(),
+  updated_at          timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tier, billing_cycle)
+);
+
+CREATE TRIGGER set_plans_updated_at
+  BEFORE UPDATE ON public.plans
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- No FK indexes needed: plans is a catalog table, queried by tier/billing_cycle
+CREATE INDEX idx_plans_tier_cycle ON public.plans(tier, billing_cycle);
+CREATE INDEX idx_plans_is_active   ON public.plans(is_active) WHERE is_active = true;
+
+ALTER TABLE public.plans ENABLE ROW LEVEL SECURITY;
+
+-- Public pricing catalog — anon + authenticated can read, no one writes via client
+CREATE POLICY "plans_public_select"
+  ON public.plans FOR SELECT
+  USING (true);
+
+-- =============================================================
+-- SECTION 2a — SEED plans (8 rows: 4 tiers × 2 cycles)
+-- =============================================================
+-- Prices: Solo $29/mo → $23/yr | Studio $59/mo → $47/yr
+--         Pro $99/mo → $79/yr  | Enterprise $199/mo → $159/yr
+-- dodo_product_id is a placeholder resolved to a real Dodo product ID
+-- at runtime via environment variable mapping in lib/dodo/products.ts.
+-- =============================================================
+
+INSERT INTO public.plans
+  (tier, billing_cycle, dodo_product_id, display_name, price_cents, currency,
+   max_artists, max_locations, sms_monthly_quota, ai_generations_quota,
+   features, sort_order, is_active)
+VALUES
+  -- SOLO monthly
+  ('solo', 'monthly',
+   'DODO_PRODUCT_SOLO_MONTHLY',
+   'Solo Monthly',
+   2900, 'USD',
+   1, 1, 200, NULL,
+   '["booking","calendar","public_booking_page","digital_consent","client_crm","dodo_payments"]'::jsonb,
+   10, true),
+
+  -- SOLO annual
+  ('solo', 'annual',
+   'DODO_PRODUCT_SOLO_ANNUAL',
+   'Solo Annual',
+   2300, 'USD',
+   1, 1, 200, NULL,
+   '["booking","calendar","public_booking_page","digital_consent","client_crm","dodo_payments"]'::jsonb,
+   11, true),
+
+  -- STUDIO monthly
+  ('studio', 'monthly',
+   'DODO_PRODUCT_STUDIO_MONTHLY',
+   'Studio Monthly',
+   5900, 'USD',
+   5, 1, 1000, NULL,
+   '["booking","calendar","public_booking_page","digital_consent","client_crm","dodo_payments","inventory","commission_splits"]'::jsonb,
+   20, true),
+
+  -- STUDIO annual
+  ('studio', 'annual',
+   'DODO_PRODUCT_STUDIO_ANNUAL',
+   'Studio Annual',
+   4700, 'USD',
+   5, 1, 1000, NULL,
+   '["booking","calendar","public_booking_page","digital_consent","client_crm","dodo_payments","inventory","commission_splits"]'::jsonb,
+   21, true),
+
+  -- PRO monthly
+  ('pro', 'monthly',
+   'DODO_PRODUCT_PRO_MONTHLY',
+   'Pro Monthly',
+   9900, 'USD',
+   15, 3, 5000, 100,
+   '["booking","calendar","public_booking_page","digital_consent","client_crm","dodo_payments","inventory","commission_splits","payroll","ai_design","guest_artists","eu_reach","multi_location"]'::jsonb,
+   30, true),
+
+  -- PRO annual
+  ('pro', 'annual',
+   'DODO_PRODUCT_PRO_ANNUAL',
+   'Pro Annual',
+   7900, 'USD',
+   15, 3, 5000, 100,
+   '["booking","calendar","public_booking_page","digital_consent","client_crm","dodo_payments","inventory","commission_splits","payroll","ai_design","guest_artists","eu_reach","multi_location"]'::jsonb,
+   31, true),
+
+  -- ENTERPRISE monthly
+  ('enterprise', 'monthly',
+   'DODO_PRODUCT_ENTERPRISE_MONTHLY',
+   'Enterprise Monthly',
+   19900, 'USD',
+   NULL, NULL, NULL, NULL,
+   '["booking","calendar","public_booking_page","digital_consent","client_crm","dodo_payments","inventory","commission_splits","payroll","ai_design","guest_artists","eu_reach","multi_location","custom_domain","api_access"]'::jsonb,
+   40, true),
+
+  -- ENTERPRISE annual
+  ('enterprise', 'annual',
+   'DODO_PRODUCT_ENTERPRISE_ANNUAL',
+   'Enterprise Annual',
+   15900, 'USD',
+   NULL, NULL, NULL, NULL,
+   '["booking","calendar","public_booking_page","digital_consent","client_crm","dodo_payments","inventory","commission_splits","payroll","ai_design","guest_artists","eu_reach","multi_location","custom_domain","api_access"]'::jsonb,
+   41, true)
+
+ON CONFLICT (tier, billing_cycle) DO UPDATE SET
+  display_name          = EXCLUDED.display_name,
+  price_cents           = EXCLUDED.price_cents,
+  max_artists           = EXCLUDED.max_artists,
+  max_locations         = EXCLUDED.max_locations,
+  sms_monthly_quota     = EXCLUDED.sms_monthly_quota,
+  ai_generations_quota  = EXCLUDED.ai_generations_quota,
+  features              = EXCLUDED.features,
+  sort_order            = EXCLUDED.sort_order,
+  is_active             = EXCLUDED.is_active,
+  updated_at            = now();
+
+-- =============================================================
+-- SECTION 3 — invoices TABLE
+-- =============================================================
+-- Synced from Dodo webhooks via service-role; studios read own only.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS public.invoices (
+  id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  studio_id         uuid        NOT NULL REFERENCES public.studios(id)        ON DELETE CASCADE,
+  subscription_id   uuid        REFERENCES public.subscriptions(id)           ON DELETE SET NULL,
+  dodo_invoice_id   text        NOT NULL,
+  dodo_payment_id   text,
+  amount_cents      int         NOT NULL,
+  tax_cents         int         NOT NULL DEFAULT 0,
+  currency          text        NOT NULL,
+  status            text        NOT NULL
+                      CHECK (status IN ('draft', 'open', 'paid', 'uncollectible', 'void', 'refunded')),
+  period_start      timestamptz,
+  period_end        timestamptz,
+  due_date          timestamptz,
+  paid_at           timestamptz,
+  pdf_url           text,
+  hosted_url        text,
+  line_items        jsonb       NOT NULL DEFAULT '[]',
+  metadata          jsonb       NOT NULL DEFAULT '{}',
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (dodo_invoice_id)
+);
+
+CREATE TRIGGER set_invoices_updated_at
+  BEFORE UPDATE ON public.invoices
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- FK indexes
+CREATE INDEX idx_invoices_studio_id       ON public.invoices(studio_id);
+CREATE INDEX idx_invoices_subscription_id ON public.invoices(subscription_id)
+  WHERE subscription_id IS NOT NULL;
+-- Most common query: studio invoice history, newest first
+CREATE INDEX idx_invoices_studio_created  ON public.invoices(studio_id, created_at DESC);
+-- Unique dodo_invoice_id already covered by UNIQUE constraint; explicit for clarity
+CREATE UNIQUE INDEX idx_invoices_dodo_invoice_id ON public.invoices(dodo_invoice_id);
+
+ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+
+-- Studio members read own invoices only
+CREATE POLICY "invoices_studio_select"
+  ON public.invoices FOR SELECT
+  USING (studio_id = ANY(public.user_studio_ids()));
+
+-- No INSERT/UPDATE/DELETE for authenticated/anon roles — service-role bypass handles webhook writes
+
+-- =============================================================
+-- SECTION 4 — payments TABLE
+-- =============================================================
+-- All payment transactions: subscription charges, booking deposits,
+-- balance charges, tips, refunds, and adjustments.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS public.payments (
+  id                    uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  studio_id             uuid        NOT NULL REFERENCES public.studios(id)   ON DELETE CASCADE,
+  booking_id            uuid        REFERENCES public.bookings(id)           ON DELETE SET NULL,
+  invoice_id            uuid        REFERENCES public.invoices(id)           ON DELETE SET NULL,
+  client_id             uuid        REFERENCES public.clients(id)            ON DELETE SET NULL,
+  dodo_payment_id       text        NOT NULL,
+  dodo_checkout_id      text,
+  type                  text        NOT NULL
+                          CHECK (type IN ('subscription', 'deposit', 'balance', 'tip', 'refund', 'adjustment')),
+  amount_cents          int         NOT NULL,
+  currency              text        NOT NULL DEFAULT 'USD',
+  status                text        NOT NULL
+                          CHECK (status IN ('pending', 'processing', 'succeeded', 'failed', 'refunded', 'partially_refunded')),
+  refund_amount_cents   int         NOT NULL DEFAULT 0,
+  refund_reason         text,
+  description           text,
+  receipt_url           text,
+  failure_code          text,
+  failure_message       text,
+  succeeded_at          timestamptz,
+  refunded_at           timestamptz,
+  metadata              jsonb       NOT NULL DEFAULT '{}',
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  updated_at            timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (dodo_payment_id)
+);
+
+CREATE TRIGGER set_payments_updated_at
+  BEFORE UPDATE ON public.payments
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- FK indexes
+CREATE INDEX idx_payments_studio_id      ON public.payments(studio_id);
+CREATE INDEX idx_payments_booking_id     ON public.payments(booking_id)
+  WHERE booking_id IS NOT NULL;
+CREATE INDEX idx_payments_invoice_id     ON public.payments(invoice_id)
+  WHERE invoice_id IS NOT NULL;
+CREATE INDEX idx_payments_client_id      ON public.payments(client_id)
+  WHERE client_id IS NOT NULL;
+-- Most common: studio payments sorted by success time
+CREATE INDEX idx_payments_studio_succeeded ON public.payments(studio_id, succeeded_at DESC)
+  WHERE succeeded_at IS NOT NULL;
+-- Dodo checkout lookup (used when Dodo sends checkout.completed event)
+CREATE INDEX idx_payments_dodo_checkout_id ON public.payments(dodo_checkout_id)
+  WHERE dodo_checkout_id IS NOT NULL;
+-- Unique on dodo_payment_id already covered by UNIQUE constraint
+CREATE UNIQUE INDEX idx_payments_dodo_payment_id ON public.payments(dodo_payment_id);
+
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+-- Studio members read own payments only
+CREATE POLICY "payments_studio_select"
+  ON public.payments FOR SELECT
+  USING (studio_id = ANY(public.user_studio_ids()));
+
+-- No INSERT/UPDATE/DELETE for authenticated/anon — service-role handles webhook writes
+
+-- =============================================================
+-- SECTION 5 — usage_meters TABLE
+-- =============================================================
+-- Per-studio, per-period counters for plan feature enforcement.
+-- One row per (studio_id, period_start, meter).
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS public.usage_meters (
+  id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  studio_id     uuid        NOT NULL REFERENCES public.studios(id) ON DELETE CASCADE,
+  period_start  timestamptz NOT NULL,
+  period_end    timestamptz NOT NULL,
+  meter         text        NOT NULL
+                  CHECK (meter IN ('sms_sent', 'ai_generations', 'bookings_created',
+                                   'active_artists', 'active_locations', 'storage_mb')),
+  used          int         NOT NULL DEFAULT 0,
+  quota         int,                              -- null = unlimited
+  overage_cents int         NOT NULL DEFAULT 0,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (studio_id, period_start, meter)
+);
+
+CREATE TRIGGER set_usage_meters_updated_at
+  BEFORE UPDATE ON public.usage_meters
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- FK index
+CREATE INDEX idx_usage_meters_studio_id ON public.usage_meters(studio_id);
+-- Time-series lookup: current meter for a studio
+CREATE INDEX idx_usage_meters_studio_meter_period
+  ON public.usage_meters(studio_id, meter, period_end DESC);
+
+ALTER TABLE public.usage_meters ENABLE ROW LEVEL SECURITY;
+
+-- Studio members read own meters
+CREATE POLICY "usage_meters_studio_select"
+  ON public.usage_meters FOR SELECT
+  USING (studio_id = ANY(public.user_studio_ids()));
+
+-- Authenticated INSERT/UPDATE allowed (RPC is SECURITY DEFINER, but direct writes
+-- are also permitted for future self-reporting patterns)
+CREATE POLICY "usage_meters_authenticated_insert"
+  ON public.usage_meters FOR INSERT
+  WITH CHECK (studio_id = ANY(public.user_studio_ids()));
+
+CREATE POLICY "usage_meters_authenticated_update"
+  ON public.usage_meters FOR UPDATE
+  USING (studio_id = ANY(public.user_studio_ids()))
+  WITH CHECK (studio_id = ANY(public.user_studio_ids()));
+
+-- =============================================================
+-- SECTION 6 — feature_flags TABLE
+-- =============================================================
+-- Per-studio overrides: Enterprise custom features, beta access.
+-- Written by platform admins only (service-role via admin panel).
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS public.feature_flags (
+  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  studio_id   uuid        NOT NULL REFERENCES public.studios(id) ON DELETE CASCADE,
+  flag_key    text        NOT NULL,
+  enabled     boolean     NOT NULL DEFAULT false,
+  expires_at  timestamptz,
+  reason      text,                              -- audit note explaining override
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (studio_id, flag_key)
+);
+
+CREATE TRIGGER set_feature_flags_updated_at
+  BEFORE UPDATE ON public.feature_flags
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE INDEX idx_feature_flags_studio_id ON public.feature_flags(studio_id);
+
+ALTER TABLE public.feature_flags ENABLE ROW LEVEL SECURITY;
+
+-- Studio members can read their own feature flags (needed to gate UI)
+CREATE POLICY "feature_flags_studio_select"
+  ON public.feature_flags FOR SELECT
+  USING (studio_id = ANY(public.user_studio_ids()));
+
+-- No INSERT/UPDATE/DELETE for non-service-role — platform admin controls via service-role
+
+-- =============================================================
+-- SECTION 7 — EXTEND bookings TABLE (payment columns)
+-- =============================================================
+
+-- Dodo payment ID for the post-session balance charge
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS balance_payment_id text;
+
+-- Whether the balance (price_cents - deposit_cents) has been collected
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS balance_paid boolean NOT NULL DEFAULT false;
+
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS balance_paid_at timestamptz;
+
+-- GENERATED column: total amount paid across deposit + balance + tip
+-- CASE expressions handle NULL-safe arithmetic cleanly.
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS total_paid_cents int
+    GENERATED ALWAYS AS (
+      (CASE WHEN deposit_paid  THEN deposit_cents             ELSE 0 END)
+    + (CASE WHEN balance_paid  THEN (price_cents - deposit_cents) ELSE 0 END)
+    + tip_cents
+    ) STORED;
+
+-- =============================================================
+-- SECTION 8 — refund_requests TABLE
+-- =============================================================
+-- Studio-initiated or client-initiated deposit refund workflow.
+-- Owner/admin approve; processed by webhook handler.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS public.refund_requests (
+  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  studio_id       uuid        NOT NULL REFERENCES public.studios(id)    ON DELETE CASCADE,
+  booking_id      uuid        NOT NULL REFERENCES public.bookings(id)   ON DELETE CASCADE,
+  payment_id      uuid        REFERENCES public.payments(id)            ON DELETE SET NULL,
+  requested_by    uuid        REFERENCES public.profiles(id)            ON DELETE SET NULL,
+  amount_cents    int         NOT NULL,
+  reason          text,
+  status          text        NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'approved', 'rejected', 'processed', 'failed')),
+  processed_at    timestamptz,
+  dodo_refund_id  text,
+  approver_notes  text,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER set_refund_requests_updated_at
+  BEFORE UPDATE ON public.refund_requests
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- FK indexes
+CREATE INDEX idx_refund_requests_studio_id   ON public.refund_requests(studio_id);
+CREATE INDEX idx_refund_requests_booking_id  ON public.refund_requests(booking_id);
+CREATE INDEX idx_refund_requests_payment_id  ON public.refund_requests(payment_id)
+  WHERE payment_id IS NOT NULL;
+
+ALTER TABLE public.refund_requests ENABLE ROW LEVEL SECURITY;
+
+-- Studio members can read their studio's refund requests
+CREATE POLICY "refund_requests_studio_select"
+  ON public.refund_requests FOR SELECT
+  USING (studio_id = ANY(public.user_studio_ids()));
+
+-- Any studio member can submit a refund request
+CREATE POLICY "refund_requests_studio_insert"
+  ON public.refund_requests FOR INSERT
+  WITH CHECK (studio_id = ANY(public.user_studio_ids()));
+
+-- Only owner/admin can approve/reject (UPDATE)
+CREATE POLICY "refund_requests_owner_update"
+  ON public.refund_requests FOR UPDATE
+  USING (
+    studio_id = ANY(public.user_studio_ids())
+    AND EXISTS (
+      SELECT 1 FROM public.studio_members
+      WHERE studio_id = refund_requests.studio_id
+        AND user_id = auth.uid()
+        AND role IN ('owner', 'admin')
+    )
+  )
+  WITH CHECK (
+    studio_id = ANY(public.user_studio_ids())
+    AND EXISTS (
+      SELECT 1 FROM public.studio_members
+      WHERE studio_id = refund_requests.studio_id
+        AND user_id = auth.uid()
+        AND role IN ('owner', 'admin')
+    )
+  );
+
+-- =============================================================
+-- SECTION 9 — RPC: increment_usage_meter
+-- =============================================================
+-- SECURITY DEFINER: bypasses RLS. Called by API routes to atomically
+-- increment usage. Returns jsonb: { used, quota, exceeded }.
+-- Period = calendar month (UTC). Creates row if missing.
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION public.increment_usage_meter(
+  p_studio_id uuid,
+  p_meter     text,
+  p_amount    int DEFAULT 1
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_period_start  timestamptz;
+  v_period_end    timestamptz;
+  v_used          int;
+  v_quota         int;
+  v_plan_tier     text;
+  v_plan_row      public.plans%ROWTYPE;
+BEGIN
+  -- Compute current calendar month window (UTC)
+  v_period_start := date_trunc('month', now() AT TIME ZONE 'UTC');
+  v_period_end   := v_period_start + interval '1 month';
+
+  -- Resolve quota from the studio's current plan
+  SELECT s.plan_tier INTO v_plan_tier
+  FROM public.subscriptions s
+  WHERE s.studio_id = p_studio_id
+  LIMIT 1;
+
+  -- Default to 'solo' if no subscription row yet
+  v_plan_tier := COALESCE(v_plan_tier, 'solo');
+
+  SELECT * INTO v_plan_row
+  FROM public.plans
+  WHERE tier = v_plan_tier
+    AND billing_cycle = 'monthly'   -- quota is per-period regardless of billing cycle
+  LIMIT 1;
+
+  -- Derive quota from plan columns
+  v_quota := CASE p_meter
+    WHEN 'sms_sent'          THEN v_plan_row.sms_monthly_quota
+    WHEN 'ai_generations'    THEN v_plan_row.ai_generations_quota
+    WHEN 'bookings_created'  THEN NULL  -- unlimited bookings at all tiers
+    WHEN 'active_artists'    THEN v_plan_row.max_artists
+    WHEN 'active_locations'  THEN v_plan_row.max_locations
+    WHEN 'storage_mb'        THEN NULL  -- unlimited storage (monitored, not enforced yet)
+    ELSE NULL
+  END;
+
+  -- Upsert: increment if row exists, insert if not
+  INSERT INTO public.usage_meters
+    (studio_id, period_start, period_end, meter, used, quota)
+  VALUES
+    (p_studio_id, v_period_start, v_period_end, p_meter, p_amount, v_quota)
+  ON CONFLICT (studio_id, period_start, meter) DO UPDATE
+    SET used       = usage_meters.used + p_amount,
+        quota      = v_quota,           -- refresh quota snapshot on every write
+        updated_at = now()
+  RETURNING used INTO v_used;
+
+  RETURN jsonb_build_object(
+    'used',     v_used,
+    'quota',    v_quota,
+    'exceeded', CASE WHEN v_quota IS NOT NULL AND v_used > v_quota THEN true ELSE false END
+  );
+END;
+$$;
+
+-- =============================================================
+-- SECTION 10 — RPC: check_feature_access
+-- =============================================================
+-- Resolves: active feature_flags override takes precedence;
+-- otherwise falls through to plan-level features jsonb array.
+-- Used by lib/billing/feature-gate.ts.
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION public.check_feature_access(
+  p_studio_id   uuid,
+  p_feature_key text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+DECLARE
+  v_flag_enabled  boolean;
+  v_flag_exists   boolean;
+  v_plan_tier     text;
+  v_features      jsonb;
+BEGIN
+  -- 1. Check explicit feature_flag override (not expired)
+  SELECT enabled, true
+  INTO v_flag_enabled, v_flag_exists
+  FROM public.feature_flags
+  WHERE studio_id = p_studio_id
+    AND flag_key  = p_feature_key
+    AND (expires_at IS NULL OR expires_at > now())
+  LIMIT 1;
+
+  IF v_flag_exists THEN
+    RETURN v_flag_enabled;
+  END IF;
+
+  -- 2. Fall back to plan features array
+  SELECT s.plan_tier INTO v_plan_tier
+  FROM public.subscriptions s
+  WHERE s.studio_id = p_studio_id
+  LIMIT 1;
+
+  v_plan_tier := COALESCE(v_plan_tier, 'solo');
+
+  SELECT pl.features INTO v_features
+  FROM public.plans pl
+  WHERE pl.tier          = v_plan_tier
+    AND pl.billing_cycle = 'monthly'   -- features are identical across cycles
+    AND pl.is_active     = true
+  LIMIT 1;
+
+  RETURN COALESCE(v_features ? p_feature_key, false);
+END;
+$$;
+
+-- =============================================================
+-- SECTION 11 — RPC: get_studio_subscription
+-- =============================================================
+-- Returns subscription + plan + current usage meters for the studio.
+-- Caller must be a member of p_studio_id.
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION public.get_studio_subscription(
+  p_studio_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+DECLARE
+  v_sub       public.subscriptions%ROWTYPE;
+  v_plan      public.plans%ROWTYPE;
+  v_meters    jsonb;
+  v_period_start timestamptz;
+  v_period_end   timestamptz;
+BEGIN
+  -- Verify caller is a member of this studio
+  IF NOT EXISTS (
+    SELECT 1 FROM public.studio_members
+    WHERE studio_id = p_studio_id AND user_id = auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'access_denied' USING ERRCODE = '42501';
+  END IF;
+
+  -- Fetch subscription
+  SELECT * INTO v_sub
+  FROM public.subscriptions
+  WHERE studio_id = p_studio_id
+  LIMIT 1;
+
+  -- Fetch matching plan (prefer same billing_cycle; fallback monthly)
+  SELECT * INTO v_plan
+  FROM public.plans
+  WHERE tier          = COALESCE(v_sub.plan_tier, 'solo')
+    AND billing_cycle = COALESCE(v_sub.billing_cycle, 'monthly')
+    AND is_active     = true
+  LIMIT 1;
+
+  -- Current period usage meters
+  v_period_start := date_trunc('month', now() AT TIME ZONE 'UTC');
+  v_period_end   := v_period_start + interval '1 month';
+
+  SELECT COALESCE(jsonb_object_agg(meter, jsonb_build_object(
+    'used',   used,
+    'quota',  quota
+  )), '{}')
+  INTO v_meters
+  FROM public.usage_meters
+  WHERE studio_id   = p_studio_id
+    AND period_start = v_period_start;
+
+  RETURN jsonb_build_object(
+    'subscription', to_jsonb(v_sub),
+    'plan',         to_jsonb(v_plan),
+    'usage',        v_meters
+  );
+END;
+$$;
+
+-- =============================================================
+-- SECTION 12 — RPC: get_billing_summary
+-- =============================================================
+-- Studio portal summary: current plan, next renewal, last 3 invoices,
+-- trial status, cancel_at_period_end flag, current-period usage.
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION public.get_billing_summary(
+  p_studio_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+DECLARE
+  v_sub           public.subscriptions%ROWTYPE;
+  v_plan          public.plans%ROWTYPE;
+  v_invoices      jsonb;
+  v_meters        jsonb;
+  v_period_start  timestamptz;
+BEGIN
+  -- Verify caller is a member of this studio
+  IF NOT EXISTS (
+    SELECT 1 FROM public.studio_members
+    WHERE studio_id = p_studio_id AND user_id = auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'access_denied' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_sub
+  FROM public.subscriptions
+  WHERE studio_id = p_studio_id
+  LIMIT 1;
+
+  SELECT * INTO v_plan
+  FROM public.plans
+  WHERE tier          = COALESCE(v_sub.plan_tier, 'solo')
+    AND billing_cycle = COALESCE(v_sub.billing_cycle, 'monthly')
+    AND is_active     = true
+  LIMIT 1;
+
+  -- Last 3 invoices
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object(
+      'id',           i.id,
+      'dodo_invoice_id', i.dodo_invoice_id,
+      'amount_cents', i.amount_cents,
+      'status',       i.status,
+      'paid_at',      i.paid_at,
+      'pdf_url',      i.pdf_url,
+      'hosted_url',   i.hosted_url
+    )
+    ORDER BY i.created_at DESC
+  ), '[]')
+  INTO v_invoices
+  FROM (
+    SELECT * FROM public.invoices
+    WHERE studio_id = p_studio_id
+    ORDER BY created_at DESC
+    LIMIT 3
+  ) i;
+
+  -- Current period usage
+  v_period_start := date_trunc('month', now() AT TIME ZONE 'UTC');
+
+  SELECT COALESCE(jsonb_object_agg(meter, jsonb_build_object(
+    'used',  used,
+    'quota', quota
+  )), '{}')
+  INTO v_meters
+  FROM public.usage_meters
+  WHERE studio_id    = p_studio_id
+    AND period_start = v_period_start;
+
+  RETURN jsonb_build_object(
+    'plan',                to_jsonb(v_plan),
+    'status',              v_sub.status,
+    'billing_cycle',       v_sub.billing_cycle,
+    'current_period_end',  v_sub.current_period_end,
+    'cancel_at_period_end', v_sub.cancel_at_period_end,
+    'trial_end',           v_sub.trial_end,
+    'in_trial',            (v_sub.status = 'trialing' AND v_sub.trial_end > now()),
+    'last_invoices',       v_invoices,
+    'current_usage',       v_meters
+  );
+END;
+$$;
+
+-- =============================================================
+-- SECTION 13 — TRIGGER FUNCTIONS for usage meters
+-- =============================================================
+
+-- 13a: bookings INSERT → increment bookings_created (non-blocking)
+CREATE OR REPLACE FUNCTION public.handle_booking_meter()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Non-blocking: catch any error and log; never abort the booking INSERT
+  BEGIN
+    PERFORM public.increment_usage_meter(NEW.studio_id, 'bookings_created', 1);
+  EXCEPTION WHEN OTHERS THEN
+    -- Silent failure: meter increment is best-effort
+    NULL;
+  END;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER on_booking_inserted_meter
+  AFTER INSERT ON public.bookings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_booking_meter();
+
+-- 13b: artists INSERT/UPDATE → SET active_artists to exact count
+-- (set, not increment, to stay accurate after soft-deletes / status changes)
+CREATE OR REPLACE FUNCTION public.handle_artist_meter()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count         int;
+  v_period_start  timestamptz;
+  v_period_end    timestamptz;
+  v_studio_id     uuid;
+BEGIN
+  -- Work on the studio that changed
+  v_studio_id := COALESCE(NEW.studio_id, OLD.studio_id);
+
+  -- Only recalculate when the status column touches 'active'
+  IF (TG_OP = 'INSERT' AND NEW.status = 'active')
+  OR (TG_OP = 'UPDATE' AND (NEW.status = 'active' OR OLD.status = 'active'))
+  THEN
+    v_period_start := date_trunc('month', now() AT TIME ZONE 'UTC');
+    v_period_end   := v_period_start + interval '1 month';
+
+    SELECT COUNT(*)
+    INTO v_count
+    FROM public.artists
+    WHERE studio_id = v_studio_id
+      AND status    = 'active';
+
+    INSERT INTO public.usage_meters
+      (studio_id, period_start, period_end, meter, used)
+    VALUES
+      (v_studio_id, v_period_start, v_period_end, 'active_artists', v_count)
+    ON CONFLICT (studio_id, period_start, meter) DO UPDATE
+      SET used       = v_count,
+          updated_at = now();
+  END IF;
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER on_artist_active_meter
+  AFTER INSERT OR UPDATE OF status ON public.artists
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_artist_meter();
+
+-- 13c: locations INSERT → SET active_locations to exact count
+CREATE OR REPLACE FUNCTION public.handle_location_meter()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_count         int;
+  v_period_start  timestamptz;
+  v_period_end    timestamptz;
+BEGIN
+  v_period_start := date_trunc('month', now() AT TIME ZONE 'UTC');
+  v_period_end   := v_period_start + interval '1 month';
+
+  SELECT COUNT(*)
+  INTO v_count
+  FROM public.locations
+  WHERE studio_id = NEW.studio_id;
+
+  INSERT INTO public.usage_meters
+    (studio_id, period_start, period_end, meter, used)
+  VALUES
+    (NEW.studio_id, v_period_start, v_period_end, 'active_locations', v_count)
+  ON CONFLICT (studio_id, period_start, meter) DO UPDATE
+    SET used       = v_count,
+        updated_at = now();
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER on_location_inserted_meter
+  AFTER INSERT ON public.locations
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_location_meter();
+
+-- =============================================================
+-- END OF MIGRATION 20260415000007_billing_deposits.sql
+-- =============================================================

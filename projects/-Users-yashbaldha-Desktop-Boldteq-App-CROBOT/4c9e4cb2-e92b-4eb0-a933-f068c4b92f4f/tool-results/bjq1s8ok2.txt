@@ -1,0 +1,3441 @@
+=== use-analytics-data ===
+import { useQuery } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import type { AnalyticsMetrics } from "@/types/index";
+import { useIntegrations } from "./use-integrations";
+
+// ── Query keys ─────────────────────────────────────────────────
+
+export const analyticsKeys = {
+  all: ["analytics"] as const,
+  byUrl: (url: string) => ["analytics", url] as const,
+};
+
+// ── Edge function response shapes ─────────────────────────────
+
+interface AnalyticsNotConnected {
+  connected: false;
+}
+
+interface AnalyticsSetupRequired {
+  connected: true;
+  setup_required: true;
+}
+
+interface AnalyticsError {
+  connected: true;
+  error: string;
+}
+
+interface AnalyticsSuccess {
+  connected: true;
+  metrics: AnalyticsMetrics;
+}
+
+type FetchAnalyticsResponse =
+  | AnalyticsNotConnected
+  | AnalyticsSetupRequired
+  | AnalyticsError
+  | AnalyticsSuccess;
+
+// ── useGa4Connection ───────────────────────────────────────────
+// Returns whether the current user has an active GA4 integration.
+
+export function useGa4Connection(): {
+  isConnected: boolean;
+  isLoading: boolean;
+} {
+  const { data: integrations = [], isLoading } = useIntegrations();
+
+  const isConnected = integrations.some(
+    (i) => i.provider === "google_analytics" && i.is_active,
+  );
+
+  return { isConnected, isLoading };
+}
+
+// ── useAnalyticsData ───────────────────────────────────────────
+// Fetches GA4 analytics for the given URL.
+// Returns null when GA4 is not connected or when there is no data.
+
+export function useAnalyticsData(url: string): {
+  data: AnalyticsMetrics | null;
+  isLoading: boolean;
+  isError: boolean;
+  setupRequired: boolean;
+  errorMessage: string | null;
+  notConnected: boolean;
+} {
+  const { isConnected } = useGa4Connection();
+
+  const query = useQuery({
+    queryKey: analyticsKeys.byUrl(url),
+    queryFn: async (): Promise<FetchAnalyticsResponse> => {
+      const { data, error } = await supabase.functions.invoke<FetchAnalyticsResponse>(
+        "fetch-analytics",
+        { body: { url } },
+      );
+
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error("Empty response from fetch-analytics");
+      return data;
+    },
+    enabled: isConnected && url.length > 0,
+    staleTime: 1000 * 60 * 5, // 5 minutes — GA4 data doesn't change per second
+    retry: 1,
+  });
+
+  const response = query.data;
+
+  if (!response) {
+    return {
+      data: null,
+      isLoading: query.isLoading,
+      isError: query.isError,
+      setupRequired: false,
+      errorMessage: null,
+      notConnected: !isConnected,
+    };
+  }
+
+  if (!response.connected) {
+    return {
+      data: null,
+      isLoading: false,
+      isError: false,
+      setupRequired: false,
+      errorMessage: null,
+      notConnected: true,
+    };
+  }
+
+  if ("setup_required" in response && response.setup_required) {
+    return {
+      data: null,
+      isLoading: false,
+      isError: false,
+      setupRequired: true,
+      errorMessage: null,
+      notConnected: false,
+    };
+  }
+
+  if ("error" in response && response.error) {
+    return {
+      data: null,
+      isLoading: false,
+      isError: true,
+      setupRequired: false,
+      errorMessage: response.error,
+      notConnected: false,
+    };
+  }
+
+  if ("metrics" in response && response.metrics) {
+    return {
+      data: response.metrics,
+      isLoading: false,
+      isError: false,
+      setupRequired: false,
+      errorMessage: null,
+      notConnected: false,
+    };
+  }
+
+  return {
+    data: null,
+    isLoading: false,
+    isError: false,
+    setupRequired: false,
+    errorMessage: null,
+    notConnected: false,
+  };
+}
+
+=== use-api-keys ===
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { ApiKey } from "@/types";
+
+// ── SHA-256 helper (same algorithm as edge function) ──────────
+
+async function hashApiKey(key: string): Promise<string> {
+  const encoded = new TextEncoder().encode(key);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// ── useApiKeys ────────────────────────────────────────────────
+// Fetches active (non-revoked) API keys for the current user.
+
+export function useApiKeys() {
+  const { user } = useAuth();
+
+  return useQuery<ApiKey[]>({
+    queryKey: ["api-keys", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from("api_keys")
+        .select(
+          "id, user_id, team_id, name, key_prefix, permissions, rate_limit, last_used_at, created_at, revoked_at",
+        )
+        .eq("user_id", user.id)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return (data ?? []) as ApiKey[];
+    },
+    enabled: !!user,
+  });
+}
+
+// ── useCreateApiKey ───────────────────────────────────────────
+// Generates a new API key, hashes it, stores the hash, and returns
+// the FULL key (shown only once — never stored in plaintext).
+
+export interface CreatedApiKey {
+  fullKey: string;
+  row: ApiKey;
+}
+
+export function useCreateApiKey() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<CreatedApiKey, Error, { name: string }>({
+    mutationFn: async ({ name }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      // Generate key: cs_live_ + 32 hex chars from UUID (no dashes = 32 chars)
+      const rawUuid = crypto.randomUUID().replace(/-/g, "");
+      const fullKey = `cs_live_${rawUuid}`;
+      const keyPrefix = fullKey.slice(0, 12);
+
+      const keyHash = await hashApiKey(fullKey);
+
+      const { data, error } = await supabase
+        .from("api_keys")
+        .insert({
+          user_id: user.id,
+          name,
+          key_hash: keyHash,
+          key_prefix: keyPrefix,
+          permissions: ["read", "write"],
+        })
+        .select(
+          "id, user_id, team_id, name, key_prefix, permissions, rate_limit, last_used_at, created_at, revoked_at",
+        )
+        .single();
+
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error("Failed to create API key.");
+
+      return { fullKey, row: data as ApiKey };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create API key.");
+    },
+  });
+}
+
+// ── useRevokeApiKey ───────────────────────────────────────────
+// Sets revoked_at = NOW() on the given key row.
+
+export function useRevokeApiKey() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { id: string }>({
+    mutationFn: async ({ id }) => {
+      const { error } = await supabase
+        .from("api_keys")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      toast.success("API key revoked.");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to revoke API key.");
+    },
+  });
+}
+
+=== use-bulk-scan ===
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { BulkScanJob } from "@/types";
+import type { BulkScanJobRow } from "@/types/database";
+
+// ── Query keys ───────────────────────────────────────────────────
+
+export const bulkScanKeys = {
+  all: ["bulk_scan_jobs"] as const,
+  lists: () => [...bulkScanKeys.all, "list"] as const,
+  list: (userId: string) => [...bulkScanKeys.lists(), userId] as const,
+  detail: (id: string) => [...bulkScanKeys.all, "detail", id] as const,
+};
+
+// ── Row → App type mapper ────────────────────────────────────────
+
+function rowToJob(row: BulkScanJobRow): BulkScanJob {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    team_id: row.team_id,
+    status: row.status,
+    urls: row.urls,
+    page_type: row.page_type,
+    total: row.total,
+    completed: row.completed,
+    failed: row.failed,
+    created_at: row.created_at,
+  };
+}
+
+// ── URL validation helpers ───────────────────────────────────────
+
+/** Normalize a single URL string — prepend https:// if missing */
+export function normalizeUrl(str: string): string {
+  const trimmed = str.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+/** Returns true if the normalized string is a valid http/https URL */
+export function isValidUrl(str: string): boolean {
+  try {
+    const url = new URL(str);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+export interface ParsedUrlLine {
+  lineNumber: number;
+  raw: string;
+  normalized: string;
+  valid: boolean;
+}
+
+/** Parse a textarea value into per-line URL results */
+export function parseUrlLines(raw: string): ParsedUrlLine[] {
+  return raw
+    .split("\n")
+    .map((line, idx) => {
+      const normalized = normalizeUrl(line);
+      return {
+        lineNumber: idx + 1,
+        raw: line,
+        normalized,
+        valid: normalized.length > 0 && isValidUrl(normalized),
+      };
+    })
+    .filter((l) => l.raw.trim().length > 0);
+}
+
+// ── useBulkScanJobs ──────────────────────────────────────────────
+
+export function useBulkScanJobs() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: bulkScanKeys.list(user?.id ?? ""),
+    queryFn: async (): Promise<BulkScanJob[]> => {
+      if (!user?.id) return [];
+
+      const { data, error } = await supabase
+        .from("bulk_scan_jobs")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return (data as BulkScanJobRow[]).map(rowToJob);
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 30,
+  });
+}
+
+// ── useBulkScanJob ───────────────────────────────────────────────
+
+export function useBulkScanJob(jobId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: bulkScanKeys.detail(jobId ?? ""),
+    queryFn: async (): Promise<BulkScanJob | null> => {
+      if (!jobId || !user?.id) return null;
+
+      const { data, error } = await supabase
+        .from("bulk_scan_jobs")
+        .select("*")
+        .eq("id", jobId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") return null;
+        throw new Error(error.message);
+      }
+
+      return rowToJob(data as BulkScanJobRow);
+    },
+    enabled: !!jobId && !!user?.id,
+    refetchInterval: (query) => {
+      const job = query.state.data;
+      if (!job) return false;
+      return job.status === "pending" || job.status === "processing" ? 2000 : false;
+    },
+    staleTime: 0,
+  });
+}
+
+// ── useCreateBulkScan ────────────────────────────────────────────
+
+interface CreateBulkScanInput {
+  urls: string[];
+  page_type: string;
+  team_id?: string | null;
+}
+
+export function useCreateBulkScan() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ urls, page_type, team_id }: CreateBulkScanInput): Promise<BulkScanJob> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      // Validate all URLs before inserting
+      const invalid = urls.filter((u) => !isValidUrl(normalizeUrl(u)));
+      if (invalid.length > 0) {
+        throw new Error(`${invalid.length} invalid URL(s) detected. Please fix them before submitting.`);
+      }
+
+      const normalizedUrls = urls.map(normalizeUrl);
+
+      // Insert the job row
+      const { data, error } = await supabase
+        .from("bulk_scan_jobs")
+        .insert({
+          user_id: user.id,
+          team_id: team_id ?? null,
+          status: "pending" as const,
+          urls: normalizedUrls,
+          page_type,
+          total: normalizedUrls.length,
+          completed: 0,
+          failed: 0,
+        })
+        .select("*")
+        .single();
+
+      if (error) throw new Error(error.message);
+
+      const job = rowToJob(data as BulkScanJobRow);
+
+      // Fire the edge function — non-blocking
+      supabase.functions
+        .invoke("bulk-scan", {
+          body: { job_id: job.id },
+        })
+        .catch((err: unknown) => {
+          console.error("Bulk scan edge function invocation failed:", err);
+          toast.error("Bulk scan engine failed to start. Please try again.", { duration: 6000 });
+        });
+
+      return job;
+    },
+    onSuccess: (data) => {
+      if (!user?.id) return;
+      // Prepend to list cache
+      queryClient.setQueryData<BulkScanJob[]>(bulkScanKeys.list(user.id), (prev) =>
+        prev ? [data, ...prev] : [data]
+      );
+      // Prime detail cache
+      queryClient.setQueryData(bulkScanKeys.detail(data.id), data);
+    },
+  });
+}
+
+// ── useCancelBulkScan ────────────────────────────────────────────
+
+export function useCancelBulkScan() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (jobId: string): Promise<void> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("bulk_scan_jobs")
+        .update({ status: "failed" })
+        .eq("id", jobId)
+        .eq("user_id", user.id);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_data, jobId) => {
+      if (!user?.id) return;
+      // Update detail cache
+      queryClient.setQueryData<BulkScanJob>(bulkScanKeys.detail(jobId), (prev) =>
+        prev ? { ...prev, status: "failed" } : prev
+      );
+      // Update in list cache
+      queryClient.setQueryData<BulkScanJob[]>(bulkScanKeys.list(user.id), (prev) =>
+        prev ? prev.map((j) => (j.id === jobId ? { ...j, status: "failed" } : j)) : prev
+      );
+      toast.success("Bulk scan cancelled.");
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Failed to cancel job";
+      toast.error(message);
+    },
+  });
+}
+
+=== use-competitors ===
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { CompetitorGroupWithUrls, CroPillar } from "@/types";
+import type {
+  CompetitorGroupRow,
+  CompetitorUrlRow,
+  CompetitorGroupInsert,
+} from "@/types/database";
+
+// ── Query keys ──────────────────────────────────────────────────
+
+export const competitorKeys = {
+  all: ["competitors"] as const,
+  lists: () => [...competitorKeys.all, "list"] as const,
+  list: (userId: string) => [...competitorKeys.lists(), userId] as const,
+};
+
+// ── Row mappers ─────────────────────────────────────────────────
+
+function rowToGroup(
+  row: CompetitorGroupRow & { competitor_urls: CompetitorUrlRow[] }
+): CompetitorGroupWithUrls {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    name: row.name,
+    primary_url: row.primary_url,
+    created_at: row.created_at,
+    competitor_urls: row.competitor_urls.map((u) => ({
+      id: u.id,
+      group_id: u.group_id,
+      url: u.url,
+      scan_id: u.scan_id,
+      latest_score: u.latest_score,
+      scanned_at: u.scanned_at,
+    })),
+  };
+}
+
+// ── Edge function response shape ───────────────────────────────
+
+interface AnalyzeUrlResponse {
+  overall_score?: number;
+  scan_id?: string;
+}
+
+// ── useCompetitorGroups ─────────────────────────────────────────
+
+export function useCompetitorGroups() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: competitorKeys.list(user?.id ?? ""),
+    queryFn: async (): Promise<CompetitorGroupWithUrls[]> => {
+      if (!user?.id) return [];
+
+      const { data, error } = await supabase
+        .from("competitor_groups")
+        .select("*, competitor_urls(*)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+
+      return (
+        data as Array<CompetitorGroupRow & { competitor_urls: CompetitorUrlRow[] }>
+      ).map(rowToGroup);
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 30,
+  });
+}
+
+// ── useCreateCompetitorGroup ────────────────────────────────────
+
+interface CreateGroupInput {
+  name: string;
+  primary_url: string;
+  competitor_urls: string[];
+}
+
+export function useCreateCompetitorGroup() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateGroupInput): Promise<CompetitorGroupWithUrls> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      // 1. Create the group
+      const groupInsert: CompetitorGroupInsert = {
+        user_id: user.id,
+        primary_url: input.primary_url,
+        name: input.name,
+      };
+
+      const { data: groupData, error: groupError } = await supabase
+        .from("competitor_groups")
+        .insert(groupInsert)
+        .select("*")
+        .single();
+
+      if (groupError) throw new Error(groupError.message);
+      const group = groupData as CompetitorGroupRow;
+
+      // 2. Insert all URLs (primary + competitors)
+      const allUrls = [input.primary_url, ...input.competitor_urls];
+      const urlRows = allUrls.map((url) => ({ group_id: group.id, url }));
+
+      const { data: urlData, error: urlError } = await supabase
+        .from("competitor_urls")
+        .insert(urlRows)
+        .select("*");
+
+      if (urlError) throw new Error(urlError.message);
+
+      return rowToGroup({
+        ...group,
+        competitor_urls: urlData as CompetitorUrlRow[],
+      });
+    },
+    onSuccess: (data) => {
+      if (!user?.id) return;
+      queryClient.setQueryData<CompetitorGroupWithUrls[]>(
+        competitorKeys.list(user.id),
+        (prev) => (prev ? [data, ...prev] : [data])
+      );
+    },
+    onError: (error: unknown) => {
+      const msg = error instanceof Error ? error.message : "Failed to create competitor group";
+      toast.error(msg);
+    },
+  });
+}
+
+// ── useDeleteCompetitorGroup ────────────────────────────────────
+
+export function useDeleteCompetitorGroup() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (groupId: string): Promise<void> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("competitor_groups")
+        .delete()
+        .eq("id", groupId)
+        .eq("user_id", user.id);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_data, groupId) => {
+      if (!user?.id) return;
+      queryClient.setQueryData<CompetitorGroupWithUrls[]>(
+        competitorKeys.list(user.id),
+        (prev) => (prev ? prev.filter((g) => g.id !== groupId) : [])
+      );
+    },
+    onError: (error: unknown) => {
+      const msg = error instanceof Error ? error.message : "Failed to delete group";
+      toast.error(msg);
+    },
+  });
+}
+
+// ── useScanCompetitor ───────────────────────────────────────────
+
+interface ScanCompetitorInput {
+  competitorUrlId: string;
+  url: string;
+  groupId: string;
+}
+
+export function useScanCompetitor() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: ScanCompetitorInput): Promise<void> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      // Invoke the same edge function used for regular scans
+      const { data, error } = await supabase.functions.invoke("analyze-url", {
+        body: { url: input.url, page_type: "landing" },
+      });
+
+      if (error) throw new Error(error.message);
+
+      const result = data as AnalyzeUrlResponse;
+      const overallScore = result?.overall_score ?? null;
+      const scanId = result?.scan_id ?? null;
+
+      // Update the competitor_urls row with scan_id + latest_score
+      const { error: updateError } = await supabase
+        .from("competitor_urls")
+        .update({
+          scan_id: scanId,
+          latest_score: overallScore,
+          scanned_at: new Date().toISOString(),
+        })
+        .eq("id", input.competitorUrlId);
+
+      if (updateError) throw new Error(updateError.message);
+    },
+    onSuccess: (_data, input) => {
+      if (!user?.id) return;
+      // Refetch the group list to reflect updated scores
+      void queryClient.invalidateQueries({
+        queryKey: competitorKeys.list(user.id),
+      });
+      toast.success(`Scan complete for ${tryHostname(input.url)}`);
+    },
+    onError: (error: unknown) => {
+      const msg = error instanceof Error ? error.message : "Scan failed";
+      toast.error(msg);
+    },
+  });
+}
+
+// ── useScanAllCompetitors ───────────────────────────────────────
+
+export function useScanAllCompetitors() {
+  const scanCompetitor = useScanCompetitor();
+
+  return useMutation({
+    mutationFn: async (group: CompetitorGroupWithUrls): Promise<void> => {
+      // Fire all URL scans in parallel — each updates its own row
+      await Promise.allSettled(
+        group.competitor_urls.map((cu) =>
+          scanCompetitor.mutateAsync({
+            competitorUrlId: cu.id,
+            url: cu.url,
+            groupId: group.id,
+          })
+        )
+      );
+    },
+  });
+}
+
+// ── Pillar scores from a scan ───────────────────────────────────
+
+interface ScanPillarScores {
+  pillar_scores: Record<CroPillar, number> | null;
+}
+
+export function useCompetitorPillarScores(scanId: string | null) {
+  return useQuery({
+    queryKey: ["competitor-pillar-scores", scanId],
+    queryFn: async (): Promise<Record<CroPillar, number> | null> => {
+      if (!scanId) return null;
+
+      const { data, error } = await supabase
+        .from("scan_history")
+        .select("pillar_scores")
+        .eq("scan_id", scanId)
+        .maybeSingle();
+
+      if (error) throw new Error(error.message);
+      return (data as ScanPillarScores | null)?.pillar_scores ?? null;
+    },
+    enabled: !!scanId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// ── Helpers ─────────────────────────────────────────────────────
+
+function tryHostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace("www.", "");
+  } catch {
+    return url;
+  }
+}
+
+=== use-copy-rewrites ===
+import { useQuery } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import type { CopyRewrite } from "@/types";
+
+export function useCopyRewrites(scanId: string) {
+  return useQuery({
+    queryKey: ["copy-rewrites", scanId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("copy_rewrites")
+        .select("*")
+        .eq("scan_id", scanId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as CopyRewrite[];
+    },
+    enabled: !!scanId,
+  });
+}
+
+=== use-count-up ===
+import { useState, useEffect, useRef } from "react";
+
+/**
+ * Animates a number from 0 to target value.
+ * Used for KPI card numbers on the dashboard.
+ */
+export function useCountUp(target: number, duration: number = 1200): number {
+  const [value, setValue] = useState(0);
+  const startTime = useRef<number | null>(null);
+  const rafId = useRef<number>(0);
+
+  useEffect(() => {
+    startTime.current = null;
+
+    const animate = (timestamp: number) => {
+      if (startTime.current === null) startTime.current = timestamp;
+      const elapsed = timestamp - startTime.current;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease-out cubic for smooth deceleration
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+
+      if (progress < 1) {
+        rafId.current = requestAnimationFrame(animate);
+      }
+    };
+
+    rafId.current = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(rafId.current);
+  }, [target, duration]);
+
+  return value;
+}
+
+=== use-dashboard-stats ===
+import { useQuery } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { DashboardStats, Scan, Finding } from "@/types";
+import type { ScanRow, ScanResultRow, DbFinding } from "@/types/database";
+
+// ── Derived types for dashboard ─────────────────────────────────
+
+export interface ScoreTrendPoint {
+  week: string;
+  score: number;
+}
+
+export interface ScoreDistributionBucket {
+  range: string;
+  count: number;
+  fill: string;
+}
+
+export interface CriticalActionItem {
+  id: string;
+  title: string;
+  severity: string;
+  scanId: string;
+}
+
+export interface DashboardData {
+  stats: DashboardStats;
+  recentScans: Scan[];
+  scoreTrend: ScoreTrendPoint[];
+  scoreDistribution: ScoreDistributionBucket[];
+  topQuickWins: (Finding & { pillar: string })[];
+  latestScanId: string | null;
+  // New fields for redesigned dashboard
+  best_score: number;
+  scans_this_week: number;
+  score_trend_data: Array<{ date: string; score: number }>;
+  critical_action_items: CriticalActionItem[];
+}
+
+// ── Defaults (empty state) ──────────────────────────────────────
+
+const EMPTY_DASHBOARD: DashboardData = {
+  stats: {
+    total_scans: 0,
+    avg_score: 0,
+    total_issues: 0,
+    critical_issues: 0,
+    estimated_revenue_impact: 0,
+    score_trend: 0,
+    scans_trend: 0,
+    quick_wins: 0,
+  },
+  recentScans: [],
+  scoreTrend: [],
+  scoreDistribution: [
+    { range: "0-20", count: 0, fill: "#EF4444" },
+    { range: "21-40", count: 0, fill: "#F87171" },
+    { range: "41-60", count: 0, fill: "#F59E0B" },
+    { range: "61-80", count: 0, fill: "#22C55E" },
+    { range: "81-100", count: 0, fill: "#16A34A" },
+  ],
+  topQuickWins: [],
+  latestScanId: null,
+  best_score: 0,
+  scans_this_week: 0,
+  score_trend_data: [],
+  critical_action_items: [],
+};
+
+// ── Helpers ─────────────────────────────────────────────────────
+
+function getWeekLabel(date: Date): string {
+  // Show the Monday of each week as the label (e.g. "Jun 2")
+  const day = date.getDay();
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+  return monday.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function getWeekLabelForIndex(weeksAgo: number): string {
+  const d = new Date(Date.now() - weeksAgo * 7 * 24 * 60 * 60 * 1000);
+  return getWeekLabel(d);
+}
+
+function getBucketFill(range: string): string {
+  const fills: Record<string, string> = {
+    "0-20": "#EF4444",
+    "21-40": "#F87171",
+    "41-60": "#F59E0B",
+    "61-80": "#22C55E",
+    "81-100": "#16A34A",
+  };
+  return fills[range] ?? "#94A3B8";
+}
+
+function scoreToRange(score: number): string {
+  if (score <= 20) return "0-20";
+  if (score <= 40) return "21-40";
+  if (score <= 60) return "41-60";
+  if (score <= 80) return "61-80";
+  return "81-100";
+}
+
+function rowToScan(row: ScanRow): Scan {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    url: row.url,
+    favicon_url: row.favicon_url,
+    page_title: row.page_title,
+    page_type: row.page_type,
+    status: row.status,
+    overall_score: row.overall_score,
+    issues_found: row.issues_found,
+    critical_issues: row.critical_issues,
+    warnings: row.warnings,
+    quick_wins: row.quick_wins,
+    screenshot_url: row.screenshot_url,
+    device: row.device,
+    created_at: row.created_at,
+    completed_at: row.completed_at,
+  };
+}
+
+// ── useDashboardStats ───────────────────────────────────────────
+
+export function useDashboardStats() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["dashboard-stats", user?.id ?? ""],
+    queryFn: async (): Promise<DashboardData> => {
+      if (!user?.id) return EMPTY_DASHBOARD;
+
+      // Fetch all completed scans for the user
+      const { data: scansData, error: scansError } = await supabase
+        .from("scans")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (scansError) throw new Error(scansError.message);
+
+      const scans = (scansData as ScanRow[]).map(rowToScan);
+
+      if (scans.length === 0) return EMPTY_DASHBOARD;
+
+      const completedScans = scans.filter((s) => s.status === "completed" && s.overall_score !== null);
+      const recentScans = scans.slice(0, 5);
+      const latestScanId = completedScans[0]?.id ?? null;
+
+      // ── Stats aggregation ─────────────────────────────────────
+
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+      const scansThisMonth = completedScans.filter(
+        (s) => new Date(s.created_at) >= monthStart
+      );
+      const scansLastMonth = completedScans.filter(
+        (s) =>
+          new Date(s.created_at) >= lastMonthStart &&
+          new Date(s.created_at) < monthStart
+      );
+
+      const avgScore =
+        completedScans.length > 0
+          ? Math.round(
+              completedScans.reduce((sum, s) => sum + (s.overall_score ?? 0), 0) /
+                completedScans.length
+            )
+          : 0;
+
+      const avgScoreThisMonth =
+        scansThisMonth.length > 0
+          ? Math.round(
+              scansThisMonth.reduce((sum, s) => sum + (s.overall_score ?? 0), 0) /
+                scansThisMonth.length
+            )
+          : 0;
+
+      const avgScoreLastMonth =
+        scansLastMonth.length > 0
+          ? Math.round(
+              scansLastMonth.reduce((sum, s) => sum + (s.overall_score ?? 0), 0) /
+                scansLastMonth.length
+            )
+          : 0;
+
+      const totalIssues = completedScans.reduce((sum, s) => sum + s.issues_found, 0);
+      const totalCritical = completedScans.reduce((sum, s) => sum + s.critical_issues, 0);
+      const totalQuickWins = completedScans.reduce((sum, s) => sum + s.quick_wins, 0);
+
+      const scoreTrendDelta =
+        avgScoreLastMonth > 0 ? avgScoreThisMonth - avgScoreLastMonth : 0;
+      const scansTrendDelta =
+        scansLastMonth.length > 0
+          ? Math.round(
+              ((scansThisMonth.length - scansLastMonth.length) /
+                scansLastMonth.length) *
+                100
+            )
+          : scansThisMonth.length > 0
+          ? 100
+          : 0;
+
+      const stats: DashboardStats = {
+        total_scans: scansThisMonth.length,
+        avg_score: avgScore,
+        total_issues: totalIssues,
+        critical_issues: totalCritical,
+        estimated_revenue_impact: Math.round(totalQuickWins * 125),
+        score_trend: scoreTrendDelta,
+        scans_trend: scansTrendDelta,
+        quick_wins: totalQuickWins,
+      };
+
+      // ── Score Trend (last 4 weeks) ────────────────────────────
+
+      const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+      const recentForTrend = completedScans.filter(
+        (s) => new Date(s.created_at) >= fourWeeksAgo
+      );
+
+      const weekBuckets = new Map<number, number[]>(); // weekIndex → scores[]
+      for (const scan of recentForTrend) {
+        const scanDate = new Date(scan.created_at);
+        const diffMs = now.getTime() - scanDate.getTime();
+        const weekIndex = 3 - Math.min(3, Math.floor(diffMs / (1000 * 60 * 60 * 24 * 7)));
+        const existing = weekBuckets.get(weekIndex) ?? [];
+        if (scan.overall_score !== null) {
+          existing.push(scan.overall_score);
+          weekBuckets.set(weekIndex, existing);
+        }
+      }
+
+      const scoreTrend: ScoreTrendPoint[] = [3, 2, 1, 0].map((weeksAgo, idx) => {
+        const label = getWeekLabelForIndex(weeksAgo);
+        const scores = weekBuckets.get(idx) ?? [];
+        const avg =
+          scores.length > 0
+            ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length)
+            : 0;
+        return { week: label, score: avg };
+      }).filter((p) => p.score > 0);
+
+      // ── Score Distribution ────────────────────────────────────
+
+      const RANGES = ["0-20", "21-40", "41-60", "61-80", "81-100"];
+      const distributionMap = new Map<string, number>(RANGES.map((r) => [r, 0]));
+
+      for (const scan of completedScans) {
+        if (scan.overall_score !== null) {
+          const bucket = scoreToRange(scan.overall_score);
+          distributionMap.set(bucket, (distributionMap.get(bucket) ?? 0) + 1);
+        }
+      }
+
+      const scoreDistribution: ScoreDistributionBucket[] = RANGES.map((range) => ({
+        range,
+        count: distributionMap.get(range) ?? 0,
+        fill: getBucketFill(range),
+      }));
+
+      // ── Top Quick Wins from latest completed scan ─────────────
+
+      let topQuickWins: (Finding & { pillar: string })[] = [];
+
+      if (latestScanId) {
+        const { data: resultsData } = await supabase
+          .from("scan_results")
+          .select("*")
+          .eq("scan_id", latestScanId);
+
+        if (resultsData && resultsData.length > 0) {
+          const allFindings: (Finding & { pillar: string })[] = (
+            resultsData as ScanResultRow[]
+          ).flatMap((r) =>
+            (r.findings ?? [])
+              .filter((f: DbFinding) => f.severity !== "passed" && f.effort === "quick")
+              .map((f: DbFinding) => ({
+                id: f.id,
+                title: f.title,
+                severity: f.severity,
+                current_state: f.current_state,
+                recommendation: f.recommendation,
+                ai_suggestion: f.ai_suggestion,
+                is_premium: f.is_premium,
+                effort: f.effort,
+                estimated_lift: f.estimated_lift,
+                category: f.category,
+                pillar: r.pillar,
+              }))
+          );
+
+          topQuickWins = allFindings
+            .sort((a, b) => {
+              const liftA = parseFloat(a.estimated_lift.match(/[\d.]+/)?.[0] ?? "0");
+              const liftB = parseFloat(b.estimated_lift.match(/[\d.]+/)?.[0] ?? "0");
+              return liftB - liftA;
+            })
+            .slice(0, 3);
+        }
+      }
+
+      // ── New fields: best_score, scans_this_week ───────────────
+
+      const bestScore =
+        completedScans.length > 0
+          ? Math.max(...completedScans.map((s) => s.overall_score ?? 0))
+          : 0;
+
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const scansThisWeek = scans.filter(
+        (s) => new Date(s.created_at) >= oneWeekAgo
+      ).length;
+
+      // ── score_trend_data: weekly averages for last 8 weeks ────
+
+      const eightWeeksAgo = new Date(now.getTime() - 56 * 24 * 60 * 60 * 1000);
+      const scansForTrend = completedScans.filter(
+        (s) => new Date(s.created_at) >= eightWeeksAgo
+      );
+
+      const weekBuckets8 = new Map<number, number[]>();
+      for (const scan of scansForTrend) {
+        const diffMs = now.getTime() - new Date(scan.created_at).getTime();
+        const weekIdx = 7 - Math.min(7, Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)));
+        const existing = weekBuckets8.get(weekIdx) ?? [];
+        if (scan.overall_score !== null) {
+          existing.push(scan.overall_score);
+          weekBuckets8.set(weekIdx, existing);
+        }
+      }
+
+      const scoreTrendData: Array<{ date: string; score: number }> = Array.from(
+        { length: 8 },
+        (_, i) => {
+          const d = new Date(now.getTime() - (7 - i) * 7 * 24 * 60 * 60 * 1000);
+          const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          const scores = weekBuckets8.get(i) ?? [];
+          const avg =
+            scores.length > 0
+              ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length)
+              : 0;
+          return { date: label, score: avg };
+        }
+      ).filter((p) => p.score > 0);
+
+      // ── critical_action_items: top 3 from recent completed scans
+
+      let criticalActionItems: CriticalActionItem[] = [];
+
+      const recentCompletedIds = completedScans.slice(0, 3).map((s) => s.id);
+      if (recentCompletedIds.length > 0) {
+        const { data: actionResultsData } = await supabase
+          .from("scan_results")
+          .select("scan_id, findings")
+          .in("scan_id", recentCompletedIds);
+
+        if (actionResultsData && actionResultsData.length > 0) {
+          const allCritical: CriticalActionItem[] = (
+            actionResultsData as Array<{ scan_id: string; findings: DbFinding[] | null }>
+          ).flatMap((r) =>
+            (r.findings ?? [])
+              .filter(
+                (f: DbFinding) =>
+                  f.severity === "critical" || f.severity === "warning"
+              )
+              .map((f: DbFinding) => ({
+                id: f.id,
+                title: f.title,
+                severity: f.severity,
+                scanId: r.scan_id,
+              }))
+          );
+
+          // Sort criticals first, take top 3
+          criticalActionItems = allCritical
+            .sort((a, b) => {
+              if (a.severity === "critical" && b.severity !== "critical") return -1;
+              if (b.severity === "critical" && a.severity !== "critical") return 1;
+              return 0;
+            })
+            .slice(0, 3);
+        }
+      }
+
+      return {
+        stats,
+        recentScans,
+        scoreTrend,
+        scoreDistribution,
+        topQuickWins,
+        latestScanId,
+        best_score: bestScore,
+        scans_this_week: scansThisWeek,
+        score_trend_data: scoreTrendData,
+        critical_action_items: criticalActionItems,
+      };
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+=== use-debounce ===
+import { useState, useEffect } from "react";
+
+export function useDebounce<T>(value: T, delay = 300): T {
+  const [debounced, setDebounced] = useState<T>(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
+=== use-feature-flag ===
+/**
+ * Global feature flag hook — used throughout the app (not admin-only).
+ * Reads from the same system_config table as the admin feature flags.
+ * Has a longer staleTime (5 min) since feature flags change rarely.
+ */
+
+import { useQuery } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { FLAG_DEFINITIONS } from "@/hooks/admin/use-feature-flags";
+
+const DEFAULT_FLAGS: Record<string, boolean> = Object.fromEntries(
+  FLAG_DEFINITIONS.map((f) => [f.key, f.defaultValue])
+);
+
+async function fetchAllFeatureFlags(): Promise<Record<string, boolean>> {
+  const { data, error } = await supabase
+    .from("system_config")
+    .select("value")
+    .eq("key", "feature_flags")
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    // On error, return defaults silently — never break app for missing config
+    return DEFAULT_FLAGS;
+  }
+
+  const stored = (data?.value ?? {}) as Record<string, boolean>;
+  return { ...DEFAULT_FLAGS, ...stored };
+}
+
+/**
+ * Returns the boolean value of a single feature flag.
+ * Falls back to `defaultValue` if the flag is not set or loading.
+ */
+export function useFeatureFlag(key: string, defaultValue = true): boolean {
+  const { data } = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: fetchAllFeatureFlags,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    // Never throw on error — silently use defaults
+    retry: 1,
+  });
+
+  if (data === undefined) {
+    // Still loading — return the flag's defined default or the passed default
+    const flagDef = FLAG_DEFINITIONS.find((f) => f.key === key);
+    return flagDef?.defaultValue ?? defaultValue;
+  }
+
+  return data[key] ?? defaultValue;
+}
+
+=== use-finding-tracker ===
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+
+interface FixedFindingsResult {
+  fixedSet: Set<string>;
+  pillarFixedCount: Record<string, number>;
+  rawData: { id: string; pillar: string; fixed_findings: string[] }[];
+}
+
+export function useFixedFindings(scanId: string | undefined) {
+  return useQuery({
+    queryKey: ["fixed-findings", scanId],
+    queryFn: async (): Promise<FixedFindingsResult> => {
+      const { data, error } = await supabase
+        .from("scan_results")
+        .select("id, pillar, fixed_findings")
+        .eq("scan_id", scanId as string);
+      if (error) throw error;
+
+      const allFixed = new Set<string>();
+      const pillarFixedCount: Record<string, number> = {};
+
+      for (const row of data ?? []) {
+        const fixed = (row.fixed_findings as string[] | null) ?? [];
+        fixed.forEach((fid) => allFixed.add(fid));
+        pillarFixedCount[row.pillar as string] = fixed.length;
+      }
+
+      return {
+        fixedSet: allFixed,
+        pillarFixedCount,
+        rawData: (data ?? []).map((row) => ({
+          id: row.id as string,
+          pillar: row.pillar as string,
+          fixed_findings: (row.fixed_findings as string[] | null) ?? [],
+        })),
+      };
+    },
+    enabled: !!scanId,
+  });
+}
+
+interface ToggleFindingFixedVariables {
+  scanResultId: string;
+  findingId: string;
+  currentlyFixed: boolean;
+}
+
+export function useToggleFindingFixed() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      scanResultId,
+      findingId,
+      currentlyFixed,
+    }: ToggleFindingFixedVariables): Promise<void> => {
+      const { data: current, error: fetchError } = await supabase
+        .from("scan_results")
+        .select("fixed_findings")
+        .eq("id", scanResultId)
+        .single();
+      if (fetchError) throw fetchError;
+
+      const existing = (current?.fixed_findings as string[] | null) ?? [];
+      const updated = currentlyFixed
+        ? existing.filter((id) => id !== findingId)
+        : [...existing, findingId];
+
+      const { error } = await supabase
+        .from("scan_results")
+        .update({ fixed_findings: updated })
+        .eq("id", scanResultId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fixed-findings"] });
+    },
+  });
+}
+
+=== use-industry-benchmarks ===
+import { useQuery } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import type { CroPillar, IndustryType } from "@/types";
+import type { IndustryBenchmarkRow } from "@/types/database";
+
+// ── Query keys ──────────────────────────────────────────────────
+
+export const benchmarkKeys = {
+  all: ["industry-benchmarks"] as const,
+  byIndustryAndPage: (industry: IndustryType, pageType: string) =>
+    ["industry-benchmarks", industry, pageType] as const,
+  industries: ["industry-benchmarks", "distinct-industries"] as const,
+};
+
+// ── Benchmark result shape ───────────────────────────────────────
+
+export interface PillarBenchmark {
+  avg_score: number;
+  sample_size: number;
+}
+
+// ── useIndustryBenchmarks ───────────────────────────────────────
+
+export function useIndustryBenchmarks(industry: IndustryType, pageType: string) {
+  return useQuery({
+    queryKey: benchmarkKeys.byIndustryAndPage(industry, pageType),
+    queryFn: async (): Promise<Record<CroPillar, PillarBenchmark>> => {
+      const { data, error } = await supabase
+        .from("industry_benchmarks")
+        .select("*")
+        .eq("industry", industry)
+        .eq("page_type", pageType);
+
+      if (error) throw new Error(error.message);
+
+      const rows = (data ?? []) as IndustryBenchmarkRow[];
+
+      // Build a map keyed by pillar — fall back to empty object if no rows
+      const result: Partial<Record<CroPillar, PillarBenchmark>> = {};
+      for (const row of rows) {
+        result[row.pillar as CroPillar] = {
+          avg_score: row.avg_score,
+          sample_size: row.sample_size,
+        };
+      }
+
+      return result as Record<CroPillar, PillarBenchmark>;
+    },
+    enabled: !!industry && !!pageType,
+    staleTime: 1000 * 60 * 60, // benchmarks rarely change — 1 hour cache
+  });
+}
+
+// ── useAvailableIndustries ──────────────────────────────────────
+
+export function useAvailableIndustries() {
+  return useQuery({
+    queryKey: benchmarkKeys.industries,
+    queryFn: async (): Promise<IndustryType[]> => {
+      const { data, error } = await supabase
+        .from("industry_benchmarks")
+        .select("industry");
+
+      if (error) throw new Error(error.message);
+
+      const distinct = Array.from(
+        new Set((data ?? []).map((r: { industry: string }) => r.industry))
+      ) as IndustryType[];
+
+      return distinct;
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
+=== use-integrations ===
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { IntegrationRow } from "@/types/database";
+
+// ── Types ─────────────────────────────────────────────────────
+
+export type IntegrationProvider = IntegrationRow["provider"];
+
+interface ConnectIntegrationInput {
+  provider: IntegrationProvider;
+  trackingId: string;
+}
+
+interface DisconnectIntegrationInput {
+  provider: IntegrationProvider;
+}
+
+// ── Query keys ─────────────────────────────────────────────────
+
+export const integrationKeys = {
+  all: ["integrations"] as const,
+};
+
+// ── useIntegrations ────────────────────────────────────────────
+// Fetches all integrations for the current user.
+
+export function useIntegrations() {
+  const { profile } = useAuth();
+  const userId = profile?.id;
+
+  return useQuery({
+    queryKey: integrationKeys.all,
+    queryFn: async (): Promise<IntegrationRow[]> => {
+      if (!userId) return [];
+
+      const { data, error } = await supabase
+        .from("integrations")
+        .select("*")
+        .eq("user_id", userId)
+        .order("connected_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return data as IntegrationRow[];
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60, // 1 minute
+  });
+}
+
+// ── useConnectIntegration ──────────────────────────────────────
+// Upserts an integration row. Creates on first connect, updates on reconnect.
+
+export function useConnectIntegration() {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ provider, trackingId }: ConnectIntegrationInput): Promise<IntegrationRow> => {
+      const userId = profile?.id;
+      if (!userId) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("integrations")
+        .upsert(
+          {
+            user_id: userId,
+            provider,
+            access_token: trackingId,
+            is_active: true,
+          },
+          { onConflict: "user_id,provider" }
+        )
+        .select("*")
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data as IntegrationRow;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: integrationKeys.all });
+    },
+  });
+}
+
+// ── useDisconnectIntegration ───────────────────────────────────
+// Marks an integration as inactive and clears the stored token.
+
+export function useDisconnectIntegration() {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ provider }: DisconnectIntegrationInput): Promise<void> => {
+      const userId = profile?.id;
+      if (!userId) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("integrations")
+        .update({ is_active: false, access_token: null })
+        .eq("user_id", userId)
+        .eq("provider", provider);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: integrationKeys.all });
+    },
+  });
+}
+
+=== use-mobile ===
+import * as React from "react";
+
+const MOBILE_BREAKPOINT = 768;
+
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const onChange = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    };
+    mql.addEventListener("change", onChange);
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return !!isMobile;
+}
+
+=== use-monitoring ===
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { MonitoredUrl, MonitoringFrequency } from "@/types";
+import type { MonitoredUrlRow } from "@/types/database";
+
+// ── Query keys ──────────────────────────────────────────────────
+
+export const monitoringKeys = {
+  all: ["monitored-urls"] as const,
+  byUser: (userId: string) => ["monitored-urls", userId] as const,
+};
+
+// ── URL hash helper (mirrors scan_history pattern) ───────────────
+
+export function computeUrlHash(url: string): string {
+  return url.trim().toLowerCase();
+}
+
+// ── Row → App type mapper ────────────────────────────────────────
+
+function rowToMonitoredUrl(row: MonitoredUrlRow): MonitoredUrl {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    url: row.url,
+    url_hash: row.url_hash,
+    frequency: row.frequency,
+    last_scanned_at: row.last_scanned_at,
+    last_score: row.last_score,
+    alert_threshold: row.alert_threshold,
+    is_active: row.is_active,
+    created_at: row.created_at,
+  };
+}
+
+// ── useMonitoredUrls ────────────────────────────────────────────
+
+export function useMonitoredUrls() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: monitoringKeys.byUser(user?.id ?? ""),
+    queryFn: async (): Promise<MonitoredUrl[]> => {
+      if (!user?.id) return [];
+
+      const { data, error } = await supabase
+        .from("monitored_urls")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return (data as MonitoredUrlRow[]).map(rowToMonitoredUrl);
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ── useAddMonitoredUrl ──────────────────────────────────────────
+
+interface AddMonitoredUrlInput {
+  url: string;
+  frequency: MonitoringFrequency;
+  alert_threshold: number;
+}
+
+export function useAddMonitoredUrl() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: AddMonitoredUrlInput): Promise<MonitoredUrl> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const url_hash = computeUrlHash(input.url);
+
+      const { data, error } = await supabase
+        .from("monitored_urls")
+        .insert({
+          user_id: user.id,
+          url: input.url.trim(),
+          url_hash,
+          frequency: input.frequency,
+          alert_threshold: input.alert_threshold,
+          is_active: true,
+        })
+        .select("*")
+        .single();
+
+      if (error) throw new Error(error.message);
+      return rowToMonitoredUrl(data as MonitoredUrlRow);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: monitoringKeys.byUser(user?.id ?? "") });
+    },
+  });
+}
+
+// ── useRemoveMonitoredUrl ───────────────────────────────────────
+
+export function useRemoveMonitoredUrl() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("monitored_urls")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: monitoringKeys.byUser(user?.id ?? "") });
+    },
+  });
+}
+
+// ── useUpdateMonitoringSettings ─────────────────────────────────
+
+interface UpdateMonitoringSettingsInput {
+  id: string;
+  frequency?: MonitoringFrequency;
+  alert_threshold?: number;
+  is_active?: boolean;
+}
+
+export function useUpdateMonitoringSettings() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateMonitoringSettingsInput): Promise<MonitoredUrl> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { id, ...updates } = input;
+
+      const { data, error } = await supabase
+        .from("monitored_urls")
+        .update(updates)
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .select("*")
+        .single();
+
+      if (error) throw new Error(error.message);
+      return rowToMonitoredUrl(data as MonitoredUrlRow);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: monitoringKeys.byUser(user?.id ?? "") });
+    },
+  });
+}
+
+// ── useIsMonitored ──────────────────────────────────────────────
+
+export function useIsMonitored(urlHash: string): boolean {
+  const { data: monitoredUrls = [] } = useMonitoredUrls();
+  return monitoredUrls.some((m) => m.url_hash === urlHash && m.is_active);
+}
+
+=== use-notifications ===
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { AppNotification } from "@/types";
+
+const NOTIFICATIONS_KEY = "notifications";
+
+// ── useNotifications ──────────────────────────────────────────────
+// Fetches last 20 notifications for the current user, newest first.
+
+export function useNotifications() {
+  const { user } = useAuth();
+
+  return useQuery<AppNotification[]>({
+    queryKey: [NOTIFICATIONS_KEY, user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      return (data ?? []) as AppNotification[];
+    },
+    staleTime: 30_000,
+  });
+}
+
+// ── useUnreadCount ────────────────────────────────────────────────
+// Returns the count of unread notifications (read_at IS NULL).
+
+export function useUnreadCount(): number {
+  const { data } = useNotifications();
+  if (!data) return 0;
+  return data.filter((n) => n.read_at === null).length;
+}
+
+// ── useMarkRead ───────────────────────────────────────────────────
+// Sets read_at = NOW() for a single notification.
+
+export function useMarkRead() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (notificationId: string) => {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", notificationId)
+        .eq("user_id", user!.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [NOTIFICATIONS_KEY, user?.id] });
+    },
+  });
+}
+
+// ── useMarkAllRead ────────────────────────────────────────────────
+// Marks all unread notifications as read for the current user.
+
+export function useMarkAllRead() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", user!.id)
+        .is("read_at", null);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [NOTIFICATIONS_KEY, user?.id] });
+    },
+  });
+}
+
+// ── useDismissNotification ────────────────────────────────────────
+// Permanently deletes a notification for the current user.
+
+export function useDismissNotification() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user!.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [NOTIFICATIONS_KEY, user?.id] });
+    },
+  });
+}
+
+=== use-onboarding ===
+import { useCallback, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+
+const STORAGE_KEY = "convertscan:onboarding_complete";
+
+interface UseOnboardingReturn {
+  showOnboarding: boolean;
+  completeOnboarding: () => void;
+}
+
+export function useOnboarding(): UseOnboardingReturn {
+  const { profile } = useAuth();
+
+  const showOnboarding = useMemo(() => {
+    if (!profile) return false;
+    const alreadyDone = localStorage.getItem(STORAGE_KEY) === "true";
+    return profile.scans_used === 0 && !alreadyDone;
+  }, [profile]);
+
+  const completeOnboarding = useCallback(() => {
+    localStorage.setItem(STORAGE_KEY, "true");
+  }, []);
+
+  return { showOnboarding, completeOnboarding };
+}
+
+=== use-profile ===
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { UserProfile, EmailPreferences } from "@/types";
+import type { ProfileUpdate } from "@/types/database";
+
+// ── Query keys ──────────────────────────────────────────────────
+
+export const profileKeys = {
+  all: ["profile"] as const,
+  byUser: (userId: string) => ["profile", userId] as const,
+};
+
+// ── useProfile ──────────────────────────────────────────────────
+
+export function useProfile() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: profileKeys.byUser(user?.id ?? ""),
+    queryFn: async (): Promise<UserProfile | null> => {
+      if (!user?.id) return null;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "id, email, full_name, company_name, website_url, avatar_url, plan, scans_used, scan_limit, created_at, billing_cycle_end"
+        )
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") return null; // row not found
+        throw new Error(error.message);
+      }
+
+      return data as UserProfile;
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+// ── useUpdateProfile ────────────────────────────────────────────
+
+type ProfileUpdatableFields = Pick<
+  ProfileUpdate,
+  "full_name" | "company_name" | "website_url" | "avatar_url" | "email_preferences"
+>;
+
+export function useUpdateProfile() {
+  const { user, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updates: ProfileUpdatableFields) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", user.id)
+        .select(
+          "id, email, full_name, company_name, website_url, avatar_url, plan, scans_used, scan_limit, created_at, billing_cycle_end"
+        )
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data as UserProfile;
+    },
+    onSuccess: (data) => {
+      // Update React Query cache
+      if (user?.id) {
+        queryClient.setQueryData(profileKeys.byUser(user.id), data);
+      }
+      // Also refresh the AuthContext profile so header/sidebar updates
+      refreshProfile();
+    },
+  });
+}
+
+// ── useUpdateEmailPreferences ────────────────────────────────────
+
+export function useUpdateEmailPreferences() {
+  const { user, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (preferences: EmailPreferences) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({
+          email_preferences: preferences as unknown as Record<string, boolean>,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id)
+        .select("id, email, full_name, company_name, website_url, avatar_url, plan, scans_used, scan_limit, created_at, billing_cycle_end, email_preferences, referral_code")
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data as UserProfile;
+    },
+    onSuccess: (data) => {
+      if (user?.id) {
+        queryClient.setQueryData(profileKeys.byUser(user.id), data);
+      }
+      refreshProfile();
+    },
+  });
+}
+
+=== use-referrals ===
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Referral } from "@/types";
+import type { ReferralInsert } from "@/types/database";
+
+// ── Query keys ────────────────────────────────────────────────────
+
+export const referralKeys = {
+  all: ["referrals"] as const,
+  byUser: (userId: string) => ["referrals", userId] as const,
+  code: (userId: string) => ["referral-code", userId] as const,
+};
+
+// ── useReferrals ──────────────────────────────────────────────────
+// Fetches all referrals the current user has made.
+
+export function useReferrals() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: referralKeys.byUser(user?.id ?? ""),
+    queryFn: async (): Promise<Referral[]> => {
+      if (!user?.id) return [];
+
+      const { data, error } = await supabase
+        .from("referrals")
+        .select("*")
+        .eq("referrer_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Referral[];
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// ── useReferralStats ──────────────────────────────────────────────
+// Derived stats from the referrals list.
+
+export function useReferralStats() {
+  const { data: referrals = [], isLoading, isError } = useReferrals();
+
+  const totalReferred = referrals.length;
+  const signedUp = referrals.filter((r) => r.status === "signed_up" || r.status === "converted" || r.status === "rewarded").length;
+  const converted = referrals.filter((r) => r.status === "converted" || r.status === "rewarded").length;
+  const rewarded = referrals.filter((r) => r.status === "rewarded").length;
+
+  return { totalReferred, signedUp, converted, rewarded, isLoading, isError };
+}
+
+// ── useReferralCode ───────────────────────────────────────────────
+// Returns the user's referral code. Generates one via profile update if null.
+
+export function useReferralCode() {
+  const { user, profile, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  const generateCode = useMutation({
+    mutationFn: async (): Promise<string> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      // Generate a short random code: 8 alphanumeric chars
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+      let code = "";
+      for (let i = 0; i < 8; i++) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ referral_code: code })
+        .eq("id", user.id)
+        .select("referral_code")
+        .single();
+
+      if (error) throw new Error(error.message);
+      return (data as { referral_code: string }).referral_code;
+    },
+    onSuccess: () => {
+      void refreshProfile();
+      void queryClient.invalidateQueries({ queryKey: referralKeys.code(user?.id ?? "") });
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Failed to generate referral code";
+      toast.error(message);
+    },
+  });
+
+  return {
+    code: profile?.referral_code ?? null,
+    isGenerating: generateCode.isPending,
+    generate: generateCode.mutate,
+  };
+}
+
+// ── useCreateReferral ─────────────────────────────────────────────
+// Creates a referral row after signup when a ?ref= code was used.
+
+export function useCreateReferral() {
+  return useMutation({
+    mutationFn: async ({
+      referrerCode,
+      referredEmail,
+      referredId,
+    }: {
+      referrerCode: string;
+      referredEmail: string;
+      referredId: string;
+    }): Promise<void> => {
+      // Look up the referrer by their code
+      const { data: referrer, error: lookupError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("referral_code", referrerCode)
+        .single();
+
+      if (lookupError || !referrer) {
+        // Silently fail — invalid referral code should not block signup
+        return;
+      }
+
+      const insert: ReferralInsert = {
+        referrer_id: referrer.id,
+        referred_email: referredEmail,
+        referred_id: referredId,
+        status: "signed_up",
+      };
+
+      const { error: insertError } = await supabase.from("referrals").insert(insert);
+
+      if (insertError) throw new Error(insertError.message);
+    },
+  });
+}
+
+=== use-scan-comparison ===
+import { useQuery } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { CroPillar } from "@/types";
+import type { ScanResultRow } from "@/types/database";
+
+// ── Types ────────────────────────────────────────────────────────
+
+export interface PillarDelta {
+  pillar: CroPillar;
+  previous: number;
+  current: number;
+  delta: number;
+}
+
+export interface ScanComparison {
+  hasPrevious: boolean;
+  previousScore: number;
+  currentScore: number;
+  scoreDelta: number;
+  pillarDeltas: PillarDelta[];
+  previousScanId: string;
+}
+
+const EMPTY_COMPARISON: ScanComparison = {
+  hasPrevious: false,
+  previousScore: 0,
+  currentScore: 0,
+  scoreDelta: 0,
+  pillarDeltas: [],
+  previousScanId: "",
+};
+
+// ── Query keys ──────────────────────────────────────────────────
+
+export const scanComparisonKeys = {
+  comparison: (scanId: string) => ["scan-comparison", scanId] as const,
+};
+
+// ── useScanComparison ────────────────────────────────────────────
+// For the current scan, find the previous scan for the same URL and
+// compute per-pillar deltas.
+
+export function useScanComparison(
+  scanId: string | undefined,
+  url: string | undefined,
+) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: scanComparisonKeys.comparison(scanId ?? ""),
+    queryFn: async (): Promise<ScanComparison> => {
+      if (!scanId || !url || !user?.id) return EMPTY_COMPARISON;
+
+      const urlHash = url.toLowerCase().trim();
+
+      // 1. Find all history entries for this URL, ordered ASC
+      const { data: historyRows, error: historyError } = await supabase
+        .from("scan_history")
+        .select("scan_id, score, scanned_at")
+        .eq("user_id", user.id)
+        .eq("url_hash", urlHash)
+        .order("scanned_at", { ascending: true });
+
+      if (historyError || !historyRows || historyRows.length < 2) {
+        return EMPTY_COMPARISON;
+      }
+
+      // 2. Find this scan's position in history
+      const currentIndex = (historyRows as Array<{ scan_id: string; score: number; scanned_at: string }>)
+        .findIndex((r) => r.scan_id === scanId);
+
+      if (currentIndex <= 0) {
+        // Not found or is the first entry — no previous scan
+        return EMPTY_COMPARISON;
+      }
+
+      const currentEntry = historyRows[currentIndex] as { scan_id: string; score: number };
+      const previousEntry = historyRows[currentIndex - 1] as { scan_id: string; score: number };
+
+      // 3. Fetch pillar results for previous scan
+      const { data: prevResults, error: prevError } = await supabase
+        .from("scan_results")
+        .select("pillar, score")
+        .eq("scan_id", previousEntry.scan_id);
+
+      if (prevError || !prevResults) return EMPTY_COMPARISON;
+
+      // 4. Fetch pillar results for current scan
+      const { data: currResults, error: currError } = await supabase
+        .from("scan_results")
+        .select("pillar, score")
+        .eq("scan_id", scanId);
+
+      if (currError || !currResults) return EMPTY_COMPARISON;
+
+      // 5. Build per-pillar deltas
+      const prevMap = new Map<string, number>();
+      for (const r of prevResults as Pick<ScanResultRow, "pillar" | "score">[]) {
+        prevMap.set(r.pillar, r.score);
+      }
+
+      const pillarDeltas: PillarDelta[] = [];
+      for (const r of currResults as Pick<ScanResultRow, "pillar" | "score">[]) {
+        const prevScore = prevMap.get(r.pillar);
+        if (prevScore !== undefined) {
+          pillarDeltas.push({
+            pillar: r.pillar as CroPillar,
+            previous: prevScore,
+            current: r.score,
+            delta: r.score - prevScore,
+          });
+        }
+      }
+
+      return {
+        hasPrevious: true,
+        previousScore: previousEntry.score,
+        currentScore: currentEntry.score,
+        scoreDelta: currentEntry.score - previousEntry.score,
+        pillarDeltas,
+        previousScanId: previousEntry.scan_id,
+      };
+    },
+    enabled: !!scanId && !!url && !!user?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+=== use-scan-history ===
+import { useQuery } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { ScanHistoryEntry } from "@/types";
+
+// ── Query keys ──────────────────────────────────────────────────
+
+export const scanHistoryKeys = {
+  all: ["scan-history"] as const,
+  byUrl: (urlHash: string) => ["scan-history", "url", urlHash] as const,
+  allUrls: (userId: string) => ["scan-history", "all-urls", userId] as const,
+};
+
+// ── Row → App type mapper ────────────────────────────────────────
+
+function rowToEntry(row: Record<string, unknown>): ScanHistoryEntry {
+  return {
+    id: row.id as string,
+    user_id: row.user_id as string,
+    url_hash: row.url_hash as string,
+    url: row.url as string,
+    scan_id: row.scan_id as string,
+    score: row.score as number,
+    pillar_scores: (row.pillar_scores as ScanHistoryEntry["pillar_scores"]) ?? null,
+    scanned_at: row.scanned_at as string,
+  };
+}
+
+// ── useScanHistory ──────────────────────────────────────────────
+// All entries for a given url_hash, ordered chronologically ASC.
+
+export function useScanHistory(urlHash: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: scanHistoryKeys.byUrl(urlHash),
+    queryFn: async (): Promise<ScanHistoryEntry[]> => {
+      if (!urlHash || !user?.id) return [];
+
+      const { data, error } = await supabase
+        .from("scan_history")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("url_hash", urlHash)
+        .order("scanned_at", { ascending: true });
+
+      if (error) throw new Error(error.message);
+      return (data as Record<string, unknown>[]).map(rowToEntry);
+    },
+    enabled: !!urlHash && !!user?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// ── UrlHistoryGroup ─────────────────────────────────────────────
+
+export interface UrlHistoryGroup {
+  url: string;
+  url_hash: string;
+  entries: ScanHistoryEntry[];
+  latestScore: number;
+  firstScore: number;
+  delta: number;
+  latestScanId: string;
+}
+
+// ── useAllUrlHistory ────────────────────────────────────────────
+// Returns all tracked URLs for the current user, grouped, with deltas.
+
+export function useAllUrlHistory() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: scanHistoryKeys.allUrls(user?.id ?? ""),
+    queryFn: async (): Promise<UrlHistoryGroup[]> => {
+      if (!user?.id) return [];
+
+      const { data, error } = await supabase
+        .from("scan_history")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("scanned_at", { ascending: true });
+
+      if (error) throw new Error(error.message);
+
+      const rows = (data as Record<string, unknown>[]).map(rowToEntry);
+
+      // Group by url_hash
+      const groupMap = new Map<string, ScanHistoryEntry[]>();
+      for (const entry of rows) {
+        const existing = groupMap.get(entry.url_hash);
+        if (existing) {
+          existing.push(entry);
+        } else {
+          groupMap.set(entry.url_hash, [entry]);
+        }
+      }
+
+      const groups: UrlHistoryGroup[] = [];
+      for (const [urlHash, entries] of groupMap) {
+        // entries are already ASC by scanned_at
+        const firstEntry = entries[0];
+        const lastEntry = entries[entries.length - 1];
+        groups.push({
+          url: lastEntry.url,
+          url_hash: urlHash,
+          entries,
+          latestScore: lastEntry.score,
+          firstScore: firstEntry.score,
+          delta: lastEntry.score - firstEntry.score,
+          latestScanId: lastEntry.scan_id,
+        });
+      }
+
+      // Sort groups by latest scan time DESC
+      groups.sort((a, b) => {
+        const aLast = a.entries[a.entries.length - 1].scanned_at;
+        const bLast = b.entries[b.entries.length - 1].scanned_at;
+        return bLast.localeCompare(aLast);
+      });
+
+      return groups;
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+=== use-share-report ===
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import type { PillarResult, Scan, TeamBranding } from "@/types";
+import type { DbFinding, ScanResultRow } from "@/types/database";
+import type { Finding } from "@/types";
+
+// ── Query keys ──────────────────────────────────────────────────
+
+export const shareReportKeys = {
+  publicScan: (token: string) => ["public-scan", token] as const,
+};
+
+// ── Public report payload shape (from edge function) ────────────
+
+export interface PublicScanPayload {
+  scan: Omit<Scan, "user_id">;
+  results: PillarResult[];
+  teamBranding: TeamBranding | null;
+}
+
+// ── useGenerateShareLink ────────────────────────────────────────
+
+export function useGenerateShareLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (scanId: string): Promise<string> => {
+      const token = crypto.randomUUID();
+      const { error } = await supabase
+        .from("scans")
+        .update({ share_token: token, is_public: true })
+        .eq("id", scanId);
+
+      if (error) throw new Error(error.message);
+
+      return `${window.location.origin}/r/${token}`;
+    },
+    onSuccess: (_url, scanId) => {
+      // Invalidate so useScan refetches updated share_token + is_public
+      queryClient.invalidateQueries({ queryKey: ["scans", scanId] });
+      queryClient.invalidateQueries({ queryKey: ["scans"] });
+    },
+  });
+}
+
+// ── useRevokeShareLink ──────────────────────────────────────────
+
+export function useRevokeShareLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (scanId: string): Promise<void> => {
+      const { error } = await supabase
+        .from("scans")
+        .update({ share_token: null, is_public: false })
+        .eq("id", scanId);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_data, scanId) => {
+      queryClient.invalidateQueries({ queryKey: ["scans", scanId] });
+      queryClient.invalidateQueries({ queryKey: ["scans"] });
+    },
+  });
+}
+
+// ── usePublicScan ───────────────────────────────────────────────
+
+function dbFindingToFinding(f: DbFinding): Finding {
+  return {
+    id: f.id,
+    title: f.title,
+    severity: f.severity,
+    current_state: f.current_state,
+    recommendation: f.recommendation,
+    ai_suggestion: f.ai_suggestion,
+    is_premium: f.is_premium,
+    effort: f.effort,
+    estimated_lift: f.estimated_lift,
+    category: f.category,
+  };
+}
+
+function rowToPillarResult(row: ScanResultRow): PillarResult {
+  return {
+    id: row.id,
+    scan_id: row.scan_id,
+    pillar: row.pillar,
+    score: row.score,
+    weight: row.weight,
+    benchmark: row.benchmark,
+    findings: (row.findings ?? []).map(dbFindingToFinding),
+  };
+}
+
+export function usePublicScan(token: string) {
+  return useQuery({
+    queryKey: shareReportKeys.publicScan(token),
+    queryFn: async (): Promise<PublicScanPayload> => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const supabaseKey = (
+        (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ??
+        (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)
+      );
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error("Missing Supabase environment variables");
+      }
+
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/public-report?token=${encodeURIComponent(token)}`,
+        {
+          headers: {
+            apikey: supabaseKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (res.status === 404) {
+        throw new Error("NOT_FOUND");
+      }
+
+      if (!res.ok) {
+        throw new Error(`Failed to load public report: ${res.status}`);
+      }
+
+      const json = (await res.json()) as {
+        scan: Omit<Scan, "user_id">;
+        results: ScanResultRow[];
+        teamBranding?: TeamBranding;
+      };
+
+      return {
+        scan: json.scan,
+        results: json.results.map(rowToPillarResult),
+        teamBranding: json.teamBranding ?? null,
+      };
+    },
+    enabled: !!token,
+    staleTime: 1000 * 60 * 5,
+    retry: (failureCount, error) => {
+      if (error instanceof Error && error.message === "NOT_FOUND") return false;
+      return failureCount < 2;
+    },
+  });
+}
+
+=== use-support ===
+/**
+ * User-facing support request hook.
+ * Used in the Settings page Support tab.
+ */
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import type { SupportRequest, SupportPriority } from "@/hooks/admin/use-admin-support";
+
+interface SubmitSupportRequestArgs {
+  subject: string;
+  message: string;
+  priority: SupportPriority;
+}
+
+export function useSubmitSupportRequest() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ subject, message, priority }: SubmitSupportRequestArgs) => {
+      if (!user) throw new Error("You must be logged in to submit a support request.");
+
+      const { error } = await supabase.from("support_requests").insert({
+        user_id: user.id,
+        user_email: user.email ?? "",
+        subject,
+        message,
+        priority,
+        status: "open",
+      });
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Support request submitted. We'll get back to you soon.");
+      queryClient.invalidateQueries({ queryKey: ["support-requests", "my"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to submit request: ${error.message}`);
+    },
+  });
+}
+
+export function useMySupportRequests() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["support-requests", "my", user?.id],
+    queryFn: async () => {
+      if (!user) return [] as SupportRequest[];
+
+      const { data, error } = await supabase
+        .from("support_requests")
+        .select("id, subject, status, priority, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Pick<SupportRequest, "id" | "subject" | "status" | "priority" | "created_at">[];
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+}
+
+=== use-teams ===
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Team, TeamMember, TeamInvite } from "@/types/index";
+import type { TeamRow, TeamMemberRow, TeamInviteRow } from "@/types/database";
+
+// ── Query keys ──────────────────────────────────────────────────
+
+export const teamKeys = {
+  all: ["teams"] as const,
+  lists: () => [...teamKeys.all, "list"] as const,
+  list: (userId: string) => [...teamKeys.lists(), userId] as const,
+  details: () => [...teamKeys.all, "detail"] as const,
+  detail: (id: string) => [...teamKeys.details(), id] as const,
+  members: (teamId: string) => [...teamKeys.all, "members", teamId] as const,
+  invites: (teamId: string) => [...teamKeys.all, "invites", teamId] as const,
+};
+
+// ── Row → App type mappers ───────────────────────────────────────
+
+function rowToTeam(row: TeamRow): Team {
+  return {
+    id: row.id,
+    name: row.name,
+    owner_id: row.owner_id,
+    logo_url: row.logo_url,
+    brand_color: row.brand_color,
+    custom_domain: row.custom_domain,
+    created_at: row.created_at,
+  };
+}
+
+interface TeamMemberRowWithProfile extends TeamMemberRow {
+  profiles?: {
+    full_name: string;
+    email: string;
+    avatar_url: string | null;
+  } | null;
+}
+
+function rowToTeamMember(row: TeamMemberRowWithProfile): TeamMember {
+  return {
+    id: row.id,
+    team_id: row.team_id,
+    user_id: row.user_id,
+    role: row.role,
+    joined_at: row.joined_at,
+    profile: row.profiles
+      ? {
+          full_name: row.profiles.full_name,
+          email: row.profiles.email,
+          avatar_url: row.profiles.avatar_url,
+        }
+      : undefined,
+  };
+}
+
+function rowToTeamInvite(row: TeamInviteRow): TeamInvite {
+  return {
+    id: row.id,
+    team_id: row.team_id,
+    email: row.email,
+    role: row.role,
+    token: row.token,
+    expires_at: row.expires_at,
+    created_at: row.created_at,
+  };
+}
+
+// ── useTeams ─────────────────────────────────────────────────────
+// Returns all teams where the current user is a member.
+
+export function useTeams() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: teamKeys.list(user?.id ?? ""),
+    queryFn: async (): Promise<Team[]> => {
+      if (!user?.id) return [];
+
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("team_id, teams(*)")
+        .eq("user_id", user.id)
+        .order("joined_at", { ascending: true });
+
+      if (error) throw new Error(error.message);
+
+      return (data ?? [])
+        .map((row) => {
+          const team = (row as { team_id: string; teams: TeamRow | null }).teams;
+          return team ? rowToTeam(team) : null;
+        })
+        .filter((t): t is Team => t !== null);
+    },
+    enabled: !!user?.id,
+  });
+}
+
+// ── useTeam ──────────────────────────────────────────────────────
+
+export function useTeam(teamId: string | undefined) {
+  return useQuery({
+    queryKey: teamKeys.detail(teamId ?? ""),
+    queryFn: async (): Promise<Team | null> => {
+      if (!teamId) return null;
+
+      const { data, error } = await supabase
+        .from("teams")
+        .select("*")
+        .eq("id", teamId)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") return null;
+        throw new Error(error.message);
+      }
+
+      return rowToTeam(data as TeamRow);
+    },
+    enabled: !!teamId,
+  });
+}
+
+// ── useTeamMembers ───────────────────────────────────────────────
+
+export function useTeamMembers(teamId: string | undefined) {
+  return useQuery({
+    queryKey: teamKeys.members(teamId ?? ""),
+    queryFn: async (): Promise<TeamMember[]> => {
+      if (!teamId) return [];
+
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("*, profiles(full_name, email, avatar_url)")
+        .eq("team_id", teamId)
+        .order("joined_at", { ascending: true });
+
+      if (error) throw new Error(error.message);
+
+      return (data as TeamMemberRowWithProfile[]).map(rowToTeamMember);
+    },
+    enabled: !!teamId,
+  });
+}
+
+// ── useTeamInvites ───────────────────────────────────────────────
+
+export function useTeamInvites(teamId: string | undefined) {
+  return useQuery({
+    queryKey: teamKeys.invites(teamId ?? ""),
+    queryFn: async (): Promise<TeamInvite[]> => {
+      if (!teamId) return [];
+
+      const { data, error } = await supabase
+        .from("team_invites")
+        .select("*")
+        .eq("team_id", teamId)
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+
+      return (data as TeamInviteRow[]).map(rowToTeamInvite);
+    },
+    enabled: !!teamId,
+  });
+}
+
+// ── useCreateTeam ────────────────────────────────────────────────
+
+export function useCreateTeam() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string): Promise<Team> => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      // Create team
+      const { data: teamData, error: teamError } = await supabase
+        .from("teams")
+        .insert({ name, owner_id: user.id })
+        .select("*")
+        .single();
+
+      if (teamError) throw new Error(teamError.message);
+
+      const team = rowToTeam(teamData as TeamRow);
+
+      // Insert owner as team_member
+      const { error: memberError } = await supabase
+        .from("team_members")
+        .insert({ team_id: team.id, user_id: user.id, role: "owner" });
+
+      if (memberError) throw new Error(memberError.message);
+
+      return team;
+    },
+    onSuccess: (data) => {
+      if (!user?.id) return;
+      queryClient.setQueryData<Team[]>(teamKeys.list(user.id), (prev) =>
+        prev ? [...prev, data] : [data]
+      );
+      queryClient.setQueryData(teamKeys.detail(data.id), data);
+      toast.success(`Team "${data.name}" created`);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+}
+
+// ── useUpdateTeam ────────────────────────────────────────────────
+
+export function useUpdateTeam(teamId: string) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updates: {
+      name?: string;
+      logo_url?: string | null;
+      brand_color?: string;
+      custom_domain?: string | null;
+    }): Promise<Team> => {
+      const { data, error } = await supabase
+        .from("teams")
+        .update(updates)
+        .eq("id", teamId)
+        .select("*")
+        .single();
+
+      if (error) throw new Error(error.message);
+      return rowToTeam(data as TeamRow);
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(teamKeys.detail(teamId), data);
+      if (user?.id) {
+        queryClient.setQueryData<Team[]>(teamKeys.list(user.id), (prev) =>
+          prev ? prev.map((t) => (t.id === teamId ? data : t)) : [data]
+        );
+      }
+      toast.success("Team updated");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+}
+
+// ── useDeleteTeam ────────────────────────────────────────────────
+
+export function useDeleteTeam() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (teamId: string): Promise<void> => {
+      const { error } = await supabase.from("teams").delete().eq("id", teamId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_data, teamId) => {
+      if (!user?.id) return;
+      queryClient.setQueryData<Team[]>(teamKeys.list(user.id), (prev) =>
+        prev ? prev.filter((t) => t.id !== teamId) : []
+      );
+      queryClient.removeQueries({ queryKey: teamKeys.detail(teamId) });
+      toast.success("Team deleted");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+}
+
+// ── useInviteMember ──────────────────────────────────────────────
+
+export function useInviteMember() {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      teamId,
+      email,
+      role,
+    }: {
+      teamId: string;
+      email: string;
+      role: string;
+    }): Promise<void> => {
+      const { error } = await supabase.functions.invoke("team-invite", {
+        body: {
+          team_id: teamId,
+          email,
+          role,
+          inviter_name: profile?.full_name ?? "A team member",
+        },
+      });
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_data, { teamId }) => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.invites(teamId) });
+      toast.success("Invitation sent");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+}
+
+// ── useRevokeInvite ──────────────────────────────────────────────
+
+export function useRevokeInvite(teamId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (inviteId: string): Promise<void> => {
+      const { error } = await supabase
+        .from("team_invites")
+        .delete()
+        .eq("id", inviteId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.invites(teamId) });
+      toast.success("Invite revoked");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+}
+
+// ── useRemoveMember ──────────────────────────────────────────────
+
+export function useRemoveMember(teamId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (memberId: string): Promise<void> => {
+      const { error } = await supabase
+        .from("team_members")
+        .delete()
+        .eq("id", memberId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.members(teamId) });
+      toast.success("Member removed");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+}
+
+// ── useUpdateMemberRole ──────────────────────────────────────────
+
+export function useUpdateMemberRole(teamId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      memberId,
+      role,
+    }: {
+      memberId: string;
+      role: "admin" | "member";
+    }): Promise<void> => {
+      const { error } = await supabase
+        .from("team_members")
+        .update({ role })
+        .eq("id", memberId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.members(teamId) });
+      toast.success("Role updated");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+}
+
+// ── useAcceptInvite ──────────────────────────────────────────────
+
+export function useAcceptInvite() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (token: string): Promise<{ team_id: string }> => {
+      if (!user?.id) throw new Error("You must be logged in to accept an invitation");
+
+      // Fetch and validate invite
+      const { data: invite, error: fetchError } = await supabase
+        .from("team_invites")
+        .select("*")
+        .eq("token", token)
+        .gt("expires_at", new Date().toISOString())
+        .single();
+
+      if (fetchError || !invite) {
+        throw new Error("Invitation not found or has expired");
+      }
+
+      const typedInvite = invite as TeamInviteRow;
+
+      // Check not already a member
+      const { data: existing } = await supabase
+        .from("team_members")
+        .select("id")
+        .eq("team_id", typedInvite.team_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existing) {
+        // Already a member — just delete invite and return
+        await supabase.from("team_invites").delete().eq("id", typedInvite.id);
+        return { team_id: typedInvite.team_id };
+      }
+
+      // Create team_member row
+      const { error: insertError } = await supabase
+        .from("team_members")
+        .insert({
+          team_id: typedInvite.team_id,
+          user_id: user.id,
+          role: typedInvite.role as "admin" | "member",
+        });
+
+      if (insertError) throw new Error(insertError.message);
+
+      // Delete invite
+      await supabase.from("team_invites").delete().eq("id", typedInvite.id);
+
+      return { team_id: typedInvite.team_id };
+    },
+    onSuccess: (_data, _token) => {
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: teamKeys.list(user.id) });
+      }
+      toast.success("You have joined the team");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+}
+
+=== use-toast ===
+import * as React from "react";
+
+import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
+
+const TOAST_LIMIT = 1;
+const TOAST_REMOVE_DELAY = 1000000;
+
+type ToasterToast = ToastProps & {
+  id: string;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  action?: ToastActionElement;
+};
+
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+} as const;
+
+let count = 0;
+
+function genId() {
+  count = (count + 1) % Number.MAX_SAFE_INTEGER;
+  return count.toString();
+}
+
+type ActionType = typeof actionTypes;
+
+type Action =
+  | {
+      type: ActionType["ADD_TOAST"];
+      toast: ToasterToast;
+    }
+  | {
+      type: ActionType["UPDATE_TOAST"];
+      toast: Partial<ToasterToast>;
+    }
+  | {
+      type: ActionType["DISMISS_TOAST"];
+      toastId?: ToasterToast["id"];
+    }
+  | {
+      type: ActionType["REMOVE_TOAST"];
+      toastId?: ToasterToast["id"];
+    };
+
+interface State {
+  toasts: ToasterToast[];
+}
+
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return;
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId);
+    dispatch({
+      type: "REMOVE_TOAST",
+      toastId: toastId,
+    });
+  }, TOAST_REMOVE_DELAY);
+
+  toastTimeouts.set(toastId, timeout);
+};
+
+export const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "ADD_TOAST":
+      return {
+        ...state,
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+      };
+
+    case "UPDATE_TOAST":
+      return {
+        ...state,
+        toasts: state.toasts.map((t) => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
+      };
+
+    case "DISMISS_TOAST": {
+      const { toastId } = action;
+
+      // ! Side effects ! - This could be extracted into a dismissToast() action,
+      // but I'll keep it here for simplicity
+      if (toastId) {
+        addToRemoveQueue(toastId);
+      } else {
+        state.toasts.forEach((toast) => {
+          addToRemoveQueue(toast.id);
+        });
+      }
+
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined
+            ? {
+                ...t,
+                open: false,
+              }
+            : t,
+        ),
+      };
+    }
+    case "REMOVE_TOAST":
+      if (action.toastId === undefined) {
+        return {
+          ...state,
+          toasts: [],
+        };
+      }
+      return {
+        ...state,
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
+      };
+  }
+};
+
+const listeners: Array<(state: State) => void> = [];
+
+let memoryState: State = { toasts: [] };
+
+function dispatch(action: Action) {
+  memoryState = reducer(memoryState, action);
+  listeners.forEach((listener) => {
+    listener(memoryState);
+  });
+}
+
+type Toast = Omit<ToasterToast, "id">;
+
+function toast({ ...props }: Toast) {
+  const id = genId();
+
+  const update = (props: ToasterToast) =>
+    dispatch({
+      type: "UPDATE_TOAST",
+      toast: { ...props, id },
+    });
+  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
+
+  dispatch({
+    type: "ADD_TOAST",
+    toast: {
+      ...props,
+      id,
+      open: true,
+      onOpenChange: (open) => {
+        if (!open) dismiss();
+      },
+    },
+  });
+
+  return {
+    id: id,
+    dismiss,
+    update,
+  };
+}
+
+function useToast() {
+  const [state, setState] = React.useState<State>(memoryState);
+
+  React.useEffect(() => {
+    listeners.push(setState);
+    return () => {
+      const index = listeners.indexOf(setState);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    };
+  }, [state]);
+
+  return {
+    ...state,
+    toast,
+    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+  };
+}
+
+export { useToast, toast };
+
+=== use-webhooks ===
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import type { WebhookEndpoint } from "@/types/index";
+import type { WebhookEndpointInsert } from "@/types/database";
+
+// ── Query keys ─────────────────────────────────────────────────
+
+export const webhookKeys = {
+  all: ["webhook_endpoints"] as const,
+};
+
+// ── useWebhooks ────────────────────────────────────────────────
+// Fetches all webhook endpoints for the current user.
+
+export function useWebhooks() {
+  const { profile } = useAuth();
+  const userId = profile?.id;
+
+  return useQuery({
+    queryKey: webhookKeys.all,
+    queryFn: async (): Promise<WebhookEndpoint[]> => {
+      if (!userId) return [];
+
+      const { data, error } = await supabase
+        .from("webhook_endpoints")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw new Error(error.message);
+      return data as WebhookEndpoint[];
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60, // 1 minute
+  });
+}
+
+// ── useCreateWebhook ───────────────────────────────────────────
+// Creates a new webhook endpoint with an auto-generated secret.
+
+interface CreateWebhookInput {
+  url: string;
+  events?: string[];
+}
+
+export function useCreateWebhook() {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      url,
+      events = ["scan.completed"],
+    }: CreateWebhookInput): Promise<WebhookEndpoint> => {
+      const userId = profile?.id;
+      if (!userId) throw new Error("Not authenticated");
+
+      const secret = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+
+      const insert: WebhookEndpointInsert = {
+        user_id: userId,
+        url,
+        secret,
+        events,
+        is_active: true,
+      };
+
+      const { data, error } = await supabase
+        .from("webhook_endpoints")
+        .insert(insert)
+        .select("*")
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data as WebhookEndpoint;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: webhookKeys.all });
+    },
+  });
+}
+
+// ── useDeleteWebhook ───────────────────────────────────────────
+// Deletes a webhook endpoint by ID.
+
+export function useDeleteWebhook() {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const userId = profile?.id;
+      if (!userId) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("webhook_endpoints")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", userId);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: webhookKeys.all });
+    },
+  });
+}
+
+// ── useToggleWebhook ───────────────────────────────────────────
+// Toggles is_active for a webhook endpoint.
+
+export function useToggleWebhook() {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      is_active,
+    }: {
+      id: string;
+      is_active: boolean;
+    }): Promise<void> => {
+      const userId = profile?.id;
+      if (!userId) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("webhook_endpoints")
+        .update({ is_active })
+        .eq("id", id)
+        .eq("user_id", userId);
+
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: webhookKeys.all });
+    },
+  });
+}
+
