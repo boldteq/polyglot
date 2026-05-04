@@ -31,13 +31,13 @@ export default defineConfig({
     // Q34: Manual chunk splitting — large deps get their own cacheable chunks
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-reactflow': ['@xyflow/react', 'reactflow'],
-          'vendor-markdown': ['react-markdown', 'remark-gfm', 'rehype-raw'],
-          'vendor-editor': ['@uiw/react-md-editor', 'codemirror'],
-          'vendor-charts': ['recharts'],
-          'vendor-ui': ['lucide-react', '@radix-ui/react-dropdown-menu'],
+        manualChunks(id: string) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) return 'vendor-react'
+          if (id.includes('node_modules/@xyflow') || id.includes('node_modules/reactflow')) return 'vendor-reactflow'
+          if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark') || id.includes('node_modules/rehype')) return 'vendor-markdown'
+          if (id.includes('node_modules/@uiw') || id.includes('node_modules/codemirror')) return 'vendor-editor'
+          if (id.includes('node_modules/recharts')) return 'vendor-charts'
+          if (id.includes('node_modules/lucide-react') || id.includes('node_modules/@radix-ui')) return 'vendor-ui'
         },
       },
     },

@@ -2,7 +2,7 @@
 // auto-refetches on `taxonomy:update` SSE events. Single source of truth for
 // every UI that needs the live squad/tag list.
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { getTaxonomy, subscribeOrgChart, type TaxonomyData, type SquadDef, type TagCategoryDef, type TierDef } from '../lib/api'
 import { SQUADS as FALLBACK_SQUADS, TAG_TAXONOMY as FALLBACK_TAGS } from '../lib/orgConstants'
 
@@ -109,16 +109,23 @@ export function useTaxonomy(): UseTaxonomyResult {
 
   const refetch = useCallback(() => { fetchAndBroadcast() }, [])
 
-  const squadById = Object.fromEntries(data.squads.map(s => [s.id, s]))
-  const tiers = data.tiers || []
-  const tierById = Object.fromEntries(tiers.map(t => [t.id, t]))
+  const squads = data.squads
+  const tiers = useMemo(() => data.tiers || [], [data.tiers])
+  const squadById = useMemo(
+    () => Object.fromEntries(squads.map(s => [s.id, s])),
+    [squads],
+  )
+  const tierById = useMemo(
+    () => Object.fromEntries(tiers.map(t => [t.id, t])),
+    [tiers],
+  )
   const tagsIn = useCallback(
     (category: string) => Object.keys(data.categories?.[category]?.tags || {}),
-    [data]
+    [data],
   )
 
   return {
-    squads: data.squads,
+    squads,
     squadById,
     categories: data.categories,
     tiers,
