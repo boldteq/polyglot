@@ -18,7 +18,8 @@ import {
   getViewportForBounds,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { toPng } from 'html-to-image'
+// html-to-image is export-only — lazy-loaded inside the PNG export handler (C18)
+// so /org-chart visitors don't download it unless they actually export.
 import {
   Users, Search, Cpu, Paintbrush, BarChart3, Shield,
   X, ChevronDown, Camera,
@@ -52,7 +53,8 @@ const MEMBER_ROW_GAP = 6
 const DEPT_ROW_GAP = 24
 const LEADER_WIDTH = 260
 const LEADER_HEIGHT = 118
-const LEADER_DEPT_GAP = 40
+// LEADER_DEPT_GAP was used by the deprecated dept-layout Row-1→Row-2 spacing.
+// Squad layout pins the lead inside the column so there's no Row 1 anymore.
 // Multi-level tree gaps:
 //   Row 0 (Yash)         → Row 1 (dept heads): DEPT_HEAD_ROW_GAP
 //   Row 1 (dept heads)  → Row 2 (dept cols):  LEADER_DEPT_GAP (existing)
@@ -67,10 +69,6 @@ const SUBDEPT_HEADER_GAP = 4
 // Sentinel id for the synthetic "Unassigned" column (agents whose `department`
 // field is empty / unknown). Used everywhere we need to bucket those agents.
 const UNASSIGNED_DEPT_ID = '__unassigned__'
-// Department ids that mark the top-of-org "executive" / leadership column.
-// Used as a fallback signal when the strict tier-based top-leader detection
-// misses (e.g. drift in `tier` field). Order doesn't matter; first match wins.
-const LEADERSHIP_DEPT_IDS = new Set(['executive', 'leadership', 'lead'])
 // Neutral grey for synthetic columns (Unassigned) that have no brand color.
 const NEUTRAL_DEPT_COLOR = '#6b7280'
 
@@ -166,6 +164,12 @@ interface MemberInfo {
   maxConcurrentTasks?: number
   loadStatus?: 'free' | 'busy' | 'overloaded'
   successRate?: number | null
+  // Vertical Squads v2 — when this member is the squad lead, the column
+  // renderer pins them at the top w/ accent border + LEAD chip + bigger avatar.
+  isLead?: boolean
+  // When set, render this row as a dashed-border + reduced-opacity dotted-line
+  // specialist (cross-functional, not primary squad member).
+  isDotted?: boolean
 }
 
 // Org Structure v2 — sub-department group inside a dept column.
@@ -204,6 +208,17 @@ interface DepartmentNodeData {
   cardIsOther?: boolean  // true for residual "Other" fallback column
   deptId?: string | null
   subDeptId?: string | null
+  // Vertical Squads v3 — surface the squad lead's display info in the column
+  // header so every card visibly answers "who runs this team?".
+  cardLeadId?: string | null
+  cardLeadName?: string | null
+  cardLeadEmoji?: string | null
+  cardLeadRole?: string | null
+  // True when the squad is a not-yet-hired placeholder. Renderer dashes the
+  // column border + shows a "🚧 Team not hired yet" banner.
+  cardIsPlaceholder?: boolean
+  // True when the column buckets agents with a stale `org.squad` id (drift).
+  cardIsDrift?: boolean
   width: number
   height: number
   dimmed: boolean
@@ -235,7 +250,12 @@ interface LeaderNodeData {
   [key: string]: unknown
 }
 
-function toMemberInfo(node: OrgChartNode, indent = 0, tierById: Record<string, { icon?: string | null }> = {}): MemberInfo {
+function toMemberInfo(
+  node: OrgChartNode,
+  indent = 0,
+  tierById: Record<string, { icon?: string | null }> = {},
+  opts: { isLead?: boolean; isDotted?: boolean } = {},
+): MemberInfo {
   const d = formatAgentDisplay({ name: node.name, title: node.title, id: node.id })
   return {
     id: node.id,
@@ -256,6 +276,8 @@ function toMemberInfo(node: OrgChartNode, indent = 0, tierById: Record<string, {
     levelTitle: node.levelTitle ?? null,
     yearsOfExperience: node.yearsOfExperience ?? null,
     status: node.status,
+    isLead: opts.isLead === true,
+    isDotted: opts.isDotted === true,
     // Org Structure v2 fields
     subDepartment: node.subDepartment ?? null,
     subDepartmentLabel: node.subDepartmentLabel ?? null,
@@ -310,354 +332,354 @@ function formatRelative(iso: string): string {
   return `${Math.floor(ms / 86_400_000)}d ago`
 }
 
-function computeDepartmentLayout(
+
+// ── Vertical-Squad Layout Algorithm ──────────────────────────────────────────
+//
+// Mirrors computeDepartmentLayout but groups by squad (~/.claude/org/squads.json
+// v2). Yash at Row 0, each squad lead at Row 1, each squad column at Row 2.
+// Inside each column, members are grouped by role band (Lead / Design / Frontend
+// / Backend / ...). Dotted-line specialists land in a final group with dashed
+// styling. Returns the same { rfNodes, rfEdges } shape so ReactFlow + the
+// existing OrgDepartmentNode component render it with zero downstream changes.
+
+function computeSquadLayout(
   allNodes: OrgChartNode[],
-  departmentList: OrgChartData['departments'] = [],
+  squads: SquadDef[],
+  squadOrder: string[],
+  squadById: Record<string, SquadDef>,
+  agentRoleBand: Record<string, string>,
+  roleBandLabel: (band: string) => string,
   tierByIdArg: Record<string, { icon?: string | null }> = {},
-): {
-  rfNodes: Node[]
-  rfEdges: Edge[]
-} {
-  // ── Layout shape ────────────────────────────────────────────────────────────
-  // Row 0 (y=0):                                  [ Yash (LEADERSHIP) ]
-  // Row 1 (y=LEADER_HEIGHT + DEPT_HEAD_ROW_GAP):  [ Arya ] [ Nova ] [ Quill ] ...
-  // Row 2 (y=above + LEADER_HEIGHT + LEADER_DEPT_GAP):  Engineering | Research | ...
-  //                                                     ┌──────────┐ ┌──────────┐
-  //                                                     │ Koda     │ │ Scout    │
-  //                                                     │ Dato     │ │ ...      │
-  //                                                     │  └ pod-b-db (indent)  │
-  //                                                     └──────────┘ └──────────┘
-  //
-  // Strict leader rule: ONLY agents with `tier === 'leadership' && !reportsTo`
-  // sit at Row 0. Everyone else lands in a department column or "Unassigned".
-
-  // Index nodes by id and by manager (reportsTo) — used for tree traversal.
+  squadFilters: string[] = [],
+): { rfNodes: Node[]; rfEdges: Edge[] } {
   const byId = new Map<string, OrgChartNode>()
-  const byManager = new Map<string | null, OrgChartNode[]>()
-  for (const n of allNodes) {
-    byId.set(n.id, n)
-    const key = n.reportsTo || null
-    if (!byManager.has(key)) byManager.set(key, [])
-    byManager.get(key)!.push(n)
-  }
+  for (const n of allNodes) byId.set(n.id, n)
 
-  // Top leader detection — resilient to data drift. Tries 4 strategies in order,
-  // so a stale tier/status field in the DB doesn't strand the chart with no
-  // Row-0 leader (which would then route every edge to "no manager" and dump
-  // the CEO into the Unassigned column).
-  //   1. Strict: leadership tier + no manager (canonical)
-  //   2. Department-driven: head of any "executive"/"leadership"/"lead" dept
-  //   3. Any agent with no reportsTo (single root in the reports-to forest)
-  //   4. Highest-level agent (level desc) — last resort, never null
+  // Root detection — tier-driven with fallbacks.
   const yash: OrgChartNode | null = (() => {
     const strict = allNodes.find(n => n.tier === 'leadership' && !n.reportsTo)
     if (strict) return strict
-    const execDept = departmentList.find(d => LEADERSHIP_DEPT_IDS.has(d.id))
-    if (execDept?.head) {
-      const head = byId.get(execDept.head)
-      if (head) return head
-    }
     const orphans = allNodes.filter(n => !n.reportsTo)
     if (orphans.length === 1) return orphans[0]
-    if (orphans.length > 1) {
-      // Prefer the one with highest level/seniority signal
-      return [...orphans].sort((a, b) => (b.level || 0) - (a.level || 0))[0]
-    }
+    if (orphans.length > 1) return [...orphans].sort((a, b) => (b.level || 0) - (a.level || 0))[0]
     return null
   })()
 
-  // Departments to render — server-ordered. Department head is rendered as a
-  // Row 1 leader card and EXCLUDED from the column member list.
-  const sortMembers = (a: OrgChartNode, b: OrgChartNode) => {
-    if (a.tier === 'leadership' && b.tier !== 'leadership') return -1
-    if (b.tier === 'leadership' && a.tier !== 'leadership') return 1
-    if ((b.level || 0) !== (a.level || 0)) return (b.level || 0) - (a.level || 0)
-    return a.name.localeCompare(b.name)
+  // Canonical ordering: prefer squadOrder, fall back to squads list. When
+  // `squadFilters` is non-empty, restrict to those squad ids (hide-not-dim).
+  const filterSet = new Set(squadFilters)
+  const filterActive = filterSet.size > 0
+  const orderedSquadIds: string[] = ((squadOrder && squadOrder.length > 0)
+    ? squadOrder.filter(id => !!squadById[id])
+    : squads.map(s => s.id))
+    .filter(id => !filterActive || filterSet.has(id))
+
+  type SquadColumn = {
+    squad: SquadDef
+    lead: OrgChartNode | null
+    members: OrgChartNode[]
+    roleGroups: SubDeptGroup[]
   }
 
-  // Build an ordered, indented member list for one department column. Walks
-  // the reportsTo tree so sub-managers (e.g. dato) precede their reports
-  // (pod-b-db indented one level under dato).
-  const buildColumnMembers = (deptId: string, headId: string | null): MemberInfo[] => {
-    const out: MemberInfo[] = []
-    const seen = new Set<string>()
-
-    const sameDept = (n: OrgChartNode) => (n.department || UNASSIGNED_DEPT_ID) === deptId
-
-    // Direct reports of the dept head (or top-of-column if no head).
-    const roots = (byManager.get(headId) || [])
-      .filter(sameDept)
-      .filter(n => n.id !== headId)
-      .slice()
-      .sort(sortMembers)
-
-    const visit = (node: OrgChartNode, depth: number) => {
-      if (seen.has(node.id)) return
-      seen.add(node.id)
-      out.push(toMemberInfo(node, depth, tierByIdArg))
-      const children = (byManager.get(node.id) || [])
-        .filter(sameDept)
-        .slice()
-        .sort(sortMembers)
-      for (const c of children) visit(c, depth + 1)
-    }
-
-    for (const r of roots) visit(r, 0)
-
-    // Catch any orphan in this department whose reportsTo points outside the
-    // department (or is null) — render them at depth 0 so nobody is dropped.
-    const orphans = allNodes
-      .filter(sameDept)
-      .filter(n => n.id !== headId && !seen.has(n.id))
-      .slice()
-      .sort(sortMembers)
-    for (const o of orphans) visit(o, 0)
-
-    return out
-  }
-
-  // Org Structure v2 — group flat members into sub-department buckets using
-  // the server-provided subDepartments definition. Falls back to flat list
-  // when sub-dept data missing (back-compat for unmigrated agents).
-  const buildSubDeptGroups = (
-    deptDef: OrgChartData['departments'][number],
-    flatMembers: MemberInfo[],
-    headId: string | null,
-  ): SubDeptGroup[] => {
-    if (!deptDef.subDepartments || deptDef.subDepartments.length === 0) return []
-    const groups: SubDeptGroup[] = deptDef.subDepartments
-      // Skip explicitly-hidden sub-depts (displayMode='hidden')
-      .filter(sd => sd.displayMode !== 'hidden')
-      .map(sd => ({
-        id: sd.id,
-        label: sd.label,
-        description: sd.description,
-        pod: sd.pod || null,
-        // Pass through all visual fields for the card renderer
-        cardLabel: sd.cardLabel || null,
-        cardEmoji: sd.cardEmoji || null,
-        color: sd.color || null,
-        icon: sd.icon || null,
-        displayMode: sd.displayMode || 'expanded',
-        status: sd.status || 'active',
-        lead: sd.lead || null,
-        memberCount: sd.memberCount ?? null,
-        order: sd.order ?? 999,
-        members: flatMembers.filter(m => {
-          // Skip dept head (rendered as Row 1 leader card)
-          if (m.id === headId) return false
-          return m.subDepartment === sd.id
-        }),
-      }))
-      // Keep cards with members OR cards explicitly marked active/planned (so
-      // empty "planned" placeholders still render — useful for cohort previews).
-      .filter(g => g.members.length > 0 || g.status === 'planned' || g.status === 'active')
-      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
-    return groups
-  }
-
-  const departments = departmentList
-    .map(d => {
-      const head = d.head ? byId.get(d.head) || null : null
-      const flatMembers = buildColumnMembers(d.id, d.head || null)
-      const subDeptGroups = buildSubDeptGroups(d, flatMembers, d.head || null)
-      // Visible (non-head) members — head is rendered as the Row 1 leader card.
-      const visibleCount = head ? flatMembers.filter(m => m.id !== head.id).length : flatMembers.length
-      return {
-        id: d.id,
-        label: d.label,
-        color: d.color,
-        head,
-        visibleCount,
-        members: flatMembers,
-        subDeptGroups,
-      }
-    })
-    // Hide executive-style depts whose only "member" is Yash (rendered on Row 0).
-    // Keep depts with a real head + non-head members, OR depts that have members
-    // even when headless (like __unassigned__ added below).
-    .filter(d => {
-      if (yash && d.head?.id === yash.id && d.visibleCount === 0) return false
-      return d.head || d.visibleCount > 0
-    })
-
-  // Unassigned column: agents whose `department` is missing or 'unassigned',
-  // and who aren't Yash or a dept head. These are typically newly-seeded
-  // probation/pending agents waiting on HR triage.
   const renderedIds = new Set<string>()
   if (yash) renderedIds.add(yash.id)
-  for (const d of departments) {
-    if (d.head) renderedIds.add(d.head.id)
-    for (const m of d.members) renderedIds.add(m.id)
+  const placedInSquadIds = new Set<string>()
+
+  const sortMembers = (a: OrgChartNode, b: OrgChartNode) =>
+    ((b.level || 0) - (a.level || 0)) || a.name.localeCompare(b.name)
+
+  const columns: SquadColumn[] = []
+  for (const sid of orderedSquadIds) {
+    const squad = squadById[sid]
+    if (!squad) continue
+    const memberIds = squad.members || []
+    const members = memberIds.map(id => byId.get(id)).filter((x): x is OrgChartNode => !!x)
+    const lead = squad.lead ? (byId.get(squad.lead) || null) : null
+    const nonLead = members.filter(m => !lead || m.id !== lead.id)
+    const memberIdSet = new Set(members.map(m => m.id))
+    const dotted = (squad.dottedMembers || [])
+      .map(id => byId.get(id))
+      .filter((x): x is OrgChartNode => !!x && !memberIdSet.has(x.id))
+
+    // Group non-lead members by role band, preserving squad's roleBands order.
+    const bandsInOrder = (squad.roleBands || []).filter(b => b !== 'lead')
+    const byBand = new Map<string, OrgChartNode[]>()
+    for (const m of nonLead) {
+      const band = agentRoleBand[m.id] || 'misc'
+      const slot = band === 'lead' ? 'misc' : band
+      if (!byBand.has(slot)) byBand.set(slot, [])
+      byBand.get(slot)!.push(m)
+    }
+    const roleGroups: SubDeptGroup[] = []
+    let orderIdx = 0
+
+    // 1. Lead pinned INSIDE the column at top. No separate Row-1 leader card —
+    //    every card visibly shows its head. Exception: when the squad lead IS
+    //    yash (org root), skip the in-column row — yash already renders as
+    //    the Row-0 leader card, and duplicating his card inside the column
+    //    creates visual confusion ("am I looking at two Yashes?"). The
+    //    "Led by 👑 Yash" sub-line in the column header is sufficient.
+    if (lead && lead.id !== yash?.id) {
+      roleGroups.push({
+        id: `${squad.id}-lead`,
+        label: 'Lead',
+        description: `${squad.label} team lead — manages this vertical.`,
+        pod: null,
+        cardLabel: null,
+        cardEmoji: '👑',
+        color: squad.color,
+        icon: null,
+        displayMode: 'expanded',
+        status: 'active',
+        lead: lead.id,
+        memberCount: 1,
+        order: orderIdx++,
+        members: [toMemberInfo(lead, 0, tierByIdArg, { isLead: true })],
+      })
+    }
+
+    // 2. Placeholder banner row — first impression for not-yet-hired squads.
+    if (squad.placeholder && nonLead.length === 0 && dotted.length === 0) {
+      roleGroups.push({
+        id: `${squad.id}-placeholder`,
+        label: 'Team not hired yet',
+        description: 'Specialists not yet hired. Lead-only placeholder team.',
+        pod: null,
+        cardLabel: null,
+        cardEmoji: '🚧',
+        color: '#f59e0b',
+        icon: null,
+        displayMode: 'expanded',
+        status: 'planned',
+        lead: null,
+        memberCount: 0,
+        order: orderIdx++,
+        members: [],
+      })
+    }
+
+    // 3. Role-band groups in canonical squad order.
+    for (const band of bandsInOrder) {
+      const list = (byBand.get(band) || []).slice().sort(sortMembers)
+      if (list.length === 0) continue
+      roleGroups.push({
+        id: `${squad.id}-${band}`,
+        label: roleBandLabel(band),
+        description: '',
+        pod: null,
+        cardLabel: null,
+        cardEmoji: null,
+        color: squad.color,
+        icon: null,
+        displayMode: 'expanded',
+        status: 'active',
+        lead: null,
+        memberCount: list.length,
+        order: orderIdx++,
+        members: list.map(n => toMemberInfo(n, 0, tierByIdArg)),
+      })
+      byBand.delete(band)
+    }
+
+    // 4. Trailing groups for bands not declared in roleBands (e.g. 'misc').
+    for (const [band, list] of byBand) {
+      const sorted = list.slice().sort(sortMembers)
+      roleGroups.push({
+        id: `${squad.id}-${band}`,
+        label: band === 'misc' ? 'Other' : roleBandLabel(band),
+        description: band === 'misc' ? 'Members without an assigned role band.' : '',
+        pod: null,
+        cardLabel: null,
+        cardEmoji: band === 'misc' ? '⚠️' : null,
+        color: squad.color,
+        icon: null,
+        displayMode: 'expanded',
+        status: 'active',
+        lead: null,
+        memberCount: sorted.length,
+        order: orderIdx++,
+        members: sorted.map(n => toMemberInfo(n, 0, tierByIdArg)),
+      })
+    }
+
+    // 5. Dotted-line specialists at the bottom — `isDotted: true` triggers
+    //    dashed border + reduced opacity per row in renderer.
+    if (dotted.length > 0) {
+      const sorted = dotted.slice().sort(sortMembers)
+      roleGroups.push({
+        id: `${squad.id}-dotted`,
+        label: 'Dotted-line specialists',
+        description: 'Cross-team specialists supporting this vertical.',
+        pod: null,
+        cardLabel: null,
+        cardEmoji: '⤴',
+        color: squad.color,
+        icon: null,
+        displayMode: 'expanded',
+        status: 'active',
+        lead: null,
+        memberCount: sorted.length,
+        order: orderIdx++,
+        members: sorted.map(n => toMemberInfo(n, 0, tierByIdArg, { isDotted: true })),
+      })
+    }
+
+    if (lead) renderedIds.add(lead.id)
+    for (const m of members) { renderedIds.add(m.id); placedInSquadIds.add(m.id) }
+    columns.push({ squad, lead, members, roleGroups })
   }
-  const unassigned = allNodes
-    .filter(n => !renderedIds.has(n.id))
-    .slice()
-    .sort(sortMembers)
-  if (unassigned.length > 0) {
-    departments.push({
-      id: UNASSIGNED_DEPT_ID,
-      label: 'Unassigned',
-      color: NEUTRAL_DEPT_COLOR,
-      head: null,
-      members: unassigned.map(n => toMemberInfo(n, 0, tierByIdArg)),
-      subDeptGroups: [],
-      visibleCount: unassigned.length,
-    })
-  }
 
-  // ── Render plan — Row 2 columns ─────────────────────────────────────────────
-  // Layout strategy:
-  //   - Most depts: 1 col = 1 dept (with internal sub-dept group headers).
-  //   - Dense depts (≥SPLIT_THRESHOLD_MEMBERS, ≥SPLIT_THRESHOLD_SUBDEPTS): each
-  //     sub-dept becomes its own column header — but packed into a GRID
-  //     (DENSE_GRID_COLS wide × N tall) so we don't blow up canvas width.
-  //   - Engineering's 6 sub-pods → 3-wide × 2-tall grid → 3 col-widths instead
-  //     of 6, plus rows go down vertically.
-  //   - VP card centered over the dept's full grid span.
-  const SPLIT_THRESHOLD_MEMBERS = 8
-  const SPLIT_THRESHOLD_SUBDEPTS = 2
-  const DENSE_GRID_COLS = 3
-  const DENSE_GRID_ROW_GAP = 28 // vertical gap between sub-col rows
-
-  type DeptEntry = typeof departments[number]
-  type SubdeptEntry = {
-    label: string
-    members: MemberInfo[]
-    subDeptId: string
-    cardLabel?: string | null
-    cardEmoji?: string | null
-    color?: string | null
-    icon?: string | null
-    status?: 'active' | 'planned' | 'archived'
-    description?: string
-    isOther?: boolean
-  }
-  type ColumnPlan =
-    | { kind: 'dept'; dept: DeptEntry; deptColor: string; label: string; members: MemberInfo[]; subDeptGroups?: SubDeptGroup[] }
-    | { kind: 'subdept'; dept: DeptEntry; deptColor: string; label: string; members: MemberInfo[]; subDeptId: string; gridRow: number; gridCol: number;
-        cardLabel?: string | null; cardEmoji?: string | null; color?: string | null; icon?: string | null; status?: 'active' | 'planned' | 'archived'; description?: string; isOther?: boolean }
-
-  const plan: ColumnPlan[] = []
-  for (const d of departments) {
-    const groups = d.subDeptGroups || []
-    const visibleHead = d.head?.id
-    const nonHead = (xs: MemberInfo[]) => visibleHead ? xs.filter(m => m.id !== visibleHead) : xs
-    const totalVisible = nonHead(d.members).length
-    const shouldSplit = groups.length >= SPLIT_THRESHOLD_SUBDEPTS && totalVisible >= SPLIT_THRESHOLD_MEMBERS
-
-    if (shouldSplit) {
-      const subEntries: SubdeptEntry[] = []
-      for (const g of groups) {
-        const memList = nonHead(g.members)
-        // Empty cards still render for active/planned status (lets user see the
-        // card before any agent is assigned — eliminates the "ghost" card UX)
-        if (memList.length === 0 && g.status !== 'planned' && g.status !== 'active') continue
-        subEntries.push({
-          label: g.label,
-          members: memList,
-          subDeptId: g.id,
-          cardLabel: g.cardLabel || null,
-          cardEmoji: g.cardEmoji || null,
-          color: g.color || null,
-          icon: g.icon || null,
-          status: g.status || 'active',
-          description: g.description,
-        })
+  // Drift bucket — agents whose org.squad points to a non-existent squad id.
+  // Surface (don't drop silently). Skipped when squadFilters is active.
+  let driftColumn: SquadColumn | null = null
+  if (!filterActive) {
+    const driftedAgents = allNodes.filter(n => {
+      if (!n.squad) return false
+      if (squadById[n.squad]) return false
+      return !placedInSquadIds.has(n.id)
+    }).slice().sort(sortMembers)
+    if (driftedAgents.length > 0) {
+      const driftSquad: SquadDef = {
+        id: '__drifted__',
+        label: 'Drifted',
+        color: '#ef4444',
+        emoji: '⚠️',
+        description: 'Agents reference invalid squad ids. Reassign via agent → Org Setup → Squad.',
+        lead: null,
+        roleBands: [],
+        members: driftedAgents.map(n => n.id),
+        dottedMembers: [],
       }
-      // Residual: dept members not assigned to any sub-dept
-      const grouped = new Set<string>()
-      for (const g of groups) for (const m of g.members) grouped.add(m.id)
-      const ungrouped = nonHead(d.members).filter(m => !grouped.has(m.id))
-      if (ungrouped.length > 0) {
-        subEntries.push({
-          label: 'Other',
-          members: ungrouped,
-          subDeptId: `${d.id}-other`,
-          isOther: true,
-          color: '#9ca3af',
+      driftColumn = {
+        squad: driftSquad,
+        lead: null,
+        members: driftedAgents,
+        roleGroups: [{
+          id: '__drifted__-all',
+          label: 'Reassign these agents',
+          description: 'Each row references a squad id that is missing from squads.json.',
+          pod: null,
+          cardLabel: null,
           cardEmoji: '⚠️',
-          description: 'Members whose subDepartment is not registered in departments.json. Assign each agent to a real sub-department or add a new sub-dept entry.',
-        })
+          color: '#ef4444',
+          icon: null,
+          displayMode: 'expanded',
+          status: 'archived',
+          lead: null,
+          memberCount: driftedAgents.length,
+          order: 0,
+          members: driftedAgents.map(n => toMemberInfo(n, 0, tierByIdArg)),
+        }],
       }
-      // Pack sub-entries into a DENSE_GRID_COLS-wide grid
-      subEntries.forEach((sub, idx) => {
-        plan.push({
-          kind: 'subdept',
-          dept: d,
-          deptColor: d.color,
-          label: sub.label,
-          members: sub.members,
-          subDeptId: sub.subDeptId,
-          cardLabel: sub.cardLabel,
-          cardEmoji: sub.cardEmoji,
-          color: sub.color,
-          icon: sub.icon,
-          status: sub.status,
-          description: sub.description,
-          isOther: sub.isOther,
-          gridRow: Math.floor(idx / DENSE_GRID_COLS),
-          gridCol: idx % DENSE_GRID_COLS,
-        })
-      })
-    } else {
-      plan.push({
-        kind: 'dept',
-        dept: d,
-        deptColor: d.color,
-        label: d.label,
-        members: nonHead(d.members),
-        subDeptGroups: groups,
-      })
+      for (const n of driftedAgents) renderedIds.add(n.id)
     }
   }
 
-  // ── Position math (grid-aware) ──────────────────────────────────────────────
-  // Each dept reserves a horizontal X-slot range. Single-col depts take 1 slot;
-  // dense (split) depts take DENSE_GRID_COLS slots which their sub-dept cols
-  // occupy in a wrap grid. Total canvas slots = sum of slot sizes.
-  type DeptSlotSpan = { deptId: string; startSlot: number; slotCount: number; rowCount: number }
-  const deptSlots: DeptSlotSpan[] = []
-  {
-    let cursor = 0
-    // Group plan entries by dept (preserving department order)
-    const seen = new Set<string>()
-    for (const entry of plan) {
-      if (seen.has(entry.dept.id)) continue
-      seen.add(entry.dept.id)
-      const entriesForDept = plan.filter(e => e.dept.id === entry.dept.id)
-      const isDense = entriesForDept[0].kind === 'subdept'
-      const slotCount = isDense ? DENSE_GRID_COLS : 1
-      const rowCount = isDense
-        ? Math.max(...entriesForDept.map(e => (e as Extract<ColumnPlan,{kind:'subdept'}>).gridRow)) + 1
-        : 1
-      deptSlots.push({ deptId: entry.dept.id, startSlot: cursor, slotCount, rowCount })
-      cursor += slotCount
+  // Unassigned column — agents with no org.squad set at all.
+  let unassignedColumn: SquadColumn | null = null
+  if (!filterActive) {
+    const unassignedAgents = allNodes
+      .filter(n => !renderedIds.has(n.id))
+      .filter(n => !n.squad)
+      .slice()
+      .sort(sortMembers)
+    if (unassignedAgents.length > 0) {
+      const placeholderSquad: SquadDef = {
+        id: UNASSIGNED_DEPT_ID,
+        label: 'Unassigned',
+        color: NEUTRAL_DEPT_COLOR,
+        emoji: '📋',
+        description: 'Agents not yet assigned to a vertical squad. Open the agent → Org Setup → set Squad.',
+        lead: null,
+        roleBands: [],
+        members: unassignedAgents.map(n => n.id),
+        dottedMembers: [],
+      }
+      unassignedColumn = {
+        squad: placeholderSquad,
+        lead: null,
+        members: unassignedAgents,
+        roleGroups: [{
+          id: `${UNASSIGNED_DEPT_ID}-all`,
+          label: 'Unassigned',
+          description: '',
+          pod: null,
+          cardLabel: null,
+          cardEmoji: '📋',
+          color: NEUTRAL_DEPT_COLOR,
+          icon: null,
+          displayMode: 'expanded',
+          status: 'planned',
+          lead: null,
+          memberCount: unassignedAgents.length,
+          order: 0,
+          members: unassignedAgents.map(n => toMemberInfo(n, 0, tierByIdArg)),
+        }],
+      }
     }
   }
-  const totalSlots = deptSlots.reduce((acc, s) => acc + s.slotCount, 0)
-  const deptsRowWidth = totalSlots * DEPT_WIDTH + Math.max(0, totalSlots - 1) * DEPT_ROW_GAP
-  const canvasWidth = Math.max(deptsRowWidth, LEADER_WIDTH)
 
+  // Empty-state column — shown when squads.json is missing or has zero
+  // entries. Keeps the canvas from going blank + gives the user a clear next
+  // action ("create your first vertical squad").
+  let emptyStateColumn: SquadColumn | null = null
+  if (!filterActive && orderedSquadIds.length === 0) {
+    const placeholderSquad: SquadDef = {
+      id: '__empty-state__',
+      label: 'No squads yet',
+      color: '#10b981',
+      emoji: '🌱',
+      description: 'Create your first vertical squad to start grouping agents by team.',
+      lead: null,
+      roleBands: [],
+      members: [],
+      dottedMembers: [],
+      placeholder: true,
+    }
+    emptyStateColumn = {
+      squad: placeholderSquad,
+      lead: null,
+      members: [],
+      roleGroups: [{
+        id: '__empty-state__-banner',
+        label: 'Get started',
+        description: 'Open Settings → Taxonomy → Squads to create your first vertical team.',
+        pod: null,
+        cardLabel: null,
+        cardEmoji: '🌱',
+        color: '#10b981',
+        icon: null,
+        displayMode: 'expanded',
+        status: 'planned',
+        lead: null,
+        memberCount: 0,
+        order: 0,
+        members: [],
+      }],
+    }
+  }
+
+  const allColumns: SquadColumn[] = [
+    ...columns,
+    ...(unassignedColumn ? [unassignedColumn] : []),
+    ...(driftColumn ? [driftColumn] : []),
+    ...(emptyStateColumn ? [emptyStateColumn] : []),
+  ]
+
+  // ── Position math ─────────────────────────────────────────────────────────
+  const totalSlots = allColumns.length
+  const colsRowWidth = totalSlots * DEPT_WIDTH + Math.max(0, totalSlots - 1) * DEPT_ROW_GAP
+  const canvasWidth = Math.max(colsRowWidth, LEADER_WIDTH)
   const topY = 0
-  const deptHeadsY = LEADER_HEIGHT + DEPT_HEAD_ROW_GAP
-  const deptColsY = deptHeadsY + LEADER_HEIGHT + LEADER_DEPT_GAP
+  // Row 1 (squad-lead leader cards) eliminated in v3 — lead is now pinned
+  // inside each column. Squad columns sit directly below Yash.
+  const colsY = LEADER_HEIGHT + DEPT_HEAD_ROW_GAP
+  const startX = (canvasWidth - colsRowWidth) / 2
+  const slotXFor = (idx: number) => startX + idx * (DEPT_WIDTH + DEPT_ROW_GAP)
 
-  const deptsStartX = (canvasWidth - deptsRowWidth) / 2
-  const slotXFor = (slotIdx: number) => deptsStartX + slotIdx * (DEPT_WIDTH + DEPT_ROW_GAP)
-
-  // Map: deptId → its slot span (for VP head + edge routing)
-  const deptSlotMap = new Map<string, DeptSlotSpan>()
-  for (const s of deptSlots) deptSlotMap.set(s.deptId, s)
-
-  // Compute each entry's heightHint (used for grid-row Y positioning of dense depts).
-  // For subdept-grid: row1 Y = row0 Y + max(row0 entry heights) + DENSE_GRID_ROW_GAP
-  function entryHeight(entry: ColumnPlan): number {
-    const memberCount = entry.members.length
-    const groupCount = entry.kind === 'dept' ? (entry.subDeptGroups || []).length : 0
-    const groupHeadersHeight = groupCount > 0
-      ? groupCount * (SUBDEPT_HEADER_HEIGHT + SUBDEPT_HEADER_GAP)
-      : 0
+  const columnHeight = (col: SquadColumn): number => {
+    const memberCount = col.roleGroups.reduce((acc, g) => acc + g.members.length, 0)
+    const groupHeadersHeight = col.roleGroups.length * (SUBDEPT_HEADER_HEIGHT + SUBDEPT_HEADER_GAP)
     return DEPT_HEADER_HEIGHT
       + DEPT_PADDING_Y * 2
       + memberCount * MEMBER_ROW_HEIGHT
@@ -665,39 +687,9 @@ function computeDepartmentLayout(
       + groupHeadersHeight
   }
 
-  // For each dense dept, compute the Y offset for each grid row (row N starts
-  // at sum(maxHeight of rows 0..N-1) + N*DENSE_GRID_ROW_GAP).
-  const denseRowYMap = new Map<string, number[]>() // deptId → Y offsets per row
-  for (const span of deptSlots) {
-    if (span.rowCount === 1) continue
-    const entries = plan.filter(e => e.dept.id === span.deptId && e.kind === 'subdept') as Extract<ColumnPlan,{kind:'subdept'}>[]
-    const rowMaxHeights: number[] = []
-    for (let r = 0; r < span.rowCount; r += 1) {
-      const inRow = entries.filter(e => e.gridRow === r)
-      rowMaxHeights.push(Math.max(...inRow.map(entryHeight), 0))
-    }
-    const rowOffsets: number[] = [0]
-    for (let r = 1; r < span.rowCount; r += 1) {
-      rowOffsets.push(rowOffsets[r - 1] + rowMaxHeights[r - 1] + DENSE_GRID_ROW_GAP)
-    }
-    denseRowYMap.set(span.deptId, rowOffsets)
-  }
-
-  // Pre-compute each dept's head card X (centered over its slot span).
-  const deptHeadXMap = new Map<string, number>()
-  for (const span of deptSlots) {
-    const startX = slotXFor(span.startSlot)
-    const endX = slotXFor(span.startSlot + span.slotCount - 1) + DEPT_WIDTH
-    const headX = (startX + endX) / 2 - LEADER_WIDTH / 2
-    deptHeadXMap.set(span.deptId, headX)
-  }
-
   const rfNodes: Node[] = []
   const rfEdges: Edge[] = []
 
-  // Build the data payload for a Leader card (Row 0 OR Row 1). Single source
-  // of truth for the 20+ fields each card needs — keeps Yash + every dept
-  // head in lock-step.
   const buildLeaderCardData = (n: OrgChartNode): LeaderNodeData => {
     const d = formatAgentDisplay({ name: n.name, title: n.title, id: n.id })
     return {
@@ -724,244 +716,115 @@ function computeDepartmentLayout(
     }
   }
 
-  // Row 0 — top leader, centered over the cluster of dept-head card positions.
+  // Precompute squad column X positions + node IDs (used for both edge routing
+  // and cross-squad mentor lookups).
+  const columnXMap = new Map<string, number>()
+  allColumns.forEach((col, idx) => columnXMap.set(col.squad.id, slotXFor(idx)))
+
+  // Agent id → resident squad id (for mentor-edge routing). Built from each
+  // column's primary `members`; dotted members keep their PRIMARY squad
+  // mapping (not the dotted-into squad).
+  const agentToSquad = new Map<string, string>()
+  for (const col of columns) {
+    for (const m of col.members) agentToSquad.set(m.id, col.squad.id)
+  }
+
+  // Row 0 — Yash centered over all squad columns.
   if (yash) {
-    const headXs = Array.from(deptHeadXMap.values())
-    const topX = headXs.length > 0
-      ? (Math.min(...headXs) + Math.max(...headXs) + LEADER_WIDTH) / 2 - LEADER_WIDTH / 2
+    const allColXs: number[] = []
+    for (let i = 0; i < allColumns.length; i += 1) allColXs.push(slotXFor(i))
+    const topX = allColXs.length > 0
+      ? (Math.min(...allColXs) + Math.max(...allColXs) + DEPT_WIDTH) / 2 - LEADER_WIDTH / 2
       : (canvasWidth - LEADER_WIDTH) / 2
     rfNodes.push({
       id: yash.id,
       type: 'orgLeader',
       position: { x: topX, y: topY },
-      // Explicit width/height — MiniMap reads these directly to draw the
-      // node rect. Without them MiniMap waits on DOM measurement and
-      // can render zero-size nodes mid-fitView.
       width: LEADER_WIDTH,
       height: LEADER_HEIGHT,
       data: buildLeaderCardData(yash),
     })
   }
 
-  // Row 1 + Row 2 — render the plan.
-  // Track dept → list of column nodeIds for VP edge routing.
-  const deptColNodeIds = new Map<string, string[]>()
-
-  for (const entry of plan) {
-    const span = deptSlotMap.get(entry.dept.id)!
-    const colHeight = entryHeight(entry)
-
-    // X: subdept entries place at startSlot+gridCol; dept entries at startSlot
-    const slotIdx = entry.kind === 'subdept'
-      ? span.startSlot + entry.gridCol
-      : span.startSlot
-    const colX = slotXFor(slotIdx)
-
-    // Y: subdept entries with gridRow > 0 stack below row 0 (with vertical gap)
-    const rowOffsets = denseRowYMap.get(entry.dept.id)
-    const colY = entry.kind === 'subdept' && rowOffsets
-      ? deptColsY + rowOffsets[entry.gridRow]
-      : deptColsY
-
-    const nodeId = entry.kind === 'subdept'
-      ? `dept-${entry.dept.id}-${entry.subDeptId}`
-      : `dept-${entry.dept.id}`
-
-    // Card visual fields — sub-dept overrides win, fall back to dept color/label.
-    // Unassigned column gets a special tooltip explaining the fallback.
-    const isUnassignedCol = entry.dept.id === UNASSIGNED_DEPT_ID
-    const cardLabel = entry.kind === 'subdept' && entry.cardLabel ? entry.cardLabel : entry.label
-    const cardEmoji = entry.kind === 'subdept'
-      ? entry.cardEmoji || null
-      : (isUnassignedCol ? '⚠️' : null)
-    const cardColor = entry.kind === 'subdept' && entry.color ? entry.color : entry.deptColor
-    const cardStatus = entry.kind === 'subdept' ? entry.status || 'active' : 'active'
-    const cardDescription = entry.kind === 'subdept'
-      ? entry.description || ''
-      : (isUnassignedCol
-          ? "These agents have no `department` field set in registry.json. Click any agent → side panel → Org Setup → set Department + Sub-Department to move them into a real card."
-          : '')
-    const cardIsOther = entry.kind === 'subdept' && entry.isOther === true
+  // Render each squad column (single row, lead pinned inside).
+  for (const col of allColumns) {
+    const colX = columnXMap.get(col.squad.id) ?? 0
+    const colNodeId = `squad-${col.squad.id}`
+    const h = columnHeight(col)
+    const isPlaceholder = col.squad.placeholder === true
+    const isDrift = col.squad.id === '__drifted__'
+    const leadDisplay = col.lead ? formatAgentDisplay({ name: col.lead.name, title: col.lead.title, id: col.lead.id }) : null
 
     rfNodes.push({
-      id: nodeId,
+      id: colNodeId,
       type: 'orgDept',
-      position: { x: colX, y: colY },
+      position: { x: colX, y: colsY },
       width: DEPT_WIDTH,
-      height: colHeight,
+      height: h,
       data: {
-        phase: entry.dept.id,
-        phaseLabel: cardLabel,
-        phaseColor: cardColor,
-        members: entry.members,
-        // Only the dept-kind column shows internal sub-dept group headers;
-        // when split, each sub-dept IS the column so headers are redundant.
-        subDeptGroups: entry.kind === 'dept' ? entry.subDeptGroups : undefined,
-        // Card-level visual fields for subdept-mode rendering
-        cardEmoji,
-        cardStatus,
-        cardDescription,
-        cardIsOther,
-        deptId: entry.dept.id,
-        subDeptId: entry.kind === 'subdept' ? entry.subDeptId : null,
+        phase: col.squad.id,
+        phaseLabel: col.squad.label,
+        phaseColor: col.squad.color,
+        members: [],
+        subDeptGroups: col.roleGroups,
+        cardEmoji: col.squad.emoji,
+        cardStatus: isPlaceholder ? 'planned' : 'active',
+        cardDescription: col.squad.description || '',
+        cardIsOther: col.squad.id === UNASSIGNED_DEPT_ID,
+        cardIsPlaceholder: isPlaceholder,
+        cardIsDrift: isDrift,
+        cardLeadId: col.lead?.id ?? null,
+        cardLeadName: leadDisplay?.realName ?? null,
+        cardLeadEmoji: leadDisplay?.emoji ?? null,
+        cardLeadRole: leadDisplay?.role ?? null,
+        deptId: col.squad.id,
+        subDeptId: null,
         width: DEPT_WIDTH,
-        height: colHeight,
+        height: h,
         dimmed: false,
       } satisfies DepartmentNodeData,
     })
 
-    const list = deptColNodeIds.get(entry.dept.id) || []
-    list.push(nodeId)
-    deptColNodeIds.set(entry.dept.id, list)
-  }
-
-  // Pre-compute the set of node IDs that ARE renderable as ReactFlow nodes.
-  // Edges can only connect renderable nodes; if `reportsTo` points to a regular
-  // dept-column member (which is just a row inside `OrgDepartmentNode`, not a
-  // ReactFlow node), we walk up the chain until we hit one that IS renderable.
-  // This makes the trunk fully data-driven from `reportsTo` instead of
-  // hardcoding Yash → every dept head.
-  const renderableIds = new Set<string>()
-  if (yash) renderableIds.add(yash.id)
-  for (const sp of deptSlots) {
-    const de = plan.find(e => e.dept.id === sp.deptId)
-    if (de?.dept.head) renderableIds.add(de.dept.head.id)
-  }
-  for (const colIds of deptColNodeIds.values()) {
-    for (const cid of colIds) renderableIds.add(cid)
-  }
-
-  // Walk `startId`'s reportsTo chain upward (cycle-safe). Returns the first
-  // ancestor whose id is in `renderableIds` and isn't the start itself.
-  // Falls back to Yash when the chain dead-ends or is missing.
-  const findRenderableManager = (startId: string | null | undefined, selfId: string): string | null => {
-    if (!startId) return yash && selfId !== yash.id ? yash.id : null
-    let cur: string | null = startId
-    const seen = new Set<string>()
-    while (cur && !seen.has(cur)) {
-      seen.add(cur)
-      const ancestor = byId.get(cur)
-      if (!ancestor) break
-      if (ancestor.id !== selfId && renderableIds.has(ancestor.id)) return ancestor.id
-      cur = ancestor.reportsTo || null
-    }
-    return yash && selfId !== yash.id ? yash.id : null
-  }
-
-  // Step 2: render Row-1 dept-head card per dept (centered over its slot span)
-  // + edges from manager (resolved via reportsTo chain) → head, and head → each col it owns.
-  for (const span of deptSlots) {
-    const deptEntry = plan.find(e => e.dept.id === span.deptId)
-    if (!deptEntry) continue
-    const dept = deptEntry.dept
-    const head = dept.head
-
-    if (head) {
-      const headX = deptHeadXMap.get(span.deptId) ?? slotXFor(span.startSlot)
-      rfNodes.push({
-        id: head.id,
-        type: 'orgLeader',
-        position: { x: headX, y: deptHeadsY },
-        width: LEADER_WIDTH,
-        height: LEADER_HEIGHT,
-        data: buildLeaderCardData(head),
-      })
-
-      // Manager → dept head edge — fully data-driven from `head.reportsTo`.
-      // Walks up the reportsTo chain to the nearest renderable ancestor so an
-      // arbitrary chain (Arya → Vega → Yash, Catalyst → Echo → Yash, etc.)
-      // resolves to a visible edge target. Trunk lines (manager === Yash) get
-      // the neutral text color; lateral / VP-to-VP lines get the dept color.
-      const managerId = findRenderableManager(head.reportsTo, head.id)
-      if (managerId && managerId !== head.id) {
-        const isTrunk = !!yash && managerId === yash.id
-        rfEdges.push({
-          id: `e-${managerId}-${head.id}`,
-          source: managerId,
-          target: head.id,
-          type: 'step',
-          pathOptions: { offset: 24, borderRadius: 0 },
-          style: isTrunk
-            ? { stroke: 'var(--color-text)', strokeWidth: 1.75, opacity: 0.7 }
-            : { stroke: dept.color, strokeWidth: 1.75, opacity: 0.65 },
-        } as Edge)
-      }
-    }
-
-    // VP card → each rendered column belonging to its dept. For dense-split
-    // depts (e.g. Engineering with 6 sub-pods packed into a 3-wide grid), the
-    // VP fans out to EVERY sub-col so each grid cell has a visible parent
-    // line. Thinner + slightly more transparent than the Yash trunk above
-    // (1.25/0.55 vs 1.75/0.7) so the visual hierarchy reads top-down.
-    // Orphan columns (no head) get a dashed Yash anchor so they don't float.
-    const colNodeIds = deptColNodeIds.get(span.deptId) || []
-    if (head?.id) {
-      for (const colNodeId of colNodeIds) {
-        rfEdges.push({
-          id: `e-${head.id}-${colNodeId}`,
-          source: head.id,
-          target: colNodeId,
-          type: 'step',
-          pathOptions: { offset: 14, borderRadius: 0 },
-          style: {
-            stroke: dept.color,
-            strokeWidth: 1.25,
-            opacity: 0.55,
-          },
-        } as Edge)
-      }
-    } else if (yash?.id) {
-      for (const colNodeId of colNodeIds) {
-        rfEdges.push({
-          id: `e-${yash.id}-${colNodeId}`,
-          source: yash.id,
-          target: colNodeId,
-          type: 'step',
-          pathOptions: { offset: 12, borderRadius: 0 },
-          style: {
-            stroke: dept.color,
-            strokeWidth: 1.25,
-            opacity: 0.3,
-            strokeDasharray: '4 4',
-          },
-        } as Edge)
-      }
+    // Yash → squad column edge. Squad-color trunk. Dashed for placeholder /
+    // drift / unassigned (non-canonical) columns.
+    if (yash) {
+      const isNonCanonical = isPlaceholder || isDrift || col.squad.id === UNASSIGNED_DEPT_ID
+      rfEdges.push({
+        id: `e-${yash.id}-${colNodeId}`,
+        source: yash.id,
+        target: colNodeId,
+        targetHandle: 'top',
+        type: 'step',
+        pathOptions: { offset: 14, borderRadius: 0 },
+        style: isNonCanonical
+          ? { stroke: col.squad.color, strokeWidth: 1.25, opacity: 0.35, strokeDasharray: '4 4' }
+          : { stroke: col.squad.color, strokeWidth: 1.5, opacity: 0.65 },
+      } as Edge)
     }
   }
 
-  // ── Mentor edges (secondaryReportsTo) ─────────────────────────────────────
-  // Draws a dashed purple edge between dept columns when an agent in column A
-  // is mentored by an agent in a DIFFERENT column. Same-column mentorships
-  // (e.g. dato → pod-b-db, both in engineering) are already visible inside
-  // the column tree + the clickable ↗ pill, so we skip those to avoid
-  // intra-column line spaghetti.
-  // For dense-split depts, the rendered ReactFlow node is `dept-<id>-<subId>`
-  // (not `dept-<id>`), so target/source the FIRST rendered col-node of each
-  // dept — otherwise the edge points to a non-existent node and silently
-  // disappears.
-  const firstColNodeFor = (deptId: string): string | null => {
-    const ids = deptColNodeIds.get(deptId)
-    return ids && ids.length > 0 ? ids[0] : null
-  }
+  // Mentor edges (secondaryReportsTo) — cross-squad only. Dashed purple
+  // between source squad column and target squad column. Dedup per
+  // (mentorSquad, menteeSquad) pair to avoid intra-squad noise.
   const seenMentorEdge = new Set<string>()
   for (const node of allNodes) {
     if (!node.secondaryReportsTo) continue
     const mentor = byId.get(node.secondaryReportsTo)
     if (!mentor) continue
-    const menteeDept = node.department || null
-    const mentorDept = mentor.department || null
-    if (!menteeDept || !mentorDept || menteeDept === mentorDept) continue
-    const sourceNodeId = firstColNodeFor(mentorDept)
-    const targetNodeId = firstColNodeFor(menteeDept)
-    if (!sourceNodeId || !targetNodeId) continue
-    // Dedup: one edge per (mentorDept, menteeDept) pair
-    const key = `${mentorDept}->${menteeDept}`
+    const menteeSquad = agentToSquad.get(node.id)
+    const mentorSquad = agentToSquad.get(mentor.id)
+    if (!menteeSquad || !mentorSquad || menteeSquad === mentorSquad) continue
+    const sourceColId = `squad-${mentorSquad}`
+    const targetColId = `squad-${menteeSquad}`
+    const key = `${mentorSquad}->${menteeSquad}`
     if (seenMentorEdge.has(key)) continue
     seenMentorEdge.add(key)
     rfEdges.push({
       id: `mentor-${key}`,
-      source: sourceNodeId,
-      target: targetNodeId,
+      source: sourceColId,
+      sourceHandle: 'mentor-out',
+      target: targetColId,
+      targetHandle: 'mentor-in',
       type: 'smoothstep',
       style: {
         stroke: '#a855f7',
@@ -1145,17 +1008,40 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
     >
       <Handle
         type="target"
+        id="top"
         position={Position.Top}
+        className="!w-2 !h-2 !bg-transparent !border-0"
+      />
+      {/* Mentor edge handles — Right for source, Left for target so mentor
+          lines flow horizontally between dept columns. Explicit IDs required
+          so React Flow can resolve them (otherwise "source handle id: null"). */}
+      <Handle
+        type="source"
+        id="mentor-out"
+        position={Position.Right}
+        className="!w-2 !h-2 !bg-transparent !border-0"
+      />
+      <Handle
+        type="target"
+        id="mentor-in"
+        position={Position.Left}
         className="!w-2 !h-2 !bg-transparent !border-0"
       />
 
       <div
         className={`relative rounded-2xl border-2 shadow-lg overflow-hidden h-full flex flex-col ${
           isLocked ? 'ring-1 ring-amber-400/40' : ''
-        }`}
+        } ${data.cardIsPlaceholder ? 'border-dashed' : ''} ${data.cardIsDrift ? 'border-dashed' : ''}`}
         style={{
-          borderColor: isLocked ? '#f59e0b80' : `${data.phaseColor}60`,
+          borderColor: isLocked
+            ? '#f59e0b80'
+            : data.cardIsDrift
+              ? '#ef4444aa'
+              : data.cardIsPlaceholder
+                ? '#f59e0baa'
+                : `${data.phaseColor}60`,
           background: `linear-gradient(180deg, ${data.phaseColor}0d 0%, var(--color-surface) 40%, var(--color-surface) 100%)`,
+          opacity: data.cardIsPlaceholder ? 0.95 : 1,
         }}
       >
         {/* Per-card lock toggle for dept node — pins column position so
@@ -1211,6 +1097,15 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
               >
                 {data.phaseLabel}
               </h3>
+              {data.cardIsDrift && (
+                <span
+                  className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded ml-1"
+                  style={{ background: '#ef444420', color: '#ef4444', border: '1px solid #ef444460' }}
+                  title="Agents reference invalid squad ids in registry. Reassign each agent."
+                >
+                  drift
+                </span>
+              )}
               {data.cardStatus && data.cardStatus !== 'active' && (
                 <span
                   className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded ml-1"
@@ -1258,9 +1153,25 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
                 border: `1px solid ${data.phaseColor}40`,
               }}
             >
-              {data.members.length} {data.members.length === 1 ? 'member' : 'members'}
+              {(() => {
+                const totalMembers = (data.subDeptGroups || []).reduce((acc, g) => acc + g.members.length, 0) + data.members.length
+                return `${totalMembers} ${totalMembers === 1 ? 'agent' : 'agents'}`
+              })()}
             </div>
           </div>
+          {/* Lead chip — answers "who can manage all" at a glance. */}
+          {data.cardLeadName && (
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-text-muted min-w-0">
+              <span className="uppercase tracking-wider text-[9px] font-bold opacity-70">Led by</span>
+              {data.cardLeadEmoji && <span className="text-[12px] shrink-0">{data.cardLeadEmoji}</span>}
+              <span className="font-bold text-text truncate" style={{ color: data.phaseColor }}>
+                {data.cardLeadName}
+              </span>
+              {data.cardLeadRole && (
+                <span className="text-text-muted truncate">— {data.cardLeadRole}</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Member list — Org Structure v2: groups by sub-dept when available */}
@@ -1328,6 +1239,8 @@ function renderMemberRow(
   const TierIcon = getTierIcon(member.tierIcon)
   const isSelected = selectedId === member.id
   const indent = Math.min(member.indent || 0, 3)
+  const isLead = member.isLead === true
+  const isDotted = member.isDotted === true
   return (
     <div
       key={member.id}
@@ -1344,19 +1257,36 @@ function renderMemberRow(
           └─
         </span>
       )}
-      <button
+      {/* Outer row is a div w/ role=button (not <button>) so the nested
+          mentor `↗` button at line ~1450 is valid DOM. Native button cannot
+          contain another button — that triggered React's `<button> cannot
+          contain a nested <button>` warning. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={(e) => {
           e.stopPropagation()
           onSelect(member.id)
         }}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group border
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            e.stopPropagation()
+            onSelect(member.id)
+          }
+        }}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group cursor-pointer
           ${isSelected
-            ? 'bg-accent/10 border-accent/50 shadow-md shadow-accent/10'
-            : 'bg-surface-2 border-border hover:bg-surface-3 hover:border-accent/40 hover:shadow-sm'
+            ? 'bg-accent/10 border-accent/50 shadow-md shadow-accent/10 border'
+            : isLead
+              ? 'bg-accent/[0.06] border-l-[3px] border-l-accent border-r border-y border-border hover:bg-accent/10 hover:border-l-accent hover:shadow-sm'
+              : isDotted
+                ? 'bg-surface-2/40 border border-dashed border-border/60 hover:bg-surface-3 hover:border-accent/40'
+                : 'bg-surface-2 border border-border hover:bg-surface-3 hover:border-accent/40 hover:shadow-sm'
           }`}
         style={{
           height: MEMBER_ROW_HEIGHT,
-          opacity: member.dimmed ? 0.25 : 1,
+          opacity: member.dimmed ? 0.25 : isDotted ? 0.78 : 1,
         }}
       >
         <AgentIcon
@@ -1366,10 +1296,10 @@ function renderMemberRow(
           gender={member.gender}
           ringColor={member.departmentColor}
           uid={`dmem-${member.id}`}
-          size={38}
+          size={isLead ? 44 : 38}
         />
         <div className="min-w-0" style={{ flex: '1 1 0%' }}>
-          {/* Row 1: emoji + name + load dot + model badge + pod badge */}
+          {/* Row 1: emoji + name + LEAD / dotted chip + load dot + model badge */}
           <div className="flex items-center gap-2 min-w-0">
             {member.emoji && <span className="text-[15px] leading-none shrink-0">{member.emoji}</span>}
             <span
@@ -1378,6 +1308,22 @@ function renderMemberRow(
             >
               {member.name}
             </span>
+            {isLead && (
+              <span
+                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-accent text-white shrink-0 whitespace-nowrap tracking-wider"
+                title="Team lead"
+              >
+                Lead
+              </span>
+            )}
+            {isDotted && (
+              <span
+                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full text-purple-400 border border-purple-500/40 bg-purple-500/10 shrink-0 whitespace-nowrap tracking-wider"
+                title="Dotted-line cross-team support"
+              >
+                Dotted
+              </span>
+            )}
             <LoadDot
               status={member.loadStatus}
               active={member.activeTaskCount}
@@ -1452,7 +1398,7 @@ function renderMemberRow(
             </div>
           )}
         </div>
-      </button>
+      </div>
     </div>
   )
 }
@@ -1508,7 +1454,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
   }, [agentId])
 
   // Dynamic taxonomy — refreshed automatically when squads/tags/tiers change anywhere
-  const { squads: dynSquads, categories: tagCategories, tiers: dynTiers, tierById, refetch: refetchTaxonomy } = useTaxonomy()
+  const { squads: dynSquads, categories: tagCategories, tiers: dynTiers, refetch: refetchTaxonomy } = useTaxonomy()
 
   // Inline create UI state
   const [newSquadOpen, setNewSquadOpen] = useState(false)
@@ -2547,9 +2493,10 @@ function parseDescription(raw: string): ParsedDescription {
 // Visual description block — structured layout, single source of truth for
 // how an agent's free-form description is presented in the detail panel.
 function DescriptionBlock({ text }: { text: string }) {
+  // All hooks must run before any conditional return (Rules of Hooks, C9 audit).
   const [expanded, setExpanded] = useState(false)
+  const parsed = useMemo(() => parseDescription(text || ''), [text])
   if (!text) return null
-  const parsed = useMemo(() => parseDescription(text), [text])
   const hasExpandableContent = parsed.bullets.length > 0 || parsed.rest.length > 0 || !!parsed.hired
   return (
     <div>
@@ -2819,6 +2766,8 @@ function TreeViewInner({
   selectedNodeData,
   onNavigateToNode,
   onOrgSaved,
+  squadFilters,
+  focusRequest,
 }: {
   data: OrgChartData
   search: string
@@ -2828,8 +2777,10 @@ function TreeViewInner({
   selectedNodeData: OrgChartNode | null
   onNavigateToNode: (id: string) => void
   onOrgSaved: () => void
+  squadFilters: string[]
+  focusRequest: { nodeId: string; nonce: number } | null
 }) {
-  const { tierById } = useTaxonomy()
+  const { tierById, squads, squadById, squadOrder, agentRoleBand, roleBandLabel } = useTaxonomy()
 
   // Persistent drag positions + per-node lock state. Locked nodes survive the
   // Auto-adjust button (only unlocked positions get cleared) and are
@@ -2849,8 +2800,17 @@ function TreeViewInner({
   useEffect(() => { reloadPositions() }, [reloadPositions])
 
   const { rfNodes: rawNodes, rfEdges: initialEdges } = useMemo(
-    () => computeDepartmentLayout(data.nodes, data.departments, tierById),
-    [data.nodes, data.departments, tierById],
+    () => computeSquadLayout(
+      data.nodes,
+      squads,
+      squadOrder,
+      squadById,
+      agentRoleBand,
+      roleBandLabel,
+      tierById,
+      squadFilters,
+    ),
+    [data.nodes, squads, squadOrder, squadById, agentRoleBand, roleBandLabel, tierById, squadFilters],
   )
 
   // Overlay saved positions + lock state onto the computed layout. Locked
@@ -2932,6 +2892,7 @@ function TreeViewInner({
         .getPropertyValue('--color-bg')
         .trim() || '#09090b'
 
+      const { toPng } = await import('html-to-image')
       const dataUrl = await toPng(viewport, {
         backgroundColor: bgColor,
         width: imageWidth,
@@ -3052,6 +3013,24 @@ function TreeViewInner({
     })
     return () => window.cancelAnimationFrame(id)
   }, [initialNodes, reactFlow])
+
+  // External focus request (e.g. drift banner click → focus Drifted column).
+  // Pan + zoom to the target node id with a smooth transition.
+  useEffect(() => {
+    if (!focusRequest) return
+    const targetNode = initialNodes.find(n => n.id === focusRequest.nodeId)
+    if (!targetNode) return
+    const id = window.requestAnimationFrame(() => {
+      reactFlow.fitView({
+        nodes: [{ id: focusRequest.nodeId }],
+        padding: 0.3,
+        duration: 500,
+        maxZoom: 1,
+        minZoom: 0.4,
+      })
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [focusRequest, initialNodes, reactFlow])
 
   // Leader nodes are clicked directly; department members bubble up via context.
   const handleNodeClick = useCallback(
@@ -3316,6 +3295,8 @@ function TreeView(props: {
   selectedNodeData: OrgChartNode | null
   onNavigateToNode: (id: string) => void
   onOrgSaved: () => void
+  squadFilters: string[]
+  focusRequest: { nodeId: string; nonce: number } | null
 }) {
   return (
     <ReactFlowProvider>
@@ -3334,9 +3315,32 @@ export default function OrgChartPage() {
   const [search, setSearch] = useState('')
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [tagFilters, setTagFilters] = useState<TagFilters>(EMPTY_TAG_FILTERS)
-  const [squadFilters, setSquadFilters] = useState<string[]>([])
+  // Squad filters are persisted across reloads — toggling "Shopify App" in
+  // one session survives a refresh. Listener picks up flips from other tabs.
+  const [squadFilters, setSquadFilters] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('polyglot.squadFilters')
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+    } catch { return [] }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('polyglot.squadFilters', JSON.stringify(squadFilters)) } catch { /* ignore */ }
+  }, [squadFilters])
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'polyglot.squadFilters') return
+      try {
+        const parsed = e.newValue ? JSON.parse(e.newValue) : []
+        if (Array.isArray(parsed)) setSquadFilters(parsed.filter((x): x is string => typeof x === 'string'))
+      } catch { /* ignore */ }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
   // Dynamic taxonomy — overrides static SQUADS/SQUAD_BY_ID imports for filter UI
-  const { squads: SQUADS, squadById: SQUAD_BY_ID } = useTaxonomy()
+  const { squads: SQUADS, squadById: SQUAD_BY_ID, categories: tagCategories } = useTaxonomy()
   const [tagPanelOpen, setTagPanelOpen] = useState(false)
   const [showTech, setShowTech] = useState(false)
   const [drift, setDrift] = useState<DriftData | null>(null)
@@ -3425,6 +3429,22 @@ export default function OrgChartPage() {
     [data, selectedNode],
   )
 
+  // Drift detection — surface a banner when agents reference squad ids that
+  // are missing from squads.json. computeSquadLayout also renders them in a
+  // dedicated "Drifted" column at the right edge of the canvas.
+  const driftCount = useMemo(() => {
+    if (!data) return 0
+    return data.nodes.filter(n => !!n.squad && !SQUAD_BY_ID[n.squad]).length
+  }, [data, SQUAD_BY_ID])
+
+  // Focus-request state — drift banner click sets this; TreeViewInner watches
+  // it and pans/zooms ReactFlow to the requested node. Nonce ensures repeated
+  // clicks re-trigger even when targeting the same node id.
+  const [focusRequest, setFocusRequest] = useState<{ nodeId: string; nonce: number } | null>(null)
+  const focusOnNode = useCallback((nodeId: string) => {
+    setFocusRequest({ nodeId, nonce: Date.now() })
+  }, [])
+
   // Combined filter: tag filters + squad filters → set of matching node IDs (null = no filter)
   const tagMatchIds = useMemo<Set<string> | null>(() => {
     if (!data || !hasAnyFilter(tagFilters, squadFilters)) return null
@@ -3499,7 +3519,7 @@ export default function OrgChartPage() {
               </div>
               <div>
                 <h1 className="text-xl font-bold leading-tight">Team</h1>
-                <p className="text-[11px] text-text-muted">Organization chart</p>
+                <p className="text-[11px] text-text-muted">Vertical-team organization</p>
               </div>
             </div>
 
@@ -3744,6 +3764,26 @@ export default function OrgChartPage() {
 
       </div>
 
+      {/* Drift banner — surfaces agents whose org.squad references a missing
+          squad id. Click to pan + zoom to the Drifted column. */}
+      {driftCount > 0 && (
+        <button
+          type="button"
+          onClick={() => focusOnNode('squad-__drifted__')}
+          className="mx-8 mb-3 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2.5 flex items-center gap-3 text-red-400 shrink-0 cursor-pointer hover:bg-red-500/15 hover:border-red-500/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 text-left"
+          title="Click to focus the Drifted column"
+        >
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <p className="text-xs flex-1">
+            <span className="font-semibold">{driftCount} agent{driftCount !== 1 ? 's' : ''}</span>
+            {' '}reference invalid squad ids in registry. Click to view + reassign via Org Setup → Squad.
+          </p>
+          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/40 font-bold shrink-0">
+            View
+          </span>
+        </button>
+      )}
+
       {/* Content */}
       <div className="flex-1 relative overflow-hidden">
         <div className="h-full mx-8 mb-4 rounded-2xl border border-border overflow-hidden relative">
@@ -3756,6 +3796,8 @@ export default function OrgChartPage() {
             selectedNodeData={selectedNodeData}
             onNavigateToNode={handleNavigateToNode}
             onOrgSaved={handleOrgSaved}
+            squadFilters={squadFilters}
+            focusRequest={focusRequest}
           />
           {configureId && (
             <UnregisteredPanel

@@ -35,7 +35,7 @@ const LEVEL_NAMES: Record<number, string> = {
 }
 
 const LEVEL_COLORS: Record<number, { bg: string; text: string; ring: string }> = {
-  0: { bg: 'bg-zinc-500/10', text: 'text-zinc-400', ring: 'ring-zinc-500/20' },
+  0: { bg: 'bg-surface-2', text: 'text-text-muted', ring: 'ring-border' },
   1: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', ring: 'ring-emerald-500/20' },
   2: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', ring: 'ring-emerald-500/25' },
   3: { bg: 'bg-teal-500/15', text: 'text-teal-400', ring: 'ring-teal-500/25' },
@@ -67,7 +67,7 @@ export default function LevelBadge({
     const s = SIZES[size]
     return (
       <span
-        className={`inline-flex items-center ${s.gap} ${s.pad} ${s.text} font-semibold rounded-full bg-zinc-500/5 text-zinc-500 ring-1 ring-zinc-500/10`}
+        className={`inline-flex items-center ${s.gap} ${s.pad} ${s.text} font-semibold rounded-full bg-surface-2 text-text-muted ring-1 ring-border`}
       >
         {showIcon && <UserX className={s.icon} />}
         Retired

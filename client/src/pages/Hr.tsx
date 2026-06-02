@@ -26,9 +26,8 @@ import {
 } from 'lucide-react'
 import {
   getHrRegistry,
-  getHrRecommendations,
+  getHrSnapshot,
   getHrTrainingQueue,
-  getLatestReview,
   promoteAgent as promoteAgentApi,
   openAgentPip,
   runWitnessSweep,
@@ -36,7 +35,6 @@ import {
   recomputeExperience,
   detectCapabilityGap,
   updateOrgAgent,
-  bulkUpdateOrgAgents,
   undoOrgChange,
   undoOrgBatch,
   getOrgHistory,
@@ -91,11 +89,19 @@ export default function HrPage() {
     return <div className="p-8 text-red-400">Failed to load HR registry</div>
   }
 
-  const activeCount = registry.agents.filter((a) => a.status === 'active').length
-  const probationCount = registry.agents.filter((a) => a.status === 'probation').length
-  const pipCount = registry.agents.filter((a) => a.status === 'pip').length
-  const pendingCount = registry.agents.filter((a) => a.status === 'pending').length
-  const retiredCount = registry.agents.filter((a) => a.status === 'retired').length
+  const counts = registry.counts ?? {
+    total: registry.agents.length,
+    active: registry.agents.filter((a) => a.status === 'active').length,
+    probation: registry.agents.filter((a) => a.status === 'probation').length,
+    pip: registry.agents.filter((a) => a.status === 'pip').length,
+    pending: registry.agents.filter((a) => a.status === 'pending').length,
+    retired: registry.agents.filter((a) => a.status === 'retired').length,
+  }
+  const activeCount = counts.active
+  const probationCount = counts.probation
+  const pipCount = counts.pip
+  const pendingCount = counts.pending
+  const retiredCount = counts.retired
 
   return (
     <div className="h-full flex flex-col">
@@ -812,8 +818,9 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ReviewsTab({ onRefresh }: { onRefresh: () => void }) {
-  const { data: review, loading, refetch } = useApi(getLatestReview)
-  const { data: recs, refetch: refetchRecs } = useApi(getHrRecommendations)
+  const { data: snapshot, loading, refetch } = useApi(getHrSnapshot)
+  const review = snapshot?.latestReview ?? null
+  const recs = snapshot?.recommendations ?? null
   const [running, setRunning] = useState(false)
 
   const handleRunSweep = async () => {
@@ -821,7 +828,7 @@ function ReviewsTab({ onRefresh }: { onRefresh: () => void }) {
     try {
       const res = await runWitnessSweep()
       toast('success', `Witness sweep: ${res.runsClassified} runs classified, ${res.pipCandidates.length} PIPs, ${res.promotionCandidates.length} promotions pending`)
-      refetchRecs()
+      refetch()
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Sweep failed')
     } finally {
@@ -836,7 +843,6 @@ function ReviewsTab({ onRefresh }: { onRefresh: () => void }) {
       const res = await runCadenceReviewApi()
       toast('success', `Cadence review done: ${res.promotions.length} promotions, ${res.pipsOpened.length} PIPs opened`)
       refetch()
-      refetchRecs()
       onRefresh()
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Cadence review failed')
@@ -866,7 +872,7 @@ function ReviewsTab({ onRefresh }: { onRefresh: () => void }) {
           Run Cadence Review
         </button>
         <button
-          onClick={() => { refetch(); refetchRecs() }}
+          onClick={() => { refetch() }}
           className="flex items-center gap-1.5 px-2.5 py-2 text-[11px] font-medium text-text-muted hover:text-text bg-surface-2 rounded-lg hover:bg-surface-3 transition-colors"
         >
           <RefreshCw className="w-3 h-3" /> Refresh

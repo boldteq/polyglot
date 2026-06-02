@@ -64,7 +64,23 @@ function invalidate() {
 
 function listSquads() {
   const data = loadSquads();
-  return Object.values(data.squads || {});
+  const all = Object.values(data.squads || {});
+  const order = Array.isArray(data.squadOrder) ? data.squadOrder : [];
+  if (order.length === 0) return all;
+  const byId = new Map(all.map(s => [s.id, s]));
+  const ordered = order.map(id => byId.get(id)).filter(Boolean);
+  const tail = all.filter(s => !order.includes(s.id));
+  return [...ordered, ...tail];
+}
+
+function getSquadMeta() {
+  const data = loadSquads();
+  return {
+    version: data.version || 1,
+    squadOrder: Array.isArray(data.squadOrder) ? data.squadOrder : [],
+    agentRoleBand: data.agentRoleBand || {},
+    roleBandLabels: data.roleBandLabels || {},
+  };
 }
 
 function listTagCategories() {
@@ -78,8 +94,12 @@ function listTiers() {
 }
 
 function getTaxonomy() {
+  const meta = getSquadMeta();
   return {
     squads: listSquads(),
+    squadOrder: meta.squadOrder,
+    agentRoleBand: meta.agentRoleBand,
+    roleBandLabels: meta.roleBandLabels,
     categories: listTagCategories(),
     tiers: listTiers(),
   };
@@ -103,7 +123,11 @@ function addSquad(squad) {
     description: (squad.description || '').trim(),
     color: squad.color || '#6b7280',
     emoji: squad.emoji || '⚙️',
+    lead: squad.lead || null,
+    roleBands: Array.isArray(squad.roleBands) ? squad.roleBands : ['lead'],
     members: Array.isArray(squad.members) ? squad.members : [],
+    dottedMembers: Array.isArray(squad.dottedMembers) ? squad.dottedMembers : [],
+    placeholder: squad.placeholder === true ? true : undefined,
   };
   data.updatedAt = new Date().toISOString();
   atomicWrite(SQUADS_PATH, data);
@@ -114,7 +138,7 @@ function addSquad(squad) {
 function updateSquad(id, patch) {
   const data = readJson(SQUADS_PATH, { version: 1, squads: {} });
   if (!data.squads?.[id]) throw new Error(`Squad "${id}" not found`);
-  const allowed = ['label', 'description', 'color', 'emoji', 'members'];
+  const allowed = ['label', 'description', 'color', 'emoji', 'members', 'lead', 'roleBands', 'dottedMembers', 'placeholder'];
   const next = { ...data.squads[id] };
   for (const k of allowed) {
     if (patch[k] !== undefined) next[k] = patch[k];
@@ -297,6 +321,7 @@ module.exports = {
   loadTags,
   loadTiers,
   listSquads,
+  getSquadMeta,
   listTagCategories,
   listTiers,
   getTaxonomy,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Fragment } from 'react'
 import { Activity, CheckCircle, XCircle, Filter, Search, Download, ChevronDown, ChevronRight } from 'lucide-react'
 import { getAnalyticsRuns, apiError} from '../lib/api'
 import type { AgentRunEntry } from '../lib/api'
@@ -185,9 +185,8 @@ export default function RunHistoryPage() {
               {pagedRuns.map(run => {
                 const isOpen = expanded.has(run.id)
                 return (
-                  <>
+                  <Fragment key={run.id}>
                     <tr
-                      key={run.id}
                       onClick={() => toggleExpand(run.id)}
                       className="border-b border-border/50 hover:bg-surface-2/30 transition-colors cursor-pointer"
                     >
@@ -240,7 +239,7 @@ export default function RunHistoryPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 )
               })}
             </tbody>

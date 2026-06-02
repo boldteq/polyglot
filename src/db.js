@@ -16,6 +16,43 @@ let _db = null;
 
 // ── Database Lifecycle ──────────────────────────────────────────────────────
 
+// Slow-query threshold (ms). Queries that take longer emit a warn log.
+// Skip logging for error_log queries themselves to avoid recursion.
+const SLOW_QUERY_MS = parseInt(process.env.SLOW_QUERY_MS, 10) || 250;
+let _loggingSlowQuery = false;
+
+function instrumentDb(rawDb) {
+  const origPrepare = rawDb.prepare.bind(rawDb);
+  rawDb.prepare = function instrumentedPrepare(sql) {
+    const stmt = origPrepare(sql);
+    const skip = /error_log/i.test(sql);
+    const wrap = (method) => {
+      const orig = stmt[method].bind(stmt);
+      stmt[method] = function (...args) {
+        if (skip || _loggingSlowQuery) return orig(...args);
+        const t = Date.now();
+        const out = orig(...args);
+        const ms = Date.now() - t;
+        if (ms >= SLOW_QUERY_MS) {
+          _loggingSlowQuery = true;
+          try {
+            require('./lib/logger').warn(`slow query ${ms}ms`, {
+              category: 'db', durationMs: ms, meta: { sql: sql.slice(0, 240), method },
+            });
+          } catch { /* logger may not be initialized yet */ }
+          _loggingSlowQuery = false;
+        }
+        return out;
+      };
+    };
+    if (typeof stmt.run === 'function') wrap('run');
+    if (typeof stmt.get === 'function') wrap('get');
+    if (typeof stmt.all === 'function') wrap('all');
+    return stmt;
+  };
+  return rawDb;
+}
+
 function getDb() {
   if (_db) return _db;
   fs.mkdirSync(DB_DIR, { recursive: true });
@@ -28,17 +65,24 @@ function getDb() {
   _db.pragma('cache_size = -64000');       // 64MB page cache (default is 2MB)
   _db.pragma('temp_store = MEMORY');       // temp tables in RAM, not disk
 
-  // Integrity check — catch corruption early
+  // Integrity check — catch corruption early. Default to quick_check (fast); the
+  // full integrity_check scans every page and blocks boot on a large DB (Bug 2),
+  // so only run it when DB_INTEGRITY_CHECK=full.
   try {
-    const check = _db.pragma('integrity_check');
-    if (check[0]?.integrity_check !== 'ok') {
-      console.error('[db] INTEGRITY CHECK FAILED:', check);
+    const pragma = process.env.DB_INTEGRITY_CHECK === 'full' ? 'integrity_check' : 'quick_check';
+    const check = _db.pragma(pragma);
+    if (check[0]?.[pragma] !== 'ok') {
+      console.error(`[db] ${pragma.toUpperCase()} FAILED:`, check);
+      // Defer logger require — module may not be loaded yet during boot
+      try { require('./lib/logger').error('SQLite integrity check failed', { category: 'db', meta: { pragma, check } }); } catch {}
     }
   } catch (err) {
     console.error('[db] Integrity check error:', err.message);
+    try { require('./lib/logger').error(err, { category: 'db' }); } catch {}
   }
 
   runMigrations(_db);
+  instrumentDb(_db);
   return _db;
 }
 
@@ -81,6 +125,12 @@ function runMigrations(db) {
     { version: 13, name: 'performance_indexes', fn: performanceIndexesMigration },
     { version: 14, name: 'agent_status_defaults', fn: agentStatusDefaultsMigration },
     { version: 15, name: 'error_log', fn: errorLogMigration },
+    { version: 16, name: 'system_schedule_overrides', fn: systemScheduleOverridesMigration },
+    { version: 17, name: 'agent_runs_extended_status', fn: agentRunsExtendedStatusMigration },
+    { version: 18, name: 'error_log_observability', fn: errorLogObservabilityMigration },
+    { version: 19, name: 'app_config_foundation', fn: appConfigFoundationMigration },
+    { version: 20, name: 'drop_duplicate_indexes', fn: dropDuplicateIndexesMigration },
+    { version: 21, name: 'error_log_dedup_key', fn: errorLogDedupKeyMigration },
   ];
 
   for (const mig of migrations) {
@@ -256,6 +306,33 @@ function performanceIndexesMigration(db) {
   console.log('[migration v13] performance indexes created');
 }
 
+// ── Migration v20: drop duplicate indexes (C-db audit) ──────────────────────
+// v13 created indexes that already existed under earlier names, doubling write
+// cost for zero read benefit. Drop the v13 duplicates; keep the originals
+// (idx_orch_runs_orchId/status, idx_witness_log_agent/t). idx_tasks_agentId is a
+// strict prefix of the composite idx_tasks_agent_status, so it is redundant too.
+function dropDuplicateIndexesMigration(db) {
+  db.exec(`
+    DROP INDEX IF EXISTS idx_runs_orchestration;
+    DROP INDEX IF EXISTS idx_runs_status;
+    DROP INDEX IF EXISTS idx_witness_agent;
+    DROP INDEX IF EXISTS idx_witness_t;
+    DROP INDEX IF EXISTS idx_tasks_agentId;
+  `);
+  console.log('[migration v20] dropped duplicate indexes');
+}
+
+// ── Migration v21: error_log dedup_key (noise collapse) ─────────────────────
+// Adds a normalized dedup key so repeating messages whose only difference is an
+// embedded timestamp/number (node-cron ticks, "slow query 356ms", selftest)
+// collapse to ONE row instead of accumulating forever.
+function errorLogDedupKeyMigration(db) {
+  const hasCol = db.prepare("PRAGMA table_info(error_log)").all().some(c => c.name === 'dedup_key');
+  if (!hasCol) db.exec('ALTER TABLE error_log ADD COLUMN dedup_key TEXT');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_error_log_dedup ON error_log(dedup_key, ts)');
+  console.log('[migration v21] error_log.dedup_key added');
+}
+
 // ── Migration v14: agent status defaults + backfill NULLs (2026-05-01) ───────
 function agentStatusDefaultsMigration(db) {
   // Backfill NULL critical fields so all rows have valid values
@@ -284,6 +361,134 @@ function errorLogMigration(db) {
     CREATE INDEX IF NOT EXISTS idx_error_log_source   ON error_log(source);
   `);
   console.log('[migration v15] error_log table created');
+}
+
+// ── Migration v18: error_log observability (2026-05-19) ───────────────────
+// Whole-app observability: extend error_log with category, agent_id,
+// request_id, route, method, status, duration_ms, user_agent. All additive
+// + nullable so existing rows + callers keep working.
+function errorLogObservabilityMigration(db) {
+  const hasCol = (table, col) =>
+    db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+  if (!hasCol('error_log', 'category'))    db.exec("ALTER TABLE error_log ADD COLUMN category TEXT");
+  if (!hasCol('error_log', 'agent_id'))    db.exec("ALTER TABLE error_log ADD COLUMN agent_id TEXT");
+  if (!hasCol('error_log', 'request_id'))  db.exec("ALTER TABLE error_log ADD COLUMN request_id TEXT");
+  if (!hasCol('error_log', 'route'))       db.exec("ALTER TABLE error_log ADD COLUMN route TEXT");
+  if (!hasCol('error_log', 'method'))      db.exec("ALTER TABLE error_log ADD COLUMN method TEXT");
+  if (!hasCol('error_log', 'status'))      db.exec("ALTER TABLE error_log ADD COLUMN status INTEGER");
+  if (!hasCol('error_log', 'duration_ms')) db.exec("ALTER TABLE error_log ADD COLUMN duration_ms INTEGER");
+  if (!hasCol('error_log', 'user_agent'))  db.exec("ALTER TABLE error_log ADD COLUMN user_agent TEXT");
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_error_log_category   ON error_log(category);
+    CREATE INDEX IF NOT EXISTS idx_error_log_request_id ON error_log(request_id);
+    CREATE INDEX IF NOT EXISTS idx_error_log_agent_id   ON error_log(agent_id);
+    CREATE INDEX IF NOT EXISTS idx_error_log_level      ON error_log(level);
+  `);
+  console.log('[migration v18] error_log observability columns added');
+}
+
+// ── Migration v19: app_config foundation (2026-05-19) ──────────────────────
+// Static→Dynamic refactor — moves all hardcoded thresholds, time windows,
+// API limits, UI caps, model defaults, dispatch weights, pod prefixes, and
+// per-agent budgets out of source code and into SQLite-backed config tables.
+function appConfigFoundationMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_config (
+      key         TEXT PRIMARY KEY,
+      value       TEXT NOT NULL,
+      category    TEXT NOT NULL,
+      description TEXT,
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_app_config_category ON app_config(category);
+
+    CREATE TABLE IF NOT EXISTS config_audit (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      key        TEXT NOT NULL,
+      before     TEXT,
+      after      TEXT,
+      changed_at TEXT NOT NULL DEFAULT (datetime('now')),
+      source     TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_config_audit_key ON config_audit(key);
+    CREATE INDEX IF NOT EXISTS idx_config_audit_changed_at ON config_audit(changed_at DESC);
+
+    CREATE TABLE IF NOT EXISTS pods (
+      id          TEXT PRIMARY KEY,
+      prefix      TEXT NOT NULL,
+      department  TEXT,
+      description TEXT,
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_pods_prefix ON pods(prefix);
+
+    CREATE TABLE IF NOT EXISTS models (
+      id            TEXT PRIMARY KEY,
+      display_name  TEXT NOT NULL,
+      tier          TEXT NOT NULL,
+      cost_penalty  REAL NOT NULL,
+      enabled       INTEGER NOT NULL DEFAULT 1,
+      updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS dispatch_policy (
+      id   INTEGER PRIMARY KEY CHECK (id = 1),
+      data TEXT NOT NULL DEFAULT '{}'
+    );
+    INSERT OR IGNORE INTO dispatch_policy (id, data) VALUES (1, '{}');
+
+    CREATE TABLE IF NOT EXISTS model_policy (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      pattern     TEXT NOT NULL,
+      model       TEXT NOT NULL,
+      tier        TEXT NOT NULL,
+      agents_json TEXT,
+      priority    INTEGER NOT NULL DEFAULT 0,
+      enabled     INTEGER NOT NULL DEFAULT 1,
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_model_policy_priority ON model_policy(priority DESC);
+  `);
+
+  const hasCol = (table, col) =>
+    db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+  if (!hasCol('agents', 'budget_lines')) db.exec(`ALTER TABLE agents ADD COLUMN budget_lines INTEGER`);
+  if (!hasCol('agents', 'budget_chars')) db.exec(`ALTER TABLE agents ADD COLUMN budget_chars INTEGER`);
+  if (!hasCol('agents', 'level_cap'))    db.exec(`ALTER TABLE agents ADD COLUMN level_cap INTEGER`);
+
+  console.log('[migration v19] app_config foundation tables + agents budget/level_cap columns added');
+}
+
+// ── Migration v16: system_schedule_overrides (2026-05-18) ──────────────────
+// User can disable built-in HR/automation cycles (Roster, Witness, Cadence,
+// Tutor, Mira, Forge) via the Schedules UI without code change.
+function systemScheduleOverridesMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS system_schedule_overrides (
+      id        TEXT PRIMARY KEY,
+      enabled   INTEGER DEFAULT 1,
+      updatedAt TEXT
+    );
+  `);
+  console.log('[migration v16] system_schedule_overrides table created');
+}
+
+// ── Migration v17: agent_runs extended status (2026-05-18) ─────────────────
+// agent_runs.status was previously {success, error}. We now support:
+//   'running'   — stub row inserted at handler start, before resolution
+//   'cancelled' — operator killed handler via /cancel endpoint
+//   'crashed'   — process died mid-handler; row reconciled at next boot
+// status is already TEXT, no schema change needed. Migration just marks
+// any stale 'running' rows from the prior process as 'crashed' since the
+// server (which was tracking them in inflight state) is restarting.
+function agentRunsExtendedStatusMigration(db) {
+  const reconciled = db.prepare(`
+    UPDATE agent_runs
+       SET status = 'crashed',
+           error  = COALESCE(error, 'Server restarted during run')
+     WHERE status = 'running'
+  `).run();
+  console.log(`[migration v17] reconciled ${reconciled.changes} orphan 'running' run(s) as 'crashed'`);
 }
 
 // ── Migration v6: tasks table (Phase A — Routing Engine) (2026-04-28) ──────
@@ -625,6 +830,16 @@ function createAllTables(db) {
       createdAt   TEXT
     );
 
+    -- System schedule overrides: user can disable a built-in HR/automation
+    -- cycle (Roster, Witness, Cadence, Tutor, Mira, Forge) via the Schedules
+    -- UI without code change. Row absent = use systemSchedules default
+    -- (enabled). Row present = explicit override.
+    CREATE TABLE IF NOT EXISTS system_schedule_overrides (
+      id        TEXT PRIMARY KEY,
+      enabled   INTEGER DEFAULT 1,
+      updatedAt TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS training_corrections (
       id          TEXT PRIMARY KEY,
       agentName   TEXT NOT NULL,
@@ -786,7 +1001,87 @@ function createAllTables(db) {
       data TEXT DEFAULT '{}'
     );
     INSERT OR IGNORE INTO experience_weights (id, data) VALUES (1, '{}');
+
+    -- ═══════════════════════════════════════════════════════════════
+    -- APP CONFIG (Phase 2 — Static→Dynamic refactor)
+    -- ═══════════════════════════════════════════════════════════════
+
+    -- Keyed config table. Replaces magic numbers scattered across
+    -- src/routes/*.js, src/lib/agentSync.js, client thresholds, etc.
+    CREATE TABLE IF NOT EXISTS app_config (
+      key         TEXT PRIMARY KEY,
+      value       TEXT NOT NULL,
+      category    TEXT NOT NULL,
+      description TEXT,
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_app_config_category ON app_config(category);
+
+    -- Audit log for every config write. Single-admin tool so no user column.
+    CREATE TABLE IF NOT EXISTS config_audit (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      key        TEXT NOT NULL,
+      before     TEXT,
+      after      TEXT,
+      changed_at TEXT NOT NULL DEFAULT (datetime('now')),
+      source     TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_config_audit_key ON config_audit(key);
+    CREATE INDEX IF NOT EXISTS idx_config_audit_changed_at ON config_audit(changed_at DESC);
+
+    -- Pod prefix routing. Replaces hardcoded POD_PREFIXES in lib/agentSync.js.
+    CREATE TABLE IF NOT EXISTS pods (
+      id          TEXT PRIMARY KEY,
+      prefix      TEXT NOT NULL,
+      department  TEXT,
+      description TEXT,
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_pods_prefix ON pods(prefix);
+
+    -- Model catalog. Replaces hardcoded cost penalties in routes/dispatch.js.
+    CREATE TABLE IF NOT EXISTS models (
+      id            TEXT PRIMARY KEY,
+      display_name  TEXT NOT NULL,
+      tier          TEXT NOT NULL,
+      cost_penalty  REAL NOT NULL,
+      enabled       INTEGER NOT NULL DEFAULT 1,
+      updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- Dispatch scoring policy (singleton JSON). Replaces hardcoded
+    -- weights + priority boosts in routes/dispatch.js.
+    CREATE TABLE IF NOT EXISTS dispatch_policy (
+      id   INTEGER PRIMARY KEY CHECK (id = 1),
+      data TEXT NOT NULL DEFAULT '{}'
+    );
+    INSERT OR IGNORE INTO dispatch_policy (id, data) VALUES (1, '{}');
+
+    -- Model routing policy rows. Replaces HARDCODED_RULES in routes/learning.js.
+    CREATE TABLE IF NOT EXISTS model_policy (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      pattern     TEXT NOT NULL,
+      model       TEXT NOT NULL,
+      tier        TEXT NOT NULL,
+      agents_json TEXT,
+      priority    INTEGER NOT NULL DEFAULT 0,
+      enabled     INTEGER NOT NULL DEFAULT 1,
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_model_policy_priority ON model_policy(priority DESC);
   `);
+
+  // ── Idempotent ALTERs for new columns on existing tables ──────────────
+  // SQLite throws if column exists; wrap each in try/catch.
+  const safeAlter = (sql) => {
+    try { db.exec(sql); }
+    catch (err) {
+      if (!/duplicate column/i.test(err.message)) throw err;
+    }
+  };
+  safeAlter(`ALTER TABLE agents ADD COLUMN budget_lines INTEGER`);
+  safeAlter(`ALTER TABLE agents ADD COLUMN budget_chars INTEGER`);
+  safeAlter(`ALTER TABLE agents ADD COLUMN level_cap INTEGER`);
 }
 
 // ── JSON Data Import (migration v2) ─────────────────────────────────────────
@@ -1234,6 +1529,131 @@ function insertAgentRun(run) {
   const checked = enforceModelPolicy(run);
   stmt('INSERT OR IGNORE INTO agent_runs (id,agentName,prompt,source,timestamp,duration,status,promptChars,outputChars,estimatedTokens,estimatedCost,error,metadata) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
     .run(checked.id, checked.agentName, checked.prompt, checked.source, checked.timestamp, checked.duration, checked.status, checked.promptChars, checked.outputChars, checked.estimatedTokens, checked.estimatedCost, checked.error, JSON.stringify(checked.metadata || {}));
+
+  // Broadcast a lightweight event so subscribers (e.g. systemSchedules Mira
+  // trigger) can react to build successes. Deferred via setImmediate to
+  // break the db ↔ agentSync require cycle and avoid blocking writes.
+  setImmediate(() => {
+    try {
+      const agentSync = require('./lib/agentSync');
+      agentSync.events.emit('agent_run.recorded', {
+        runId: checked.id,
+        agentName: checked.agentName,
+        source: checked.source,
+        status: checked.status,
+        timestamp: checked.timestamp,
+      });
+    } catch (err) {
+      // Silent: event emission failure should never break run insert.
+      if (process.env.DEBUG_DB) console.warn('[db] agent_run event emit failed:', err.message);
+    }
+  });
+}
+
+// Insert a stub run with status='running' BEFORE the handler executes.
+// Returns the row's id. Caller must call completeAgentRun() later (in finally)
+// to mark final status. If the process crashes between the two calls, the
+// next-boot reconcileOrphanRuns() will mark the row as 'crashed'.
+function insertAgentRunStub(stub) {
+  const ts = new Date().toISOString();
+  const row = {
+    id: stub.id,
+    agentName: stub.agentName || 'unknown',
+    prompt: (stub.prompt || '').slice(0, 200),
+    source: stub.source || 'unknown',
+    timestamp: ts,
+    duration: 0,
+    status: 'running',
+    promptChars: (stub.prompt || '').length,
+    outputChars: 0,
+    estimatedTokens: 0,
+    estimatedCost: 0,
+    error: null,
+    metadata: stub.metadata || {},
+  };
+  stmt('INSERT INTO agent_runs (id,agentName,prompt,source,timestamp,duration,status,promptChars,outputChars,estimatedTokens,estimatedCost,error,metadata) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(row.id, row.agentName, row.prompt, row.source, row.timestamp, row.duration, row.status, row.promptChars, row.outputChars, row.estimatedTokens, row.estimatedCost, row.error, JSON.stringify(row.metadata));
+  return row;
+}
+
+// Update a stub run to its final state. Merges metadata (does NOT replace).
+// Recomputes token + cost estimates from final output length.
+function completeAgentRun(runId, patch = {}) {
+  const existing = stmt('SELECT * FROM agent_runs WHERE id = ?').get(runId);
+  if (!existing) return null;
+
+  const estimateTokens = (text) => Math.ceil((text || '').length / 4);
+  const estimateCost = (i, o) => (i * 3 + o * 15) / 1_000_000;
+  const inputTokens = estimateTokens(existing.prompt || '');
+  const outputTokens = estimateTokens(patch.output || '');
+
+  const oldMeta = JSON.parse(existing.metadata || '{}');
+  const mergedMeta = { ...oldMeta, ...(patch.metadataPatch || {}) };
+
+  const next = {
+    duration: patch.duration ?? 0,
+    status: patch.status || 'success',
+    outputChars: (patch.output || '').length,
+    estimatedTokens: inputTokens + outputTokens,
+    estimatedCost: estimateCost(inputTokens, outputTokens),
+    error: patch.error || null,
+    metadata: JSON.stringify(mergedMeta),
+  };
+
+  stmt(`UPDATE agent_runs
+           SET duration = ?, status = ?, outputChars = ?,
+               estimatedTokens = ?, estimatedCost = ?, error = ?, metadata = ?
+         WHERE id = ?`)
+    .run(next.duration, next.status, next.outputChars, next.estimatedTokens,
+         next.estimatedCost, next.error, next.metadata, runId);
+
+  // Mirror agent-run failures into error_log so they show in the Logs page.
+  if (next.status === 'error' || next.status === 'crashed' || (next.status === 'cancelled' && next.error)) {
+    try {
+      insertErrorLog({
+        level: next.status === 'cancelled' ? 'warn' : 'error',
+        source: 'server',
+        category: 'agent-run',
+        agent_id: existing.agentName,
+        message: `agent_run ${next.status}: ${next.error || 'no detail'}`,
+        stack: mergedMeta?.trace || null,
+        duration_ms: next.duration,
+        context: { runId, source: existing.source, status: next.status },
+      });
+    } catch { /* never throw from finalizer */ }
+  }
+
+  // Fire the same setImmediate event as insertAgentRun so listeners
+  // (e.g. Mira post-build trigger) react on terminal completion.
+  setImmediate(() => {
+    try {
+      const agentSync = require('./lib/agentSync');
+      agentSync.events.emit('agent_run.recorded', {
+        runId,
+        agentName: existing.agentName,
+        source: existing.source,
+        status: next.status,
+        timestamp: existing.timestamp,
+      });
+    } catch (err) {
+      if (process.env.DEBUG_DB) console.warn('[db] completeAgentRun event emit failed:', err.message);
+    }
+  });
+
+  return { ...existing, ...next, metadata: mergedMeta };
+}
+
+// Reconcile any 'running' rows left over from a crashed process. Safe to
+// call multiple times — idempotent. Called from migration v17 on boot AND
+// can be called manually for crash recovery testing.
+function reconcileOrphanRuns() {
+  const r = stmt(`
+    UPDATE agent_runs
+       SET status = 'crashed',
+           error  = COALESCE(error, 'Server restarted during run')
+     WHERE status = 'running'
+  `).run();
+  return { reconciled: r.changes };
 }
 
 function getRecentAgentRuns(hours = 24) {
@@ -1276,7 +1696,15 @@ function saveOrchestration(orc) {
 }
 
 function deleteOrchestration(id) {
-  stmt('DELETE FROM orchestrations WHERE id = ?').run(id);
+  // Transactional cascade (C-db audit): orchestration FKs use ON DELETE NO ACTION,
+  // so with foreign_keys=ON a bare delete throws if any run/step references the
+  // orchestration. Delete children first, then the parent, atomically.
+  const db = getDb();
+  db.transaction(() => {
+    db.prepare('DELETE FROM orchestration_steps WHERE runId IN (SELECT id FROM orchestration_runs WHERE orchestrationId = ?)').run(id);
+    db.prepare('DELETE FROM orchestration_runs WHERE orchestrationId = ?').run(id);
+    db.prepare('DELETE FROM orchestrations WHERE id = ?').run(id);
+  })();
 }
 
 // ── Schedules ───────────────────────────────────────────────────────────────
@@ -1325,6 +1753,43 @@ function deleteScheduleById(id) {
 function getScheduleById(id) {
   const row = stmt('SELECT * FROM schedules WHERE id = ?').get(id);
   return row ? { ...row, enabled: !!row.enabled, cronExpression: row.cron } : null;
+}
+
+// ── System schedule overrides ──────────────────────────────────────────────
+
+function loadSystemOverrides() {
+  const rows = stmt('SELECT * FROM system_schedule_overrides').all();
+  const out = {};
+  for (const r of rows) out[r.id] = { enabled: !!r.enabled, updatedAt: r.updatedAt };
+  return out;
+}
+
+function getSystemOverride(id) {
+  const r = stmt('SELECT * FROM system_schedule_overrides WHERE id = ?').get(id);
+  return r ? { id: r.id, enabled: !!r.enabled, updatedAt: r.updatedAt } : null;
+}
+
+function upsertSystemOverride(id, enabled) {
+  const ts = new Date().toISOString();
+  stmt(`INSERT INTO system_schedule_overrides (id, enabled, updatedAt)
+        VALUES (?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled, updatedAt = excluded.updatedAt`)
+    .run(id, enabled ? 1 : 0, ts);
+  return { id, enabled: !!enabled, updatedAt: ts };
+}
+
+// Last N runs for a given schedule id (works for both user schedules — via
+// metadata.scheduleId — and system schedules — via metadata.systemId).
+// JSON1 extension ships with better-sqlite3 by default; json_extract is safe.
+function getScheduleRunsFor(scheduleId, { limit = 50 } = {}) {
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 500);
+  return stmt(`
+    SELECT * FROM agent_runs
+    WHERE json_extract(metadata, '$.scheduleId') = ?
+       OR json_extract(metadata, '$.systemId')   = ?
+    ORDER BY timestamp DESC
+    LIMIT ?
+  `).all(scheduleId, scheduleId, lim).map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
 }
 
 // ── Webhooks ────────────────────────────────────────────────────────────────
@@ -1463,6 +1928,148 @@ function loadSkillIndex() { return loadSingleton('skill_index_store'); }
 function saveSkillIndex(data) { saveSingleton('skill_index_store', data); }
 function loadExperienceWeights() { return loadSingleton('experience_weights'); }
 function saveExperienceWeights(data) { saveSingleton('experience_weights', data); }
+function loadDispatchPolicy() { return loadSingleton('dispatch_policy'); }
+function saveDispatchPolicy(data) { saveSingleton('dispatch_policy', data); }
+
+// ── app_config CRUD ───────────────────────────────────────────────────────
+// Values are stored as TEXT (JSON-serialized) so number/object/array all work.
+function getConfigValue(key) {
+  const row = getDb().prepare(`SELECT value FROM app_config WHERE key = ?`).get(key);
+  if (!row) return undefined;
+  try { return JSON.parse(row.value); }
+  catch { return row.value; }
+}
+
+function getConfigRow(key) {
+  return getDb().prepare(`SELECT key, value, category, description, updated_at FROM app_config WHERE key = ?`).get(key);
+}
+
+function getAllConfig(category = null) {
+  const stmt = category
+    ? getDb().prepare(`SELECT key, value, category, description, updated_at FROM app_config WHERE category = ? ORDER BY key`)
+    : getDb().prepare(`SELECT key, value, category, description, updated_at FROM app_config ORDER BY category, key`);
+  const rows = category ? stmt.all(category) : stmt.all();
+  return rows.map((r) => ({
+    key: r.key,
+    value: (() => { try { return JSON.parse(r.value); } catch { return r.value; } })(),
+    category: r.category,
+    description: r.description,
+    updatedAt: r.updated_at,
+  }));
+}
+
+function upsertConfig({ key, value, category, description = null }) {
+  const serialized = typeof value === 'string' ? JSON.stringify(value) : JSON.stringify(value);
+  const now = new Date().toISOString();
+  getDb().prepare(`
+    INSERT INTO app_config (key, value, category, description, updated_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET
+      value = excluded.value,
+      category = excluded.category,
+      description = COALESCE(excluded.description, app_config.description),
+      updated_at = excluded.updated_at
+  `).run(key, serialized, category, description, now);
+}
+
+function appendConfigAudit({ key, before, after, source = 'api' }) {
+  const now = new Date().toISOString();
+  const beforeJson = before === undefined ? null : JSON.stringify(before);
+  const afterJson = after === undefined ? null : JSON.stringify(after);
+  getDb().prepare(`
+    INSERT INTO config_audit (key, before, after, changed_at, source)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(key, beforeJson, afterJson, now, source);
+}
+
+function getConfigAudit({ key = null, limit = 50 } = {}) {
+  const stmt = key
+    ? getDb().prepare(`SELECT id, key, before, after, changed_at, source FROM config_audit WHERE key = ? ORDER BY changed_at DESC LIMIT ?`)
+    : getDb().prepare(`SELECT id, key, before, after, changed_at, source FROM config_audit ORDER BY changed_at DESC LIMIT ?`);
+  const rows = key ? stmt.all(key, limit) : stmt.all(limit);
+  return rows.map((r) => ({
+    id: r.id,
+    key: r.key,
+    before: r.before === null ? null : (() => { try { return JSON.parse(r.before); } catch { return r.before; } })(),
+    after: r.after === null ? null : (() => { try { return JSON.parse(r.after); } catch { return r.after; } })(),
+    changedAt: r.changed_at,
+    source: r.source,
+  }));
+}
+
+// ── pods CRUD ─────────────────────────────────────────────────────────────
+function listPods() {
+  return getDb().prepare(`SELECT id, prefix, department, description FROM pods ORDER BY id`).all();
+}
+
+function upsertPod({ id, prefix, department = null, description = null }) {
+  const now = new Date().toISOString();
+  getDb().prepare(`
+    INSERT INTO pods (id, prefix, department, description, updated_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      prefix = excluded.prefix,
+      department = excluded.department,
+      description = excluded.description,
+      updated_at = excluded.updated_at
+  `).run(id, prefix, department, description, now);
+}
+
+function deletePod(id) {
+  getDb().prepare(`DELETE FROM pods WHERE id = ?`).run(id);
+}
+
+// ── models CRUD ───────────────────────────────────────────────────────────
+function listModels() {
+  return getDb().prepare(`SELECT id, display_name, tier, cost_penalty, enabled FROM models ORDER BY tier, id`).all();
+}
+
+function getModel(id) {
+  return getDb().prepare(`SELECT id, display_name, tier, cost_penalty, enabled FROM models WHERE id = ?`).get(id);
+}
+
+function upsertModel({ id, displayName, tier, costPenalty, enabled = 1 }) {
+  const now = new Date().toISOString();
+  getDb().prepare(`
+    INSERT INTO models (id, display_name, tier, cost_penalty, enabled, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      display_name = excluded.display_name,
+      tier = excluded.tier,
+      cost_penalty = excluded.cost_penalty,
+      enabled = excluded.enabled,
+      updated_at = excluded.updated_at
+  `).run(id, displayName, tier, costPenalty, enabled, now);
+}
+
+// ── model_policy CRUD ─────────────────────────────────────────────────────
+function listModelPolicy() {
+  const rows = getDb().prepare(`
+    SELECT id, pattern, model, tier, agents_json, priority, enabled
+    FROM model_policy WHERE enabled = 1 ORDER BY priority DESC, id
+  `).all();
+  return rows.map((r) => ({
+    id: r.id,
+    pattern: r.pattern,
+    model: r.model,
+    tier: r.tier,
+    agents: r.agents_json ? (() => { try { return JSON.parse(r.agents_json); } catch { return []; } })() : [],
+    priority: r.priority,
+    enabled: !!r.enabled,
+  }));
+}
+
+function insertModelPolicy({ pattern, model, tier, agents = [], priority = 0, enabled = 1 }) {
+  const now = new Date().toISOString();
+  getDb().prepare(`
+    INSERT INTO model_policy (pattern, model, tier, agents_json, priority, enabled, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(pattern, model, tier, JSON.stringify(agents), priority, enabled, now);
+}
+
+function clearModelPolicy() {
+  getDb().prepare(`DELETE FROM model_policy`).run();
+}
 
 // ── Org: Registry (agents table) ────────────────────────────────────────────
 
@@ -1800,6 +2407,13 @@ function getPrimaryKeyColumn(tableName) {
   return pk ? pk.name : null;
 }
 
+// Real column names for a table. Used to whitelist update keys so a crafted
+// req.body key cannot break out of the quoted-identifier in a SET clause
+// (C5 audit — SQL identifier injection).
+function getColumnSet(tableName) {
+  return new Set(getDb().prepare(`PRAGMA table_info("${tableName}")`).all().map(c => c.name));
+}
+
 function updateRow(tableName, pkValue, updates) {
   const d = getDb();
   const pkCol = getPrimaryKeyColumn(tableName);
@@ -1809,11 +2423,17 @@ function updateRow(tableName, pkValue, updates) {
   const oldRow = d.prepare(`SELECT * FROM "${tableName}" WHERE "${pkCol}" = ?`).get(pkValue);
   if (!oldRow) throw new Error(`Row not found: ${pkCol}=${pkValue}`);
 
-  // Build UPDATE
+  // Build UPDATE — whitelist every column against the real schema first.
+  const validCols = getColumnSet(tableName);
   const setClauses = [];
   const values = [];
   for (const [col, val] of Object.entries(updates)) {
     if (col === pkCol) continue; // Don't update PK
+    if (!validCols.has(col)) {
+      const err = new Error(`Unknown column: ${col}`);
+      err.statusCode = 400;
+      throw err;
+    }
     setClauses.push(`"${col}" = ?`);
     values.push(val === undefined ? null : val);
   }
@@ -1845,14 +2465,18 @@ function revertChange(changeId) {
   // Get current row for forward-log
   const currentRow = d.prepare(`SELECT * FROM "${change.tableName}" WHERE "${pkCol}" = ?`).get(change.rowKey);
 
-  // Restore all columns from old data
+  // Restore all columns from old data — whitelist against the real schema so a
+  // tampered change-log row cannot inject identifiers (C5 audit).
+  const validCols = getColumnSet(change.tableName);
   const setClauses = [];
   const values = [];
   for (const [col, val] of Object.entries(oldData)) {
     if (col === pkCol) continue;
+    if (!validCols.has(col)) continue; // skip stale/unknown columns silently on revert
     setClauses.push(`"${col}" = ?`);
     values.push(val === undefined ? null : val);
   }
+  if (setClauses.length === 0) throw new Error('No valid columns to restore');
   values.push(change.rowKey);
   d.prepare(`UPDATE "${change.tableName}" SET ${setClauses.join(', ')} WHERE "${pkCol}" = ?`).run(...values);
 
@@ -1896,14 +2520,22 @@ function exportAllTables() {
   return dump;
 }
 
-function autoBackupToFile() {
+async function autoBackupToFile() {
   try {
     const backupDir = path.join(HOME, '.claude', 'backups');
     fs.mkdirSync(backupDir, { recursive: true });
-    const backupPath = path.join(backupDir, 'polyglot-db-backup.json');
-    const dump = exportAllTables();
-    fs.writeFileSync(backupPath, JSON.stringify(dump));
-    console.log(`[db] Auto-backup saved to ${backupPath} (${Object.keys(dump).length - 1} tables)`);
+    const finalPath = path.join(backupDir, 'polyglot-db-backup.db');
+    const tmpPath = finalPath + '.tmp';
+    try { fs.unlinkSync(tmpPath); } catch { /* no stale tmp */ }
+    // Online binary backup (better-sqlite3): runs in steps and does NOT scan
+    // every row into JS / JSON.stringify them, so it no longer blocks the event
+    // loop like the old `SELECT * FROM <table>` dump (Bug 1 — that dump caused
+    // the recurring "slow query registry_history" + node-cron "missed execution").
+    await getDb().backup(tmpPath);
+    fs.renameSync(tmpPath, finalPath);
+    // Drop the obsolete unbounded JSON dump if a prior version left one.
+    try { fs.unlinkSync(path.join(backupDir, 'polyglot-db-backup.json')); } catch { /* none */ }
+    console.log(`[db] Auto-backup (online) saved to ${finalPath}`);
   } catch (err) {
     console.error('[db] Auto-backup failed:', err.message);
   }
@@ -1911,46 +2543,116 @@ function autoBackupToFile() {
 
 // ── Error Log ────────────────────────────────────────────────────────────────
 
-const ERROR_LOG_CAP = 1000;
+const ERROR_LOG_CAP = parseInt(process.env.LOG_CAP, 10) || 50000;
 const DEDUP_WINDOW_SECS = 60; // skip duplicate message+source within 60s
+const FALLBACK_LOG = path.join(DB_DIR, 'logger-fallback.log');
 
-function insertErrorLog({ level = 'error', source = 'server', message, stack, context } = {}) {
+function insertErrorLog(opts = {}) {
+  const {
+    level = 'error',
+    source = 'server',
+    message,
+    stack,
+    context,
+    category = null,
+    agent_id = null,
+    request_id = null,
+    route = null,
+    method = null,
+    status = null,
+    duration_ms = null,
+    user_agent = null,
+  } = opts;
   try {
     const db = getDb();
     const msg = String(message || 'Unknown error');
-    // Dedup: skip if identical message+source exists within the window
-    const dup = db.prepare(
-      `SELECT 1 FROM error_log WHERE source = ? AND message = ?
-       AND ts >= datetime('now', '-' || ? || ' seconds') LIMIT 1`
-    ).get(source, msg, DEDUP_WINDOW_SECS);
-    if (dup) return;
 
-    db.prepare(
-      `INSERT INTO error_log (level, source, message, stack, context) VALUES (?, ?, ?, ?, ?)`
-    ).run(level, source, msg, stack || null, context ? JSON.stringify(context) : null);
+    // Suppress operational non-bugs: node-cron "missed execution" is a library
+    // warning (laptop sleep / transient load), not an app error — never persist.
+    if (/missed execution/i.test(msg)) return null;
+
+    // Normalized dedup key: strip embedded ISO timestamps + digit runs so
+    // messages that differ only by a number/time ("slow query 356ms" vs "432ms",
+    // per-tick cron, repeated selftest) collapse to one row instead of piling up.
+    const dedupKey = msg
+      .replace(/\d{4}-\d\d-\d\dT[\d:.]+Z?/g, '#TS')
+      .replace(/\d+/g, '#')
+      .replace(/\s+/g, ' ')
+      .trim();
+    // Wider window for warn (mostly repeating/operational); tighter for errors.
+    const windowSecs = level === 'error' ? DEDUP_WINDOW_SECS : 600;
+    const dup = db.prepare(
+      `SELECT 1 FROM error_log WHERE source = ? AND dedup_key = ? AND COALESCE(category,'') = COALESCE(?, '')
+       AND ts >= datetime('now', '-' || ? || ' seconds') LIMIT 1`
+    ).get(source, dedupKey, category, windowSecs);
+    if (dup) return null;
+
+    const info = db.prepare(
+      `INSERT INTO error_log (level, source, message, stack, context,
+         category, agent_id, request_id, route, method, status, duration_ms, user_agent, dedup_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      level, source, msg,
+      stack || null,
+      context ? JSON.stringify(context) : null,
+      category, agent_id, request_id, route, method,
+      status === null ? null : Number(status),
+      duration_ms === null ? null : Number(duration_ms),
+      user_agent,
+      dedupKey,
+    );
 
     // Cap at ERROR_LOG_CAP rows — prune oldest
     const count = db.prepare('SELECT COUNT(*) as n FROM error_log').get().n;
     if (count > ERROR_LOG_CAP) {
       db.prepare('DELETE FROM error_log WHERE id IN (SELECT id FROM error_log ORDER BY ts ASC LIMIT ?)').run(count - ERROR_LOG_CAP);
     }
+    return info.lastInsertRowid;
   } catch (e) {
-    // Never throw from error logger — would cause infinite loop
+    // Never throw from error logger — would cause infinite loop. Fall back
+    // to flat-file so nothing is ever silently lost.
+    try {
+      const line = JSON.stringify({
+        ts: new Date().toISOString(),
+        level, source, message, stack: stack?.toString?.() || stack,
+        category, agent_id, request_id, route, method, status, duration_ms, user_agent,
+        _fallbackReason: e.message,
+      }) + '\n';
+      fs.appendFileSync(FALLBACK_LOG, line);
+    } catch { /* truly nothing else to do */ }
     console.error('[error_log] failed to persist:', e.message);
+    return null;
   }
 }
 
-function getErrorLog({ limit = 200, source, resolved } = {}) {
+function getErrorLog({
+  limit = 200, source, resolved, level, category, agentId,
+  q: searchQuery, since, until, beforeId, includeTest = false,
+} = {}) {
   const db = getDb();
-  let q = 'SELECT * FROM error_log';
+  let sql = 'SELECT * FROM error_log';
   const conds = [];
   const args = [];
-  if (source) { conds.push('source = ?'); args.push(source); }
+  // Hide synthetic self-test entries (Setup "Run Self-Test" pipeline check) from
+  // the default error feed — they verify logging works, they aren't real errors (Bug 5a).
+  if (!includeTest) conds.push("message NOT LIKE 'selftest%'");
+  if (source)   { conds.push('source = ?');   args.push(source); }
+  if (level)    { conds.push('level = ?');    args.push(level); }
+  if (category) { conds.push('category = ?'); args.push(category); }
+  if (agentId)  { conds.push('agent_id = ?'); args.push(agentId); }
   if (resolved !== undefined) { conds.push('resolved = ?'); args.push(resolved ? 1 : 0); }
-  if (conds.length) q += ' WHERE ' + conds.join(' AND ');
-  q += ' ORDER BY ts DESC LIMIT ?';
-  args.push(limit);
-  return db.prepare(q).all(...args);
+  if (since)    { conds.push('ts >= ?'); args.push(since); }
+  if (until)    { conds.push('ts <= ?'); args.push(until); }
+  if (beforeId) { conds.push('id < ?');  args.push(Number(beforeId)); }
+  if (searchQuery) {
+    conds.push('(message LIKE ? OR stack LIKE ? OR route LIKE ?)');
+    const like = `%${searchQuery}%`;
+    args.push(like, like, like);
+  }
+  if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
+  sql += ' ORDER BY id DESC LIMIT ?';
+  args.push(Math.min(Number(limit) || 200, 1000));
+  return db.prepare(sql).all(...args);
 }
 
 function markErrorResolved(id) {
@@ -1966,6 +2668,39 @@ function getUnresolvedErrorCount() {
   return getDb().prepare('SELECT COUNT(*) as n FROM error_log WHERE resolved = 0').get().n;
 }
 
+// Nightly retention: prune resolved older than 7d and any row older than 30d.
+// Returns counts so the caller (systemSchedules) can log the run.
+function pruneErrorLog({ resolvedDays = 7, allDays = 30 } = {}) {
+  const db = getDb();
+  const resolvedPruned = db.prepare(
+    `DELETE FROM error_log WHERE resolved = 1 AND ts < datetime('now', '-' || ? || ' days')`
+  ).run(resolvedDays).changes;
+  const oldPruned = db.prepare(
+    `DELETE FROM error_log WHERE ts < datetime('now', '-' || ? || ' days')`
+  ).run(allDays).changes;
+  // Hard-cap fallback
+  const count = db.prepare('SELECT COUNT(*) as n FROM error_log').get().n;
+  let capPruned = 0;
+  if (count > ERROR_LOG_CAP) {
+    capPruned = db.prepare(
+      'DELETE FROM error_log WHERE id IN (SELECT id FROM error_log ORDER BY ts ASC LIMIT ?)'
+    ).run(count - ERROR_LOG_CAP).changes;
+  }
+  return { resolvedPruned, oldPruned, capPruned, remaining: db.prepare('SELECT COUNT(*) as n FROM error_log').get().n };
+}
+
+// Dashboard sparkline: hourly counts for last N hours, split by level.
+function getErrorLogHistogram({ hours = 24 } = {}) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT strftime('%Y-%m-%d %H:00', ts) AS bucket, level, COUNT(*) AS n
+      FROM error_log
+     WHERE ts >= datetime('now', '-' || ? || ' hours')
+     GROUP BY bucket, level
+     ORDER BY bucket ASC
+  `).all(hours);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1974,6 +2709,7 @@ module.exports = {
   getDb, close,
   // Agent Runs
   loadAgentRuns, insertAgentRun, getRecentAgentRuns,
+  insertAgentRunStub, completeAgentRun, reconcileOrphanRuns,
   // Node position overrides (drag-and-drop persistence)
   loadNodePositions, saveNodePositions, clearNodePositions, setNodeLock,
   // Run History
@@ -1982,8 +2718,11 @@ module.exports = {
   loadOrchestrations, saveOrchestration, deleteOrchestration,
   // Schedules
   loadSchedules, saveSchedules, insertSchedule, updateScheduleFields, updateScheduleRunStatus, deleteScheduleById, getScheduleById,
+  // System schedule overrides + run history
+  loadSystemOverrides, getSystemOverride, upsertSystemOverride, getScheduleRunsFor,
   // Error Log
   insertErrorLog, getErrorLog, markErrorResolved, clearErrorLog, getUnresolvedErrorCount,
+  pruneErrorLog, getErrorLogHistogram,
   // Webhooks
   loadWebhooks, saveWebhooks,
   // Chat
@@ -2006,6 +2745,16 @@ module.exports = {
   loadAntipatternSigs, saveAntipatternSigs,
   loadSkillIndex, saveSkillIndex,
   loadExperienceWeights, saveExperienceWeights,
+  loadDispatchPolicy, saveDispatchPolicy,
+  // App config
+  getConfigValue, getConfigRow, getAllConfig, upsertConfig,
+  appendConfigAudit, getConfigAudit,
+  // Pods
+  listPods, upsertPod, deletePod,
+  // Models
+  listModels, getModel, upsertModel,
+  // Model policy
+  listModelPolicy, insertModelPolicy, clearModelPolicy,
   // Org
   loadRegistry, saveRegistry,
   logHistory, getHistory, listHistory, listBatchHistory, markHistoryUndone,

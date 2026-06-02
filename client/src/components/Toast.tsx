@@ -96,15 +96,22 @@ export function ToastContainer() {
   if (toasts.length === 0) return null
 
   return (
-    <div className="fixed bottom-24 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
+    <div
+      className="fixed bottom-24 right-6 z-[100] flex flex-col gap-2 pointer-events-none"
+      role="region"
+      aria-label="Notifications"
+      aria-live="polite"
+      aria-atomic="false"
+    >
       {toasts.map(t => (
         <div
           key={t.id}
+          role={t.type === 'success' || t.type === 'warn' ? 'status' : 'alert'}
           className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto transition-all ${
             t.type === 'success'
               ? 'bg-green-muted border border-green/30 text-green'
               : t.type === 'warn'
-              ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+              ? 'bg-amber-muted border border-amber/30 text-amber'
               : 'bg-red-muted border border-red/30 text-red'
           }`}
         >
@@ -123,6 +130,7 @@ export function ToastContainer() {
           )}
           <button
             onClick={() => dismiss(t.id)}
+            aria-label="Dismiss notification"
             className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
           >
             <X className="w-3.5 h-3.5" />

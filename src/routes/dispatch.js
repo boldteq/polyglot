@@ -2,60 +2,46 @@
 
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
 
 const tasks = require('../lib/tasks');
 const db = require('../db');
+const org = require('../org');
+const configService = require('../lib/configService');
 
-const REGISTRY_PATH = path.join(os.homedir(), '.claude', 'org', 'registry.json');
-
-// Cost tier penalty for the dispatch scoring formula. Loaded from
-// model_routing.json so it stays in sync with the policy file.
+// Cost tier penalty for the dispatch scoring formula. Sourced from
+// `models` SQLite table via configService.
 function tierCostPenalty(model) {
-  if (!model) return 0.5;
-  const m = String(model).toLowerCase();
-  if (m.includes('opus')) return 1.0;
-  if (m.includes('haiku')) return 0.05;
-  if (m.includes('sonnet')) return 0.3;
-  return 0.5;
+  return configService.getModelCostPenalty(model);
 }
 
 function priorityBoost(priority) {
-  switch (priority) {
-    case 'p0': return 0.3;
-    case 'p1': return 0.15;
-    case 'p2': return 0;
-    case 'p3': return -0.05;
-    default: return 0;
-  }
+  const policy = configService.getDispatchPolicy();
+  const boost = policy?.priority_boost || {};
+  return typeof boost[priority] === 'number' ? boost[priority] : 0;
 }
 
-// Score formula:
-//   skillScore * 0.5      ← skill match (0-1)
-// + (1 - loadPct) * 0.2   ← favor less-loaded agents
-// + successRate * 0.2     ← favor proven performers
-// - costPenalty * costWeight ← break ties toward cheap agents (default 0.1)
-// + priorityBoost         ← P0 lifts up, P3 nudges down
-//
-// `costWeight` is dynamic: when monthly burn > threshold and the task isn't
-// in the exempt list, we crank cost penalty up to 0.45 so cheap (haiku) tier
-// dominates. This implements model_routing.json's `downgrade_fast_to_cheap_
-// for_non_critical` rule.
+// Score formula (weights from dispatch_policy table):
+//   skillScore   * skill_weight
+// + (1-loadPct)  * load_weight
+// + successRate  * success_weight
+// - costPenalty  * costWeight (dynamic — normal vs over-budget downgrade)
+// + priorityBoost
 function rankCandidate(c, opts = {}) {
+  const policy = configService.getDispatchPolicy();
   const skill = c.skillScore || 0;
   const loadPct = c.maxConcurrentTasks > 0
     ? Math.min(1, (c.activeTaskCount || 0) / c.maxConcurrentTasks)
     : 1;
   const sr = typeof c.successRate === 'number' ? c.successRate : 0.7;
   const cost = tierCostPenalty(c.model);
-  const costWeight = typeof opts.costWeight === 'number' ? opts.costWeight : 0.1;
+  const costWeight = typeof opts.costWeight === 'number'
+    ? opts.costWeight
+    : (policy?.cost_weight_normal ?? 0.1);
 
   const score =
-      skill * 0.5
-    + (1 - loadPct) * 0.2
-    + sr * 0.2
+      skill * (policy?.skill_weight   ?? 0.5)
+    + (1 - loadPct) * (policy?.load_weight    ?? 0.2)
+    + sr * (policy?.success_weight ?? 0.2)
     - cost * costWeight
     + priorityBoost(opts.priority);
 
@@ -69,13 +55,18 @@ function rankCandidate(c, opts = {}) {
 // downgrade=true means we're past the 110% threshold AND the task isn't in
 // the exempt list. costWeight gets cranked up to bias toward cheap tier.
 function computeBudgetContext(taskType) {
+  const dispatchPolicy = configService.getDispatchPolicy();
+  const normalWeight = dispatchPolicy?.cost_weight_normal ?? 0.1;
+  const downgradeWeight = dispatchPolicy?.cost_weight_downgrade ?? 0.45;
+  const empty = (extra = {}) => ({
+    overBudget: false, burnPct: null, costWeight: normalWeight, downgrade: false, exemptTask: false, ...extra,
+  });
   try {
-    const policy = db.loadModelRouting() || {};
-    const rules = policy.downgradeRules || [];
+    const routing = db.loadModelRouting() || {};
+    const rules = routing.downgradeRules || [];
     const downgradeRule = rules.find((r) => r.trigger === 'monthly_burn_above_pct');
-    if (!downgradeRule) return { overBudget: false, burnPct: null, costWeight: 0.1, downgrade: false, exemptTask: false };
+    if (!downgradeRule) return empty();
 
-    // Compute current burn pct from last 30d agent_runs
     const cutoffMs = Date.now() - 30 * 24 * 3600 * 1000;
     const cutoffIso = new Date(cutoffMs).toISOString();
     const runs = db.getRecentAgentRuns(30 * 24);
@@ -83,8 +74,8 @@ function computeBudgetContext(taskType) {
       if (r.timestamp < cutoffIso) return acc;
       return acc + (r.estimatedCost || 0);
     }, 0);
-    const totalBudget = policy.totalMonthlyBudgetUsd || 0;
-    if (totalBudget <= 0) return { overBudget: false, burnPct: null, costWeight: 0.1, downgrade: false, exemptTask: false };
+    const totalBudget = routing.totalMonthlyBudgetUsd || 0;
+    if (totalBudget <= 0) return empty();
 
     const burnPct = (totalCost / totalBudget) * 100;
     const overBudget = burnPct > (downgradeRule.threshold || 110);
@@ -95,25 +86,13 @@ function computeBudgetContext(taskType) {
     return {
       overBudget,
       burnPct: Math.round(burnPct * 10) / 10,
-      costWeight: downgrade ? 0.45 : 0.1,
+      costWeight: downgrade ? downgradeWeight : normalWeight,
       downgrade,
       exemptTask,
     };
   } catch (err) {
     console.warn('[dispatch] computeBudgetContext failed:', err.message);
-    return { overBudget: false, burnPct: null, costWeight: 0.1, downgrade: false, exemptTask: false };
-  }
-}
-
-// Read registry fresh every call. Avoids Node's require() cache (which can hold
-// stale data) AND avoids mid-write JSON.parse failures by catching + falling back.
-function loadRegistry() {
-  try {
-    const raw = fs.readFileSync(REGISTRY_PATH, 'utf-8');
-    return JSON.parse(raw);
-  } catch (err) {
-    // File missing OR mid-write JSON.parse failure → safe fallback.
-    return { agents: {} };
+    return empty();
   }
 }
 
@@ -136,7 +115,7 @@ router.get('/dispatch/recommend', (req, res) => {
   const tokens = tokenize(q);
   if (tokens.length === 0) return res.json({ results: [] });
 
-  const registry = loadRegistry();
+  const registry = org.loadRegistry();
   const agents = registry.agents || {};
 
   const scored = [];
@@ -243,7 +222,7 @@ router.post('/dispatch/assign', (req, res) => {
   }
 
   // 1. Build candidate set — same skill scoring as /recommend, top-10
-  const registry = loadRegistry();
+  const registry = org.loadRegistry();
   const agentEntries = Object.entries(registry.agents || {});
   const skillRanked = [];
   for (const [id, agent] of agentEntries) {
@@ -284,7 +263,7 @@ router.post('/dispatch/assign', (req, res) => {
         department: c.agent.department || null,
         tier: c.agent.tier || null,
         status: c.agent.status || 'active',
-        model: c.agent.model || 'sonnet',
+        model: c.agent.model || configService.getConfig('defaults.model'),
         skillScore: Math.round(c.skillScore * 100) / 100,
         matchedSkills: c.matchedSkills,
         successRate: typeof stats.successRate === 'number' ? stats.successRate : null,

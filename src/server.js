@@ -4,12 +4,16 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const cron = require('node-cron');
 const { randomUUID } = require('crypto');
 const backup = require('./backup');
 const db = require('./db');
 const agentSync = require('./lib/agentSync');
+const log = require('./lib/logger');
 const { loadConfig, saveConfig } = require('./lib/config');
+
+// Capture every stray console.error / console.warn into error_log too.
+// Recursion-safe — logger.emitStdout uses originals.
+log.captureConsole();
 
 const app = express();
 
@@ -24,9 +28,37 @@ app.use(localOnly);
 app.use(securityHeaders);
 // Inject x-request-id per request for log tracing
 app.use((req, _res, next) => { req.id = randomUUID(); next(); });
+// Response-timing + status-aware error log emitter. Logs every non-2xx as
+// warn (4xx) or error (5xx) into error_log so the Logs page sees every
+// failed request. 2xx routes still flow through Morgan stdout.
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    if (req.path === '/api/health' || req.path === '/api/logs/stream' || req.path === '/api/logs/count') return;
+    const duration = Date.now() - start;
+    const status = res.statusCode;
+    if (status >= 500) {
+      log.error(`${req.method} ${req.url} → ${status}`, {
+        category: 'http', route: req.route?.path || req.url, method: req.method,
+        status, durationMs: duration, requestId: req.id,
+      });
+    } else if (status >= 400) {
+      log.warn(`${req.method} ${req.url} → ${status}`, {
+        category: 'http', route: req.route?.path || req.url, method: req.method,
+        status, durationMs: duration, requestId: req.id,
+      });
+    } else if (duration > (parseInt(process.env.SLOW_REQ_MS, 10) || 2000)) {
+      log.warn(`slow request ${req.method} ${req.url} ${duration}ms`, {
+        category: 'http', route: req.route?.path || req.url, method: req.method,
+        status, durationMs: duration, requestId: req.id,
+      });
+    }
+  });
+  next();
+});
 // Q24: Structured JSON request logging (skip /api/health to keep logs clean)
 app.use(morgan('combined', {
-  skip: (req) => req.path === '/api/health',
+  skip: (req) => req.path === '/api/health' || req.path === '/api/logs/stream',
   stream: { write: (msg) => console.log(JSON.stringify({ type: 'http', msg: msg.trim() })) },
 }));
 app.use(express.json({ limit: '5mb' })); // Q4/Q50: bumped from 2mb to 5mb
@@ -53,7 +85,8 @@ const templatesRouter = require('./routes/templates');
 const trainingRouter = require('./routes/training');
 const analyticsRouter = require('./routes/analytics');
 const goalsRouter = require('./routes/goals');
-const { router: schedulesRouter, bootSchedules } = require('./routes/schedules');
+const { router: schedulesRouter, bootSchedules, stopAllSchedules } = require('./routes/schedules');
+const systemSchedules = require('./lib/systemSchedules');
 const webhooksRouter = require('./routes/webhooks');
 const { router: learningRouter } = require('./routes/learning');
 const { router: orgHrRouter, org, experience, hr, loadRecentAgentRuns } = require('./routes/orgHr');
@@ -86,6 +119,14 @@ app.use('/api', healthRouter);
 app.use('/api', dispatchRouter);
 app.use('/api', logsRouter);
 
+// JSON 404 guard for unmatched API paths — prevents the SPA fallback below
+// from returning index.html (HTML) on a missing /api route. Without this,
+// `request<T>()` in the client tries to `res.json()` an HTML body and throws
+// "Unexpected token '<', '<!doctype'..." which masks the real 404.
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl}` });
+});
+
 // SPA fallback — serve index.html for all non-API routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(staticPath, 'index.html'));
@@ -93,8 +134,13 @@ app.get('*', (req, res) => {
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, req, res, _next) => {
-  try { db.insertErrorLog({ source: 'server', message: err.message, stack: err.stack, context: { route: req.url, method: req.method, requestId: req.id } }); } catch {}
-  console.error(`[ERROR] ${req.method} ${req.url}:`, err.message);
+  log.error(err, {
+    category: err._category || 'http',
+    route: err._route || req.route?.path || req.url,
+    method: req.method,
+    status: err.status || 500,
+    requestId: req.id,
+  });
   res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
   });
@@ -111,15 +157,13 @@ process.on('uncaughtException', (err) => {
   } else if (err.code === 'ENOENT') {
     message = `File not found: ${err.message}`;
   }
-  try { db.insertErrorLog({ level, source: 'server', message, stack: err.stack, context: { type: 'uncaughtException', code: err.code } }); } catch {}
-  console.error('[UNCAUGHT EXCEPTION]', err);
+  log[level](message, { category: 'startup', meta: { type: 'uncaughtException', code: err.code }, stack: err.stack });
   process.exit(1);
 });
 process.on('unhandledRejection', (reason) => {
   const msg = reason instanceof Error ? reason.message : String(reason);
   const stack = reason instanceof Error ? reason.stack : undefined;
-  try { db.insertErrorLog({ source: 'server', message: msg, stack, context: { type: 'unhandledRejection' } }); } catch {}
-  console.error('[UNHANDLED REJECTION]', reason);
+  log.error(msg, { category: 'startup', meta: { type: 'unhandledRejection' }, stack });
   process.exit(1);
 });
 
@@ -135,6 +179,9 @@ function gracefulShutdown(signal) {
     process.exit(0);
   }, 5000);
   if (timeout.unref) timeout.unref();
+  // Stop cron schedulers FIRST so no new ticks fire mid-shutdown.
+  try { if (typeof stopAllSchedules === 'function') stopAllSchedules(); } catch {}
+  try { systemSchedules.stopAll(); } catch {}
   try {
     const db = require('./db');
     if (typeof db.close === 'function') db.close();
@@ -150,7 +197,10 @@ const HOME = os.homedir();
 const CLAUDE_DIR = path.join(HOME, '.claude');
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 
-app.listen(PORT, () => {
+// Bind loopback only — nothing LAN-reachable by default. Set HOST=0.0.0.0 to
+// opt into LAN exposure (C6 audit). localOnly still gates non-webhook routes.
+const HOST = process.env.HOST || '127.0.0.1';
+app.listen(PORT, HOST, () => {
   console.log('');
   console.log('  ╔══════════════════════════════════════╗');
   console.log('  ║          Polyglot is running          ║');
@@ -159,6 +209,28 @@ app.listen(PORT, () => {
   console.log('');
   console.log(`  Claude dir: ${CLAUDE_DIR}`);
   console.log(`  Config: ${CONFIG_PATH}`);
+
+  // Resolve claude CLI binary at boot + log result. Surfaces missing-binary
+  // problems before the first /playground/run instead of hiding them in a
+  // generic spawn ENOENT.
+  try {
+    const claudeBinary = require('./lib/claudeBinary');
+    claudeBinary.logBootStatus();
+  } catch (err) {
+    console.warn('[boot] claudeBinary preflight failed:', err.message);
+  }
+
+  // Reconcile any 'running' agent_runs rows left over from a crashed prior
+  // process — mark them 'crashed' so the UI doesn't show them as still in
+  // progress forever. Idempotent; runs every boot.
+  try {
+    const r = db.reconcileOrphanRuns();
+    if (r.reconciled > 0) {
+      console.log(`  Crash recovery: marked ${r.reconciled} orphan 'running' run(s) as 'crashed'`);
+    }
+  } catch (err) {
+    console.warn(`  Crash recovery failed: ${err.message}`);
+  }
 
   // Restore scheduled cron jobs
   try {
@@ -273,72 +345,22 @@ app.listen(PORT, () => {
     console.log(`  OrgWatch: failed to start — ${err.message}`);
   }
 
-  // Auto-backup SQLite data on startup + every 6 hours
-  try { db.autoBackupToFile(); } catch (err) { console.error('[backup] initial backup failed:', err.message); }
+  // Auto-backup SQLite data on startup + every 6 hours (async online backup —
+  // non-blocking; handle the promise so a rejection can't become an unhandled rejection).
+  db.autoBackupToFile().catch((err) => console.error('[backup] initial backup failed:', err.message));
   setInterval(() => {
-    try { db.autoBackupToFile(); } catch (err) { console.error('[backup] scheduled backup failed:', err.message); }
+    db.autoBackupToFile().catch((err) => console.error('[backup] scheduled backup failed:', err.message));
   }, 6 * 60 * 60 * 1000);
 
-  // ── HR cron jobs ──────────────────────────────────────────────────────────
-  // Roster nightly recompute (02:00 UTC) — refreshes experience profiles
-  // Witness daily sweep (03:00 UTC) — classifies yesterday's runs
-  // Cadence weekly review (Monday 09:00 UTC) — applies promotions + PIPs
+  // ── System schedules ─────────────────────────────────────────────────────
+  // All built-in automation (Roster nightly, Witness daily, Cadence weekly,
+  // Tutor weekly, Forge monthly, Mira event-driven) lives in
+  // src/lib/systemSchedules.js — single source of truth. Schedules page
+  // surfaces these alongside user-created schedules.
   try {
-    cron.schedule('0 2 * * *', () => {
-      try {
-        const summary = experience.recomputeAllExperience(org);
-        console.log(`[HR] Roster nightly recompute: ${summary.updated}/${summary.total}`);
-      } catch (err) {
-        console.warn(`[HR] Roster recompute failed: ${err.message}`);
-      }
-    }, { timezone: 'Etc/UTC' });
-
-    cron.schedule('0 3 * * *', () => {
-      try {
-        const recent = loadRecentAgentRuns(24);
-        const result = hr.runWitnessSweep(org, experience, recent);
-        console.log(`[HR] Witness sweep: ${result.runsClassified} runs, ${result.pipCandidates.length} PIP, ${result.promotionCandidates.length} promo`);
-      } catch (err) {
-        console.warn(`[HR] Witness sweep failed: ${err.message}`);
-      }
-
-      // Sprint 5 — auto-advance any open escalation past its tier SLA
-      // (24h specialist → pod-lead → vp → yash). Runs alongside Witness so
-      // SLA breaches surface in the same daily ops digest.
-      try {
-        const escalation = require('./lib/escalation');
-        const advanced = escalation.autoAdvanceExpired();
-        if (advanced.length > 0) {
-          console.log(`[HR] Escalation SLA sweep: advanced ${advanced.length} stale escalation(s)`);
-        }
-      } catch (err) {
-        console.warn(`[HR] Escalation SLA sweep failed: ${err.message}`);
-      }
-
-      // Phase B — reconcile per-agent active_task_count against the tasks
-      // table in case any state got dropped (crashed mid-transaction etc.).
-      // Cheap UPDATE — runs in a single statement.
-      try {
-        const tasks = require('./lib/tasks');
-        tasks.reconcileLoad();
-      } catch (err) {
-        console.warn(`[HR] Task load reconcile failed: ${err.message}`);
-      }
-    }, { timezone: 'Etc/UTC' });
-
-    cron.schedule('0 9 * * 1', () => {
-      try {
-        const recent = loadRecentAgentRuns(24 * 7);
-        const review = hr.runCadenceReview(org, experience, recent);
-        console.log(`[HR] Cadence weekly review ${review.week}: ${review.promotions.length} promotions, ${review.pipsOpened.length} PIPs`);
-      } catch (err) {
-        console.warn(`[HR] Cadence review failed: ${err.message}`);
-      }
-    }, { timezone: 'Etc/UTC' });
-
-    console.log('  HR: cron jobs scheduled (Roster 02:00, Witness 03:00, Cadence Mon 09:00 UTC)');
+    systemSchedules.bootAll({ org, experience, hr, loadRecentAgentRuns });
   } catch (err) {
-    console.warn(`  HR: cron scheduling failed — ${err.message}`);
+    console.warn(`  System schedules: boot failed — ${err.message}`);
   }
 
   console.log('');

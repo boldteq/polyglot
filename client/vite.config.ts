@@ -32,12 +32,20 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id: string) {
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) return 'vendor-react'
-          if (id.includes('node_modules/@xyflow') || id.includes('node_modules/reactflow')) return 'vendor-reactflow'
-          if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark') || id.includes('node_modules/rehype')) return 'vendor-markdown'
-          if (id.includes('node_modules/@uiw') || id.includes('node_modules/codemirror')) return 'vendor-editor'
-          if (id.includes('node_modules/recharts')) return 'vendor-charts'
-          if (id.includes('node_modules/lucide-react') || id.includes('node_modules/@radix-ui')) return 'vendor-ui'
+          // C18 audit fix: anchor matches to package boundaries (trailing slash)
+          // so `node_modules/react` no longer greedily captures react-syntax-
+          // highlighter / react-markdown / react-router. Heavy/independent deps
+          // get isolated cacheable chunks; dead branches (@uiw/codemirror/recharts/
+          // reactflow/@radix-ui — not installed) removed. Order: specific first.
+          if (!id.includes('/node_modules/')) return
+          if (id.includes('/node_modules/react-syntax-highlighter/') || id.includes('/node_modules/refractor/') || id.includes('/node_modules/prismjs/')) return 'vendor-prism'
+          if (id.includes('/node_modules/@tiptap/') || id.includes('/node_modules/prosemirror') || id.includes('/node_modules/tiptap-markdown/')) return 'vendor-editor'
+          if (id.includes('/node_modules/react-markdown/') || id.includes('/node_modules/remark') || id.includes('/node_modules/rehype') || id.includes('/node_modules/micromark') || id.includes('/node_modules/mdast') || id.includes('/node_modules/hast') || id.includes('/node_modules/unist')) return 'vendor-markdown'
+          if (id.includes('/node_modules/@xyflow/')) return 'vendor-reactflow'
+          if (id.includes('/node_modules/html-to-image/')) return 'vendor-htmltoimage'
+          if (id.includes('/node_modules/lucide-react/')) return 'vendor-icons'
+          // Keep the whole React ecosystem in one chunk to avoid cross-chunk init order issues.
+          if (id.includes('/node_modules/react-router') || id.includes('/node_modules/react-dom/') || id.includes('/node_modules/react/') || id.includes('/node_modules/scheduler/')) return 'vendor-react'
         },
       },
     },

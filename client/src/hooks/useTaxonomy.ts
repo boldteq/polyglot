@@ -51,6 +51,13 @@ export function pillStyleFor(category: string): { pill: string; pillActive: stri
 export interface UseTaxonomyResult {
   squads: SquadDef[]
   squadById: Record<string, SquadDef>
+  squadOrder: string[]
+  agentRoleBand: Record<string, string>
+  roleBandLabels: Record<string, string>
+  /** Resolve role band for an agent id with sensible fallback. */
+  roleBandFor: (agentId: string) => string
+  /** Human-readable label for a role band id. */
+  roleBandLabel: (bandId: string) => string
   categories: Record<string, TagCategoryDef>
   tiers: TierDef[]
   tierById: Record<string, TierDef>
@@ -124,9 +131,29 @@ export function useTaxonomy(): UseTaxonomyResult {
     [data],
   )
 
+  const squadOrder = useMemo(
+    () => (data.squadOrder && data.squadOrder.length ? data.squadOrder : squads.map(s => s.id)),
+    [data.squadOrder, squads],
+  )
+  const agentRoleBand = useMemo(() => data.agentRoleBand || {}, [data.agentRoleBand])
+  const roleBandLabels = useMemo(() => data.roleBandLabels || {}, [data.roleBandLabels])
+  const roleBandFor = useCallback(
+    (agentId: string) => agentRoleBand[agentId] || 'lead',
+    [agentRoleBand],
+  )
+  const roleBandLabel = useCallback(
+    (bandId: string) => roleBandLabels[bandId] || bandId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+    [roleBandLabels],
+  )
+
   return {
     squads,
     squadById,
+    squadOrder,
+    agentRoleBand,
+    roleBandLabels,
+    roleBandFor,
+    roleBandLabel,
     categories: data.categories,
     tiers,
     tierById,

@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react'
+import { clientLogger } from '../lib/clientLogger'
 
 interface Props {
   children: ReactNode
@@ -32,7 +33,10 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('[ErrorBoundary]', error, info.componentStack)
+    clientLogger.error(error, {
+      category: 'render',
+      meta: { componentStack: info.componentStack },
+    })
   }
 
   reset() {

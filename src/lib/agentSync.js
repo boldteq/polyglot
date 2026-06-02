@@ -16,6 +16,7 @@ const chokidar = require('chokidar');
 
 const { parseAgent } = require('./cache');
 const org = require('../org');
+const configService = require('./configService');
 
 const HOME = os.homedir();
 const AGENTS_DIR = path.join(HOME, '.claude', 'agents');
@@ -31,7 +32,7 @@ function deriveAgentRecord(parsed) {
   return {
     name: name || filename,
     description: description || '',
-    model: model || 'sonnet',
+    model: model || configService.getConfig('defaults.model'),
     role: typeof tools === 'string' ? tools : Array.isArray(tools) ? tools.join(',') : '',
   };
 }
@@ -57,24 +58,23 @@ function agentIdFromPath(p) {
 // report up to the engineering VP (arya).
 // Order matters: longer prefixes first so 'shopify-app-foo' matches the
 // shopify-app pod, not the 'shopify-' prefix of a shorter pod.
-const POD_PREFIXES = [
-  { pod: 'shopify-app', prefix: 'shopify-app-' },
-  { pod: 'shopify-web', prefix: 'shopify-web-' },
-  { pod: 'saas',        prefix: 'saas-' },
-];
-
 function detectPodFromId(agentId) {
   if (!agentId) return null;
   const lower = agentId.toLowerCase();
-  for (const { pod, prefix } of POD_PREFIXES) {
-    if (!lower.startsWith(prefix)) continue;
+  // Read prefixes from `pods` SQLite table (configService). Sort longest
+  // prefix first so 'shopify-app-foo' matches `shopify-app-` before the
+  // shorter 'shopify-' prefix of a different pod.
+  const pods = configService.listPods()
+    .slice()
+    .sort((a, b) => (b.prefix?.length || 0) - (a.prefix?.length || 0));
+  for (const { id: pod, prefix, department } of pods) {
+    if (!prefix || !lower.startsWith(prefix)) continue;
     const role = lower.slice(prefix.length);
     if (!role) return null;
     if (role === 'lead') {
-      // The pod-lead reports to the engineering VP, not to itself.
-      return { pod, podLead: 'arya', department: 'engineering' };
+      return { pod, podLead: 'arya', department: department || 'engineering' };
     }
-    return { pod, podLead: `${pod}-lead`, department: 'engineering' };
+    return { pod, podLead: `${pod}-lead`, department: department || 'engineering' };
   }
   return null;
 }
@@ -106,12 +106,12 @@ function upsertFromDisk(agentId) {
   // can no longer pollute the leadership row.
   const patch = {
     ...derived,
-    status: existing?.status || 'pending',
+    status: existing?.status || configService.getConfig('defaults.status') || 'pending',
     department: existing?.department ?? podHint?.department ?? 'unassigned',
     reportsTo: existing?.reportsTo ?? podHint?.podLead ?? null,
     pod: existing?.pod ?? podHint?.pod ?? null,
     title: existing?.title ?? (parsed.description?.slice(0, 80) || 'Agent'),
-    tier: existing?.tier ?? 'engineer',
+    tier: existing?.tier ?? (configService.getConfig('defaults.tier') || 'engineer'), // allowed: chained fallback
     level: existing?.level ?? 1,
     hiredAt: existing?.hiredAt || new Date().toISOString(),
   };
@@ -249,6 +249,21 @@ function stopWatcher() {
   }
 }
 
+// Schedule lifecycle events. Both user schedules (src/routes/schedules.js)
+// and system schedules (src/lib/systemSchedules.js) emit through this helper
+// so the org-chart SSE stream forwards a single, consistent event family:
+//   schedule:start    — { id, kind:'user'|'system', name, agentName, startedAt }
+//   schedule:complete — { id, kind, status:'success', lastRunAt, duration }
+//   schedule:error    — { id, kind, error, lastRunAt, duration }
+//   schedule:upsert   — { id, kind } (create/edit/enable-toggle — UI refetches)
+function emitScheduleEvent(type, payload) {
+  try {
+    events.emit(`schedule:${type}`, { ...payload, ts: Date.now() });
+  } catch (err) {
+    console.warn(`[agentSync] emitScheduleEvent(${type}) failed: ${err.message}`);
+  }
+}
+
 module.exports = {
   AGENTS_DIR,
   events,
@@ -257,4 +272,5 @@ module.exports = {
   reseedFromDisk,
   startWatcher,
   stopWatcher,
+  emitScheduleEvent,
 };

@@ -72,6 +72,7 @@ export default function App() {
             <Route path="/schedules" element={<SchedulesHub />} />
             <Route path="/settings" element={<SettingsHub onSave={refetch} />} />
             <Route path="/database" element={<Navigate to="/settings?tab=database" replace />} />
+            <Route path="/projects" element={<Navigate to="/" replace />} />
 
             {/* Editors — deep links */}
             <Route path="/global/agents/:name" element={<AgentEditor scope="global" />} />
@@ -93,13 +94,17 @@ export default function App() {
             <Route path="/docs" element={<Documentation />} />
             <Route path="/docs/:slug" element={<Documentation />} />
             <Route path="/memory/history" element={<MemoryHistory />} />
+
+            {/* Catch-all: stale/removed routes (/memory, /rules, /projects, typos)
+                redirect home instead of rendering a blank <main> (Bug 4 / audit C15). */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </Suspense>
           </RouteErrorBoundary>
         </main>
 
         {/* Global overlays */}
-        <CommandPalette projects={projects || []} />
+        <CommandPalette />
         <ToastContainer />
 
         {/* AI assistant */}
@@ -110,12 +115,12 @@ export default function App() {
                 <span className="text-sm font-semibold flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-accent" /> AI Assistant
                 </span>
-                <button onClick={() => setAiOpen(false)} className="text-text-muted hover:text-text">
+                <button onClick={() => setAiOpen(false)} aria-label="Close AI assistant" className="text-text-muted hover:text-text">
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <div className="flex-1 overflow-hidden">
-                <AiAssistant projects={projects || []} />
+                <AiAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
               </div>
             </div>
           </div>

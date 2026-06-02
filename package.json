@@ -7,7 +7,10 @@
     "start": "node src/server.js",
     "dev": "concurrently \"node src/server.js\" \"cd client && npm run dev\"",
     "build": "cd client && npm run build",
-    "preview": "npm run build && node src/server.js"
+    "preview": "npm run build && node src/server.js",
+    "vigil:audit": "node scripts/vigil-audit.mjs",
+    "vigil:install": "pnpm add -D playwright @axe-core/playwright pixelmatch pngjs && npx playwright install chromium",
+    "changes:check": "node scripts/check-changes-list.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -19,6 +22,7 @@
     "better-sqlite3": "^12.9.0",
     "chokidar": "^3.5.3",
     "concurrently": "^9.2.1",
+    "cron-parser": "^5.5.0",
     "express": "^4.18.2",
     "gray-matter": "^4.0.3",
     "morgan": "^1.10.1",
@@ -26,6 +30,10 @@
     "simple-git": "^3.35.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1"
+    "@axe-core/playwright": "^4.11.3",
+    "@playwright/test": "^1.59.1",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0"
   }
 }

@@ -12,6 +12,7 @@ const experience = require('../experience');
 const hr = require('../hr');
 const agentSync = require('../lib/agentSync');
 const taxonomy = require('../taxonomy');
+const configService = require('../lib/configService');
 
 const router = Router();
 
@@ -74,6 +75,17 @@ router.get('/org-chart/stream', (req, res) => {
   const onTaskFailed    = onTask('task:failed');
   const onTaskCancelled = onTask('task:cancelled');
 
+  // Schedule lifecycle events — emitted by both user + system schedules
+  // (src/routes/schedules.js + src/lib/systemSchedules.js). Frontend
+  // useSchedulesStream() hook patches row state in place on each event
+  // instead of polling /api/schedules every 30s.
+  const onSchedule = (eventName) => (p) => send(eventName, p);
+  const onSchStart     = onSchedule('schedule:start');
+  const onSchComplete  = onSchedule('schedule:complete');
+  const onSchError     = onSchedule('schedule:error');
+  const onSchCancelled = onSchedule('schedule:cancelled');
+  const onSchUpsert    = onSchedule('schedule:upsert');
+
   agentSync.events.on('agent:upsert', onUpsert);
   agentSync.events.on('agent:remove', onRemove);
   agentSync.events.on('taxonomy:update', onTaxonomy);
@@ -82,6 +94,11 @@ router.get('/org-chart/stream', (req, res) => {
   agentSync.events.on('task:completed', onTaskCompleted);
   agentSync.events.on('task:failed',    onTaskFailed);
   agentSync.events.on('task:cancelled', onTaskCancelled);
+  agentSync.events.on('schedule:start',     onSchStart);
+  agentSync.events.on('schedule:complete',  onSchComplete);
+  agentSync.events.on('schedule:error',     onSchError);
+  agentSync.events.on('schedule:cancelled', onSchCancelled);
+  agentSync.events.on('schedule:upsert',    onSchUpsert);
 
   const heartbeat = setInterval(() => {
     try { res.write(': keepalive\n\n'); } catch {}
@@ -97,6 +114,11 @@ router.get('/org-chart/stream', (req, res) => {
     agentSync.events.off('task:completed', onTaskCompleted);
     agentSync.events.off('task:failed',    onTaskFailed);
     agentSync.events.off('task:cancelled', onTaskCancelled);
+    agentSync.events.off('schedule:start',     onSchStart);
+    agentSync.events.off('schedule:complete',  onSchComplete);
+    agentSync.events.off('schedule:error',     onSchError);
+    agentSync.events.off('schedule:cancelled', onSchCancelled);
+    agentSync.events.off('schedule:upsert',    onSchUpsert);
   };
   req.on('close', cleanup);
   req.on('end', cleanup);
@@ -246,8 +268,9 @@ router.post('/org/agents/bulk', rateLimit('write'), (req, res) => {
     if (!Array.isArray(agentIds) || agentIds.length === 0) {
       return res.status(400).json({ error: 'agentIds must be a non-empty array' });
     }
-    if (agentIds.length > 100) {
-      return res.status(400).json({ error: 'Bulk ops limited to 100 agents per request' });
+    const bulkLimit = configService.getConfig('api_limits.bulk_ops') ?? 100;
+    if (agentIds.length > bulkLimit) {
+      return res.status(400).json({ error: `Bulk ops limited to ${bulkLimit} agents per request` });
     }
     const cleanPatch = Object.fromEntries(
       Object.entries(patch || {}).filter(([k]) => ALLOWED_PATCH_FIELDS.includes(k))
@@ -387,6 +410,87 @@ router.get('/hr/registry', rateLimit('read'), (req, res) => {
   }
 });
 
+// GET /api/hr/snapshot
+// Single atomic snapshot of HR state: registry + counts + recommendations + latest review + drift.
+// Replaces 4 separate frontend calls + eliminates drift between Recommendations and Reviews tabs.
+router.get('/hr/snapshot', rateLimit('read'), (req, res) => {
+  try {
+    const globalAgents = listAgents(path.join(CLAUDE_DIR, 'agents'));
+    const agentMap = {};
+    for (const a of globalAgents) agentMap[a.filename] = a;
+
+    const registry = hr.getRegistry(org);
+    registry.agents = registry.agents.map((agent) => {
+      const disk = agentMap[agent.id] || null;
+      return {
+        ...agent,
+        name: disk?.name || agent.name || agent.id,
+        description: disk?.description || agent.description || '',
+      };
+    });
+
+    const recommendations = hr.getRecommendations() || {};
+    const latestReview = hr.getLatestReview() || {};
+    const drift = org.detectDrift(agentMap);
+
+    res.json({
+      registry,
+      counts: registry.counts,
+      recommendations,
+      latestReview,
+      drift,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/hr/fleet-health
+// Returns fleet-wide health summary using app_config.health thresholds. All
+// frontend pages should pull this instead of recomputing client-side from
+// /analytics/summary.
+router.get('/hr/fleet-health', rateLimit('read'), (req, res) => {
+  try {
+    const summary = (() => {
+      const runs = db.loadAgentRuns();
+      const agg = {};
+      for (const r of runs) {
+        const name = r.agentName || 'unknown';
+        const a = agg[name] || (agg[name] = { runCount: 0, successCount: 0 });
+        a.runCount++;
+        if (r.status === 'success') a.successCount++;
+      }
+      const result = {};
+      for (const [name, a] of Object.entries(agg)) {
+        result[name] = a.runCount > 0 ? Math.round((a.successCount / a.runCount) * 100) : 100;
+      }
+      return result;
+    })();
+    const healthy = configService.getConfig('health.threshold_healthy') ?? 90;
+    const degraded = configService.getConfig('health.threshold_degraded') ?? 70;
+    let h = 0, d = 0, c = 0;
+    for (const rate of Object.values(summary)) {
+      if (rate >= healthy) h++;
+      else if (rate >= degraded) d++;
+      else c++;
+    }
+    const registry = hr.getRegistry(org);
+    res.json({
+      total: registry.counts.total,
+      counts: registry.counts,
+      healthy: h,
+      degraded: d,
+      critical: c,
+      thresholds: { healthy, degraded },
+      perAgent: summary,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/hr/agent/:id
 router.get('/hr/agent/:id', rateLimit('read'), (req, res) => {
   try {
@@ -453,7 +557,8 @@ router.get('/hr/witness-log', rateLimit('read'), (req, res) => {
 // POST /api/hr/witness-sweep
 router.post('/hr/witness-sweep', rateLimit('write'), (req, res) => {
   try {
-    const recent = loadRecentAgentRuns(24);
+    const sweepHours = configService.getConfig('time.sweep_hours') ?? 24;
+    const recent = loadRecentAgentRuns(sweepHours);
     const result = hr.runWitnessSweep(org, experience, recent);
     res.json(result);
   } catch (err) {
@@ -464,7 +569,8 @@ router.post('/hr/witness-sweep', rateLimit('write'), (req, res) => {
 // POST /api/hr/cadence-review
 router.post('/hr/cadence-review', rateLimit('write'), (req, res) => {
   try {
-    const recent = loadRecentAgentRuns(24 * 7);
+    const cadenceDays = configService.getConfig('time.cadence_review_days') ?? 7;
+    const recent = loadRecentAgentRuns(24 * cadenceDays);
     const review = hr.runCadenceReview(org, experience, recent);
     res.json(review);
   } catch (err) {
@@ -639,11 +745,11 @@ router.get('/agents/directory', rateLimit('read'), (req, res) => {
         name: disk?.name || record.name || record.id,
         title: record.title || 'Agent',
         description: disk?.description || record.description || '',
-        model: disk?.model || record.model || 'sonnet',
+        model: disk?.model || record.model || configService.getConfig('defaults.model'),
         department: record.department || null,
         subDepartment: record.subDepartment || null,
         pod: record.pod || null,
-        tier: record.tier || 'engineer',
+        tier: record.tier || configService.getConfig('defaults.tier'),
         status: record.status || 'active',
         level: record.level ?? null,
         levelTitle: record.levelTitle ?? null,
@@ -789,10 +895,11 @@ router.delete('/taxonomy/tag/:category/:tag', rateLimit('write'), (req, res) => 
 // of policy.
 router.get('/governance/cost', rateLimit('read'), (_req, res) => {
   try {
+    const retentionDays = configService.getConfig('time.drift_retention_days') ?? 30;
     const policy = db.loadModelRouting() || {};
     const tiers = policy.tiers || {};
-    const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-    const runs = db.getRecentAgentRuns(30 * 24);
+    const cutoff = new Date(Date.now() - retentionDays * 24 * 3600 * 1000).toISOString();
+    const runs = db.getRecentAgentRuns(retentionDays * 24);
 
     // Build per-tier cost rollup
     const summary = {};
@@ -838,7 +945,7 @@ router.get('/governance/cost', rateLimit('read'), (_req, res) => {
     const totalBudget = policy.totalMonthlyBudgetUsd || 0;
 
     res.json({
-      windowHours: 30 * 24,
+      windowHours: retentionDays * 24,
       cutoff,
       enforcementMode: policy.enforcementMode || 'advisory',
       tiers: summary,

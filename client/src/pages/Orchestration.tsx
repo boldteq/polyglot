@@ -30,6 +30,7 @@ import { useApi } from '../hooks/useApi'
 import type { UnifiedAgent } from '../types'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 // ---- Custom Node ----
 interface AgentNodeData {
@@ -195,6 +196,9 @@ export default function Orchestration() {
   const [showRunPanel, setShowRunPanel] = useState(false)
   const [savedList, setSavedList] = useState<{ id: string; name: string; updatedAt: string; nodeCount: number; edgeCount: number }[]>([])
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  // C12: gate the first multi-node run of a session behind a cost confirm.
+  const runConfirmedRef = useRef(false)
+  const [showRunConfirm, setShowRunConfirm] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [viewingOutputNodeId, setViewingOutputNodeId] = useState<string | null>(null)
@@ -292,7 +296,9 @@ export default function Orchestration() {
         nodeCount: o.nodes?.length ?? 0,
         edgeCount: o.edges?.length ?? 0,
       })))
-    } catch {}
+    } catch (e) {
+      console.warn('[orchestration] loadSaved failed:', e instanceof Error ? e.message : e)
+    }
   }, [])
 
   const loadHistory = useCallback(async () => {
@@ -300,7 +306,9 @@ export default function Orchestration() {
     try {
       const data = await getRunHistory()
       setHistoryList(data)
-    } catch {}
+    } catch (e) {
+      console.warn('[orchestration] loadHistory failed:', e instanceof Error ? e.message : e)
+    }
     setHistoryLoading(false)
   }, [])
 
@@ -528,6 +536,12 @@ export default function Orchestration() {
       }
     }
 
+    // C12: confirm before firing N real Claude runs (once per session).
+    if (!runConfirmedRef.current) {
+      setShowRunConfirm(true)
+      return
+    }
+
     setRunning(true)
     setRunLog([])
     setShowRunPanel(true)
@@ -615,6 +629,18 @@ export default function Orchestration() {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <ConfirmDialog
+        open={showRunConfirm}
+        title="Run this pipeline?"
+        message={`This fires ${totalNonStartNodes} real Claude run${totalNonStartNodes === 1 ? '' : 's'} (one per agent node) and costs tokens. Shown once per session.`}
+        confirmLabel="Run pipeline"
+        onClose={() => setShowRunConfirm(false)}
+        onConfirm={() => {
+          runConfirmedRef.current = true
+          setShowRunConfirm(false)
+          handleRun()
+        }}
+      />
       {/* ======== LEFT SIDEBAR ======== */}
       <div className="w-[260px] min-w-[260px] bg-surface border-r border-border flex flex-col">
         {/* Sidebar tabs */}

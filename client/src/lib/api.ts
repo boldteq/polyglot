@@ -1,5 +1,6 @@
 import type { Agent, AppConfig, Project, UnifiedAgent, UnifiedCommand, UnifiedRule, Template, TrainingCorrection, Category } from '../types'
 import { toast } from '../components/Toast'
+import { clientLogger } from './clientLogger'
 
 const BASE = '/api'
 
@@ -15,6 +16,7 @@ async function request<T>(
         [externalSignal, controller.signal],
       )
     : controller.signal
+  const method = (rest.method || 'GET').toUpperCase()
   try {
     const res = await fetch(`${BASE}${path}`, {
       headers: { 'Content-Type': 'application/json' },
@@ -23,12 +25,54 @@ async function request<T>(
     })
     clearTimeout(tid)
     if (!res.ok) {
-      const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
-      throw new Error(data.error || `API error: ${res.status}`)
+      // Content-type-aware error parsing. When the server's SPA fallback eats
+      // an /api/* path (route missing OR backend stale), the body is HTML —
+      // calling res.json() throws + we used to toast bare "HTTP 404", masking
+      // the real reason. Detect HTML explicitly and surface a CTA.
+      const ct = (res.headers.get('content-type') || '').toLowerCase()
+      let data: { error?: string; code?: string; hint?: string } = {}
+      if (ct.includes('application/json')) {
+        data = await res.json().catch(() => ({}))
+      } else {
+        const text = await res.text().catch(() => '')
+        const lead = text.trimStart().slice(0, 16).toLowerCase()
+        if (lead.startsWith('<!doctype') || lead.startsWith('<html')) {
+          data = {
+            error: `Backend returned HTML for ${method} ${path} (${res.status}).`,
+            hint: 'Endpoint missing OR backend running stale code — restart server: pm2 restart polyglot',
+            code: 'html_response',
+          }
+        } else {
+          data = { error: `HTTP ${res.status}${text ? `: ${text.slice(0, 120)}` : ''}` }
+        }
+      }
+      // Skip noisy 4xx that are intentional client-state (e.g. 404 polling)
+      // — only log 5xx + 401/403/409 + 429. Also log html_response explicitly
+      // because that signals a real config/deploy problem.
+      if (res.status >= 500 || [401, 403, 409, 429].includes(res.status) || data.code === 'html_response') {
+        if (path !== '/logs/client-error') {
+          clientLogger.warn(`${method} ${path} → ${res.status}${data.code ? ` [${data.code}]` : ''}`, {
+            category: 'api', status: res.status, route: path,
+            meta: { error: data.error, hint: data.hint, code: data.code },
+          })
+        }
+      }
+      const message = data.hint
+        ? `${data.error} ${data.hint}`
+        : (data.error || `API error: ${res.status}`)
+      throw new Error(message)
     }
     return res.json()
   } catch (err) {
     clearTimeout(tid)
+    // Network failures (CORS / offline / DNS) — log unless user-cancel
+    const isAbort = err instanceof Error && err.name === 'AbortError'
+    if (!isAbort && path !== '/logs/client-error') {
+      clientLogger.warn(err instanceof Error ? err : String(err), {
+        category: 'api', route: path,
+        meta: { phase: 'network' },
+      })
+    }
     throw err
   }
 }
@@ -58,8 +102,12 @@ export function apiError(label: string, err: unknown): void {
   if (err instanceof DOMException && err.name === 'AbortError') return
   if (err instanceof Error && err.name === 'AbortError') return
 
-  console.error(`[api] ${label}:`, err)
   const detail = err instanceof Error ? err.message : String(err)
+  // request() already POSTed the raw network/HTTP failure with category:'api'.
+  // This adds the labeled UI-context layer so debuggers can correlate.
+  clientLogger.warn(err instanceof Error ? err : detail, {
+    category: 'api', meta: { label },
+  })
   const safeDetail = detail && detail !== '[object Object]' ? `: ${detail.slice(0, 100)}` : ''
   toast('error', `${label}${safeDetail}`)
 }
@@ -88,8 +136,8 @@ export const updateGlobalClaudeMd = (content: string) =>
 // Global Agents
 export const getGlobalAgents = () => request<Agent[]>('/global/agents')
 export const getGlobalAgent = (name: string) => request<Agent>(`/global/agents/${name}`)
-export const updateGlobalAgent = (name: string, content: string) =>
-  request(`/global/agents/${name}`, { method: 'PUT', body: JSON.stringify({ content }) })
+export const updateGlobalAgent = (name: string, content: string, opts?: { createOnly?: boolean }) =>
+  request(`/global/agents/${name}${opts?.createOnly ? '?createOnly=1' : ''}`, { method: 'PUT', body: JSON.stringify({ content }) })
 export const deleteGlobalAgent = (name: string) =>
   request(`/global/agents/${name}`, { method: 'DELETE' })
 
@@ -111,8 +159,8 @@ export const updateProjectClaudeMd = (id: string, content: string) =>
 export const getProjectAgents = (id: string) => request<Agent[]>(`/projects/${id}/agents`)
 export const getProjectAgent = (id: string, name: string) =>
   request<Agent>(`/projects/${id}/agents/${name}`)
-export const updateProjectAgent = (id: string, name: string, content: string) =>
-  request(`/projects/${id}/agents/${name}`, { method: 'PUT', body: JSON.stringify({ content }) })
+export const updateProjectAgent = (id: string, name: string, content: string, opts?: { createOnly?: boolean }) =>
+  request(`/projects/${id}/agents/${name}${opts?.createOnly ? '?createOnly=1' : ''}`, { method: 'PUT', body: JSON.stringify({ content }) })
 export const deleteProjectAgent = (id: string, name: string) =>
   request(`/projects/${id}/agents/${name}`, { method: 'DELETE' })
 
@@ -1035,13 +1083,57 @@ export interface OrgChartStreamEvent {
   agentId?: string
   taskId?: string
 }
+// Schedules SSE subscriber — uses the same /org-chart/stream pipe (multiplexed)
+// but only forwards schedule:* events with full payloads (id, kind, status,
+// duration, etc.) so the Schedules page can patch row state in place without
+// refetching the list every 30s.
+export type ScheduleStreamEventType =
+  | 'schedule:start' | 'schedule:complete' | 'schedule:error'
+  | 'schedule:cancelled' | 'schedule:upsert'
+export interface ScheduleStreamEvent {
+  type: ScheduleStreamEventType
+  id: string
+  kind: ScheduleKind
+  name?: string
+  agentName?: string
+  status?: 'success' | 'error' | 'cancelled'
+  lastRunAt?: string
+  startedAt?: string
+  duration?: number
+  error?: string
+  removed?: boolean
+  retryCount?: number
+  runId?: string
+  ts?: number
+}
+export function subscribeSchedules(onEvent: (e: ScheduleStreamEvent) => void): EventSource {
+  const es = new EventSource(ORG_CHART_STREAM_URL)
+  const handle = (type: ScheduleStreamEventType) => (ev: MessageEvent) => {
+    try {
+      const data = ev.data ? JSON.parse(ev.data) : {}
+      onEvent({ type, ...data })
+    } catch {
+      onEvent({ type, id: '', kind: 'user' })
+    }
+  }
+  es.addEventListener('schedule:start',     handle('schedule:start'))
+  es.addEventListener('schedule:complete',  handle('schedule:complete'))
+  es.addEventListener('schedule:error',     handle('schedule:error'))
+  es.addEventListener('schedule:cancelled', handle('schedule:cancelled'))
+  es.addEventListener('schedule:upsert',    handle('schedule:upsert'))
+  return es
+}
+
 export function subscribeOrgChart(onEvent: (e: OrgChartStreamEvent) => void): EventSource {
   const es = new EventSource(ORG_CHART_STREAM_URL)
   const handle = (type: OrgChartStreamEventType) => (ev: MessageEvent) => {
     try {
       const data = ev.data ? JSON.parse(ev.data) : {}
       onEvent({ type, agentId: data.agentId, taskId: data.id })
-    } catch {
+    } catch (e) {
+      clientLogger.warn(e instanceof Error ? e : 'sse parse failed', {
+        category: 'sse', meta: { stream: 'org-chart', type },
+      })
       onEvent({ type })
     }
   }
@@ -1054,10 +1146,15 @@ export function subscribeOrgChart(onEvent: (e: OrgChartStreamEvent) => void): Ev
   es.addEventListener('task:completed', handle('task:completed'))
   es.addEventListener('task:failed',    handle('task:failed'))
   es.addEventListener('task:cancelled', handle('task:cancelled'))
+  // Note: a closed EventSource on nav/server-restart is normal — EventSource
+  // auto-reconnects, so we intentionally do NOT log it as an error (Bug 5b noise).
   return es
 }
 
 // ── Taxonomy: dynamic squads + tags ──────────────────────────────────────────
+// v2 (2026-05-19): squads carry `lead`, ordered `roleBands`, `dottedMembers`,
+// and optional `placeholder` flag for not-yet-hired teams. Used by AllAgents
+// + OrgChart vertical view.
 export interface SquadDef {
   id: string
   label: string
@@ -1065,6 +1162,10 @@ export interface SquadDef {
   color: string
   emoji: string
   members?: string[]
+  lead?: string | null
+  roleBands?: string[]
+  dottedMembers?: string[]
+  placeholder?: boolean
 }
 export interface TagInfo {
   label: string
@@ -1088,6 +1189,9 @@ export interface TierDef {
 }
 export interface TaxonomyData {
   squads: SquadDef[]
+  squadOrder?: string[]
+  agentRoleBand?: Record<string, string>
+  roleBandLabels?: Record<string, string>
   categories: Record<string, TagCategoryDef>
   tiers: TierDef[]
 }
@@ -1375,26 +1479,104 @@ export interface RoutingSavings {
 export const getRoutingSavings = () => request<RoutingSavings>('/routing/savings')
 
 // ── Schedules ────────────────────────────────────────────────────────────────
+export type ScheduleKind = 'user' | 'system'
+/**
+ * Schedule lifecycle status:
+ *   - 'running'   — handler in progress (set by SSE start OR persisted on server)
+ *   - 'success'   — handler completed cleanly
+ *   - 'error'     — handler threw
+ *   - 'cancelled' — operator killed via /cancel endpoint
+ *   - 'crashed'   — server died mid-handler, reconciled at next boot
+ */
+export type ScheduleStatus = 'success' | 'error' | 'running' | 'cancelled' | 'crashed' | null
+
+export interface CostEstimate { lowUsd: number; highUsd: number }
+
 export interface Schedule {
   id: string
+  kind: ScheduleKind
+  builtin?: boolean
   name: string
+  description?: string
   agentName: string
   prompt: string
-  cron: string
+  cron: string | null
+  trigger?: string | null
   enabled: boolean
-  createdAt: string
-  updatedAt: string
+  createdAt: string | null
+  updatedAt: string | null
   lastRunAt: string | null
-  lastRunStatus: 'success' | 'error' | null
+  lastRunStatus: ScheduleStatus
+  nextRunAt: string | null
+  needsLlm?: boolean
+  cancellable?: boolean
+  costEstimate?: CostEstimate | null
+  /** Set transiently when an inflight run exists for this schedule. */
+  runId?: string | null
 }
 
+export interface InflightRun {
+  id: string
+  kind: ScheduleKind
+  runId: string
+  startedAt: string
+  agentName?: string | null
+}
+
+export interface ScheduleRun {
+  id: string
+  agentName: string
+  prompt: string
+  source: string
+  timestamp: string
+  duration: number
+  status: 'success' | 'error' | 'running' | 'cancelled' | 'crashed'
+  promptChars: number
+  outputChars: number
+  estimatedTokens: number
+  estimatedCost: number
+  error: string | null
+  metadata: Record<string, unknown>
+}
+
+export interface CronPreset { label: string; value: string }
+
 export const getSchedules = () => request<Schedule[]>('/schedules')
+export const getSystemSchedules = () => request<Schedule[]>('/schedules/system')
+export const getCronPresets = () =>
+  request<{ presets: CronPreset[] }>('/schedules/presets')
+export const validateCronOnServer = (cronExpr: string) =>
+  request<{ valid: boolean; nextRunAt: string | null; error: string | null }>(
+    '/schedules/validate-cron',
+    { method: 'POST', body: JSON.stringify({ cronExpr }) },
+  )
 export const createSchedule = (data: { name: string; agentName: string; prompt: string; cronExpr: string; enabled?: boolean }) =>
   request<Schedule>('/schedules', { method: 'POST', body: JSON.stringify(data) })
 export const updateSchedule = (id: string, data: Partial<{ name: string; agentName: string; prompt: string; cronExpr: string; enabled: boolean }>) =>
   request<Schedule>(`/schedules/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 export const deleteSchedule = (id: string) =>
   request(`/schedules/${id}`, { method: 'DELETE' })
+export const getScheduleRuns = (id: string, limit = 50) =>
+  request<{ runs: ScheduleRun[] }>(`/schedules/${encodeURIComponent(id)}/runs?limit=${limit}`)
+export const runScheduleNow = (id: string) =>
+  request<{
+    ok?: boolean
+    status?: 'started'
+    skipped?: boolean
+    reason?: string
+    runId?: string
+    kind?: ScheduleKind
+    error?: string
+  }>(`/schedules/${encodeURIComponent(id)}/run-now`, { method: 'POST', body: '{}' })
+
+export const cancelScheduleRun = (id: string) =>
+  request<{ ok?: boolean; runId?: string; error?: string }>(
+    `/schedules/${encodeURIComponent(id)}/cancel`,
+    { method: 'POST', body: '{}' },
+  )
+
+export const getInflightSchedules = () =>
+  request<{ inflight: InflightRun[] }>('/schedules/inflight')
 
 // ── Webhooks ─────────────────────────────────────────────────────────────────
 export interface Webhook {
@@ -1730,10 +1912,20 @@ export interface LevelThreshold {
   canShipProd: boolean
 }
 
+export interface RegistryCounts {
+  total: number
+  active: number
+  probation: number
+  pip: number
+  pending: number
+  retired: number
+}
+
 export interface RegistryResponse {
   version: number
   updatedAt: string | null
   total: number
+  counts: RegistryCounts
   agents: AgentRecord[]
 }
 
@@ -1838,6 +2030,223 @@ export interface CadenceReview {
 }
 
 export const getHrRegistry = () => request<RegistryResponse>('/hr/registry')
+
+export interface HrSnapshot {
+  registry: RegistryResponse
+  counts: RegistryCounts
+  recommendations: RecommendationsResponse
+  latestReview: CadenceReview
+  drift: DriftData
+  generatedAt: string
+}
+
+export const getHrSnapshot = () => request<HrSnapshot>('/hr/snapshot')
+
+// ─────────────────────────────────────────────────────────────────────────
+// App Config (Phase 2 — Static→Dynamic refactor)
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface AppConfigData {
+  health: { threshold_healthy: number; threshold_degraded: number }
+  time: {
+    pip_window_days: number
+    sweep_hours: number
+    cadence_review_days: number
+    drift_retention_days: number
+    claim_expiry_minutes: number
+  }
+  api_limits: {
+    runs_dashboard: number
+    runs_analytics: number
+    governance: number
+    bulk_ops: number
+    db_explorer: number
+    logs_stream: number
+    top_agents: number
+  }
+  ui_caps: {
+    top_agents: number
+    stack_trace_lines: number
+    memory_preview_lines: number
+    playground_history: number
+    recent_runs: number
+    memory_history_items: number
+    schedules_dashboard: number
+  }
+  defaults: {
+    model: string
+    tier: string
+    status: string
+    budget_lines: number
+    budget_chars: number
+  }
+}
+
+export interface DispatchPolicy {
+  skill_weight: number
+  load_weight: number
+  success_weight: number
+  cost_weight_normal: number
+  cost_weight_downgrade: number
+  priority_boost: { p0: number; p1: number; p2: number; p3: number }
+}
+
+export interface PodDef {
+  id: string
+  prefix: string
+  department: string | null
+  description: string | null
+}
+
+export interface ModelDef {
+  id: string
+  display_name: string
+  tier: string
+  cost_penalty: number
+  enabled: number
+}
+
+export interface ModelPolicyRow {
+  id: number
+  pattern: string
+  model: string
+  tier: string
+  agents: string[]
+  priority: number
+  enabled: boolean
+}
+
+export interface AppConfigResponse {
+  config: AppConfigData
+  dispatchPolicy: DispatchPolicy
+  pods: PodDef[]
+  models: ModelDef[]
+  modelPolicy: ModelPolicyRow[]
+  fallbackActive: boolean
+}
+
+export interface ConfigSchemaEntry {
+  type: 'number' | 'string' | 'enum'
+  label: string
+  min?: number
+  max?: number
+  step?: number
+  minLength?: number
+  maxLength?: number
+  options?: string[]
+}
+
+export interface ConfigAuditEntry {
+  id: number
+  key: string
+  before: unknown
+  after: unknown
+  changedAt: string
+  source: string | null
+}
+
+export const getAppConfig = () => request<AppConfigResponse>('/app-config')
+
+export const getConfigSchemas = () =>
+  request<{ keys: Record<string, ConfigSchemaEntry> }>('/app-config/schemas')
+
+export const updateAppConfigKey = (key: string, value: unknown, category?: string) =>
+  request<{ ok: boolean; key: string; value: unknown }>(`/app-config/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ value, category }),
+  })
+
+export const updateDispatchPolicy = (policy: DispatchPolicy) =>
+  request<{ ok: boolean; policy: DispatchPolicy }>('/app-config/dispatch-policy', {
+    method: 'PUT',
+    body: JSON.stringify(policy),
+  })
+
+export const upsertPod = (pod: PodDef) =>
+  request<{ ok: boolean; pod: PodDef }>(`/app-config/pods/${encodeURIComponent(pod.id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(pod),
+  })
+
+export const deletePod = (id: string) =>
+  request<{ ok: boolean }>(`/app-config/pods/${encodeURIComponent(id)}`, { method: 'DELETE' })
+
+export const upsertModel = (model: { id: string; displayName: string; tier: string; costPenalty: number; enabled?: number }) =>
+  request<{ ok: boolean; model: ModelDef }>(`/app-config/models/${encodeURIComponent(model.id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(model),
+  })
+
+export const replaceModelPolicy = (rows: Array<Omit<ModelPolicyRow, 'id' | 'enabled'> & { enabled?: number }>) =>
+  request<{ ok: boolean; count: number }>('/app-config/model-policy', {
+    method: 'PUT',
+    body: JSON.stringify({ rows }),
+  })
+
+export const getConfigAudit = (params?: { key?: string; limit?: number }) => {
+  const qs = new URLSearchParams()
+  if (params?.key) qs.set('key', params.key)
+  if (params?.limit != null) qs.set('limit', String(params.limit))
+  return request<{ items: ConfigAuditEntry[] }>(`/app-config/audit${qs.toString() ? `?${qs}` : ''}`)
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 4 — Server-side aggregations
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface AnalyticsAggregate {
+  range: string
+  totalRuns: number
+  totalCost: number
+  avgDuration: number
+  successRate: number
+  dailyTrend: Array<{
+    label: string
+    date: string
+    total: number
+    success: number
+    error: number
+    cost: number
+  }>
+  topAgents: Array<{
+    name: string
+    runCount: number
+    successRate: number
+    totalCost: number
+    avgDuration: number
+  }>
+  generatedAt: string
+}
+
+export interface FleetHealth {
+  total: number
+  counts: RegistryCounts
+  healthy: number
+  degraded: number
+  critical: number
+  thresholds: { healthy: number; degraded: number }
+  perAgent: Record<string, number>
+  generatedAt: string
+}
+
+export interface TopAgentsResponse {
+  range: string
+  limit: number
+  agents: AnalyticsAggregate['topAgents']
+  generatedAt: string
+}
+
+export const getAnalyticsAggregate = (range: '1d' | '7d' | '30d' | 'all' = '7d') =>
+  request<AnalyticsAggregate>(`/analytics/aggregate?range=${range}`)
+
+export const getTopAgents = (params?: { range?: string; limit?: number }) => {
+  const qs = new URLSearchParams()
+  if (params?.range) qs.set('range', params.range)
+  if (params?.limit != null) qs.set('limit', String(params.limit))
+  return request<TopAgentsResponse>(`/analytics/top-agents${qs.toString() ? `?${qs}` : ''}`)
+}
+
+export const getFleetHealth = () => request<FleetHealth>('/hr/fleet-health')
 
 export const getHrAgent = (id: string) => request<AgentRecord>(`/hr/agent/${id}`)
 
@@ -2002,12 +2411,21 @@ export const revertDbChange = (id: number) =>
 export interface ErrorLogEntry {
   id: number
   ts: string
-  level: 'error' | 'warn' | 'info' | string
+  level: 'error' | 'warn' | 'info' | 'debug' | string
   source: 'server' | 'client' | 'schedule' | 'db' | string
   message: string
   stack?: string | null
   context?: string | null
   resolved: number
+  // v18 observability fields (all nullable)
+  category?: string | null
+  agent_id?: string | null
+  request_id?: string | null
+  route?: string | null
+  method?: string | null
+  status?: number | null
+  duration_ms?: number | null
+  user_agent?: string | null
 }
 
 export interface ErrorLogResponse {
@@ -2016,14 +2434,49 @@ export interface ErrorLogResponse {
   total: number
 }
 
-export const getErrorLog = (params?: { limit?: number; source?: string; resolved?: number }) => {
+export interface ErrorLogQuery {
+  limit?: number
+  source?: string
+  resolved?: number
+  level?: string
+  category?: string
+  agentId?: string
+  q?: string
+  since?: string
+  until?: string
+  beforeId?: number
+}
+
+export const getErrorLog = (params?: ErrorLogQuery) => {
   const qs = new URLSearchParams()
   if (params?.limit) qs.set('limit', String(params.limit))
   if (params?.source) qs.set('source', params.source)
   if (params?.resolved !== undefined) qs.set('resolved', String(params.resolved))
+  if (params?.level) qs.set('level', params.level)
+  if (params?.category) qs.set('category', params.category)
+  if (params?.agentId) qs.set('agentId', params.agentId)
+  if (params?.q) qs.set('q', params.q)
+  if (params?.since) qs.set('since', params.since)
+  if (params?.until) qs.set('until', params.until)
+  if (params?.beforeId) qs.set('beforeId', String(params.beforeId))
   const q = qs.toString()
   return request<ErrorLogResponse>(`/logs${q ? `?${q}` : ''}`)
 }
+
+export interface ErrorLogHistogramBucket { bucket: string; level: string; n: number }
+export const getErrorLogHistogram = (hours = 24) =>
+  request<{ buckets: ErrorLogHistogramBucket[]; hours: number }>(`/logs/histogram?hours=${hours}`)
+
+export const resolveAllErrorLog = (filter: { category?: string; level?: string; source?: string }) => {
+  const qs = new URLSearchParams()
+  if (filter.category) qs.set('category', filter.category)
+  if (filter.level) qs.set('level', filter.level)
+  if (filter.source) qs.set('source', filter.source)
+  return request<{ ok: boolean; resolved: number }>(`/logs/resolve-all?${qs}`, { method: 'PATCH' })
+}
+
+export const runLogSelftest = () =>
+  request<{ ok: boolean; ts: string; emitted: number }>('/logs/_selftest', { method: 'POST' })
 
 export const getErrorLogCount = () =>
   request<{ unresolved: number }>('/logs/count')
@@ -2046,7 +2499,12 @@ export type LogStreamEvent =
 export function subscribeLogStream(onEvent: (e: LogStreamEvent) => void): EventSource {
   const es = new EventSource(`${BASE}/logs/stream`)
   const parse = (ev: MessageEvent) => {
-    try { return ev.data ? JSON.parse(ev.data) : {} } catch { return {} }
+    try { return ev.data ? JSON.parse(ev.data) : {} } catch (e) {
+      // Don't recursively log to /logs/client-error if log-stream itself fails.
+      // Just swallow — Logs page will fall back to GET poll.
+      console.warn('[logs/stream parse]', e)
+      return {}
+    }
   }
   es.addEventListener('ready', (ev: MessageEvent) => onEvent({ type: 'ready', unresolved: parse(ev).unresolved ?? 0 }))
   es.addEventListener('new_error', (ev: MessageEvent) => onEvent({ type: 'new_error', entry: parse(ev) }))

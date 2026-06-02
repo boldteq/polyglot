@@ -296,7 +296,8 @@ function recoverInflightRuns() {
         WHERE runId = ? AND status = 'running'
       `).run(nowIso(), id);
     } catch (err) {
-      console.error(`[orchestrationRunner] recovery failed for run ${id}: ${err.message}`);
+      try { require('./logger').error(err, { category: 'orchestration', meta: { runId: id, phase: 'recovery' } }); }
+      catch { console.error(`[orchestrationRunner] recovery failed for run ${id}: ${err.message}`); }
     }
   }
   if (stale.length > 0) {

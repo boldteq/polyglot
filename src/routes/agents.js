@@ -7,7 +7,7 @@ const os = require('os');
 const matter = require('gray-matter');
 const db = require('../db');
 const { rateLimit } = require('../middleware/rateLimit');
-const { validateName, validateProjectId, resolveProjectPath, isValidName } = require('../lib/validators');
+const { validateName, validateProjectId, resolveProjectPath, isValidName, isPathAllowed } = require('../lib/validators');
 const { parseAgent, parseAgentMeta, listAgents, listAgentsMeta, _invalidateAgentCache } = require('../lib/cache');
 const { atomicWriteText, readFileSafe, ensureDir } = require('../lib/atomicIo');
 const { loadConfig } = require('../lib/config');
@@ -62,6 +62,12 @@ router.put('/global/agents/:name', validateName, (req, res) => {
   const dir = path.join(CLAUDE_DIR, 'agents');
   ensureDir(dir);
   const filePath = path.join(dir, req.params.name + '.md');
+
+  // Create-only guard: never let a "create" silently overwrite an existing
+  // agent's .md with a blank template (C10 audit).
+  if (req.query.createOnly === '1' && fs.existsSync(filePath)) {
+    return res.status(409).json({ error: `An agent named "${req.params.name}" already exists.` });
+  }
 
   if (process.env.POLYGLOT_BUDGET_ENFORCE !== '0' && req.query.force !== '1') {
     try {
@@ -145,6 +151,9 @@ router.put('/projects/:id/agents/:name', validateProjectId, validateName, (req, 
   const dir = path.join(req.projectPath, '.claude', 'agents');
   ensureDir(dir);
   const filePath = path.join(dir, req.params.name + '.md');
+  if (req.query.createOnly === '1' && fs.existsSync(filePath)) {
+    return res.status(409).json({ error: `An agent named "${req.params.name}" already exists.` });
+  }
   atomicWriteText(filePath, req.body.content);
   res.json({ ok: true, agent: parseAgent(filePath) });
 });
@@ -229,6 +238,7 @@ router.post('/copy-agent', (req, res) => {
   } else {
     const fromPath = resolveProjectPath(from);
     if (!fromPath) return res.status(400).json({ error: 'Invalid source project' });
+    if (!isPathAllowed(fromPath)) return res.status(403).json({ error: 'Source outside allowed directories' });
     srcPath = path.join(fromPath, '.claude', 'agents', agentName + '.md');
   }
   if (to === 'global') {
@@ -236,6 +246,7 @@ router.post('/copy-agent', (req, res) => {
   } else {
     const toPath = resolveProjectPath(to);
     if (!toPath) return res.status(400).json({ error: 'Invalid target project' });
+    if (!isPathAllowed(toPath)) return res.status(403).json({ error: 'Target outside allowed directories' });
     destDir = path.join(toPath, '.claude', 'agents');
   }
   ensureDir(destDir);
@@ -256,6 +267,7 @@ router.post('/move-agent', (req, res) => {
   } else {
     const fromPath = resolveProjectPath(from);
     if (!fromPath) return res.status(400).json({ error: 'Invalid source project' });
+    if (!isPathAllowed(fromPath)) return res.status(403).json({ error: 'Source outside allowed directories' });
     srcPath = path.join(fromPath, '.claude', 'agents', agentName + '.md');
   }
   if (to === 'global') {
@@ -263,6 +275,7 @@ router.post('/move-agent', (req, res) => {
   } else {
     const toPath = resolveProjectPath(to);
     if (!toPath) return res.status(400).json({ error: 'Invalid target project' });
+    if (!isPathAllowed(toPath)) return res.status(403).json({ error: 'Target outside allowed directories' });
     destDir = path.join(toPath, '.claude', 'agents');
   }
   ensureDir(destDir);

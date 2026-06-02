@@ -241,6 +241,22 @@ router.post('/orchestrations', rateLimit('write'), (req, res) => {
   if (!name || !Array.isArray(nodes) || !Array.isArray(edges)) {
     return res.status(400).json({ error: 'name, nodes, edges required' });
   }
+  // Validate graph integrity before persisting so a bad graph can never reach
+  // the executor (C17 audit): every node needs a unique string id, every edge
+  // endpoint must exist, and the graph must be acyclic.
+  for (const n of nodes) {
+    if (!n || typeof n.id !== 'string' || !n.id) {
+      return res.status(400).json({ error: 'every node needs a non-empty string id' });
+    }
+  }
+  if (new Set(nodes.map(n => n.id)).size !== nodes.length) {
+    return res.status(400).json({ error: 'duplicate node ids' });
+  }
+  try {
+    topoSort(nodes, edges); // throws GraphError (400) on dangling edge or cycle
+  } catch (err) {
+    return res.status(err.statusCode || 400).json({ error: err.message });
+  }
   const now = new Date().toISOString();
   const orcId = id || genId();
   const existing = loadOrchestrations().find(o => o.id === orcId);
@@ -363,7 +379,13 @@ router.post('/orchestrations/run', rateLimit('heavy'), async (req, res) => {
   if (!Array.isArray(nodes) || !task) return res.status(400).json({ error: 'nodes and task required' });
 
   const nodeMap = Object.fromEntries(nodes.map(n => [n.id, n]));
-  const order = topoSort(nodes, edges || []);
+  let order;
+  try {
+    order = topoSort(nodes, edges || []);
+  } catch (err) {
+    // Invalid graph (cycle / dangling edge) — fail clean, never crash (C8 audit).
+    return res.status(err.statusCode || 400).json({ error: err.message });
+  }
 
   const config = loadConfig();
   const projects = discoverProjects(config.projectDirs);

@@ -1,1 +1,0 @@
-- [Yash Baldha Profile](user_profile.md) — CEO of Boldteq, directs not codes, wants persistent agent training across all projects

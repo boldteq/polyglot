@@ -10,6 +10,7 @@ import {
   sanitizeName,
 } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { ErrorState } from '../components/ErrorState'
 import type { UnifiedRule } from '../types'
 import { toast } from '../components/Toast'
 
@@ -22,7 +23,7 @@ function timeAgo(ts: string): string {
 }
 
 export default function AllRules() {
-  const { data: rules, loading, refetch } = useApi(getUnifiedRules)
+  const { data: rules, loading, error, refetch } = useApi(getUnifiedRules)
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
@@ -233,7 +234,9 @@ export default function AllRules() {
       </div>
 
       {/* List */}
-      {loading ? (
+      {error ? (
+        <ErrorState message={error} onRetry={refetch} />
+      ) : loading ? (
         <div className="flex justify-center py-12">
           <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>

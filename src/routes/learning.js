@@ -3,6 +3,7 @@
 const { Router } = require('express');
 const { rateLimit } = require('../middleware/rateLimit');
 const db = require('../db');
+const configService = require('../lib/configService');
 
 const router = Router();
 
@@ -18,31 +19,32 @@ function saveAgentLearning(data) {
 function loadClaims() { return db.loadClaims(); }
 function saveClaims(data) { db.saveClaims(data); }
 
+const DEFAULT_COSTS = {
+  haiku: { input: 0.25, output: 1.25, label: 'Fast & cheap' },
+  sonnet: { input: 3, output: 15, label: 'Balanced' },
+  opus: { input: 15, output: 75, label: 'Deep reasoning' },
+};
+
+// Rules now come from the `model_policy` SQLite table (Phase 2). Costs +
+// downgrade rules + totalMonthlyBudgetUsd still live in the existing
+// `model_routing` singleton blob. Merge them here so the API surface stays
+// stable for callers.
 function loadModelRouting() {
-  const d = db.loadModelRouting();
-  if (d.rules) return d;
+  const d = db.loadModelRouting() || {};
+  const policyRows = configService.listModelPolicy() || [];
+  const rules = policyRows.length > 0
+    ? policyRows.map((r) => ({
+        pattern: r.pattern,
+        model: r.model,
+        tier: r.tier,
+        agents: r.agents || [],
+      }))
+    : Array.isArray(d.rules) ? d.rules : [];
   return {
-    rules: [
-      { pattern: 'copy|tagline|headline|microcopy|CTA|subject line', model: 'haiku', tier: 'simple', agents: ['quill'] },
-      { pattern: 'test|lint|format|rename|refactor simple', model: 'haiku', tier: 'simple', agents: ['luna'] },
-      { pattern: 'build|implement|feature|component|page|API', model: 'sonnet', tier: 'medium', agents: ['koda'] },
-      { pattern: 'review|audit|security|compliance', model: 'sonnet', tier: 'medium', agents: ['sage'] },
-      { pattern: 'debug|fix|triage|root cause', model: 'sonnet', tier: 'medium', agents: ['vex'] },
-      { pattern: 'architecture|system design|data model|migration', model: 'opus', tier: 'complex', agents: ['arya'] },
-      { pattern: 'orchestrate|coordinate|full build|sprint', model: 'opus', tier: 'complex', agents: ['yash'] },
-      { pattern: 'research|competitor|market|positioning', model: 'sonnet', tier: 'medium', agents: ['nova'] },
-      { pattern: 'SEO|structured data|sitemap|core web vitals', model: 'sonnet', tier: 'medium', agents: ['zeph'] },
-      { pattern: 'deploy|CI/CD|release|rollback', model: 'sonnet', tier: 'medium', agents: ['bolt'] },
-      { pattern: 'monitor|alert|incident|sentry', model: 'haiku', tier: 'simple', agents: ['hawk'] },
-      { pattern: 'knowledge|extract|lesson|train|memory', model: 'haiku', tier: 'simple', agents: ['mira'] },
-      { pattern: 'design|visual|UI|UX|layout|component spec', model: 'sonnet', tier: 'medium', agents: ['vega'] },
-    ],
-    costs: {
-      haiku: { input: 0.25, output: 1.25, label: 'Fast & cheap' },
-      sonnet: { input: 3, output: 15, label: 'Balanced' },
-      opus: { input: 15, output: 75, label: 'Deep reasoning' },
-    },
-    updatedAt: new Date().toISOString(),
+    ...d,
+    rules,
+    costs: d.costs || DEFAULT_COSTS,
+    updatedAt: d.updatedAt || new Date().toISOString(),
   };
 }
 function saveModelRouting(data) {
@@ -116,11 +118,12 @@ function recordLearning(agentName, taskType, outcome) {
   return { agent: agentName, taskType: tt, successRate: Math.round((agent.successRuns / agent.totalRuns) * 100) };
 }
 
-// Cleanup stale claims (>30 min) every 5 minutes
+// Cleanup stale claims every 5 minutes — window from app_config.time.claim_expiry_minutes
 setInterval(() => {
   try {
     const claims = loadClaims();
-    const cutoff = Date.now() - 30 * 60 * 1000;
+    const claimMinutes = configService.getConfig('time.claim_expiry_minutes') ?? 30;
+    const cutoff = Date.now() - claimMinutes * 60 * 1000;
     let cleaned = 0;
     for (const [taskId, claim] of Object.entries(claims)) {
       if (new Date(claim.claimedAt).getTime() < cutoff && claim.status === 'active') {
@@ -213,11 +216,12 @@ router.post('/routing/recommend', rateLimit('read'), (req, res) => {
     }
   }
 
+  const defaultModel = configService.getConfig('defaults.model') || 'sonnet'; // allowed: chained fallback
   res.json({
-    model: 'sonnet',
+    model: defaultModel,
     tier: 'medium',
     reason: 'Default (no specific rule matched)',
-    cost: routing.costs.sonnet,
+    cost: routing.costs[defaultModel] || routing.costs.sonnet,
   });
 });
 
@@ -248,11 +252,11 @@ router.get('/routing/savings', rateLimit('read'), (req, res) => {
 
     allOpusCost += (inputTokens * 15 + outputTokens * 75) / 1_000_000;
 
-    let model = 'sonnet';
+    let model = configService.getConfig('defaults.model') || 'sonnet'; // allowed: chained fallback
     for (const rule of routing.rules) {
       if (rule.agents && rule.agents.includes(run.agentName)) { model = rule.model; break; }
     }
-    const costs = routing.costs[model] || routing.costs.sonnet;
+    const costs = routing.costs[model] || routing.costs.sonnet; // allowed: cost lookup fallback
     routedCost += (inputTokens * costs.input + outputTokens * costs.output) / 1_000_000;
   }
 
@@ -275,7 +279,8 @@ router.post('/claims', rateLimit('write'), (req, res) => {
 
   if (existing && existing.status === 'active') {
     const age = Date.now() - new Date(existing.claimedAt).getTime();
-    if (age < 30 * 60 * 1000) {
+    const claimMinutes = configService.getConfig('time.claim_expiry_minutes') ?? 30;
+    if (age < claimMinutes * 60 * 1000) {
       return res.status(409).json({
         error: 'Task already claimed',
         claimedBy: existing.agentName,

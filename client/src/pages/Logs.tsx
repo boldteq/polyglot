@@ -17,11 +17,15 @@ import {
   WifiOff,
   Bell,
   BellOff,
+  Search,
+  Zap,
 } from 'lucide-react'
 import {
   getErrorLog,
   resolveErrorLog,
   clearErrorLog,
+  resolveAllErrorLog,
+  runLogSelftest,
   subscribeLogStream,
   type ErrorLogEntry,
 } from '../lib/api'
@@ -37,10 +41,40 @@ const SOURCE_META: Record<string, { label: string; color: string }> = {
   backup:   { label: 'Backup',   color: 'bg-amber-500/15 text-amber-400 border-amber-500/25' },
 }
 
+const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  http:        { label: 'HTTP',        color: 'bg-sky-500/15 text-sky-400 border-sky-500/25' },
+  db:          { label: 'DB',          color: 'bg-purple-500/15 text-purple-400 border-purple-500/25' },
+  schedule:    { label: 'Schedule',    color: 'bg-blue-500/15 text-blue-400 border-blue-500/25' },
+  'agent-run': { label: 'Agent Run',   color: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/25' },
+  integration: { label: 'Integration', color: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25' },
+  render:      { label: 'Render',      color: 'bg-rose-500/15 text-rose-400 border-rose-500/25' },
+  sse:         { label: 'SSE',         color: 'bg-teal-500/15 text-teal-400 border-teal-500/25' },
+  api:         { label: 'API',         color: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/25' },
+  runtime:     { label: 'Runtime',     color: 'bg-red-500/15 text-red-400 border-red-500/25' },
+  console:     { label: 'Console',     color: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25' },
+  validation:  { label: 'Validation',  color: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25' },
+  startup:     { label: 'Startup',     color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
+  backup:      { label: 'Backup',      color: 'bg-amber-500/15 text-amber-400 border-amber-500/25' },
+  orchestration:{ label: 'Orchestration', color: 'bg-violet-500/15 text-violet-400 border-violet-500/25' },
+  form:        { label: 'Form',        color: 'bg-pink-500/15 text-pink-400 border-pink-500/25' },
+  manual:      { label: 'Manual',      color: 'bg-slate-500/15 text-slate-400 border-slate-500/25' },
+}
+
 const LEVEL_META: Record<string, { icon: typeof AlertCircle; color: string }> = {
-  error: { icon: AlertCircle,  color: 'text-red-400' },
+  error: { icon: AlertCircle,   color: 'text-red-400' },
   warn:  { icon: AlertTriangle, color: 'text-amber-400' },
-  info:  { icon: Info,         color: 'text-blue-400' },
+  info:  { icon: Info,          color: 'text-blue-400' },
+  debug: { icon: Info,          color: 'text-zinc-400' },
+}
+
+function categoryStyle(cat?: string | null) {
+  if (!cat) return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20'
+  return CATEGORY_META[cat]?.color ?? 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25'
+}
+
+function categoryLabel(cat?: string | null) {
+  if (!cat) return null
+  return CATEGORY_META[cat]?.label ?? cat
 }
 
 function sourceStyle(source: string) {
@@ -91,6 +125,9 @@ export default function LogsPage() {
   const [notifyEnabled, setNotifyEnabled] = useState(true)
   const [sourceFilter, setSourceFilter] = useState('all')
   const [levelFilter, setLevelFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchDraft, setSearchDraft] = useState('')
   const [showResolved, setShowResolved] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [busyIds, setBusyIds] = useState<Set<number>>(new Set())
@@ -99,12 +136,22 @@ export default function LogsPage() {
   // Refs so SSE handler always sees current filter values without reconnecting
   const sourceRef = useRef(sourceFilter)
   const levelRef = useRef(levelFilter)
+  const categoryRef = useRef(categoryFilter)
+  const searchRef = useRef(searchQuery)
   const showResolvedRef = useRef(showResolved)
   const notifyRef = useRef(notifyEnabled)
   useEffect(() => { sourceRef.current = sourceFilter }, [sourceFilter])
   useEffect(() => { levelRef.current = levelFilter }, [levelFilter])
+  useEffect(() => { categoryRef.current = categoryFilter }, [categoryFilter])
+  useEffect(() => { searchRef.current = searchQuery }, [searchQuery])
   useEffect(() => { showResolvedRef.current = showResolved }, [showResolved])
   useEffect(() => { notifyRef.current = notifyEnabled }, [notifyEnabled])
+
+  // Debounce search input → query
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(searchDraft), 300)
+    return () => clearTimeout(t)
+  }, [searchDraft])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -112,6 +159,9 @@ export default function LogsPage() {
       const res = await getErrorLog({
         limit: 500,
         source: sourceFilter !== 'all' ? sourceFilter : undefined,
+        category: categoryFilter !== 'all' ? categoryFilter : undefined,
+        level: levelFilter !== 'all' ? levelFilter : undefined,
+        q: searchQuery || undefined,
         resolved: showResolved ? undefined : 0,
       })
       setEntries(res.entries)
@@ -122,7 +172,7 @@ export default function LogsPage() {
     } finally {
       setLoading(false)
     }
-  }, [sourceFilter, showResolved])
+  }, [sourceFilter, categoryFilter, levelFilter, searchQuery, showResolved])
 
   // Reload when filters change
   useEffect(() => { load() }, [load])
@@ -138,8 +188,11 @@ export default function LogsPage() {
         // Apply current filters via refs (no stale closure)
         const passesSource = sourceRef.current === 'all' || entry.source === sourceRef.current
         const passesLevel = levelRef.current === 'all' || entry.level === levelRef.current
+        const passesCategory = categoryRef.current === 'all' || entry.category === categoryRef.current
         const passesResolved = showResolvedRef.current || entry.resolved === 0
-        if (passesSource && passesLevel && passesResolved) {
+        const q = searchRef.current.toLowerCase()
+        const passesSearch = !q || entry.message.toLowerCase().includes(q) || (entry.route || '').toLowerCase().includes(q)
+        if (passesSource && passesLevel && passesCategory && passesResolved && passesSearch) {
           setEntries(prev => [entry, ...prev].slice(0, 500))
         }
         setUnresolved(prev => entry.resolved === 0 ? prev + 1 : prev)
@@ -163,11 +216,14 @@ export default function LogsPage() {
     return () => { es.close(); setLive(false) }
   }, [load]) // only reconnect when `load` identity changes (i.e. never in practice)
 
-  // Client-side level filter (source filter is server-side via API)
-  const filtered = useMemo(() =>
-    levelFilter === 'all' ? entries : entries.filter(e => e.level === levelFilter),
-    [entries, levelFilter]
-  )
+  // Server already filters by source/category/level/q — no extra client-side pass needed
+  const filtered = entries
+  // Derive distinct categories from current entries for the chip strip
+  const categoriesSeen = useMemo(() => {
+    const s = new Set<string>()
+    for (const e of entries) if (e.category) s.add(e.category)
+    return Array.from(s).sort()
+  }, [entries])
 
   const toggleExpand = (id: number) =>
     setExpandedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
@@ -221,6 +277,30 @@ export default function LogsPage() {
   const sources = ['all', 'server', 'client', 'schedule', 'db', 'backup']
   const levels = ['all', 'error', 'warn', 'info']
 
+  const handleSelftest = async () => {
+    try {
+      const res = await runLogSelftest()
+      toast('success', `Selftest emitted ${res.emitted} synthetic logs — watch the stream`)
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Selftest failed')
+    }
+  }
+
+  const handleResolveAll = async () => {
+    if (!confirm('Mark all visible unresolved as resolved?')) return
+    try {
+      const res = await resolveAllErrorLog({
+        category: categoryFilter !== 'all' ? categoryFilter : undefined,
+        level: levelFilter !== 'all' ? levelFilter : undefined,
+        source: sourceFilter !== 'all' ? sourceFilter : undefined,
+      })
+      toast('success', `Resolved ${res.resolved} entr${res.resolved !== 1 ? 'ies' : 'y'}`)
+      await load()
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Resolve all failed')
+    }
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -271,6 +351,21 @@ export default function LogsPage() {
             >
               <ClipboardList className="w-3.5 h-3.5" />
               Copy all for Claude
+            </button>
+            <button
+              onClick={handleSelftest}
+              title="Emit synthetic logs across all categories to verify pipeline"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-lg hover:bg-surface-3 transition-colors"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Self-test
+            </button>
+            <button
+              onClick={handleResolveAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-lg hover:bg-surface-3 transition-colors"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Resolve all
             </button>
             <button
               onClick={load}
@@ -340,10 +435,60 @@ export default function LogsPage() {
             Show resolved
           </button>
 
-          <span className="ml-auto text-[10px] text-text-muted">
-            {filtered.length} entr{filtered.length !== 1 ? 'ies' : 'y'} · updates live via SSE
+          <div className="relative ml-auto">
+            <Search className="w-3 h-3 text-text-muted absolute left-2 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              placeholder="Search message / stack / route…"
+              className="pl-6 pr-2 py-1 w-56 bg-surface-2 border border-border rounded-lg text-[11px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
+            />
+            {searchDraft && (
+              <button
+                onClick={() => { setSearchDraft(''); setSearchQuery('') }}
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-text-muted hover:text-text"
+                aria-label="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <span className="text-[10px] text-text-muted">
+            {filtered.length} entr{filtered.length !== 1 ? 'ies' : 'y'} · SSE
           </span>
         </div>
+
+        {/* Category row (only show if any categorized entries exist) */}
+        {categoriesSeen.length > 0 && (
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Category</span>
+            <button
+              onClick={() => setCategoryFilter('all')}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+                categoryFilter === 'all'
+                  ? 'bg-accent text-white border-accent'
+                  : 'bg-surface-2 text-text-muted border-border hover:text-text'
+              }`}
+            >
+              All
+            </button>
+            {categoriesSeen.map(c => (
+              <button
+                key={c}
+                onClick={() => setCategoryFilter(c)}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+                  categoryFilter === c
+                    ? categoryStyle(c)
+                    : 'bg-surface-2 text-text-muted border-border hover:text-text'
+                }`}
+              >
+                {categoryLabel(c)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -404,10 +549,38 @@ export default function LogsPage() {
                       {SOURCE_META[entry.source]?.label ?? entry.source}
                     </span>
 
+                    {/* Category badge */}
+                    {entry.category && (
+                      <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${categoryStyle(entry.category)}`}>
+                        {categoryLabel(entry.category)}
+                      </span>
+                    )}
+
+                    {/* Agent chip */}
+                    {entry.agent_id && (
+                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-surface-2 text-text-muted border-border">
+                        {entry.agent_id}
+                      </span>
+                    )}
+
                     {/* Timestamp */}
                     <span className="shrink-0 text-[10px] text-text-muted font-mono whitespace-nowrap">
                       {formatTs(entry.ts)}
                     </span>
+
+                    {/* Route + status */}
+                    {entry.route && (
+                      <span className="shrink-0 text-[10px] text-text-muted font-mono truncate max-w-[180px]" title={`${entry.method || ''} ${entry.route}${entry.status ? ` → ${entry.status}` : ''}`}>
+                        {entry.method ? `${entry.method} ` : ''}{entry.route}{entry.status ? ` →${entry.status}` : ''}
+                      </span>
+                    )}
+
+                    {/* Duration */}
+                    {entry.duration_ms != null && (
+                      <span className={`shrink-0 text-[10px] font-mono ${entry.duration_ms > 1000 ? 'text-amber-400' : 'text-text-muted'}`}>
+                        {entry.duration_ms}ms
+                      </span>
+                    )}
 
                     {/* Message */}
                     <span className="flex-1 text-xs text-text truncate font-mono" title={entry.message}>

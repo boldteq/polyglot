@@ -2,6 +2,23 @@
 export const AGENT_STATUSES = ['active', 'probation', 'pip', 'pending', 'retired'] as const
 export type AgentStatus = typeof AGENT_STATUSES[number]
 
+/**
+ * Health-rate thresholds (percent, 0-100).
+ * Interim Phase 1 home. Phase 2 moves these into app_config + useAppConfig hook
+ * so they can be tuned without redeploy. All pages must import these — never
+ * inline 90/70 literals.
+ */
+export const HEALTH_THRESHOLDS = {
+  healthy: 90,
+  degraded: 70,
+} as const
+
+export function classifyHealth(rate: number): 'healthy' | 'degraded' | 'critical' {
+  if (rate >= HEALTH_THRESHOLDS.healthy) return 'healthy'
+  if (rate >= HEALTH_THRESHOLDS.degraded) return 'degraded'
+  return 'critical'
+}
+
 /** Playground localStorage keys */
 export const STORAGE_KEY_PLAYGROUND_HISTORY = 'polyglot:playground-history'
 export const STORAGE_KEY_PLAYGROUND_SETTINGS = 'polyglot:playground-settings'

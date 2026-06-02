@@ -12,6 +12,8 @@ const { listAgents } = require('../lib/cache');
 const { listMdFiles } = require('../lib/discovery');
 const { execSync } = require('child_process');
 const { readFileSafe, ensureDir } = require('../lib/atomicIo');
+const claudeBinary = require('../lib/claudeBinary');
+const db = require('../db');
 
 const router = Router();
 
@@ -346,7 +348,118 @@ router.get('/setup/status', (req, res) => {
   const sdkPath = path.join(__dirname, '..', '..', 'sdk');
   const sdkExists = fs.existsSync(path.join(sdkPath, 'package.json'));
 
-  res.json({ pm2Status, launchAgentInstalled, agentCount, sdkExists, port: process.env.PORT || 3847 });
+  const pre = claudeBinary.runPreflight();
+
+  res.json({
+    pm2Status,
+    launchAgentInstalled,
+    agentCount,
+    sdkExists,
+    port: process.env.PORT || 3847,
+    claude: {
+      ok: pre.binary.ok,
+      path: pre.binary.path,
+      version: pre.binary.version,
+      source: pre.binary.source,
+      error: pre.binary.error,
+      hasApiKey: pre.auth.hasApiKey,
+    },
+  });
+});
+
+// POST /api/setup/self-test
+// End-to-end smoke test for the agent run path. Five stages — claude binary,
+// agent file presence, full claude spawn + stdout, DB write, output received.
+// Each stage records ok/detail; overall passes only if every stage passes.
+router.post('/setup/self-test', rateLimit('write'), async (req, res) => {
+  const out = { startedAt: new Date().toISOString(), stages: [] };
+  const record = (name, ok, detail) => out.stages.push({ name, ok, detail });
+
+  // Stage 1: claude binary discovery
+  const pre = claudeBinary.runPreflight();
+  record('claude_binary', pre.binary.ok, {
+    path: pre.binary.path,
+    version: pre.binary.version,
+    source: pre.binary.source,
+    error: pre.binary.error,
+  });
+
+  // Stage 2: agent file presence — try 'scout' first (small/fast), fall back to first available.
+  const agentDir = path.join(CLAUDE_DIR, 'agents');
+  let sampleAgent = null;
+  let agentInstructions = '';
+  let totalAgents = 0;
+  try {
+    if (fs.existsSync(agentDir)) {
+      const all = fs.readdirSync(agentDir).filter((f) => f.endsWith('.md'));
+      totalAgents = all.length;
+      const scout = all.find((f) => f === 'scout.md');
+      const pick = scout || all[0];
+      if (pick) {
+        sampleAgent = pick.replace(/\.md$/, '');
+        agentInstructions = fs.readFileSync(path.join(agentDir, pick), 'utf-8');
+      }
+    }
+  } catch (err) {
+    record('agent_lookup', false, { error: err.message });
+  }
+  if (sampleAgent) {
+    record('agent_lookup', true, { sampleAgent, totalAgents, instructionsChars: agentInstructions.length });
+  } else if (!out.stages.find((s) => s.name === 'agent_lookup')) {
+    record('agent_lookup', false, { totalAgents, error: 'No agent .md files found in ~/.claude/agents' });
+  }
+
+  // Stage 3 + 4: end-to-end claude run.
+  if (pre.binary.ok && sampleAgent) {
+    const runResult = await claudeBinary.runMinimalAgentTest({
+      claudePath: pre.binary.path,
+      agentInstructions,
+      prompt: 'Reply with exactly the word: OK',
+      timeoutMs: 30000,
+    });
+    record('agent_run', runResult.ok, {
+      durationMs: runResult.durationMs,
+      exitCode: runResult.exitCode,
+      outputSample: (runResult.output || '').slice(0, 200),
+      stderrTail: (runResult.stderr || '').slice(-200),
+      error: runResult.error,
+    });
+    record('output_received', !!(runResult.output && runResult.output.trim()), {
+      chars: (runResult.output || '').length,
+    });
+  } else {
+    record('agent_run', false, { skipped: true, reason: 'prerequisite failed (binary or agent missing)' });
+    record('output_received', false, { skipped: true });
+  }
+
+  // Stage 5: DB write — insert + read back a synthetic agent_run row.
+  try {
+    const id = `selftest_${Date.now().toString(36)}`;
+    db.insertAgentRun({
+      id,
+      agentName: 'self-test',
+      prompt: 'self-test prompt',
+      source: 'self-test',
+      timestamp: new Date().toISOString(),
+      duration: 0,
+      status: 'success',
+      promptChars: 0,
+      outputChars: 0,
+      estimatedTokens: 0,
+      estimatedCost: 0,
+      error: null,
+      metadata: { selfTest: true },
+    });
+    const recent = db.getRecentAgentRuns(1);
+    const found = (recent || []).some((r) => r.id === id);
+    record('db_write', found, { id, foundOnReadBack: found });
+  } catch (err) {
+    record('db_write', false, { error: err.message });
+  }
+
+  out.passed = out.stages.every((s) => s.ok);
+  out.finishedAt = new Date().toISOString();
+  res.json(out);
 });
 
 // GET /api/setup/projects
@@ -427,7 +540,7 @@ router.post('/setup/install-sdk', (req, res) => {
 
   const config = loadConfig();
   const allowedRoots = (config.projectDirs || []).map(d => path.resolve(d.replace(/^~/, HOME)));
-  const isAllowed = allowedRoots.some(root => resolvedProject.startsWith(root));
+  const isAllowed = allowedRoots.some(root => resolvedProject === root || resolvedProject.startsWith(root + path.sep));
   if (!isAllowed) {
     return res.status(403).json({ error: 'Path outside allowed project directories' });
   }
@@ -569,7 +682,9 @@ export async function isOnline() {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
     try {
-      execSync('npm install', { cwd: resolvedProject, timeout: 60000, stdio: 'pipe' });
+      // --ignore-scripts: never run an arbitrary project's pre/post-install
+      // lifecycle hooks as the server user (C3 audit — local code execution).
+      execSync('npm install --ignore-scripts', { cwd: resolvedProject, timeout: 60000, stdio: 'pipe' });
       res.json({
         success: true,
         method: isInsideProject ? 'file-dep-internal' : 'copy-sdk',
@@ -597,7 +712,7 @@ router.post('/setup/install-screenshot', (req, res) => {
 
   const config = loadConfig();
   const allowedRoots = (config.projectDirs || []).map(d => path.resolve(d.replace(/^~/, HOME)));
-  const isAllowed = allowedRoots.some(root => resolvedProject.startsWith(root));
+  const isAllowed = allowedRoots.some(root => resolvedProject === root || resolvedProject.startsWith(root + path.sep));
   if (!isAllowed) {
     return res.status(403).json({ error: 'Path outside allowed project directories' });
   }

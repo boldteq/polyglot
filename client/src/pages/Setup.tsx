@@ -3,6 +3,7 @@ import {
   CheckCircle, XCircle, RefreshCw, Package, Bot, Zap,
   AlertTriangle, Info, ChevronDown, ChevronRight,
   Folder, Settings, Cpu, Shield, Camera, Monitor,
+  FlaskConical, Terminal, Loader,
 } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { toast } from '../components/Toast'
@@ -15,6 +16,27 @@ interface SetupStatus {
   agentCount: number
   sdkExists: boolean
   port: number
+  claude?: {
+    ok: boolean
+    path: string | null
+    version: string | null
+    source: string | null
+    error: string | null
+    hasApiKey: boolean
+  }
+}
+
+interface SelfTestStage {
+  name: string
+  ok: boolean
+  detail: Record<string, unknown> & { skipped?: boolean }
+}
+
+interface SelfTestResult {
+  startedAt: string
+  finishedAt: string
+  passed: boolean
+  stages: SelfTestStage[]
 }
 
 interface SetupProject {
@@ -31,6 +53,15 @@ const getSetupStatus = () =>
   fetch('/api/setup/status').then((r) => r.json() as Promise<SetupStatus>)
 const getSetupProjects = () =>
   fetch('/api/setup/projects').then((r) => r.json() as Promise<SetupProject[]>)
+const runSetupSelfTest = () =>
+  fetch('/api/setup/self-test', { method: 'POST' })
+    .then(async (r) => {
+      if (!r.ok) {
+        const body = await r.text().catch(() => `HTTP ${r.status}`)
+        throw new Error(body.slice(0, 300))
+      }
+      return r.json() as Promise<SelfTestResult>
+    })
 
 // ─── Reusable Components ────────────────────────────────────────────────────
 
@@ -311,9 +342,28 @@ export default function Setup() {
                   : 'SDK folder missing at polyglot/sdk/. Check that the repo is intact.'
               }
             />
+
+            <StatusCard
+              icon={Terminal}
+              title="Claude CLI"
+              status={status?.claude?.ok ? 'ok' : 'error'}
+              statusLabel={status?.claude?.ok ? (status.claude.version || 'Installed') : 'Not Found'}
+              detail={status?.claude?.path || 'PATH lookup failed'}
+              note={
+                status?.claude?.ok
+                  ? `Resolved via ${status.claude.source}.${status.claude.hasApiKey ? ' ANTHROPIC_API_KEY env detected.' : ' Auth via claude login session.'}`
+                  : (status?.claude?.error || 'claude binary not found on PATH and CLAUDE_PATH env not set. Agents cannot run until this is fixed.')
+              }
+              action={!status?.claude?.ok ? (
+                <CodeBlock code={`# Install claude CLI globally\nnpm install -g @anthropic-ai/claude-code\n\n# Or set the absolute path explicitly\nexport CLAUDE_PATH=/path/to/claude\npm2 restart polyglot`} />
+              ) : undefined}
+            />
           </div>
         )}
       </section>
+
+      {/* ── Section 1.5: Self-Test ── */}
+      <SelfTestSection />
 
       {/* ── Section 2: Project SDK Status ── */}
       <section>
@@ -660,5 +710,103 @@ cd ~/Desktop/Boldteq\\ App/Pinzo && npm install`} />
 
       </div>
     </PageShell>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Self-Test section — runs POST /api/setup/self-test, renders 5-stage report
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SelfTestSection() {
+  const [running, setRunning] = useState(false)
+  const [result, setResult] = useState<SelfTestResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleRun() {
+    setRunning(true)
+    setError(null)
+    setResult(null)
+    try {
+      const res = await runSetupSelfTest()
+      setResult(res)
+      toast(res.passed ? 'success' : 'error', res.passed ? 'Self-Test PASSED' : 'Self-Test FAILED — see stage details')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg)
+      toast('error', `Self-Test request failed: ${msg.slice(0, 100)}`)
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <section>
+      <SectionHeader icon={FlaskConical} title="Self-Test" subtitle="Verify Polyglot can run agents end-to-end. Runs a real claude --version + minimal spawn + DB round-trip." />
+      <div className="bg-surface border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Production-grade smoke test</p>
+            <p className="text-xs text-text-muted mt-0.5">5 stages: binary, agent lookup, claude spawn, output received, DB write. Takes ~10–30s.</p>
+          </div>
+          <button
+            onClick={handleRun}
+            disabled={running}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-accent text-white rounded-lg disabled:opacity-40 hover:bg-accent-hover transition-colors shrink-0"
+          >
+            {running ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
+            {running ? 'Running…' : 'Run Self-Test'}
+          </button>
+        </div>
+
+        {error && (
+          <div className="px-3 py-2 bg-red-muted border border-red/20 rounded-lg text-xs text-red mb-3">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="space-y-2">
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${result.passed ? 'bg-green-muted border-green/20 text-green' : 'bg-red-muted border-red/20 text-red'}`}>
+              {result.passed ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+              <span className="text-xs font-semibold">
+                {result.passed ? 'All stages passed' : `${result.stages.filter((s) => !s.ok).length} of ${result.stages.length} stages failed`}
+              </span>
+              <span className="ml-auto text-[10px] text-text-muted">{new Date(result.startedAt).toLocaleTimeString()}</span>
+            </div>
+            <div className="border border-border rounded-lg divide-y divide-border/50 overflow-hidden">
+              {result.stages.map((stage) => (
+                <StageRow key={stage.name} stage={stage} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function StageRow({ stage }: { stage: SelfTestStage }) {
+  const [open, setOpen] = useState(!stage.ok)
+  const Icon = stage.ok ? CheckCircle : stage.detail?.skipped ? Info : XCircle
+  const tone = stage.ok ? 'text-green' : stage.detail?.skipped ? 'text-amber' : 'text-red'
+  return (
+    <div className="bg-surface">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-surface-2 transition-colors"
+      >
+        <Icon className={`w-3.5 h-3.5 shrink-0 ${tone}`} />
+        <span className="text-xs font-medium flex-1">{stage.name.replace(/_/g, ' ')}</span>
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${tone}`}>
+          {stage.ok ? 'pass' : stage.detail?.skipped ? 'skip' : 'fail'}
+        </span>
+        {open ? <ChevronDown className="w-3.5 h-3.5 text-text-muted" /> : <ChevronRight className="w-3.5 h-3.5 text-text-muted" />}
+      </button>
+      {open && (
+        <pre className="px-4 pb-3 text-[10px] text-text-secondary font-mono whitespace-pre-wrap break-all bg-surface-2/30">
+          {JSON.stringify(stage.detail, null, 2)}
+        </pre>
+      )}
+    </div>
   )
 }

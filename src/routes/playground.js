@@ -10,6 +10,39 @@ const { rateLimit } = require('../middleware/rateLimit');
 const { loadConfig } = require('../lib/config');
 const { discoverProjects } = require('../lib/discovery');
 const db = require('../db');
+const claudeBinary = require('../lib/claudeBinary');
+const configService = require('../lib/configService');
+
+// Strip API keys + bearer tokens from stderr before surfacing to the client.
+// Prevents accidental credential leakage into logs/UI.
+function redactSecrets(s) {
+  if (!s) return s;
+  return String(s)
+    .replace(/sk-ant-[A-Za-z0-9_-]+/g, 'sk-ant-***REDACTED***')
+    .replace(/Bearer\s+[^\s]+/gi, 'Bearer ***REDACTED***')
+    .replace(/(api[_-]?key["\s:=]+)[^\s"]+/gi, '$1***REDACTED***');
+}
+
+// Resolve an agent key against the agent content map using multiple lookup
+// strategies. Returns { match, key, candidates } so the caller can serve a
+// helpful error when the user picks a name that doesn't exist.
+function resolveAgentLookup(agentContentMap, agentName) {
+  const tried = [];
+  const tryKey = (k) => {
+    if (!k) return null;
+    tried.push(k);
+    return agentContentMap[k] || null;
+  };
+  let match = tryKey(agentName);
+  if (!match) match = tryKey(path.basename(String(agentName), '.md'));
+  if (!match) match = tryKey(String(agentName).toLowerCase().replace(/[^a-z0-9-]+/g, '-'));
+  if (!match) match = tryKey(String(agentName).replace(/^[^\w]+/, '').trim());
+  return {
+    match,
+    tried,
+    candidates: match ? undefined : Object.keys(agentContentMap).slice(0, 20),
+  };
+}
 
 const router = Router();
 
@@ -103,6 +136,15 @@ setInterval(() => {
 
 // POST /api/playground/run
 router.post('/playground/run', rateLimit('heavy'), (req, res) => {
+  // Content-type guard — body-parser silently produces `{}` for non-JSON
+  // bodies, which used to surface as a confusing "Prompt is required" 400.
+  const ct = String(req.headers['content-type'] || '').toLowerCase();
+  if (!ct.includes('application/json')) {
+    return res.status(415).json({ error: 'Content-Type must be application/json' });
+  }
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: 'JSON body required' });
+  }
   const { agentName, prompt: userPrompt, customInstructions, timeoutMs, idempotencyKey } = req.body;
   if (!userPrompt) return res.status(400).json({ error: 'Prompt is required' });
   if (typeof userPrompt !== 'string' || userPrompt.length > 20000)
@@ -168,11 +210,20 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       return;
     }
 
-    instructions = agentContentMap[agentName] || '';
+    const lookup = resolveAgentLookup(agentContentMap, agentName);
+    instructions = lookup.match || '';
 
     if (!instructions) {
-      send({ type: 'error', error: `Agent "${agentName}" not found` });
-      logAgentRun({ agentName: agentName || 'custom', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'agent_not_found', metadata: { reqId } });
+      send({
+        type: 'error',
+        code: 'agent_not_found',
+        error: `Agent "${agentName}" not found`,
+        cause: `Tried keys: ${lookup.tried.join(', ')}`,
+        tip: 'Pick one of the valid agent names below or fix the agent filename.',
+        candidates: lookup.candidates,
+        reqId,
+      });
+      logAgentRun({ agentName: agentName || 'custom', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'agent_not_found', metadata: { reqId, tried: lookup.tried } });
       try { res.end(); } catch {}
       return;
     }
@@ -225,16 +276,40 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     fullPrompt = userPrompt;
   }
 
-  const timeout = Math.max(5000, Math.min(timeoutMs ?? 120000, 600000));
-  const IDLE_MS = Number(process.env.PLAYGROUND_IDLE_MS) || 90000;
-  const HEARTBEAT_MS = Number(process.env.PLAYGROUND_HEARTBEAT_MS) || 15000;
-  const claudePath = process.env.CLAUDE_PATH || 'claude';
+  // Resolve timeouts + binary path from app_config (with env override fallback)
+  const cfgWallTimeout = configService.getConfig('time.playground_wall_timeout_ms');
+  const cfgIdleTimeout = configService.getConfig('time.playground_idle_timeout_ms');
+  const cfgHeartbeat = configService.getConfig('time.playground_heartbeat_ms');
+  const defaultWall = typeof cfgWallTimeout === 'number' ? cfgWallTimeout : 120000;
+  const timeout = Math.max(5000, Math.min(timeoutMs ?? defaultWall, 600000));
+  const IDLE_MS = Number(process.env.PLAYGROUND_IDLE_MS) || (typeof cfgIdleTimeout === 'number' ? cfgIdleTimeout : 90000);
+  const HEARTBEAT_MS = Number(process.env.PLAYGROUND_HEARTBEAT_MS) || (typeof cfgHeartbeat === 'number' ? cfgHeartbeat : 15000);
+
+  const claudePath = claudeBinary.getClaudePath();
+  if (!claudePath) {
+    const pre = claudeBinary.runPreflight();
+    send({
+      type: 'error',
+      code: 'claude_binary_missing',
+      error: 'Claude CLI not found on this server.',
+      cause: pre.binary.error || 'PATH lookup + CLAUDE_PATH env both failed.',
+      tip: 'Install: npm install -g @anthropic-ai/claude-code. Or set CLAUDE_PATH env / app_config defaults.claude_path to the absolute path of the claude binary.',
+      reqId,
+    });
+    logAgentRun({ agentName: agentName || 'custom', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'claude_binary_missing', metadata: { reqId } });
+    try { res.end(); } catch {}
+    return;
+  }
+
   const childEnv = { ...process.env, HOME: os.homedir() };
   delete childEnv.CLAUDECODE;
   delete childEnv.CLAUDE_CODE_ENTRYPOINT;
   delete childEnv.CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING;
   delete childEnv.CLAUDE_AGENT_SDK_VERSION;
   const proc = spawn(claudePath, ['-p'], { env: childEnv, detached: true });
+  // Stderr ring buffer — keep last ~2KB for diagnostic surfacing on failure.
+  let stderrTail = '';
+  const STDERR_TAIL_CAP = 2048;
   let fullOutput = '';
   let lastActivityAt = Date.now();
   let killReason = null;
@@ -244,8 +319,14 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     if (killReason) return;
     killReason = reason;
     const killSignal = (sig) => {
+      // Validate pid before signalling. `process.kill(-0, sig)` would crash the
+      // parent on a bad pid; `process.kill(NaN, sig)` throws TypeError.
       try {
-        if (proc.pid) process.kill(-proc.pid, sig);
+        if (proc.pid && Number.isFinite(proc.pid) && proc.pid > 0) {
+          process.kill(-proc.pid, sig);
+        } else if (proc.pid) {
+          proc.kill(sig);
+        }
       } catch {
         try { proc.kill(sig); } catch { /* already dead */ }
       }
@@ -304,13 +385,17 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
   proc.stderr.on('data', (data) => {
     if (ended) return;
     touchActivity();
+    const raw = data.toString();
+    // Accumulate redacted stderr into a ring buffer regardless of streamDead
+    // — we still want to surface the tail on close.
+    stderrTail = (stderrTail + redactSecrets(raw)).slice(-STDERR_TAIL_CAP);
     if (streamDead) return;
-    const raw = data.toString().trim();
-    if (!raw) return;
+    const trimmed = raw.trim();
+    if (!trimmed) return;
     // Log full stderr server-side; send only safe, non-sensitive lines to client.
-    console.log('[playground:stderr]', { agent: agentName || 'custom', reqId, msg: raw.slice(0, 500) });
+    console.log('[playground:stderr]', { agent: agentName || 'custom', reqId, msg: trimmed.slice(0, 500) });
     const safePattern = /^(\[INFO\]|\[WARN\]|Thinking|Agent|Processing|Claude|Running)/i;
-    const safeMsg = safePattern.test(raw) ? raw.slice(0, 500) : '[agent working…]';
+    const safeMsg = safePattern.test(trimmed) ? redactSecrets(trimmed).slice(0, 500) : '[agent working…]';
     send({ type: 'activity', message: safeMsg });
   });
   proc.stderr.on('error', (err) => {
@@ -330,10 +415,25 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     };
 
     if (killReason === 'wall_timeout') {
-      send({ type: 'error', error: `Timed out after ${timeout / 1000}s` });
+      send({
+        type: 'error',
+        code: 'wall_timeout',
+        error: `Timed out after ${timeout / 1000}s`,
+        stderrTail: stderrTail.slice(-500),
+        durationMs: duration,
+        reqId,
+      });
       logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: `wall_timeout_${timeout / 1000}s` });
     } else if (killReason === 'idle_timeout') {
-      send({ type: 'error', error: `Agent produced no output for ${Math.round(IDLE_MS / 1000)}s (idle timeout). Process killed.` });
+      send({
+        type: 'error',
+        code: 'idle_timeout',
+        error: `Agent produced no output for ${Math.round(IDLE_MS / 1000)}s (idle timeout). Process killed.`,
+        stderrTail: stderrTail.slice(-500),
+        tip: 'Increase time.playground_idle_timeout_ms in Settings → Tuning if your agent is legitimately slow.',
+        durationMs: duration,
+        reqId,
+      });
       logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: `idle_timeout_${Math.round(IDLE_MS / 1000)}s` });
     } else if (killReason === 'stdin_error') {
       logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: 'stdin_error' });
@@ -343,10 +443,34 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: 'stream_dead' });
     } else if (code !== 0) {
       const partial = fullOutput.trim() ? ' after partial output' : '';
-      send({ type: 'error', error: `claude exited with code ${code}${partial}` });
+      send({
+        type: 'error',
+        code: `exit_${code}`,
+        error: `claude exited with code ${code}${partial}`,
+        stderrTail: stderrTail.slice(-500),
+        tip: stderrTail.toLowerCase().includes('not authenticated') || stderrTail.toLowerCase().includes('login')
+          ? 'Run `claude login` to authenticate the CLI.'
+          : 'Inspect stderrTail for the actual error from the claude CLI.',
+        durationMs: duration,
+        reqId,
+      });
       logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: `exit_code_${code}` });
     } else if (code === 0 && !fullOutput.trim()) {
-      send({ type: 'error', error: 'claude exited 0 but produced no output. This usually means the prompt was rejected, auth failed, or the CLI wrote to a path that was empty. Check CLAUDE_PATH and credentials.' });
+      const lowered = stderrTail.toLowerCase();
+      const tip = lowered.includes('not authenticated') || lowered.includes('login') || lowered.includes('credentials')
+        ? 'Run `claude login` to authenticate.'
+        : lowered.includes('rate limit') || lowered.includes('429')
+        ? 'You hit an upstream rate limit. Retry after a minute.'
+        : 'Check ANTHROPIC_API_KEY env or run `claude --version` to verify the install. Hit /setup → Run Self-Test for full diagnostics.';
+      send({
+        type: 'error',
+        code: 'empty_output',
+        error: 'claude exited 0 but produced no output.',
+        stderrTail: stderrTail.slice(-500),
+        tip,
+        durationMs: duration,
+        reqId,
+      });
       logAgentRun({ ...baseLog, output: '', status: 'error', error: 'empty_output' });
     } else {
       const trimmedOutput = fullOutput.trim();
@@ -362,9 +486,21 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
 
   proc.on('error', (err) => {
     if (ended) return;
-    // Log full error server-side; send generic message to client (no internal paths/codes).
+    // Log full error server-side; send structured error to client with cause+tip.
     console.error('[playground] spawn error', { agent: agentName || 'custom', reqId, code: err.code, msg: err.message });
-    send({ type: 'error', error: 'Failed to start agent process. Check server logs.' });
+    const cause = err.code === 'ENOENT'
+      ? `claude binary not found at "${claudePath}"`
+      : err.code === 'EACCES'
+      ? `permission denied: ${claudePath} is not executable`
+      : `spawn ${err.code || 'failed'}: ${err.message}`;
+    send({
+      type: 'error',
+      code: `spawn_${err.code || 'failed'}`,
+      error: 'Failed to start claude.',
+      cause,
+      tip: 'Visit /setup and click Run Self-Test for full diagnostics.',
+      reqId,
+    });
     logAgentRun({
       agentName: agentName || 'custom',
       prompt: userPrompt,
@@ -373,7 +509,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       duration: Date.now() - playgroundStartTime,
       status: 'error',
       error: `spawn_error: ${err.code || 'unknown'}`,
-      metadata: { reqId, killReason },
+      metadata: { reqId, killReason, claudePath },
     });
     finish();
   });
@@ -383,7 +519,15 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     if (stdinErrorHandled || ended) return;
     stdinErrorHandled = true;
     console.error('[playground] stdin error', { agent: agentName || 'custom', reqId, code: err.code, msg: err.message });
-    send({ type: 'error', error: 'Failed to deliver prompt to agent. Check server logs.' });
+    send({
+      type: 'error',
+      code: `stdin_${err.code || 'failed'}`,
+      error: 'Failed to deliver prompt to agent.',
+      cause: err.message || String(err),
+      tip: 'The claude process may have exited before reading stdin. Check stderrTail or rerun.',
+      stderrTail: stderrTail.slice(-500),
+      reqId,
+    });
     hardKill('stdin_error');
   };
   proc.stdin.on('error', handleStdinErr);
@@ -402,6 +546,38 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
   res.on('close', () => {
     if (!killReason) hardKill('client_disconnect');
   });
+});
+
+// GET /api/playground/preflight
+// Returns binary/auth/env diagnostics + optional agent-existence check.
+// Frontend calls this before /playground/run so it can show actionable
+// errors inline instead of waiting for the spawn to fail.
+router.get('/playground/preflight', rateLimit('read'), (req, res) => {
+  try {
+    const pre = claudeBinary.runPreflight();
+    const agentName = String(req.query.agent || '').trim();
+    let agentCheck = null;
+    if (agentName) {
+      const config = loadConfig();
+      const map = getAgentContentMap(CLAUDE_DIR, config);
+      const lookup = resolveAgentLookup(map, agentName);
+      agentCheck = {
+        ok: !!lookup.match,
+        tried: lookup.tried,
+        candidates: lookup.candidates,
+      };
+    }
+    res.json({
+      binary: pre.binary,
+      auth: pre.auth,
+      env: pre.env,
+      agent: agentCheck,
+      okToRun: pre.binary.ok && (!agentName || agentCheck.ok),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/playground/history

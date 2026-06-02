@@ -2,9 +2,12 @@
 // Invoked by the PUT handler before atomic write; mirrors the budgets defined
 // in scripts/compactor/compact.mjs. Per-agent frontmatter overrides
 // (compactor.budget_lines / compactor.budget_chars / compactor.allow_oversize)
-// take precedence.
+// take precedence. If the frontmatter omits a value, we fall back to per-agent
+// `budget_lines` + `budget_chars` columns on the `agents` SQLite table; if
+// those are NULL we fall back to `app_config.defaults.budget_*` and only then
+// to the hardcoded constants below.
 
-const DEFAULTS = {
+const FALLBACK_DEFAULTS = {
   _default: { lines: 400, chars: 16000 },
   yash: { lines: 700, chars: 28000 },
   arya: { lines: 700, chars: 28000 },
@@ -12,16 +15,64 @@ const DEFAULTS = {
   zeph: { lines: 300, chars: 12000 },
 };
 
+// Lazy-resolve to avoid a circular require at module-load.
+function getDb() { return require('../db'); }
+function getConfigService() { return require('../lib/configService'); }
+
 const WARN_FACTOR = 0.9;  // warn >=90%
 const HARD_FACTOR = 1.1;  // reject >=110%
 
 function resolveBudget(agentId, frontmatter) {
   const fm = frontmatter?.compactor || {};
-  const base = DEFAULTS[agentId] || DEFAULTS._default;
+  // 1. Frontmatter overrides — author-controlled per-file.
+  if (Number.isFinite(fm.budget_lines) && Number.isFinite(fm.budget_chars)) {
+    return {
+      lines: fm.budget_lines,
+      chars: fm.budget_chars,
+      allowOversize: Boolean(fm.allow_oversize),
+      source: 'frontmatter',
+    };
+  }
+
+  // 2. Per-agent SQLite columns.
+  let dbLines, dbChars;
+  try {
+    const row = getDb().getDb().prepare(`SELECT budget_lines, budget_chars FROM agents WHERE id = ?`).get(agentId);
+    if (row) {
+      dbLines = row.budget_lines;
+      dbChars = row.budget_chars;
+    }
+  } catch {
+    // best-effort
+  }
+
+  // 3. App config defaults.
+  let cfgLines, cfgChars;
+  try {
+    const cfg = getConfigService();
+    cfgLines = cfg.getConfig('defaults.budget_lines');
+    cfgChars = cfg.getConfig('defaults.budget_chars');
+  } catch {
+    // best-effort
+  }
+
+  // 4. Hardcoded fallback (per-agent map + global).
+  const fallback = FALLBACK_DEFAULTS[agentId] || FALLBACK_DEFAULTS._default;
+
   return {
-    lines: Number.isFinite(fm.budget_lines) ? fm.budget_lines : base.lines,
-    chars: Number.isFinite(fm.budget_chars) ? fm.budget_chars : base.chars,
+    lines: Number.isFinite(fm.budget_lines) ? fm.budget_lines
+      : Number.isFinite(dbLines) ? dbLines
+      : Number.isFinite(cfgLines) ? cfgLines
+      : fallback.lines,
+    chars: Number.isFinite(fm.budget_chars) ? fm.budget_chars
+      : Number.isFinite(dbChars) ? dbChars
+      : Number.isFinite(cfgChars) ? cfgChars
+      : fallback.chars,
     allowOversize: Boolean(fm.allow_oversize),
+    source: Number.isFinite(fm.budget_lines) ? 'frontmatter'
+      : Number.isFinite(dbLines) ? 'db'
+      : Number.isFinite(cfgLines) ? 'config'
+      : 'fallback',
   };
 }
 
@@ -93,4 +144,4 @@ function checkBudget({ agentId, content, frontmatter }) {
   };
 }
 
-module.exports = { checkBudget, resolveBudget, DEFAULTS };
+module.exports = { checkBudget, resolveBudget, DEFAULTS: FALLBACK_DEFAULTS };

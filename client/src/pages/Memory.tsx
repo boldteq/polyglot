@@ -39,6 +39,7 @@ import {
   deleteMemoryFolder,
   moveMemoryFile, apiError} from '../lib/api'
 import { toast } from '../components/Toast'
+import { useUnsavedGuard } from '../hooks/useUnsavedGuard'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -818,6 +819,7 @@ export default function Memory() {
   const [rightPanel, setRightPanel] = useState<'info' | 'stats'>('info')
 
   const dirty = content !== savedContent
+  useUnsavedGuard(dirty)
 
   // Find selected node
   const selectedNode = useMemo(() => {

@@ -142,8 +142,14 @@ router.post('/webhooks/trigger/:id', rateLimit('heavy'), async (req, res) => {
   const webhook = webhooks.find(w => w.id === req.params.id);
   if (!webhook) return res.status(404).json({ error: 'Webhook not found' });
 
+  // Constant-time secret comparison — this is the ONE network-reachable auth
+  // gate (webhook trigger bypasses localOnly), so timing-safe matters (C6 audit).
   const secret = req.headers['x-webhook-secret'];
-  if (!secret || secret !== webhook.secret) return res.status(401).json({ error: 'Invalid webhook secret' });
+  const provided = Buffer.from(String(secret || ''));
+  const expected = Buffer.from(String(webhook.secret || ''));
+  if (!secret || provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) {
+    return res.status(401).json({ error: 'Invalid webhook secret' });
+  }
 
   webhook.lastTriggeredAt = new Date().toISOString();
   webhook.triggerCount = (webhook.triggerCount || 0) + 1;
@@ -161,6 +167,12 @@ router.post('/webhooks/trigger/:id', rateLimit('heavy'), async (req, res) => {
     } else if (webhook.orchestrationId) {
       const orc = loadOrchestrations().find(o => o.id === webhook.orchestrationId);
       if (!orc) return res.status(404).json({ error: 'Orchestration not found' });
+      // Cost guard: an unattended webhook spawns one paid LLM run per node.
+      // Cap fan-out so a misconfigured/replayed trigger can't run away (C6 audit).
+      const MAX_WEBHOOK_NODES = parseInt(process.env.WEBHOOK_MAX_NODES, 10) || 25;
+      if ((orc.nodes || []).length > MAX_WEBHOOK_NODES) {
+        return res.status(400).json({ error: `Orchestration exceeds webhook node cap (${MAX_WEBHOOK_NODES})` });
+      }
       const orcResults = {};
       let orcLastOutput = payload;
       const orcOrder = topoSort(orc.nodes, orc.edges || []);

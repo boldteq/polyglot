@@ -2,23 +2,26 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
-import { postClientError } from './lib/api'
+import { clientLogger, captureConsole } from './lib/clientLogger'
 
-// Capture unhandled JS errors and send to the server error log
+// Patch console.error/console.warn so every stray browser log shows in the
+// Logs page. Originals still fire — devtools unchanged. Recursion-safe.
+captureConsole()
+
+// Capture unhandled JS errors
 window.addEventListener('error', (e) => {
-  postClientError({
-    message: e.message || 'Unknown JS error',
-    stack: e.error?.stack,
-    context: { filename: e.filename, lineno: e.lineno, colno: e.colno },
-  }).catch(() => {})
+  clientLogger.error(e.message || 'Unknown JS error', {
+    category: 'runtime',
+    meta: { filename: e.filename, lineno: e.lineno, colno: e.colno, stack: e.error?.stack },
+  })
 })
 
 window.addEventListener('unhandledrejection', (e) => {
-  const msg = e.reason instanceof Error ? e.reason.message : String(e.reason ?? 'Unhandled Promise rejection')
-  postClientError({
-    message: msg,
-    stack: e.reason instanceof Error ? e.reason.stack : undefined,
-  }).catch(() => {})
+  const reason = e.reason
+  clientLogger.error(reason instanceof Error ? reason : String(reason ?? 'Unhandled Promise rejection'), {
+    category: 'runtime',
+    meta: { type: 'unhandledrejection' },
+  })
 })
 
 createRoot(document.getElementById('root')!).render(

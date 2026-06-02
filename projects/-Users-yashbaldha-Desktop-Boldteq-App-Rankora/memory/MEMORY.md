@@ -1,1 +1,0 @@
-- [Auto push](feedback_auto_push.md) — Always commit + push automatically after completing changes

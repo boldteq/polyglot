@@ -110,7 +110,7 @@ function ProjectSelector({ projects }: { projects: Project[] }) {
 }
 
 export default function Sidebar({ projects }: SidebarProps) {
-  const { theme, resolvedTheme, toggle } = useTheme()
+  const { theme, toggle } = useTheme()
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [unresolvedErrors, setUnresolvedErrors] = useState(0)
   const location = useLocation()

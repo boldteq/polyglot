@@ -29,8 +29,10 @@ import {
   sanitizeName,
 } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
+import { formatAgentDisplay } from '../lib/agentDisplay'
 
 type Tab = 'overview' | 'claude-md' | 'agents' | 'commands' | 'rules'
 
@@ -39,7 +41,7 @@ export default function ProjectDetail() {
   const { projectId } = useParams()
   const [tab, setTab] = useState<Tab>('overview')
 
-  const { data: agents, refetch: refetchAgents } = useApi(
+  const { data: agents, error: agentsError, refetch: refetchAgents } = useApi(
     () => getProjectAgents(projectId!),
     [projectId],
   )
@@ -98,7 +100,7 @@ export default function ProjectDetail() {
       )}
       {tab === 'claude-md' && <ClaudeMdTab projectId={projectId!} />}
       {tab === 'agents' && (
-        <AgentsTab agents={agents || []} projectId={projectId!} refetch={refetchAgents} />
+        <AgentsTab agents={agents || []} projectId={projectId!} refetch={refetchAgents} error={agentsError} />
       )}
       {tab === 'commands' && (
         <CommandsTab commands={commands || []} projectId={projectId!} refetch={refetchCommands} />
@@ -229,10 +231,12 @@ function AgentsTab({
   agents,
   projectId,
   refetch,
+  error,
 }: {
   agents: { filename: string; name: string; description: string; model: string; updatedAt: string }[]
   projectId: string
   refetch: () => void
+  error?: string | null
 }) {
   const navigate = useNavigate()
   const [creating, setCreating] = useState(false)
@@ -250,12 +254,18 @@ function AgentsTab({
     setCreateLoading(true)
     try {
       const template = `---\nname: ${newName.trim()}\ndescription: ""\nmodel: ""\n---\n\n# ${newName.trim()}\n\nWrite your agent instructions here.\n`
-      await updateProjectAgent(projectId, slug, template)
+      await updateProjectAgent(projectId, slug, template, { createOnly: true })
       setCreating(false)
       setNewName('')
       navigate(`/projects/${projectId}/agents/${slug}`)
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : 'Failed to create agent')
+      const msg = err instanceof Error ? err.message : 'Failed to create agent'
+      toast('error', msg)
+      if (msg.includes('already exists')) {
+        // Open the existing agent instead of clobbering it.
+        setCreating(false); setNewName('')
+        navigate(`/projects/${projectId}/agents/${slug}`)
+      }
     } finally {
       setCreateLoading(false)
     }
@@ -293,19 +303,27 @@ function AgentsTab({
         </div>
       )}
 
-      {agents.length === 0 ? (
+      {error ? (
+        <ErrorState message={error} onRetry={refetch} />
+      ) : agents.length === 0 ? (
         <div className="bg-surface rounded-xl border border-border p-12 text-center">
           <Bot className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p className="text-text-secondary font-medium">No agents in this project</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {agents.map((agent) => (
+          {agents.map((agent) => {
+            const display = formatAgentDisplay({ name: agent.name, id: agent.filename })
+            return (
             <Link key={agent.filename} to={`/projects/${projectId}/agents/${agent.filename}`} className="group flex items-center justify-between bg-surface border border-border rounded-xl p-5 hover:border-accent/40 transition-all">
               <div className="flex items-center gap-4">
                 <AgentIcon name={agent.name} uid={`${projectId}-${agent.filename}`} size={44} />
                 <div>
-                  <h3 className="font-semibold text-[15px] group-hover:text-accent-hover transition-colors">{agent.name}</h3>
+                  <h3 className="font-semibold text-[15px] group-hover:text-accent-hover transition-colors">
+                    {display.emoji && <span className="mr-1.5">{display.emoji}</span>}
+                    <span>{display.realName}</span>
+                    {display.role && <span className="text-text-muted font-normal"> — {display.role}</span>}
+                  </h3>
                   {agent.description && <p className="text-sm text-text-secondary mt-0.5">{agent.description}</p>}
                   <div className="flex items-center gap-3 mt-2">
                     {agent.model && <span className="text-xs text-text-muted bg-surface-2 px-2 py-0.5 rounded-md font-mono">{agent.model}</span>}
@@ -316,12 +334,14 @@ function AgentsTab({
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(agent.filename, agent.name) }}
                 disabled={deletingKeys.has(agent.filename)}
-                className="p-2 rounded-lg text-text-muted hover:text-red hover:bg-red-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors opacity-0 group-hover:opacity-100"
+                aria-label={`Delete agent ${agent.name}`}
+                className="p-2 rounded-lg text-text-muted hover:text-red hover:bg-red-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
             </Link>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

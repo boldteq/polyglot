@@ -1,31 +1,18 @@
-import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Plus,
-  Trash2,
-  Clock,
-  Users,
-  FolderOpen,
   Search,
-  Copy,
-  ArrowRightLeft,
   X,
   AlertTriangle,
   Network,
-  Crown,
-  CheckCircle2,
-  Info,
   Zap,
   ChevronDown,
   ChevronUp,
-  CheckSquare,
-  Square,
 } from 'lucide-react'
 import {
   getUnifiedAgents,
   getProjects,
-  deleteGlobalAgent,
-  deleteProjectAgent,
   copyAgent,
   moveAgent,
   updateGlobalAgent,
@@ -38,10 +25,6 @@ import {
   reorderCategories,
   getDrift,
   getDispatchRecommendation,
-  updateOrgAgent,
-  bulkUpdateOrgAgents,
-  undoOrgChange,
-  undoOrgBatch,
   subscribeOrgChart,
 } from '../lib/api'
 import type { DriftData, DispatchResult } from '../lib/api'
@@ -50,21 +33,18 @@ import { formatAgentDisplay } from '../lib/agentDisplay'
 import { useAgentBulkActions } from '../hooks/useAgentBulkActions'
 import { AGENT_STATUSES } from '../lib/constants'
 import { useApi } from '../hooks/useApi'
+import { ErrorState } from '../components/ErrorState'
 import type { UnifiedAgent } from '../types'
 import { toast } from '../components/Toast'
-import AgentIcon from '../components/AgentIcon'
-import {
-  CategoryFilterPills,
-  getColors,
-  formatCategory,
-} from '../components/AgentCategoryBadge'
+import { SquadCard } from '../components/SquadCard'
+import { CategoryFilterPills } from '../components/AgentCategoryBadge'
 
 
 export default function AllAgents() {
-  const { data: agents, loading, refetch } = useApi(getUnifiedAgents)
+  const { data: agents, loading, error, refetch } = useApi(getUnifiedAgents)
   const { data: projects } = useApi(getProjects)
   const { data: categories, refetch: refetchCategories } = useApi(getCategories)
-  const { squads: SQUADS } = useTaxonomy()
+  const { squads: SQUADS, squadById, squadOrder } = useTaxonomy()
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
@@ -78,7 +58,6 @@ export default function AllAgents() {
   const [newName, setNewName] = useState('')
   const [newCategory, setNewCategory] = useState('')
   const [createScope, setCreateScope] = useState<string>('global')
-  const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set())
   const [actioning, setActioning] = useState(false)
   const [drift, setDrift] = useState<DriftData | null>(null)
   const [driftDismissed, setDriftDismissed] = useState(false)
@@ -123,10 +102,8 @@ export default function AllAgents() {
     bulkBusy,
     squadPickerFor,
     setSquadPickerFor,
-    toggleSel: toggleSelected,
     selectAll: selectAllVisible,
     clearSel: clearSelection,
-    setAgentSquad,
     bulkApply,
   } = useAgentBulkActions(filtered, (a) => a.filename, refetch)
 
@@ -141,52 +118,29 @@ export default function AllAgents() {
     return () => document.removeEventListener('mousedown', onDoc)
   }, [squadPickerFor])
 
-  // Group by DB org.department (single source of truth). Fallback chain:
-  //   org.department  →  frontmatter.category  →  'unassigned'.
-  // Capture each department's display label from org data for the section header.
-  const departmentGroups = new Map<string, UnifiedAgent[]>()
-  const departmentLabels = new Map<string, string>()
-  for (const a of filtered) {
-    const dept = a.org?.department || (a.frontmatter?.category as string | undefined) || 'unassigned'
-    if (!departmentGroups.has(dept)) departmentGroups.set(dept, [])
-    departmentGroups.get(dept)!.push(a)
-    if (a.org?.departmentLabel && !departmentLabels.has(dept)) {
-      departmentLabels.set(dept, a.org.departmentLabel)
+  // Squad grouping (vertical-team view). Members keyed off agent.org.squad.
+  // Dotted members appear inside their primary squad as full members AND as
+  // dotted chips in any other squad that lists them in `dottedMembers`.
+  const squadMembers = useMemo(() => {
+    const map = new Map<string, UnifiedAgent[]>()
+    for (const sq of SQUADS) map.set(sq.id, [])
+    const unassignedSquad: UnifiedAgent[] = []
+    for (const a of filtered) {
+      const sid = a.org?.squad
+      if (sid && map.has(sid)) {
+        map.get(sid)!.push(a)
+      } else {
+        unassignedSquad.push(a)
+      }
     }
-  }
+    return { map, unassignedSquad }
+  }, [filtered, SQUADS])
 
-  // Order: honor user's drag-and-drop category order first, then any
-  // departments only present in org data, then 'unassigned' last.
-  const categoryOrder = (categories || []).map((c) => c.name)
-  const seen = new Set<string>()
-  const orderedDepartments: string[] = []
-  for (const name of categoryOrder) {
-    if (name === 'unassigned') continue
-    if (departmentGroups.has(name)) {
-      orderedDepartments.push(name)
-      seen.add(name)
-    }
-  }
-  const extras = [...departmentGroups.keys()]
-    .filter((d) => !seen.has(d) && d !== 'unassigned')
-    .sort()
-  orderedDepartments.push(...extras)
-  if (departmentGroups.has('unassigned')) orderedDepartments.push('unassigned')
+  const orderedSquadIds = (squadOrder && squadOrder.length > 0)
+    ? squadOrder.filter(id => squadById[id])
+    : SQUADS.map(s => s.id)
 
-  const handleDelete = async (agent: UnifiedAgent) => {
-    if (!confirm(`Delete "${agent.name}"?`)) return
-    const key = agent.scope === 'global' ? `global-${agent.filename}` : `${agent.projectId}-${agent.filename}`
-    setDeletingKeys((prev) => new Set(prev).add(key))
-    try {
-      if (agent.scope === 'global') await deleteGlobalAgent(agent.filename)
-      else await deleteProjectAgent(agent.projectId!, agent.filename)
-      refetch()
-    } catch (err) {
-      toast('error', err instanceof Error ? err.message : 'Failed to delete')
-    } finally {
-      setDeletingKeys((prev) => { const s = new Set(prev); s.delete(key); return s })
-    }
-  }
+  const findAgentById = (id: string) => (agents || []).find(a => a.filename === id) || null
 
   const handleAction = async () => {
     if (!actionAgent || !actionType || !actionTarget) return
@@ -208,11 +162,20 @@ export default function AllAgents() {
     setCreateLoading(true)
     try {
       const template = `---\nname: ${newName.trim()}\ndescription: ""\nmodel: sonnet\ncategory: ${newCategory}\n---\n\n# ${newName.trim()}\n\nWrite your agent instructions here.\n`
-      if (createScope === 'global') { await updateGlobalAgent(slug, template); navigate(`/global/agents/${slug}`) }
-      else { await updateProjectAgent(createScope, slug, template); navigate(`/projects/${createScope}/agents/${slug}`) }
+      if (createScope === 'global') { await updateGlobalAgent(slug, template, { createOnly: true }); navigate(`/global/agents/${slug}`) }
+      else { await updateProjectAgent(createScope, slug, template, { createOnly: true }); navigate(`/projects/${createScope}/agents/${slug}`) }
       setCreating(false); setNewName('')
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : 'Failed')
+      const msg = err instanceof Error ? err.message : 'Failed'
+      if (msg.includes('already exists')) {
+        // Don't clobber — open the existing agent instead.
+        toast('error', msg)
+        if (createScope === 'global') navigate(`/global/agents/${slug}`)
+        else navigate(`/projects/${createScope}/agents/${slug}`)
+        setCreating(false); setNewName('')
+      } else {
+        toast('error', msg)
+      }
     } finally { setCreateLoading(false) }
   }
 
@@ -234,6 +197,7 @@ export default function AllAgents() {
   const allCategoryNames = categories ? categories.map(c => c.name) : []
 
   if (loading) return <div className="p-8 flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>
+  if (error) return <ErrorState message={error} onRetry={refetch} />
 
   return (
     <div className="p-6 max-w-6xl">
@@ -570,312 +534,66 @@ export default function AllAgents() {
           <p className="text-xs mt-1">{search ? 'Try a different search' : 'Create your first agent'}</p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {orderedDepartments.map((dept) => {
-            const deptAgents = (departmentGroups.get(dept) || []).slice().sort((a, b) => {
-              // Leader first
-              if (a.org?.isLeader && !b.org?.isLeader) return -1
-              if (b.org?.isLeader && !a.org?.isLeader) return 1
-              // Then by level (higher first)
+        <div className="space-y-3">
+          {orderedSquadIds.map((sid) => {
+            const squad = squadById[sid]
+            if (!squad) return null
+            const members = (squadMembers.map.get(sid) || []).slice().sort((a, b) => {
+              // Lead first, then by level desc, then alpha
+              const aIsLead = squad.lead === a.filename ? -1 : 0
+              const bIsLead = squad.lead === b.filename ? -1 : 0
+              if (aIsLead !== bIsLead) return aIsLead - bIsLead
               const la = a.org?.level ?? -1
               const lb = b.org?.level ?? -1
               if (la !== lb) return lb - la
-              // Then alphabetical
               return a.name.localeCompare(b.name)
             })
-            const colors = getColors(dept)
-            const label = departmentLabels.get(dept) || formatCategory(dept)
+            const dotted = (squad.dottedMembers || [])
+              .map(id => findAgentById(id))
+              .filter((x): x is UnifiedAgent => x !== null)
+              // Skip dotted agents who are already primary members of THIS squad
+              .filter(d => !members.some(m => m.filename === d.filename))
             return (
-              <div key={dept}>
-                <SectionHeader icon={Users} label={label} count={deptAgents.length} color={colors.text} />
-                <div className="space-y-1">
-                  {deptAgents.map((agent) => {
-                    const deleteKey = agent.scope === 'global'
-                      ? `global-${agent.filename}`
-                      : `${agent.projectId}-${agent.filename}`
-                    return (
-                      <AgentRow
-                        key={deleteKey}
-                        agent={agent}
-                        deleting={deletingKeys.has(deleteKey)}
-                        selected={selectedIds.has(agent.filename)}
-                        onToggleSelect={() => toggleSelected(agent.filename)}
-                        onSquadClick={(e) => { e.preventDefault(); e.stopPropagation(); setSquadPickerFor(agent.filename) }}
-                        squadPickerOpen={squadPickerFor === agent.filename}
-                        squadPickerRef={squadPickerFor === agent.filename ? pickerRef : undefined}
-                        onSquadSelect={(squadId) => setAgentSquad(agent.filename, agent.name, squadId)}
-                        onDelete={handleDelete}
-                        onCopy={(a) => { setActionAgent(a); setActionType('copy') }}
-                        onMove={(a) => { setActionAgent(a); setActionType('move') }}
-                      />
-                    )
-                  })}
-                </div>
+              <SquadCard
+                key={squad.id}
+                squad={squad}
+                members={members}
+                dottedMembers={dotted}
+                onAgentClick={(a) => {
+                  const path = a.scope === 'global'
+                    ? `/global/agents/${a.filename}`
+                    : `/projects/${a.projectId}/agents/${a.filename}`
+                  navigate(path)
+                }}
+              />
+            )
+          })}
+          {squadMembers.unassignedSquad.length > 0 && (
+            <div className="bg-surface rounded-xl border border-dashed border-border p-4">
+              <div className="flex items-center gap-2 mb-2 text-text-muted">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider">
+                  Unassigned ({squadMembers.unassignedSquad.length})
+                </span>
+                <span className="text-[10px]">— assign these to a vertical squad</span>
               </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function SectionHeader({ icon: Icon, label, count, color = 'text-accent' }: { icon: React.ElementType; label: string; count: number; color?: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-2">
-      <Icon className={`w-3.5 h-3.5 ${color}`} />
-      <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">{label}</span>
-      <span className="text-[10px] text-text-muted bg-surface-2 px-1.5 py-0.5 rounded-full">{count}</span>
-    </div>
-  )
-}
-
-// Tagline derivation moved to shared lib/agentDisplay.ts.
-
-function AgentRow({
-  agent, deleting, selected, onToggleSelect, onSquadClick, squadPickerOpen, squadPickerRef, onSquadSelect, onDelete, onCopy, onMove,
-}: {
-  agent: UnifiedAgent
-  deleting: boolean
-  selected: boolean
-  onToggleSelect: () => void
-  onSquadClick: (e: React.MouseEvent) => void
-  squadPickerOpen: boolean
-  squadPickerRef?: React.RefObject<HTMLDivElement | null>
-  onSquadSelect: (squadId: string | null) => void
-  onDelete: (a: UnifiedAgent) => void
-  onCopy: (a: UnifiedAgent) => void
-  onMove: (a: UnifiedAgent) => void
-}) {
-  const { squads: SQUADS } = useTaxonomy()
-  const editLink = agent.scope === 'global' ? `/global/agents/${agent.filename}` : `/projects/${agent.projectId}/agents/${agent.filename}`
-  const display = formatAgentDisplay({
-    name: agent.name,
-    title: agent.org?.title ?? null,
-    description: agent.description,
-    id: agent.filename,
-  })
-  const tagline = display.tagline
-
-  return (
-    <div className={`group relative flex items-center justify-between border rounded-lg px-3 py-2.5 transition-all ${selected ? 'bg-accent/5 border-accent/40' : 'bg-surface border-border hover:border-accent/20'}`}>
-      {/* Bulk-select checkbox */}
-      <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect() }}
-        className={`shrink-0 mr-2 p-1 rounded-md transition-all ${selected ? 'text-accent opacity-100' : 'text-text-muted opacity-0 group-hover:opacity-100 hover:text-accent'}`}
-        title={selected ? 'Deselect' : 'Select for bulk action'}
-      >
-        {selected ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
-      </button>
-      <Link to={editLink} className="flex items-center gap-3 flex-1 min-w-0">
-        <AgentIcon
-          name={agent.name}
-          id={agent.filename}
-          avatar={agent.org?.avatar}
-          gender={agent.org?.gender}
-          ringColor={agent.org?.departmentColor}
-          uid={`${agent.scope}-${agent.filename}`}
-          size={36}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold group-hover:text-accent-hover transition-colors truncate">
-              {display.emoji && <span className="mr-1">{display.emoji}</span>}
-              {display.realName}
-              {display.role && <span className="font-normal text-text-muted ml-1.5">— {display.role}</span>}
-            </span>
-            {agent.org?.isLeader && <LeaderBadge />}
-            <LevelBadge org={agent.org} />
-            <ExperienceBadge years={agent.org?.yearsOfExperience ?? null} />
-            <SquadBadge squad={agent.org?.squad ?? null} onClick={onSquadClick} />
-            <HealthBadge health={agent.health} />
-            <ScopeBadge agent={agent} />
-          </div>
-          <p className="text-[11px] text-text-muted truncate mt-0.5" title={agent.description}>{tagline}</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[10px] font-mono bg-surface-2 px-1.5 py-0.5 rounded text-text-muted">{agent.model || 'sonnet'}</span>
-          <span className="text-[10px] text-text-muted flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(agent.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-        </div>
-      </Link>
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
-        <button onClick={(e) => { e.stopPropagation(); onCopy(agent) }} title="Copy" className="p-1.5 rounded-md text-text-muted hover:text-accent hover:bg-accent-muted"><Copy className="w-3 h-3" /></button>
-        <button onClick={(e) => { e.stopPropagation(); onMove(agent) }} title="Move" className="p-1.5 rounded-md text-text-muted hover:text-amber-400 hover:bg-amber-500/10"><ArrowRightLeft className="w-3 h-3" /></button>
-        <button onClick={(e) => { e.stopPropagation(); onDelete(agent) }} title="Delete" disabled={deleting} className="p-1.5 rounded-md text-text-muted hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40"><Trash2 className="w-3 h-3" /></button>
-      </div>
-
-      {/* Squad picker popover */}
-      {squadPickerOpen && (
-        <div
-          ref={squadPickerRef}
-          className="absolute z-50 top-full left-12 mt-1 bg-surface border border-border rounded-xl shadow-xl p-2 min-w-[220px]"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="text-[10px] uppercase tracking-wider text-text-muted font-semibold px-2 py-1">Assign Squad</div>
-          {SQUADS.map(sq => {
-            const active = agent.org?.squad === sq.id
-            return (
-              <button
-                key={sq.id}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSquadSelect(active ? null : sq.id) }}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left transition-colors ${active ? 'bg-accent/10' : 'hover:bg-surface-2'}`}
-              >
-                <span style={{ color: sq.color }}>{sq.emoji}</span>
-                <span className="flex-1 font-medium">{sq.label}</span>
-                {active && <CheckCircle2 className="w-3 h-3 text-accent" />}
-              </button>
-            )
-          })}
-          {agent.org?.squad && (
-            <>
-              <div className="border-t border-border my-1" />
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSquadSelect(null) }}
-                className="w-full px-2 py-1.5 rounded-md text-xs text-left text-red-400 hover:bg-red-500/10"
-              >
-                Remove from squad
-              </button>
-            </>
+              <div className="space-y-1">
+                {squadMembers.unassignedSquad.map(agent => (
+                  <button
+                    key={agent.filename}
+                    onClick={() => navigate(agent.scope === 'global' ? `/global/agents/${agent.filename}` : `/projects/${agent.projectId}/agents/${agent.filename}`)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  >
+                    <span className="text-text-muted">{formatAgentDisplay(agent).emoji || '🤖'}</span>
+                    <span className="font-medium">{formatAgentDisplay(agent).realName}</span>
+                    <span className="text-text-muted text-[11px] truncate">{agent.filename}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}
     </div>
-  )
-}
-
-function LevelBadge({ org }: { org: UnifiedAgent['org'] }) {
-  if (!org || org.level == null) return null
-  const title = org.levelTitle || ''
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-accent/10 text-accent shrink-0"
-      title={`Level ${org.level}${title ? ` — ${title}` : ''}`}
-    >
-      <span className="font-mono">L{org.level}</span>
-      {title && <span className="opacity-70">· {title}</span>}
-    </span>
-  )
-}
-
-function ExperienceBadge({ years }: { years: number | null }) {
-  if (years == null) return null
-  const rounded = years >= 10 ? Math.round(years) : Math.round(years * 10) / 10
-  return (
-    <span
-      className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-muted text-green shrink-0"
-      title={`${years.toFixed(1)} years of experience (computed)`}
-    >
-      {rounded}y exp
-    </span>
-  )
-}
-
-function LeaderBadge() {
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-400 shrink-0 ring-1 ring-amber-400/30"
-      title="Department leader"
-    >
-      <Crown className="w-2.5 h-2.5" />
-      Lead
-    </span>
-  )
-}
-
-// Inline budget-health badge — mirrors AgentHealthBar at the top of the
-// agent editor. Same status, same colors, same usage% so list and detail
-// views are consistent.
-function HealthBadge({ health }: { health: UnifiedAgent['health'] }) {
-  if (!health) return null
-  const style =
-    health.status === 'over'     ? 'bg-red-muted text-red ring-red/30'
-    : health.status === 'warning' ? 'bg-amber-muted text-amber ring-amber/30'
-    : health.status === 'sparse'  ? 'bg-accent/10 text-accent ring-accent/30'
-    : 'bg-green-muted text-green ring-green/30'
-  const Icon =
-    health.status === 'over'     ? AlertTriangle
-    : health.status === 'warning' ? AlertTriangle
-    : health.status === 'sparse'  ? Info
-    : CheckCircle2
-  const label =
-    health.status === 'over'     ? 'Over budget'
-    : health.status === 'warning' ? 'Near limit'
-    : health.status === 'sparse'  ? 'Sparse'
-    : 'Healthy'
-  const pct = Math.round(health.usage * 100)
-  const tokenStr = health.estimatedTokens >= 1000
-    ? `${(health.estimatedTokens / 1000).toFixed(1)}k`
-    : `${health.estimatedTokens}`
-  const violationDetail = health.violations?.length > 0
-    ? health.violations.map(v => `  ✕ ${v.kind}: ${v.actual} / ${v.limit ?? v.budget} limit`).join('\n')
-    : health.warnings?.length > 0
-    ? health.warnings.map(w => `  ⚠ ${w.kind}: ${w.actual} / ${w.budget} budget`).join('\n')
-    : ''
-  const tooltip = [
-    `${label} — ${pct}% of budget`,
-    `${health.actual.lines}/${health.budget.lines} lines · ${health.sizeKb} KB · ~${tokenStr} tokens`,
-    violationDetail,
-  ].filter(Boolean).join('\n')
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0 ring-1 ${style}`}
-      title={tooltip}
-    >
-      <Icon className="w-2.5 h-2.5" />
-      {pct}%
-    </span>
-  )
-}
-
-function SquadBadge({ squad, onClick }: { squad: string | null; onClick?: (e: React.MouseEvent) => void }) {
-  const { squadById: SQUAD_BY_ID } = useTaxonomy()
-  if (!squad) {
-    if (!onClick) return null
-    return (
-      <button
-        onClick={onClick}
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0 bg-surface-2 text-text-muted border border-dashed border-border hover:bg-surface-3 hover:text-text transition-colors"
-        title="Assign squad"
-      >
-        + squad
-      </button>
-    )
-  }
-  const cfg = SQUAD_BY_ID[squad]
-  if (!cfg) return null
-  const interactive = !!onClick
-  return (
-    <button
-      onClick={onClick}
-      disabled={!interactive}
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0 ${interactive ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}`}
-      style={{ background: `${cfg.color}26`, color: cfg.color }}
-      title={interactive ? `Squad: ${cfg.label} — click to change` : `Squad: ${cfg.label}`}
-    >
-      {cfg.emoji} {cfg.label}
-    </button>
-  )
-}
-
-function ScopeBadge({ agent }: { agent: UnifiedAgent }) {
-  if (agent.scope === 'global') {
-    return (
-      <span
-        className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-surface-2 text-text-muted shrink-0"
-        title="Global agent"
-      >
-        G
-      </span>
-    )
-  }
-  const name = agent.projectName ?? 'Unknown'
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-amber-500/10 text-amber-400 shrink-0"
-      title={`Project: ${name}`}
-    >
-      <FolderOpen className="w-2.5 h-2.5" />
-      {name}
-    </span>
   )
 }

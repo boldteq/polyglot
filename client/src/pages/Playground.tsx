@@ -13,6 +13,7 @@ import { useApi } from '../hooks/useApi'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
 import { MarkdownRenderer } from '../components/MarkdownRenderer'
+import ConfirmDialog from '../components/ConfirmDialog'
 import {
   STORAGE_KEY_PLAYGROUND_HISTORY,
   STORAGE_KEY_PLAYGROUND_SETTINGS,
@@ -132,6 +133,9 @@ export default function Playground() {
   // Core state — use lazy initializers so loadPersistedSession runs once, not on every render
   const [selectedAgent, setSelectedAgent] = useState<string>(() => loadPersistedSession().selectedAgent)
   const [prompt, setPrompt] = useState(() => loadPersistedSession().prompt)
+  // C12: gate the first real Claude run of a session behind a cost confirm.
+  const runConfirmedRef = useRef(false)
+  const [pendingRun, setPendingRun] = useState<{ prompt?: string; agent?: string } | null>(null)
   const [running, setRunning] = useState(false)
   const [output, setOutput] = useState(() => loadPersistedSession().output)
   const [activityLog, setActivityLog] = useState<ActivityEntry[]>([])
@@ -323,6 +327,13 @@ export default function Playground() {
     const testPrompt = (overridePrompt ?? prompt).trim()
     if (!testPrompt) { toast('error', 'Enter a test prompt'); return }
 
+    // C12: first run of the session must be confirmed (spawns the real Claude
+    // API and costs tokens). Subsequent runs skip the prompt.
+    if (!runConfirmedRef.current) {
+      setPendingRun({ prompt: overridePrompt, agent: overrideAgent })
+      return
+    }
+
     const agentToUse = overrideAgent ?? selectedAgent
     const resolvedAgent = allAgents.find(a => a.filename === agentToUse || a.name === agentToUse)
     setRunning(true)
@@ -372,6 +383,16 @@ export default function Playground() {
       })
 
       if (!response.ok) {
+        // Distinct UX for rate limiting — surface Retry-After if upstream provided one.
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After')
+          const hint = retryAfter ? ` Retry in ${retryAfter}s.` : ' Wait a moment.'
+          toast('error', `Rate limit hit on /playground/run.${hint}`)
+          throw new Error(`429 Too Many Requests — ${hint.trim()}`)
+        }
+        if (response.status === 415) {
+          throw new Error('Server rejected request: Content-Type must be application/json (transport bug).')
+        }
         const errText = await response.text().catch(() => `HTTP ${response.status}`)
         const isClient = response.status >= 400 && response.status < 500
         throw new Error(isClient
@@ -424,9 +445,27 @@ export default function Playground() {
             fullOutput = event.output || fullOutput
             setOutput(fullOutput)
           } else if (event.type === 'error') {
-            fullOutput = fullOutput ? `${fullOutput}\n\n---\nError: ${event.error}` : `Error: ${event.error}`
+            // Build a structured error block. Show error line, then code/cause/tip
+            // /stderrTail as labeled rows so the operator can self-diagnose.
+            const lines: string[] = [`Error: ${event.error || 'Unknown error'}`]
+            if (event.code) lines.push(`Code: ${event.code}`)
+            if (event.cause) lines.push(`Cause: ${event.cause}`)
+            if (event.tip) lines.push(`Tip: ${event.tip}`)
+            if (Array.isArray(event.candidates) && event.candidates.length > 0) {
+              lines.push(`Valid agent names: ${event.candidates.slice(0, 10).join(', ')}${event.candidates.length > 10 ? ', …' : ''}`)
+            }
+            if (event.stderrTail) {
+              lines.push('--- stderr (last 500 chars) ---')
+              lines.push(event.stderrTail)
+            }
+            const block = lines.join('\n')
+            fullOutput = fullOutput ? `${fullOutput}\n\n---\n${block}` : block
             setOutput(fullOutput)
             hadError = true
+            // CTA toast for spawn / binary-missing — link operator to /setup.
+            if (event.code === 'claude_binary_missing' || (event.code && event.code.startsWith('spawn_'))) {
+              toast('error', 'Claude CLI problem. Open /setup → Run Self-Test for diagnostics.')
+            }
           }
         } catch (err) {
           const elapsed = Date.now() - startTimeRef.current
@@ -685,6 +724,19 @@ export default function Playground() {
 
   return (
     <div className="h-screen flex flex-col">
+      <ConfirmDialog
+        open={!!pendingRun}
+        title="Run this agent?"
+        message={`This spawns the real Claude API${selectedAgent ? ` as "${selectedAgent}"` : ''} and costs tokens. Shown once per session.`}
+        confirmLabel="Run"
+        onClose={() => setPendingRun(null)}
+        onConfirm={() => {
+          runConfirmedRef.current = true
+          const p = pendingRun
+          setPendingRun(null)
+          runTest(p?.prompt, p?.agent)
+        }}
+      />
       {/* Header */}
       <div className="px-6 py-3 border-b border-border bg-surface shrink-0">
         <div className="flex items-center justify-between">
@@ -903,10 +955,18 @@ export default function Playground() {
                 {showTemplates && (
                   <div className="absolute right-0 top-full mt-1 w-64 bg-surface border border-border rounded-xl shadow-2xl z-20 max-h-[250px] overflow-y-auto">
                     {templates.map(tmpl => (
-                      <button
+                      <div
                         key={tmpl.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => loadTemplate(tmpl)}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors group"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            loadTemplate(tmpl)
+                          }
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors group cursor-pointer"
                       >
                         <BookmarkPlus className="w-3.5 h-3.5 text-text-muted shrink-0" />
                         <div className="min-w-0 flex-1">
@@ -916,10 +976,11 @@ export default function Playground() {
                         <button
                           onClick={(e) => removeTemplate(e, tmpl.id)}
                           className="p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-red transition-all shrink-0"
+                          aria-label="Remove template"
                         >
                           <X className="w-3 h-3" />
                         </button>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}

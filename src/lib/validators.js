@@ -39,21 +39,32 @@ function resolveProjectPath(id) {
   }
 }
 
+// Canonical allowed write/read roots: ~/.claude plus every configured projectDir.
+function allowedRoots() {
+  const config = loadConfig();
+  return [
+    CLAUDE_DIR,
+    ...config.projectDirs.map(d => path.resolve(d.replace(/^~/, HOME))),
+  ];
+}
+
+// True only if `resolvedPath` is exactly an allowed root or strictly inside one.
+// The trailing-`path.sep` check prevents sibling-prefix escapes
+// (e.g. "/x/App-evil" must NOT match root "/x/App").
+function isPathAllowed(resolvedPath) {
+  if (!resolvedPath || typeof resolvedPath !== 'string') return false;
+  return allowedRoots().some(root =>
+    resolvedPath === root || resolvedPath.startsWith(root + path.sep)
+  );
+}
+
 function validateProjectId(req, res, next) {
   const projectPath = resolveProjectPath(req.params.id);
   if (!projectPath) {
     return res.status(400).json({ error: 'Invalid project ID' });
   }
   // Verify it's within allowed project directories
-  const config = loadConfig();
-  const allowedRoots = [
-    CLAUDE_DIR,
-    ...config.projectDirs.map(d => path.resolve(d.replace(/^~/, HOME))),
-  ];
-  const isAllowed = allowedRoots.some(root =>
-    projectPath === root || projectPath.startsWith(root + path.sep)
-  );
-  if (!isAllowed) {
+  if (!isPathAllowed(projectPath)) {
     return res.status(403).json({ error: 'Project outside allowed directories' });
   }
   if (!fs.existsSync(projectPath) || !fs.statSync(projectPath).isDirectory()) {
@@ -63,4 +74,4 @@ function validateProjectId(req, res, next) {
   next();
 }
 
-module.exports = { isValidName, validateName, resolveProjectPath, validateProjectId };
+module.exports = { isValidName, validateName, resolveProjectPath, validateProjectId, isPathAllowed, allowedRoots };

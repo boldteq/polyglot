@@ -52,7 +52,9 @@ function loadWeights() {
     const dbModule = require('./db');
     const stored = dbModule.loadExperienceWeights();
     if (stored && Object.keys(stored).length > 0) return { ...DEFAULT_WEIGHTS, ...stored };
-  } catch {}
+  } catch (e) {
+    try { require('./lib/logger').warn(`loadWeights fallback: ${e.message}`, { category: 'db' }); } catch {}
+  }
   return { ...DEFAULT_WEIGHTS };
 }
 
@@ -103,7 +105,8 @@ function loadAgentRuns() {
   try {
     const dbModule = require('./db');
     return dbModule.loadAgentRuns(10000);
-  } catch {
+  } catch (e) {
+    try { require('./lib/logger').warn(`loadAgentRuns fallback: ${e.message}`, { category: 'db' }); } catch {}
     return [];
   }
 }

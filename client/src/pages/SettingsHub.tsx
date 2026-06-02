@@ -10,9 +10,11 @@ const TemplatesTab = lazy(() => import('./TemplateLibrary'))
 const MemoryTab = lazy(() => import('./Memory'))
 const BackupTab = lazy(() => import('./Backup'))
 const DatabaseTab = lazy(() => import('./DatabaseExplorer'))
+const TuningTab = lazy(() => import('./SettingsTuning'))
 
 const TABS = [
   { id: 'general', label: 'General' },
+  { id: 'tuning', label: 'Tuning' },
   { id: 'claude-md', label: 'CLAUDE.md' },
   { id: 'commands', label: 'Commands & Rules' },
   { id: 'templates', label: 'Templates' },
@@ -52,6 +54,7 @@ export default function SettingsHub({ onSave }: Props) {
       <TabNav tabs={TABS} active={activeTab} onChange={handleTabChange} />
       <Suspense fallback={<Spinner />}>
         {activeTab === 'general' && <GeneralTab onSave={onSave} />}
+        {activeTab === 'tuning' && <TuningTab />}
         {activeTab === 'claude-md' && <ClaudeMdTab />}
         {activeTab === 'commands' && <CommandsRulesTab />}
         {activeTab === 'templates' && <TemplatesTab />}

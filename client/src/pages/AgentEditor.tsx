@@ -14,6 +14,7 @@ import {
   getCategories,
 } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { useUnsavedGuard } from '../hooks/useUnsavedGuard'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
 import RichMarkdownEditor from '../components/RichMarkdownEditor'
@@ -83,6 +84,7 @@ export default function AgentEditor({ scope }: Props) {
   const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
+  useUnsavedGuard(dirty)
 
   // Parsed fields
   const [meta, setMeta] = useState<Record<string, string>>({})

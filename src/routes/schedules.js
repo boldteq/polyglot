@@ -1,126 +1,173 @@
 'use strict';
 
 const { randomUUID } = require('crypto');
-
 const { Router } = require('express');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
 const cron = require('node-cron');
-const { spawn } = require('child_process');
+const { CronExpressionParser } = require('cron-parser');
+
 const { rateLimit } = require('../middleware/rateLimit');
 const db = require('../db');
+const agentSync = require('../lib/agentSync');
+const systemSchedules = require('../lib/systemSchedules');
+const { runClaudeSync, buildAgentPrompt, validateAgentExists } = require('../lib/runClaude');
 
 const router = Router();
 
-const HOME = os.homedir();
-const CLAUDE_DIR = path.join(HOME, '.claude');
-
 const activeJobs = new Map();
-const inflightJobs = new Set(); // guard: prevent overlapping runs per schedule
+// inflightJobs: Map<scheduleId, { runId, startedAt, child? }>
+const inflightJobs = new Map();
+const retryTimers = new Map();
+const RUN_TIMEOUT_MS = 5 * 60 * 1000;
+const RETRY_DELAY_MS = 60 * 1000;
+
+const CRON_PRESETS = [
+  { label: 'Every minute',         value: '* * * * *' },
+  { label: 'Every 5 minutes',      value: '*/5 * * * *' },
+  { label: 'Every hour',           value: '0 * * * *' },
+  { label: 'Every day at 9am UTC', value: '0 9 * * *' },
+  { label: 'Every Monday 9am UTC', value: '0 9 * * 1' },
+  { label: 'Every Sunday 2am UTC', value: '0 2 * * 0' },
+  { label: 'Every 1st of month',   value: '0 9 1 * *' },
+];
 
 function genId() { return randomUUID(); }
 
-function findAgentFile(agentName) {
-  if (!agentName || typeof agentName !== 'string') return null;
-  const dir = path.join(CLAUDE_DIR, 'agents');
+function computeNextRunAt(cronExpr) {
+  if (!cronExpr) return null;
   try {
-    if (!fs.existsSync(dir)) return null;
-    const target = agentName.toLowerCase();
-    for (const file of fs.readdirSync(dir)) {
-      if (!file.endsWith('.md')) continue;
-      const fname = file.replace(/\.md$/, '');
-      if (fname === agentName || fname.toLowerCase() === target) return path.join(dir, file);
-    }
+    const it = CronExpressionParser.parse(cronExpr, { tz: 'Etc/UTC' });
+    return it.next().toDate().toISOString();
   } catch {
     return null;
   }
-  return null;
 }
 
-function validateAgentExists(agentName) {
-  return findAgentFile(agentName) !== null;
-}
-
-function runClaudeSync(prompt, timeoutMs = 120000) {
-  return new Promise((resolve, reject) => {
-    const claudePath = process.env.CLAUDE_PATH || 'claude';
-    const childEnv = { ...process.env, HOME: os.homedir() };
-    delete childEnv.CLAUDECODE;
-    delete childEnv.CLAUDE_CODE_ENTRYPOINT;
-    delete childEnv.CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING;
-    delete childEnv.CLAUDE_AGENT_SDK_VERSION;
-    const proc = spawn(claudePath, ['-p'], { env: childEnv });
-    let out = '', err = '';
-    let killed = false;
-
-    const timer = setTimeout(() => {
-      killed = true;
-      proc.kill('SIGTERM');
-      setTimeout(() => { try { proc.kill('SIGKILL'); } catch {} }, 5000);
-    }, timeoutMs);
-
-    proc.stdout.on('data', d => { out += d.toString(); });
-    proc.stderr.on('data', d => { err += d.toString(); });
-    proc.on('close', code => {
-      clearTimeout(timer);
-      if (killed) reject(new Error(`Node execution timed out after ${timeoutMs / 1000}s`));
-      else if (code !== 0) reject(new Error(err.trim() || `claude exited ${code}`));
-      else resolve(out.trim());
-    });
-    proc.on('error', (e) => { clearTimeout(timer); reject(e); });
-    proc.stdin.write(prompt, 'utf8');
-    proc.stdin.end();
-  });
-}
-
-function logAgentRun(entry) {
-  const estimateTokens = (text) => Math.ceil((text || '').length / 4);
-  const estimateCost = (i, o) => (i * 3 + o * 15) / 1_000_000;
-  const inputTokens = estimateTokens(entry.prompt || '');
-  const outputTokens = estimateTokens(entry.output || '');
-  const run = {
-    id: randomUUID(),
-    agentName: entry.agentName || 'unknown',
-    prompt: (entry.prompt || '').slice(0, 200),
-    source: entry.source || 'unknown',
-    timestamp: new Date().toISOString(),
-    duration: entry.duration || 0,
-    status: entry.status || 'success',
-    promptChars: (entry.prompt || '').length,
-    outputChars: (entry.output || '').length,
-    estimatedTokens: inputTokens + outputTokens,
-    estimatedCost: estimateCost(inputTokens, outputTokens),
-    error: entry.error || null,
-    metadata: entry.metadata || {},
+function decorateForApi(s) {
+  if (!s) return s;
+  return {
+    ...s,
+    kind: 'user',
+    builtin: false,
+    nextRunAt: s.enabled ? computeNextRunAt(s.cron) : null,
+    // User schedules always invoke claude CLI → always LLM cost.
+    needsLlm: true,
+    cancellable: true,
+    costEstimate: { lowUsd: 0.05, highUsd: 0.50 },
   };
-  try { db.insertAgentRun(run); } catch (err) {
-    console.error('[logAgentRun] DB insert failed:', err.message);
-    db.insertErrorLog({ source: 'schedule', message: `DB insert failed for agent run: ${err.message}`, stack: err.stack, context: { agentName: entry.agentName } });
-  }
-  return run;
-}
-
-function buildScheduledPrompt(schedule) {
-  const file = findAgentFile(schedule.agentName);
-  if (!file) {
-    throw new Error(`Agent '${schedule.agentName}' not found`);
-  }
-  const instructions = fs.readFileSync(file, 'utf-8');
-  return `${instructions}\n\n---\n\n## Task:\n${schedule.prompt}\n\n---\n\nIMPORTANT: Produce the actual deliverable directly. Do NOT write meta-commentary. Output only the finished work product.`;
 }
 
 function persistRunStatus(id, status) {
   try { db.updateScheduleRunStatus(id, new Date().toISOString(), status); }
   catch (err) {
     console.error('[schedule] failed to persist run status:', err.message);
-    db.insertErrorLog({ source: 'schedule', message: `Failed to persist run status: ${err.message}`, stack: err.stack, context: { scheduleId: id, status } });
+    try {
+      db.insertErrorLog({
+        source: 'schedule',
+        message: `Failed to persist run status: ${err.message}`,
+        stack: err.stack,
+        context: { scheduleId: id, status },
+      });
+    } catch {}
   }
+}
+
+// Synchronous setup: validates schedule, inserts stub row, registers
+// inflight state, emits schedule:start. Returns { runId, inflightState,
+// fresh } or { skipped:true }. Caller invokes executeTickBody() after.
+function prepareTick(schedule, { retryCount = 0 } = {}) {
+  if (inflightJobs.has(schedule.id)) {
+    return { skipped: true, reason: 'inflight', runId: inflightJobs.get(schedule.id).runId };
+  }
+  const fresh = db.getScheduleById(schedule.id);
+  if (!fresh) return { skipped: true, reason: 'deleted' };
+
+  const runId = randomUUID();
+  const startedAt = new Date().toISOString();
+
+  try {
+    db.insertAgentRunStub({
+      id: runId,
+      agentName: fresh.agentName,
+      prompt: fresh.prompt,
+      source: 'schedule',
+      metadata: { scheduleId: fresh.id, retryCount },
+    });
+  } catch (err) {
+    console.error('[schedule] stub insert failed:', err.message);
+    return { skipped: true, reason: 'stub_insert_failed', error: err.message };
+  }
+
+  const inflightState = { runId, startedAt, child: null, startTime: Date.now() };
+  inflightJobs.set(schedule.id, inflightState);
+
+  agentSync.emitScheduleEvent('start', {
+    id: fresh.id, kind: 'user', name: fresh.name,
+    agentName: fresh.agentName, startedAt, runId, retryCount,
+  });
+  return { runId, inflightState, fresh, startedAt };
+}
+
+// Async body of a tick — invokes the LLM handler and writes the final row.
+// Called after prepareTick has set up inflight state + stub row + emitted
+// schedule:start. Safe to call directly (run-now async path) or via
+// executeTick (cron path).
+async function runTickBody(prep, { retryCount = 0 } = {}) {
+  const { runId, inflightState, fresh, startedAt } = prep;
+  const startTime = inflightState.startTime;
+
+  const finish = (status, { output = '', error = null, metadataPatch = {} } = {}) => {
+    const duration = Date.now() - startTime;
+    try {
+      db.completeAgentRun(runId, { status, duration, output, error, metadataPatch });
+    } catch (err) {
+      console.error('[schedule] completeAgentRun failed:', err.message);
+    }
+    persistRunStatus(fresh.id, status === 'success' ? 'success' : status === 'cancelled' ? 'cancelled' : 'error');
+    const evt = status === 'success' ? 'complete' : status === 'cancelled' ? 'cancelled' : 'error';
+    agentSync.emitScheduleEvent(evt, {
+      id: fresh.id, kind: 'user', status, runId,
+      lastRunAt: startedAt, duration, error,
+    });
+    inflightJobs.delete(schedule.id);
+    return { ok: status === 'success', runId, status, duration, output, error };
+  };
+
+  try {
+    const prompt = buildAgentPrompt(fresh.agentName, fresh.prompt);
+    const output = await runClaudeSync(prompt, RUN_TIMEOUT_MS, {
+      onProc: (child) => { inflightState.child = child; },
+    });
+    return finish('success', { output });
+  } catch (err) {
+    if (err.cancelled) {
+      return finish('cancelled', { error: err.message });
+    }
+    const result = finish('error', { error: err.message });
+
+    if (retryCount === 0) {
+      console.warn(`[schedule] ${fresh.id} failed — scheduling 60s retry`);
+      const timer = setTimeout(() => {
+        retryTimers.delete(fresh.id);
+        executeTick(fresh, { retryCount: 1 }).catch(e =>
+          console.warn(`[schedule] retry tick unhandled: ${e.message}`)
+        );
+      }, RETRY_DELAY_MS);
+      retryTimers.set(fresh.id, timer);
+    }
+    return result;
+  }
+}
+
+// Synchronous wrapper used by the cron callback — prepareTick + runTickBody.
+async function executeTick(schedule, opts = {}) {
+  const prep = prepareTick(schedule, opts);
+  if (prep.skipped) return prep;
+  return runTickBody(prep, opts);
 }
 
 function startScheduleJob(schedule) {
   if (activeJobs.has(schedule.id)) {
-    activeJobs.get(schedule.id).stop();
+    try { activeJobs.get(schedule.id).stop(); } catch {}
     activeJobs.delete(schedule.id);
   }
   if (!schedule.enabled) return;
@@ -128,42 +175,11 @@ function startScheduleJob(schedule) {
     console.warn(`[schedule] invalid cron — job not scheduled: id=${schedule.id} name="${schedule.name}" cron="${schedule.cron}"`);
     return;
   }
-
-  const job = cron.schedule(schedule.cron, async () => {
-    // Inflight guard — skip tick if previous run still in progress
-    if (inflightJobs.has(schedule.id)) {
-      console.warn(`[schedule] skipping tick — previous run still in progress: id=${schedule.id} name="${schedule.name}"`);
-      return;
-    }
-    inflightJobs.add(schedule.id);
-    const startTime = Date.now();
-    // Re-read fresh state so a paused/deleted schedule doesn't fire stale closure work
-    const fresh = db.getScheduleById(schedule.id);
-    if (!fresh || !fresh.enabled) {
-      inflightJobs.delete(schedule.id);
-      return;
-    }
-
-    try {
-      const prompt = buildScheduledPrompt(fresh);
-      const output = await runClaudeSync(prompt, 300000);
-      logAgentRun({
-        agentName: fresh.agentName, prompt: fresh.prompt, output,
-        source: 'schedule', duration: Date.now() - startTime, status: 'success',
-        metadata: { scheduleId: fresh.id },
-      });
-      persistRunStatus(fresh.id, 'success');
-    } catch (err) {
-      logAgentRun({
-        agentName: fresh.agentName, prompt: fresh.prompt, output: '',
-        source: 'schedule', duration: Date.now() - startTime, status: 'error',
-        error: err.message, metadata: { scheduleId: fresh.id },
-      });
-      persistRunStatus(fresh.id, 'error');
-    } finally {
-      inflightJobs.delete(schedule.id);
-    }
-  });
+  const job = cron.schedule(schedule.cron, () => {
+    executeTick(schedule).catch(err =>
+      console.warn(`[schedule] tick unhandled: ${err.message}`)
+    );
+  }, { timezone: 'Etc/UTC' });
   activeJobs.set(schedule.id, job);
 }
 
@@ -182,20 +198,105 @@ function bootSchedules() {
       startScheduleJob(s);
       active++;
     }
-    if (active > 0) console.log(`  Schedules: ${active} active cron job(s) restored`);
+    if (active > 0) console.log(`  Schedules: ${active} user cron job(s) restored`);
     if (invalid > 0) console.warn(`  Schedules: ${invalid} schedule(s) skipped due to invalid cron expressions`);
   } catch (err) {
     console.error('[bootSchedules] failed:', err.message);
-    db.insertErrorLog({ source: 'schedule', message: `bootSchedules failed: ${err.message}`, stack: err.stack, context: { type: 'boot' } });
+    try {
+      db.insertErrorLog({
+        source: 'schedule',
+        message: `bootSchedules failed: ${err.message}`,
+        stack: err.stack,
+        context: { type: 'boot' },
+      });
+    } catch {}
   }
 }
 
-// GET /api/schedules
+function stopAllSchedules() {
+  for (const [id, job] of activeJobs.entries()) {
+    try { job.stop(); } catch {}
+    activeJobs.delete(id);
+  }
+  for (const [id, timer] of retryTimers.entries()) {
+    try { clearTimeout(timer); } catch {}
+    retryTimers.delete(id);
+  }
+}
+
+function getUserInflight() {
+  const out = [];
+  for (const [id, state] of inflightJobs.entries()) {
+    out.push({
+      id,
+      kind: 'user',
+      runId: state.runId,
+      startedAt: state.startedAt,
+    });
+  }
+  return out;
+}
+
+function cancelUserRun(id) {
+  const state = inflightJobs.get(id);
+  if (!state) return { ok: false, reason: 'not_running' };
+  if (state.child && typeof state.child._polyglotCancel === 'function') {
+    state.child._polyglotCancel();
+    return { ok: true, runId: state.runId };
+  }
+  return { ok: false, reason: 'no_subprocess' };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROUTES
+// ═══════════════════════════════════════════════════════════════════════════
+
 router.get('/schedules', rateLimit('read'), (req, res) => {
-  res.json(db.loadSchedules());
+  try {
+    res.json(db.loadSchedules().map(decorateForApi));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// POST /api/schedules
+router.get('/schedules/system', rateLimit('read'), (req, res) => {
+  try {
+    res.json(systemSchedules.getAllForApi());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/schedules/presets', rateLimit('read'), (req, res) => {
+  res.json({ presets: CRON_PRESETS });
+});
+
+// GET /api/schedules/inflight — currently-running runs (user + system).
+// Frontend reads on mount to populate 'running' badges that survive page
+// reload mid-handler.
+router.get('/schedules/inflight', rateLimit('read'), (req, res) => {
+  try {
+    res.json({
+      inflight: [...getUserInflight(), ...systemSchedules.getInflight()],
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/schedules/validate-cron', rateLimit('read'), (req, res) => {
+  const { cronExpr } = req.body || {};
+  if (typeof cronExpr !== 'string') {
+    return res.status(400).json({ valid: false, error: 'cronExpr must be a string' });
+  }
+  const valid = cron.validate(cronExpr);
+  res.json({
+    valid,
+    nextRunAt: valid ? computeNextRunAt(cronExpr) : null,
+    error: valid ? null : 'Invalid cron expression',
+  });
+});
+
 router.post('/schedules', rateLimit('write'), (req, res) => {
   const { name, agentName, prompt, cronExpr, enabled } = req.body || {};
   if (!name || !agentName || !prompt || !cronExpr) {
@@ -232,17 +333,41 @@ router.post('/schedules', rateLimit('write'), (req, res) => {
     db.insertSchedule(schedule);
   } catch (err) {
     console.error('[schedules POST] insert failed:', err.message);
-    db.insertErrorLog({ source: 'schedule', message: `Schedule create failed: ${err.message}`, stack: err.stack, context: { name: schedule.name } });
+    try {
+      db.insertErrorLog({
+        source: 'schedule',
+        message: `Schedule create failed: ${err.message}`,
+        stack: err.stack,
+        context: { name: schedule.name },
+      });
+    } catch {}
     return res.status(500).json({ error: 'Failed to persist schedule' });
   }
 
   if (schedule.enabled) startScheduleJob(schedule);
-  res.json(schedule);
+  agentSync.emitScheduleEvent('upsert', { id: schedule.id, kind: 'user' });
+  res.json(decorateForApi(schedule));
 });
 
-// PUT /api/schedules/:id
 router.put('/schedules/:id', rateLimit('write'), (req, res) => {
   const id = req.params.id;
+
+  if (id.startsWith('sys-')) {
+    const def = systemSchedules.findDefinition(id);
+    if (!def) return res.status(404).json({ error: 'System schedule not found' });
+    const { enabled } = req.body || {};
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'System schedules only accept { enabled: boolean }' });
+    }
+    try {
+      systemSchedules.setEnabled(id, enabled);
+      const row = systemSchedules.getAllForApi().find(s => s.id === id);
+      return res.json(row);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   const existing = db.getScheduleById(id);
   if (!existing) return res.status(404).json({ error: 'Schedule not found' });
 
@@ -272,7 +397,14 @@ router.put('/schedules/:id', rateLimit('write'), (req, res) => {
     db.updateScheduleFields(id, fields);
   } catch (err) {
     console.error('[schedules PUT] update failed:', err.message);
-    db.insertErrorLog({ source: 'schedule', message: `Schedule update failed: ${err.message}`, stack: err.stack, context: { id } });
+    try {
+      db.insertErrorLog({
+        source: 'schedule',
+        message: `Schedule update failed: ${err.message}`,
+        stack: err.stack,
+        context: { id },
+      });
+    } catch {}
     return res.status(500).json({ error: 'Failed to update schedule' });
   }
 
@@ -282,28 +414,118 @@ router.put('/schedules/:id', rateLimit('write'), (req, res) => {
   if (updated.enabled) {
     startScheduleJob(updated);
   } else if (activeJobs.has(id)) {
-    activeJobs.get(id).stop();
+    try { activeJobs.get(id).stop(); } catch {}
     activeJobs.delete(id);
+    const retry = retryTimers.get(id);
+    if (retry) { clearTimeout(retry); retryTimers.delete(id); }
   }
 
-  res.json(updated);
+  agentSync.emitScheduleEvent('upsert', { id, kind: 'user' });
+  res.json(decorateForApi(updated));
 });
 
-// DELETE /api/schedules/:id
 router.delete('/schedules/:id', rateLimit('write'), (req, res) => {
   const id = req.params.id;
+  if (id.startsWith('sys-')) {
+    return res.status(400).json({ error: 'System schedules cannot be deleted — disable via PUT { enabled: false } instead' });
+  }
+
   if (activeJobs.has(id)) {
-    activeJobs.get(id).stop();
+    try { activeJobs.get(id).stop(); } catch {}
     activeJobs.delete(id);
   }
+  const retry = retryTimers.get(id);
+  if (retry) { clearTimeout(retry); retryTimers.delete(id); }
+
   try {
     db.deleteScheduleById(id);
   } catch (err) {
     console.error('[schedules DELETE] delete failed:', err.message);
-    db.insertErrorLog({ source: 'schedule', message: `Schedule delete failed: ${err.message}`, stack: err.stack, context: { id } });
+    try {
+      db.insertErrorLog({
+        source: 'schedule',
+        message: `Schedule delete failed: ${err.message}`,
+        stack: err.stack,
+        context: { id },
+      });
+    } catch {}
     return res.status(500).json({ error: 'Failed to delete schedule' });
   }
+
+  agentSync.emitScheduleEvent('upsert', { id, kind: 'user', removed: true });
   res.json({ ok: true });
 });
 
-module.exports = { router, bootSchedules };
+router.get('/schedules/:id/runs', rateLimit('read'), (req, res) => {
+  const id = req.params.id;
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 500);
+  try {
+    const runs = db.getScheduleRunsFor(id, { limit });
+    res.json({ runs });
+  } catch (err) {
+    console.error('[schedules runs] fetch failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/schedules/:id/run-now — ASYNC. Returns 202 with runId immediately,
+// handler runs in background. Frontend tracks completion via SSE
+// (schedule:start → schedule:complete | error | cancelled).
+router.post('/schedules/:id/run-now', rateLimit('write'), async (req, res) => {
+  const id = req.params.id;
+
+  if (id.startsWith('sys-')) {
+    try {
+      const result = await systemSchedules.runHandler(id, { async: true });
+      if (result.skipped) {
+        return res.status(409).json({ error: 'Already running', runId: result.runId });
+      }
+      return res.status(202).json(result);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  const existing = db.getScheduleById(id);
+  if (!existing) return res.status(404).json({ error: 'Schedule not found' });
+
+  // prepareTick runs synchronously: inserts stub row, sets inflight state,
+  // emits schedule:start. Returns runId so we can respond 202 immediately
+  // while runTickBody continues in background.
+  const prep = prepareTick(existing);
+  if (prep.skipped) {
+    if (prep.reason === 'inflight') {
+      return res.status(409).json({ error: 'Already running', runId: prep.runId });
+    }
+    return res.status(500).json({ error: prep.error || prep.reason });
+  }
+
+  setImmediate(() => {
+    runTickBody(prep).catch(err =>
+      console.warn(`[schedule] run-now body unhandled: ${err.message}`)
+    );
+  });
+
+  res.status(202).json({ ok: true, status: 'started', kind: 'user', runId: prep.runId });
+});
+
+// POST /api/schedules/:id/cancel — kill a running handler. LLM handlers only;
+// pure-JS handlers (Roster/Witness/Cadence) finish too fast to cancel.
+router.post('/schedules/:id/cancel', rateLimit('write'), (req, res) => {
+  const id = req.params.id;
+  let result;
+  if (id.startsWith('sys-')) {
+    result = systemSchedules.cancelInflight(id);
+  } else {
+    result = cancelUserRun(id);
+  }
+  if (!result.ok) {
+    const status = result.reason === 'not_cancellable' ? 400
+      : result.reason === 'not_running' ? 404
+      : 500;
+    return res.status(status).json({ error: result.reason });
+  }
+  res.json({ ok: true, runId: result.runId });
+});
+
+module.exports = { router, bootSchedules, stopAllSchedules };

@@ -15,7 +15,7 @@ import type { AgentRunEntry, AgentAnalyticsSummary, RoutingSavings } from '../li
 
 type TimeRange = '1d' | '7d' | '30d' | 'all'
 
-import { SOURCE_COLORS } from '../lib/constants'
+import { SOURCE_COLORS, HEALTH_THRESHOLDS } from '../lib/constants'
 
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime()
@@ -195,7 +195,7 @@ export default function Analytics() {
           <div className="flex items-center gap-2 text-text-muted text-xs mb-2">
             <BarChart3 className="w-3.5 h-3.5" /> Success Rate
           </div>
-          <div className={`text-2xl font-bold ${stats.successRate >= 90 ? 'text-green-400' : stats.successRate >= 70 ? 'text-yellow-400' : 'text-red-400'}`}>
+          <div className={`text-2xl font-bold ${stats.successRate >= HEALTH_THRESHOLDS.healthy ? 'text-green-400' : stats.successRate >= HEALTH_THRESHOLDS.degraded ? 'text-yellow-400' : 'text-red-400'}`}>
             {stats.successRate}%
           </div>
         </div>
@@ -363,7 +363,7 @@ export default function Analytics() {
                     <td className="py-2 pr-4 font-medium">{name}</td>
                     <td className="py-2 pr-4 text-right text-text-muted">{data.runs}</td>
                     <td className="py-2 pr-4 text-right">
-                      <span className={data.runs > 0 && (data.success / data.runs) >= 0.9 ? 'text-green-400' : 'text-yellow-400'}>
+                      <span className={data.runs > 0 && (data.success / data.runs) * 100 >= HEALTH_THRESHOLDS.healthy ? 'text-green-400' : 'text-yellow-400'}>
                         {data.runs > 0 ? Math.round((data.success / data.runs) * 100) : 0}%
                       </span>
                     </td>

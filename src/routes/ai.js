@@ -179,9 +179,23 @@ router.post('/ai/apply', rateLimit('write'), (req, res) => {
   );
   if (!allowed) return res.status(403).json({ error: 'Path outside allowed directories' });
 
-  const basename = path.basename(resolved).toLowerCase();
-  const BLOCKED_FILES = ['.env', '.env.local', '.env.production', 'credentials.json', 'id_rsa', 'id_ed25519'];
-  if (BLOCKED_FILES.includes(basename)) {
+  // Deny writes to secret/credential/config files by pattern, not an exact
+  // basename list (C7 audit — the old list missed .env.* variants, .npmrc,
+  // settings.json hook injection, .git/.aws/.ssh, *.pem/*.key).
+  const lower = resolved.toLowerCase();
+  const base = path.basename(lower);
+  const segs = lower.split(path.sep);
+  const BLOCKED_EXACT = new Set([
+    'credentials.json', 'id_rsa', 'id_ed25519', 'id_ecdsa', '.npmrc',
+    'settings.json', 'settings.local.json',
+  ]);
+  const blocked =
+    base.startsWith('.env') ||
+    base.endsWith('.pem') ||
+    base.endsWith('.key') ||
+    BLOCKED_EXACT.has(base) ||
+    segs.includes('.git') || segs.includes('.aws') || segs.includes('.ssh');
+  if (blocked) {
     return res.status(403).json({ error: 'Cannot write to sensitive files' });
   }
 
@@ -233,16 +247,14 @@ router.post('/ai/chat', rateLimit('heavy'), (req, res) => {
 
   proc.on('close', (code) => {
     if (code !== 0) {
-      console.error('[ai/chat] claude exited non-zero', { code, stderr: errOutput.slice(0, 500) });
-      db.insertErrorLog({ source: 'server', message: `AI chat: claude exited code ${code}`, context: { stderr: errOutput.slice(0, 500) } });
+      require('../lib/logger').error(`AI chat: claude exited code ${code}`, { category: 'integration', meta: { stderr: errOutput.slice(0, 500) } });
       return res.status(500).json({ error: `Agent process exited with code ${code}` });
     }
     res.json({ content: output.trim() });
   });
 
   proc.on('error', (err) => {
-    console.error('[ai/chat] spawn error', { code: err.code, msg: err.message });
-    db.insertErrorLog({ source: 'server', message: `AI chat spawn error: ${err.message}`, stack: err.stack, context: { code: err.code } });
+    require('../lib/logger').error(err, { category: 'integration', meta: { phase: 'spawn', surface: 'ai/chat', code: err.code } });
     if (!res.headersSent) res.status(500).json({ error: 'Failed to start agent process' });
   });
 
@@ -250,7 +262,7 @@ router.post('/ai/chat', rateLimit('heavy'), (req, res) => {
   proc.stdin.on('error', (err) => {
     if (stdinDone) return;
     stdinDone = true;
-    console.error('[ai/chat] stdin error', { code: err.code, msg: err.message });
+    require('../lib/logger').warn(`ai/chat stdin error: ${err.message}`, { category: 'integration', meta: { code: err.code } });
     try { proc.kill(); } catch {}
     if (!res.headersSent) res.status(500).json({ error: 'Failed to deliver prompt to agent' });
   });
@@ -311,8 +323,7 @@ router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
 
   proc.on('close', (code, signal) => {
     if (code !== 0 || signal) {
-      console.error('[ai/stream] claude exited non-zero', { code, signal, stderr: errOutput.slice(0, 500) });
-      db.insertErrorLog({ source: 'server', message: `AI stream: claude exited code ${code}`, context: { signal, stderr: errOutput.slice(0, 500) } });
+      require('../lib/logger').error(`AI stream: claude exited code ${code}`, { category: 'integration', meta: { signal, stderr: errOutput.slice(0, 500) } });
       endStream({ type: 'error', error: `Agent process exited with code ${code}` });
     } else {
       endStream({ type: 'done', content: fullOutput.trim() });
@@ -320,8 +331,7 @@ router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
   });
 
   proc.on('error', (err) => {
-    console.error('[ai/stream] spawn error', { code: err.code, msg: err.message });
-    db.insertErrorLog({ source: 'server', message: `AI stream spawn error: ${err.message}`, stack: err.stack, context: { code: err.code } });
+    require('../lib/logger').error(err, { category: 'integration', meta: { phase: 'spawn', surface: 'ai/stream', code: err.code } });
     endStream({ type: 'error', error: 'Failed to start agent process' });
   });
 
@@ -332,7 +342,7 @@ router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
   proc.stdin.on('error', (err) => {
     if (streamStdinDone) return;
     streamStdinDone = true;
-    console.error('[ai/stream] stdin error', { code: err.code, msg: err.message });
+    require('../lib/logger').warn(`ai/stream stdin error: ${err.message}`, { category: 'integration', meta: { code: err.code } });
     try { proc.kill(); } catch {}
     endStream({ type: 'error', error: 'Failed to deliver prompt to agent' });
   });

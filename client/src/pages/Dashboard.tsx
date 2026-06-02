@@ -20,8 +20,15 @@ import {
   getAnalyticsSummary,
   getSchedules,
   getRoutingSavings,
+  getHrRegistry,
 } from '../lib/api'
-import type { AgentRunEntry, AgentAnalyticsSummary, Schedule, RoutingSavings } from '../lib/api'
+import type {
+  AgentRunEntry,
+  AgentAnalyticsSummary,
+  Schedule,
+  RoutingSavings,
+  RegistryCounts,
+} from '../lib/api'
 
 interface Props {
   projects: Project[]
@@ -36,10 +43,11 @@ function timeAgo(ts: string): string {
 }
 
 import { SOURCE_COLORS } from '../lib/constants'
+import { useAppConfig } from '../hooks/useAppConfig'
 
-function healthColor(rate: number): string {
-  if (rate >= 90) return 'text-green'
-  if (rate >= 70) return 'text-amber'
+function healthColor(rate: number, healthy: number, degraded: number): string {
+  if (rate >= healthy) return 'text-green'
+  if (rate >= degraded) return 'text-amber'
   return 'text-red'
 }
 
@@ -67,10 +75,17 @@ function buildTrend(runs: AgentRunEntry[]): { label: string; success: number; er
 
 export default function Dashboard({ projects }: Props) {
   const navigate = useNavigate()
+  const { config } = useAppConfig()
+  const healthy = config.health.threshold_healthy
+  const degraded = config.health.threshold_degraded
+  const runsLimit = config.api_limits.runs_dashboard
+  const recentRunsCap = config.ui_caps.recent_runs
+  const topAgentsCap = config.ui_caps.top_agents
   const [runs, setRuns] = useState<AgentRunEntry[]>([])
   const [summary, setSummary] = useState<AgentAnalyticsSummary>({})
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [savings, setSavings] = useState<RoutingSavings | null>(null)
+  const [registryCounts, setRegistryCounts] = useState<RegistryCounts | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
 
@@ -78,21 +93,26 @@ export default function Dashboard({ projects }: Props) {
     setLoading(true)
     setLoadError(false)
     Promise.all([
-      getAnalyticsRuns({ limit: 200 }),
+      getAnalyticsRuns({ limit: runsLimit }),
       getAnalyticsSummary(),
       getSchedules(),
       getRoutingSavings().catch(() => null),
-    ]).then(([r, s, sc, sv]) => {
+      getHrRegistry().catch((err) => {
+        console.error('[dashboard] hr registry fetch failed:', err?.message ?? err)
+        return null
+      }),
+    ]).then(([r, s, sc, sv, reg]) => {
       setRuns(r.runs)
       setSummary(s)
       setSchedules(sc)
       setSavings(sv)
+      setRegistryCounts(reg?.counts ?? null)
     }).catch(() => {
       setLoadError(true)
     }).finally(() => setLoading(false))
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [runsLimit])
 
   const todayRuns = useMemo(() =>
     runs.filter(r => Date.now() - new Date(r.timestamp).getTime() < 86400000), [runs])
@@ -104,8 +124,8 @@ export default function Dashboard({ projects }: Props) {
   const activeSchedules = schedules.filter(s => s.enabled).length
 
   const topAgents = useMemo(() =>
-    Object.entries(summary ?? {}).sort(([, a], [, b]) => b.runCount - a.runCount).slice(0, 5),
-    [summary])
+    Object.entries(summary ?? {}).sort(([, a], [, b]) => b.runCount - a.runCount).slice(0, topAgentsCap),
+    [summary, topAgentsCap])
 
   const trend = useMemo(() => buildTrend(runs), [runs])
   const maxTrend = Math.max(...trend.map(d => d.total), 1)
@@ -141,7 +161,7 @@ export default function Dashboard({ projects }: Props) {
         {[
           { label: 'Run Agent', icon: FlaskConical, path: '/playground', color: 'text-purple-400', bg: 'bg-purple-500/10' },
           { label: 'Orchestrate', icon: Sparkles, path: '/orchestration', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-          { label: 'Agents', icon: Bot, path: '/agents', color: 'text-accent', bg: 'bg-accent/10', sub: `${Object.keys(summary).length || 0} active` },
+          { label: 'Agents', icon: Bot, path: '/agents', color: 'text-accent', bg: 'bg-accent/10', sub: `${registryCounts?.active ?? Object.keys(summary).length} active` },
           { label: 'Projects', icon: FolderOpen, path: '/settings', color: 'text-amber-400', bg: 'bg-amber-500/10', sub: `${projects.length}` },
         ].map(q => (
           <button
@@ -174,7 +194,7 @@ export default function Dashboard({ projects }: Props) {
               <div className="text-[10px] text-text-muted">Runs</div>
             </div>
             <div>
-              <div className={`text-2xl font-bold ${successRate >= 90 ? 'text-green' : successRate >= 70 ? 'text-amber' : 'text-red'}`}>{successRate}%</div>
+              <div className={`text-2xl font-bold ${successRate >= healthy ? 'text-green' : successRate >= degraded ? 'text-amber' : 'text-red'}`}>{successRate}%</div>
               <div className="text-[10px] text-text-muted">Success</div>
             </div>
             <div>
@@ -199,12 +219,12 @@ export default function Dashboard({ projects }: Props) {
                   <span className="text-xs font-medium truncate max-w-[120px]">{name}</span>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-[10px] text-text-muted">{data.runCount}</span>
-                    <span className={`text-[10px] font-semibold ${healthColor(data.successRate)}`}>{data.successRate}%</span>
+                    <span className={`text-[10px] font-semibold ${healthColor(data.successRate, healthy, degraded)}`}>{data.successRate}%</span>
                   </div>
                 </div>
                 <div className="h-1 bg-surface-2 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${data.successRate >= 90 ? 'bg-green' : data.successRate >= 70 ? 'bg-amber' : 'bg-red'}`}
+                    className={`h-full rounded-full transition-all ${data.successRate >= healthy ? 'bg-green' : data.successRate >= degraded ? 'bg-amber' : 'bg-red'}`}
                     style={{ width: `${data.successRate}%` }}
                   />
                 </div>
@@ -297,7 +317,7 @@ export default function Dashboard({ projects }: Props) {
         </div>
         {runs.length > 0 ? (
           <div>
-            {runs.slice(0, 8).map(run => (
+            {runs.slice(0, recentRunsCap).map(run => (
               <div key={run.id} className="flex items-center gap-3 px-4 py-2 border-b border-border/50 last:border-0 hover:bg-surface-2/30 transition-colors">
                 {run.status === 'success'
                   ? <CheckCircle className="w-3.5 h-3.5 text-green shrink-0" />

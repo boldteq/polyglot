@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { LayoutTemplate, Plus, Trash2, Clock, Search, FileText, X } from 'lucide-react'
 import { getTemplates, deleteTemplate, updateTemplate, sanitizeName } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
 
 export default function TemplateLibrary() {
-  const { data: templates, loading, refetch } = useApi(getTemplates)
+  const { data: templates, loading, error, refetch } = useApi(getTemplates)
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
@@ -55,6 +56,8 @@ export default function TemplateLibrary() {
       </div>
     )
   }
+
+  if (error) return <ErrorState message={error} onRetry={refetch} />
 
   return (
     <div className="p-8 max-w-5xl">

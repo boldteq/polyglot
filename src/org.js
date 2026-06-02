@@ -16,6 +16,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const db = require('./db');
+// Lazy-load configService to avoid a circular require — org.js is required
+// by db.js' migration importers. configService requires db.js → cycle.
+function cfg() { return require('./lib/configService'); }
 
 const HOME = os.homedir();
 const ORG_DIR = path.join(HOME, '.claude', 'org');
@@ -279,8 +282,8 @@ function buildOrgChart(agentMap = {}) {
       id,
       name: disk?.name || record.name || id,
       title: record.title || 'Agent',
-      tier: record.tier || 'engineer',
-      model: disk?.model || record.model || 'sonnet',
+      tier: record.tier || cfg().getConfig('defaults.tier'),
+      model: disk?.model || record.model || cfg().getConfig('defaults.model'),
       tools: disk?.tools || '',
       description: disk?.description || record.description || '',
       department: record.department || null,

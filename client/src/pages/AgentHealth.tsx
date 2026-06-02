@@ -12,28 +12,13 @@ import {
   BookOpen,
   Search,
 } from 'lucide-react'
-import { getAnalyticsSummary, getRoutingSavings } from '../lib/api'
-import type { AgentAnalyticsSummary, RoutingSavings } from '../lib/api'
+import { getAnalyticsSummary, getRoutingSavings, getHrRegistry, getFleetHealth } from '../lib/api'
+import type { AgentAnalyticsSummary, RoutingSavings, RegistryCounts, FleetHealth } from '../lib/api'
+import { ErrorState } from '../components/ErrorState'
+import { useAppConfig } from '../hooks/useAppConfig'
+import { getHealthColor, getHealthBg, getHealthLabel, getHealthBar } from '../lib/colors'
 
 type SortKey = 'cost' | 'runs' | 'success' | 'duration'
-
-function healthColor(rate: number): string {
-  if (rate >= 90) return 'text-green-400'
-  if (rate >= 70) return 'text-yellow-400'
-  return 'text-red-400'
-}
-
-function healthBg(rate: number): string {
-  if (rate >= 90) return 'bg-green-500/10 border-green-500/20'
-  if (rate >= 70) return 'bg-yellow-500/10 border-yellow-500/20'
-  return 'bg-red-500/10 border-red-500/20'
-}
-
-function healthLabel(rate: number): string {
-  if (rate >= 90) return 'Healthy'
-  if (rate >= 70) return 'Degraded'
-  return 'Critical'
-}
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`
@@ -47,22 +32,49 @@ function formatCost(cost: number): string {
 }
 
 export default function AgentHealth() {
+  const { config } = useAppConfig()
+  const thresholds = { healthy: config.health.threshold_healthy, degraded: config.health.threshold_degraded }
   const [summary, setSummary] = useState<AgentAnalyticsSummary>({})
   const [savings, setSavings] = useState<RoutingSavings | null>(null)
+  const [registryCounts, setRegistryCounts] = useState<RegistryCounts | null>(null)
+  const [fleetHealth, setFleetHealth] = useState<FleetHealth | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadTick, setReloadTick] = useState(0)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<SortKey>('cost')
   const [sortDesc, setSortDesc] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setLoadError(false)
     Promise.all([
-      getAnalyticsSummary().catch(() => ({})),
+      // getAnalyticsSummary is the critical fetch — let it reject so a backend
+      // outage shows an error state instead of an all-zeros fleet (C19 audit).
+      getAnalyticsSummary(),
       getRoutingSavings().catch(() => null),
-    ]).then(([s, r]) => {
+      getHrRegistry().catch((err) => {
+        console.error('[agent-health] hr registry fetch failed:', err?.message ?? err)
+        return null
+      }),
+      getFleetHealth().catch((err) => {
+        console.error('[agent-health] fleet health fetch failed:', err?.message ?? err)
+        return null
+      }),
+    ]).then(([s, r, reg, fh]) => {
+      if (cancelled) return
       setSummary(s)
       setSavings(r)
-    }).finally(() => setLoading(false))
-  }, [])
+      setRegistryCounts(reg?.counts ?? null)
+      setFleetHealth(fh ?? null)
+    }).catch((err) => {
+      if (cancelled) return
+      console.error('[agent-health] summary fetch failed:', err?.message ?? err)
+      setLoadError(true)
+    }).finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [reloadTick])
 
   const agents = useMemo(() => {
     return Object.entries(summary)
@@ -79,16 +91,16 @@ export default function AgentHealth() {
 
   const fleet = useMemo(() => {
     const all = Object.values(summary)
-    if (!all.length) return { total: 0, healthy: 0, degraded: 0, critical: 0, totalCost: 0, totalRuns: 0 }
+    const total = fleetHealth?.total ?? registryCounts?.total ?? all.length
     return {
-      total: all.length,
-      healthy: all.filter(a => a.successRate >= 90).length,
-      degraded: all.filter(a => a.successRate >= 70 && a.successRate < 90).length,
-      critical: all.filter(a => a.successRate < 70).length,
+      total,
+      healthy: fleetHealth?.healthy ?? all.filter(a => a.successRate >= thresholds.healthy).length,
+      degraded: fleetHealth?.degraded ?? all.filter(a => a.successRate >= thresholds.degraded && a.successRate < thresholds.healthy).length,
+      critical: fleetHealth?.critical ?? all.filter(a => a.successRate < thresholds.degraded).length,
       totalCost: all.reduce((s, a) => s + a.totalEstimatedCost, 0),
       totalRuns: all.reduce((s, a) => s + a.runCount, 0),
     }
-  }, [summary])
+  }, [summary, registryCounts, fleetHealth, thresholds.healthy, thresholds.degraded])
 
   function toggleSort(key: SortKey) {
     if (sortBy === key) setDesc(!sortDesc)
@@ -115,6 +127,8 @@ export default function AgentHealth() {
       <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
     </div>
   )
+
+  if (loadError) return <ErrorState message="Agent health metrics failed to load." onRetry={() => setReloadTick(t => t + 1)} />
 
   return (
     <div className="max-w-6xl mx-auto p-8 space-y-6">
@@ -200,14 +214,14 @@ export default function AgentHealth() {
           {agents.map(([name, data]) => (
             <div
               key={name}
-              className={`bg-surface rounded-xl border p-4 space-y-3 transition-all hover:shadow-md ${healthBg(data.successRate)}`}
+              className={`bg-surface rounded-xl border p-4 space-y-3 transition-all hover:shadow-md ${getHealthBg(data.successRate, thresholds)}`}
             >
               {/* Header */}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="text-sm font-semibold truncate">{name}</h3>
-                  <span className={`text-[10px] font-medium ${healthColor(data.successRate)}`}>
-                    {healthLabel(data.successRate)}
+                  <span className={`text-[10px] font-medium ${getHealthColor(data.successRate, thresholds)}`}>
+                    {getHealthLabel(data.successRate, thresholds)}
                   </span>
                 </div>
                 <Link
@@ -222,11 +236,11 @@ export default function AgentHealth() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] text-text-muted">Success rate</span>
-                  <span className={`text-[11px] font-bold ${healthColor(data.successRate)}`}>{data.successRate}%</span>
+                  <span className={`text-[11px] font-bold ${getHealthColor(data.successRate, thresholds)}`}>{data.successRate}%</span>
                 </div>
                 <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${data.successRate >= 90 ? 'bg-green-500' : data.successRate >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                    className={`h-full rounded-full transition-all ${getHealthBar(data.successRate, thresholds)}`}
                     style={{ width: `${data.successRate}%` }}
                   />
                 </div>

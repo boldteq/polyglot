@@ -8,6 +8,28 @@ const router = Router();
 
 const DOCS_PATH = path.join(__dirname, '..', '..', 'docs');
 
+// Disk stats are cached 60s so a frequently-polled /health doesn't spawn a
+// blocking `df` subprocess on the single-threaded event loop every call (C-critic audit).
+let _diskCache = { at: 0, data: null };
+function getDiskStats() {
+  const now = Date.now();
+  if (_diskCache.data && now - _diskCache.at < 60_000) return _diskCache.data;
+  let data = { status: 'unknown' };
+  try {
+    const { execSync } = require('child_process');
+    const dfOut = execSync('df -k / | tail -1', { timeout: 2000 }).toString().trim().split(/\s+/);
+    if (dfOut.length >= 5) {
+      data = {
+        totalGB: Math.round(parseInt(dfOut[1], 10) / 1024 / 1024),
+        freeGB: Math.round(parseInt(dfOut[3], 10) / 1024 / 1024),
+        usedPct: parseInt(dfOut[4], 10),
+      };
+    }
+  } catch { /* keep unknown */ }
+  _diskCache = { at: now, data };
+  return data;
+}
+
 // GET /api/health — Q29: deep health (DB ping + disk + memory + uptime)
 router.get('/health', (req, res) => {
   const memUsage = process.memoryUsage();
@@ -41,27 +63,17 @@ router.get('/health', (req, res) => {
     result.status = 'degraded';
   }
 
-  // Disk space (Q59: alert at <10% free)
-  try {
-    const { execSync } = require('child_process');
-    const dfOut = execSync('df -k / | tail -1', { timeout: 2000 }).toString().trim().split(/\s+/);
-    if (dfOut.length >= 5) {
-      const total = parseInt(dfOut[1], 10);
-      const avail = parseInt(dfOut[3], 10);
-      const usePct = parseInt(dfOut[4], 10);
-      result.disk = {
-        totalGB: Math.round(total / 1024 / 1024),
-        freeGB: Math.round(avail / 1024 / 1024),
-        usedPct: usePct,
-      };
-      if (usePct >= 90) {
-        result.alerts.push('Disk >90% full — immediate action needed');
-        result.status = 'degraded';
-      } else if (usePct >= 80) {
-        result.alerts.push('Disk >80% full — plan cleanup');
-      }
+  // Disk space (Q59: alert at <10% free) — cached 60s, see getDiskStats.
+  const disk = getDiskStats();
+  result.disk = disk;
+  if (typeof disk.usedPct === 'number') {
+    if (disk.usedPct >= 90) {
+      result.alerts.push('Disk >90% full — immediate action needed');
+      result.status = 'degraded';
+    } else if (disk.usedPct >= 80) {
+      result.alerts.push('Disk >80% full — plan cleanup');
     }
-  } catch { result.disk = { status: 'unknown' }; }
+  }
 
   res.status(result.status === 'ok' ? 200 : 503).json(result);
 });

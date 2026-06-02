@@ -4,6 +4,7 @@ const { Router } = require('express');
 const path = require('path');
 const { rateLimit } = require('../middleware/rateLimit');
 const db = require('../db');
+const configService = require('../lib/configService');
 
 const router = Router();
 
@@ -47,7 +48,8 @@ router.get('/db/table/:name', rateLimit('read'), (req, res) => {
     const d = db.getDb();
     const exists = d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(tableName);
     if (!exists) return res.status(404).json({ error: 'Table not found' });
-    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const cap = configService.getConfig('api_limits.db_explorer') ?? 500;
+    const limit = Math.min(parseInt(req.query.limit) || cap, cap);
     const offset = parseInt(req.query.offset) || 0;
     const total = d.prepare(`SELECT COUNT(*) as n FROM "${tableName}"`).get().n;
     const rows = d.prepare(`SELECT * FROM "${tableName}" LIMIT ? OFFSET ?`).all(limit, offset);

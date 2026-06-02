@@ -26,6 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const dbModule = require('./db');
+const configService = require('./lib/configService');
 
 const HOME = os.homedir();
 const ORG_DIR = path.join(HOME, '.claude', 'org');
@@ -80,13 +81,17 @@ function compactJsonlIfNeeded(filePath, maxLines) {
     if (lines.length <= maxLines) return;
     // Archive first
     const archivePath = filePath + '.archive-' + new Date().toISOString().slice(0, 10);
-    try { fs.renameSync(filePath, archivePath); } catch {}
+    try { fs.renameSync(filePath, archivePath); } catch (e) {
+      try { require('./lib/logger').warn(`jsonl archive rename failed: ${e.message}`, { category: 'db', meta: { filePath, archivePath } }); } catch {}
+    }
     // Write trimmed file (most recent entries)
     const trimmed = lines.slice(-Math.floor(maxLines * 0.8)).join('\n') + '\n';
     const tmp = filePath + '.tmp';
     fs.writeFileSync(tmp, trimmed, 'utf-8');
     fs.renameSync(tmp, filePath);
-  } catch {}
+  } catch (e) {
+    try { require('./lib/logger').warn(`compactJsonlIfNeeded failed: ${e.message}`, { category: 'db', meta: { filePath } }); } catch {}
+  }
 }
 
 function readJsonl(filePath) {
@@ -125,10 +130,23 @@ function getRegistry(orgModule) {
     if ((b.level || 0) !== (a.level || 0)) return (b.level || 0) - (a.level || 0);
     return a.id.localeCompare(b.id);
   });
+  const counts = {
+    total: agents.length,
+    active: 0,
+    probation: 0,
+    pip: 0,
+    pending: 0,
+    retired: 0,
+  };
+  for (const a of agents) {
+    const s = a.status || 'active';
+    if (counts[s] !== undefined) counts[s]++;
+  }
   return {
     version: reg.version || 1,
     updatedAt: reg.updatedAt,
     total: agents.length,
+    counts,
     agents,
   };
 }
@@ -177,8 +195,9 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns) {
   const registry = orgModule.loadRegistry();
   const agents = registry.agents || {};
 
-  // 1. Classify each run in the window
-  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  // 1. Classify each run in the window — window driven by app_config.time.sweep_hours
+  const sweepHours = configService.getConfig('time.sweep_hours') ?? 24;
+  const cutoff = Date.now() - sweepHours * 60 * 60 * 1000;
   const recent = agentRuns.filter((r) => new Date(r.timestamp).getTime() >= cutoff);
   const classified = [];
 
@@ -348,7 +367,8 @@ function openPip(orgModule, agentId, reason) {
   if (!record) return { ok: false, error: 'Agent not found' };
   if (record.status === 'pip') return { ok: false, error: 'Already on PIP' };
 
-  const deadline = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  const pipDays = configService.getConfig('time.pip_window_days') ?? 14;
+  const deadline = new Date(Date.now() + pipDays * 24 * 60 * 60 * 1000).toISOString();
   const updated = orgModule.upsertAgent(agentId, {
     status: 'pip',
     pip: {
@@ -425,7 +445,7 @@ function hireAgent(orgModule, { id, name, department, phase, reportsTo, title, t
     phase: phase || null,
     reportsTo: reportsTo || 'cadence',
     title: title || 'New Hire',
-    tier: tier || 'engineer',
+    tier: tier || configService.getConfig('defaults.tier') || 'engineer', // allowed: chained fallback
     role: role || null,
     hiredAt: now,
     status: 'probation',
