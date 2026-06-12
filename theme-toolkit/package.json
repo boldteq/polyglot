@@ -10,7 +10,11 @@
     "gates": "node scripts/theme-gates.mjs",
     "gates:static": "node scripts/theme-gates.mjs --static-only",
     "gates:verify": "node scripts/theme-gates.mjs --verify",
-    "changes:check": "node scripts/check-changes-list.mjs"
+    "changes:check": "node scripts/check-changes-list.mjs",
+    "check:briefs": "node scripts/check-briefs.mjs",
+    "check:reuse-map": "node scripts/check-reuse-map.mjs",
+    "check:schema": "node scripts/check-metafield-schema.mjs",
+    "check:assets": "node scripts/check-asset-budget.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",

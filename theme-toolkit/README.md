@@ -11,10 +11,29 @@ on every push, staging PR, and release tag. Master copy: `Polyglot/theme-toolkit
 | 3 | editability | static | `scripts/gate-editability-greps.sh` | unallowlisted hardcode in the diff vs the `base` tag |
 | 5 | axe | URL | `scripts/gate-axe.mjs` | any WCAG 2.1 A/AA violation, mobile + desktop |
 | 6 | seo | URL | `scripts/gate-seo.mjs` | on-page SEO checklist failure across the page matrix |
+| 7 | conversion | URL | `scripts/gate-conversion.mjs` | missing buy-path CRO signal (hero-cta / pdp-atc / pdp-price; +pdp-trust under STRICT_TRUST) |
 
 Orchestrator: `scripts/theme-gates.mjs` (`--static-only` / full / `--gate <name>` / `--verify`).
 Every gate writes `gate-reports/<gate>.json` (exact schema in `scripts/lib/report.mjs`);
 the orchestrator writes `gate-reports/summary.json`.
+
+## Pre-build validators (stage-specific, run by individual agents — NOT the publish stack)
+
+Standalone validators each agent runs as an executable self-check at its own pipeline step
+(like `check-changes-list.mjs`). They are NOT in the gate-1-7 publish stack and NOT run by
+`theme-gates.mjs` — each writes its own `gate-reports/<name>.json` (same 12-key schema) and
+exits `0` pass / `1` block / `2` env-error. They turn each agent's prose self-checks into a
+runnable gate, raising executable rigor for compass/stitch/lattice/loom.
+
+| Name | Script | Run by / step | Blocks on |
+|------|--------|---------------|-----------|
+| briefs | `scripts/check-briefs.mjs` | compass, Step 4 (pre-design-dispatch) | invalid/absent `status:`, >20% briefs `missing`, no `recipe:`/`no-recipe:` anchor, lorem/placeholder copy, content-slot with no owner; `STORE_BUILD=1` adds: no spark hero / no merch body reserved |
+| reuse-map | `scripts/check-reuse-map.mjs` | stitch (pre-handoff) + onyx Audit 7 | map missing, malformed `Counts:` line, bad/absent `Custom split:` (library+scratch≠custom), Rung ∉ {REUSE,CONFIGURE,EXTEND,CUSTOM}, reuse <70%, custom count ≠ new `sections/*.liquid` vs `BASE_REF`, scratch custom w/o `blueprint: none (...)` |
+| metafield-schema | `scripts/check-metafield-schema.mjs` | lattice, Q19 dry-run (pre-publish) | invalid JSON, bad/forbidden namespace, unknown field type, dangling `metaobject_reference`, non-RE2/uncompilable regex, metaobject w/o valid `display_name_key`. Reads `docs/metafield-schema.json`; absent = pass |
+| asset-budget | `scripts/check-asset-budget.mjs` | loom (pre-QA) | a section's inline `{% stylesheet %}` >10KB or `{% javascript %}` >15KB |
+
+npm aliases: `pnpm check:briefs` · `check:reuse-map` · `check:schema` · `check:assets`.
+Env knobs: `STORE_BUILD`, `STRICT_LOCALES` (briefs); `BASE_REF`, `REUSE_TARGET`, `ALLOW_REUSE_WAIVER` (reuse-map); `SCHEMA_FILE` (schema); `CSS_BUDGET_KB`, `JS_BUDGET_KB` (asset-budget).
 
 ## Exit codes (every script, no exceptions)
 
