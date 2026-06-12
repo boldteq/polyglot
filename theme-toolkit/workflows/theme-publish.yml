@@ -1,0 +1,73 @@
+# Boldteq theme-toolkit — production publish on release tags (v*).
+# publish-gate: base tag present + full-run gate evidence fresh + CHANGES.md complete.
+# publish: snapshot the current live theme, push the tag as an unpublished theme, publish it.
+# Secrets required: SHOPIFY_CLI_THEME_TOKEN (Theme Access app password), SHOPIFY_FLAG_STORE.
+name: theme-publish
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish-gate:
+    name: publish gate (evidence + CHANGES.md)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Require `base` tag (mantle bootstrap marker)
+        run: git rev-parse -q --verify base || exit 1
+
+      - name: Verify full-run gate evidence
+        run: node toolkit/scripts/theme-gates.mjs --verify --require-full
+
+      - name: Validate CHANGES.md (every client ask checked + evidenced)
+        run: node toolkit/scripts/check-changes-list.mjs CHANGES.md
+
+  publish:
+    name: snapshot live + push + publish
+    needs: publish-gate
+    runs-on: ubuntu-latest
+    env:
+      SHOPIFY_CLI_THEME_TOKEN: ${{ secrets.SHOPIFY_CLI_THEME_TOKEN }}
+      SHOPIFY_FLAG_STORE: ${{ secrets.SHOPIFY_FLAG_STORE }}
+      SHOPIFY_CLI_NO_ANALYTICS: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Shopify CLI
+        run: npm install -g @shopify/cli@3
+
+      - name: Snapshot current live theme (pre-publish rollback point)
+        run: shopify theme pull --live --path=./snapshots/${{ github.ref_name }}/
+
+      - name: Upload live snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-snapshot-${{ github.ref_name }}
+          path: snapshots/${{ github.ref_name }}/
+
+      - name: Push release as unpublished theme
+        id: push
+        run: |
+          THEME_JSON="$(shopify theme push --unpublished --theme "release-${{ github.ref_name }}" --json)"
+          echo "$THEME_JSON"
+          THEME_ID="$(printf '%s' "$THEME_JSON" | jq -r '.theme.id // empty')"
+          if [ -z "$THEME_ID" ]; then
+            echo "::error::could not parse theme id from \`shopify theme push --json\` output" >&2
+            exit 1
+          fi
+          echo "theme_id=$THEME_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Publish theme ${{ github.ref_name }}
+        run: shopify theme publish --theme="${{ steps.push.outputs.theme_id }}" --force

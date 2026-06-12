@@ -1,0 +1,3 @@
+# Vendored into client repos as toolkit/.gitignore — keeps installs out of the bootstrap commit.
+# gate-reports/*.json are intentionally NOT ignored (committed as --verify evidence).
+node_modules/

@@ -1,0 +1,20 @@
+{
+  "name": "@boldteq/theme-toolkit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "gates": "node scripts/theme-gates.mjs",
+    "gates:static": "node scripts/theme-gates.mjs --static-only",
+    "gates:verify": "node scripts/theme-gates.mjs --verify",
+    "changes:check": "node scripts/check-changes-list.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.11.3",
+    "lighthouse": "13.4.0",
+    "playwright": "1.60.0"
+  }
+}

@@ -1,0 +1,40 @@
+# Boldteq theme-toolkit — static gates on every working-branch push + PR into dev.
+# Vendored from Polyglot/theme-toolkit; lives at .github/workflows/theme-ci.yml in client repos.
+# Gates: theme-check (2) + editability greps (3). Exit 0 pass · 1 block · 2 env error.
+name: theme-ci
+
+on:
+  push:
+    branches: [dev, 'feat/**']
+  pull_request:
+    branches: [dev]
+
+jobs:
+  static-gates:
+    name: static gates (theme-check + editability)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # editability gate diff-scopes against the `base` tag — needs full history + tags
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Shopify CLI
+        run: npm install -g @shopify/cli@3
+
+      - name: Install toolkit deps
+        run: npm ci --prefix toolkit
+
+      - name: Run static gates
+        run: node toolkit/scripts/theme-gates.mjs --static-only
+
+      - name: Upload gate reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-reports
+          path: gate-reports/

@@ -23,3 +23,6 @@ package-lock.json
 # OS + runtime junk
 .DS_Store
 .claude/scheduled_tasks.lock
+
+# Research scratch (theme clones for KB teardowns)
+.research/

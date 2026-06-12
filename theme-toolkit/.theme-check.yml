@@ -1,0 +1,45 @@
+# Boldteq required rules — source of truth (lumen skill points here). Extends Shopify defaults.
+ImgLazyLoading:
+  enabled: true
+  severity: error
+
+ParserBlockingScript:
+  enabled: true
+  severity: error
+
+PaginationSize:
+  enabled: true
+  severity: error
+  min_size: 1
+  max_size: 50
+
+LiquidTag:
+  enabled: true
+  severity: error
+  min_consecutive_statements: 6
+
+TemplateLength:
+  enabled: true
+  severity: warning
+  max_length: 600
+
+UnknownFilter:
+  severity: error
+
+UnusedAssign:
+  severity: warning
+
+ValidJSON:
+  severity: error
+
+ValidSchema:
+  severity: error
+
+DeprecatedFilter:
+  severity: error
+
+DeprecatedTag:
+  severity: error  # blocks {% include %}, etc.
+
+MissingRequired:
+  severity: error  # blocks sections without {% schema %}

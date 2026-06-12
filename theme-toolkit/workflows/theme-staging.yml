@@ -1,0 +1,58 @@
+# Boldteq theme-toolkit — staging promotion gate.
+# Re-runs the static gates AND verifies that lumen's committed full-run evidence
+# (gate-reports/summary.json) is fresh for the PR head: clean tree, sha == HEAD or
+# only allowlisted files changed since, mode=full, pass=true.
+name: theme-staging
+
+on:
+  pull_request:
+    branches: [staging]
+
+jobs:
+  static-gates:
+    name: static gates (theme-check + editability)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Shopify CLI
+        run: npm install -g @shopify/cli@3
+
+      - name: Install toolkit deps
+        run: npm ci --prefix toolkit
+
+      - name: Run static gates
+        run: node toolkit/scripts/theme-gates.mjs --static-only
+
+      - name: Upload gate reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-reports
+          path: gate-reports/
+
+  verify-full-evidence:
+    name: verify full-run evidence (fresh + mode=full + pass)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # PR HEAD, not the synthetic merge commit — verify compares summary.sha
+          # against HEAD and would read base-branch drift as staleness otherwise.
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # --verify imports only toolkit/scripts/lib/report.mjs (node builtins, zero
+      # external deps) — no `npm ci --prefix toolkit` needed here.
+      - name: Verify gate evidence
+        run: node toolkit/scripts/theme-gates.mjs --verify --require-full
