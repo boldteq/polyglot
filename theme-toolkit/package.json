@@ -14,7 +14,10 @@
     "check:briefs": "node scripts/check-briefs.mjs",
     "check:reuse-map": "node scripts/check-reuse-map.mjs",
     "check:schema": "node scripts/check-metafield-schema.mjs",
-    "check:assets": "node scripts/check-asset-budget.mjs"
+    "check:assets": "node scripts/check-asset-budget.mjs",
+    "store:preflight": "node scripts/porter-preflight.mjs",
+    "store:apply": "node scripts/porter-apply.mjs",
+    "store:verify": "node scripts/porter-verify.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",

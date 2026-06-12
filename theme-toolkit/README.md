@@ -35,6 +35,18 @@ runnable gate, raising executable rigor for compass/stitch/lattice/loom.
 npm aliases: `pnpm check:briefs` · `check:reuse-map` · `check:schema` · `check:assets`.
 Env knobs: `STORE_BUILD`, `STRICT_LOCALES` (briefs); `BASE_REF`, `REUSE_TARGET`, `ALLOW_REUSE_WAIVER` (reuse-map); `SCHEMA_FILE` (schema); `CSS_BUDGET_KB`, `JS_BUDGET_KB` (asset-budget).
 
+## Store-operator harness (Porter — Admin API writes)
+
+Porter (`shopify-website` squad) operates the customer's **store data** (not the theme) via the Admin API + the store's custom-app token. Three scripts, same 12-key report + exit 0/1/2, run against the vendored `toolkit/`. **Never touches orders/customers/payments.** Token via `SHOPIFY_ADMIN_API_TOKEN[_<handle>]` (env/1Password — never hardcoded).
+
+| Script | Purpose | Blocks on |
+|--------|---------|-----------|
+| `scripts/porter-preflight.mjs` | fail-fast token + granted-scope validation; classify fresh vs live (by product count — orders are out of scope) | missing token, missing required scope, store unreachable (exit 2) |
+| `scripts/porter-apply.mjs <plan.json> [--dry-run] [--allow-destructive]` | idempotent apply of `store-data-plan.json` (products+variants+media / collections / pages / articles / menus / files / metafield-values / metaobjects / redirects). Prefers Shopify idempotent upserts (`productSet`/`metafieldsSet`/`metaobjectUpsert`) + identifier lookups, lookup-or-create for the rest; THROTTLED+5xx backoff; staged file uploads; metafields chunked 25; per-op isolation; every `userErrors` checked | invalid plan; **destructive op (delete/replace) without `--allow-destructive` AND a structured dated sign-off line `- [x] YYYY-MM-DD porter:<verb> <exact-key>` in CHANGES.md**; `bulk_edits` (never auto-applied) |
+| `scripts/porter-verify.mjs <plan.json> [--snapshot <s>]` | every expected metafield/metaobject is populated + storefront-queryable (feeds lumen Gate 3 — no empty shells); test-artifact sweep | empty/missing metafield or metaobject; `zz-boldteq-test-` artifacts present in production mode |
+
+npm aliases: `pnpm store:preflight` · `store:apply` · `store:verify`. Shared Admin client: `scripts/lib/shopify-admin.mjs` (API `2025-04`, `X-Shopify-Access-Token`, scope introspection, THROTTLED backoff). Required scopes: `write_products,read_products,write_content,read_content,write_files,read_files,write_metaobjects,read_metaobjects,write_online_store_navigation`. Doctrine: `~/.claude/memory/patterns/good/shopify-store-operations-protocol.md`; mutations: `~/.claude/memory/stacks/shopify/api/admin-write-operations.md`.
+
 ## Exit codes (every script, no exceptions)
 
 | Code | Meaning |
