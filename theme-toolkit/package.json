@@ -18,11 +18,8 @@
     "store:preflight": "node scripts/porter-preflight.mjs",
     "store:apply": "node scripts/porter-apply.mjs",
     "store:verify": "node scripts/porter-verify.mjs",
-    "keystone:provision": "node scripts/keystone-provision.mjs",
-    "keystone:register": "node scripts/keystone-register.mjs",
-    "keystone:link": "node scripts/keystone-link.mjs",
-    "keystone:token": "node scripts/keystone-token.mjs",
-    "keystone:status": "node scripts/keystone-status.mjs"
+    "keystone:clone": "node scripts/keystone-clone.mjs",
+    "keystone:token": "node scripts/keystone-token.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",

@@ -49,17 +49,17 @@ npm aliases: `pnpm store:preflight` · `store:apply` · `store:verify`. Shared A
 
 ## Store-access provisioning harness (Keystone — gets Porter its token)
 
-Porter needs a per-store Admin API token; **Keystone** provisions it. The token comes from a custom-distribution app via OAuth, captured by the **Keystone service** (`Polyglot/keystone-service/`, deployed to Railway). These CLIs are thin clients of that service (`lib/keystone.mjs` imports Porter's `REQUIRED_SCOPES` so scope parity is structural). Env: `KEYSTONE_SERVICE_URL`, `KEYSTONE_API_KEY`.
+Porter needs a per-store Admin API token; **Keystone** provisions it by **cloning the proven
+`~/Desktop/Shopify Task/local-dev-environment/` OAuth catcher** per client (the user's chosen
+clone-per-client model — per-client isolation + white-label). Each clone is a fresh
+custom-distribution app named for the folder, deployed to its own Railway service.
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/keystone-provision.mjs --store <s> --org-id <insight-infoway>` | **CLI-driven app build** — `shopify app init/deploy` scaffolds + registers a custom-dist app in the org, into `~/Desktop/Shopify Task/Client Shopify App/<store>/`, sets the 9 scopes + the Keystone redirect, reads `client_id`, prints the 3-step Dashboard checklist. (One-time `shopify auth login` first.) Env: `KEYSTONE_PARTNER_ORG_ID`, `KEYSTONE_APP_DIR`, `KEYSTONE_BASE_URL`. |
-| `scripts/keystone-register.mjs --store <s> --client-id <id> --client-secret <secret> --install-link <url> [--app-name]` | register the app's creds + the Dashboard install link → echoes the link to send. Never echoes the secret. |
-| `scripts/keystone-link.mjs <store>` | (re)print the install link for a registered store |
-| `scripts/keystone-token.mjs <store>` | print the current (auto-refreshed) Admin token to **stdout only** — `export SHOPIFY_ADMIN_API_TOKEN_<H>=$(…)`; exit 3 if not installed yet |
-| `scripts/keystone-status.mjs <store>` | Phase-0 gate before Porter — installed? granted scopes == Porter's set? BLOCK on mismatch |
+| `scripts/keystone-clone.mjs (--here \| --folder <name>) [--template <path>]` | copy `local-dev-environment` → the client folder, re-value everything to the folder name (app name + the 4 URLs → `<name>-production.up.railway.app`, package name, docs), clear `client_id`, union the scopes with Porter's (adds `write_online_store_navigation`). EXCLUDES `tokens/`, `.env`, `.shopify/`, `.git/`, `node_modules/` (no secret/token bleed). Prints the Railway + Shopify-CLI + 3-Dashboard-step follow-up. Env: `KEYSTONE_TEMPLATE`, `KEYSTONE_APP_DIR`. |
+| `scripts/keystone-token.mjs <shop> [--service <url>] [--admin-key <key>]` | fetch the captured Admin token from the cloned catcher (local `tokens/<shop>.env` first, else `GET <service>/token?shop=&key=`); prints ONLY the token → `export SHOPIFY_ADMIN_API_TOKEN_<H>=$(…)`. Exit 3 if not captured yet. Env: `KEYSTONE_SERVICE_URL`, `KEYSTONE_ADMIN_KEY`. |
 
-npm aliases: `pnpm keystone:provision` · `keystone:register` · `keystone:link` · `keystone:token` · `keystone:status`. CLI-driven flow: `provision` (agent builds the app) → 3 Dashboard clicks → `register` → `status` gate → `token` to Porter. The custom-dist install URL is the Dashboard's (Shopify has no CLI/API for it); only an unlisted public app lets the agent emit the URL. Doctrine: `~/.claude/memory/patterns/good/shopify-store-access-provisioning-protocol.md`. Service: `Polyglot/keystone-service/README.md`. The ONE manual step (Partner-Dashboard app + link, no Shopify API) is documented honestly — everything else is automated.
+npm aliases: `pnpm keystone:clone` · `keystone:token`. Flow: create folder → `keystone-clone --here` → `railway init/up/domain/variables` → `shopify app config link/deploy` (you approve) → the 3 Dashboard steps (custom distribution + Generate link + copy secret) → client installs → `keystone-token` bridges the token to Porter. Doctrine: `~/.claude/memory/patterns/good/shopify-store-access-provisioning-protocol.md` + `local-dev-environment/CLONE-TEMPLATE.md`. **Reality:** the install link is the Dashboard's (Shopify has no CLI/API for custom-dist link generation); the agent automates the clone + re-value + Railway + CLI register, you do the 3 Dashboard clicks.
 
 ## Exit codes (every script, no exceptions)
 
