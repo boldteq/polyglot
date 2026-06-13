@@ -47,6 +47,19 @@ Porter (`shopify-website` squad) operates the customer's **store data** (not the
 
 npm aliases: `pnpm store:preflight` · `store:apply` · `store:verify`. Shared Admin client: `scripts/lib/shopify-admin.mjs` (API `2025-04`, `X-Shopify-Access-Token`, scope introspection, THROTTLED backoff). Required scopes: `write_products,read_products,write_content,read_content,write_files,read_files,write_metaobjects,read_metaobjects,write_online_store_navigation`. Doctrine: `~/.claude/memory/patterns/good/shopify-store-operations-protocol.md`; mutations: `~/.claude/memory/stacks/shopify/api/admin-write-operations.md`.
 
+## Store-access provisioning harness (Keystone — gets Porter its token)
+
+Porter needs a per-store Admin API token; **Keystone** provisions it. The token comes from a custom-distribution app via OAuth, captured by the **Keystone service** (`Polyglot/keystone-service/`, deployed to Railway). These CLIs are thin clients of that service (`lib/keystone.mjs` imports Porter's `REQUIRED_SCOPES` so scope parity is structural). Env: `KEYSTONE_SERVICE_URL`, `KEYSTONE_API_KEY`.
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/keystone-register.mjs --store <s> --client-id <id> --client-secret <secret> [--app-name]` | register a custom-dist app's creds (run after the manual Partner-Dashboard step) → prints the install link. Never echoes the secret. |
+| `scripts/keystone-link.mjs <store>` | (re)print the install link for a registered store |
+| `scripts/keystone-token.mjs <store>` | print the current (auto-refreshed) Admin token to **stdout only** — `export SHOPIFY_ADMIN_API_TOKEN_<H>=$(…)`; exit 3 if not installed yet |
+| `scripts/keystone-status.mjs <store>` | Phase-0 gate before Porter — installed? granted scopes == Porter's set? BLOCK on mismatch |
+
+npm aliases: `pnpm keystone:register` · `keystone:link` · `keystone:token` · `keystone:status`. Doctrine: `~/.claude/memory/patterns/good/shopify-store-access-provisioning-protocol.md`. Service: `Polyglot/keystone-service/README.md`. The ONE manual step (Partner-Dashboard app + link, no Shopify API) is documented honestly — everything else is automated.
+
 ## Exit codes (every script, no exceptions)
 
 | Code | Meaning |
