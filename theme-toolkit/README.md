@@ -53,12 +53,13 @@ Porter needs a per-store Admin API token; **Keystone** provisions it. The token 
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/keystone-register.mjs --store <s> --client-id <id> --client-secret <secret> [--app-name]` | register a custom-dist app's creds (run after the manual Partner-Dashboard step) → prints the install link. Never echoes the secret. |
+| `scripts/keystone-provision.mjs --store <s> --org-id <insight-infoway>` | **CLI-driven app build** — `shopify app init/deploy` scaffolds + registers a custom-dist app in the org, into `~/Desktop/Shopify Task/Client Shopify App/<store>/`, sets the 9 scopes + the Keystone redirect, reads `client_id`, prints the 3-step Dashboard checklist. (One-time `shopify auth login` first.) Env: `KEYSTONE_PARTNER_ORG_ID`, `KEYSTONE_APP_DIR`, `KEYSTONE_BASE_URL`. |
+| `scripts/keystone-register.mjs --store <s> --client-id <id> --client-secret <secret> --install-link <url> [--app-name]` | register the app's creds + the Dashboard install link → echoes the link to send. Never echoes the secret. |
 | `scripts/keystone-link.mjs <store>` | (re)print the install link for a registered store |
 | `scripts/keystone-token.mjs <store>` | print the current (auto-refreshed) Admin token to **stdout only** — `export SHOPIFY_ADMIN_API_TOKEN_<H>=$(…)`; exit 3 if not installed yet |
 | `scripts/keystone-status.mjs <store>` | Phase-0 gate before Porter — installed? granted scopes == Porter's set? BLOCK on mismatch |
 
-npm aliases: `pnpm keystone:register` · `keystone:link` · `keystone:token` · `keystone:status`. Doctrine: `~/.claude/memory/patterns/good/shopify-store-access-provisioning-protocol.md`. Service: `Polyglot/keystone-service/README.md`. The ONE manual step (Partner-Dashboard app + link, no Shopify API) is documented honestly — everything else is automated.
+npm aliases: `pnpm keystone:provision` · `keystone:register` · `keystone:link` · `keystone:token` · `keystone:status`. CLI-driven flow: `provision` (agent builds the app) → 3 Dashboard clicks → `register` → `status` gate → `token` to Porter. The custom-dist install URL is the Dashboard's (Shopify has no CLI/API for it); only an unlisted public app lets the agent emit the URL. Doctrine: `~/.claude/memory/patterns/good/shopify-store-access-provisioning-protocol.md`. Service: `Polyglot/keystone-service/README.md`. The ONE manual step (Partner-Dashboard app + link, no Shopify API) is documented honestly — everything else is automated.
 
 ## Exit codes (every script, no exceptions)
 

@@ -22,7 +22,8 @@ try {
     console.error(`keystone-link: BLOCK — ${store} not registered; run keystone-register first`)
     process.exit(1)
   }
-  console.log(installLink(store))
+  // Prefer the stored Dashboard custom-dist link; fall back to the service-built /install URL.
+  console.log(json.install_link || installLink(store))
   process.exit(0)
 } catch (err) {
   if (err instanceof EnvError) { console.error(`keystone-link: ENV-ERROR — ${err.message}`); process.exit(2) }

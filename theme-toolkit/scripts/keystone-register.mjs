@@ -11,7 +11,7 @@
 //
 // Exit: 0 = registered (prints install link) · 1 = block (bad input / service error) · 2 = env error
 import { writeReport } from './lib/report.mjs'
-import { ksFetch, normalizeStore, installLink, mask, EnvError, REQUIRED_SCOPES } from './lib/keystone.mjs'
+import { ksFetch, normalizeStore, installLink as ksInstallLink, mask, EnvError, REQUIRED_SCOPES } from './lib/keystone.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -23,6 +23,7 @@ const store = normalizeStore(get('store'))
 const clientId = get('client-id')
 const clientSecret = get('client-secret')
 const appName = get('app-name')
+const installLink = get('install-link') // custom-dist: the Dashboard-generated link to serve as-is
 
 const blockers = []
 const add = (id, detail) => blockers.push({ id, page: store || '', detail, evidence: '' })
@@ -45,15 +46,16 @@ if (blockers.length) finish(null)
 console.error(`registering ${store} (client_id ${clientId}, secret ${mask(clientSecret)}) scopes=${REQUIRED_SCOPES.length}`)
 
 if (MOCK) {
-  console.log(`https://keystone.example/install?shop=${store}`)
-  finish(null, { mock: true })
+  console.log(installLink || `https://keystone.example/install?shop=${store}`)
+  finish(null, { mock: true, installLink: installLink || null })
 }
 
 try {
-  const { status, json } = await ksFetch('POST', '/register', { body: { shop: store, client_id: clientId, client_secret: clientSecret, app_name: appName } })
+  const { status, json } = await ksFetch('POST', '/register', { body: { shop: store, client_id: clientId, client_secret: clientSecret, app_name: appName, install_link: installLink } })
   if (status !== 200) { add('register.service-error', `service returned ${status}: ${json.error || JSON.stringify(json).slice(0, 120)}`); finish(null) }
-  // install link to stdout (the thing you send the client)
-  console.log(json.install_url || installLink(store))
+  // install link to stdout (the thing you send the client): the Dashboard custom-dist link if
+  // provided, else the service-built /install URL (public-app path).
+  console.log(json.install_url || installLink || ksInstallLink(store))
   finish(null, { registered: true })
 } catch (err) {
   if (err instanceof EnvError) finish(err.message)

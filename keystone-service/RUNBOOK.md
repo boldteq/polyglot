@@ -53,35 +53,42 @@ export KEYSTONE_API_KEY=<the same KEYSTONE_API_KEY from step 1>
 
 ## Part B — Per-client checklist (every new client)
 
-Your only manual work is **step 1** (Shopify exposes no API for it). Steps 2–4 are one command + sending a link.
+**One-time on the build machine:** `shopify auth login` (browser, once) to the **`insight infoway`** org;
+`export KEYSTONE_PARTNER_ORG_ID=<insight-infoway-org-id>` (and `KEYSTONE_APP_DIR` if not the default
+`~/Desktop/Shopify Task/Client Shopify App`).
 
-### 1. Create the custom-distribution app (Partner Dashboard — ~2 min, once per client)
-`partners.shopify.com` → **Apps** → **Create app** → **Create app manually** → name it for the store
-(e.g. `Boldteq — Acme Coffee`). Then in the app:
-- **Configuration → Access scopes:** grant exactly these 9 (no more):
-  `write_products, read_products, write_content, read_content, write_files, read_files, write_metaobjects, read_metaobjects, write_online_store_navigation`
-  *(NEVER orders / customers / payments.)*
-- **Configuration → URLs → Allowed redirection URL(s):** `https://<KEYSTONE_BASE_URL>/auth/callback`
-- **Distribution → Custom distribution** → enter the client's `*.myshopify.com` domain → **Generate link**.
-- **Client credentials:** copy the **Client ID** (API key) + **Client secret**.
+The agent builds the app via CLI; you do **3 Dashboard clicks** Shopify forces (no CLI/API exists for them).
 
-### 2. Register the app with Keystone (one command)
+### 1. Build the app (the agent / one command)
 ```bash
 cd "Boldteq App/Operation/Polyglot/theme-toolkit"
-node scripts/keystone-register.mjs \
-  --store acme \
-  --client-id <Client ID> \
-  --client-secret <Client secret> \
-  --app-name "Boldteq — Acme Coffee"
-# → prints the INSTALL LINK   (the secret is never echoed back)
+node scripts/keystone-provision.mjs --store acme.myshopify.com --org-id "$KEYSTONE_PARTNER_ORG_ID"
+# → shopify app init/deploy scaffolds + registers the custom-dist app in the org, into
+#   ~/Desktop/Shopify Task/Client Shopify App/acme/ , sets the 9 scopes + the Keystone redirect,
+#   reads client_id, and PRINTS the 3-step Dashboard checklist below.
 ```
 
-### 3. Send the link to the client
-Send them the install link → they click → **Install**. (If custom-distribution requires Shopify's
-own dashboard-generated link instead of Keystone's `/install`, send that one — it still lands on
-Keystone's `/auth/callback`, so capture is identical. **Confirm which on your first client.**)
+### 2. The 3 Dashboard clicks (Dev Dashboard — Shopify forces these, ~1 min)
+- **Settings → Client credentials →** copy the **Client secret**.
+- **Distribution → Custom distribution →** enter the client's `*.myshopify.com` domain.
+- **Generate link →** copy the install link.
+*(Scopes + redirect URL are already set by step 1. NEVER add orders/customers/payments scopes.)*
 
-### 4. Confirm + done
+### 3. Register creds + link (one command → done)
+```bash
+node scripts/keystone-register.mjs \
+  --store acme \
+  --client-id <client_id from shopify.app.toml> \
+  --client-secret <paste the secret> \
+  --install-link "<paste the Dashboard link>"
+# → echoes the install link to send (secret never logged)
+```
+
+### 4. Send the link to the client
+Send the Dashboard-generated install link → they click → **Install**. (Custom-dist apps install via
+the Dashboard link; it lands on Keystone's `/auth/callback`, so the token capture is automatic.)
+
+### 5. Confirm + done
 ```bash
 node scripts/keystone-status.mjs acme
 # → INSTALLED+OK  (means: client installed + the 9 scopes are correct)

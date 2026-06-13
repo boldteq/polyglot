@@ -18,6 +18,7 @@ export async function initSchema() {
       refresh_token_enc     TEXT,
       token_expires         TIMESTAMPTZ,
       scopes                TEXT,
+      install_link          TEXT,
       pending_state         TEXT,
       status                TEXT NOT NULL DEFAULT 'registered',
       installed_at          TIMESTAMPTZ,
@@ -26,16 +27,19 @@ export async function initSchema() {
       updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `)
+  // Idempotent add for tables created before install_link existed.
+  await pool.query(`ALTER TABLE client_app ADD COLUMN IF NOT EXISTS install_link TEXT`)
 }
 
-export async function upsertRegistration({ shop, appName, clientId, clientSecret, scopes }) {
+export async function upsertRegistration({ shop, appName, clientId, clientSecret, scopes, installLink }) {
   await pool.query(
-    `INSERT INTO client_app (shop, app_name, client_id, client_secret_enc, scopes, status, updated_at)
-     VALUES ($1,$2,$3,$4,$5,'registered',now())
+    `INSERT INTO client_app (shop, app_name, client_id, client_secret_enc, scopes, install_link, status, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,'registered',now())
      ON CONFLICT (shop) DO UPDATE SET
        app_name=EXCLUDED.app_name, client_id=EXCLUDED.client_id,
-       client_secret_enc=EXCLUDED.client_secret_enc, scopes=EXCLUDED.scopes, updated_at=now()`,
-    [shop, appName ?? null, clientId, encrypt(clientSecret), (scopes || []).join(',')],
+       client_secret_enc=EXCLUDED.client_secret_enc, scopes=EXCLUDED.scopes,
+       install_link=COALESCE(EXCLUDED.install_link, client_app.install_link), updated_at=now()`,
+    [shop, appName ?? null, clientId, encrypt(clientSecret), (scopes || []).join(','), installLink ?? null],
   )
 }
 
@@ -49,6 +53,7 @@ export async function getApp(shop) {
     accessToken: r.access_token_enc ? decrypt(r.access_token_enc) : null,
     refreshToken: r.refresh_token_enc ? decrypt(r.refresh_token_enc) : null,
     tokenExpires: r.token_expires, scopes: r.scopes, pendingState: r.pending_state,
+    installLink: r.install_link,
     status: r.status, installedAt: r.installed_at, lastRefreshedAt: r.last_refreshed_at,
   }
 }

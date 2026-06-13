@@ -43,11 +43,12 @@ app.get('/health', async (_req, res) => {
 // ── register an app's creds (authed) ──────────────────────────────────────────
 app.post('/register', requireApiKey, async (req, res) => {
   const shop = normalizeShop(req.body.shop)
-  const { client_id: clientId, client_secret: clientSecret, app_name: appName } = req.body
+  const { client_id: clientId, client_secret: clientSecret, app_name: appName, install_link: installLink } = req.body
   if (!shop) return res.status(400).json({ error: 'invalid shop (expect <store>.myshopify.com)' })
   if (!clientId || !clientSecret) return res.status(400).json({ error: 'client_id and client_secret required' })
-  await db.upsertRegistration({ shop, appName, clientId, clientSecret, scopes: PORTER_SCOPES })
-  res.json({ ok: true, shop, install_url: `${BASE_URL}/install?shop=${encodeURIComponent(shop)}`, scopes: PORTER_SCOPES })
+  await db.upsertRegistration({ shop, appName, clientId, clientSecret, scopes: PORTER_SCOPES, installLink })
+  // custom-dist: serve the Dashboard-generated link as-is; public-app: the service-built /install URL
+  res.json({ ok: true, shop, install_url: installLink || `${BASE_URL}/install?shop=${encodeURIComponent(shop)}`, scopes: PORTER_SCOPES })
 })
 
 // ── start install (public — the link you send the client) ─────────────────────
@@ -112,6 +113,7 @@ app.get('/status', requireApiKey, async (req, res) => {
   res.json({
     shop, status: appRow.status, installed: appRow.status === 'installed',
     token_expires: appRow.tokenExpires, granted_scopes: granted, required_scopes: PORTER_SCOPES,
+    install_link: appRow.installLink || `${BASE_URL}/install?shop=${encodeURIComponent(shop)}`,
   })
 })
 
