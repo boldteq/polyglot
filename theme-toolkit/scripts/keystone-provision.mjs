@@ -38,7 +38,7 @@ const orgId = get('org-id') || process.env.KEYSTONE_PARTNER_ORG_ID || null
 const appDirRoot = get('app-dir') || process.env.KEYSTONE_APP_DIR || path.join(os.homedir(), 'Desktop', 'Shopify Task', 'Client Shopify App')
 const baseUrl = (process.env.KEYSTONE_BASE_URL || '').replace(/\/+$/, '')
 const redirectUri = baseUrl ? `${baseUrl}/auth/callback` : 'https://YOUR-KEYSTONE-SERVICE/auth/callback'
-const appName = `Boldteq — ${handle || 'client'}`
+const appName = get('app-name') || `app — ${handle || 'client'}`
 
 const blockers = []
 const warnings = []
@@ -130,6 +130,9 @@ console.log(`
    client_id: ${clientId || '(pending — run `shopify app dev` once to register)'}
    scopes:    ${REQUIRED_SCOPES.join(', ')}
    redirect:  ${redirectUri}
+
+ℹ️  App URL / redirect = the shared Keystone service (KEYSTONE_BASE_URL) — the SAME for every
+   client by design (one callback captures every store's token). You find apps by NAME, not URL.
 
 ⚠️  3 Dashboard steps Shopify requires (NO CLI/API for these — do them in the Dev Dashboard):
    1. App → Settings → Client credentials → copy the CLIENT SECRET
