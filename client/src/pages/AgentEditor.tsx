@@ -14,6 +14,7 @@ import {
   getCategories,
 } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { useUnsavedGuard } from '../hooks/useUnsavedGuard'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
@@ -191,9 +192,9 @@ export default function AgentEditor({ scope }: Props) {
   }
 
   const selectedTools = (meta.tools || '').split(',').map(t => t.trim()).filter(Boolean)
-  const { data: templates } = useApi(getTemplates)
-  const { data: trainingData } = useApi(() => name ? getTraining(name) : Promise.resolve([]))
-  const { data: categories } = useApi(getCategories)
+  const { data: templates } = useApi(getTemplates, [], CacheKeys.templates)
+  const { data: trainingData } = useApi(() => name ? getTraining(name) : Promise.resolve([]), [name], name ? CacheKeys.training(name) : 'training/none')
+  const { data: categories } = useApi(getCategories, [], CacheKeys.categories)
   const activeCorrections = (trainingData || []).filter(c => c.status === 'active')
 
   const backPath = scope === 'global' ? '/agents' : `/projects/${projectId}`

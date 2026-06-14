@@ -27,6 +27,7 @@ import {
 import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHistory, getOrchestrationTemplates } from '../lib/api'
 import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import type { UnifiedAgent } from '../types'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
@@ -183,7 +184,7 @@ type SidebarTab = 'agents' | 'templates' | 'saved' | 'history'
 
 // ---- Main Page ----
 export default function Orchestration() {
-  const { data: allAgents } = useApi(getUnifiedAgents)
+  const { data: allAgents } = useApi(getUnifiedAgents, [], CacheKeys.unifiedAgents)
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [orchName, setOrchName] = useState('My Orchestration')

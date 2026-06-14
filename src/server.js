@@ -67,7 +67,26 @@ app.use(express.json({ limit: '5mb' })); // Q4/Q50: bumped from 2mb to 5mb
 const distPath = path.join(__dirname, '..', 'public-dist');
 const legacyPath = path.join(__dirname, '..', 'public');
 const staticPath = fs.existsSync(distPath) ? distPath : legacyPath;
-app.use(express.static(staticPath));
+
+// Cache policy:
+//  - index.html → no-cache: must revalidate so a new deploy is picked up instantly.
+//  - Vite content-hashed assets under /assets/ → immutable, 1yr: filename changes
+//    on every build so the body can never go stale.
+//  - other top-level unhashed files (favicon.svg, icons.svg) → 1h short cache.
+const HASHED_ASSET_RE = /[-.][A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|eot|png|jpe?g|svg|gif|webp|avif|map)$/;
+app.use(express.static(staticPath, {
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    } else if (HASHED_ASSET_RE.test(filePath) && filePath.includes(`${path.sep}assets${path.sep}`)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
+  },
+}));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 const configRouter = require('./routes/config');
@@ -127,8 +146,11 @@ app.use('/api', (req, res) => {
   res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl}` });
 });
 
-// SPA fallback — serve index.html for all non-API routes
+// SPA fallback — serve index.html for all non-API routes.
+// setHeaders above does NOT run for res.sendFile, so set no-cache explicitly:
+// the fallback HTML must always revalidate (same reason as the static index.html).
 app.get('*', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(staticPath, 'index.html'));
 });
 

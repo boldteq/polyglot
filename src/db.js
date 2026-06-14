@@ -14,6 +14,13 @@ const ORG_DIR = path.join(HOME, '.claude', 'org');
 
 let _db = null;
 
+// Org-cache invalidation hook. org.js registers a callback here so every
+// registry/department write clears its in-process caches. db.js must not require
+// org.js (cycle), hence the callback indirection — same pattern as atomicIo.
+let _orgInvalidator = null;
+function setOrgInvalidator(fn) { _orgInvalidator = typeof fn === 'function' ? fn : null; }
+function _invalidateOrg() { if (_orgInvalidator) { try { _orgInvalidator(); } catch { /* never let invalidation break a write */ } } }
+
 // ── Database Lifecycle ──────────────────────────────────────────────────────
 
 // Slow-query threshold (ms). Queries that take longer emit a warn log.
@@ -2126,6 +2133,7 @@ function saveRegistry(data) {
       );
     }
   })();
+  _invalidateOrg();
 }
 
 // ── Registry History (undo + audit) ─────────────────────────────────────────
@@ -2247,6 +2255,7 @@ function saveDepartments(data) {
       for (const p of Object.values(data.phases)) s.run(p.id, p.label, p.description, p.color, p.order || 0);
     })();
   }
+  _invalidateOrg();
 }
 
 // ── Witness Log (HR) ────────────────────────────────────────────────────────
@@ -2759,6 +2768,7 @@ module.exports = {
   loadRegistry, saveRegistry,
   logHistory, getHistory, listHistory, listBatchHistory, markHistoryUndone,
   loadDepartments, saveDepartments,
+  setOrgInvalidator,
   // HR
   appendWitnessEvent, getWitnessLog,
   appendDailyScore, getDailyScores,

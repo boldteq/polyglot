@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Settings, Trash2, Save, FolderOpen, Info, FolderSearch } from 'lucide-react'
 import { getConfig, updateProjectDirs, getGlobalSettings, updateGlobalSettings } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import DirectoryPicker from '../components/DirectoryPicker'
 import { toast } from '../components/Toast'
 
@@ -10,13 +11,13 @@ interface Props {
 }
 
 export default function SettingsPage({ onSave }: Props) {
-  const { data: config, loading } = useApi(getConfig)
+  const { data: config, loading } = useApi(getConfig, [], CacheKeys.config)
   const [dirs, setDirs] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
 
-  const { data: settingsRaw, loading: settingsLoading } = useApi(getGlobalSettings)
+  const { data: settingsRaw, loading: settingsLoading } = useApi(getGlobalSettings, [], CacheKeys.globalSettings)
   const [settingsData, setSettingsData] = useState<Record<string, unknown>>({})
   const [settingsPermissionsText, setSettingsPermissionsText] = useState('{}')
   const [settingsPermissionsError, setSettingsPermissionsError] = useState('')

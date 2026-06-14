@@ -10,6 +10,7 @@ import {
   sanitizeName,
 } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import type { UnifiedRule } from '../types'
 import { toast } from '../components/Toast'
@@ -23,7 +24,7 @@ function timeAgo(ts: string): string {
 }
 
 export default function AllRules() {
-  const { data: rules, loading, error, refetch } = useApi(getUnifiedRules)
+  const { data: rules, loading, error, refetch } = useApi(getUnifiedRules, [], CacheKeys.unifiedRules)
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')

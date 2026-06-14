@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { getAnalyticsRuns, getAnalyticsSummary, getRoutingSavings } from '../lib/api'
 import type { AgentRunEntry, AgentAnalyticsSummary, RoutingSavings } from '../lib/api'
+import { resource } from '../lib/cacheCore'
 
 type TimeRange = '1d' | '7d' | '30d' | 'all'
 
@@ -60,20 +61,26 @@ function buildDailyTrend(
 }
 
 export default function Analytics() {
-  const [summary, setSummary] = useState<AgentAnalyticsSummary>({})
-  const [allRuns, setAllRuns] = useState<AgentRunEntry[]>([])
-  const [savings, setSavings] = useState<RoutingSavings | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Cached resources shared with Dashboard / AgentHealth — navigating between
+  // them is instant. Spinner only on first-ever load (empty cache).
+  const summaryRes = resource('analytics/summary', getAnalyticsSummary)
+  const runsRes = resource('analytics/runs:500', () => getAnalyticsRuns({ limit: 500 }))
+  const savingsRes = resource('routing/savings', () => getRoutingSavings().catch(() => null))
+
+  const [summary, setSummary] = useState<AgentAnalyticsSummary>(() => summaryRes.getState().data ?? {})
+  const [allRuns, setAllRuns] = useState<AgentRunEntry[]>(() => runsRes.getState().data?.runs ?? [])
+  const [savings, setSavings] = useState<RoutingSavings | null>(() => savingsRes.getState().data ?? null)
+  const [loading, setLoading] = useState(() => summaryRes.getState().data === null)
   const [loadError, setLoadError] = useState(false)
   const [range, setRange] = useState<TimeRange>('7d')
 
   const loadData = () => {
-    setLoading(true)
+    if (summaryRes.getState().data === null) setLoading(true)
     setLoadError(false)
     Promise.all([
-      getAnalyticsSummary(),
-      getAnalyticsRuns({ limit: 500 }),
-      getRoutingSavings().catch(() => null),
+      summaryRes.refetch(),
+      runsRes.refetch(),
+      savingsRes.refetch(),
     ]).then(([s, r, sv]) => {
       setSummary(s)
       setAllRuns(r.runs)

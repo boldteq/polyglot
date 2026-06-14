@@ -10,6 +10,7 @@ import {
   getPlaygroundHistory, savePlaygroundHistoryItem, deletePlaygroundHistoryItem, clearPlaygroundHistoryApi, apiError} from '../lib/api'
 import type { PlaygroundHistoryItem } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
 import { MarkdownRenderer } from '../components/MarkdownRenderer'
@@ -128,7 +129,7 @@ function toHistoryItem(r: TestResult): PlaygroundHistoryItem {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function Playground() {
-  const { data: agents } = useApi(getUnifiedAgents)
+  const { data: agents } = useApi(getUnifiedAgents, [], CacheKeys.unifiedAgents)
 
   // Core state — use lazy initializers so loadPersistedSession runs once, not on every render
   const [selectedAgent, setSelectedAgent] = useState<string>(() => loadPersistedSession().selectedAgent)

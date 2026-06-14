@@ -3,7 +3,8 @@
 // every UI that needs the live squad/tag list.
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { getTaxonomy, subscribeOrgChart, type TaxonomyData, type SquadDef, type TagCategoryDef, type TierDef } from '../lib/api'
+import { getTaxonomy, type TaxonomyData, type SquadDef, type TagCategoryDef, type TierDef } from '../lib/api'
+import { onOrgChartEvent } from '../lib/sseBus'
 import { SQUADS as FALLBACK_SQUADS, TAG_TAXONOMY as FALLBACK_TAGS } from '../lib/orgConstants'
 
 const FALLBACK_TIERS: TierDef[] = [
@@ -104,14 +105,14 @@ export function useTaxonomy(): UseTaxonomyResult {
     return () => { _listeners.delete(onChange) }
   }, [])
 
-  // Subscribe to SSE so any taxonomy:update across pages auto-refetches
+  // Subscribe to SSE so any taxonomy:update across pages auto-refetches.
+  // Shared bus = one app-wide connection instead of one per mounted consumer.
   useEffect(() => {
-    const es = subscribeOrgChart((ev) => {
+    return onOrgChartEvent((ev) => {
       if (ev.type === 'taxonomy:update') {
         fetchAndBroadcast()
       }
     })
-    return () => es.close()
   }, [])
 
   const refetch = useCallback(() => { fetchAndBroadcast() }, [])

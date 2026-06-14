@@ -3,7 +3,8 @@
 // across pages, auto-refetch on `agent:upsert` SSE event.
 
 import { useEffect, useState, useCallback } from 'react'
-import { getDrift, subscribeOrgChart, type DriftData } from '../lib/api'
+import { getDrift, type DriftData } from '../lib/api'
+import { onOrgChartEvent } from '../lib/sseBus'
 
 let _cache: DriftData | null = null
 let _inflight: Promise<DriftData> | null = null
@@ -35,14 +36,11 @@ function ensureSseSubscription() {
   if (_sseStarted) return
   _sseStarted = true
   try {
-    const es = subscribeOrgChart((ev) => {
+    onOrgChartEvent((ev) => {
       if (ev.type === 'agent:upsert' || ev.type === 'agent:remove') {
         fetchAndBroadcast()
       }
     })
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', () => es.close())
-    }
   } catch (err) {
     console.error('[useDrift] SSE subscribe failed:', err instanceof Error ? err.message : err)
   }

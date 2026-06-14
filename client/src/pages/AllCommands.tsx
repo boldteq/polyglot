@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Clock, FolderOpen, Search, FileCode } from 'lucide-react'
 import { getUnifiedCommands, deleteProjectCommand, sanitizeName, updateProjectCommand } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import type { UnifiedCommand } from '../types'
 import { toast } from '../components/Toast'
@@ -16,7 +17,7 @@ function timeAgo(ts: string): string {
 }
 
 export default function AllCommands() {
-  const { data: commands, loading, error, refetch } = useApi(getUnifiedCommands)
+  const { data: commands, loading, error, refetch } = useApi(getUnifiedCommands, [], CacheKeys.unifiedCommands)
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')

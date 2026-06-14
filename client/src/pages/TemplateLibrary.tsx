@@ -3,11 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { LayoutTemplate, Plus, Trash2, Clock, Search, FileText, X } from 'lucide-react'
 import { getTemplates, deleteTemplate, updateTemplate, sanitizeName } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
 
 export default function TemplateLibrary() {
-  const { data: templates, loading, error, refetch } = useApi(getTemplates)
+  const { data: templates, loading, error, refetch } = useApi(getTemplates, [], CacheKeys.templates)
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)

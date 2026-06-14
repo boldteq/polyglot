@@ -9,6 +9,11 @@ import { ToastContainer } from './components/Toast'
 import CommandPalette from './components/CommandPalette'
 import { useApi } from './hooks/useApi'
 import { getProjects } from './lib/api'
+import { CacheKeys, initCacheInvalidation } from './lib/cacheKeys'
+
+// Wire SSE + file-write events to centralized cache invalidation once, at module
+// load (before any page mounts). Idempotent.
+initCacheInvalidation()
 
 // Q34: Route-level code-splitting — each page loads only when navigated to
 const Dashboard     = React.lazy(() => import('./pages/Dashboard'))
@@ -50,7 +55,7 @@ function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { data: projects, refetch } = useApi(getProjects)
+  const { data: projects, refetch } = useApi(getProjects, [], CacheKeys.projects)
   const [aiOpen, setAiOpen] = useState(false)
 
   return (

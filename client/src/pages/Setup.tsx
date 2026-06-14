@@ -6,6 +6,7 @@ import {
   FlaskConical, Terminal, Loader,
 } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { toast } from '../components/Toast'
 import { getConfig } from '../lib/api'
 import { PageShell } from '../components/PageShell'
@@ -185,7 +186,7 @@ function Collapsible({ title, children, defaultOpen = false }: { title: string; 
 export default function Setup() {
   const { data: status, loading: statusLoading, refetch: refetchStatus } = useApi(getSetupStatus)
   const { data: projects, loading: projectsLoading, refetch: refetchProjects } = useApi(getSetupProjects)
-  const { data: config } = useApi(getConfig)
+  const { data: config } = useApi(getConfig, [], CacheKeys.config)
   const [installingPaths, setInstallingPaths] = useState<Set<string>>(new Set())
 
   const pm2Map: Record<string, { label: string; status: 'ok' | 'warn' | 'error'; note: string }> = {

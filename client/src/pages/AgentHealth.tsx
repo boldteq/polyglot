@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import { getAnalyticsSummary, getRoutingSavings, getHrRegistry, getFleetHealth } from '../lib/api'
 import type { AgentAnalyticsSummary, RoutingSavings, RegistryCounts, FleetHealth } from '../lib/api'
+import { resource } from '../lib/cacheCore'
+import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import { useAppConfig } from '../hooks/useAppConfig'
 import { getHealthColor, getHealthBg, getHealthLabel, getHealthBar } from '../lib/colors'
@@ -34,11 +36,17 @@ function formatCost(cost: number): string {
 export default function AgentHealth() {
   const { config } = useAppConfig()
   const thresholds = { healthy: config.health.threshold_healthy, degraded: config.health.threshold_degraded }
-  const [summary, setSummary] = useState<AgentAnalyticsSummary>({})
-  const [savings, setSavings] = useState<RoutingSavings | null>(null)
-  const [registryCounts, setRegistryCounts] = useState<RegistryCounts | null>(null)
-  const [fleetHealth, setFleetHealth] = useState<FleetHealth | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Cached resources (summary/savings/registry shared with Dashboard & Analytics).
+  const summaryRes = resource('analytics/summary', getAnalyticsSummary)
+  const savingsRes = resource('routing/savings', () => getRoutingSavings().catch(() => null))
+  const registryRes = resource(CacheKeys.hrRegistry, getHrRegistry)
+  const fleetRes = resource('fleet/health', () => getFleetHealth().catch(() => null))
+
+  const [summary, setSummary] = useState<AgentAnalyticsSummary>(() => summaryRes.getState().data ?? {})
+  const [savings, setSavings] = useState<RoutingSavings | null>(() => savingsRes.getState().data ?? null)
+  const [registryCounts, setRegistryCounts] = useState<RegistryCounts | null>(() => registryRes.getState().data?.counts ?? null)
+  const [fleetHealth, setFleetHealth] = useState<FleetHealth | null>(() => fleetRes.getState().data ?? null)
+  const [loading, setLoading] = useState(() => summaryRes.getState().data === null)
   const [loadError, setLoadError] = useState(false)
   const [reloadTick, setReloadTick] = useState(0)
   const [search, setSearch] = useState('')
@@ -47,18 +55,18 @@ export default function AgentHealth() {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    if (summaryRes.getState().data === null) setLoading(true)
     setLoadError(false)
     Promise.all([
       // getAnalyticsSummary is the critical fetch — let it reject so a backend
       // outage shows an error state instead of an all-zeros fleet (C19 audit).
-      getAnalyticsSummary(),
-      getRoutingSavings().catch(() => null),
-      getHrRegistry().catch((err) => {
+      summaryRes.refetch(),
+      savingsRes.refetch(),
+      registryRes.refetch().catch((err) => {
         console.error('[agent-health] hr registry fetch failed:', err?.message ?? err)
         return null
       }),
-      getFleetHealth().catch((err) => {
+      fleetRes.refetch().catch((err) => {
         console.error('[agent-health] fleet health fetch failed:', err?.message ?? err)
         return null
       }),
@@ -74,6 +82,7 @@ export default function AgentHealth() {
       setLoadError(true)
     }).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadTick])
 
   const agents = useMemo(() => {

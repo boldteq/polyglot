@@ -29,6 +29,8 @@ import type {
   RoutingSavings,
   RegistryCounts,
 } from '../lib/api'
+import { resource } from '../lib/cacheCore'
+import { CacheKeys } from '../lib/cacheKeys'
 
 interface Props {
   projects: Project[]
@@ -81,23 +83,32 @@ export default function Dashboard({ projects }: Props) {
   const runsLimit = config.api_limits.runs_dashboard
   const recentRunsCap = config.ui_caps.recent_runs
   const topAgentsCap = config.ui_caps.top_agents
-  const [runs, setRuns] = useState<AgentRunEntry[]>([])
-  const [summary, setSummary] = useState<AgentAnalyticsSummary>({})
-  const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [savings, setSavings] = useState<RoutingSavings | null>(null)
-  const [registryCounts, setRegistryCounts] = useState<RegistryCounts | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Cached resources — seed initial state from cache so re-navigating to the
+  // dashboard paints instantly; loadData() revalidates in the background. The
+  // spinner only shows on the first-ever load (empty cache).
+  const runsRes = resource(`analytics/runs:${runsLimit}`, () => getAnalyticsRuns({ limit: runsLimit }))
+  const summaryRes = resource('analytics/summary', getAnalyticsSummary)
+  const schedulesRes = resource('schedules', getSchedules)
+  const savingsRes = resource('routing/savings', () => getRoutingSavings().catch(() => null))
+  const registryRes = resource(CacheKeys.hrRegistry, getHrRegistry)
+
+  const [runs, setRuns] = useState<AgentRunEntry[]>(() => runsRes.getState().data?.runs ?? [])
+  const [summary, setSummary] = useState<AgentAnalyticsSummary>(() => summaryRes.getState().data ?? {})
+  const [schedules, setSchedules] = useState<Schedule[]>(() => schedulesRes.getState().data ?? [])
+  const [savings, setSavings] = useState<RoutingSavings | null>(() => savingsRes.getState().data ?? null)
+  const [registryCounts, setRegistryCounts] = useState<RegistryCounts | null>(() => registryRes.getState().data?.counts ?? null)
+  const [loading, setLoading] = useState(() => runsRes.getState().data === null)
   const [loadError, setLoadError] = useState(false)
 
   const loadData = () => {
-    setLoading(true)
+    if (runsRes.getState().data === null) setLoading(true)
     setLoadError(false)
     Promise.all([
-      getAnalyticsRuns({ limit: runsLimit }),
-      getAnalyticsSummary(),
-      getSchedules(),
-      getRoutingSavings().catch(() => null),
-      getHrRegistry().catch((err) => {
+      runsRes.refetch(),
+      summaryRes.refetch(),
+      schedulesRes.refetch(),
+      savingsRes.refetch(),
+      registryRes.refetch().catch((err) => {
         console.error('[dashboard] hr registry fetch failed:', err?.message ?? err)
         return null
       }),

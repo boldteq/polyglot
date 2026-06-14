@@ -23,16 +23,16 @@ import {
   renameCategory,
   deleteCategory,
   reorderCategories,
-  getDrift,
   getDispatchRecommendation,
-  subscribeOrgChart,
 } from '../lib/api'
-import type { DriftData, DispatchResult } from '../lib/api'
+import type { DispatchResult } from '../lib/api'
 import { useTaxonomy } from '../hooks/useTaxonomy'
+import { useDrift } from '../hooks/useDrift'
 import { formatAgentDisplay } from '../lib/agentDisplay'
 import { useAgentBulkActions } from '../hooks/useAgentBulkActions'
 import { AGENT_STATUSES } from '../lib/constants'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import type { UnifiedAgent } from '../types'
 import { toast } from '../components/Toast'
@@ -41,10 +41,11 @@ import { CategoryFilterPills } from '../components/AgentCategoryBadge'
 
 
 export default function AllAgents() {
-  const { data: agents, loading, error, refetch } = useApi(getUnifiedAgents)
-  const { data: projects } = useApi(getProjects)
-  const { data: categories, refetch: refetchCategories } = useApi(getCategories)
+  const { data: agents, loading, error, refetch } = useApi(getUnifiedAgents, [], CacheKeys.unifiedAgents)
+  const { data: projects } = useApi(getProjects, [], CacheKeys.projects)
+  const { data: categories, refetch: refetchCategories } = useApi(getCategories, [], CacheKeys.categories)
   const { squads: SQUADS, squadById, squadOrder } = useTaxonomy()
+  const { drift } = useDrift()
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
@@ -59,7 +60,6 @@ export default function AllAgents() {
   const [newCategory, setNewCategory] = useState('')
   const [createScope, setCreateScope] = useState<string>('global')
   const [actioning, setActioning] = useState(false)
-  const [drift, setDrift] = useState<DriftData | null>(null)
   const [driftDismissed, setDriftDismissed] = useState(false)
   const [dispatchOpen, setDispatchOpen] = useState(false)
   const [dispatchQuery, setDispatchQuery] = useState('')
@@ -74,20 +74,9 @@ export default function AllAgents() {
     }
   }, [categories, newCategory])
 
-  // Fetch drift data to detect unregistered agents
-  useEffect(() => {
-    getDrift().then(setDrift).catch(() => {/* non-critical */})
-  }, [])
-
-  // Live cross-page sync — refetch when any registry mutation broadcasts
-  useEffect(() => {
-    const es = subscribeOrgChart((ev) => {
-      if (ev.type === 'agent:upsert' || ev.type === 'agent:remove') {
-        refetch()
-      }
-    })
-    return () => es.close()
-  }, [refetch])
+  // Drift now comes from the shared useDrift() cache (auto-refetched on
+  // agent:upsert/remove). Cross-page registry sync is handled centrally by
+  // initCacheInvalidation() — no per-page SSE connection needed here.
 
   const filtered = (agents || []).filter((a) => {
     if (search && !a.name.toLowerCase().includes(search.toLowerCase()) && !a.description.toLowerCase().includes(search.toLowerCase()) && !a.filename.toLowerCase().includes(search.toLowerCase())) return false

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { getTraining, addTraining, deleteTraining, bakeTraining, updateTraining } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
 import type { TrainingCorrection } from '../types'
@@ -12,7 +13,7 @@ import type { TrainingCorrection } from '../types'
 export default function TrainingView() {
   const { name } = useParams()
   const navigate = useNavigate()
-  const { data: corrections, loading, error, refetch } = useApi(() => getTraining(name!), [name])
+  const { data: corrections, loading, error, refetch } = useApi(() => getTraining(name!), [name], CacheKeys.training(name!))
 
   const [adding, setAdding] = useState(false)
   const [issue, setIssue] = useState('')

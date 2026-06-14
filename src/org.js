@@ -25,6 +25,48 @@ const ORG_DIR = path.join(HOME, '.claude', 'org');
 const DEPARTMENTS_PATH = path.join(ORG_DIR, 'departments.json');
 const REGISTRY_PATH = path.join(ORG_DIR, 'registry.json');
 
+// ── In-process cache (single-process server, mirrors taxonomy.js) ────────────
+// loadRegistry/loadDepartments hit SQLite + JSON.parse ~55 blobs per call;
+// buildOrgChart assembles ~55 nodes + dept buckets + stats. Both are pure given
+// (registry, departments) and change ONLY on write. We cache them and invalidate
+// from the db.saveRegistry / db.saveDepartments chokepoint (see below).
+let _registryCache = null;
+let _departmentsCache = null;
+let _orgSkeletonCache = null; // { diskSig, skeleton } — static chart, load overlaid per request
+let _orgVersion = 0;          // bumped on every invalidation (reserved for future ETag)
+
+function invalidateOrgCache() {
+  _registryCache = null;
+  _departmentsCache = null;
+  _orgSkeletonCache = null;
+  _orgVersion++;
+}
+
+// Register with db so EVERY registry/department write clears these caches.
+// db.js must not hard-require org.js (cycle), so it calls a registered callback.
+// This is the PRIMARY invalidation path — all writes funnel through db.save*.
+try {
+  if (typeof db.setOrgInvalidator === 'function') db.setOrgInvalidator(invalidateOrgCache);
+} catch { /* db shape older — db-hook unavailable, event listener below covers it */ }
+
+// Belt-and-suspenders: also drop caches on any agent/taxonomy SSE event, so a
+// future write path that emits an event but skips db.save* still stays correct.
+// Wired lazily on first cache use — requiring agentSync at module load races the
+// org↔agentSync circular dependency (its exports aren't ready yet).
+let _eventsWired = false;
+function ensureEventInvalidation() {
+  if (_eventsWired) return;
+  _eventsWired = true;
+  try {
+    const { events } = require('./lib/agentSync');
+    if (events && typeof events.on === 'function') {
+      for (const e of ['agent:upsert', 'agent:remove', 'taxonomy:update']) {
+        events.on(e, invalidateOrgCache);
+      }
+    }
+  } catch { /* agentSync not ready — db hook is the primary path */ }
+}
+
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
@@ -52,7 +94,9 @@ function writeJson(filePath, data) {
 // ──────────────────────────────────────────────────────────────────────────
 
 function loadDepartments() {
-  return db.loadDepartments();
+  if (_departmentsCache) return _departmentsCache;
+  _departmentsCache = db.loadDepartments();
+  return _departmentsCache;
 }
 
 function saveDepartments(data) {
@@ -124,7 +168,10 @@ function updateSubDepartment(deptId, subId, patch = {}) {
 // ──────────────────────────────────────────────────────────────────────────
 
 function loadRegistry() {
-  return db.loadRegistry();
+  ensureEventInvalidation();
+  if (_registryCache) return _registryCache;
+  _registryCache = db.loadRegistry();
+  return _registryCache;
 }
 
 function saveRegistry(data) {
@@ -240,21 +287,62 @@ function findAgentsByTags(tagQuery = {}) {
  *   );
  *   const chart = org.buildOrgChart(agentMap);
  */
+// Live task-load overlay. Built fresh per request (cheap indexed query) and
+// applied onto the cached static skeleton so 🟢🟡🔴 dots stay real-time even
+// though the expensive node/dept/stats assembly is cached. Task writes
+// (tasks.js raw UPDATE agents) bypass db.saveRegistry, so load MUST NOT be cached.
+function _getLoadMap() {
+  try {
+    return require('./lib/tasks').getAllAgentLoad();
+  } catch {
+    return {};
+  }
+}
+
+function _withLoad(skeleton, loadMap) {
+  // Overlay live load onto a shallow copy of each node, then rebuild the
+  // department/sub-department member references by id so cards show live load too.
+  const nodes = skeleton.nodes.map((n) => ({
+    ...n,
+    activeTaskCount: loadMap[n.id]?.activeTaskCount ?? 0,
+    maxConcurrentTasks: loadMap[n.id]?.maxConcurrentTasks ?? 3,
+    loadStatus: loadMap[n.id]?.loadStatus ?? 'free',
+    busyUntilAt: loadMap[n.id]?.busyUntilAt ?? null,
+    lastDispatchAt: loadMap[n.id]?.lastDispatchAt ?? null,
+  }));
+  const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  const remap = (arr) => arr.map((m) => byId[m.id] || m);
+  const departments = skeleton.departments.map((d) => ({
+    ...d,
+    members: remap(d.members),
+    orphanMembers: remap(d.orphanMembers),
+    subDepartments: d.subDepartments.map((sd) => ({ ...sd, members: remap(sd.members) })),
+  }));
+  return { ...skeleton, nodes, departments };
+}
+
 function buildOrgChart(agentMap = {}) {
+  const loadMap = _getLoadMap();
+  // Cache key: the set of disk filenames present feeds node overrides
+  // (disk?.name / model / tools). Stable across requests when nothing changed.
+  const diskSig = Object.keys(agentMap).sort().join(',');
+  if (_orgSkeletonCache && _orgSkeletonCache.diskSig === diskSig) {
+    return _withLoad(_orgSkeletonCache.skeleton, loadMap);
+  }
+  const skeleton = _buildOrgSkeleton(agentMap);
+  _orgSkeletonCache = { diskSig, skeleton };
+  return _withLoad(skeleton, loadMap);
+}
+
+// Static (load-neutral) chart assembly. Pure given (registry, departments,
+// agentMap). Cached by buildOrgChart; load is overlaid afterwards via _withLoad.
+function _buildOrgSkeleton(agentMap = {}) {
   const { departments, phases } = loadDepartments();
   const { agents: registry } = loadRegistry();
 
-  // Phase A — pull live load + capacity for every agent in one query so the
-  // chart can render 🟢🟡🔴 indicators without N round-trips.
-  // tasks lib is required lazily to avoid a circular dep at module load.
-  let loadMap = {};
-  try {
-    const tasksLib = require('./lib/tasks');
-    loadMap = tasksLib.getAllAgentLoad();
-  } catch (err) {
-    // Graceful degradation: no load info if tasks lib not yet available.
-    loadMap = {};
-  }
+  // Load fields are set to neutral defaults here (empty loadMap) and overlaid
+  // live per-request in _withLoad — never cache live task load.
+  const loadMap = {};
 
   const nodes = [];
   const agentIds = Object.keys(registry || {});

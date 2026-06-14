@@ -1,35 +1,42 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+// Backward-compatible SWR upgrade. Previously this hook had NO cache: it set
+// loading=true and refetched from scratch on EVERY mount, so every navigation
+// showed a blank spinner. It now routes through cacheCore (stale-while-revalidate):
+//   - `loading` is true only on the first-ever load (empty cache).
+//   - cached data renders instantly on re-navigation, revalidated in background.
+//
+// Contract preserved: returns { data, loading, error, refetch, setData } (+ a new
+// additive `refreshing`). Existing 31 call sites work unchanged.
+//
+// Cache key: pass an explicit `cacheKey` (from CacheKeys) to SHARE one entry
+// across pages (e.g. AllAgents + Playground both reading unified/agents). When
+// omitted, a stable per-mount key is derived from a module slot id + deps —
+// gives caching + SWR per component without sharing across pages.
 
-export function useApi<T>(fetcher: () => Promise<T>, deps: unknown[] = []) {
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const mountedRef = useRef(true)
+import { useRef } from 'react'
+import { useCachedApi } from './useCachedApi'
 
-  useEffect(() => {
-    mountedRef.current = true
-    return () => { mountedRef.current = false }
-  }, [])
+let _slot = 0
 
-  const refetch = useCallback(() => {
-    setLoading(true)
-    setError(null)
-    fetcher()
-      .then(result => { if (mountedRef.current) setData(result) })
-      .catch((e) => { if (mountedRef.current) setError(e.message) })
-      .finally(() => { if (mountedRef.current) setLoading(false) })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+export function useApi<T>(
+  fetcher: () => Promise<T>,
+  deps: unknown[] = [],
+  cacheKey?: string,
+) {
+  // Stable per-mount slot id; combined with deps to form a key when none given.
+  const slotRef = useRef<number>(0)
+  if (slotRef.current === 0) slotRef.current = ++_slot
+  const key = cacheKey ?? `useApi:${slotRef.current}:${JSON.stringify(deps)}`
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  const r = useCachedApi<T>(key, fetcher)
 
-  useEffect(() => {
-    const handler = () => refetch()
-    window.addEventListener('polyglot:file-applied', handler)
-    return () => window.removeEventListener('polyglot:file-applied', handler)
-  }, [refetch])
-
-  return { data, loading, error, refetch, setData }
+  // Preserve historical shape; `loading` now blocks only on first-ever load.
+  // r.refetch / r.setData are already stable (useCallback in useCachedApi).
+  return {
+    data: r.data,
+    loading: r.loading,
+    refreshing: r.refreshing,
+    error: r.error,
+    refetch: r.refetch,
+    setData: r.setData,
+  }
 }

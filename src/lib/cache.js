@@ -13,9 +13,32 @@ const atomicIo = require('./atomicIo');
 const _agentCacheFull = new Map();
 const _agentCacheMeta = new Map();
 
+// Directory-listing cache. The per-file caches above avoid re-parsing unchanged
+// files, but listAgents() still did readdirSync + ~55 statSync on EVERY request.
+// Keyed by absolute dir → { dirMtimeMs, names, full, meta }. Validated by ONE
+// statSync on the dir (its mtime bumps when a file is added/removed/renamed, and
+// atomic-rename writes of existing files touch the dir entry too). Defensively
+// dropped on any agent write via _invalidateAgentCache.
+const _dirCache = new Map();
+
 function _invalidateAgentCache(filePath) {
   _agentCacheFull.delete(filePath);
   _agentCacheMeta.delete(filePath);
+  // Force the assembled arrays for this file's dir to reassemble, and drop the
+  // dir snapshot so readdir re-runs even on a same-second edit of an existing
+  // file (where dir mtime may not have advanced).
+  _dirCache.delete(path.dirname(filePath));
+}
+
+// One statSync on the dir replaces ~55 on files when nothing changed.
+function _dirSnapshot(dir) {
+  const stat = fs.statSync(dir); // throws if missing → caller's try/catch handles
+  const hit = _dirCache.get(dir);
+  if (hit && hit.dirMtimeMs === stat.mtimeMs) return hit;
+  const names = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
+  const snap = { dirMtimeMs: stat.mtimeMs, names, full: null, meta: null };
+  _dirCache.set(dir, snap);
+  return snap;
 }
 
 // Register with atomicIo so that atomicWriteText auto-invalidates on agent writes.
@@ -129,10 +152,12 @@ function parseAgentMeta(filePath) {
 function listAgents(dir) {
   try {
     if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir)
-      .filter(f => f.endsWith('.md'))
-      .map(f => parseAgent(path.join(dir, f)))
+    const snap = _dirSnapshot(dir);
+    if (snap.full) return snap.full; // warm: zero per-file stat when dir unchanged
+    snap.full = snap.names
+      .map(f => parseAgent(path.join(dir, f))) // still mtime-checks per file internally
       .filter(Boolean);
+    return snap.full;
   } catch {
     return [];
   }
@@ -142,10 +167,12 @@ function listAgents(dir) {
 function listAgentsMeta(dir) {
   try {
     if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir)
-      .filter(f => f.endsWith('.md'))
+    const snap = _dirSnapshot(dir);
+    if (snap.meta) return snap.meta;
+    snap.meta = snap.names
       .map(f => parseAgentMeta(path.join(dir, f)))
       .filter(Boolean);
+    return snap.meta;
   } catch {
     return [];
   }
@@ -154,6 +181,7 @@ function listAgentsMeta(dir) {
 module.exports = {
   _agentCacheFull,
   _agentCacheMeta,
+  _dirCache,
   _invalidateAgentCache,
   parseAgent,
   parseAgentMeta,

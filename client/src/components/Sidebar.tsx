@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, type SyntheticEvent } from 'react'
 import {
   LayoutDashboard,
   Bot,
@@ -25,6 +25,7 @@ import {
 import type { Project } from '../types'
 import { useTheme } from '../contexts/ThemeContext'
 import { getErrorLogCount, subscribeLogStream } from '../lib/api'
+import { usePrefetch } from '../hooks/usePrefetch'
 
 interface SidebarProps {
   projects: Project[]
@@ -114,6 +115,18 @@ export default function Sidebar({ projects }: SidebarProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [unresolvedErrors, setUnresolvedErrors] = useState(0)
   const location = useLocation()
+  const prefetch = usePrefetch()
+
+  // Delegated prefetch: on hover/focus of any nav link, warm its chunk + data so
+  // the page renders instantly on click. One handler covers all NavLinks.
+  const handleNavPrefetch = useCallback((e: SyntheticEvent) => {
+    const a = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null
+    if (!a) return
+    try {
+      const path = new URL(a.href, window.location.origin).pathname
+      prefetch(path)
+    } catch { /* ignore malformed href */ }
+  }, [prefetch])
 
   // Live unresolved error badge via SSE (fallback poll on disconnect)
   useEffect(() => {
@@ -194,8 +207,8 @@ export default function Sidebar({ projects }: SidebarProps) {
         <kbd className="text-[9px] bg-surface border border-border px-1 py-0.5 rounded font-mono">⌘K</kbd>
       </button>
 
-      {/* Navigation — flat, 8 items */}
-      <nav className="flex-1 overflow-y-auto py-3 space-y-0.5">
+      {/* Navigation — flat, 8 items. Hover/focus prefetches the target chunk+data. */}
+      <nav className="flex-1 overflow-y-auto py-3 space-y-0.5" onMouseOver={handleNavPrefetch} onFocus={handleNavPrefetch}>
         <NavLink to="/" className={navLinkClass} end>
           <LayoutDashboard className="w-4 h-4" /> Dashboard
         </NavLink>

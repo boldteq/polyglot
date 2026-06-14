@@ -29,6 +29,7 @@ import {
   sanitizeName,
 } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
@@ -44,10 +45,11 @@ export default function ProjectDetail() {
   const { data: agents, error: agentsError, refetch: refetchAgents } = useApi(
     () => getProjectAgents(projectId!),
     [projectId],
+    CacheKeys.projectAgents(projectId!),
   )
-  const { data: claudeMd } = useApi(() => getProjectClaudeMd(projectId!), [projectId])
-  const { data: commands, refetch: refetchCommands } = useApi(() => getProjectCommands(projectId!), [projectId])
-  const { data: rules, refetch: refetchRules } = useApi(() => getProjectRules(projectId!), [projectId])
+  const { data: claudeMd } = useApi(() => getProjectClaudeMd(projectId!), [projectId], CacheKeys.projectClaudeMd(projectId!))
+  const { data: commands, refetch: refetchCommands } = useApi(() => getProjectCommands(projectId!), [projectId], CacheKeys.projectCommands(projectId!))
+  const { data: rules, refetch: refetchRules } = useApi(() => getProjectRules(projectId!), [projectId], CacheKeys.projectRules(projectId!))
 
   const tabs: { id: Tab; label: string; icon: React.ElementType; count?: number }[] = [
     { id: 'overview', label: 'Overview', icon: FolderOpen },
@@ -170,7 +172,7 @@ function OverviewTab({
 }
 
 function ClaudeMdTab({ projectId }: { projectId: string }) {
-  const { data, loading } = useApi(() => getProjectClaudeMd(projectId), [projectId])
+  const { data, loading } = useApi(() => getProjectClaudeMd(projectId), [projectId], CacheKeys.projectClaudeMd(projectId))
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)

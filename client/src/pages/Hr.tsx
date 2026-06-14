@@ -38,14 +38,15 @@ import {
   undoOrgChange,
   undoOrgBatch,
   getOrgHistory,
-  getDrift,
-  subscribeOrgChart,
   type AgentRecord,
   type TrainingQueueItem,
   type HistoryEntry,
   type DriftData,
 } from '../lib/api'
+import { onOrgChartEvent } from '../lib/sseBus'
 import { useApi } from '../hooks/useApi'
+import { useDrift } from '../hooks/useDrift'
+import { CacheKeys } from '../lib/cacheKeys'
 import { toast } from '../components/Toast'
 import LevelBadge from '../components/LevelBadge'
 import ExperienceBar from '../components/ExperienceBar'
@@ -57,23 +58,12 @@ import { AGENT_STATUSES } from '../lib/constants'
 type Tab = 'registry' | 'reviews' | 'training' | 'gap-scanner' | 'drift' | 'history'
 
 export default function HrPage() {
-  const { data: registry, loading, refetch: refetchRegistry } = useApi(getHrRegistry)
+  const { data: registry, loading, refetch: refetchRegistry } = useApi(getHrRegistry, [], CacheKeys.hrRegistry)
   const [tab, setTab] = useState<Tab>('registry')
   const [selectedAgent, setSelectedAgent] = useState<AgentRecord | null>(null)
-  const [drift, setDrift] = useState<DriftData | null>(null)
-
-  // Live cross-page sync
-  useEffect(() => {
-    const es = subscribeOrgChart((ev) => {
-      if (ev.type === 'agent:upsert' || ev.type === 'agent:remove') {
-        refetchRegistry()
-        getDrift().then(setDrift).catch(err => console.error('[hr] drift fetch failed:', err instanceof Error ? err.message : err))
-      }
-    })
-    return () => es.close()
-  }, [refetchRegistry])
-
-  useEffect(() => { getDrift().then(setDrift).catch(err => console.error('[hr] drift fetch failed:', err instanceof Error ? err.message : err)) }, [])
+  // Registry + drift refetch on agent mutations is handled centrally by
+  // initCacheInvalidation() — no per-page SSE connection needed.
+  const { drift, refetch: refetchDrift } = useDrift()
   const driftCount = drift?.onlyOnDisk.length || 0
 
   if (loading && !registry) {
@@ -176,7 +166,7 @@ export default function HrPage() {
         {tab === 'reviews' && <ReviewsTab onRefresh={refetchRegistry} />}
         {tab === 'training' && <TrainingTab />}
         {tab === 'gap-scanner' && <CapabilityScannerTab />}
-        {tab === 'drift' && <DriftFixerTab drift={drift} agents={registry.agents} onRefresh={() => { refetchRegistry(); getDrift().then(setDrift).catch(err => console.error('[hr] drift fetch failed:', err instanceof Error ? err.message : err)) }} />}
+        {tab === 'drift' && <DriftFixerTab drift={drift} agents={registry.agents} onRefresh={() => { refetchRegistry(); refetchDrift() }} />}
         {tab === 'history' && <HistoryTab onRefresh={refetchRegistry} />}
       </div>
 
@@ -1359,12 +1349,11 @@ function HistoryTab({ onRefresh }: { onRefresh: () => void }) {
 
   useEffect(() => { refetch() }, [])
 
-  // Live update on new mutations
+  // Live update on new mutations — shared SSE connection (no per-component pipe)
   useEffect(() => {
-    const es = subscribeOrgChart((ev) => {
+    return onOrgChartEvent((ev) => {
       if (ev.type === 'agent:upsert' || ev.type === 'agent:remove') refetch()
     })
-    return () => es.close()
   }, [])
 
   const handleUndo = async (id: number) => {

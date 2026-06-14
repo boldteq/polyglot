@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { Save, FileText, RotateCcw } from 'lucide-react'
 import { getGlobalClaudeMd, updateGlobalClaudeMd } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { CacheKeys } from '../lib/cacheKeys'
 import { useUnsavedGuard } from '../hooks/useUnsavedGuard'
 import { toast } from '../components/Toast'
 
 export default function GlobalClaudeMd() {
-  const { data, loading, error: loadError } = useApi(getGlobalClaudeMd)
+  const { data, loading, error: loadError } = useApi(getGlobalClaudeMd, [], CacheKeys.globalClaudeMd)
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)

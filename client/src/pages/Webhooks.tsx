@@ -3,6 +3,7 @@ import { Globe, Plus, Trash2, Copy, Eye, EyeOff, AlertCircle, Check } from 'luci
 import { getWebhooks, getWebhookSecret, createWebhook, deleteWebhook, getGlobalAgents, apiError } from '../lib/api'
 import type { Webhook } from '../lib/api'
 import type { Agent } from '../types'
+import { resource } from '../lib/cacheCore'
 
 function timeAgo(ts: string | null): string {
   if (!ts) return 'never'
@@ -14,9 +15,12 @@ function timeAgo(ts: string | null): string {
 }
 
 export default function WebhooksPage() {
-  const [webhooks, setWebhooks] = useState<Webhook[]>([])
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [loading, setLoading] = useState(true)
+  const webhooksRes = resource('webhooks', getWebhooks)
+  const agentsRes = resource('global/agents', getGlobalAgents)
+
+  const [webhooks, setWebhooks] = useState<Webhook[]>(() => webhooksRes.getState().data ?? [])
+  const [agents, setAgents] = useState<Agent[]>(() => agentsRes.getState().data ?? [])
+  const [loading, setLoading] = useState(() => webhooksRes.getState().data === null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', agentName: '' })
   const [saving, setSaving] = useState(false)
@@ -25,8 +29,8 @@ export default function WebhooksPage() {
   const [copied, setCopied] = useState('')
 
   const load = () => {
-    setLoading(true)
-    Promise.all([getWebhooks(), getGlobalAgents()])
+    if (webhooksRes.getState().data === null) setLoading(true)
+    Promise.all([webhooksRes.refetch(), agentsRes.refetch()])
       .then(([w, a]) => { setWebhooks(w); setAgents(a) })
       .catch(err => apiError('Load webhooks', err))
       .finally(() => setLoading(false))

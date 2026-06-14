@@ -34,7 +34,10 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import EditSquadModal from '../components/EditSquadModal'
 import EditTagModal from '../components/EditTagModal'
 import EditSubDepartmentModal from '../components/EditSubDepartmentModal'
-import { getOrgChart, getDrift, getDepartments, updateOrgAgent, undoOrgChange, getGlobalAgents, subscribeOrgChart, apiError, createSquad, createTag, createTier, tryDeleteSquadDef, tryDeleteTagDef, deleteSquadDef, deleteTagDef } from '../lib/api'
+import { getOrgChart, getDrift, getDepartments, updateOrgAgent, undoOrgChange, getGlobalAgents, apiError, createSquad, createTag, createTier, tryDeleteSquadDef, tryDeleteTagDef, deleteSquadDef, deleteTagDef } from '../lib/api'
+import { onOrgChartEvent } from '../lib/sseBus'
+import { resource } from '../lib/cacheCore'
+import { CacheKeys } from '../lib/cacheKeys'
 import { useTaxonomy, pillStyleFor } from '../hooks/useTaxonomy'
 import type { OrgChartData, OrgChartNode, DriftData, OrgAgentPatch, SquadDef } from '../lib/api'
 import type { Agent } from '../types'
@@ -1490,10 +1493,9 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
   }, [])
   useEffect(() => { reloadDepts() }, [reloadDepts])
   useEffect(() => {
-    const es = subscribeOrgChart((ev) => {
+    return onOrgChartEvent((ev) => {
       if (ev.type === 'taxonomy:update') reloadDepts()
     })
-    return () => es.close()
   }, [reloadDepts])
 
   const handleSave = async () => {
@@ -3309,8 +3311,11 @@ function TreeView(props: {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function OrgChartPage() {
-  const [data, setData] = useState<OrgChartData | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Seed from the shared org-chart cache so re-navigating to this page paints
+  // instantly instead of showing a spinner; loadData() revalidates in background.
+  const orgChartResource = resource<OrgChartData>(CacheKeys.orgChart, getOrgChart)
+  const [data, setData] = useState<OrgChartData | null>(() => orgChartResource.getState().data)
+  const [loading, setLoading] = useState(() => orgChartResource.getState().data === null)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
@@ -3350,9 +3355,11 @@ export default function OrgChartPage() {
   const [assignModalOpen, setAssignModalOpen] = useState(false)
 
   const loadData = useCallback(() => {
-    setLoading(true)
+    // Only block with the spinner on the first-ever load (empty cache); a
+    // re-navigation already has cached data and revalidates silently.
+    if (orgChartResource.getState().data === null) setLoading(true)
     Promise.all([
-      getOrgChart(),
+      orgChartResource.refetch(), // populates shared cache → instant next mount
       getDrift().catch(() => ({ onlyOnDisk: [], onlyInRegistry: [] })),
       getGlobalAgents().catch(() => []),
     ])
@@ -3366,6 +3373,7 @@ export default function OrgChartPage() {
         setError(e instanceof Error ? e.message : 'Failed to load org chart')
       })
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Silent refetch triggered by SSE. Debounced so a burst of file events (e.g.
@@ -3375,7 +3383,7 @@ export default function OrgChartPage() {
     if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current)
     refetchTimerRef.current = setTimeout(() => {
       Promise.all([
-        getOrgChart(),
+        orgChartResource.refetch(),
         getDrift().catch(() => ({ onlyOnDisk: [], onlyInRegistry: [] })),
         getGlobalAgents().catch(() => []),
       ])
@@ -3386,6 +3394,7 @@ export default function OrgChartPage() {
         })
         .catch(err => apiError('Sync org chart', err))
     }, 300)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -3393,7 +3402,10 @@ export default function OrgChartPage() {
   }, [loadData])
 
   useEffect(() => {
-    const es = subscribeOrgChart((ev) => {
+    // Shared SSE connection (no per-page EventSource). The bus opens one pipe for
+    // the whole app, so this page no longer stacks a duplicate connection.
+    setLive(true)
+    const unsub = onOrgChartEvent((ev) => {
       if (ev.type === 'ready') {
         setLive(true)
         return
@@ -3409,11 +3421,9 @@ export default function OrgChartPage() {
         scheduleRefetch()
       }
     })
-    es.onopen = () => setLive(true)
-    es.onerror = () => setLive(false)
     return () => {
       if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current)
-      es.close()
+      unsub()
     }
   }, [scheduleRefetch])
 

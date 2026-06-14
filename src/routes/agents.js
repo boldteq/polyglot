@@ -15,6 +15,12 @@ const { discoverProjects } = require('../lib/discovery');
 
 const router = Router();
 
+// Budget-health memo for /api/unified/agents. checkBudget() regex-parses
+// agent.raw for ~55 agents on every request. Result is pure given agent content,
+// so we key by filename + a content signature (updatedAt is mtime-derived in
+// parseAgent, so it changes on any edit → auto-invalidates, never stale, no TTL).
+const _healthCache = new Map();
+
 const HOME = os.homedir();
 const CLAUDE_DIR = path.join(HOME, '.claude');
 const VERSIONS_DIR = path.join(__dirname, '..', '..', 'agent-versions');
@@ -331,6 +337,16 @@ router.get('/unified/agents', (req, res) => {
     }
   };
 
+  const budgetHealthFor = (agent) => {
+    if (!agent.raw) return null;
+    const sig = `${agent.updatedAt}:${agent.raw.length}`;
+    const hit = _healthCache.get(agent.filename);
+    if (hit && hit.sig === sig) return hit.health;
+    const health = computeBudgetHealth(agent);
+    _healthCache.set(agent.filename, { sig, health });
+    return health;
+  };
+
   const enrich = (agent) => {
     const rec = registryById[agent.filename] || null;
     const dept = rec?.department || null;
@@ -339,7 +355,7 @@ router.get('/unified/agents', (req, res) => {
     const subDeptInfo = subDept && deptInfo?.subDepartments
       ? deptInfo.subDepartments[subDept] || null
       : null;
-    const health = computeBudgetHealth(agent);
+    const health = budgetHealthFor(agent);
     return {
       ...agent,
       org: rec ? {
