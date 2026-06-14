@@ -137,17 +137,23 @@ console.log(`
    railway up                                # first deploy
    railway domain                            # confirm it serves ${name}-production… (or set a custom one)
    railway variables --set "PUBLIC_URL=https://${newDomain}" \\
-                     --set "ADMIN_KEY=$(printf 'openssl rand -hex 24')" \\
+                     --set "ADMIN_KEY=$(openssl rand -hex 24)" \\
+                     --set "SCOPES=<copy [access_scopes].scopes from shopify.app.toml — server.mjs fallback OMITS the nav scopes>" \\
                      --set "CLIENT_ID=<after the next step>" --set "CLIENT_SECRET=<…>"
-   shopify app config link                   # register the app in your org (interactive — approve)
-   shopify app deploy                        # push scopes + URLs to Shopify
+   shopify app config link                   # register the app in your org (org = Insight Infoway; interactive — approve)
+   # ⚠ config link OVERWRITES shopify.app.toml → embedded-app defaults (placeholder URLs, embedded=true,
+   #   drops use_legacy_install_flow + privacy webhooks). RESTORE the catcher toml BEFORE deploy or /callback breaks.
+   shopify app deploy                        # push scopes + URLs to Shopify (ONLY after restoring the toml)
 
 ⚠️  3 Dashboard steps Shopify forces (no CLI/API):
    1. Settings → Client credentials → copy CLIENT SECRET (paste into railway variables above)
    2. Distribution → Custom distribution → enter the client store domain
-   3. Generate link → that's the link you send the client to install
+   3. Generate link → authorizes the app for the store (this is NOT the capture link — see ▶ Capture below)
 
-▶ After the client installs, bridge the token to Porter:
-   export SHOPIFY_ADMIN_API_TOKEN_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}=$(node toolkit/scripts/keystone-token.mjs <store>.myshopify.com --service https://${newDomain})
+▶ Capture: open the DIRECT catcher URL (NOT the Dashboard install_custom_app link — no_redirect=true never hits /callback):
+   https://${newDomain}/?shop=<store>.myshopify.com      # logged into the store admin → approve → "You're all set"
+
+▶ Then bridge to Porter — the env var keys off the STORE HANDLE (uppercased, non-alnum→_), NOT the app name:
+   export SHOPIFY_ADMIN_API_TOKEN_<STORE_HANDLE>=$(node toolkit/scripts/keystone-token.mjs <store>.myshopify.com --service https://${newDomain})
 `)
 finish(null, { name, newDomain, filesTouched })

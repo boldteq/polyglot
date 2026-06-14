@@ -41,6 +41,13 @@ const GATES = [
   { name: 'axe', number: 5, kind: 'url', runner: 'node', script: 'gate-axe.mjs' },
   { name: 'seo', number: 6, kind: 'url', runner: 'node', script: 'gate-seo.mjs' },
   { name: 'conversion', number: 7, kind: 'url', runner: 'node', script: 'gate-conversion.mjs' },
+  // DGS — design cohesion (static; run in full + --static-only + covered by --verify/--require-full).
+  { name: 'design-system', number: 8, kind: 'static', runner: 'node', script: 'check-design-system.mjs' },
+  { name: 'consistency', number: 9, kind: 'static', runner: 'node', script: 'check-consistency.mjs' },
+  // Verification Layer 3 — functional/interaction smoke (drives real flows, url-kind).
+  { name: 'functional', number: 10, kind: 'url', runner: 'node', script: 'gate-functional.mjs' },
+  // Prevention — dead-code/bloat anti-patterns (static; the rest of the library is gates above + the review board).
+  { name: 'antipatterns', number: 11, kind: 'static', runner: 'node', script: 'check-antipatterns.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────

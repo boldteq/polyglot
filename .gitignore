@@ -26,3 +26,7 @@ package-lock.json
 
 # Research scratch (theme clones for KB teardowns)
 .research/
+
+# theme-toolkit gate run artifacts (per-client-repo evidence; never vendored)
+gate-reports/
+**/gate-reports/

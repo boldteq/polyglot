@@ -1,0 +1,166 @@
+#!/usr/bin/env node
+// Boldteq store-wide consistency gate — the countable half of DGS Mechanism 4.
+//
+// check-design-system.mjs enforces per-SECTION conformance (no off-scale value).
+// This enforces STORE-WIDE consistency: across ALL custom/extend sections, the store
+// must use ONE language — not too many distinct font-sizes, not more radii than the
+// system defines, not a zoo of button/card classes. "Pages OK alone, not as one store."
+//
+// Spec: shopify-design-governance-system.md M4. Writes gate-reports/consistency.md +
+// consistency.json. Run by: lumen (Step-13 consistency gate) + onyx (code audit) +
+// mantle publish gate. vega's visual sweep + lumen device QA are the human layer on top.
+//
+// Usage: node check-consistency.mjs
+// Env: DESIGN_SYSTEM (default docs/design/design-system.json), BASE_REF (default base),
+//      REUSE_MAP (default section-reuse-map.md), DS_REQUIRE_SCOPE=1 (publish: unresolved scope = block),
+//      MAX_STORE_FONT_SIZES (default 6), ALLOW_DS_WAIVER=1.
+// Exit: 0 pass · 1 block · 2 env error.
+
+import fs from 'node:fs'
+import path from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { writeReport } from './lib/report.mjs'
+
+const t0 = Date.now()
+const cwd = process.cwd()
+const DS = process.env.DESIGN_SYSTEM || 'docs/design/design-system.json'
+const BASE_REF = process.env.BASE_REF || 'base'
+const REUSE_MAP = process.env.REUSE_MAP || 'section-reuse-map.md'
+const REQUIRE_SCOPE = process.env.DS_REQUIRE_SCOPE === '1'
+const ALLOW_WAIVER = process.env.ALLOW_DS_WAIVER === '1'
+const MAX_FONT_SIZES = Number.parseInt(process.env.MAX_STORE_FONT_SIZES || '6', 10)
+
+const blockers = []
+const warnings = []
+const add = (list, id, detail, evidence = '') => list.push({ id, page: 'store-wide', detail, evidence })
+const block = (id, detail, evidence) => ALLOW_WAIVER
+  ? add(warnings, `${id}.waived`, `${detail} (waived via ## Waivers)`, evidence)
+  : add(blockers, id, detail, evidence)
+
+function writeMd(reportDir, stats, pass) {
+  const lines = [
+    `# Store-Wide Consistency Audit — ${pass ? 'PASS' : 'BLOCK'}`,
+    ``,
+    `| Dimension | Found | Allowed | Verdict |`,
+    `|---|---|---|---|`,
+    `| Distinct font-sizes (custom sections) | ${stats.fontSizes.length} (${stats.fontSizes.join(', ')}) | ≤${MAX_FONT_SIZES} | ${stats.fontSizes.length <= MAX_FONT_SIZES ? 'PASS' : 'BLOCK'} |`,
+    `| Distinct radii | ${stats.radii.length} (${stats.radii.join(', ')}) | ≤${stats.radiusAllowed} | ${stats.radii.length <= stats.radiusAllowed ? 'PASS' : 'BLOCK'} |`,
+    `| Distinct button-family classes | ${stats.buttonClasses.length} | ≤${stats.buttonAllowed} | ${stats.buttonClasses.length <= stats.buttonAllowed ? 'PASS' : 'warn'} |`,
+    `| Distinct card classes | ${stats.cardClasses.length} | ≤1 | ${stats.cardClasses.length <= 1 ? 'PASS' : 'warn'} |`,
+    ``,
+    `Human layer (NOT automated here): vega visual sweep across home/collection/PDP/cart/search/header/footer/account + lumen device QA.`,
+    ``,
+  ]
+  try { fs.writeFileSync(path.join(reportDir, 'consistency.md'), lines.join('\n')) } catch { /* report dir created by writeReport */ }
+}
+
+function finish(envError, stats) {
+  const pass = !envError && blockers.length === 0
+  const reportDir = process.env.REPORT_DIR || 'gate-reports'
+  try { fs.mkdirSync(path.resolve(cwd, reportDir), { recursive: true }) } catch { /* noop */ }
+  if (stats) writeMd(path.resolve(cwd, reportDir), stats, pass)
+  writeReport('consistency', 9, {
+    cwd, pass, blockers, warnings,
+    evidence: { contract: DS, baseRef: BASE_REF, ...(stats || {}), reason: envError || undefined },
+    duration_ms: Date.now() - t0,
+  })
+  const code = envError ? 2 : pass ? 0 : 1
+  const label = code === 2 ? 'ENV-ERROR' : code === 0 ? 'PASS' : 'BLOCK'
+  console.log(`consistency: ${label} — ${blockers.length} blocker(s), ${warnings.length} warning(s)`)
+  for (const b of blockers) console.log(`  BLOCK ${b.id}: ${b.detail}`)
+  for (const w of warnings) console.log(`  warn  ${w.id}: ${w.detail}`)
+  if (envError) console.error(`  env: ${envError}`)
+  process.exit(code)
+}
+
+// ── contract ─────────────────────────────────────────────────────────────────
+const dsAbs = path.resolve(cwd, DS)
+if (!fs.existsSync(dsAbs)) { add(blockers, 'consistency.no-contract', `${DS} not found — design-system-first`); finish(null, null) }
+let contract
+try { contract = JSON.parse(fs.readFileSync(dsAbs, 'utf-8')) } catch (err) { finish(`${DS} invalid JSON: ${err.message}`, null) }
+const radiusAllowed = Object.keys(contract.radius?.tokens || {}).length || 4
+const buttonAllowed = Object.keys(contract.buttons?.variants || {}).length || 2
+
+// ── scope (same convention as check-design-system) ───────────────────────────
+const SCAN_DIRS = ['sections', 'snippets', 'assets']
+function gitChanged() {
+  try {
+    execFileSync('git', ['rev-parse', '--verify', `${BASE_REF}^{commit}`], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const out = execFileSync('git', ['diff', '--diff-filter=AM', '--name-only', `${BASE_REF}..HEAD`, '--', ...SCAN_DIRS], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] })
+    return out.split('\n').map(s => s.trim()).filter(Boolean)
+  } catch { return null }
+}
+function reuseMapTargets() {
+  const mapAbs = path.resolve(cwd, REUSE_MAP)
+  if (!fs.existsSync(mapAbs)) return null
+  const names = new Set()
+  for (const line of fs.readFileSync(mapAbs, 'utf-8').split('\n')) {
+    if (!line.trim().startsWith('|')) continue
+    const cells = line.split('|').slice(1, -1).map(c => c.trim())
+    if (!cells.some(c => /^(EXTEND|CUSTOM)$/i.test(c))) continue
+    for (const c of cells) {
+      const m = c.match(/([a-z0-9][a-z0-9_-]+)/i)
+      if (m && !/^(EXTEND|CUSTOM|REUSE|CONFIGURE|LIBRARY)$/i.test(m[1]) && fs.existsSync(path.resolve(cwd, 'sections', `${m[1]}.liquid`))) names.add(`sections/${m[1]}.liquid`)
+    }
+  }
+  if (names.size === 0) return null
+  const files = new Set(names)
+  for (const n of names) for (const ext of ['.css', '.css.liquid']) { const p = `assets/${path.basename(n, '.liquid')}${ext}`; if (fs.existsSync(path.resolve(cwd, p))) files.add(p) }
+  return [...files]
+}
+
+let targets = gitChanged()
+if (targets === null) targets = reuseMapTargets()
+if (targets === null) {
+  if (REQUIRE_SCOPE) { add(blockers, 'consistency.scope-unresolved-strict', `scope unresolvable + DS_REQUIRE_SCOPE=1 — tag the theme base "base"`); finish(null, null) }
+  warnings.push({ id: 'consistency.scope-unresolved', page: 'store-wide', detail: `scope unresolvable — store-wide audit skipped (set BASE_REF)`, evidence: '' })
+  finish(null, null)
+}
+targets = targets.filter(f => /\.(liquid|css|scss)$/.test(f) && SCAN_DIRS.some(d => f.startsWith(`${d}/`)))
+
+// ── gather store-wide stats ──────────────────────────────────────────────────
+const lenTokens = (value) => [...value.matchAll(/(-?\d*\.?\d+)(px|rem|em)\b/g)].map(m => { const n = parseFloat(m[1]); return m[2] === 'px' ? n : n * 16 })
+function extractCss(file, raw) {
+  if (/\.css(\.liquid)?$|\.scss$/.test(file)) return raw
+  let css = ''
+  for (const b of (raw.match(/\{%-?\s*(style|stylesheet)[^%]*-?%\}([\s\S]*?)\{%-?\s*end\1\s*-?%\}/g) || [])) css += '\n' + b
+  for (const m of raw.matchAll(/style\s*=\s*"([^"]*)"/g)) css += `\n.x{${m[1]}}`
+  return css
+}
+const RE_DECL = /([a-zA-Z-]+)\s*:\s*([^;{}]+)(?=[;}])/g
+const fontSizes = new Set(), radii = new Set(), buttonClasses = new Set(), cardClasses = new Set()
+
+for (const file of targets) {
+  const abs = path.resolve(cwd, file); if (!fs.existsSync(abs)) continue
+  const raw = fs.readFileSync(abs, 'utf-8')
+  const css = extractCss(file, raw).replace(/\/\*[\s\S]*?\*\//g, ' ')
+  for (const d of css.matchAll(RE_DECL)) {
+    const prop = d[1].toLowerCase(); const value = d[2].trim()
+    if (/var\(/.test(value)) continue
+    if (prop === 'font-size') for (const px of lenTokens(value)) fontSizes.add(px)
+    if (prop === 'border-radius') for (const px of lenTokens(value)) radii.add(px)
+  }
+  if (/\.liquid$/.test(file)) {
+    for (const m of raw.matchAll(/class\s*=\s*"([^"]*)"/g)) {
+      for (const c of m[1].split(/\s+/)) {
+        if (/\b(btn|button|cta)[a-z0-9_-]*/i.test(c) && !/^(btn|button)$/i.test(c)) buttonClasses.add(c.toLowerCase())
+        if (/card[a-z0-9_-]*/i.test(c)) cardClasses.add(c.toLowerCase())
+      }
+    }
+  }
+}
+
+const stats = {
+  fontSizes: [...fontSizes].sort((a, b) => a - b),
+  radii: [...radii].sort((a, b) => a - b), radiusAllowed,
+  buttonClasses: [...buttonClasses], buttonAllowed,
+  cardClasses: [...cardClasses],
+}
+
+// ── invariants ───────────────────────────────────────────────────────────────
+if (stats.fontSizes.length > MAX_FONT_SIZES) block('consistency.font-size-variety', `store uses ${stats.fontSizes.length} distinct custom font-sizes (${stats.fontSizes.join(', ')}) — keep ≤${MAX_FONT_SIZES} store-wide for one hierarchy`)
+if (stats.radii.length > radiusAllowed) block('consistency.radius-variety', `store uses ${stats.radii.length} distinct radii (${stats.radii.join(', ')}) but the system defines ${radiusAllowed} radius tokens — one radius language store-wide`)
+if (stats.buttonClasses.length > buttonAllowed) add(warnings, 'consistency.button-variety', `${stats.buttonClasses.length} distinct button-family classes across custom sections (${stats.buttonClasses.join(', ')}) — system allows ${buttonAllowed} variants; verify CTA consistency`)
+if (stats.cardClasses.length > 1) add(warnings, 'consistency.card-variety', `${stats.cardClasses.length} distinct card classes (${stats.cardClasses.join(', ')}) — one canonical card store-wide`)
+
+finish(null, stats)
