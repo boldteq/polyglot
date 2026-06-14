@@ -113,6 +113,7 @@ const dbExplorerRouter = require('./routes/dbExplorer');
 const healthRouter = require('./routes/health');
 const dispatchRouter = require('./routes/dispatch');
 const logsRouter = require('./routes/logs');
+const observabilityRouter = require('./routes/observability');
 
 app.use('/api', configRouter);
 app.use('/api', agentsRouter);
@@ -137,6 +138,7 @@ app.use('/api', dbExplorerRouter);
 app.use('/api', healthRouter);
 app.use('/api', dispatchRouter);
 app.use('/api', logsRouter);
+app.use('/api', observabilityRouter);
 
 // JSON 404 guard for unmatched API paths — prevents the SPA fallback below
 // from returning index.html (HTML) on a missing /api route. Without this,

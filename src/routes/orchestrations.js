@@ -872,6 +872,8 @@ async function executeDurableRun(runId, orchestration, taskInput) {
 
     orchRunner.markStepRunning(runId, nodeId, task.id);
     tasks.markRunning(task.id);
+    // Pillar 1: record the delegation edge (orchestration run → this agent).
+    try { db.trackDelegation({ parentRunId: runId, parentAgent: 'orchestration', childAgent: agentName, childRunId: task.id, task: node.data?.label || nodeId }); } catch { /* never block on telemetry */ }
 
     // Build prompt
     const prompt = composePrompt(agentName, node, lastOutput);
@@ -925,6 +927,7 @@ async function executeSingleNode(runId, orchestration, taskInput, nodeId) {
 
   orchRunner.markStepRunning(runId, nodeId, task.id);
   tasks.markRunning(task.id);
+  try { db.trackDelegation({ parentRunId: runId, parentAgent: 'orchestration:retry', childAgent: agentName, childRunId: task.id, task: node.data?.label || nodeId }); } catch { /* never block on telemetry */ }
 
   try {
     const output = await withRetry(
