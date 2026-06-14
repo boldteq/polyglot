@@ -9,6 +9,7 @@ import {
   getUnifiedAgents, addTraining,
   getPlaygroundHistory, savePlaygroundHistoryItem, deletePlaygroundHistoryItem, clearPlaygroundHistoryApi, apiError} from '../lib/api'
 import type { PlaygroundHistoryItem } from '../lib/api'
+import { formatAgentDisplay } from '../lib/agentDisplay'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { toast } from '../components/Toast'
@@ -854,7 +855,7 @@ export default function Playground() {
                             >
                               <AgentIcon name={agent.name} uid={`pick-g-${agent.name}`} size={20} global />
                               <div className="text-left min-w-0 flex-1">
-                                <p className="font-medium truncate text-[12px]">{agent.name}</p>
+                                <p className="font-medium truncate text-[12px]">{formatAgentDisplay({ name: agent.name, id: agent.filename }).realName}</p>
                                 <p className="text-[10px] text-text-muted truncate">{agent.description?.slice(0, 120)}</p>
                               </div>
                               <span className="text-[9px] text-text-muted shrink-0 font-mono">{agent.model}</span>
@@ -882,7 +883,7 @@ export default function Playground() {
                             >
                               <AgentIcon name={agent.name} uid={`pick-p-${agent.name}`} size={20} global={false} />
                               <div className="text-left min-w-0 flex-1">
-                                <p className="font-medium truncate text-[12px]">{agent.name}</p>
+                                <p className="font-medium truncate text-[12px]">{formatAgentDisplay({ name: agent.name, id: agent.filename }).realName}</p>
                                 <p className="text-[10px] text-text-muted truncate">{agent.projectName}</p>
                               </div>
                               <span className="text-[9px] text-text-muted shrink-0 font-mono">{agent.model}</span>

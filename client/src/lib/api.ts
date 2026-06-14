@@ -2512,3 +2512,161 @@ export function subscribeLogStream(onEvent: (e: LogStreamEvent) => void): EventS
   es.addEventListener('cleared', (ev: MessageEvent) => onEvent({ type: 'cleared', all: parse(ev).all }))
   return es
 }
+
+// ── Observability / Hardening (Pillars 1·3·5·6) ──────────────────────────────
+export interface Spend {
+  calls: number
+  tokens: number | null
+  costUsd: number | null
+  realCalls: number | null
+  realCostUsd: number | null
+}
+export interface PolicyViolation { code: string; severity: 'block' | 'warn'; detail?: string }
+export interface PolicyAuditRow {
+  id: number
+  ts: string
+  decision: 'allow' | 'block'
+  agentId: string | null
+  taskType: string | null
+  priority: string | null
+  source: string | null
+  violations: PolicyViolation[]
+  context: Record<string, unknown>
+}
+export interface EvalScoreRow {
+  id: number
+  ts: string
+  runId: string | null
+  caseId: string | null
+  agent: string | null
+  taskType: string | null
+  overall: number | null
+  pass: boolean
+  scores: Record<string, number>
+  reasoning: string | null
+}
+export interface DelegationRow {
+  id: number
+  ts: string
+  parentRunId: string | null
+  parentAgent: string | null
+  childAgent: string
+  childRunId: string | null
+  task: string | null
+}
+export interface CostLogRow {
+  id: number
+  runId: string | null
+  agentName: string | null
+  ts: string
+  model: string | null
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  costUsd: number
+  estimated: number
+  source: string | null
+}
+export interface ObservabilitySummary {
+  spend: Spend
+  recentBlocks: PolicyAuditRow[]
+  recentEvalScores: EvalScoreRow[]
+  recentDelegations: DelegationRow[]
+}
+
+const qstr = (params: Record<string, string | number | undefined>): string => {
+  const qs = new URLSearchParams()
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') qs.set(k, String(v))
+  const s = qs.toString()
+  return s ? `?${s}` : ''
+}
+
+export const getObservabilitySummary = (since?: string) =>
+  request<ObservabilitySummary>(`/observability/summary${qstr({ since })}`)
+export const getSpend = (since?: string, agentName?: string) =>
+  request<Spend>(`/observability/spend${qstr({ since, agentName })}`)
+export const getCostLogs = (opts?: { runId?: string; agentName?: string; since?: string; limit?: number }) =>
+  request<{ items: CostLogRow[] }>(`/observability/cost${qstr({ ...opts })}`)
+export const getPolicyAudit = (opts?: { decision?: 'allow' | 'block'; agentId?: string; since?: string; limit?: number }) =>
+  request<{ items: PolicyAuditRow[] }>(`/observability/policy-audit${qstr({ ...opts })}`)
+export const getEvalScores = (opts?: { agent?: string; caseId?: string; limit?: number }) =>
+  request<{ items: EvalScoreRow[] }>(`/observability/eval-scores${qstr({ ...opts })}`)
+export const getDelegations = (opts?: { parentRunId?: string; childAgent?: string; limit?: number }) =>
+  request<{ items: DelegationRow[] }>(`/observability/delegations${qstr({ ...opts })}`)
+
+// ── Consolidation (Pillar 6) ─────────────────────────────────────────────────
+export interface ConsolidationCluster {
+  cluster: string
+  size: number
+  agents: string[]
+  withRuns: number
+  idle: string[]
+}
+export interface ConsolidationReport {
+  windowDays: number
+  activeAgents: number
+  agentsWithRuns: number
+  totalRuns: number
+  dataSufficient: boolean
+  note: string | null
+  overlapClusters: ConsolidationCluster[]
+  retireCandidates: Array<{ id: string; department: string; runs: number; runsPerWeek: number }>
+  retireCandidatesLowConfidence: Array<{ id: string; department: string; runs: number; runsPerWeek: number }>
+}
+export const getConsolidationReport = (windowDays?: number) =>
+  request<ConsolidationReport>(`/consolidation/report${qstr({ windowDays })}`)
+
+// ── Semantic memory (Pillar 2 vector RAG) ────────────────────────────────────
+export interface IntelHit {
+  score: number
+  source_type: string
+  source_ref: string
+  title?: string
+  heading_path?: string
+  text: string
+}
+export const searchIntelligence = (q: string, opts?: { k?: number; type?: string }) =>
+  request<{ query: string; count: number; results: IntelHit[] }>(
+    `/intelligence/search${qstr({ q, k: opts?.k, type: opts?.type })}`,
+    { timeoutMs: 20000 }, // Ollama embed can be slow on a cold model
+  )
+export const getIntelligenceStats = () =>
+  request<{ store: string; total: number; byType?: Record<string, number>; file?: string }>('/intelligence/stats')
+
+// ── System Health cockpit (GET /api/system/status) ───────────────────────────
+export type SubState = 'ok' | 'degraded' | 'down'
+export interface SystemCron {
+  id: string; name: string; enabled: boolean
+  lastRunAt: string | null; lastRunStatus: string | null; nextRunAt: string | null; needsLlm: boolean
+}
+export interface SystemStatus {
+  timestamp: string
+  overall: SubState
+  server: {
+    state: SubState; note: string; uptimeSec: number
+    db: { status: string; sizeMB?: number }
+    launchAgent: { managed: boolean; pid?: number | null }
+  }
+  memory: {
+    state: SubState; note: string; mcpUserScoped: boolean
+    ollama: { ok: boolean; models?: string[]; error?: string }
+    index: { ok?: boolean; store?: string; total: number; byType?: Record<string, number>; error?: string }
+    lastReindex: { at: string | null; status: string | null } | null
+  }
+  evaluation: {
+    state: SubState; note: string
+    lastRun: { at: string | null; status: string | null } | null
+    scores: { count: number; avgOverall: number | null; passRate: number | null }
+  }
+  observability: {
+    state: SubState; note: string
+    spend: { calls?: number; realCalls?: number | null; realCostUsd?: number | null; costUsd?: number | null; tokens?: number | null }
+    recentBlocks: number; recentDelegations: number
+  }
+  vscode: {
+    state: SubState; note: string; hookRegistered: boolean
+    runs24h: { count: number; successRate: number | null }
+  }
+  crons: SystemCron[]
+}
+export const getSystemStatus = () => request<SystemStatus>('/system/status')

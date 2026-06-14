@@ -6,12 +6,14 @@ const OverviewTab = lazy(() => import('./Analytics'))
 const RunsTab = lazy(() => import('./RunHistory'))
 const HealthTab = lazy(() => import('./AgentHealth'))
 const GovernanceTab = lazy(() => import('./Governance'))
+const ObservabilityTab = lazy(() => import('./Observability'))
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'runs', label: 'Runs' },
   { id: 'health', label: 'Agent Health' },
   { id: 'governance', label: 'Governance' },
+  { id: 'observability', label: 'Observability' },
 ]
 
 function Spinner() {
@@ -44,6 +46,7 @@ export default function AnalyticsHub() {
         {activeTab === 'runs' && <RunsTab />}
         {activeTab === 'health' && <HealthTab />}
         {activeTab === 'governance' && <GovernanceTab />}
+        {activeTab === 'observability' && <ObservabilityTab />}
       </Suspense>
     </PageShell>
   )

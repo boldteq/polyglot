@@ -23,6 +23,7 @@ import {
   History,
   Wrench,
   Undo2,
+  Layers,
 } from 'lucide-react'
 import {
   getHrRegistry,
@@ -38,10 +39,12 @@ import {
   undoOrgChange,
   undoOrgBatch,
   getOrgHistory,
+  getConsolidationReport,
   type AgentRecord,
   type TrainingQueueItem,
   type HistoryEntry,
   type DriftData,
+  type ConsolidationReport,
 } from '../lib/api'
 import { onOrgChartEvent } from '../lib/sseBus'
 import { useApi } from '../hooks/useApi'
@@ -55,7 +58,7 @@ import { formatAgentDisplay } from '../lib/agentDisplay'
 import { useAgentBulkActions } from '../hooks/useAgentBulkActions'
 import { AGENT_STATUSES } from '../lib/constants'
 
-type Tab = 'registry' | 'reviews' | 'training' | 'gap-scanner' | 'drift' | 'history'
+type Tab = 'registry' | 'reviews' | 'training' | 'gap-scanner' | 'drift' | 'history' | 'consolidation'
 
 export default function HrPage() {
   const { data: registry, loading, refetch: refetchRegistry } = useApi(getHrRegistry, [], CacheKeys.hrRegistry)
@@ -151,6 +154,9 @@ export default function HrPage() {
           <TabButton active={tab === 'history'} onClick={() => setTab('history')}>
             <History className="w-3.5 h-3.5" /> History
           </TabButton>
+          <TabButton active={tab === 'consolidation'} onClick={() => setTab('consolidation')}>
+            <Layers className="w-3.5 h-3.5" /> Consolidation
+          </TabButton>
         </div>
       </div>
 
@@ -168,6 +174,7 @@ export default function HrPage() {
         {tab === 'gap-scanner' && <CapabilityScannerTab />}
         {tab === 'drift' && <DriftFixerTab drift={drift} agents={registry.agents} onRefresh={() => { refetchRegistry(); refetchDrift() }} />}
         {tab === 'history' && <HistoryTab onRefresh={refetchRegistry} />}
+        {tab === 'consolidation' && <ConsolidationTab />}
       </div>
 
       {/* Side panel */}
@@ -1442,6 +1449,115 @@ function HistoryTab({ onRefresh }: { onRefresh: () => void }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+//  Consolidation Tab (Pillar 6) — recommends-only roster analysis
+// ────────────────────────────────────────────────────────────────────────────
+function ConsolidationTab() {
+  const [report, setReport] = useState<ConsolidationReport | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState<string | null>(null)
+
+  const load = async () => {
+    setLoading(true)
+    setErr(null)
+    try {
+      setReport(await getConsolidationReport(30))
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : 'Failed to load consolidation report')
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => { load() }, [])
+
+  if (loading && !report) {
+    return <div className="flex items-center justify-center h-48 text-text-muted"><Loader className="w-5 h-5 animate-spin mr-2" /> Loading consolidation report…</div>
+  }
+  if (err && !report) {
+    return (
+      <div className="px-2 py-8 text-red-400 text-sm">
+        <AlertTriangle className="w-5 h-5 inline mr-2" />{err}
+        <button onClick={load} className="ml-3 px-2 py-1 text-xs rounded bg-surface border border-border text-text-muted hover:text-text">Retry</button>
+      </div>
+    )
+  }
+  if (!report) return null
+
+  const lowConf = report.retireCandidatesLowConfidence
+  const retire = report.dataSufficient ? report.retireCandidates : lowConf
+
+  return (
+    <div className="max-w-4xl space-y-4">
+      <div>
+        <h2 className="text-sm font-bold">Consolidation — "fewer elite agents"</h2>
+        <p className="text-[11px] text-text-muted mt-0.5">
+          Data-driven roster review (last {report.windowDays}d). Recommends only — merge/retire is a human decision.
+        </p>
+      </div>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <MiniStat label="Active agents" value={String(report.activeAgents)} />
+        <MiniStat label="With logged runs" value={String(report.agentsWithRuns)} />
+        <MiniStat label="Total runs" value={String(report.totalRuns)} />
+      </div>
+
+      {/* Data-sufficiency banner — prevents retiring on missing telemetry */}
+      {report.note && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-200/90">{report.note}</p>
+        </div>
+      )}
+
+      {/* Structural overlap clusters */}
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Structural overlap clusters</h3>
+        {report.overlapClusters.length === 0 ? (
+          <p className="text-[11px] text-text-muted">No dept/sub-dept cluster has 3+ active agents.</p>
+        ) : (
+          <div className="space-y-2">
+            {report.overlapClusters.map((c) => (
+              <div key={c.cluster} className="rounded-xl border border-border bg-surface p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-bold">{c.cluster}</span>
+                  <span className="text-[10px] text-text-muted">{c.size} agents · {c.withRuns} active · {c.idle.length} idle</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {c.agents.map((a) => (
+                    <span key={a} className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${c.idle.includes(a) ? 'bg-surface-2 text-text-muted' : 'bg-emerald-500/10 text-emerald-400'}`}>{a}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Low-frequency agents */}
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
+          Low-frequency agents (&lt;1 run/wk)
+          {!report.dataSufficient && <span className="ml-2 text-[9px] text-amber-400 normal-case font-normal">LOW CONFIDENCE — sparse data</span>}
+        </h3>
+        {retire.length === 0 ? (
+          <p className="text-[11px] text-text-muted">None.</p>
+        ) : (
+          <div className="rounded-xl border border-border bg-surface divide-y divide-border">
+            {retire.slice(0, 25).map((a) => (
+              <div key={a.id} className="flex items-center gap-3 px-3 py-1.5 text-xs">
+                <span className="font-mono font-semibold flex-1 truncate">{a.id}</span>
+                <span className="text-text-muted">{a.department}</span>
+                <span className="text-text-muted tabular-nums w-20 text-right">{a.runs} runs · {a.runsPerWeek}/wk</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

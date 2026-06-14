@@ -25,6 +25,7 @@ const ProjectDetail = React.lazy(() => import('./pages/ProjectDetail'))
 const SettingsHub   = React.lazy(() => import('./pages/SettingsHub'))
 const AnalyticsHub  = React.lazy(() => import('./pages/AnalyticsHub'))
 const SchedulesHub  = React.lazy(() => import('./pages/SchedulesHub'))
+const SystemHealth  = React.lazy(() => import('./pages/SystemHealth'))
 const Orchestration = React.lazy(() => import('./pages/Orchestration'))
 const Playground    = React.lazy(() => import('./pages/Playground'))
 const OrgChart      = React.lazy(() => import('./pages/OrgChart'))
@@ -75,6 +76,7 @@ export default function App() {
             <Route path="/analytics" element={<AnalyticsHub />} />
             <Route path="/org-chart" element={<OrgChart />} />
             <Route path="/schedules" element={<SchedulesHub />} />
+            <Route path="/system" element={<SystemHealth />} />
             <Route path="/settings" element={<SettingsHub onSave={refetch} />} />
             <Route path="/database" element={<Navigate to="/settings?tab=database" replace />} />
             <Route path="/projects" element={<Navigate to="/" replace />} />

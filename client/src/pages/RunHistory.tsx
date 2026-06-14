@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react'
 import { Activity, CheckCircle, XCircle, Filter, Search, Download, ChevronDown, ChevronRight } from 'lucide-react'
 import { getAnalyticsRuns, apiError} from '../lib/api'
+import { ErrorState } from '../components/ErrorState'
 import type { AgentRunEntry } from '../lib/api'
 
 import { SOURCE_COLORS } from '../lib/constants'
@@ -46,6 +47,7 @@ function exportCsv(runs: AgentRunEntry[]) {
 export default function RunHistoryPage() {
   const [allRuns, setAllRuns] = useState<AgentRunEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [sourceFilter, setSourceFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [agentSearch, setAgentSearch] = useState('')
@@ -55,12 +57,16 @@ export default function RunHistoryPage() {
 
   const load = () => {
     setLoading(true)
+    setLoadError(null)
     const params: Record<string, string | number> = { limit: 500 }
     if (sourceFilter !== 'all') params.source = sourceFilter
     if (statusFilter !== 'all') params.status = statusFilter
     getAnalyticsRuns(params as Record<string, string>)
       .then(data => { setAllRuns(data.runs) })
-      .catch(err => apiError('Load run history', err))
+      .catch(err => {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load run history')
+        apiError('Load run history', err)
+      })
       .finally(() => setLoading(false))
   }
 
@@ -161,6 +167,8 @@ export default function RunHistoryPage() {
       <div className="bg-surface rounded-xl border border-border overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-text-muted text-sm">Loading...</div>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={load} className="h-48" />
         ) : pagedRuns.length === 0 ? (
           <div className="p-12 text-center text-text-muted">
             <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />

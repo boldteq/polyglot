@@ -8,6 +8,7 @@ const db = require('../db');
 const org = require('../org');
 const configService = require('../lib/configService');
 const { evaluateDispatch } = require('../lib/dispatchPolicy');
+const { rateLimit } = require('../middleware/rateLimit');
 
 // Pillar 5: pull the governance gate thresholds from the dispatch_policy config
 // singleton (tunable at runtime), falling back to the gate's own defaults.
@@ -194,7 +195,7 @@ const MAX_QUERY_LEN = 2000;
 const MAX_TITLE_LEN = 200;
 const MAX_EST_TOKENS = 2_000_000;
 
-router.post('/dispatch/assign', (req, res) => {
+router.post('/dispatch/assign', rateLimit('write'), (req, res) => {
   const { query, taskType, priority = 'p2', estimatedTokens = 0,
     preferredAgent, dryRun = false, title } = req.body || {};
 
@@ -441,7 +442,7 @@ function validateTaskId(req, res, next) {
  * Mark a task as complete. Decrements agent load.
  * Body: { output?, actualTokens?, actualCostUsd? }
  */
-router.post('/dispatch/tasks/:id/complete', validateTaskId, (req, res) => {
+router.post('/dispatch/tasks/:id/complete', validateTaskId, rateLimit('write'), (req, res) => {
   try {
     const updated = tasks.markComplete(req.params.id, req.body?.output, {
       actualTokens: typeof req.body?.actualTokens === 'number' ? req.body.actualTokens : undefined,
@@ -453,7 +454,7 @@ router.post('/dispatch/tasks/:id/complete', validateTaskId, (req, res) => {
   }
 });
 
-router.post('/dispatch/tasks/:id/fail', validateTaskId, (req, res) => {
+router.post('/dispatch/tasks/:id/fail', validateTaskId, rateLimit('write'), (req, res) => {
   try {
     const updated = tasks.markFailed(req.params.id, req.body?.error || 'failed', {
       actualTokens: typeof req.body?.actualTokens === 'number' ? req.body.actualTokens : undefined,
@@ -465,7 +466,7 @@ router.post('/dispatch/tasks/:id/fail', validateTaskId, (req, res) => {
   }
 });
 
-router.post('/dispatch/tasks/:id/cancel', validateTaskId, (req, res) => {
+router.post('/dispatch/tasks/:id/cancel', validateTaskId, rateLimit('write'), (req, res) => {
   try {
     const updated = tasks.cancel(req.params.id, req.body?.reason || 'cancelled');
     res.json({ ok: true, task: updated });

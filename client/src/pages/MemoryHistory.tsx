@@ -34,6 +34,7 @@ import {
   clearMemoryHistory,
 } from '../lib/api'
 import { toast } from '../components/Toast'
+import { ErrorState } from '../components/ErrorState'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -467,6 +468,7 @@ export default function MemoryHistory() {
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [stats, setStats] = useState<MemoryHistoryStats | null>(null)
 
   // Filters
@@ -483,6 +485,7 @@ export default function MemoryHistory() {
   const loadEntries = useCallback(
     async (newOffset = 0) => {
       setLoading(true)
+      setLoadError(null)
       try {
         const params: Record<string, string | number> = {
           limit: PAGE_SIZE,
@@ -495,6 +498,7 @@ export default function MemoryHistory() {
         setTotal(data.total)
         setOffset(newOffset)
       } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load history')
         toast('error', err instanceof Error ? err.message : 'Failed to load history')
       } finally {
         setLoading(false)
@@ -507,7 +511,9 @@ export default function MemoryHistory() {
     try {
       const data = await getMemoryHistoryStats()
       setStats(data)
-    } catch {}
+    } catch (e) {
+      console.error('[memory-history-stats]', e instanceof Error ? e.message : e)
+    }
   }, [])
 
   useEffect(() => {
@@ -658,6 +664,8 @@ export default function MemoryHistory() {
             <div className="flex items-center justify-center py-20">
               <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             </div>
+          ) : loadError ? (
+            <ErrorState message={loadError} onRetry={() => loadEntries(offset)} className="py-20" />
           ) : entries.length === 0 ? (
             <div className="flex items-center justify-center py-20">
               <div className="text-center space-y-3">

@@ -21,6 +21,7 @@ import {
   Check,
   ChevronDown,
   AlertCircle,
+  Activity,
 } from 'lucide-react'
 import type { Project } from '../types'
 import { useTheme } from '../contexts/ThemeContext'
@@ -247,6 +248,9 @@ export default function Sidebar({ projects }: SidebarProps) {
               {unresolvedErrors > 99 ? '99+' : unresolvedErrors}
             </span>
           )}
+        </NavLink>
+        <NavLink to="/system" className={navLinkClass}>
+          <Activity className="w-4 h-4" /> System
         </NavLink>
         <NavLink to="/schedules" className={({ isActive }) =>
           `flex items-center gap-3 px-4 py-2 text-[13px] rounded-lg mx-2 transition-all ${

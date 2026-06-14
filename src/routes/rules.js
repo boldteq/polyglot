@@ -146,7 +146,7 @@ router.get('/global/rules/:name', validateName, (req, res) => {
 });
 
 // PUT /api/global/rules/:name
-router.put('/global/rules/:name', validateName, (req, res) => {
+router.put('/global/rules/:name', validateName, rateLimit('write'), (req, res) => {
   if (typeof req.body.content !== 'string') return res.status(400).json({ error: 'content must be a string' });
   const dir = path.join(CLAUDE_DIR, 'rules');
   ensureDir(dir);
@@ -157,7 +157,7 @@ router.put('/global/rules/:name', validateName, (req, res) => {
 });
 
 // DELETE /api/global/rules/:name
-router.delete('/global/rules/:name', validateName, (req, res) => {
+router.delete('/global/rules/:name', validateName, rateLimit('write'), (req, res) => {
   const filePath = path.join(CLAUDE_DIR, 'rules', req.params.name + '.md');
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   res.json({ ok: true });
@@ -194,7 +194,7 @@ router.get('/projects/:id/rules/:name', validateProjectId, validateName, (req, r
 });
 
 // PUT /api/projects/:id/rules/:name
-router.put('/projects/:id/rules/:name', validateProjectId, validateName, (req, res) => {
+router.put('/projects/:id/rules/:name', validateProjectId, validateName, rateLimit('write'), (req, res) => {
   if (typeof req.body.content !== 'string') return res.status(400).json({ error: 'content must be a string' });
   const dir = path.join(req.projectPath, '.claude', 'rules');
   ensureDir(dir);
@@ -205,7 +205,7 @@ router.put('/projects/:id/rules/:name', validateProjectId, validateName, (req, r
 });
 
 // DELETE /api/projects/:id/rules/:name
-router.delete('/projects/:id/rules/:name', validateProjectId, validateName, (req, res) => {
+router.delete('/projects/:id/rules/:name', validateProjectId, validateName, rateLimit('write'), (req, res) => {
   const filePath = path.join(req.projectPath, '.claude', 'rules', req.params.name + '.md');
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   res.json({ ok: true });

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Globe, Plus, Trash2, Copy, Eye, EyeOff, AlertCircle, Check } from 'lucide-react'
 import { getWebhooks, getWebhookSecret, createWebhook, deleteWebhook, getGlobalAgents, apiError } from '../lib/api'
+import { ErrorState } from '../components/ErrorState'
 import type { Webhook } from '../lib/api'
 import type { Agent } from '../types'
 import { resource } from '../lib/cacheCore'
@@ -25,14 +26,19 @@ export default function WebhooksPage() {
   const [form, setForm] = useState({ name: '', agentName: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [revealedSecrets, setRevealedSecrets] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState('')
 
   const load = () => {
     if (webhooksRes.getState().data === null) setLoading(true)
+    setLoadError(null)
     Promise.all([webhooksRes.refetch(), agentsRes.refetch()])
       .then(([w, a]) => { setWebhooks(w); setAgents(a) })
-      .catch(err => apiError('Load webhooks', err))
+      .catch(err => {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load webhooks')
+        apiError('Load webhooks', err)
+      })
       .finally(() => setLoading(false))
   }
 
@@ -76,6 +82,7 @@ export default function WebhooksPage() {
   const getTriggerUrl = (id: string) => `${window.location.origin}/api/webhooks/trigger/${id}`
 
   if (loading) return <div className="p-8 text-text-muted">Loading webhooks...</div>
+  if (loadError) return <ErrorState message={loadError} onRetry={load} />
 
   return (
     <div className="max-w-4xl mx-auto p-8 space-y-6">

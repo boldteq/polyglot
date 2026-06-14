@@ -63,7 +63,7 @@ router.get('/global/agents/:name', validateName, (req, res) => {
 });
 
 // PUT /api/global/agents/:name
-router.put('/global/agents/:name', validateName, (req, res) => {
+router.put('/global/agents/:name', validateName, rateLimit('write'), (req, res) => {
   if (typeof req.body.content !== 'string') return res.status(400).json({ error: 'content must be a string' });
   const dir = path.join(CLAUDE_DIR, 'agents');
   ensureDir(dir);
@@ -103,7 +103,7 @@ router.put('/global/agents/:name', validateName, (req, res) => {
 });
 
 // DELETE /api/global/agents/:name
-router.delete('/global/agents/:name', validateName, (req, res) => {
+router.delete('/global/agents/:name', validateName, rateLimit('write'), (req, res) => {
   const filePath = path.join(CLAUDE_DIR, 'agents', req.params.name + '.md');
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   _invalidateAgentCache(filePath);
@@ -152,7 +152,7 @@ router.get('/projects/:id/agents/:name', validateProjectId, validateName, (req, 
 });
 
 // PUT /api/projects/:id/agents/:name
-router.put('/projects/:id/agents/:name', validateProjectId, validateName, (req, res) => {
+router.put('/projects/:id/agents/:name', validateProjectId, validateName, rateLimit('write'), (req, res) => {
   if (typeof req.body.content !== 'string') return res.status(400).json({ error: 'content must be a string' });
   const dir = path.join(req.projectPath, '.claude', 'agents');
   ensureDir(dir);
@@ -165,14 +165,14 @@ router.put('/projects/:id/agents/:name', validateProjectId, validateName, (req, 
 });
 
 // DELETE /api/projects/:id/agents/:name
-router.delete('/projects/:id/agents/:name', validateProjectId, validateName, (req, res) => {
+router.delete('/projects/:id/agents/:name', validateProjectId, validateName, rateLimit('write'), (req, res) => {
   const filePath = path.join(req.projectPath, '.claude', 'agents', req.params.name + '.md');
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   res.json({ ok: true });
 });
 
 // POST /api/agents/:name/health
-router.post('/agents/:name/health', validateName, (req, res) => {
+router.post('/agents/:name/health', validateName, rateLimit('write'), (req, res) => {
   const { scope, projectId, content } = req.body || {};
   let filePath = null;
   let raw = typeof content === 'string' ? content : null;
@@ -234,7 +234,7 @@ router.post('/agents/:name/health', validateName, (req, res) => {
 });
 
 // POST /api/copy-agent
-router.post('/copy-agent', (req, res) => {
+router.post('/copy-agent', rateLimit('write'), (req, res) => {
   const { from, to, agentName } = req.body;
   if (!isValidName(agentName)) return res.status(400).json({ error: 'Invalid agent name' });
 
@@ -263,7 +263,7 @@ router.post('/copy-agent', (req, res) => {
 });
 
 // POST /api/move-agent
-router.post('/move-agent', (req, res) => {
+router.post('/move-agent', rateLimit('write'), (req, res) => {
   const { from, to, agentName } = req.body;
   if (!isValidName(agentName)) return res.status(400).json({ error: 'Invalid agent name' });
 
@@ -421,7 +421,7 @@ router.get('/projects/:id/claude-md', validateProjectId, (req, res) => {
 });
 
 // PUT /api/projects/:id/claude-md
-router.put('/projects/:id/claude-md', validateProjectId, (req, res) => {
+router.put('/projects/:id/claude-md', validateProjectId, rateLimit('write'), (req, res) => {
   if (typeof req.body.content !== 'string') return res.status(400).json({ error: 'content must be a string' });
   atomicWriteText(path.join(req.projectPath, 'CLAUDE.md'), req.body.content);
   res.json({ ok: true });

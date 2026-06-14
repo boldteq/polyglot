@@ -28,6 +28,7 @@ import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHisto
 import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
+import { formatAgentDisplay } from '../lib/agentDisplay'
 import type { UnifiedAgent } from '../types'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
@@ -579,7 +580,7 @@ export default function Orchestration() {
           try {
             const event = JSON.parse(trimmed.slice(6))
             processSSEEvent(event)
-          } catch {}
+          } catch (e) { console.error('[orchestration/sse parse]', e instanceof Error ? e.message : e) }
         }
       }
 
@@ -591,7 +592,7 @@ export default function Orchestration() {
           try {
             const event = JSON.parse(trimmed.slice(6))
             processSSEEvent(event)
-          } catch {}
+          } catch (e) { console.error('[orchestration/sse parse]', e instanceof Error ? e.message : e) }
         }
       }
     } catch (err: unknown) {
@@ -718,7 +719,7 @@ export default function Orchestration() {
                       >
                         <AgentIcon name={agent.name} uid={`pal-${agent.scopeLabel}-${agent.name}`} size={26} global={agent.scopeLabel === 'Global'} />
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium truncate group-hover:text-accent transition-colors">{agent.name}</p>
+                          <p className="text-xs font-medium truncate group-hover:text-accent transition-colors">{formatAgentDisplay({ name: agent.name }).realName}</p>
                           {agent.description && (
                             <p className="text-[10px] text-text-muted truncate">{agent.description}</p>
                           )}
