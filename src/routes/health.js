@@ -93,6 +93,61 @@ router.get('/docs', (req, res) => {
   res.json(docs);
 });
 
+// GET /api/docs/search?q= — full-text search across docs, with deep-link anchors.
+// Mirrors the client renderer's heading-id logic (slugify / step pattern) so a
+// result click can scroll straight to the matching section. Defined BEFORE
+// /docs/:slug so "search" isn't captured as a slug.
+function docSlugify(text) {
+  return text.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
+}
+function docHeadingId(level, rawText) {
+  const stepMatch = rawText.match(/^(?:Step\s+)?(\d+)[.:]\s*(.+)$/i);
+  if (level >= 3 && stepMatch) return docSlugify(`step-${parseInt(stepMatch[1], 10)}-${stepMatch[2]}`);
+  return docSlugify(rawText);
+}
+router.get('/docs/search', (req, res) => {
+  const q = (req.query.q || '').toString().trim().toLowerCase();
+  if (!q || q.length < 2) return res.json({ query: q, results: [] });
+  if (!fs.existsSync(DOCS_PATH)) return res.json({ query: q, results: [] });
+
+  const MAX_DOCS = 8, MAX_HITS = 4;
+  const files = fs.readdirSync(DOCS_PATH).filter((f) => f.endsWith('.md')).sort();
+  const results = [];
+  for (const f of files) {
+    let raw = '';
+    try { raw = fs.readFileSync(path.join(DOCS_PATH, f), 'utf-8'); } catch { continue; }
+    const lines = raw.split('\n');
+    const docTitle = (lines.find((l) => l.startsWith('# ')) || f).replace(/^#\s*/, '').replace(/\.md$/, '');
+
+    let curHeading = docTitle, curAnchor = '', hitCount = 0;
+    const matches = [];
+    for (const line of lines) {
+      const hm = line.match(/^(#{1,4})\s+(.+)$/);
+      if (hm) {
+        const text = hm[2].replace(/\s+#+\s*$/, '');
+        curHeading = text;
+        curAnchor = docHeadingId(hm[1].length, text);
+        // count heading-line matches too
+        if (line.toLowerCase().includes(q)) {
+          hitCount += 1;
+          if (matches.length < MAX_HITS) matches.push({ heading: text, anchor: curAnchor, snippet: text });
+        }
+        continue;
+      }
+      if (line.toLowerCase().includes(q)) {
+        hitCount += 1;
+        if (matches.length < MAX_HITS) {
+          const snippet = line.trim().replace(/^[#>*\-\s]+/, '').slice(0, 160);
+          matches.push({ heading: curHeading, anchor: curAnchor, snippet });
+        }
+      }
+    }
+    if (hitCount > 0) results.push({ slug: f.replace(/\.md$/, ''), title: docTitle, hitCount, matches });
+  }
+  results.sort((a, b) => b.hitCount - a.hitCount);
+  res.json({ query: q, results: results.slice(0, MAX_DOCS) });
+});
+
 // GET /api/docs/:slug
 router.get('/docs/:slug', (req, res) => {
   const slug = req.params.slug.replace(/[^a-zA-Z0-9-_]/g, '');

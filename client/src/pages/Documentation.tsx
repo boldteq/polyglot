@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   BookOpen, Copy, Check, ChevronRight, Hash, Terminal,
-  Info, Lightbulb, AlertTriangle, ArrowRight,
+  Info, Lightbulb, AlertTriangle, ArrowRight, Search, X,
 } from 'lucide-react'
 
 interface DocMeta {
@@ -11,6 +11,9 @@ interface DocMeta {
   title: string
   description: string
 }
+
+interface DocSearchMatch { heading: string; anchor: string; snippet: string }
+interface DocSearchResult { slug: string; title: string; hitCount: number; matches: DocSearchMatch[] }
 
 // ─── Markdown Tokenizer ───────────────────────────────────────────────────────
 
@@ -505,6 +508,8 @@ const DOC_META: Record<string, { emoji: string; short: string; section: string }
   '05-orchestration':  { emoji: '🔗', short: 'Orchestration',      section: 'Advanced' },
   '06-new-project':    { emoji: '🚀', short: 'Projects & Rules',   section: 'Advanced' },
   '07-troubleshooting':{ emoji: '🔧', short: 'Troubleshooting',    section: 'Reference' },
+  '08-system-guide':   { emoji: '📖', short: 'System Guide',       section: 'Reference' },
+  '09-faq':            { emoji: '❓', short: 'FAQ',                 section: 'Getting Started' },
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -512,10 +517,13 @@ const DOC_META: Record<string, { emoji: string; short: string; section: string }
 export default function Documentation() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const [docs, setDocs] = useState<DocMeta[]>([])
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [docsLoading, setDocsLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<DocSearchResult[]>([])
 
   useEffect(() => {
     fetch('/api/docs')
@@ -545,7 +553,31 @@ export default function Documentation() {
       .catch(() => setLoading(false))
   }, [slug])
 
+  // Debounced full-text search across all docs.
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) { setResults([]); return }
+    const t = setTimeout(() => {
+      fetch(`/api/docs/search?q=${encodeURIComponent(q)}`)
+        .then(r => (r.ok ? r.json() : { results: [] }))
+        .then((d: { results: DocSearchResult[] }) => setResults(d.results || []))
+        .catch(() => setResults([]))
+    }, 200)
+    return () => clearTimeout(t)
+  }, [query])
+  const searching = query.trim().length >= 2
+
   const tokens = useMemo(() => (content ? tokenize(content) : []), [content])
+
+  // After content renders, scroll to the #section if the URL has a hash (deep-link
+  // from a search result). Runs on content OR hash change so same-doc jumps work too.
+  useEffect(() => {
+    if (!content) return
+    const hash = decodeURIComponent(location.hash.replace(/^#/, ''))
+    if (!hash) return
+    const t = setTimeout(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+    return () => clearTimeout(t)
+  }, [content, location.hash])
 
   const currentDoc = useMemo(() => {
     if (!slug) return null
@@ -586,6 +618,21 @@ export default function Documentation() {
               <p className="text-[11px] text-text-muted">{docs.length} guides</p>
             </div>
           </div>
+          <div className="relative mt-3">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setQuery('') }}
+              placeholder="Search docs…"
+              className="w-full pl-8 pr-7 py-1.5 text-[12px] bg-surface-2 border border-border rounded-lg text-text placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors"
+            />
+            {query && (
+              <button onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-3">
           {docsLoading ? (
@@ -594,6 +641,32 @@ export default function Documentation() {
                 <div key={i} className="h-8 bg-surface-2 rounded-lg animate-pulse" />
               ))}
             </div>
+          ) : searching ? (
+            results.length === 0 ? (
+              <p className="px-5 py-4 text-[12px] text-text-muted">No matches for "{query.trim()}"</p>
+            ) : (
+              <div className="px-2">
+                {results.map((doc) => (
+                  <div key={doc.slug} className="mb-3">
+                    <button onClick={() => navigate(`/docs/${doc.slug}`)} className="w-full text-left px-3 py-1.5 text-[12px] font-semibold text-text hover:text-accent flex items-center gap-2">
+                      <span className="shrink-0">{DOC_META[doc.slug]?.emoji || '📄'}</span>
+                      <span className="truncate flex-1">{DOC_META[doc.slug]?.short || doc.title}</span>
+                      <span className="text-[10px] text-text-muted shrink-0">{doc.hitCount}</span>
+                    </button>
+                    {doc.matches.map((m, mi) => (
+                      <button
+                        key={mi}
+                        onClick={() => navigate(`/docs/${doc.slug}${m.anchor ? '#' + m.anchor : ''}`)}
+                        className="w-full text-left pl-9 pr-3 py-1 text-[11px] text-text-muted hover:text-accent hover:bg-surface-2 rounded truncate"
+                        title={m.heading}
+                      >
+                        {m.snippet}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )
           ) : Object.entries(sections).map(([section, sectionDocs]) => (
             <div key={section} className="mb-4">
               <p className="px-5 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-muted">
