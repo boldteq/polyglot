@@ -75,6 +75,30 @@ You can see both of these — and trigger them by hand if you ever want — on t
 
 ---
 
+## How your VS Code projects auto-learn (the Learning Inbox)
+
+Here's the newest part, in plain English. **Every night, the system reads back over the projects you worked on that day and pulls out anything worth remembering** — a lesson, a bug and its fix, a decision you made, or a correction you gave the agent.
+
+Then it sorts what it found into two piles:
+
+1. **Clear, high-confidence lessons → saved to memory automatically.** ("Learn on their way.")
+2. **Everything it's unsure about — and *every* correction meant for your `feedback.md` — → waits in the Learning Inbox** for you to **Approve**, **Edit**, or **Reject** with one click.
+
+> **In plain English:** It's like an assistant who reviews your day, files the obvious takeaways, and leaves the judgment calls on your desk. You stay in control of what enters the brain — and your most important file, `feedback.md`, is **never** written without your approval.
+
+**Where:** the **Learning** page in Polyglot's sidebar. When something's waiting, you'll see a small amber number on it.
+
+**Two things you can set (your choice, change anytime):**
+
+| Setting | Options | You picked |
+|---|---|---|
+| How much it saves on its own | Smart-auto · Review-everything · Off | **Smart-auto** |
+| When it checks | Each night (cheap) · Right after each project | **Each night** |
+
+> **Tip:** It's built to be cheap — one small batched pass per night, and a day with no real coding costs nothing. If a lesson is already in the notebook, it's skipped so nothing piles up twice.
+
+---
+
 ## The one-sentence version
 
 > Your AI team shares a notebook that's searched by meaning, writes a new lesson after every job, and has a small "HR crew" of helpers that run on autopilot to keep everyone improving — so the next project always starts smarter than the last.

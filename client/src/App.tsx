@@ -38,6 +38,7 @@ const LogsPage      = React.lazy(() => import('./pages/Logs'))
 const Setup         = React.lazy(() => import('./pages/Setup'))
 const Documentation = React.lazy(() => import('./pages/Documentation'))
 const MemoryHistory = React.lazy(() => import('./pages/MemoryHistory'))
+const LearningInbox = React.lazy(() => import('./pages/LearningInbox'))
 
 // Minimal page-level spinner shown while lazy chunk loads
 function PageLoader() {
@@ -95,6 +96,7 @@ export default function App() {
             {/* Power-user pages */}
             <Route path="/hr" element={<HrPage />} />
             <Route path="/logs" element={<LogsPage />} />
+            <Route path="/learning" element={<LearningInbox />} />
             <Route path="/governance" element={<Navigate to="/analytics?tab=governance" replace />} />
             <Route path="/goals" element={<GoalCascadePage />} />
             <Route path="/setup" element={<Setup />} />

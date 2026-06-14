@@ -1,12 +1,12 @@
 # ✨ What we built — the upgrades, explained
 
-This is a quick tour of six recent upgrades to Polyglot — your cockpit for running the Boldteq agent team. Each one is explained in plain English: **what it is**, **why it matters**, and **where to see it**.
+This is a quick tour of seven recent upgrades to Polyglot — your cockpit for running the Boldteq agent team. Each one is explained in plain English: **what it is**, **why it matters**, and **where to see it**.
 
 > **Note:** Think of Polyglot as mission control. It doesn't do the building — your agents do that. Polyglot is where you watch, measure, and tune the whole team.
 
 ---
 
-## The six upgrades at a glance
+## The seven upgrades at a glance
 
 | Upgrade | What it is | Why it matters | Where to see it |
 |---|---|---|---|
@@ -15,6 +15,7 @@ This is a quick tour of six recent upgrades to Polyglot — your cockpit for run
 | ⚖️ Quality scoring | An independent judge grades each result | Agents can't mark their own homework anymore | **Analytics → Observability** |
 | ♻️ Always-on | The app restarts itself, automatically | It's never down when you go to use it | Runs in the background |
 | 🔁 VS Code learning loop | Your real editor work teaches the team | Every job you do makes the next one smarter | **System** page (status card) |
+| 📥 Learning Inbox | Auto-finds lessons in your projects, you approve | Memory grows from real work — with your sign-off | **Learning** page |
 | 🔎 Searchable docs | This Documentation section, now searchable | Find any answer by typing what you mean | **Documentation** search box |
 
 ---
@@ -89,4 +90,18 @@ This is a quick tour of six recent upgrades to Polyglot — your cockpit for run
 
 ---
 
-> **The big picture:** Together these six upgrades mean Polyglot now *watches itself* (System Health, Always-on), *measures itself honestly* (real cost + independent quality scoring), and *teaches itself from your real work* (VS Code loop) — with searchable docs so you can always find your way around.
+### 7. Learning Inbox — auto-find lessons in your projects, you approve them
+
+**What it is:** Once a day, Polyglot reviews the projects you worked on in VS Code and pulls out anything reusable — a lesson, a bug-and-fix, a decision, or a correction you gave the agent. Clear, high-confidence lessons save themselves to memory. Everything else — and *every* correction headed for your `feedback.md` — waits on the new **Learning** page for you to **Approve**, **Edit**, or **Reject** with one click.
+
+**Why it matters:** This is the missing half of the learning loop. Before, your VS Code work was only *recorded*; now its lessons are actually *captured* into the shared notebook — so the team genuinely gets smarter from your real projects. And because corrections land in a review queue, nothing touches your most important file (`feedback.md`) without your say-so.
+
+> **Note:** You picked **Smart-auto** mode: high-confidence lessons save on their own, the rest wait for your review. You can change this any time — or turn it fully manual or off — from the settings. It's also cheap by design: one small batched pass each night, and quiet days cost nothing.
+
+> **Analogy:** Like an assistant who reads back over your day, writes up the useful takeaways, files the obvious ones, and leaves the judgment calls on your desk to approve.
+
+> **Where to see it:** The **Learning** page in the sidebar (it shows an amber badge when items are waiting).
+
+---
+
+> **The big picture:** Together these seven upgrades mean Polyglot now *watches itself* (System Health, Always-on), *measures itself honestly* (real cost + independent quality scoring), and *teaches itself from your real work* (VS Code loop + the Learning Inbox) — with searchable docs so you can always find your way around.

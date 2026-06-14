@@ -2513,6 +2513,57 @@ export function subscribeLogStream(onEvent: (e: LogStreamEvent) => void): EventS
   return es
 }
 
+// ── Learning Inbox (auto-learn from VS Code sessions) ────────────────────────
+export type LearningType = 'lesson' | 'bug' | 'decision' | 'feedback' | 'golden'
+export type LearningStatus = 'pending' | 'approved' | 'rejected' | 'auto'
+
+export interface LearningCandidate {
+  id: string
+  type: LearningType
+  title: string
+  payload: Record<string, string>
+  source: string | null
+  sessionId: string | null
+  project: string | null
+  confidence: number
+  status: LearningStatus
+  createdAt: string
+  reviewedAt: string | null
+  capturedRef: string | null
+}
+export interface InboxCounts { pending: number; approved: number; rejected: number; auto: number }
+
+export const getLearningInbox = (status: string) =>
+  request<{ items: LearningCandidate[]; counts: InboxCounts }>(`/learning/inbox?status=${encodeURIComponent(status)}`)
+
+export const getLearningInboxCounts = () => request<InboxCounts>('/learning/inbox/counts')
+
+export const approveCandidate = (id: string) =>
+  // capture embeds via local Ollama — allow a little longer than the default.
+  request<{ ok: boolean; capturedRef: string }>(`/learning/inbox/${id}/approve`, { method: 'POST', timeoutMs: 20000 })
+
+export const rejectCandidate = (id: string) =>
+  request<{ ok: boolean }>(`/learning/inbox/${id}/reject`, { method: 'POST' })
+
+export const editCandidate = (id: string, body: { title?: string; payload?: Record<string, string> }) =>
+  request<{ ok: boolean; candidate: LearningCandidate }>(`/learning/inbox/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+
+export type LearningStreamEvent =
+  | { type: 'ready'; pending: number }
+  | { type: 'candidate'; staged: number }
+  | { type: 'reviewed'; id: string; status: string }
+
+export function subscribeLearningStream(onEvent: (e: LearningStreamEvent) => void): EventSource {
+  const es = new EventSource(`${BASE}/learning/inbox/stream`)
+  const parse = (ev: MessageEvent): Record<string, unknown> => {
+    try { return ev.data ? JSON.parse(ev.data) : {} } catch (e) { console.warn('[learning/stream parse]', e); return {} }
+  }
+  es.addEventListener('ready', (ev: MessageEvent) => onEvent({ type: 'ready', pending: Number(parse(ev).pending ?? 0) }))
+  es.addEventListener('candidate', (ev: MessageEvent) => onEvent({ type: 'candidate', staged: Number(parse(ev).staged ?? 1) }))
+  es.addEventListener('reviewed', (ev: MessageEvent) => onEvent({ type: 'reviewed', id: String(parse(ev).id ?? ''), status: String(parse(ev).status ?? '') }))
+  return es
+}
+
 // ── Observability / Hardening (Pillars 1·3·5·6) ──────────────────────────────
 export interface Spend {
   calls: number

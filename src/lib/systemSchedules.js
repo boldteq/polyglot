@@ -23,6 +23,7 @@ const { CronExpressionParser } = require('cron-parser');
 
 const db = require('../db');
 const agentSync = require('./agentSync');
+const configService = require('./configService');
 const { runClaudeSync, buildAgentPrompt, validateAgentExists } = require('./runClaude');
 
 // ── Definitions ────────────────────────────────────────────────────────────
@@ -112,6 +113,17 @@ const DEFINITIONS = [
     needsLlm: true,
     cancellable: true,
     costEstimate: { lowUsd: 0.05, highUsd: 0.40 },
+  },
+  {
+    id: 'sys-learning-digest',
+    name: 'Learning digest (daily)',
+    description: "Extract candidate lessons/bugs/decisions/feedback from the day's VS Code sessions; auto-capture high-confidence ones, stage the rest for review.",
+    cron: '0 4 * * *',
+    agentName: 'mira',
+    handler: 'learningDigest',
+    needsLlm: true,
+    cancellable: true,
+    costEstimate: { lowUsd: 0.02, highUsd: 0.25 },
   },
 ];
 
@@ -341,6 +353,73 @@ const HANDLERS = {
     return { output, usage, metadata: { llm: true, buildIds } };
   },
 
+  // Learning loop: once a day, read the day's VS Code sessions, extract candidate
+  // lessons/bugs/decisions/feedback, auto-capture the high-confidence ones and
+  // stage the rest in the Learning Inbox for one-click review. Cheap by design:
+  // zero sessions → no LLM run; bounded transcript summaries; cheap model tier.
+  async learningDigest(def, ctx) {
+    const cfg = (k, d) => { const v = configService.getConfig(k); return v === undefined || v === null ? d : v; };
+    const mode = cfg('learning.vscode.mode', 'auto'); // auto | review | off
+    if (mode === 'off') return { output: 'learning digest: mode=off — skipped', metadata: { skipped: true } };
+
+    const maxSessions = cfg('learning.vscode.maxSessions', 20);
+    const maxItems = cfg('learning.vscode.maxItems', 12);
+    const maxTranscriptChars = cfg('learning.vscode.maxTranscriptChars', 8000);
+    const autoConfidence = cfg('learning.vscode.autoConfidence', 0.8);
+    const dedupThreshold = cfg('learning.vscode.dedupThreshold', 0.85);
+    const model = cfg('learning.vscode.model', 'claude-haiku-4-5-20251001');
+
+    const sessions = db.getPendingVscodeSessions(24, maxSessions);
+    if (!sessions.length) return { output: 'learning digest: no pending sessions', metadata: { sessions: 0 } };
+
+    const blocks = sessions.map((s, i) => buildSessionBlock(s, maxTranscriptChars, i));
+    const prompt = buildDigestPrompt(blocks, maxItems);
+
+    const res = await runClaudeSync(prompt, HANDLER_TIMEOUT_MS, {
+      onProc: (child) => ctx?.registerProc?.(child),
+      captureUsage: true,
+      model,
+    });
+    const { text, usage } = typeof res === 'string' ? { text: res, usage: null } : { text: res.text, usage: res.usage };
+
+    const candidates = parseCandidates(text).slice(0, maxItems);
+    const ids = sessions.map((s) => s.sessionId);
+
+    let captured = 0, staged = 0, deduped = 0;
+    const { captureItem } = await import('../intelligence/capture.mjs');
+    const { retrieve } = await import('../intelligence/retrieve.mjs');
+
+    for (const c of candidates) {
+      if (!c || !c.type || !c.title || !VALID_CANDIDATE_TYPES.has(c.type)) continue;
+      // Dedup against the brain (local Ollama embeddings → no token cost).
+      try {
+        const hits = await retrieve(candidateQuery(c), { topK: 3 });
+        if (hits[0] && hits[0].score >= dedupThreshold) { deduped++; continue; }
+      } catch { /* dedup best-effort — fall through to stage */ }
+
+      const isCaptureType = c.type === 'lesson' || c.type === 'bug' || c.type === 'decision';
+      if (mode === 'auto' && isCaptureType && (c.confidence ?? 0) >= autoConfidence) {
+        try {
+          const r = await captureItem(c.type, c.fields || {});
+          db.insertLearningCandidate({ ...toCandidateRow(c), status: 'auto', capturedRef: r.id, reviewedAt: new Date().toISOString() });
+          captured++;
+          continue;
+        } catch { /* capture failed (e.g. Ollama down) → stage for manual approve */ }
+      }
+      const ins = db.insertLearningCandidate(toCandidateRow(c));
+      if (ins.inserted) staged++;
+    }
+
+    db.markVscodeSessionsDigested(ids);
+    if (staged > 0) { try { agentSync.events.emit('learning.candidate', { staged }); } catch { /* SSE best-effort */ } }
+
+    return {
+      output: `learning digest: ${sessions.length} session(s) → ${captured} auto-captured, ${staged} staged, ${deduped} deduped`,
+      usage,
+      metadata: { llm: true, mode, sessions: sessions.length, captured, staged, deduped },
+    };
+  },
+
   // Pillar 2: incrementally re-embed the brain. Spawns the ESM reindex CLI in its
   // own process (isolation) — local Ollama, no token cost. Self-bounded timeout.
   async intelReindex(def, ctx) {
@@ -385,6 +464,130 @@ function requireDeps() {
     throw new Error('systemSchedules.bootAll(deps) must run before handler dispatch');
   }
   return injectedDeps;
+}
+
+// ── Learning digest helpers ──────────────────────────────────────────────────
+
+const VALID_CANDIDATE_TYPES = new Set(['lesson', 'bug', 'decision', 'feedback']);
+const CORRECTION_RE = /\b(no,|nope|actually|don'?t|stop|that'?s wrong|not what|incorrect|i told you|use .* instead|never|always)\b/i;
+
+// Build a compact, bounded summary of one VS Code session for the extractor.
+// No LLM here — reads the transcript JSONL defensively + this session's agent_runs.
+// Falls back to bare facts if the transcript is gone/unreadable.
+function buildSessionBlock(s, maxChars, idx) {
+  const parts = [];
+  parts.push(`### Session ${idx + 1} — project: ${s.project || '(unknown)'} [id: ${s.sessionId}]`);
+  parts.push(`facts: ${s.turnCount || 0} turns, ${s.editCount || 0} edits, ${s.bashCount || 0} shell cmds`);
+
+  // Agent sub-runs that belonged to this session (best-effort join).
+  try {
+    const runs = db.getAgentRunsBySession(s.sessionId).slice(0, 12);
+    if (runs.length) {
+      parts.push('agent runs: ' + runs.map((r) => `${r.agentName}:${r.status}`).join(', '));
+    }
+  } catch { /* ignore */ }
+
+  // Transcript: pull user-correction lines + touched files + last assistant note.
+  try {
+    const fs = require('fs');
+    if (s.transcriptPath && fs.existsSync(s.transcriptPath)) {
+      const lines = fs.readFileSync(s.transcriptPath, 'utf-8').split('\n').filter(Boolean);
+      const corrections = [];
+      const files = new Set();
+      let lastAssistant = '';
+      for (const line of lines) {
+        let obj; try { obj = JSON.parse(line); } catch { continue; }
+        const msg = obj.message || obj;
+        const role = msg.role || obj.type;
+        const content = msg.content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === 'text' && typeof block.text === 'string') {
+              if (role === 'user' && CORRECTION_RE.test(block.text)) corrections.push(block.text.trim().slice(0, 240));
+              if (role === 'assistant') lastAssistant = block.text.trim().slice(0, 400);
+            } else if (block.type === 'tool_use' && (block.name === 'Edit' || block.name === 'Write')) {
+              const fp = block.input && (block.input.file_path || block.input.path);
+              if (fp) files.add(String(fp));
+            }
+          }
+        } else if (typeof content === 'string' && role === 'user' && CORRECTION_RE.test(content)) {
+          corrections.push(content.trim().slice(0, 240));
+        }
+      }
+      if (files.size) parts.push('files touched: ' + [...files].slice(0, 15).join(', '));
+      if (corrections.length) parts.push('user corrections:\n- ' + corrections.slice(0, 6).join('\n- '));
+      if (lastAssistant) parts.push('last assistant summary: ' + lastAssistant);
+    }
+  } catch { /* transcript unreadable — facts above are enough */ }
+
+  return parts.join('\n').slice(0, maxChars);
+}
+
+// The strict-JSON extraction prompt. We do NOT load Mira's file-writing system
+// prompt here — the digest must return data, not write files (we capture).
+function buildDigestPrompt(blocks, maxItems) {
+  return [
+    'You are a senior knowledge analyst reviewing a developer\'s VS Code coding sessions from today.',
+    'Extract ONLY genuinely reusable knowledge that would help future work — not routine activity.',
+    '',
+    'Return STRICT JSON: an array (≤ ' + maxItems + ' items) of candidates. Write NO files. Use NO tools. Output ONLY the JSON array, nothing else.',
+    'If nothing is worth saving, return exactly: []',
+    '',
+    'Each candidate object:',
+    '{',
+    '  "type": "lesson" | "bug" | "decision" | "feedback",',
+    '  "title": "short title (≤100 chars)",',
+    '  "confidence": 0.0-1.0,   // how clearly reusable + correct this is',
+    '  "sourceSessionId": "the session id it came from",',
+    '  "project": "the project name",',
+    '  "fields": { ... }        // see per-type fields below',
+    '}',
+    'Fields by type:',
+    '  lesson   → { "domain", "problem", "root_cause", "solution", "prevention" }',
+    '  bug      → { "severity" (S1-S4), "symptom", "root_cause", "fix", "prevention" }',
+    '  decision → { "scope", "situation", "decision", "thinking", "alternatives", "outcome" }',
+    '  feedback → { "directive" (the rule/correction to always follow), "context" }  // use for moments where the user CORRECTED the agent',
+    '',
+    'Guidance: a "feedback" candidate is for a durable preference/correction the user gave (a rule for next time). A "lesson"/"bug"/"decision" is reusable technical knowledge. Prefer fewer, higher-quality items. Be honest with confidence.',
+    '',
+    'The sessions:',
+    '',
+    blocks.join('\n\n'),
+  ].join('\n');
+}
+
+// Tolerant JSON parse: strip code fences, slice to the outermost array.
+function parseCandidates(text) {
+  if (!text || typeof text !== 'string') return [];
+  let t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  const start = t.indexOf('[');
+  const end = t.lastIndexOf(']');
+  if (start === -1 || end === -1 || end < start) return [];
+  try {
+    const arr = JSON.parse(t.slice(start, end + 1));
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+function candidateQuery(c) {
+  const f = c.fields || {};
+  if (c.type === 'lesson') return `${f.problem || c.title} ${f.solution || ''}`.trim();
+  if (c.type === 'bug') return `${f.symptom || c.title} ${f.fix || ''}`.trim();
+  if (c.type === 'decision') return `${f.decision || c.title} ${f.situation || ''}`.trim();
+  if (c.type === 'feedback') return `${f.directive || c.title}`.trim();
+  return c.title;
+}
+
+function toCandidateRow(c) {
+  return {
+    type: c.type,
+    title: c.title,
+    payload: c.fields || {},
+    source: 'vscode-session',
+    sessionId: c.sourceSessionId || null,
+    project: c.project || null,
+    confidence: Number.isFinite(c.confidence) ? c.confidence : 0,
+  };
 }
 
 // Pillar 1: run the LLM capturing REAL token usage; tolerate a string fallback

@@ -60,6 +60,8 @@ function runClaudeSync(prompt, timeoutMs = 120000, opts = {}) {
     delete childEnv.CLAUDE_AGENT_SDK_VERSION;
 
     const cliArgs = opts.captureUsage ? ['-p', '--output-format', 'json'] : ['-p'];
+    // Optional model override (e.g. a cheap tier for the daily learning digest).
+    if (opts.model) cliArgs.push('--model', String(opts.model));
     const proc = spawn(claudePath, cliArgs, { env: childEnv });
     let out = '';
     let err = '';

@@ -27,6 +27,7 @@ export const CacheKeys = {
   projectRules: (id: string) => `projects/${id}/rules`,
   projectClaudeMd: (id: string) => `projects/${id}/claude-md`,
   training: (name: string) => `training/${name}`,
+  learningInbox: (status: string) => `learning/inbox/${status}`,
 } as const
 
 // Keys that reflect the agent registry — refetched on any agent mutation.

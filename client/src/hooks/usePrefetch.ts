@@ -9,7 +9,7 @@ import { prefetch } from '../lib/cacheCore'
 import { CacheKeys } from '../lib/cacheKeys'
 import {
   getUnifiedAgents, getOrgChart, getHrRegistry, getProjects, getCategories,
-  getAnalyticsSummary,
+  getAnalyticsSummary, getLearningInbox,
 } from '../lib/api'
 
 // Keyed by route path. Each warmer fires the chunk import + the data prefetch.
@@ -39,6 +39,10 @@ const PREFETCHERS: Record<string, () => void> = {
   '/analytics': () => {
     void import('../pages/AnalyticsHub')
     prefetch('analytics/summary', getAnalyticsSummary)
+  },
+  '/learning': () => {
+    void import('../pages/LearningInbox')
+    prefetch(CacheKeys.learningInbox('pending'), () => getLearningInbox('pending'))
   },
 }
 

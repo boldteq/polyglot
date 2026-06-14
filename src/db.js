@@ -141,6 +141,7 @@ function runMigrations(db) {
     { version: 21, name: 'error_log_dedup_key', fn: errorLogDedupKeyMigration },
     { version: 22, name: 'run_observability', fn: runObservabilityMigration },
     { version: 23, name: 'policy_audit', fn: policyAuditMigration },
+    { version: 24, name: 'learning_loop', fn: learningLoopMigration },
   ];
 
   for (const mig of migrations) {
@@ -1784,6 +1785,155 @@ function getRecentAgentRuns(hours = 24) {
   return stmt('SELECT * FROM agent_runs WHERE timestamp >= ? ORDER BY timestamp DESC').all(cutoff).map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
 }
 
+// ── Learning Loop: VS Code sessions + review inbox (migration v24) ───────────
+// Two tables behind the "auto-learn from every VS Code project" feature:
+//   vscode_session   — one row per closed VS Code session (SessionEnd hook),
+//                      consumed nightly by the sys-learning-digest cron.
+//   learning_inbox   — staged candidate lessons/bugs/decisions/feedback awaiting
+//                      one-click Approve/Reject in the Polyglot "Learning" page.
+function learningLoopMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS vscode_session (
+      sessionId       TEXT PRIMARY KEY,
+      project         TEXT,
+      projectPath     TEXT,
+      transcriptPath  TEXT,
+      turnCount       INTEGER DEFAULT 0,
+      toolUseCount    INTEGER DEFAULT 0,
+      editCount       INTEGER DEFAULT 0,
+      bashCount       INTEGER DEFAULT 0,
+      transcriptBytes INTEGER DEFAULT 0,
+      endReason       TEXT,
+      endedAt         TEXT,
+      status          TEXT NOT NULL DEFAULT 'pending_digest',
+      createdAt       TEXT NOT NULL,
+      metadata        TEXT DEFAULT '{}'
+    );
+    CREATE INDEX IF NOT EXISTS idx_vscode_session_status ON vscode_session(status, createdAt DESC);
+
+    CREATE TABLE IF NOT EXISTS learning_inbox (
+      id           TEXT PRIMARY KEY,
+      type         TEXT NOT NULL,
+      title        TEXT NOT NULL,
+      payload      TEXT NOT NULL DEFAULT '{}',
+      source       TEXT,
+      sessionId    TEXT,
+      project      TEXT,
+      confidence   REAL DEFAULT 0,
+      status       TEXT NOT NULL DEFAULT 'pending',
+      createdAt    TEXT NOT NULL,
+      reviewedAt   TEXT,
+      capturedRef  TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_learning_inbox_status  ON learning_inbox(status, createdAt DESC);
+    CREATE INDEX IF NOT EXISTS idx_learning_inbox_session ON learning_inbox(sessionId);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_learning_inbox_dedup ON learning_inbox(sessionId, type, title);
+  `);
+  console.log('[migration v24] learning_loop: vscode_session + learning_inbox tables created');
+}
+
+// ── VS Code sessions ────────────────────────────────────────────────────────
+
+function insertVscodeSession(s) {
+  stmt(`INSERT OR REPLACE INTO vscode_session
+    (sessionId,project,projectPath,transcriptPath,turnCount,toolUseCount,editCount,bashCount,transcriptBytes,endReason,endedAt,status,createdAt,metadata)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(s.sessionId, s.project || null, s.projectPath || null, s.transcriptPath || null,
+      s.turnCount || 0, s.toolUseCount || 0, s.editCount || 0, s.bashCount || 0, s.transcriptBytes || 0,
+      s.endReason || null, s.endedAt || null, s.status || 'pending_digest',
+      s.createdAt || new Date().toISOString(), JSON.stringify(s.metadata || {}));
+}
+
+function getPendingVscodeSessions(hours = 24, limit = 50) {
+  const cutoff = new Date(Date.now() - hours * 3600000).toISOString();
+  return stmt(`SELECT * FROM vscode_session WHERE status = 'pending_digest' AND createdAt >= ?
+    ORDER BY createdAt DESC LIMIT ?`).all(cutoff, limit)
+    .map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
+}
+
+function markVscodeSessionsDigested(ids = []) {
+  if (!ids.length) return 0;
+  const q = stmt(`UPDATE vscode_session SET status = 'digested' WHERE sessionId = ?`);
+  const tx = getDb().transaction((list) => { let n = 0; for (const id of list) n += q.run(id).changes; return n; });
+  return tx(ids);
+}
+
+// Agent runs belonging to one VS Code session — joined via metadata.sessionId
+// (the SubagentStop hook stamps it) with a time-window fallback handled by callers.
+function getAgentRunsBySession(sessionId) {
+  return stmt(`SELECT * FROM agent_runs WHERE json_extract(metadata,'$.sessionId') = ? ORDER BY timestamp ASC`)
+    .all(sessionId).map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
+}
+
+// ── Learning inbox (review queue) ───────────────────────────────────────────
+
+// INSERT OR IGNORE so a re-digested session can't create duplicate candidates
+// (UNIQUE(sessionId,type,title)). Returns { id, inserted }.
+function insertLearningCandidate(c) {
+  const id = c.id || `cand-${Date.now()}-${require('crypto').randomUUID().slice(0, 8)}`;
+  const info = stmt(`INSERT OR IGNORE INTO learning_inbox
+    (id,type,title,payload,source,sessionId,project,confidence,status,createdAt,reviewedAt,capturedRef)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, c.type, (c.title || '').slice(0, 200), JSON.stringify(c.payload || {}),
+      c.source || 'vscode-session', c.sessionId || null, c.project || null,
+      Number.isFinite(c.confidence) ? c.confidence : 0,
+      c.status || 'pending', c.createdAt || new Date().toISOString(),
+      c.reviewedAt || null, c.capturedRef || null);
+  return { id, inserted: info.changes > 0 };
+}
+
+function listLearningInbox({ status, sessionId, project, limit = 200 } = {}) {
+  const where = [];
+  const args = [];
+  if (status) { const parts = String(status).split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length) { where.push(`status IN (${parts.map(() => '?').join(',')})`); args.push(...parts); } }
+  if (sessionId) { where.push('sessionId = ?'); args.push(sessionId); }
+  if (project) { where.push('project = ?'); args.push(project); }
+  const sql = `SELECT * FROM learning_inbox ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY createdAt DESC LIMIT ?`;
+  args.push(limit);
+  return getDb().prepare(sql).all(...args).map(r => ({ ...r, payload: JSON.parse(r.payload || '{}') }));
+}
+
+function getLearningCandidate(id) {
+  const r = stmt('SELECT * FROM learning_inbox WHERE id = ?').get(id);
+  return r ? { ...r, payload: JSON.parse(r.payload || '{}') } : null;
+}
+
+// Guarded so a double-approve / double-reject is a no-op (returns changed:0).
+function updateLearningStatus(id, { status, capturedRef = null, reviewedAt } = {}) {
+  const info = stmt(`UPDATE learning_inbox SET status = ?, capturedRef = COALESCE(?, capturedRef), reviewedAt = ?
+    WHERE id = ? AND status NOT IN ('approved','rejected')`)
+    .run(status, capturedRef, reviewedAt || new Date().toISOString(), id);
+  return { changed: info.changes };
+}
+
+// Edit a candidate's title/payload while still pending.
+function updateLearningPayload(id, { title, payload } = {}) {
+  const cur = getLearningCandidate(id);
+  if (!cur || cur.status !== 'pending') return { changed: 0 };
+  const info = stmt('UPDATE learning_inbox SET title = ?, payload = ? WHERE id = ? AND status = ?')
+    .run((title ?? cur.title).slice(0, 200), JSON.stringify(payload ?? cur.payload), id, 'pending');
+  return { changed: info.changes };
+}
+
+function getInboxCounts() {
+  const rows = stmt(`SELECT status, COUNT(*) AS n FROM learning_inbox GROUP BY status`).all();
+  const out = { pending: 0, approved: 0, rejected: 0, auto: 0 };
+  for (const r of rows) if (r.status in out) out[r.status] = r.n;
+  return out;
+}
+
+function pruneLearningInbox({ rejectedDays = 14, autoDays = 30 } = {}) {
+  const db = getDb();
+  const rejectedPruned = db.prepare(
+    `DELETE FROM learning_inbox WHERE status = 'rejected' AND createdAt < datetime('now', '-' || ? || ' days')`
+  ).run(rejectedDays).changes;
+  const autoPruned = db.prepare(
+    `DELETE FROM learning_inbox WHERE status = 'auto' AND createdAt < datetime('now', '-' || ? || ' days')`
+  ).run(autoDays).changes;
+  return { rejectedPruned, autoPruned };
+}
+
 // ── Run History ─────────────────────────────────────────────────────────────
 
 function loadRunHistory(limit = 500) {
@@ -2998,6 +3148,10 @@ module.exports = {
   // Agent Runs
   loadAgentRuns, insertAgentRun, getRecentAgentRuns,
   insertAgentRunStub, completeAgentRun, reconcileOrphanRuns,
+  // Learning Loop (VS Code sessions → review inbox)
+  insertVscodeSession, getPendingVscodeSessions, markVscodeSessionsDigested, getAgentRunsBySession,
+  insertLearningCandidate, listLearningInbox, getLearningCandidate,
+  updateLearningStatus, updateLearningPayload, getInboxCounts, pruneLearningInbox,
   // Run observability (Pillar 1)
   logCost, getSpend, getCostLogs,
   logAgentEvent, getAgentEvents,

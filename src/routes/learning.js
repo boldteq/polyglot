@@ -1,11 +1,24 @@
 'use strict';
 
 const { Router } = require('express');
+const { EventEmitter } = require('events');
 const { rateLimit } = require('../middleware/rateLimit');
 const db = require('../db');
 const configService = require('../lib/configService');
+const agentSync = require('../lib/agentSync');
 
 const router = Router();
+
+// ── Learning Inbox event bus (drives the sidebar badge over SSE) ─────────────
+const inboxEvents = new EventEmitter();
+inboxEvents.setMaxListeners(50);
+// The nightly digest stages candidates directly in the DB then emits this on the
+// global bus — bridge it to inbox SSE clients so the badge updates live.
+try {
+  agentSync.events.on('learning.candidate', (p) => {
+    try { inboxEvents.emit('candidate', p || {}); } catch { /* best-effort */ }
+  });
+} catch { /* agentSync optional */ }
 
 function loadAgentLearning() {
   const d = db.loadAgentLearning();
@@ -133,7 +146,123 @@ setInterval(() => {
     }
     if (cleaned > 0) saveClaims(claims);
   } catch {}
+  // Prune old reviewed/auto learning-inbox rows (cheap DELETEs; keep pending+approved).
+  try { db.pruneLearningInbox(); } catch (err) { console.error('[learning] prune inbox failed:', err.message); }
 }, 5 * 60 * 1000);
+
+// ── Learning Inbox: review queue for auto-extracted VS Code learnings ────────
+
+// GET /api/learning/inbox?status=pending&sessionId=&project=
+router.get('/learning/inbox', rateLimit('read'), (req, res) => {
+  try {
+    const status = req.query.status || 'pending';
+    const items = db.listLearningInbox({
+      status,
+      sessionId: req.query.sessionId || undefined,
+      project: req.query.project || undefined,
+    });
+    res.json({ items, counts: db.getInboxCounts() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/learning/inbox/counts — badge + initial load (and SSE-disconnect fallback)
+router.get('/learning/inbox/counts', rateLimit('read'), (req, res) => {
+  try {
+    res.json(db.getInboxCounts());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/learning/inbox/stream — SSE: ready / candidate / reviewed
+router.get('/learning/inbox/stream', (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.flushHeaders?.();
+
+  const send = (type, payload) => {
+    res.write(`event: ${type}\n`);
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+  try { send('ready', { pending: db.getInboxCounts().pending }); } catch { /* ignore */ }
+
+  const onCandidate = (p) => send('candidate', p);
+  const onReviewed = (p) => send('reviewed', p);
+  inboxEvents.on('candidate', onCandidate);
+  inboxEvents.on('reviewed', onReviewed);
+
+  const heartbeat = setInterval(() => { try { res.write(': keepalive\n\n'); } catch { /* closed */ } }, 25_000);
+  const cleanup = () => {
+    clearInterval(heartbeat);
+    inboxEvents.off('candidate', onCandidate);
+    inboxEvents.off('reviewed', onReviewed);
+  };
+  req.on('close', cleanup);
+  req.on('end', cleanup);
+});
+
+// PATCH /api/learning/inbox/:id — edit title/payload while pending
+router.patch('/learning/inbox/:id', rateLimit('write'), (req, res) => {
+  try {
+    const { title, payload } = req.body || {};
+    const r = db.updateLearningPayload(req.params.id, { title, payload });
+    if (!r.changed) return res.status(409).json({ error: 'Candidate not found or no longer pending' });
+    res.json({ ok: true, candidate: db.getLearningCandidate(req.params.id) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/learning/inbox/:id/approve — write to memory (lesson/bug/decision/golden)
+// or append to feedback.md (feedback). Keeps the row 'pending' on capture failure
+// so it can be retried (e.g. Ollama was down).
+router.post('/learning/inbox/:id/approve', rateLimit('write'), async (req, res) => {
+  try {
+    const cand = db.getLearningCandidate(req.params.id);
+    if (!cand) return res.status(404).json({ error: 'Candidate not found' });
+    if (cand.status !== 'pending') return res.status(409).json({ error: `Already ${cand.status}` });
+
+    let capturedRef = null;
+    if (cand.type === 'feedback') {
+      const f = cand.payload || {};
+      const { appendFeedback } = await import('../intelligence/feedbackWriter.mjs');
+      const r = await appendFeedback({ title: cand.title, directive: f.directive || cand.title, context: f.context || '' });
+      capturedRef = r.anchor;
+    } else if (cand.type === 'lesson' || cand.type === 'bug' || cand.type === 'decision' || cand.type === 'golden') {
+      const { captureItem } = await import('../intelligence/capture.mjs');
+      const r = await captureItem(cand.type, cand.payload || {});
+      capturedRef = r.id;
+    } else {
+      return res.status(400).json({ error: `Unsupported candidate type: ${cand.type}` });
+    }
+
+    const upd = db.updateLearningStatus(req.params.id, { status: 'approved', capturedRef });
+    if (!upd.changed) return res.status(409).json({ error: 'Lost the race — already reviewed' });
+    try { inboxEvents.emit('reviewed', { id: req.params.id, status: 'approved' }); } catch { /* ignore */ }
+    res.json({ ok: true, capturedRef });
+  } catch (err) {
+    // Capture/append failed (e.g. Ollama unreachable) — leave it pending, retryable.
+    res.status(500).json({ error: err.message, hint: 'Is Ollama running? The candidate stays pending — retry after fixing.' });
+  }
+});
+
+// POST /api/learning/inbox/:id/reject
+router.post('/learning/inbox/:id/reject', rateLimit('write'), (req, res) => {
+  try {
+    const upd = db.updateLearningStatus(req.params.id, { status: 'rejected' });
+    if (!upd.changed) return res.status(409).json({ error: 'Not found or already reviewed' });
+    try { inboxEvents.emit('reviewed', { id: req.params.id, status: 'rejected' }); } catch { /* ignore */ }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/learning
 router.get('/learning', rateLimit('read'), (req, res) => {

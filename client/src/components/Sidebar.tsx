@@ -23,10 +23,11 @@ import {
   AlertCircle,
   Activity,
   BookOpen,
+  Inbox,
 } from 'lucide-react'
 import type { Project } from '../types'
 import { useTheme } from '../contexts/ThemeContext'
-import { getErrorLogCount, subscribeLogStream } from '../lib/api'
+import { getErrorLogCount, subscribeLogStream, getLearningInboxCounts, subscribeLearningStream } from '../lib/api'
 import { usePrefetch } from '../hooks/usePrefetch'
 
 interface SidebarProps {
@@ -116,6 +117,7 @@ export default function Sidebar({ projects }: SidebarProps) {
   const { theme, toggle } = useTheme()
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [unresolvedErrors, setUnresolvedErrors] = useState(0)
+  const [pendingLearning, setPendingLearning] = useState(0)
   const location = useLocation()
   const prefetch = usePrefetch()
 
@@ -138,6 +140,17 @@ export default function Sidebar({ projects }: SidebarProps) {
       else if (ev.type === 'new_error' && ev.entry.resolved === 0) setUnresolvedErrors(n => n + 1)
       else if (ev.type === 'resolved') setUnresolvedErrors(n => Math.max(0, n - 1))
       else if (ev.type === 'cleared') getErrorLogCount().then(r => setUnresolvedErrors(r.unresolved)).catch(() => {})
+    })
+    return () => es.close()
+  }, [])
+
+  // Live pending-learning badge via SSE (fallback poll on disconnect)
+  useEffect(() => {
+    getLearningInboxCounts().then(r => setPendingLearning(r.pending)).catch(() => {})
+    const es = subscribeLearningStream((ev) => {
+      if (ev.type === 'ready') setPendingLearning(ev.pending)
+      else if (ev.type === 'candidate') setPendingLearning(n => n + (ev.staged || 1))
+      else if (ev.type === 'reviewed') setPendingLearning(n => Math.max(0, n - 1))
     })
     return () => es.close()
   }, [])
@@ -247,6 +260,15 @@ export default function Sidebar({ projects }: SidebarProps) {
           {unresolvedErrors > 0 && (
             <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
               {unresolvedErrors > 99 ? '99+' : unresolvedErrors}
+            </span>
+          )}
+        </NavLink>
+        <NavLink to="/learning" className={navLinkClass}>
+          <Inbox className="w-4 h-4" />
+          <span className="flex-1">Learning</span>
+          {pendingLearning > 0 && (
+            <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+              {pendingLearning > 99 ? '99+' : pendingLearning}
             </span>
           )}
         </NavLink>
