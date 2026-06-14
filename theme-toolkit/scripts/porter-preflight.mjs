@@ -20,6 +20,7 @@ import {
   resolveStore, resolveToken, getGrantedScopes, probeStore,
   REQUIRED_SCOPES, FORBIDDEN_SCOPES, AuthError,
 } from './lib/shopify-admin.mjs'
+import { readLock, LOCK_FILE } from './lib/shopify-theme-lock.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -46,6 +47,15 @@ function finish(envError, evidence = {}) {
 }
 
 if (!store) finish('no store — set SHOPIFY_STORE_DOMAIN or pass a store domain')
+
+// Store lock — never write to a store other than the one linked in .boldteq-theme-lock.json.
+let themeLock = null
+try { themeLock = readLock(cwd) } catch { themeLock = null }
+if (themeLock?.store && themeLock.store !== store) {
+  add(blockers, 'store-preflight.lock-mismatch', `target store ${store} ≠ locked store ${themeLock.store} (${LOCK_FILE}) — refusing to write to a store other than the linked one. Re-target via \`pnpm theme:relink --confirm\`.`)
+  finish(null, { lockedStore: themeLock.store })
+}
+
 if (!token) finish(`no Admin API token — set SHOPIFY_ADMIN_API_TOKEN (or per-store override). Create a custom app in Settings > Apps > Develop apps, grant: ${REQUIRED_SCOPES.join(', ')}`)
 
 try {

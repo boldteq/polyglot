@@ -30,6 +30,12 @@ jobs:
       - name: Validate CHANGES.md (every client ask checked + evidenced)
         run: node toolkit/scripts/check-changes-list.mjs CHANGES.md
 
+      - name: Assert theme lock (present, valid, store-pinned, not live)
+        env:
+          SHOPIFY_FLAG_STORE: ${{ secrets.SHOPIFY_FLAG_STORE }}
+          THEME_LOCK_REQUIRED: '1'
+        run: node toolkit/scripts/shopify-theme-guard.mjs
+
   publish:
     name: snapshot live + push + publish
     needs: publish-gate
@@ -47,6 +53,12 @@ jobs:
 
       - name: Install Shopify CLI
         run: npm install -g @shopify/cli@3
+
+      - name: Verify theme lock against the store (remote — locked theme exists + not live)
+        env:
+          THEME_LOCK_REQUIRED: '1'
+          THEME_LOCK_VERIFY_REMOTE: '1'
+        run: node toolkit/scripts/shopify-theme-guard.mjs
 
       - name: Snapshot current live theme (pre-publish rollback point)
         run: shopify theme pull --live --path=./snapshots/${{ github.ref_name }}/

@@ -35,6 +35,9 @@ const SCRIPTS_DIR = path.dirname(fileURLToPath(import.meta.url))
 const FRESHNESS_ALLOWLIST = ['gate-reports', 'CHANGES.md', 'merchant-editability.md', 'docs']
 
 const GATES = [
+  // Gate 0 — theme lock: every push targets the linked theme only, never live/another store
+  // (static; lenient on a missing lock — THEME_LOCK_REQUIRED=1 makes absence a blocker at publish).
+  { name: 'theme-lock', number: 0, kind: 'static', runner: 'node', script: 'shopify-theme-guard.mjs' },
   { name: 'lighthouse', number: 1, kind: 'url', runner: 'node', script: 'gate-lighthouse.mjs' },
   { name: 'theme-check', number: 2, kind: 'static', runner: 'node', script: 'gate-theme-check.mjs' },
   { name: 'editability', number: 3, kind: 'static', runner: 'bash', script: 'gate-editability-greps.sh' },
@@ -179,9 +182,32 @@ function verify(args) {
       console.error('verify: FAIL — --require-full but summary pass=false')
       process.exit(1)
     }
+    // defense-in-depth: a waived gate is only acceptable under --require-full with a CHANGES.md ## Waivers entry
+    const unjustified = Object.entries(summary.gates || {})
+      .filter(([name, g]) => g.waived && !changesWaives(cwd, name))
+      .map(([name]) => name)
+    if (unjustified.length > 0) {
+      console.error(`verify: FAIL — --require-full but gate(s) waived without a CHANGES.md ## Waivers entry: ${unjustified.join(', ')}`)
+      process.exit(1)
+    }
   }
   console.log(`verify: FRESH — summary @ ${summary.sha.slice(0, 7)} (mode=${summary.mode}, pass=${summary.pass}, ts=${summary.ts})`)
   process.exit(0)
+}
+
+// A SKIP_<GATE>=1 waiver only counts as a legitimate pass on an authoritative
+// (full) run if CHANGES.md `## Waivers` names the gate — otherwise the orchestrator
+// must treat the waiver as a FAIL (audit fix: a waived gate cannot silently pass --require-full).
+function changesWaives(cwd, gateName) {
+  try {
+    const text = fs.readFileSync(path.resolve(cwd, 'CHANGES.md'), 'utf-8')
+    const m = text.match(/^##\s*Waivers\b([\s\S]*)/im)
+    if (!m) return false
+    const section = m[1].split(/\n##\s/)[0] // the Waivers section only — up to the next ## heading
+    return new RegExp(`\\b${gateName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(section)
+  } catch {
+    return false
+  }
 }
 
 // ── run mode ──────────────────────────────────────────────────────────────
@@ -250,6 +276,12 @@ function runGates(args) {
     process.stdout.write(`  gate ${gate.name} ... `)
     const childEnv = { ...process.env, REPORT_DIR: args.reportDir }
     if (url) childEnv.THEME_PREVIEW_URL = url
+    // Authoritative (full) run = publish-grade: static scope-aware gates must BLOCK on an
+    // unresolvable scan scope rather than warn-skip (audit fix: no green-on-nothing at publish).
+    if (mode === 'full' && !childEnv.DS_REQUIRE_SCOPE) childEnv.DS_REQUIRE_SCOPE = '1'
+    // Publish-grade conversion gate: load-bearing CRO mechanics (PDP social proof, a cart mechanic,
+    // an evidence-backed decoder citation) BLOCK rather than warn (audit fix: gate was ~2 trivial checks).
+    if (mode === 'full' && !childEnv.STRICT_CONVERSION) childEnv.STRICT_CONVERSION = '1'
     // lumen's runbook uses STOREFRONT_PASSWORD — normalize to the canonical name for every gate
     if (!childEnv.THEME_STORE_PASSWORD && process.env.STOREFRONT_PASSWORD) {
       childEnv.THEME_STORE_PASSWORD = process.env.STOREFRONT_PASSWORD
@@ -302,8 +334,14 @@ function runGates(args) {
     if (output) console.log(output)
   }
 
-  // pass = all executed gates pass AND no exit-2 skip without explicit SKIP_<NAME>=1
-  const overallPass = Object.values(results).every(r => (r.waived ? true : r.skipped ? false : r.pass))
+  // pass = all executed gates pass; a SKIP_<GATE>=1 waiver only passes on a FULL run if
+  // CHANGES.md `## Waivers` justifies it (audit fix); a dev (static-only/subset) run still
+  // honors bare waivers. A non-waived skip (exit 2 / no URL / missing script) always fails.
+  const overallPass = Object.entries(results).every(([name, r]) =>
+    r.waived
+      ? (mode === 'full' ? changesWaives(cwd, name) : true)
+      : r.skipped ? false : r.pass,
+  )
 
   const { sha, dirty } = gitInfo(cwd, FRESHNESS_ALLOWLIST)
   const summary = {
@@ -317,7 +355,7 @@ function runGates(args) {
     gates: Object.fromEntries(
       Object.entries(results).map(([name, r]) => [
         name,
-        { pass: r.pass, blockers: r.blockers, warnings: r.warnings, skipped: r.skipped, reason: r.reason },
+        { pass: r.pass, blockers: r.blockers, warnings: r.warnings, skipped: r.skipped, waived: r.waived, reason: r.reason },
       ]),
     ),
     pass: overallPass,

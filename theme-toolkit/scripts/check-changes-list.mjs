@@ -87,17 +87,31 @@ for (const line of lines) {
       hasEvidence: false,
       hasAssignee: false,
       hasAcceptance: false,
+      evidence: '',
+      acceptance: '',
     }
     continue
   }
   if (current) {
     const meta = line.match(/^\s+-?\s*(\w+):\s*(.*)$/)
     if (meta) {
-      if (meta[1] === 'evidence' && meta[2].trim().length > 0) current.hasEvidence = true
-      if (meta[1] === 'assignee' && meta[2].trim().length > 0) current.hasAssignee = true
-      if (meta[1] === 'acceptance' && meta[2].trim().length > 0) current.hasAcceptance = true
+      const val = meta[2].trim()
+      if (meta[1] === 'evidence' && val.length > 0) { current.hasEvidence = true; current.evidence = val }
+      if (meta[1] === 'assignee' && val.length > 0) current.hasAssignee = true
+      if (meta[1] === 'acceptance' && val.length > 0) { current.hasAcceptance = true; current.acceptance = val }
     }
   }
+}
+
+// An item's `evidence:`/`acceptance:` must REFERENCE a real artifact (a repo path, a gate-report,
+// a URL, a commit SHA, or a screenshot) — not free prose. Audit fix: presence-only let
+// "acceptance: QA-passed" through with zero backing.
+function citesArtifact(s) {
+  return /https?:\/\//i.test(s) ||
+    /\b(?:gate-reports|docs|content|sections|snippets|assets|templates|config)\/[\w./-]+/i.test(s) ||
+    /\.(?:json|md|png|jpe?g|webp|mp4|pdf|csv|liquid)\b/i.test(s) ||
+    /\b[a-f0-9]{7,40}\b/.test(s) || // commit SHA
+    /\b[\w-]+\/[\w./-]+/.test(s)     // any path with a slash
 }
 if (current) items.push(current)
 
@@ -108,8 +122,11 @@ if (items.length === 0) {
 
 const unchecked = items.filter(i => !i.checked)
 const checkedNoEvidence = items.filter(i => i.checked && !i.hasEvidence)
+// checked items must back evidence + acceptance with a real artifact reference, not prose
+const checkedProseEvidence = items.filter(i => i.checked && i.hasEvidence && !citesArtifact(i.evidence))
+const checkedNoAcceptance = items.filter(i => i.checked && !i.hasAcceptance)
+const checkedProseAcceptance = items.filter(i => i.checked && i.hasAcceptance && !citesArtifact(i.acceptance))
 const missingAssignee = items.filter(i => !i.hasAssignee)
-const missingAcceptance = items.filter(i => !i.hasAcceptance)
 
 const total = items.length
 const done = items.filter(i => i.checked).length
@@ -129,11 +146,23 @@ if (checkedNoEvidence.length > 0) {
   for (const item of checkedNoEvidence) console.error(`   - ${item.title}`)
   failed = true
 }
+if (checkedProseEvidence.length > 0) {
+  console.error(`\n❌ ${checkedProseEvidence.length} checked item${checkedProseEvidence.length === 1 ? '' : 's'} with prose \`evidence:\` (no artifact path/URL/SHA/gate-report):`)
+  for (const item of checkedProseEvidence) console.error(`   - ${item.title} → evidence: "${item.evidence.slice(0, 60)}"`)
+  failed = true
+}
+if (checkedNoAcceptance.length > 0) {
+  console.error(`\n❌ ${checkedNoAcceptance.length} checked item${checkedNoAcceptance.length === 1 ? '' : 's'} missing \`acceptance:\` line (a checked item must record how it was accepted):`)
+  for (const item of checkedNoAcceptance) console.error(`   - ${item.title}`)
+  failed = true
+}
+if (checkedProseAcceptance.length > 0) {
+  console.error(`\n❌ ${checkedProseAcceptance.length} checked item${checkedProseAcceptance.length === 1 ? '' : 's'} with prose \`acceptance:\` (must cite a real artifact — gate-report/URL/screenshot/SHA, not "QA-passed"):`)
+  for (const item of checkedProseAcceptance) console.error(`   - ${item.title} → acceptance: "${item.acceptance.slice(0, 60)}"`)
+  failed = true
+}
 if (missingAssignee.length > 0) {
   console.warn(`\n⚠️  ${missingAssignee.length} item${missingAssignee.length === 1 ? '' : 's'} missing \`assignee:\` line (recommend fix at intake)`)
-}
-if (missingAcceptance.length > 0) {
-  console.warn(`⚠️  ${missingAcceptance.length} item${missingAcceptance.length === 1 ? '' : 's'} missing \`acceptance:\` line (recommend fix at intake)`)
 }
 
 if (failed) {

@@ -66,7 +66,31 @@ const UA =
 
 // surfaces where an above-fold hero + primary CTA is load-bearing
 const HERO_PAGES = new Set(['home', 'collection', 'page'])
-const STRICT_TRUST = process.env.STRICT_TRUST === '1'
+// STRICT_CONVERSION (set by the orchestrator on a publish-grade FULL run) promotes the
+// load-bearing CRO mechanics from warnings to BLOCKERS: PDP social proof + a cart conversion
+// mechanic + an evidence-backed decoder citation. Dev/subset runs stay lenient (warnings).
+const STRICT_CONVERSION = process.env.STRICT_CONVERSION === '1'
+const STRICT_TRUST = process.env.STRICT_TRUST === '1' || STRICT_CONVERSION
+
+// Brands the DESIGN actually declared — read from docs/design/design-spec.md `decoder_brands_cited`.
+// A section-file `<!-- Decoder: X -->` citation is only evidence-backed if X is one of these
+// (audit fix: a free-text comment proves nothing; tie the citation to a real design decision).
+function declaredDecoderBrands(cwd) {
+  const out = new Set()
+  for (const rel of ['docs/design/design-spec.md', 'design-spec.md']) {
+    try {
+      const txt = fs.readFileSync(path.resolve(cwd, rel), 'utf-8')
+      const block = txt.match(/decoder_brands_cited[^\n]*\n?([\s\S]*?)(?:\n##\s|\n[a-z_]+:\s|\n```|$)/i)
+      const scope = block ? block[0] : txt
+      for (const m of scope.matchAll(/["'\[]?\s*([A-Z][\w&'. -]{1,40}?)\s*["'\]]/g)) {
+        const b = m[1].trim().toLowerCase()
+        if (b && !/^(hero|pdp|cart|decoder_brands_cited|surfaces|lift_targets|mechanic_slots|path)$/.test(b)) out.add(b)
+      }
+    } catch { /* no spec on this build — fall back to count-only */ }
+  }
+  return out
+}
+const normBrand = (s) => s.trim().toLowerCase().replace(/[.''`]/g, '')
 
 // ── args ──────────────────────────────────────────────────────────────────
 function printHelp() {
@@ -299,7 +323,7 @@ function checkPdpBuyPath(rawHtml, { blockers, warnings }) {
   return ev
 }
 
-function checkCart(rawHtml, { warnings }) {
+function checkCart(rawHtml, { blockers, warnings }) {
   const html = stripNonContent(rawHtml)
   const ev = {}
 
@@ -327,6 +351,17 @@ function checkCart(rawHtml, { warnings }) {
       id: 'conversion.cart-upsell',
       page: 'cart',
       detail: 'no cart upsell / cross-sell / recommendations slot',
+      evidence: '',
+    })
+  }
+
+  // STRICT: the cart must carry at least ONE conversion mechanic (incentive bar OR upsell) — a
+  // bare cart is a known AOV/conversion leak. Load-bearing → blocker on a publish-grade run.
+  if (STRICT_CONVERSION && !freeShipBar && !upsell) {
+    blockers.push({
+      id: 'conversion.cart-no-mechanic',
+      page: 'cart',
+      detail: 'cart has NO conversion mechanic (no free-shipping/incentive bar AND no upsell/cross-sell) — a bare cart leaks AOV + conversion',
       evidence: '',
     })
   }
@@ -376,34 +411,46 @@ function listSectionFiles(cwd) {
 const DECODER_RE = /<!--\s*Decoder:\s*([^>]+?)\s*-->/gi
 const SURFACE_HINT_RE = /(hero|banner|product|pdp|cart|featured|collection|main-product)/i
 
-function checkDecoderCitations(cwd, { warnings }) {
-  const ev = { citations: 0, surfaces: [], scanned: 0, customBuild: inGitRepo(cwd) }
+function checkDecoderCitations(cwd, { blockers, warnings }) {
+  const declared = declaredDecoderBrands(cwd) // brands the design-spec actually committed to
+  const declaredNorm = new Set([...declared].map(normBrand))
+  const ev = { citations: 0, evidenceBacked: 0, fabricated: 0, surfaces: [], scanned: 0, declaredBrands: [...declared], customBuild: inGitRepo(cwd) }
   const files = listSectionFiles(cwd)
   ev.scanned = files.length
   for (const f of files) {
     let txt
-    try {
-      txt = fs.readFileSync(f, 'utf-8')
-    } catch {
-      continue
-    }
+    try { txt = fs.readFileSync(f, 'utf-8') } catch { continue }
     const base = path.basename(f)
+    const onSurface = SURFACE_HINT_RE.test(base)
     let m
     DECODER_RE.lastIndex = 0
     while ((m = DECODER_RE.exec(txt)) !== null) {
       ev.citations += 1
-      if (SURFACE_HINT_RE.test(base)) ev.surfaces.push(base)
+      const cited = m[1].split(/[,;|]/).map(normBrand).filter(Boolean)
+      const matchesDeclared = cited.some(b => declaredNorm.has(b))
+      if (onSurface && (matchesDeclared || declaredNorm.size === 0)) {
+        ev.evidenceBacked += 1
+        ev.surfaces.push(base)
+      }
+      // a citation that names brands NONE of which the design-spec declared = fabricated/ungrounded
+      if (declaredNorm.size > 0 && !matchesDeclared) ev.fabricated += 1
     }
   }
   ev.surfaces = [...new Set(ev.surfaces)]
-  // informational on configure-only (no sections/ to author); warning on a custom build
-  if (ev.citations === 0 && ev.scanned > 0) {
-    warnings.push({
-      id: 'conversion.decoder-citation',
-      page: 'repo',
-      detail: `no <!-- Decoder: brand,... --> citations across ${ev.scanned} section file(s) (custom build expects ≥1 on hero/pdp/cart)`,
-      evidence: 'sections/*.liquid',
-    })
+
+  if (declaredNorm.size > 0) {
+    // EVIDENCE-DERIVED path: the spec declared brands, so citations must be grounded in them.
+    if (ev.scanned > 0 && ev.evidenceBacked === 0) {
+      const entry = { id: 'conversion.decoder-citation', page: 'repo', detail: `no evidence-backed decoder citation — a custom build must carry ≥1 \`<!-- Decoder: <brand> -->\` on a hero/pdp/cart section naming a brand the design-spec declared (declared: ${ev.declaredBrands.slice(0, 6).join(', ') || 'none'})`, evidence: 'sections/*.liquid vs docs/design/design-spec.md' }
+      STRICT_CONVERSION ? blockers.push(entry) : warnings.push(entry)
+    }
+    if (ev.fabricated > 0) {
+      const entry = { id: 'conversion.decoder-citation-fabricated', page: 'repo', detail: `${ev.fabricated} decoder citation(s) name brands NOT in the design-spec (\`decoder_brands_cited\`) — ungrounded/fabricated; cite the brands the design actually drew from`, evidence: 'sections/*.liquid' }
+      STRICT_CONVERSION ? blockers.push(entry) : warnings.push(entry)
+    }
+  } else if (ev.citations === 0 && ev.scanned > 0) {
+    // No design-spec to cross-check (Figma/legacy build) — fall back to a presence warning only.
+    warnings.push({ id: 'conversion.decoder-citation', page: 'repo', detail: `no <!-- Decoder: brand,... --> citations across ${ev.scanned} section file(s) (no design-spec.md to evidence-check; custom build expects ≥1 on hero/pdp/cart)`, evidence: 'sections/*.liquid' })
   }
   return ev
 }
@@ -485,7 +532,7 @@ async function main() {
 
     if (HERO_PAGES.has(p.id)) checkedPages[p.id] = checkHomeHero(p.id, html, { blockers })
     else if (p.id === 'pdp') checkedPages[p.id] = checkPdpBuyPath(html, { blockers, warnings })
-    else if (p.id === 'cart') checkedPages[p.id] = checkCart(html, { warnings })
+    else if (p.id === 'cart') checkedPages[p.id] = checkCart(html, { blockers, warnings })
     else checkedPages[p.id] = { note: 'no mechanical conversion check for this page id' }
 
     // 7 — email capture (home dedicated, any page's footer as fallback)
@@ -518,7 +565,7 @@ async function main() {
 
   // 8 — decoder citations (static, repo-side)
   process.stdout.write('  repo (decoder citations) ... ')
-  const decoder = checkDecoderCitations(cwd, { warnings })
+  const decoder = checkDecoderCitations(cwd, { blockers, warnings })
   console.log(`${decoder.citations} citation(s) across ${decoder.scanned} section file(s)`)
 
   // 9 — lifecycle email triggers (static, informational)
