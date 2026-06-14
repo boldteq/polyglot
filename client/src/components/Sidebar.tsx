@@ -22,6 +22,7 @@ import {
   ChevronDown,
   AlertCircle,
   Activity,
+  BookOpen,
 } from 'lucide-react'
 import type { Project } from '../types'
 import { useTheme } from '../contexts/ThemeContext'
@@ -269,6 +270,9 @@ export default function Sidebar({ projects }: SidebarProps) {
           }`
         }>
           <Settings className="w-4 h-4" /> Settings
+        </NavLink>
+        <NavLink to="/docs" className={navLinkClass}>
+          <BookOpen className="w-4 h-4" /> Documentation
         </NavLink>
       </nav>
 

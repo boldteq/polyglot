@@ -6,10 +6,12 @@
 
 ## TL;DR (read this first)
 
+> **In plain English:** Polyglot is the **dashboard** for a team of 66 AI specialists. They share one **notebook** of lessons (searched by *meaning*, not exact words), and the whole thing runs itself — you only keep **Ollama** (a small free app) running. Want the no-jargon version? Read **👋 Start Here** and **🧠 How It Learns** first. This guide is the technical reference.
+
 - **Polyglot** = the cockpit (a local web app at `http://localhost:3847`) that *manages* your agents, memory, schedules, and health. It is not where agents run your code.
 - **Agents** are just markdown files in `~/.claude/agents/*.md` (66 of them). They run **in VS Code** (Claude Code) and inside Polyglot's scheduled jobs.
-- **Memory** is a **local vector database** (RAG) built from your `~/.claude/memory/` brain. Agents search it before acting and capture lessons after.
-- **It runs itself.** The server auto-starts and auto-restarts. The only thing you must keep running is **Ollama** (the local embedding engine).
+- **Memory** is a **shared notebook** your agents search *by meaning* before acting, and write new lessons into after. (Under the hood it's a local "vector database" — explained in §3.)
+- **It runs itself.** The server auto-starts and auto-restarts. The only thing you must keep running is **Ollama** (the small app that powers memory search).
 
 ---
 
@@ -64,6 +66,13 @@ Three planes: **VS Code** (where agents run your work) · **Memory** (shared bra
 ---
 
 ## 3. Memory & RAG — the important part
+
+> **In plain English (read before the jargon below):** Memory is a **shared notebook** your agents read from and write to. They search it by **meaning, not keywords** — so a search for "size chart" still finds a note titled "product options." After a job they **capture** what they learned, and everyone benefits next time. **Ollama** is the small program that makes the by-meaning search work. The terms below — *embedding, vector, cosine similarity, chunk, RAG, MCP* — are just the engineering names for the pieces of that one idea:
+> - **embedding / vector** = a note turned into searchable numbers that capture its meaning
+> - **cosine similarity** = the math that finds the *closest in meaning* notes
+> - **chunk** = one small slice of a doc (kept with its heading)
+> - **RAG** = "search the notebook first, then answer" — retrieval before generation
+> - **MCP** = the standard "plug" that lets every agent reach those memory tools
 
 **Where it's stored:** `Polyglot/data/intel/`
 - `kb_chunks.jsonl` — **~85 MB, ~16,736 chunks** = your entire `~/.claude/memory/` brain + agent specs, embedded.

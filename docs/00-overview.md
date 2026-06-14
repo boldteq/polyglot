@@ -1,251 +1,138 @@
-# Polyglot — Complete Reference
+# Polyglot — The Big Picture
 
-Polyglot is a local web application that manages the Boldteq Software Factory: agents, CLAUDE.md files, slash commands, rules, memory, orchestration, and AI tooling — all through a browser dashboard and REST API.
+Polyglot is your **cockpit for the Boldteq agent team**. It's a private web app that runs only on your Mac at `http://localhost:3847`. Think of it as the control room: you don't fly the plane from here, but you see every dial, manage the crew, and read the flight history.
 
-**Architecture:** Express server on `http://localhost:3847`. Serves a React SPA (`public-dist/`) and a REST API. Agent calls stream via SSE. Kept alive by pm2 + macOS LaunchAgent.
-
-> **Info:** Polyglot runs entirely on your Mac — no cloud dependency. All agent calls use your existing Claude subscription.
+> **Note:** Polyglot is where you **manage** the agents — their files, their memory, their schedules, their cost, their health. It is **not** where they write code. The agents do their actual work inside VS Code (via Claude Code) and inside Polyglot's own scheduled jobs.
 
 ---
 
-## The Five Systems
+## The one-paragraph version
 
-| System | What it is | Global location | Project location |
-|--------|-----------|-----------------|------------------|
-| CLAUDE.md | Global briefing — read by Claude Code on every session start | `~/.claude/CLAUDE.md` | `[project]/CLAUDE.md` |
-| Agents | Specialist `.md` files — define AI personas with system prompts | `~/.claude/agents/` | `[project]/.claude/agents/` |
-| Commands | Slash command `.md` files — become `/commandname` shortcuts | N/A | `[project]/.claude/commands/` |
-| Rules | Rule `.md` files — project-specific behavioral constraints | N/A | `[project]/.claude/rules/` |
-| Memory | Accumulated lessons from all builds | `~/.claude/memory/` | N/A |
+You have **66 AI specialists** (one markdown file each — koda builds backends, arya designs architecture, vex fixes bugs, and so on). They share **one searchable memory brain**, so a lesson learned on one project helps every future project. A handful of **background helpers run automatically** to grade the team's work, promote the good performers, and keep the memory fresh. A **System Health page** tells you at a glance whether everything is green. And the whole thing **stays on by itself** — it restarts after a crash or a reboot without you lifting a finger.
 
 ---
 
-## Dashboard Pages
+## The core parts (the originals)
 
-| Page | Route | What it does |
-|------|-------|--------------|
-| Dashboard | `/` | Overview of all projects, agents, and system status |
-| All Agents | `/agents` | Browse and edit all global agents |
-| All Commands | `/commands` | Browse slash commands across all projects |
-| All Rules | `/rules` | Browse rules across all projects |
-| Orchestration | `/orchestration` | Visual DAG workflow builder for chaining agents |
-| Playground | `/playground` | Test any agent interactively with live SSE output |
-| Memory Brain | `/memory` | Browse and edit `~/.claude/memory/` files |
-| Documentation | `/docs` | These docs, rendered in the browser |
-| How It Works | `/how-it-works` | Architecture diagram and system explanation |
-| Setup & Status | `/setup` | System health checks, SDK installer, project list |
-| Settings | `/settings` | Configure project directories and Claude model |
-| Global CLAUDE.md | `/global/claude-md` | View and edit `~/.claude/CLAUDE.md` |
+These are the building blocks the whole factory is made of.
+
+| Part | Plain English | Where it lives |
+|------|---------------|----------------|
+| **CLAUDE.md** | The standing brief every agent reads first — your rules, stack choices, and standards. | `~/.claude/CLAUDE.md` (global) + one per project |
+| **Agents** | 66 specialist personas, one `.md` file each. Each is a job description + instructions for a single expert. | `~/.claude/agents/*.md` |
+| **Commands** | Slash-command shortcuts like `/saas-cycle` or `/shopify-store` that kick off a whole pipeline. | `~/.claude/commands/` + per project |
+| **Rules** | Hard guardrails ("never use `any`", "no hardcoded org data") that agents must obey. | `~/.claude/rules/` + per project |
+| **Memory** | The shared notebook of everything the team has learned. | `~/.claude/memory/` |
+
+> **Tip:** CLAUDE.md is the "company handbook," agents are the "staff," commands are "one-click workflows," rules are "non-negotiables," and memory is the "team wiki." Polyglot lets you read and edit all five from your browser.
 
 ---
 
-## Complete API Endpoint Reference
+## The new systems (what makes it smart)
 
-### Config
+Beyond managing files, Polyglot now **learns and runs on its own**. Here are the five upgrades.
 
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/config` | Get current config (projectDirs) |
-| `POST` | `/api/config/project-dirs` | Update project directory list |
+### 1. The Memory Brain (searchable by meaning)
 
-### Global CLAUDE.md
+The memory is a shared notebook the whole team writes in — but now it's **searchable by meaning, not just keywords**. Ask "how do we handle Shopify billing?" and it finds the right notes even if they never used those exact words.
 
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/global/claude-md` | Read `~/.claude/CLAUDE.md` |
-| `PUT` | `/api/global/claude-md` | Write `~/.claude/CLAUDE.md` |
+- **How:** every note is turned into **searchable numbers** that capture its meaning, then matched by closeness in meaning. About 16,700 notes' worth of knowledge is indexed.
+- **It runs in every project:** the brain is exposed as a tool called **"boldteq-memory"** with 5 actions — one to **search**, and four to **capture** a new lesson, bug, decision, or winning pattern. So any agent, in any project, can look things up and file new lessons.
 
-### Global Agents
+> **Note:** The one tool that powers this is **Ollama** — a small free program on your Mac that does the "turn text into numbers" step. It's the only thing you ever have to keep running yourself (see below).
 
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/global/agents` | List all agents in `~/.claude/agents/` |
-| `GET` | `/api/global/agents/:name` | Get one agent by filename |
-| `PUT` | `/api/global/agents/:name` | Create or update an agent file |
-| `DELETE` | `/api/global/agents/:name` | Delete an agent file |
+### 2. The System Health page
 
-### Global Settings
+Open the **System** page in Polyglot for an at-a-glance dashboard: green / amber / red cards for the **Server**, **Memory brain**, **Evaluation** (the quality self-test), **Observability** (cost tracking), the **VS Code learning loop**, and the **background helpers** — each with a **Run-now** button. This is the place to answer "is everything working?" in one glance.
 
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/global/settings` | Read global settings (model, effort, permissions) |
-| `PUT` | `/api/global/settings` | Write global settings |
+### 3. Observability — real cost and quality
 
-### Projects
+Found under **Analytics → Observability**. This shows the **real token cost per agent** (so you know who's expensive), an **independent quality score** from an automated judge (an LLM grading the work, not the agent grading itself), plus any **blocked actions** and **hand-offs** between agents. In short: where the money goes, and whether the work is actually good.
 
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/projects` | Discover all projects from configured dirs |
-| `GET` | `/api/projects/:id/claude-md` | Read project CLAUDE.md |
-| `PUT` | `/api/projects/:id/claude-md` | Write project CLAUDE.md |
-| `GET` | `/api/projects/:id/agents` | List project-level agents |
-| `GET` | `/api/projects/:id/agents/:name` | Get one project agent |
-| `PUT` | `/api/projects/:id/agents/:name` | Create or update a project agent |
-| `DELETE` | `/api/projects/:id/agents/:name` | Delete a project agent |
-| `GET` | `/api/projects/:id/commands` | List project slash commands |
-| `GET` | `/api/projects/:id/commands/:name` | Get one command |
-| `PUT` | `/api/projects/:id/commands/:name` | Create or update a command |
-| `DELETE` | `/api/projects/:id/commands/:name` | Delete a command |
-| `GET` | `/api/projects/:id/rules` | List project rules |
-| `GET` | `/api/projects/:id/rules/:name` | Get one rule |
-| `PUT` | `/api/projects/:id/rules/:name` | Create or update a rule |
-| `DELETE` | `/api/projects/:id/rules/:name` | Delete a rule |
+### 4. The 8 background helpers ("crons")
 
-### Unified (merged global + all projects)
+These run automatically while the server is up — like a back-office team that works overnight so the agents keep improving on their own.
 
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/unified/agents` | All agents, global + all projects, merged |
-| `GET` | `/api/unified/commands` | All commands across all projects |
-| `GET` | `/api/unified/rules` | All rules across all projects |
+| Helper | When | What it does (plain English) |
+|--------|------|------------------------------|
+| **sys-roster** | Nightly 2:00 | Recomputes each agent's experience and skills |
+| **sys-witness** | Nightly 3:00 | Grades yesterday's work; flags who did well or badly |
+| **sys-cadence** | Mon 9:00 | Applies promotions and improvement plans from Witness |
+| **sys-tutor** | Sun 2:00 | Drafts coaching notes to make the agents better |
+| **sys-forge** | Monthly | Spots missing skills and drafts brand-new agents |
+| **sys-mira** | After each build | Files the lessons learned from a successful build |
+| **sys-intel-reindex** | Nightly 2:30 | Refreshes the memory brain so search stays current |
+| **sys-intel-eval** | Sun 5:00 | Runs the quality self-test (the LLM judge) |
 
-### Agent Operations
+### 5. Always-on + the VS Code learning loop
 
-| Method | Path | What it does |
-|--------|------|--------------|
-| `POST` | `/api/copy-agent` | Copy an agent between global and a project |
-| `POST` | `/api/move-agent` | Move an agent between global and a project |
-
-### AI Chat
-
-| Method | Path | What it does |
-|--------|------|--------------|
-| `POST` | `/api/ai/chat` | Non-streaming chat with the AI assistant |
-| `POST` | `/api/ai/stream` | Streaming chat via SSE |
-| `GET` | `/api/ai/context` | Get all system context injected into the chat |
-| `POST` | `/api/ai/apply` | Apply an AI-suggested file change to disk |
-| `GET` | `/api/ai/history` | List all chat history sessions |
-| `GET` | `/api/ai/history/:id` | Get one history session |
-| `POST` | `/api/ai/history` | Save a chat session to history |
-| `DELETE` | `/api/ai/history/:id` | Delete a history session |
-
-### Memory
-
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/memory` | List all files in `~/.claude/memory/` |
-| `GET` | `/api/memory/file` | Read a memory file (pass `?path=` query) |
-| `PUT` | `/api/memory/file` | Update an existing memory file |
-| `POST` | `/api/memory/file` | Create a new memory file |
-| `DELETE` | `/api/memory/file` | Delete a memory file |
-
-### Orchestration
-
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/orchestrations` | List all saved orchestration pipelines |
-| `POST` | `/api/orchestrations` | Create a new orchestration |
-| `GET` | `/api/orchestrations/:id` | Get one orchestration by ID |
-| `DELETE` | `/api/orchestrations/:id` | Delete an orchestration |
-| `POST` | `/api/orchestrations/run` | Run an orchestration pipeline |
-
-### Playground
-
-| Method | Path | What it does |
-|--------|------|--------------|
-| `POST` | `/api/playground/run` | Run any agent with a prompt, streams SSE |
-
-### Setup
-
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/setup/status` | Health check — Claude CLI, agents, CLAUDE.md, pm2 |
-| `GET` | `/api/setup/projects` | List projects with SDK install status |
-| `POST` | `/api/setup/install-sdk` | Install `@boldteq/agents` SDK into a project |
-
-### Docs
-
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/docs` | List all docs files |
-| `GET` | `/api/docs/:slug` | Get one doc by slug (e.g., `00-overview`) |
-
-### Browse
-
-| Method | Path | What it does |
-|--------|------|--------------|
-| `GET` | `/api/browse` | Browse filesystem (used by file picker in UI) |
+- **Always-on:** a small macOS service (`io.boldteq.polyglot`) starts the server when you log in and **restarts it if it ever crashes**. You don't babysit it.
+- **VS Code learning loop:** every time an agent runs for you inside VS Code, a quiet hook **records that run back into Polyglot**. So the overnight helpers grade your *real* work, not just lab tests — the team learns from what you actually do.
 
 ---
 
-## The 12 Agents
+## The dashboard pages
 
-| Name | File | Model | Role |
-|------|------|-------|------|
-| Rex | `rex.md` | opus | Commander — orchestrates the full build lifecycle |
-| Nova | `nova.md` | sonnet | Market Research — competitive intelligence before any build |
-| Arya | `arya.md` | opus | Architecture — stack, data model, sprint planning |
-| Riko | `riko.md` | sonnet | Project Setup — scaffolds new projects from Arya's plan |
-| Koda | `koda.md` | sonnet | Feature Builder — all production code, any stack |
-| Vex | `vex.md` | sonnet | Bug Fixer — root cause diagnosis and targeted fixes |
-| Luna | `luna.md` | sonnet | Testing — unit, integration, and E2E tests |
-| Sage | `sage.md` | opus | Code Review — security, quality, and pre-deploy gate |
-| Bolt | `bolt.md` | sonnet | Deployment — Vercel, Railway, Shopify submission |
-| Quill | `quill.md` | sonnet | Content & Copy — listings, landing pages, emails |
-| Hawk | `hawk.md` | sonnet | Monitoring & Ops — uptime, errors, cost, incidents |
-| Mira | `mira.md` | sonnet | Memory & Training — extracts lessons after every build |
-
-All 12 live at `~/.claude/agents/`.
-
-> **Tip:** Use opus for orchestration and deep review (Rex, Arya, Sage). Use sonnet for everything else — it's faster and cheaper.
+| Page | What it's for |
+|------|---------------|
+| **Dashboard** | Home overview — projects, agents, status |
+| **All Agents** | Browse and edit every agent |
+| **Org Chart** | The team org chart, by squad |
+| **HR** | Promotions, performance, training, drift fixes |
+| **All Commands / All Rules** | Browse shortcuts and guardrails |
+| **Memory Brain** | Read and edit the shared notebook |
+| **Orchestration** | Chain agents into a visual pipeline |
+| **Playground** | Test any single agent live |
+| **Analytics → Observability** | Real cost + quality scores |
+| **System** | The green/amber/red health dashboard |
+| **Settings** | Project folders and model choice |
+| **Documentation** | These docs, in the browser |
 
 ---
 
-## Build Lifecycle
+## The only thing you must keep running
 
+Everything — the server, the memory tool, the background helpers, the recording hook — starts and stays up automatically. **The single exception is Ollama**, the little program that powers memory search.
+
+```bash
+ollama serve                     # start Ollama (or just open the Ollama app)
+ollama pull nomic-embed-text     # one-time: download the model memory search uses
 ```
-Brief (Yash)
-  → Rex coordinates
-    → Nova: competitive research
-    → Arya: architecture + sprint plan
-    → Riko: scaffold project
-    → Koda: build features (loop)
-      → Luna: write tests per feature
-    → Quill: write copy (runs parallel)
-    → Sage: pre-deploy audit (blocks on critical issues)
-    → Bolt: deploy to production
-    → Hawk: set up monitoring
-    → Mira: extract lessons, update memory
-```
+> **Caution:** If Ollama isn't running, memory **search** and the nightly **re-index** stop working. Everything else keeps going, but the brain goes quiet. Keeping the Ollama app open is enough.
 
 ---
 
-## Key File Paths
+## Key file paths
 
 ```
 ~/.claude/
-  CLAUDE.md                   # Global briefing — every Claude session reads this
-  agents/                     # 12 global agent files
-  memory/                     # Accumulated knowledge
-    MEMORY.md                 # Index
-    stacks/                   # Stack-specific patterns
-    patterns/                 # Good patterns and antipatterns
-    projects/                 # Per-project lessons
+  CLAUDE.md          # The standing brief, read first by every agent
+  agents/            # 66 specialist agent files
+  rules/             # Hard guardrails
+  commands/          # Slash-command pipelines
+  memory/            # The shared notebook (human-readable)
+  hooks/
+    record-agent-run.mjs   # Records VS Code runs back into Polyglot
 
-~/Desktop/Boldteq App/
-  polyglot/
-    src/server.js             # Express backend
-    client/                   # React frontend source
-    public-dist/              # Built frontend (served by Express)
-    sdk/                      # @boldteq/agents package
-    ecosystem.config.js       # pm2 config
-    config.json               # Project directories
-    orchestrations.json       # Saved pipelines
+Polyglot/
+  src/server.js              # The Express server (the app itself)
+  src/intelligence/          # The memory brain + quality eval
+  data/polyglot.db           # SQLite — agents, cost, runs, scores
+  data/intel/kb_chunks.jsonl # The searchable memory index (~85 MB)
+  client/                    # The React dashboard you see in the browser
 
 ~/Library/LaunchAgents/
-  io.boldteq.polyglot.plist # Auto-start on macOS login
+  io.boldteq.polyglot.plist  # Auto-start + auto-restart on macOS
 ```
 
 ---
 
-## Quick Health Check
+## Quick health check
 
 ```bash
-curl -s http://localhost:3847/api/setup/status
-pm2 status
-launchctl list | grep polyglot
-ls ~/.claude/agents/ | wc -l   # expect 12
-claude --version
+ls ~/.claude/agents/ | wc -l          # how many agent files exist (expect ~66)
+launchctl list | grep polyglot        # confirm the always-on service is loaded
+curl -s http://localhost:3847/api/setup/status   # is the server answering?
+ollama list                            # confirm nomic-embed-text is installed
 ```
-
-> **Caution:** If `ls ~/.claude/agents/ | wc -l` returns fewer than 12, some agents are missing. Claude Code will fail to route tasks to those agents.
+> **Tip:** The easiest check of all is to open the **System** page — if every card is green, you're good.

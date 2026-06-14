@@ -2,6 +2,75 @@
 
 Format: **Problem → Cause → Fix** (with exact commands).
 
+> **In plain English:** Before anything below, open the **System** page (`http://localhost:3847` → System). It shows green / amber / red cards for every part of the system and tells you the fix in words. **9 times out of 10, a problem is just Ollama not running** — open the Ollama app and you're back. The section right below covers the systems we added most recently; the older sections (pm2, SDK, orchestration) are still here for deeper issues.
+
+---
+
+## Start here — today's systems (memory, health, learning)
+
+These are the quick fixes for the newest pieces. **Plain-English symptom first, command second.**
+
+### The memory search stopped working / "Ollama unreachable"
+
+**Symptom:** The **Memory** card on the System page is red, or agents stop finding past lessons.
+
+**Cause:** Ollama (the small app that powers search-by-meaning) isn't running. It's the *one* thing you keep on.
+
+**Fix:** Open the **Ollama app** (or run `ollama serve`). Then confirm the model is there:
+```bash
+ollama list                         # should list: nomic-embed-text
+ollama pull nomic-embed-text        # only if it's missing
+curl -s http://localhost:11434/api/tags   # should respond (Ollama is up)
+```
+
+### "Memory index empty" / search returns nothing
+
+**Symptom:** Memory card says the index is empty, or every search comes back blank.
+
+**Cause:** The searchable copy of the brain hasn't been built yet (or was cleared).
+
+**Fix:** Click **Reindex** on the System or Memory page — or from `Polyglot/`:
+```bash
+~/.nvm/versions/node/v20.20.1/bin/node src/intelligence/reindex.mjs
+```
+
+### The whole app won't load
+
+**Symptom:** `http://localhost:3847` doesn't open at all.
+
+**Cause:** The server stopped (rare — it's set to auto-restart).
+
+**Fix:** Kick the always-on service, then confirm it answers:
+```bash
+launchctl kickstart -k gui/$(id -u)/io.boldteq.polyglot
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3847/api/health   # expect 200
+```
+
+### Server card says "not always-on managed"
+
+**Symptom:** System page warns the server isn't managed by the auto-restart service.
+
+**Fix:** Load the LaunchAgent once:
+```bash
+launchctl load ~/Library/LaunchAgents/io.boldteq.polyglot.plist
+```
+
+### "No quality scores yet" (Evaluation card grey)
+
+**Symptom:** The Evaluation card has never run.
+
+**Fix:** Click **Run eval** on the System page (it grades a set of sample answers). Nothing is broken — it just hasn't run yet.
+
+### "No VS Code runs recorded" (learning loop card)
+
+**Symptom:** The VS Code learning-loop card shows zero runs.
+
+**Cause:** The recorder hook activates on your **next** Claude Code session after setup.
+
+**Fix:** Just do a normal piece of work in VS Code (run any agent/Task). The next finished run shows up automatically — no command needed.
+
+> **Caution:** Anything that touches the database (reindex, migrations, DB scripts) must run with **Node 20**: `~/.nvm/versions/node/v20.20.1/bin/node`. Newer Node versions break the database library (`better-sqlite3`).
+
 ---
 
 ## Polyglot Service
@@ -49,7 +118,7 @@ pm2 logs polyglot --lines 50 --err
 | Error in logs | Fix |
 |--------------|-----|
 | `EADDRINUSE :::3847` | `kill -9 $(lsof -ti:3847)` then `pm2 restart polyglot` |
-| `Cannot find module 'express'` | `cd "/Users/yashbaldha/Desktop/Boldteq App/polyglot" && npm install` |
+| `Cannot find module 'express'` | `cd "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot" && npm install` |
 | `spawn node ENOENT` | Add full Node path to `ecosystem.config.js` (see Node not found below) |
 | `SyntaxError: Unexpected token` | `node src/server.js` to find the exact line, fix it |
 | `ENOENT no such file` | Check `cwd` in `ecosystem.config.js` — path doesn't exist |
@@ -66,7 +135,7 @@ If pm2 stopped retrying:
 pm2 start polyglot
 # or fully reset:
 pm2 delete polyglot
-pm2 start "/Users/yashbaldha/Desktop/Boldteq App/polyglot/ecosystem.config.js"
+pm2 start "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/ecosystem.config.js"
 pm2 save
 ```
 
@@ -103,7 +172,7 @@ ls ~/Library/LaunchAgents/ | grep claude
 ```bash
 # Option A: Use pm2 only, disable LaunchAgent
 launchctl unload ~/Library/LaunchAgents/io.boldteq.polyglot.plist
-pm2 start "/Users/yashbaldha/Desktop/Boldteq App/polyglot/ecosystem.config.js"
+pm2 start "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/ecosystem.config.js"
 pm2 save
 pm2 startup  # makes pm2 auto-start on login
 
@@ -123,7 +192,7 @@ launchctl load ~/Library/LaunchAgents/io.boldteq.polyglot.plist
 
 **Fix:**
 ```bash
-cd "/Users/yashbaldha/Desktop/Boldteq App/polyglot"
+cd "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot"
 rm -rf node_modules
 npm install
 pm2 restart polyglot
@@ -152,7 +221,7 @@ which node
 # interpreter: '/Users/yashbaldha/.nvm/versions/node/v20.20.1/bin/node'
 
 pm2 delete polyglot
-pm2 start "/Users/yashbaldha/Desktop/Boldteq App/polyglot/ecosystem.config.js"
+pm2 start "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/ecosystem.config.js"
 pm2 save
 ```
 
@@ -166,10 +235,10 @@ pm2 save
 
 **Fix:**
 ```bash
-cat "/Users/yashbaldha/Desktop/Boldteq App/polyglot/config.json"
+cat "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/config.json"
 # If missing or invalid JSON:
 echo '{"projectDirs":["/Users/yashbaldha/Desktop/Boldteq App"],"port":3847}' \
-  > "/Users/yashbaldha/Desktop/Boldteq App/polyglot/config.json"
+  > "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/config.json"
 pm2 restart polyglot
 ```
 
@@ -187,7 +256,7 @@ pm2 restart polyglot
 ```bash
 # Check directory
 ls ~/.claude/agents/
-# Should show 12 .md files
+# Should show ~66 .md files
 
 # If directory missing:
 mkdir -p ~/.claude/agents/
@@ -500,7 +569,7 @@ lsof -ti:3847
 # Empty = nothing running
 
 # Step 2: Start it
-pm2 start "/Users/yashbaldha/Desktop/Boldteq App/polyglot/ecosystem.config.js"
+pm2 start "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/ecosystem.config.js"
 pm2 status
 
 # Step 3: Verify it responds
@@ -665,7 +734,7 @@ Fix: Rename the directory.
 **Fix:**
 ```bash
 # Verify the SDK path exists
-ls "/Users/yashbaldha/Desktop/Boldteq App/polyglot/sdk/package.json"
+ls "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/sdk/package.json"
 
 # Check the relative path in package.json is correct
 # From Pinzo: "file:../polyglot/sdk" (one level up from Pinzo, into polyglot/sdk)
@@ -687,9 +756,9 @@ npm install --verbose 2>&1 | tail -30
 
 **Fix:**
 ```bash
-ls "/Users/yashbaldha/Desktop/Boldteq App/polyglot/docs/"
+ls "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/docs/"
 # Confirm the file exists and has content
-cat "/Users/yashbaldha/Desktop/Boldteq App/polyglot/docs/04-slash-commands.md" | head -5
+cat "/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/docs/04-slash-commands.md" | head -5
 ```
 
 ---
@@ -750,10 +819,10 @@ fi
 echo ""
 echo "4. Global agents"
 AGENT_COUNT=$(ls ~/.claude/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
-if [ "$AGENT_COUNT" -ge 12 ]; then
+if [ "$AGENT_COUNT" -ge 50 ]; then
   echo "   OK — $AGENT_COUNT agents found"
 else
-  echo "   WARN — found $AGENT_COUNT agents (expected 12+)"
+  echo "   WARN — found $AGENT_COUNT agents (expected ~66)"
   ls ~/.claude/agents/ 2>/dev/null || echo "   Directory missing"
 fi
 

@@ -510,7 +510,14 @@ const DOC_META: Record<string, { emoji: string; short: string; section: string }
   '07-troubleshooting':{ emoji: '🔧', short: 'Troubleshooting',    section: 'Reference' },
   '08-system-guide':   { emoji: '📖', short: 'System Guide',       section: 'Reference' },
   '09-faq':            { emoji: '❓', short: 'FAQ',                 section: 'Getting Started' },
+  '10-start-here':     { emoji: '👋', short: 'Start Here',         section: '👋 Start Here' },
+  '11-how-it-learns':  { emoji: '🧠', short: 'How It Learns',      section: '👋 Start Here' },
+  '12-whats-new':      { emoji: '✨', short: "What's New",         section: '👋 Start Here' },
 }
+
+// Sidebar section order (the plain-English "Start Here" track first).
+const SECTION_ORDER = ['👋 Start Here', 'Getting Started', 'Core Concepts', 'Advanced', 'Reference', 'Other']
+const DEFAULT_DOC = '10-start-here'
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -532,7 +539,8 @@ export default function Documentation() {
         setDocs(d)
         setDocsLoading(false)
         if (!slug && d.length > 0) {
-          navigate(`/docs/${d[0].slug}`, { replace: true })
+          const start = d.find((x) => x.slug === DEFAULT_DOC)?.slug || d[0].slug
+          navigate(`/docs/${start}`, { replace: true })
         }
       })
       .catch(() => setDocsLoading(false))
@@ -667,7 +675,9 @@ export default function Documentation() {
                 ))}
               </div>
             )
-          ) : Object.entries(sections).map(([section, sectionDocs]) => (
+          ) : Object.entries(sections)
+            .sort((a, b) => ((SECTION_ORDER.indexOf(a[0]) + 1) || 999) - ((SECTION_ORDER.indexOf(b[0]) + 1) || 999))
+            .map(([section, sectionDocs]) => (
             <div key={section} className="mb-4">
               <p className="px-5 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-muted">
                 {section}

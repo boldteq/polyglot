@@ -20,13 +20,15 @@ Two places: **(1) in VS Code** when you call them via Claude Code (Task), and **
 
 ---
 
-## Memory & RAG
+## How Memory Works
+
+> **In plain English:** Memory is a **shared notebook** your agents search by **meaning, not keywords**, and write new lessons into after each job. **Ollama** is the small free app that powers the by-meaning search. The technical terms below (vector, embedding, chunk, cosine, RAG) are just engineering names for pieces of that one idea — see the gloss in the **System Guide → §3** for each.
 
 ### Q: Where is the memory stored?
-The readable brain is `~/.claude/memory/` (markdown). The **searchable vector index** is `Polyglot/data/intel/kb_chunks.jsonl` — about **85 MB, ~16,736 chunks**.
+The readable brain is `~/.claude/memory/` (plain markdown notes). The **searchable copy** is `Polyglot/data/intel/kb_chunks.jsonl` — about **85 MB, ~16,736 slices** of those notes.
 
 ### Q: What technology is the memory (RAG)?
-Local **Ollama** model **`nomic-embed-text` (768 dimensions)** turns text into vectors; search is **cosine similarity** (matches by *meaning*, not keywords). Exposed as the **`boldteq-memory` MCP** with 5 tools.
+A local **Ollama** model (**`nomic-embed-text`**) turns each note into **searchable numbers** that capture its meaning; a search then finds the **closest in meaning** notes (not just exact-word matches). Agents reach all of this through one tool called **`boldteq-memory`** (5 actions: 1 search + 4 capture). *RAG* just means "search the notebook first, then answer."
 
 ### Q: How does a memory search work?
 ```
