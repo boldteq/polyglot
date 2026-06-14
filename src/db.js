@@ -8,7 +8,8 @@ const path = require('path');
 const fs = require('fs');
 
 const DB_DIR = path.join(__dirname, '..', 'data');
-const DB_PATH = path.join(DB_DIR, 'polyglot.db');
+// Default to data/polyglot.db; POLYGLOT_DB_PATH overrides (isolated tests, alt envs).
+const DB_PATH = process.env.POLYGLOT_DB_PATH || path.join(DB_DIR, 'polyglot.db');
 const HOME = process.env.HOME || process.env.USERPROFILE || '';
 const ORG_DIR = path.join(HOME, '.claude', 'org');
 
@@ -138,6 +139,8 @@ function runMigrations(db) {
     { version: 19, name: 'app_config_foundation', fn: appConfigFoundationMigration },
     { version: 20, name: 'drop_duplicate_indexes', fn: dropDuplicateIndexesMigration },
     { version: 21, name: 'error_log_dedup_key', fn: errorLogDedupKeyMigration },
+    { version: 22, name: 'run_observability', fn: runObservabilityMigration },
+    { version: 23, name: 'policy_audit', fn: policyAuditMigration },
   ];
 
   for (const mig of migrations) {
@@ -338,6 +341,99 @@ function errorLogDedupKeyMigration(db) {
   if (!hasCol) db.exec('ALTER TABLE error_log ADD COLUMN dedup_key TEXT');
   db.exec('CREATE INDEX IF NOT EXISTS idx_error_log_dedup ON error_log(dedup_key, ts)');
   console.log('[migration v21] error_log.dedup_key added');
+}
+
+// ── Migration v22: run observability (Pillar 1, 2026-06-14) ──────────────────
+// The audit gap: cost was ESTIMATED (chars/4), no fine-grained event trace, no
+// delegation edges, no independent eval scores. These 4 additive tables make the
+// system answer "which agent failed, why, REAL token cost, who delegated, judge
+// score" — the data the durability/governance/consolidation pillars build on.
+// Purely additive (no existing table/data touched).
+function runObservabilityMigration(db) {
+  db.exec(`
+    -- one row per LLM call. estimated=0 when real usage came back from the CLI.
+    CREATE TABLE IF NOT EXISTS cost_logs (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      runId        TEXT,
+      agentName    TEXT,
+      ts           TEXT NOT NULL,
+      model        TEXT,
+      inputTokens  INTEGER DEFAULT 0,
+      outputTokens INTEGER DEFAULT 0,
+      totalTokens  INTEGER DEFAULT 0,
+      costUsd      REAL DEFAULT 0,
+      estimated    INTEGER DEFAULT 1,
+      source       TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_cost_logs_run   ON cost_logs(runId);
+    CREATE INDEX IF NOT EXISTS idx_cost_logs_agent ON cost_logs(agentName, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_cost_logs_ts    ON cost_logs(ts DESC);
+
+    -- fine-grained event trace within a run: gate, retry, file, tool, delegation, judge, note.
+    CREATE TABLE IF NOT EXISTS agent_events (
+      id      INTEGER PRIMARY KEY AUTOINCREMENT,
+      runId   TEXT NOT NULL,
+      ts      TEXT NOT NULL,
+      type    TEXT NOT NULL,
+      data    TEXT DEFAULT '{}'
+    );
+    CREATE INDEX IF NOT EXISTS idx_agent_events_run  ON agent_events(runId, ts);
+    CREATE INDEX IF NOT EXISTS idx_agent_events_type ON agent_events(type, ts DESC);
+
+    -- who delegated to whom (the orchestration graph, observed not just declared).
+    CREATE TABLE IF NOT EXISTS delegations (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts          TEXT NOT NULL,
+      parentRunId TEXT,
+      parentAgent TEXT,
+      childAgent  TEXT NOT NULL,
+      childRunId  TEXT,
+      task        TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_delegations_parent ON delegations(parentRunId);
+    CREATE INDEX IF NOT EXISTS idx_delegations_child  ON delegations(childAgent, ts DESC);
+
+    -- independent LLM-as-judge scores (Pillar 3 → Witness loop). Replaces self-report.
+    CREATE TABLE IF NOT EXISTS eval_scores (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts        TEXT NOT NULL,
+      runId     TEXT,
+      caseId    TEXT,
+      agent     TEXT,
+      taskType  TEXT,
+      overall   REAL,
+      pass      INTEGER,
+      scores    TEXT DEFAULT '{}',
+      reasoning TEXT,
+      dedupKey  TEXT UNIQUE
+    );
+    CREATE INDEX IF NOT EXISTS idx_eval_scores_agent ON eval_scores(agent, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_eval_scores_case  ON eval_scores(caseId, ts DESC);
+  `);
+  console.log('[migration v22] cost_logs + agent_events + delegations + eval_scores tables created');
+}
+
+// ── Migration v23: policy_audit (Pillar 5, 2026-06-14) ───────────────────────
+// Every dispatch-time policy decision (allow/block + violations) gets an audit
+// row. Makes governance enforced + inspectable instead of social-contract.
+function policyAuditMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS policy_audit (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts         TEXT NOT NULL,
+      decision   TEXT NOT NULL,           -- 'allow' | 'block'
+      agentId    TEXT,
+      taskType   TEXT,
+      priority   TEXT,
+      source     TEXT,                     -- e.g. 'dispatch/assign'
+      violations TEXT DEFAULT '[]',        -- JSON [{code,severity,detail}]
+      context    TEXT DEFAULT '{}'         -- JSON {skillScore,burnPct,model,tier,mode}
+    );
+    CREATE INDEX IF NOT EXISTS idx_policy_audit_ts       ON policy_audit(ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_policy_audit_decision ON policy_audit(decision, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_policy_audit_agent    ON policy_audit(agentId, ts DESC);
+  `);
+  console.log('[migration v23] policy_audit table created');
 }
 
 // ── Migration v14: agent status defaults + backfill NULLs (2026-05-01) ───────
@@ -1596,6 +1692,12 @@ function completeAgentRun(runId, patch = {}) {
 
   const oldMeta = JSON.parse(existing.metadata || '{}');
   const mergedMeta = { ...oldMeta, ...(patch.metadataPatch || {}) };
+  // Pillar 1: when the CLI returned real usage, record it on the row itself.
+  if (patch.usage && (patch.usage.inputTokens != null || patch.usage.outputTokens != null)) {
+    mergedMeta.realTokens = (patch.usage.inputTokens || 0) + (patch.usage.outputTokens || 0);
+    if (patch.usage.costUsd != null) mergedMeta.realCostUsd = patch.usage.costUsd;
+    if (patch.usage.model) mergedMeta.model = patch.usage.model;
+  }
 
   const next = {
     duration: patch.duration ?? 0,
@@ -1613,6 +1715,20 @@ function completeAgentRun(runId, patch = {}) {
          WHERE id = ?`)
     .run(next.duration, next.status, next.outputChars, next.estimatedTokens,
          next.estimatedCost, next.error, next.metadata, runId);
+
+  // Pillar 1 observability: one cost_logs row per run. REAL tokens when the CLI
+  // returned usage (patch.usage), else the chars/4 estimate (estimated=1).
+  try {
+    const u = patch.usage;
+    if (u && (u.inputTokens != null || u.outputTokens != null)) {
+      logCost({ runId, agentName: existing.agentName, model: u.model || mergedMeta.model,
+        inputTokens: u.inputTokens || 0, outputTokens: u.outputTokens || 0,
+        costUsd: u.costUsd, estimated: false, source: existing.source });
+    } else {
+      logCost({ runId, agentName: existing.agentName, model: mergedMeta.model,
+        inputTokens, outputTokens, costUsd: next.estimatedCost, estimated: true, source: existing.source });
+    }
+  } catch { /* never throw from finalizer */ }
 
   // Mirror agent-run failures into error_log so they show in the Logs page.
   if (next.status === 'error' || next.status === 'crashed' || (next.status === 'cancelled' && next.error)) {
@@ -2714,11 +2830,181 @@ function getErrorLogHistogram({ hours = 24 } = {}) {
 // EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// RUN OBSERVABILITY (Pillar 1) — cost_logs · agent_events · delegations · eval_scores
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Claude pricing per 1M tokens (opus 4.x default). Used only when the CLI gives
+// us real token counts but no cost (so we can still attribute spend).
+function costFromTokens(model, inTok, outTok) {
+  const RATES = {
+    opus:   { in: 15, out: 75 },
+    sonnet: { in: 3,  out: 15 },
+    haiku:  { in: 0.8, out: 4 },
+  };
+  const key = /haiku/i.test(model || '') ? 'haiku' : /sonnet/i.test(model || '') ? 'sonnet' : 'opus';
+  const r = RATES[key];
+  return (Number(inTok || 0) * r.in + Number(outTok || 0) * r.out) / 1_000_000;
+}
+
+// One row per LLM call. estimated=false => REAL tokens from the CLI usage envelope.
+function logCost({ runId, agentName, model, inputTokens = 0, outputTokens = 0, costUsd, estimated = true, source } = {}) {
+  const total = Number(inputTokens || 0) + Number(outputTokens || 0);
+  const cost = costUsd != null ? Number(costUsd) : costFromTokens(model, inputTokens, outputTokens);
+  stmt('INSERT INTO cost_logs (runId,agentName,ts,model,inputTokens,outputTokens,totalTokens,costUsd,estimated,source) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .run(runId || null, agentName || null, new Date().toISOString(), model || null,
+         Number(inputTokens || 0), Number(outputTokens || 0), total, cost, estimated ? 1 : 0, source || null);
+  return { total, cost, estimated: !!estimated };
+}
+
+// Real-vs-estimated spend roll-up (the question the audit said we couldn't answer).
+function getSpend({ since, agentName } = {}) {
+  const conds = [], args = [];
+  if (since)     { conds.push('ts >= ?'); args.push(since); }
+  if (agentName) { conds.push('agentName = ?'); args.push(agentName); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT
+      COUNT(*) AS calls,
+      SUM(totalTokens) AS tokens,
+      ROUND(SUM(costUsd), 4) AS costUsd,
+      SUM(CASE WHEN estimated = 0 THEN 1 ELSE 0 END) AS realCalls,
+      ROUND(SUM(CASE WHEN estimated = 0 THEN costUsd ELSE 0 END), 4) AS realCostUsd
+    FROM cost_logs${where}`).get(...args);
+}
+
+function getCostLogs({ runId, agentName, since, limit = 200 } = {}) {
+  const conds = [], args = [];
+  if (runId)     { conds.push('runId = ?'); args.push(runId); }
+  if (agentName) { conds.push('agentName = ?'); args.push(agentName); }
+  if (since)     { conds.push('ts >= ?'); args.push(since); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM cost_logs${where} ORDER BY ts DESC LIMIT ?`).all(...args, Math.min(Number(limit) || 200, 2000));
+}
+
+// Fine-grained event trace within a run (gate, retry, file, tool, delegation, judge, note).
+function logAgentEvent(runId, type, data = {}) {
+  if (!runId || !type) return;
+  stmt('INSERT INTO agent_events (runId,ts,type,data) VALUES (?,?,?,?)')
+    .run(runId, new Date().toISOString(), type, JSON.stringify(data || {}));
+}
+
+function getAgentEvents(runId, { limit = 500 } = {}) {
+  return stmt('SELECT * FROM agent_events WHERE runId = ? ORDER BY ts ASC, id ASC LIMIT ?')
+    .all(runId, Math.min(Number(limit) || 500, 5000))
+    .map(r => ({ ...r, data: JSON.parse(r.data || '{}') }));
+}
+
+// Observed delegation edge (parent agent/run → child agent/run).
+function trackDelegation({ parentRunId, parentAgent, childAgent, childRunId, task } = {}) {
+  if (!childAgent) return;
+  stmt('INSERT INTO delegations (ts,parentRunId,parentAgent,childAgent,childRunId,task) VALUES (?,?,?,?,?,?)')
+    .run(new Date().toISOString(), parentRunId || null, parentAgent || null, childAgent, childRunId || null, (task || '').slice(0, 500));
+  if (parentRunId) logAgentEvent(parentRunId, 'delegation', { childAgent, childRunId });
+}
+
+function getDelegations({ parentRunId, childAgent, limit = 200 } = {}) {
+  const conds = [], args = [];
+  if (parentRunId) { conds.push('parentRunId = ?'); args.push(parentRunId); }
+  if (childAgent)  { conds.push('childAgent = ?'); args.push(childAgent); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM delegations${where} ORDER BY ts DESC LIMIT ?`).all(...args, Math.min(Number(limit) || 200, 2000));
+}
+
+// Independent eval-judge score (Pillar 3 → Witness). dedupKey makes JSONL ingest idempotent.
+function recordEvalScore({ runId, caseId, agent, taskType, overall, pass, scores, reasoning, ts, dedupKey } = {}) {
+  const when = ts || new Date().toISOString();
+  const key = dedupKey || `${caseId || 'adhoc'}:${when}`;
+  const res = stmt('INSERT OR IGNORE INTO eval_scores (ts,runId,caseId,agent,taskType,overall,pass,scores,reasoning,dedupKey) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .run(when, runId || null, caseId || null, agent || null, taskType || null,
+         overall != null ? Number(overall) : null, pass ? 1 : 0, JSON.stringify(scores || {}), reasoning || null, key);
+  if (res.changes && runId) logAgentEvent(runId, 'judge', { caseId, overall, pass: !!pass });
+  return res.changes > 0;
+}
+
+function getEvalScores({ agent, caseId, limit = 200 } = {}) {
+  const conds = [], args = [];
+  if (agent)  { conds.push('agent = ?'); args.push(agent); }
+  if (caseId) { conds.push('caseId = ?'); args.push(caseId); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM eval_scores${where} ORDER BY ts DESC LIMIT ?`).all(...args, Math.min(Number(limit) || 200, 2000))
+    .map(r => ({ ...r, pass: !!r.pass, scores: JSON.parse(r.scores || '{}') }));
+}
+
+// Ingest data/intel/eval-runs.jsonl 'score' records into eval_scores (idempotent).
+// Keeps the JSONL the durable interface; gives the DB/Witness queryable rows.
+function ingestEvalRuns(jsonlPath) {
+  const fp = jsonlPath || path.join(HOME, 'Desktop', 'Boldteq App', 'Operation', 'Polyglot', 'data', 'intel', 'eval-runs.jsonl');
+  let ingested = 0;
+  try {
+    for (const line of fs.readFileSync(fp, 'utf-8').split('\n')) {
+      if (!line.trim()) continue;
+      const r = JSON.parse(line);
+      if (r.kind !== 'score') continue;
+      const ok = recordEvalScore({
+        runId: r.runId, caseId: r.case, agent: r.agent, taskType: r.task_type,
+        overall: r.overall, pass: r.pass, scores: r.scores, reasoning: r.reasoning,
+        ts: r.at, dedupKey: `${r.case}:${r.at}`,
+      });
+      if (ok) ingested++;
+    }
+  } catch (e) { if (process.env.DEBUG_DB) console.warn('[db] ingestEvalRuns:', e.message); }
+  return { ingested };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DISPATCH POLICY (Pillar 5) — policy_audit + non-throwing model-routing check
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Non-throwing twin of enforceModelPolicy: returns the violation (or null) so the
+// dispatch gate can decide, without throwing. Mirrors the same tier-match logic.
+function getModelRoutingViolation(agentName, model) {
+  let policy;
+  try { policy = loadModelRouting(); } catch { return null; }
+  if (!policy || !policy.tiers) return null;
+  let expected = null, tierKey = null;
+  for (const [tk, td] of Object.entries(policy.tiers)) {
+    if (Array.isArray(td.agents) && td.agents.includes(agentName)) { expected = td.shortName; tierKey = tk; break; }
+  }
+  if (!expected) return null;
+  const actualModel = String(model || '').toLowerCase();
+  if (!actualModel) return null;
+  const normalized = actualModel.includes('opus') ? 'opus'
+    : actualModel.includes('haiku') ? 'haiku'
+    : actualModel.includes('sonnet') ? 'sonnet'
+    : actualModel;
+  if (normalized === expected) return null;
+  return { expected, actual: normalized, tier: tierKey, mode: policy.enforcementMode || 'advisory' };
+}
+
+// Append a dispatch-policy decision (allow|block) to the audit trail.
+function logPolicyAudit({ decision, agentId, taskType, priority, source, violations, context } = {}) {
+  stmt('INSERT INTO policy_audit (ts,decision,agentId,taskType,priority,source,violations,context) VALUES (?,?,?,?,?,?,?,?)')
+    .run(new Date().toISOString(), decision || 'allow', agentId || null, taskType || null,
+         priority || null, source || null, JSON.stringify(violations || []), JSON.stringify(context || {}));
+}
+
+function getPolicyAudit({ decision, agentId, since, limit = 200 } = {}) {
+  const conds = [], args = [];
+  if (decision) { conds.push('decision = ?'); args.push(decision); }
+  if (agentId)  { conds.push('agentId = ?'); args.push(agentId); }
+  if (since)    { conds.push('ts >= ?'); args.push(since); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM policy_audit${where} ORDER BY ts DESC LIMIT ?`).all(...args, Math.min(Number(limit) || 200, 2000))
+    .map((r) => ({ ...r, violations: JSON.parse(r.violations || '[]'), context: JSON.parse(r.context || '{}') }));
+}
+
 module.exports = {
   getDb, close,
   // Agent Runs
   loadAgentRuns, insertAgentRun, getRecentAgentRuns,
   insertAgentRunStub, completeAgentRun, reconcileOrphanRuns,
+  // Run observability (Pillar 1)
+  logCost, getSpend, getCostLogs,
+  logAgentEvent, getAgentEvents,
+  trackDelegation, getDelegations,
+  recordEvalScore, getEvalScores, ingestEvalRuns,
+  // Dispatch policy (Pillar 5)
+  getModelRoutingViolation, logPolicyAudit, getPolicyAudit,
   // Node position overrides (drag-and-drop persistence)
   loadNodePositions, saveNodePositions, clearNodePositions, setNodeLock,
   // Run History

@@ -1,0 +1,12 @@
+{
+  "id": "seo-pdp-metadata",
+  "task_type": "seo_onpage",
+  "agent": "zeph",
+  "niche": "supplements",
+  "task": "Produce the on-page SEO package for a magnesium glycinate product page: title tag, meta description, H1, and structured data. Target intent: people searching for magnesium for sleep/anxiety. Must follow on-page best practices and be technically valid.",
+  "reference": "Excellent = title tag ~50-60 chars, primary keyword front-loaded, brand at end, not truncated; meta description ~150-155 chars, benefit + differentiator + soft CTA, includes keyword naturally; ONE H1 distinct from the title, descriptive; valid schema.org Product JSON-LD with name, brand, offers (price/availability/priceCurrency), and aggregateRating — and ideally a relevant FAQ. Technically correct (valid JSON-LD, no keyword stuffing, no duplicate H1). Bad = keyword-stuffed/over-length title, generic meta with no keyword or value, H1 identical to title or missing, and either no structured data or invalid/irrelevant schema.",
+  "fixtures": {
+    "good": "Title (56): Magnesium Glycinate for Sleep & Calm (400mg) | Lumen\nMeta (154): High-absorption magnesium glycinate dosed at 400mg for deeper sleep and a calmer mind — no laxative effect, third-party tested. Free shipping over $50. Shop now.\nH1: Magnesium Glycinate 400mg — Sleep & Stress Support\nJSON-LD:\n<script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"Product\",\"name\":\"Magnesium Glycinate 400mg\",\"brand\":{\"@type\":\"Brand\",\"name\":\"Lumen\"},\"sku\":\"MAG-400\",\"aggregateRating\":{\"@type\":\"AggregateRating\",\"ratingValue\":\"4.8\",\"reviewCount\":\"2314\"},\"offers\":{\"@type\":\"Offer\",\"price\":\"39.00\",\"priceCurrency\":\"USD\",\"availability\":\"https://schema.org/InStock\"}}</script>\nPlus a FAQPage block answering 'magnesium glycinate vs citrate' and 'when to take for sleep'.",
+    "bad": "Title: Buy Magnesium Glycinate Magnesium Supplement Best Magnesium for Sleep Anxiety Stress Cheap Magnesium Online Store\nMeta: Welcome to our store. We sell supplements. Buy now.\nH1: Buy Magnesium Glycinate Magnesium Supplement Best Magnesium for Sleep Anxiety Stress Cheap Magnesium Online Store\nStructured data: none."
+  }
+}

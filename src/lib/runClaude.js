@@ -46,6 +46,10 @@ function validateAgentExists(agentName) {
 // `opts.onCancel` is set when cancellation is the cause of process exit —
 // promise rejects with a 'cancelled' error so the wrapper marks the run row
 // as 'cancelled' instead of 'error'.
+// opts.captureUsage — when true, runs the CLI in JSON mode (`--output-format json`)
+// and resolves `{ text, usage:{inputTokens,outputTokens,costUsd,model} }` instead of
+// a plain string, so callers can record REAL token cost (Pillar 1). Non-breaking:
+// default (no flag) still resolves the trimmed text string.
 function runClaudeSync(prompt, timeoutMs = 120000, opts = {}) {
   return new Promise((resolve, reject) => {
     const claudePath = process.env.CLAUDE_PATH || 'claude';
@@ -55,7 +59,8 @@ function runClaudeSync(prompt, timeoutMs = 120000, opts = {}) {
     delete childEnv.CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING;
     delete childEnv.CLAUDE_AGENT_SDK_VERSION;
 
-    const proc = spawn(claudePath, ['-p'], { env: childEnv });
+    const cliArgs = opts.captureUsage ? ['-p', '--output-format', 'json'] : ['-p'];
+    const proc = spawn(claudePath, cliArgs, { env: childEnv });
     let out = '';
     let err = '';
     let killed = false;
@@ -93,7 +98,24 @@ function runClaudeSync(prompt, timeoutMs = 120000, opts = {}) {
       }
       if (killed) reject(new Error(`Claude execution timed out after ${Math.round(timeoutMs / 1000)}s`));
       else if (code !== 0) reject(new Error(err.trim() || `claude exited ${code}`));
-      else resolve(out.trim());
+      else if (opts.captureUsage) {
+        // JSON envelope: { result, usage:{input_tokens,output_tokens}, total_cost_usd, modelUsage }
+        try {
+          const j = JSON.parse(out);
+          const model = j.model || (j.modelUsage && Object.keys(j.modelUsage)[0]) || null;
+          resolve({
+            text: (j.result ?? '').toString().trim(),
+            usage: {
+              inputTokens: j.usage?.input_tokens ?? 0,
+              outputTokens: j.usage?.output_tokens ?? 0,
+              costUsd: typeof j.total_cost_usd === 'number' ? j.total_cost_usd : undefined,
+              model,
+            },
+          });
+        } catch {
+          resolve({ text: out.trim(), usage: null }); // tolerate non-JSON; caller falls back to estimate
+        }
+      } else resolve(out.trim());
     });
     proc.on('error', (e) => { clearTimeout(timer); reject(e); });
     proc.stdin.write(prompt, 'utf8');

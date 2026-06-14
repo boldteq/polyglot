@@ -7,6 +7,17 @@ const tasks = require('../lib/tasks');
 const db = require('../db');
 const org = require('../org');
 const configService = require('../lib/configService');
+const { evaluateDispatch } = require('../lib/dispatchPolicy');
+
+// Pillar 5: pull the governance gate thresholds from the dispatch_policy config
+// singleton (tunable at runtime), falling back to the gate's own defaults.
+function gatePolicy() {
+  const g = (configService.getDispatchPolicy() || {}).governance || {};
+  const out = { mode: g.mode || 'enforce', capabilityBlock: g.capability_block === true };
+  if (typeof g.capability_floor === 'number') out.capabilityFloor = g.capability_floor;
+  if (typeof g.budget_hard_cap_pct === 'number') out.budgetHardCapPct = g.budget_hard_cap_pct;
+  return out; // undefined keys omitted so the gate's DEFAULTS apply
+}
 
 // Cost tier penalty for the dispatch scoring formula. Sourced from
 // `models` SQLite table via configService.
@@ -265,6 +276,7 @@ router.post('/dispatch/assign', (req, res) => {
         status: c.agent.status || 'active',
         model: c.agent.model || configService.getConfig('defaults.model'),
         skillScore: Math.round(c.skillScore * 100) / 100,
+        rawSkill: c.rawScore, // ABSOLUTE skill match — for the capability-gap gate (skillScore is normalized → always 1.0 for the top pick)
         matchedSkills: c.matchedSkills,
         successRate: typeof stats.successRate === 'number' ? stats.successRate : null,
         totalRuns: stats.totalRuns || 0,
@@ -311,7 +323,23 @@ router.post('/dispatch/assign', (req, res) => {
     });
   }
 
-  // Dry-run: just return the ranking, don't create the task
+  // ── Pillar 5: dispatch-time policy gate ───────────────────────────────────
+  // Hard-checks model-routing / budget-ceiling / capability before assignment.
+  // Fails OPEN — a gate bug must never block legitimate dispatch.
+  let gate;
+  try {
+    const modelViolation = db.getModelRoutingViolation(chosen.agentId, chosen.model);
+    gate = evaluateDispatch({
+      agentId: chosen.agentId, status: chosen.status, model: chosen.model, tier: chosen.tier,
+      rawSkill: chosen.rawSkill, skillScore: chosen.skillScore, taskType, priority,
+      budget, modelViolation,
+    }, gatePolicy());
+  } catch (err) {
+    console.warn('[dispatch] policy gate errored (failing open):', err.message);
+    gate = { allow: true, blocked: false, mode: 'error', violations: [], context: {} };
+  }
+
+  // Dry-run: return the ranking + the gate verdict; don't assign or audit.
   if (dryRun) {
     return res.json({
       ok: true,
@@ -321,6 +349,32 @@ router.post('/dispatch/assign', (req, res) => {
       chosen: chosen.agentId,
       score: chosen.score,
       budget,
+      gate,
+      candidates: eligible.slice(0, 5),
+    });
+  }
+
+  // Audit every real decision (allow + block).
+  try {
+    db.logPolicyAudit({
+      decision: gate.allow ? 'allow' : 'block',
+      agentId: chosen.agentId, taskType: taskType || 'general', priority,
+      source: 'dispatch/assign', violations: gate.violations, context: gate.context,
+    });
+  } catch (err) { console.warn('[dispatch] policy audit write failed:', err.message); }
+
+  // A capability gap feeds Forge/Roster's hiring loop — record it whether it merely
+  // WARNED or hard-blocked (default is warn-only, so most gaps don't block).
+  if (gate.violations.some((v) => v.code === 'capability_gap')) {
+    try { db.appendCapabilityGap({ t: new Date().toISOString(), brief: query.slice(0, 200), inferredSkills: tokens, gaps: [], bestAgent: chosen.agentId, topScore: chosen.rawSkill, canHandle: false, recommendation: 'capability gap — no well-qualified agent' }); } catch {}
+  }
+
+  if (gate.blocked) {
+    return res.status(403).json({
+      error: 'dispatch blocked by policy',
+      mode: gate.mode,
+      violations: gate.violations,
+      chosen: chosen.agentId,
       candidates: eligible.slice(0, 5),
     });
   }
@@ -355,6 +409,7 @@ router.post('/dispatch/assign', (req, res) => {
     score: chosen.score,
     reason: explainScore(chosen, { priority, budget }),
     budget,
+    gate, // allow + any non-blocking warnings (e.g. advisory model-routing)
     candidates: eligible.slice(0, 5),
   });
 });

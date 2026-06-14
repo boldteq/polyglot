@@ -92,6 +92,27 @@ const DEFINITIONS = [
     cancellable: true,
     costEstimate: { lowUsd: 0.02, highUsd: 0.20 },
   },
+  {
+    id: 'sys-intel-reindex',
+    name: 'Intelligence reindex (nightly)',
+    description: 'Incrementally re-embed the memory brain into the vector store (Pillar 2 — keeps RAG fresh). Local Ollama, no token cost.',
+    cron: '30 2 * * *',
+    agentName: 'mira',
+    handler: 'intelReindex',
+    needsLlm: false,
+    cancellable: true,
+  },
+  {
+    id: 'sys-intel-eval',
+    name: 'Intelligence eval self-test (weekly)',
+    description: 'Run the LLM-as-judge golden self-test (Pillar 3), catch judge drift, ingest scores into eval_scores for Witness.',
+    cron: '0 5 * * 0',
+    agentName: 'luna',
+    handler: 'intelEval',
+    needsLlm: true,
+    cancellable: true,
+    costEstimate: { lowUsd: 0.05, highUsd: 0.40 },
+  },
 ];
 
 const DEFAULT_ENABLED = true;
@@ -239,9 +260,16 @@ const HANDLERS = {
       console.warn(`[systemSchedules] task reconcile failed: ${err.message}`);
     }
 
+    // Pillar 3 → Witness: pull any new LLM-judge scores from eval-runs.jsonl into
+    // eval_scores so Witness reasons on the independent judge, not self-report.
+    let evalIngested = 0;
+    try { evalIngested = (db.ingestEvalRuns() || {}).ingested || 0; } catch (err) {
+      console.warn(`[systemSchedules] eval ingest failed: ${err.message}`);
+    }
+
     return {
-      output: `Witness sweep: ${result.runsClassified} runs, ${result.pipCandidates.length} PIP, ${result.promotionCandidates.length} promo, ${escalationsAdvanced} escalations advanced`,
-      metadata: { sweep: result, escalationsAdvanced },
+      output: `Witness sweep: ${result.runsClassified} runs, ${result.pipCandidates.length} PIP, ${result.promotionCandidates.length} promo, ${escalationsAdvanced} escalations advanced, ${evalIngested} eval scores ingested`,
+      metadata: { sweep: result, escalationsAdvanced, evalIngested },
     };
   },
 
@@ -267,10 +295,8 @@ const HANDLERS = {
       'Keep output ≤ 80 lines. Skip empty queues with a single line.',
     ].join('\n');
     const prompt = buildAgentPrompt(def.agentName, task);
-    const output = await runClaudeSync(prompt, HANDLER_TIMEOUT_MS, {
-      onProc: (child) => ctx?.registerProc?.(child),
-    });
-    return { output, metadata: { llm: true } };
+    const { output, usage } = await runLLMWithUsage(prompt, ctx);
+    return { output, usage, metadata: { llm: true } };
   },
 
   async forgeGapScan(def, ctx) {
@@ -293,10 +319,8 @@ const HANDLERS = {
       `Recent gap-log size: ${gapsCount} entries.`,
     ].join('\n');
     const prompt = buildAgentPrompt(def.agentName, task);
-    const output = await runClaudeSync(prompt, HANDLER_TIMEOUT_MS, {
-      onProc: (child) => ctx?.registerProc?.(child),
-    });
-    return { output, metadata: { llm: true, gapsCount } };
+    const { output, usage } = await runLLMWithUsage(prompt, ctx);
+    return { output, usage, metadata: { llm: true, gapsCount } };
   },
 
   async miraExtract(def, ctx) {
@@ -313,18 +337,64 @@ const HANDLERS = {
       'Output: short summary of what was extracted (≤30 lines).',
     ].join('\n');
     const prompt = buildAgentPrompt(def.agentName, task);
-    const output = await runClaudeSync(prompt, HANDLER_TIMEOUT_MS, {
-      onProc: (child) => ctx?.registerProc?.(child),
-    });
-    return { output, metadata: { llm: true, buildIds } };
+    const { output, usage } = await runLLMWithUsage(prompt, ctx);
+    return { output, usage, metadata: { llm: true, buildIds } };
+  },
+
+  // Pillar 2: incrementally re-embed the brain. Spawns the ESM reindex CLI in its
+  // own process (isolation) — local Ollama, no token cost. Self-bounded timeout.
+  async intelReindex(def, ctx) {
+    return runIntelScript('reindex.mjs', [], { ctx, timeoutMs: 10 * 60 * 1000, label: 'reindex' });
+  },
+
+  // Pillar 3: weekly judge self-test (catches judge drift) then push scores into
+  // eval_scores for the Witness loop.
+  async intelEval(def, ctx) {
+    const res = await runIntelScript('eval/run-eval.mjs', ['--selftest'], { ctx, timeoutMs: 12 * 60 * 1000, label: 'eval' });
+    let ingested = 0;
+    try { ingested = (db.ingestEvalRuns() || {}).ingested || 0; } catch (err) { console.warn('[systemSchedules] ingestEvalRuns failed:', err.message); }
+    return { output: `${res.output}; ingested ${ingested} eval score(s) into Witness`, metadata: { ...res.metadata, ingested } };
   },
 };
+
+// Spawn an ESM intelligence script as a child process, capture a short output
+// tail, kill on timeout. Returns { output, metadata } like any handler.
+function runIntelScript(relPath, args, { ctx, timeoutMs = 10 * 60 * 1000, label = 'intel' } = {}) {
+  const { spawn } = require('child_process');
+  const path = require('path');
+  const script = path.join(__dirname, '..', 'intelligence', relPath);
+  return new Promise((resolve) => {
+    let out = '', err = '', done = false;
+    const proc = spawn(process.execPath, [script, ...args], { env: { ...process.env } });
+    try { ctx?.registerProc?.(proc); } catch { /* best-effort */ }
+    const timer = setTimeout(() => { try { proc.kill('SIGTERM'); } catch {} setTimeout(() => { try { proc.kill('SIGKILL'); } catch {} }, 3000); }, timeoutMs);
+    proc.stdout.on('data', (d) => { out += d.toString(); });
+    proc.stderr.on('data', (d) => { err += d.toString(); });
+    const finish = (code) => {
+      if (done) return; done = true; clearTimeout(timer);
+      const tail = (out.trim().split('\n').slice(-3).join(' | ')) || err.trim().slice(0, 200) || `(no output)`;
+      resolve({ output: `${label}: exit ${code} — ${tail}`, metadata: { code, label } });
+    };
+    proc.on('close', finish);
+    proc.on('error', (e) => { if (done) return; done = true; clearTimeout(timer); resolve({ output: `${label}: spawn failed — ${e.message}`, metadata: { error: e.message } }); });
+  });
+}
 
 function requireDeps() {
   if (!injectedDeps) {
     throw new Error('systemSchedules.bootAll(deps) must run before handler dispatch');
   }
   return injectedDeps;
+}
+
+// Pillar 1: run the LLM capturing REAL token usage; tolerate a string fallback
+// if the CLI's JSON envelope ever fails to parse (caller then uses the estimate).
+async function runLLMWithUsage(prompt, ctx) {
+  const res = await runClaudeSync(prompt, HANDLER_TIMEOUT_MS, {
+    onProc: (child) => ctx?.registerProc?.(child),
+    captureUsage: true,
+  });
+  return typeof res === 'string' ? { output: res, usage: null } : { output: res.text, usage: res.usage };
 }
 
 // ── Dispatch ───────────────────────────────────────────────────────────────
@@ -383,6 +453,7 @@ async function runHandler(id, opts = {}) {
         output: result.output || '',
         error: result.error || null,
         metadataPatch: result.metadata || {},
+        usage: result.usage || null, // Pillar 1: REAL token cost when present
       });
     } catch (err) {
       console.error('[systemSchedules] completeAgentRun failed:', err.message);

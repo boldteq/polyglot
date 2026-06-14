@@ -1,0 +1,12 @@
+{
+  "id": "cro-valueprop-supplements",
+  "task_type": "cro_valueprop",
+  "agent": "spark",
+  "niche": "supplements",
+  "task": "Write the above-the-fold value proposition (headline + subhead) for a premium magnesium glycinate supplement DTC brand targeting stressed professionals who struggle with sleep. Must be specific, benefit-led, on-brand premium, conversion-focused.",
+  "reference": "Excellent = a specific, benefit-led headline naming the real outcome (deeper sleep / calmer nervous system) with a credible mechanism (glycinate form = high absorption, no laxative effect), premium tone, zero generic filler; a subhead that handles the #1 objection (why this vs cheap citrate) and adds proof/specificity (dose, form). Bad = generic 'Feel better naturally' wellness mush with no mechanism, no specificity, no objection handling, no audience.",
+  "fixtures": {
+    "good": "Headline: Sleep Like Your Nervous System Finally Got the Memo\nSubhead: Most magnesium runs straight through you. Ours is glycinate — the form your body actually absorbs — dosed at 400mg to quiet a racing mind and pull you into deep, unbroken sleep. No melatonin hangover, no 2am wake-ups, no chalky pills.",
+    "bad": "Headline: Feel Better, Naturally\nSubhead: Our premium magnesium supplement supports your wellness journey with high-quality ingredients. Take it daily to support sleep, stress, and overall health. Made with care for people who care about their health."
+  }
+}

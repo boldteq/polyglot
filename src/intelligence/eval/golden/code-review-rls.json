@@ -1,0 +1,12 @@
+{
+  "id": "code-review-rls",
+  "task_type": "code_review",
+  "agent": "sage",
+  "niche": "saas",
+  "task": "Review this Supabase + Next.js API route for production-readiness. It returns a workspace's invoices. Flag every blocking security/correctness issue with severity, or approve if genuinely safe. Code:\n\nexport async function GET(req) {\n  const wsId = req.nextUrl.searchParams.get('workspace')\n  const { data } = await supabaseAdmin\n    .from('invoices')\n    .select('*')\n    .eq('workspace_id', wsId)\n  return Response.json(data)\n}",
+  "reference": "Excellent review = BLOCKS deploy and names the critical IDOR/auth hole: the route uses the service-role client (supabaseAdmin, which bypasses RLS) and trusts a client-supplied workspace id with NO check that the authenticated user belongs to that workspace — any user can read any workspace's invoices by changing the query param. Must also flag: no auth/session check, no Zod/validation on wsId, no error handling on the destructured query, leaking select('*'). Correct verdict = BLOCK with the IDOR as critical/S1. A review that 'approves' this or only mentions style is a critical miss.",
+  "fixtures": {
+    "good": "VERDICT: BLOCK — critical security hole.\n[S1 / CRITICAL — IDOR] The route uses supabaseAdmin (service role) which BYPASSES RLS, then trusts a client-supplied `workspace` param with no authorization check. Any authenticated (or unauthenticated) caller can read ANY workspace's invoices by changing ?workspace=. This is a textbook IDOR / broken object-level authorization.\n  Fix: use the request-scoped SSR client (RLS enforced), derive workspace from the user's session/membership, and verify the user is a member of wsId before querying.\n[S1] No authentication/session check at all.\n[S2] No input validation on wsId (Zod) — unvalidated string into the query.\n[S2] Destructured `{ data }` ignores `error`; a failed query returns null silently with a 200.\n[S3] select('*') over-fetches and can leak columns. Do not ship.",
+    "bad": "Looks good overall. The route is clean and readable. A couple of minor suggestions: consider adding a try/catch for robustness, and you might want to type the response. Otherwise this is a solid, straightforward GET handler — approved to merge."
+  }
+}

@@ -261,6 +261,33 @@ function retryStep(runId, nodeId) {
   return updated;
 }
 
+// Prepare a stale in-flight run for durable RESUME (Pillar 4). Resets any step
+// left 'running' (interrupted by the crash) back to 'pending' so the resume-aware
+// executor re-runs only it, and bumps metadata.resumeCount as a re-drive budget.
+// Completed/skipped steps are left intact (the executor skips them = idempotent).
+// Returns the new resumeCount so the caller can cap re-drives.
+function prepareResume(runId) {
+  const d = getDb();
+  const run = d.prepare('SELECT * FROM orchestration_runs WHERE id = ?').get(runId);
+  if (!run) throw new Error(`run ${runId} not found`);
+  // Never resurrect a terminal run (guards against a race with cancel/complete).
+  if (['completed', 'failed', 'cancelled'].includes(run.status)) {
+    return safeJsonParse(run.metadata, {}).resumeCount || 0;
+  }
+  const meta = safeJsonParse(run.metadata, {});
+  meta.resumeCount = (meta.resumeCount || 0) + 1;
+  d.transaction(() => {
+    d.prepare(`
+      UPDATE orchestration_steps
+      SET status = 'pending', error = NULL, startedAt = NULL, completedAt = NULL, duration = 0
+      WHERE runId = ? AND status = 'running'
+    `).run(runId);
+    d.prepare(`UPDATE orchestration_runs SET status = 'running', error = NULL, metadata = ? WHERE id = ?`)
+      .run(JSON.stringify(meta), runId);
+  })();
+  return meta.resumeCount;
+}
+
 // Approve / reject a paused approval-gate step. Approving moves status →
 // 'approved' so the runner advances. Rejecting → 'rejected' which terminates
 // the run with status='cancelled'.
@@ -324,6 +351,7 @@ module.exports = {
   markStepSkipped,
   markStepPaused,
   retryStep,
+  prepareResume,
   advanceStep,
   // Boot recovery
   recoverInflightRuns,

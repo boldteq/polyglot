@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "boldteq-memory": {
+      "command": "node",
+      "args": ["/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/src/intelligence/mcp-server.mjs"],
+      "env": {
+        "INTEL_STORE": "local",
+        "INTEL_EMBED_PROVIDER": "ollama"
+      }
+    }
+  }
+}

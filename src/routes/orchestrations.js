@@ -10,9 +10,21 @@ const { loadConfig } = require('../lib/config');
 const { discoverProjects } = require('../lib/discovery');
 const { listAgents } = require('../lib/cache');
 const { topoSort, topoLevels } = require('../lib/graph');
+const { withRetry, createBudget } = require('../lib/retry');
 const db = require('../db');
 
 const router = Router();
+
+// Pillar 4 — durable auto-retry policy.
+// A node retries transient failures (default DEFAULT_NODE_RETRIES, opt-up via
+// node.data.retryCount, hard-capped at MAX_NODE_RETRIES). RUN_RETRY_BUDGET caps
+// total retries across the whole run (cost circuit-breaker). MAX_BOOT_RESUMES
+// caps how many times a crashed run is auto-resumed before it's left failed.
+const DEFAULT_NODE_RETRIES = 2;
+const MAX_NODE_RETRIES = 4;
+const RUN_RETRY_BUDGET = 6;
+const MAX_BOOT_RESUMES = 1;
+const nodeMaxAttempts = (node) => 1 + Math.min(node?.data?.retryCount ?? DEFAULT_NODE_RETRIES, MAX_NODE_RETRIES);
 
 const HOME = os.homedir();
 const CLAUDE_DIR = path.join(HOME, '.claude');
@@ -479,27 +491,31 @@ router.post('/orchestrations/run', rateLimit('heavy'), async (req, res) => {
       }
     }
 
-    const maxRetries = Math.min(node.data?.retryCount || 0, 3);
-    let attempt = 0;
+    // Pillar 4: auto-retry transient failures with backoff (default on, opt-up
+    // via node.data.retryCount). withRetry skips retrying permanent errors.
+    const maxAttempts = nodeMaxAttempts(node);
     let nodeOutput = null;
     let lastErr = null;
 
-    while (attempt <= maxRetries) {
-      const nodeStart = Date.now();
-      try {
-        if (attempt > 0) {
-          const backoffMs = Math.pow(2, attempt) * 1000;
-          send({ type: 'retry', nodeId, label: nodeLabel, attempt, backoffMs });
-          await sleep(backoffMs);
+    try {
+      nodeOutput = await withRetry(async (attempt) => {
+        const nodeStart = Date.now();
+        try {
+          const out = await runClaudeSync(prompt);
+          logAgentRun({ agentName: agentName || 'custom', prompt: prompt.slice(0, 500), output: out, source: 'orchestration', duration: Date.now() - nodeStart, status: 'success', metadata: { orchestrationId: req.body.orchestrationId, nodeId, attempt } });
+          return out;
+        } catch (err) {
+          logAgentRun({ agentName: agentName || 'custom', prompt: prompt.slice(0, 500), output: '', source: 'orchestration', duration: Date.now() - nodeStart, status: 'error', error: err.message, metadata: { orchestrationId: req.body.orchestrationId, nodeId, attempt } });
+          throw err;
         }
-        nodeOutput = await runClaudeSync(prompt);
-        logAgentRun({ agentName: agentName || 'custom', prompt: prompt.slice(0, 500), output: nodeOutput, source: 'orchestration', duration: Date.now() - nodeStart, status: 'success', metadata: { orchestrationId: req.body.orchestrationId, nodeId, attempt } });
-        break;
-      } catch (err) {
-        lastErr = err;
-        logAgentRun({ agentName: agentName || 'custom', prompt: prompt.slice(0, 500), output: '', source: 'orchestration', duration: Date.now() - nodeStart, status: 'error', error: err.message, metadata: { orchestrationId: req.body.orchestrationId, nodeId, attempt } });
-        attempt++;
-      }
+      }, {
+        maxAttempts,
+        sleep,
+        onRetry: ({ attempt, delayMs }) => send({ type: 'retry', nodeId, label: nodeLabel, attempt, backoffMs: delayMs }),
+      });
+    } catch (err) {
+      lastErr = err;
+      nodeOutput = null;
     }
 
     if (nodeOutput !== null) {
@@ -521,7 +537,7 @@ router.post('/orchestrations/run', rateLimit('heavy'), async (req, res) => {
       }
 
       runStatus = 'failed';
-      send({ type: 'error', nodeId, label: nodeLabel, error: lastErr?.message || 'Unknown error', retries: maxRetries });
+      send({ type: 'error', nodeId, label: nodeLabel, error: lastErr?.message || 'Unknown error', retries: maxAttempts - 1 });
       sendFailureAlert(agentName || 'custom', nodeLabel, lastErr?.message, req.body.orchestrationName);
       throw lastErr || new Error('Node failed');
     }
@@ -591,8 +607,11 @@ const orchRunner = require('../lib/orchestrationRunner');
 const tasks = require('../lib/tasks');
 const { events: agentSyncEvents } = require('../lib/agentSync');
 
-// On boot, mark any in-flight runs as failed (server restart loses executor state).
-try { orchRunner.recoverInflightRuns(); } catch (err) { console.error('[orch] boot recovery failed:', err.message); }
+// On boot, AUTO-RESUME stale in-flight runs that have real progress (durable
+// execution); runs with no progress or that exhausted the resume budget are
+// marked failed. Defined below (hoisted). Deferred a tick so the module fully
+// initializes (executeDurableRun + deps) before any re-drive fires.
+setImmediate(() => { try { resumeInflightRuns(); } catch (err) { console.error('[orch] boot resume failed:', err.message); } });
 
 // POST /api/orchestrations/:id/runs — start a durable run from a saved orchestration
 router.post('/orchestrations/:id/runs', rateLimit('heavy'), async (req, res) => {
@@ -700,6 +719,18 @@ router.post('/orchestrations/runs-v2/:id/steps/:nodeId/advance', rateLimit('writ
   try {
     const { approved = true, reason } = req.body || {};
     const updated = orchRunner.advanceStep(req.params.id, req.params.nodeId, !!approved, reason);
+    // Pillar 4: on approval, re-drive the durable executor so downstream nodes run.
+    // (The executor is resume-aware — it skips the now-'approved' gate + completed
+    // steps and continues. Rejection already cancels the run, so nothing to resume.)
+    if (approved && updated.status === 'approved') {
+      const run = orchRunner.getRun(req.params.id);
+      const orc = (db.loadOrchestrations() || []).find((o) => o.id === run?.orchestrationId);
+      if (run && orc) {
+        setImmediate(() => executeDurableRun(req.params.id, orc, run.task).catch((err) => {
+          try { orchRunner.markRunFailed(req.params.id, `resume after approval failed: ${err.message || err}`); } catch {}
+        }));
+      }
+    }
     res.json({ ok: true, step: updated });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -733,6 +764,41 @@ router.post('/orchestrations/runs-v2/:id/steps/:nodeId/retry', rateLimit('write'
 //   3. Run claude (re-uses runClaudeSync from this module's top scope)
 //   4. Mark step completed + complete the task
 //   5. Pause on approval gates (durable — survives restart)
+// Boot recovery (Pillar 4): re-drive stale 'running' runs instead of just failing
+// them. A run with ≥1 completed step and resume budget left is reset (interrupted
+// step → pending) and re-executed (the executor skips completed steps). Otherwise
+// it's marked failed. Bounded by MAX_BOOT_RESUMES so a crash-looping run can't spin.
+function resumeInflightRuns() {
+  let staleRuns = [];
+  try { staleRuns = orchRunner.listRuns({ status: 'running', limit: 100 }); }
+  catch (err) { console.error('[orch] boot: listRuns failed:', err.message); return; }
+
+  let resumed = 0, failed = 0;
+  for (const r of staleRuns) {
+    try {
+      const full = orchRunner.getRun(r.id);
+      const resumeCount = full?.metadata?.resumeCount || 0;
+      const orc = (db.loadOrchestrations() || []).find((o) => o.id === full?.orchestrationId);
+      const hasProgress = (full?.steps || []).some((s) => s.status === 'completed');
+
+      if (orc && hasProgress && resumeCount < MAX_BOOT_RESUMES) {
+        orchRunner.prepareResume(r.id); // reset interrupted step(s) → pending, bump resumeCount
+        setImmediate(() => executeDurableRun(r.id, orc, full.task).catch((err) => {
+          try { orchRunner.markRunFailed(r.id, `resume failed: ${err.message || err}`); } catch {}
+        }));
+        resumed += 1;
+      } else {
+        orchRunner.markRunFailed(r.id, hasProgress ? 'server restart; resume budget exhausted' : 'server restart while in-flight');
+        failed += 1;
+      }
+    } catch (err) {
+      try { orchRunner.markRunFailed(r.id, `resume error: ${err.message}`); } catch {}
+      failed += 1;
+    }
+  }
+  if (resumed || failed) console.log(`[orch] boot recovery: resumed ${resumed}, failed ${failed} stale run(s)`);
+}
+
 async function executeDurableRun(runId, orchestration, taskInput) {
   const nodes = orchestration.nodes || [];
   const edges = orchestration.edges || [];
@@ -743,10 +809,23 @@ async function executeDurableRun(runId, orchestration, taskInput) {
 
   let lastOutput = taskInput;
   const outputs = {};
+  // Per-run retry budget (cost circuit-breaker, shared across all nodes).
+  const budget = createBudget(RUN_RETRY_BUDGET);
+  // Resume-aware: on a re-drive (crash recovery / manual), skip steps already
+  // finished and rehydrate their output. Makes re-execution strictly idempotent.
+  const priorSteps = Object.fromEntries((orchRunner.getRun(runId)?.steps || []).map((s) => [s.nodeId, s]));
+  const DONE = new Set(['completed', 'skipped', 'approved']);
 
   for (const nodeId of order) {
     const node = nodeMap[nodeId];
     if (!node) continue;
+
+    const prior = priorSteps[nodeId];
+    if (prior && DONE.has(prior.status)) {
+      outputs[nodeId] = prior.output ?? '';
+      if (prior.output != null && prior.output !== '') lastOutput = prior.output;
+      continue; // idempotent resume — never re-run a finished step
+    }
 
     // Start node — passthrough, no execution
     if (node.data?.isStart) {
@@ -798,7 +877,20 @@ async function executeDurableRun(runId, orchestration, taskInput) {
     const prompt = composePrompt(agentName, node, lastOutput);
     let output;
     try {
-      output = await runClaudeSync(prompt, (node.data?.timeoutMinutes || 60) * 60 * 1000);
+      // Pillar 4: auto-retry transient failures with backoff, bounded by the
+      // shared run budget; permanent failures (no agent, policy veto) don't retry.
+      output = await withRetry(
+        () => runClaudeSync(prompt, (node.data?.timeoutMinutes || 60) * 60 * 1000),
+        {
+          maxAttempts: nodeMaxAttempts(node),
+          budget,
+          sleep,
+          onRetry: ({ attempt, delayMs, error }) => {
+            try { db.logAgentEvent(runId, 'retry', { nodeId, agentName, attempt, delayMs, error: String(error?.message || error).slice(0, 200) }); } catch {}
+            try { agentSyncEvents.emit('step:any', { runId, nodeId, status: 'running', retry: attempt, metadata: {} }); } catch {}
+          },
+        },
+      );
       tasks.markComplete(task.id, output);
       orchRunner.markStepCompleted(runId, nodeId, output);
       outputs[nodeId] = output;
@@ -806,7 +898,7 @@ async function executeDurableRun(runId, orchestration, taskInput) {
     } catch (err) {
       tasks.markFailed(task.id, err.message || String(err));
       orchRunner.markStepFailed(runId, nodeId, err.message || String(err));
-      orchRunner.markRunFailed(runId, `step ${nodeId} failed: ${err.message || err}`);
+      orchRunner.markRunFailed(runId, `step ${nodeId} failed after retries: ${err.message || err}`);
       return;
     }
   }
@@ -835,9 +927,16 @@ async function executeSingleNode(runId, orchestration, taskInput, nodeId) {
   tasks.markRunning(task.id);
 
   try {
-    const output = await runClaudeSync(
-      composePrompt(agentName, node, taskInput),
-      (node.data?.timeoutMinutes || 60) * 60 * 1000,
+    const output = await withRetry(
+      () => runClaudeSync(composePrompt(agentName, node, taskInput), (node.data?.timeoutMinutes || 60) * 60 * 1000),
+      {
+        maxAttempts: nodeMaxAttempts(node),
+        budget: createBudget(MAX_NODE_RETRIES),
+        sleep,
+        onRetry: ({ attempt, delayMs, error }) => {
+          try { db.logAgentEvent(runId, 'retry', { nodeId, agentName, attempt, delayMs, manual: true, error: String(error?.message || error).slice(0, 200) }); } catch {}
+        },
+      },
     );
     tasks.markComplete(task.id, output);
     orchRunner.markStepCompleted(runId, nodeId, output);

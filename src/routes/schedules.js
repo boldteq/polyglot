@@ -115,10 +115,10 @@ async function runTickBody(prep, { retryCount = 0 } = {}) {
   const { runId, inflightState, fresh, startedAt } = prep;
   const startTime = inflightState.startTime;
 
-  const finish = (status, { output = '', error = null, metadataPatch = {} } = {}) => {
+  const finish = (status, { output = '', error = null, metadataPatch = {}, usage = null } = {}) => {
     const duration = Date.now() - startTime;
     try {
-      db.completeAgentRun(runId, { status, duration, output, error, metadataPatch });
+      db.completeAgentRun(runId, { status, duration, output, error, metadataPatch, usage });
     } catch (err) {
       console.error('[schedule] completeAgentRun failed:', err.message);
     }
@@ -134,10 +134,14 @@ async function runTickBody(prep, { retryCount = 0 } = {}) {
 
   try {
     const prompt = buildAgentPrompt(fresh.agentName, fresh.prompt);
-    const output = await runClaudeSync(prompt, RUN_TIMEOUT_MS, {
+    const res = await runClaudeSync(prompt, RUN_TIMEOUT_MS, {
       onProc: (child) => { inflightState.child = child; },
+      captureUsage: true, // Pillar 1: record REAL token cost
     });
-    return finish('success', { output });
+    // captureUsage resolves { text, usage }; tolerate a bare string if JSON mode fell back.
+    const output = typeof res === 'string' ? res : res.text;
+    const usage = typeof res === 'string' ? null : res.usage;
+    return finish('success', { output, usage });
   } catch (err) {
     if (err.cancelled) {
       return finish('cancelled', { error: err.message });

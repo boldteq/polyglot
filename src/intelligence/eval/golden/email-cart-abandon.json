@@ -1,0 +1,12 @@
+{
+  "id": "email-cart-abandon",
+  "task_type": "lifecycle_email",
+  "agent": "sequence",
+  "niche": "supplements",
+  "task": "Write the FIRST cart-abandonment email (subject + preview + body) for a premium magnesium glycinate brand. Goal: recover the sale within ~1 hour of abandonment. Must be on-brand premium, address the abandonment reason, and have one clear CTA — not pushy spam.",
+  "reference": "Excellent = subject line that earns the open without screaming discount (curiosity/benefit/helpful), short preview text that complements it, a body that reminds them what's in the cart, handles the most likely hesitation (is it worth it / will it work / trust) with a specific proof or guarantee, ONE clear CTA back to the cart, premium restrained tone, and a soft P.S. — no fake urgency, no immediate desperate discount on email #1. Bad = ALL-CAPS spammy subject, leads with a big blunt discount, generic 'you left something behind' with no value, multiple competing CTAs, pushy fake-urgency, off-brand.",
+  "fixtures": {
+    "good": "Subject: Still thinking it over?\nPreview: A quick note on why the glycinate form matters — and your cart's still here.\nBody:\nHi {first_name},\n\nYour Magnesium Glycinate is still in your cart. Before you decide, one thing worth knowing: most magnesium on the shelf is citrate or oxide — cheap, poorly absorbed, and rough on your stomach. Glycinate is the form your body actually uses, which is why people feel it in their sleep, not their gut.\n\nThat's also why we back it with a 60-night guarantee. Sleep on it for two months. If your nights aren't calmer, we'll refund you — keep the bottle.\n\n[ Return to your cart ]\n\nRest easy,\nThe Lumen Team\n\nP.S. Third-party tested, made in the USA. 2,300+ people sleep deeper on it.",
+    "bad": "Subject: YOU LEFT SOMETHING IN YOUR CART!!! 🚨🚨\nPreview: Don't miss out!!!\nBody:\nHey!\n\nYou forgot to check out! Complete your order NOW and get 25% OFF if you buy in the next 10 minutes!!! This deal won't last!\n\n[BUY NOW]  [Shop All]  [See Deals]  [Contact Us]\n\nDon't wait — supplies are running out fast! Order today!!!\n\nThanks,\nThe Team"
+  }
+}
