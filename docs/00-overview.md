@@ -84,6 +84,7 @@ These run automatically while the server is up — like a back-office team that 
 | **Orchestration** | Chain agents into a visual pipeline |
 | **Playground** | Test any single agent live |
 | **Analytics → Observability** | Real cost + quality scores |
+| **Learning** | Watch the learning loop + review auto-captured lessons from your VS Code work |
 | **System** | The green/amber/red health dashboard |
 | **Settings** | Project folders and model choice |
 | **Documentation** | These docs, in the browser |

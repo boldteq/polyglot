@@ -97,6 +97,45 @@ Then it sorts what it found into two piles:
 
 > **Tip:** It's built to be cheap — one small batched pass per night, and a day with no real coding costs nothing. If a lesson is already in the notebook, it's skipped so nothing piles up twice.
 
+**Built to be reliable** (so it actually works the way you work):
+
+- **You never have to close VS Code.** It reads your work straight from the session files on your Mac — it does not wait for you to quit anything.
+- **Your PC can be off at night.** If your Mac is asleep at the scheduled time, the run is simply done **the next time your Mac is on** — nothing is missed or lost.
+- **It learns from your fix-it loops.** When you ask for something, it's not right, you correct it, and it gets fixed — the system saves that as a lesson (*what was wrong → what finally worked*) so the same mistake doesn't repeat.
+- **It won't bloat your files.** A lesson that's basically the same as one already saved is skipped before it's ever written, so your memory stays small and your token cost stays low.
+
+---
+
+## How to watch it — the Learning page
+
+Open **Learning** in the sidebar (the 📥 icon). It has three tabs:
+
+### 1. Overview
+
+The visual dashboard — your one place to see the loop working:
+
+- **Four numbers at a glance:** lessons learned, items pending your review, sessions digested this week, duplicates skipped.
+- **Nightly digest history:** a little bar chart of recent runs (green = saved, amber = waiting for you, red = a run that failed) with the last run + next run time.
+- **What your team has learned:** the most recent lessons captured from your real work.
+
+### 2. Pending review
+
+The lessons waiting for your one-click decision: **Approve** (saves it to memory), **Edit** (tweak it first), or **Reject** (discard). Every correction headed for your `feedback.md` shows up here — nothing is written there without your approval.
+
+### 3. Auto-captured
+
+The high-confidence lessons that saved themselves automatically — a record of what the system learned on its own.
+
+> **Tip:** Anything ever go wrong with a run? It shows on the **Logs** page and the **System** page too, and the Overview's history bar turns red for that run.
+
+---
+
+## Every build teaches the team
+
+You don't have to do anything for this — **finishing real work is the training.** Each build's lessons get captured automatically and show up in the Learning page.
+
+> **In plain English:** If you ever want to capture lessons *right now* instead of waiting for the nightly pass, you can run the **`/train`** command in VS Code (see *Slash Commands*) — it asks the memory-keeper agent to write up the session's lessons immediately. But you don't need to; the nightly loop has you covered.
+
 ---
 
 ## The one-sentence version

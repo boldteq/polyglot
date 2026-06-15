@@ -1931,6 +1931,18 @@ function getPendingVscodeSessions(hours = 24, limit = 50) {
     .map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
 }
 
+// Counts of sessions already digested (for the Learning Overview cards).
+function getDigestedSessionStats() {
+  const day = new Date(Date.now() - 86400000).toISOString();
+  const week = new Date(Date.now() - 7 * 86400000).toISOString();
+  const r = stmt(`SELECT
+      SUM(CASE WHEN createdAt >= ? THEN 1 ELSE 0 END) AS lastDay,
+      SUM(CASE WHEN createdAt >= ? THEN 1 ELSE 0 END) AS lastWeek,
+      COUNT(*) AS total
+    FROM vscode_session WHERE status = 'digested'`).get(day, week);
+  return { lastDay: r.lastDay || 0, lastWeek: r.lastWeek || 0, total: r.total || 0 };
+}
+
 function markVscodeSessionsDigested(ids = []) {
   if (!ids.length) return 0;
   const q = stmt(`UPDATE vscode_session SET status = 'digested' WHERE sessionId = ?`);
@@ -2221,6 +2233,16 @@ function upsertPlaygroundHistoryRow(row) {
 function getPlaygroundHistoryRow(id) {
   const r = stmt('SELECT * FROM playground_history WHERE id = ?').get(id);
   return r ? { ...r, metadata: JSON.parse(r.metadata || '{}') } : null;
+}
+
+function deletePlaygroundHistoryRow(id) {
+  stmt('DELETE FROM playground_history WHERE id = ?').run(id);
+  return { ok: true };
+}
+
+function clearPlaygroundHistory() {
+  stmt('DELETE FROM playground_history').run();
+  return { ok: true };
 }
 
 // ── Playground Threads (multi-turn conversations) ───────────────────────────
@@ -3294,7 +3316,7 @@ module.exports = {
   loadAgentRuns, insertAgentRun, getRecentAgentRuns,
   insertAgentRunStub, completeAgentRun, reconcileOrphanRuns,
   // Learning Loop (VS Code sessions → review inbox)
-  insertVscodeSession, getSessionWatermark, getPendingVscodeSessions, markVscodeSessionsDigested, getAgentRunsBySession,
+  insertVscodeSession, getSessionWatermark, getPendingVscodeSessions, getDigestedSessionStats, markVscodeSessionsDigested, getAgentRunsBySession,
   insertLearningCandidate, listLearningInbox, getLearningCandidate,
   updateLearningStatus, updateLearningPayload, getInboxCounts, pruneLearningInbox,
   // Run observability (Pillar 1)
@@ -3323,6 +3345,7 @@ module.exports = {
   loadChatHistory, saveChatHistory,
   // Playground
   loadPlaygroundHistory, savePlaygroundHistory, upsertPlaygroundHistoryRow, getPlaygroundHistoryRow,
+  deletePlaygroundHistoryRow, clearPlaygroundHistory,
   listPlaygroundThreads, getPlaygroundThread, createPlaygroundThread, appendPlaygroundMessage, deletePlaygroundThread,
   // Approvals
   loadApprovals, saveApprovals,

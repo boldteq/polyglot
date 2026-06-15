@@ -29,6 +29,7 @@ export const CacheKeys = {
   training: (name: string) => `training/${name}`,
   learningInbox: (status: string) => `learning/inbox/${status}`,
   learningStatus: 'learning/status',
+  learningOverview: 'learning/overview',
 } as const
 
 // Keys that reflect the agent registry — refetched on any agent mutation.

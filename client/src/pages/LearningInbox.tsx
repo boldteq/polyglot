@@ -1,18 +1,21 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Inbox, Check, X, Pencil, Loader2, AlertCircle, RefreshCw,
   Lightbulb, Bug, GitBranch, MessageSquareWarning, Sparkles, BookOpen,
+  GraduationCap, Clock, CopyCheck, ScanLine, ArrowRight,
   type LucideIcon,
 } from 'lucide-react'
 import {
-  getLearningInbox, approveCandidate, rejectCandidate, editCandidate, getLearningStatus,
+  getLearningInbox, approveCandidate, rejectCandidate, editCandidate, getLearningStatus, getLearningOverview,
   type LearningCandidate, type LearningType, type InboxCounts, type LearningDigestStatus,
+  type LearningOverview, type LearningDigestRun,
 } from '../lib/api'
 import { useCachedApi } from '../hooks/useCachedApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { toast } from '../components/Toast'
 
-type Tab = 'pending' | 'auto'
+type Tab = 'overview' | 'pending' | 'auto'
 interface InboxData { items: LearningCandidate[]; counts: InboxCounts }
 
 const TYPE_META: Record<LearningType, { label: string; Icon: LucideIcon; cls: string }> = {
@@ -34,11 +37,12 @@ function relTime(iso: string): string {
 }
 
 export default function LearningInbox() {
-  const [tab, setTab] = useState<Tab>('pending')
-  const status: string = tab === 'pending' ? 'pending' : 'auto'
+  const [tab, setTab] = useState<Tab>('overview')
+  const inboxStatus: string = tab === 'auto' ? 'auto' : 'pending'
   const { data, loading, refreshing, error, refetch, setData } =
-    useCachedApi<InboxData>(CacheKeys.learningInbox(status), () => getLearningInbox(status))
+    useCachedApi<InboxData>(CacheKeys.learningInbox(inboxStatus), () => getLearningInbox(inboxStatus))
   const { data: digestStatus } = useCachedApi<LearningDigestStatus>(CacheKeys.learningStatus, getLearningStatus)
+  const overview = useCachedApi<LearningOverview>(CacheKeys.learningOverview, getLearningOverview)
 
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
@@ -135,7 +139,7 @@ export default function LearningInbox() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 mb-4 border-b border-border">
-        {(['pending', 'auto'] as Tab[]).map((t) => (
+        {(['overview', 'pending', 'auto'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -143,16 +147,20 @@ export default function LearningInbox() {
               tab === t ? 'border-accent text-text' : 'border-transparent text-text-muted hover:text-text'
             }`}
           >
-            {t === 'pending' ? 'Pending review' : 'Auto-captured'}
-            <span className="ml-1.5 text-[10px] bg-surface-2 text-text-muted px-1.5 py-0.5 rounded-full">
-              {t === 'pending' ? counts.pending : counts.auto}
-            </span>
+            {t === 'overview' ? 'Overview' : t === 'pending' ? 'Pending review' : 'Auto-captured'}
+            {t !== 'overview' && (
+              <span className="ml-1.5 text-[10px] bg-surface-2 text-text-muted px-1.5 py-0.5 rounded-full">
+                {t === 'pending' ? counts.pending : counts.auto}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
+      {tab === 'overview' && <OverviewPanel ov={overview.data} loading={overview.loading} error={overview.error} onRetry={overview.refetch} />}
+
       {/* States: loading → error → empty → list (3 visually distinct) */}
-      {loading ? (
+      {tab !== 'overview' && (loading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-24 rounded-xl bg-surface-2/50 border border-border animate-pulse" />
@@ -206,7 +214,7 @@ export default function LearningInbox() {
             </div>
           ))}
         </div>
-      )}
+      ))}
     </div>
   )
 }
@@ -321,6 +329,146 @@ function EditCard({ c, onCancel, onSaved }: { c: LearningCandidate; onCancel: ()
           Cancel
         </button>
       </div>
+    </div>
+  )
+}
+
+// ── Overview tab: the visual dashboard of the learning loop ──────────────────
+
+function StatCard({ Icon, label, value, tone }: { Icon: LucideIcon; label: string; value: number; tone: string }) {
+  return (
+    <div className="bg-surface rounded-xl border border-border p-3.5">
+      <div className="flex items-center gap-1.5 text-text-muted text-[11px] mb-1.5">
+        <Icon className="w-3.5 h-3.5" /> {label}
+      </div>
+      <div className={`text-2xl font-bold ${tone}`}>{value}</div>
+    </div>
+  )
+}
+
+// Mini stacked-bar chart of recent digest runs (oldest → newest, left → right).
+function RunBars({ runs }: { runs: LearningDigestRun[] }) {
+  const ordered = [...runs].reverse()
+  const max = Math.max(1, ...ordered.map((r) => r.captured + r.staged))
+  return (
+    <div className="flex items-end gap-1.5 h-[90px]">
+      {ordered.map((r) => {
+        const total = r.captured + r.staged
+        const h = Math.max(total > 0 ? 6 : 2, Math.round((total / max) * 78))
+        const capH = total > 0 ? Math.round((r.captured / total) * h) : 0
+        const failed = r.status !== 'success'
+        return (
+          <div key={r.id} className="group relative flex-1 flex flex-col justify-end" style={{ minWidth: 6 }}>
+            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 whitespace-nowrap text-[10px] bg-surface border border-border rounded-md px-2 py-1 shadow-lg">
+              {relTime(r.timestamp)} · {failed ? 'failed' : `${r.sessions} sess → ${r.captured} captured, ${r.staged} staged`}
+            </div>
+            {failed ? (
+              <div className="rounded-sm bg-red-500/60" style={{ height: 6 }} />
+            ) : (
+              <div className="rounded-sm overflow-hidden flex flex-col-reverse" style={{ height: h }}>
+                <div className="bg-amber-500/70" style={{ height: h - capH }} />
+                <div className="bg-emerald-500/80" style={{ height: capH }} />
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+interface OverviewPanelProps { ov: LearningOverview | null; loading: boolean; error: string | null; onRetry: () => void }
+
+function OverviewPanel({ ov, loading, error, onRetry }: OverviewPanelProps) {
+  if (loading && !ov) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 rounded-xl bg-surface-2/50 border border-border animate-pulse" />)}
+      </div>
+    )
+  }
+  if (error && !ov) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-16 text-center">
+        <AlertCircle className="w-8 h-8 text-red-400" />
+        <div className="text-sm text-text">Couldn't load the overview</div>
+        <div className="text-xs text-text-muted max-w-sm">{error}</div>
+        <button onClick={onRetry} className="mt-1 px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:opacity-90 transition-opacity">Retry</button>
+      </div>
+    )
+  }
+  if (!ov) return null
+
+  const saved = ov.counts.approved + ov.counts.auto
+  const s = ov.status
+
+  return (
+    <div className="space-y-5">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard Icon={GraduationCap} label="Lessons learned" value={saved} tone="text-emerald-400" />
+        <StatCard Icon={Inbox} label="Pending review" value={ov.counts.pending} tone={ov.counts.pending > 0 ? 'text-amber-400' : 'text-text'} />
+        <StatCard Icon={ScanLine} label="Sessions digested (7d)" value={ov.sessions.lastWeek} tone="text-text" />
+        <StatCard Icon={CopyCheck} label="Duplicates skipped (7d)" value={ov.deduped7d} tone="text-text-muted" />
+      </div>
+
+      {/* Digest run history */}
+      <div className="bg-surface rounded-xl border border-border p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
+            <Clock className="w-4 h-4 text-text-muted" /> Nightly digest history
+          </div>
+          {s?.lastRunAt && (
+            <div className="text-[11px] text-text-muted">
+              Last {relTime(s.lastRunAt)} · <span className={s.lastRunStatus === 'success' ? 'text-emerald-400' : 'text-red-400'}>{s.lastRunStatus}</span>
+              {s.nextRunAt && ` · next ${relTime(s.nextRunAt)}`}
+            </div>
+          )}
+        </div>
+        {ov.runs.length > 0 ? (
+          <>
+            <RunBars runs={ov.runs} />
+            <div className="flex items-center gap-4 mt-2 text-[10px] text-text-muted">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500/80" /> captured</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-500/70" /> staged</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-500/60" /> failed</span>
+            </div>
+          </>
+        ) : (
+          <div className="text-xs text-text-muted py-6 text-center">No digest has run yet — the first runs tonight (or on next startup if your Mac was off).</div>
+        )}
+      </div>
+
+      {/* Recent learnings */}
+      <div className="bg-surface rounded-xl border border-border p-4">
+        <div className="flex items-center gap-1.5 text-[13px] font-medium text-text mb-3">
+          <Sparkles className="w-4 h-4 text-text-muted" /> What your team has learned
+        </div>
+        {ov.recent.length > 0 ? (
+          <div className="space-y-1.5">
+            {ov.recent.map((r) => {
+              const meta = TYPE_META[r.type] ?? TYPE_META.lesson
+              const { Icon } = meta
+              return (
+                <div key={r.id} className="flex items-center gap-2.5 text-[12px] py-1 border-b border-border/50 last:border-0">
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md border shrink-0 ${meta.cls}`}>
+                    <Icon className="w-3 h-3" /> {meta.label}
+                  </span>
+                  <span className="flex-1 text-text-secondary truncate">{r.title}</span>
+                  {r.project && <span className="text-[10px] text-text-muted shrink-0">{r.project}</span>}
+                  {r.created_at && <span className="text-[10px] text-text-muted shrink-0">{relTime(r.created_at)}</span>}
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="text-xs text-text-muted py-6 text-center">No lessons captured yet — they'll appear here after the nightly digest.</div>
+        )}
+      </div>
+
+      <Link to="/docs/11-how-it-learns" className="inline-flex items-center gap-1 text-[12px] text-accent hover:underline">
+        How this works <ArrowRight className="w-3.5 h-3.5" />
+      </Link>
     </div>
   )
 }

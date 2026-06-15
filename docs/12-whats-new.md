@@ -100,7 +100,9 @@ This is a quick tour of seven recent upgrades to Polyglot — your cockpit for r
 
 > **Analogy:** Like an assistant who reads back over your day, writes up the useful takeaways, files the obvious ones, and leaves the judgment calls on your desk to approve.
 
-> **Where to see it:** The **Learning** page in the sidebar (it shows an amber badge when items are waiting).
+**Built to be reliable:** it reads your work straight from disk (so you never have to close VS Code), it catches up automatically if your Mac was off at night, it learns from your *fix-it loops* (ask → not right → corrected → works), and it skips near-duplicate lessons so your files never bloat.
+
+> **Where to see it:** The **Learning** page in the sidebar (📥, amber badge when items wait). Its **Overview** tab is the visual dashboard — lessons learned, sessions digested, a nightly-run history chart, and the most recent things your team has learned.
 
 ---
 

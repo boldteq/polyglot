@@ -176,30 +176,78 @@ router.get('/learning/inbox/counts', rateLimit('read'), (req, res) => {
   }
 });
 
-// GET /api/learning/status — last digest run summary for the Learning page header.
+// Shared digest-status builder (used by /learning/status + /learning/overview).
 // Built from the run's METADATA (agent_runs stores no output text), so the
 // learningDigest handler must keep returning { sessions, captured, staged, deduped, scan }.
+function buildStatus() {
+  const runs = db.getScheduleRunsFor('sys-learning-digest', { limit: 1 });
+  const last = runs[0] || null;
+  const m = (last && last.metadata) || {};
+  const summary = last
+    ? `${m.sessions || 0} session(s) → ${m.captured || 0} captured, ${m.staged || 0} staged, ${m.deduped || 0} deduped`
+    : null;
+  let nextRunAt = null;
+  try { nextRunAt = require('../lib/systemSchedules').computeNextRunAt('0 4 * * *'); } catch { /* ignore */ }
+  return {
+    lastRunAt: last ? last.timestamp : null,
+    lastRunStatus: last ? last.status : null,
+    lastRunSummary: summary,
+    sessionsScanned: m.scan ? (m.scan.scanned ?? null) : null,
+    captured: m.captured ?? null,
+    staged: m.staged ?? null,
+    deduped: m.deduped ?? null,
+    scan: m.scan ? { upserted: m.scan.upserted ?? 0, repended: m.scan.repended ?? 0 } : null,
+    nextRunAt,
+  };
+}
+
+// GET /api/learning/status — last digest run summary for the Learning page header.
 router.get('/learning/status', rateLimit('read'), (req, res) => {
+  try { res.json(buildStatus()); } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/learning/overview — everything the Learning "Overview" tab needs in one
+// fetch: inbox counts, last-digest status, sessions-digested stats, recent digest
+// runs (for the mini chart), and the most recent captured learnings.
+router.get('/learning/overview', rateLimit('read'), async (req, res) => {
   try {
-    const runs = db.getScheduleRunsFor('sys-learning-digest', { limit: 1 });
-    const last = runs[0] || null;
-    const m = (last && last.metadata) || {};
-    const summary = last
-      ? `${m.sessions || 0} session(s) → ${m.captured || 0} captured, ${m.staged || 0} staged, ${m.deduped || 0} deduped`
-      : null;
-    let nextRunAt = null;
-    try { nextRunAt = require('../lib/systemSchedules').computeNextRunAt('0 4 * * *'); } catch { /* ignore */ }
-    res.json({
-      lastRunAt: last ? last.timestamp : null,
-      lastRunStatus: last ? last.status : null,
-      lastRunSummary: summary,
-      sessionsScanned: m.scan ? (m.scan.scanned ?? null) : null,
-      captured: m.captured ?? null,
-      staged: m.staged ?? null,
-      deduped: m.deduped ?? null,
-      scan: m.scan ? { upserted: m.scan.upserted ?? 0, repended: m.scan.repended ?? 0 } : null,
-      nextRunAt,
+    const counts = db.getInboxCounts();
+    const status = buildStatus();
+    const sessions = db.getDigestedSessionStats();
+
+    const runRows = db.getScheduleRunsFor('sys-learning-digest', { limit: 12 });
+    const runs = runRows.map((r) => {
+      const m = r.metadata || {};
+      return {
+        id: r.id,
+        timestamp: r.timestamp,
+        status: r.status,
+        durationMs: r.duration || 0,
+        sessions: m.sessions || 0,
+        captured: m.captured || 0,
+        staged: m.staged || 0,
+        deduped: m.deduped || 0,
+      };
     });
+    const deduped7d = runs.reduce((a, r) => a + (r.deduped || 0), 0);
+
+    // Recent captured learnings (pure file read — no embeddings needed).
+    let recent = [];
+    try {
+      const { recentItems } = await import('../intelligence/capture.mjs');
+      const titleOf = (it) => it.problem || it.symptom || it.decision || it.title || it.directive || '(untitled)';
+      const pick = (type, n) => (recentItems(type, n) || []).map((it) => ({
+        id: it.id, type, title: String(titleOf(it)).slice(0, 120),
+        project: it.project || it.domain || it.scope || null, created_at: it.created_at || null,
+      }));
+      recent = [...pick('lesson', 8), ...pick('bug', 5), ...pick('decision', 5)]
+        .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+        .slice(0, 15);
+    } catch (err) {
+      console.error('[learning/overview] recent captures unavailable:', err.message);
+    }
+
+    res.json({ counts, status, sessions, deduped7d, runs, recent });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1609,6 +1609,8 @@ export const getDoc = (slug: string) => request<{ slug: string; content: string 
 
 // ── Playground History ───────────────────────────────────────────────────────
 
+export type PlaygroundRunStatus = 'success' | 'error' | 'cancelled' | 'timeout'
+
 export interface PlaygroundHistoryItem {
   id: string
   agent: string
@@ -1616,8 +1618,39 @@ export interface PlaygroundHistoryItem {
   prompt: string
   output: string
   duration: number
-  status: 'success' | 'error'
+  status: PlaygroundRunStatus
+  error?: string | null
   timestamp: string
+  threadId?: string | null
+  turnIndex?: number | null
+}
+
+export interface PlaygroundThreadMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  status: string
+  duration: number
+  timestamp: string
+}
+
+export interface PlaygroundThread {
+  id: string
+  title: string
+  agentName: string | null
+  createdAt: string
+  updatedAt: string
+  messageCount?: number
+  messages?: PlaygroundThreadMessage[]
+}
+
+export interface PlaygroundPreflight {
+  binary: { ok: boolean; path: string | null; version: string | null; source: string | null; error: string | null }
+  auth: { ok: boolean; hasApiKey: boolean; hint: string | null }
+  env: { home: string; platform: string; node?: string; nodeOk?: boolean | null }
+  agent: { ok: boolean; tried: string[]; candidates?: string[] } | null
+  okToRun: boolean
+  generatedAt: string
 }
 
 // ── Agent Health ─────────────────────────────────────────────────────────────
@@ -1650,6 +1683,20 @@ export const deletePlaygroundHistoryItem = (id: string) =>
   request(`/playground/history/${encodeURIComponent(id)}`, { method: 'DELETE' })
 export const clearPlaygroundHistoryApi = () =>
   request('/playground/history', { method: 'DELETE' })
+
+// Preflight: binary/auth/env readiness. Surfaced as a banner so the user gets an
+// actionable message instead of an 18s spin ending in claude_binary_missing.
+export const getPlaygroundPreflight = (agent?: string) =>
+  request<PlaygroundPreflight>(`/playground/preflight${agent ? `?agent=${encodeURIComponent(agent)}` : ''}`)
+
+// Threads (multi-turn conversations)
+export const getPlaygroundThreads = () => requestWithRetry<PlaygroundThread[]>('/playground/threads')
+export const getPlaygroundThread = (id: string) =>
+  request<PlaygroundThread>(`/playground/threads/${encodeURIComponent(id)}`)
+export const createPlaygroundThread = (body: { id?: string; title?: string; agentName?: string }) =>
+  request<PlaygroundThread>('/playground/threads', { method: 'POST', body: JSON.stringify(body) })
+export const deletePlaygroundThread = (id: string) =>
+  request(`/playground/threads/${encodeURIComponent(id)}`, { method: 'DELETE' })
 
 // ── Backup System ─────────────────────────────────────────────────────────────
 
@@ -2550,6 +2597,33 @@ export interface LearningDigestStatus {
   nextRunAt: string | null
 }
 export const getLearningStatus = () => request<LearningDigestStatus>('/learning/status')
+
+export interface LearningDigestRun {
+  id: string
+  timestamp: string
+  status: string
+  durationMs: number
+  sessions: number
+  captured: number
+  staged: number
+  deduped: number
+}
+export interface LearningCapture {
+  id: string
+  type: LearningType
+  title: string
+  project: string | null
+  created_at: string | null
+}
+export interface LearningOverview {
+  counts: InboxCounts
+  status: LearningDigestStatus
+  sessions: { lastDay: number; lastWeek: number; total: number }
+  deduped7d: number
+  runs: LearningDigestRun[]
+  recent: LearningCapture[]
+}
+export const getLearningOverview = () => request<LearningOverview>('/learning/overview')
 
 export const approveCandidate = (id: string) =>
   // capture embeds via local Ollama — allow a little longer than the default.
