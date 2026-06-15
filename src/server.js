@@ -393,5 +393,17 @@ app.listen(PORT, HOST, () => {
     console.warn(`  System schedules: boot failed — ${err.message}`);
   }
 
+  // Learning-digest catch-up: node-cron silently skips the nightly 04:00 run if
+  // the Mac was asleep/off. On boot (after a settle delay) + hourly, run the
+  // digest if its last SUCCESS is older than the catch-up window. Guarded
+  // internally (disabled/inflight/fresh → no-op), so it never double-runs.
+  const catchupHours = (() => { try { return require('./lib/configService').getConfig('learning.vscode.catchupHours') ?? 20; } catch { return 20; } })();
+  setTimeout(() => {
+    try { systemSchedules.runIfOverdue('sys-learning-digest', catchupHours); } catch (err) { console.warn(`[catchup] boot check failed: ${err.message}`); }
+  }, 30_000);
+  setInterval(() => {
+    try { systemSchedules.runIfOverdue('sys-learning-digest', catchupHours); } catch (err) { console.warn(`[catchup] hourly check failed: ${err.message}`); }
+  }, 60 * 60 * 1000);
+
   console.log('');
 });

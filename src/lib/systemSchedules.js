@@ -369,8 +369,26 @@ const HANDLERS = {
     const dedupThreshold = cfg('learning.vscode.dedupThreshold', 0.85);
     const model = cfg('learning.vscode.model', 'claude-haiku-4-5-20251001');
 
+    // Discover sessions DIRECTLY from transcripts on disk (hook-independent — the
+    // SessionEnd hook rarely fires because VS Code stays open). Upserts pending
+    // vscode_session rows from ~/.claude/projects/**/*.jsonl changed recently.
+    let scan = { scanned: 0, upserted: 0, repended: 0, errors: [] };
+    try {
+      const { scanTranscripts } = require('./transcriptScan');
+      scan = scanTranscripts({
+        lookbackHours: cfg('learning.vscode.scanLookbackHours', 26),
+        maxFiles: cfg('learning.vscode.scanMaxFiles', 200),
+        maxBytesPerFile: cfg('learning.vscode.scanMaxBytes', 3_000_000),
+        minNewTurns: cfg('learning.vscode.scanMinTurns', 2),
+        excludeProjects: cfg('learning.vscode.excludeProjects', []),
+        projectsDir: cfg('learning.vscode.projectsDir', undefined),
+      });
+    } catch (err) {
+      console.warn(`[learningDigest] transcript scan failed: ${err.message}`);
+    }
+
     const sessions = db.getPendingVscodeSessions(24, maxSessions);
-    if (!sessions.length) return { output: 'learning digest: no pending sessions', metadata: { sessions: 0 } };
+    if (!sessions.length) return { output: `learning digest: no pending sessions (scanned ${scan.scanned})`, metadata: { sessions: 0, scan } };
 
     const blocks = sessions.map((s, i) => buildSessionBlock(s, maxTranscriptChars, i));
     const prompt = buildDigestPrompt(blocks, maxItems);
@@ -414,9 +432,9 @@ const HANDLERS = {
     if (staged > 0) { try { agentSync.events.emit('learning.candidate', { staged }); } catch { /* SSE best-effort */ } }
 
     return {
-      output: `learning digest: ${sessions.length} session(s) → ${captured} auto-captured, ${staged} staged, ${deduped} deduped`,
+      output: `learning digest: ${sessions.length} session(s) → ${captured} auto-captured, ${staged} staged, ${deduped} deduped (scanned ${scan.scanned}, +${scan.upserted}/~${scan.repended})`,
       usage,
-      metadata: { llm: true, mode, sessions: sessions.length, captured, staged, deduped },
+      metadata: { llm: true, mode, sessions: sessions.length, captured, staged, deduped, scan },
     };
   },
 
@@ -469,45 +487,107 @@ function requireDeps() {
 // ── Learning digest helpers ──────────────────────────────────────────────────
 
 const VALID_CANDIDATE_TYPES = new Set(['lesson', 'bug', 'decision', 'feedback']);
-const CORRECTION_RE = /\b(no,|nope|actually|don'?t|stop|that'?s wrong|not what|incorrect|i told you|use .* instead|never|always)\b/i;
+const CORRECTION_RE = /\b(no,|nope|actually|don'?t|stop|that'?s wrong|not what|incorrect|i told you|use .* instead|never|always|still (broken|failing|wrong)|not done|doesn'?t work)\b/i;
+
+// Read ONLY the new byte-range of a transcript ([digestFromByte, transcriptBytes])
+// so the LLM summary is token-flat even for a long, still-open session. Falls
+// back to the whole file for hook-discovered rows (no digestFromByte). Returns
+// parsed JSONL line objects.
+function readTranscriptDelta(s) {
+  const fs = require('fs');
+  if (!s.transcriptPath || !fs.existsSync(s.transcriptPath)) return [];
+  const from = (s.metadata && Number.isFinite(s.metadata.digestFromByte)) ? s.metadata.digestFromByte : 0;
+  const to = Number.isFinite(s.transcriptBytes) && s.transcriptBytes > from ? s.transcriptBytes : null;
+  let text = '';
+  try {
+    if (to) {
+      const len = to - from;
+      const buf = Buffer.alloc(len);
+      const fd = fs.openSync(s.transcriptPath, 'r');
+      try { fs.readSync(fd, buf, 0, len, from); } finally { fs.closeSync(fd); }
+      text = buf.toString('utf-8');
+    } else {
+      text = fs.readFileSync(s.transcriptPath, 'utf-8');
+    }
+  } catch { return []; }
+  const out = [];
+  for (const ln of text.split('\n')) { if (!ln) continue; try { out.push(JSON.parse(ln)); } catch { /* skip */ } }
+  return out;
+}
+
+const editPath = (b) => (b && b.input && (b.input.file_path || b.input.path)) ? String(b.input.file_path || b.input.path) : null;
+
+// Walk the transcript IN ORDER and emit a compact "rework loop" trace: each user
+// rejection paired with what the failed attempt edited and what the retry edited.
+// This is the high-value training signal (the ask → not-done → retry → done cycle).
+function extractReworkTrace(lines, maxLoops = 4) {
+  const loops = [];
+  let ask = '', attemptEdits = [], correction = '', retryEdits = [], inRetry = false;
+  const finalize = () => {
+    if (inRetry && (ask || correction)) {
+      loops.push({ ask: ask.slice(0, 200), rejectedEdits: attemptEdits.slice(0, 6), correction: correction.slice(0, 240), retryEdits: retryEdits.slice(0, 6) });
+    }
+    correction = ''; retryEdits = []; inRetry = false;
+  };
+  for (const ev of lines) {
+    if (loops.length >= maxLoops) break;
+    const msg = ev.message || ev;
+    const role = msg.role || ev.type;
+    const content = msg.content;
+    const userText = role === 'user'
+      ? (typeof content === 'string' ? content : Array.isArray(content) ? content.filter((b) => b && b.type === 'text').map((b) => b.text).join(' ') : '')
+      : '';
+    if (role === 'user' && userText.trim()) {
+      if (CORRECTION_RE.test(userText) && (ask || attemptEdits.length)) {
+        if (inRetry) finalize(); // a new rejection ends the prior loop
+        correction = userText.trim(); inRetry = true; retryEdits = [];
+      } else {
+        if (inRetry) finalize();
+        ask = userText.trim(); attemptEdits = [];
+      }
+    } else if (role === 'assistant' && Array.isArray(content)) {
+      for (const b of content) {
+        if (b && b.type === 'tool_use' && (b.name === 'Edit' || b.name === 'Write' || b.name === 'MultiEdit')) {
+          const fp = editPath(b); if (!fp) continue;
+          if (inRetry) retryEdits.push(fp); else attemptEdits.push(fp);
+        }
+      }
+    }
+  }
+  finalize();
+  return loops;
+}
 
 // Build a compact, bounded summary of one VS Code session for the extractor.
-// No LLM here — reads the transcript JSONL defensively + this session's agent_runs.
-// Falls back to bare facts if the transcript is gone/unreadable.
+// No LLM here. Surfaces touched files, corrections, and — most importantly —
+// rework loops, so the extractor can mine the ask→reject→retry→done cycles.
 function buildSessionBlock(s, maxChars, idx) {
   const parts = [];
   parts.push(`### Session ${idx + 1} — project: ${s.project || '(unknown)'} [id: ${s.sessionId}]`);
-  parts.push(`facts: ${s.turnCount || 0} turns, ${s.editCount || 0} edits, ${s.bashCount || 0} shell cmds`);
+  parts.push(`facts: ${s.turnCount || 0} new turns, ${s.editCount || 0} edits, ${s.bashCount || 0} shell cmds`);
 
-  // Agent sub-runs that belonged to this session (best-effort join).
   try {
     const runs = db.getAgentRunsBySession(s.sessionId).slice(0, 12);
-    if (runs.length) {
-      parts.push('agent runs: ' + runs.map((r) => `${r.agentName}:${r.status}`).join(', '));
-    }
+    if (runs.length) parts.push('agent runs: ' + runs.map((r) => `${r.agentName}:${r.status}`).join(', '));
   } catch { /* ignore */ }
 
-  // Transcript: pull user-correction lines + touched files + last assistant note.
   try {
-    const fs = require('fs');
-    if (s.transcriptPath && fs.existsSync(s.transcriptPath)) {
-      const lines = fs.readFileSync(s.transcriptPath, 'utf-8').split('\n').filter(Boolean);
-      const corrections = [];
+    const lines = readTranscriptDelta(s);
+    if (lines.length) {
       const files = new Set();
+      const corrections = [];
       let lastAssistant = '';
-      for (const line of lines) {
-        let obj; try { obj = JSON.parse(line); } catch { continue; }
-        const msg = obj.message || obj;
-        const role = msg.role || obj.type;
+      for (const ev of lines) {
+        const msg = ev.message || ev;
+        const role = msg.role || ev.type;
         const content = msg.content;
         if (Array.isArray(content)) {
-          for (const block of content) {
-            if (block.type === 'text' && typeof block.text === 'string') {
-              if (role === 'user' && CORRECTION_RE.test(block.text)) corrections.push(block.text.trim().slice(0, 240));
-              if (role === 'assistant') lastAssistant = block.text.trim().slice(0, 400);
-            } else if (block.type === 'tool_use' && (block.name === 'Edit' || block.name === 'Write')) {
-              const fp = block.input && (block.input.file_path || block.input.path);
-              if (fp) files.add(String(fp));
+          for (const b of content) {
+            if (b.type === 'text' && typeof b.text === 'string') {
+              if (role === 'user' && CORRECTION_RE.test(b.text)) corrections.push(b.text.trim().slice(0, 240));
+              if (role === 'assistant') lastAssistant = b.text.trim().slice(0, 400);
+            } else if (b.type === 'tool_use' && (b.name === 'Edit' || b.name === 'Write' || b.name === 'MultiEdit')) {
+              const fp = editPath(b); if (fp) files.add(fp);
             }
           }
         } else if (typeof content === 'string' && role === 'user' && CORRECTION_RE.test(content)) {
@@ -515,7 +595,16 @@ function buildSessionBlock(s, maxChars, idx) {
         }
       }
       if (files.size) parts.push('files touched: ' + [...files].slice(0, 15).join(', '));
-      if (corrections.length) parts.push('user corrections:\n- ' + corrections.slice(0, 6).join('\n- '));
+
+      const trace = extractReworkTrace(lines);
+      if (trace.length) {
+        parts.push('rework loops (ask → first attempt → user rejected → retry):');
+        for (const L of trace) {
+          parts.push(`- ask: ${L.ask || '(unknown)'}\n  first attempt edited: ${L.rejectedEdits.join(', ') || '(none)'}\n  user rejected: "${L.correction}"\n  retry edited: ${L.retryEdits.join(', ') || '(none)'}`);
+        }
+      } else if (corrections.length) {
+        parts.push('user corrections:\n- ' + corrections.slice(0, 6).join('\n- '));
+      }
       if (lastAssistant) parts.push('last assistant summary: ' + lastAssistant);
     }
   } catch { /* transcript unreadable — facts above are enough */ }
@@ -549,6 +638,14 @@ function buildDigestPrompt(blocks, maxItems) {
     '  feedback → { "directive" (the rule/correction to always follow), "context" }  // use for moments where the user CORRECTED the agent',
     '',
     'Guidance: a "feedback" candidate is for a durable preference/correction the user gave (a rule for next time). A "lesson"/"bug"/"decision" is reusable technical knowledge. Prefer fewer, higher-quality items. Be honest with confidence.',
+    '',
+    'REWORK LOOPS — IMPORTANT. Some sessions contain a "rework loops" section: the user asked for X, the agent did something, the user REJECTED it ("not done", "still broken", "no", "that\'s wrong"), and the agent retried until accepted. These are the highest-value lessons — they are real mistakes. For each genuine loop, emit ONE compact "lesson":',
+    '  domain     = the area (e.g. "react-state", "shopify-liquid", "sqlite")',
+    '  problem    = what the user actually asked for',
+    '  root_cause = why the FIRST attempt was wrong',
+    '  solution   = what finally worked (from the retry edits)',
+    '  prevention = how to recognize/avoid this next time (1 line)',
+    'Keep each field ≤ 1–2 lines. Skip a loop with no clear root cause. Set confidence ≥0.8 ONLY when the accepted retry is unambiguous.',
     '',
     'The sessions:',
     '',
@@ -785,10 +882,33 @@ function stopAll() {
   try { agentSync.events.off('agent_run.recorded', onBuildSuccessEvent); } catch {}
 }
 
+// Catch-up for a PC that was asleep/off at the scheduled minute (node-cron
+// silently skips missed runs). Runs the schedule now ONLY if it's enabled, not
+// inflight, and its last SUCCESS (not last attempt) is older than `hours`.
+// Returns { ran, reason } — never throws.
+function runIfOverdue(id, hours = 20) {
+  try {
+    const def = findDefinition(id);
+    if (!def) return { ran: false, reason: 'unknown' };
+    if (!isEnabled(id)) return { ran: false, reason: 'disabled' };
+    if (inflight.has(id)) return { ran: false, reason: 'inflight' };
+    const runs = db.getScheduleRunsFor(id, { limit: 10 });
+    const lastSuccess = runs.find((r) => r.status === 'success');
+    const ageMs = lastSuccess ? (Date.now() - new Date(lastSuccess.timestamp).getTime()) : Infinity;
+    if (ageMs < hours * 3600_000) return { ran: false, reason: 'fresh' };
+    runHandler(id, { async: true }).catch((err) => console.warn(`[systemSchedule] runIfOverdue ${id}: ${err.message}`));
+    return { ran: true, reason: lastSuccess ? `stale ${Math.round(ageMs / 3600_000)}h` : 'never-succeeded' };
+  } catch (err) {
+    console.warn(`[systemSchedule] runIfOverdue ${id} check failed: ${err.message}`);
+    return { ran: false, reason: 'error' };
+  }
+}
+
 module.exports = {
   bootAll,
   stopAll,
   runHandler,
+  runIfOverdue,
   setEnabled,
   isEnabled,
   getAllForApi,

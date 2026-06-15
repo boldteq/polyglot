@@ -142,6 +142,8 @@ function runMigrations(db) {
     { version: 22, name: 'run_observability', fn: runObservabilityMigration },
     { version: 23, name: 'policy_audit', fn: policyAuditMigration },
     { version: 24, name: 'learning_loop', fn: learningLoopMigration },
+    { version: 25, name: 'vscode_session_watermark', fn: vscodeSessionWatermarkMigration },
+    { version: 26, name: 'playground_threads', fn: playgroundThreadsMigration },
   ];
 
   for (const mig of migrations) {
@@ -1832,16 +1834,94 @@ function learningLoopMigration(db) {
   console.log('[migration v24] learning_loop: vscode_session + learning_inbox tables created');
 }
 
+// ── Migration v25: vscode_session watermark (2026-06-15) ────────────────────
+// The nightly digest now scans transcripts directly (hook-independent). A
+// per-session watermark (lastLineCount + reused transcriptBytes) lets a re-scan
+// of a still-open session process ONLY new turns. Additive + idempotent.
+function vscodeSessionWatermarkMigration(db) {
+  const hasCol = (t, c) => db.prepare(`PRAGMA table_info(${t})`).all().some((x) => x.name === c);
+  if (!hasCol('vscode_session', 'lastLineCount')) db.exec("ALTER TABLE vscode_session ADD COLUMN lastLineCount INTEGER DEFAULT 0");
+  if (!hasCol('vscode_session', 'lastScanAt')) db.exec("ALTER TABLE vscode_session ADD COLUMN lastScanAt TEXT");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_vscode_session_scan ON vscode_session(lastScanAt)");
+  console.log('[migration v25] vscode_session watermark columns added');
+}
+
+// ── Migration v26: playground threads (2026-06-15) ──────────────────────────
+// Multi-turn playground conversations. A thread groups ordered user/assistant
+// messages so a conversation can be reopened and continued (prior turns are
+// replayed as context into the next `claude -p` spawn). The flat
+// playground_history rows gain nullable threadId/turnIndex so single-run history
+// and threaded conversations stay reconcilable. Additive + idempotent.
+function playgroundThreadsMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS playground_threads (
+      id        TEXT PRIMARY KEY,
+      title     TEXT,
+      agentName TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+    CREATE TABLE IF NOT EXISTS playground_messages (
+      id        TEXT PRIMARY KEY,
+      threadId  TEXT NOT NULL,
+      role      TEXT NOT NULL,
+      content   TEXT,
+      status    TEXT DEFAULT 'success',
+      duration  INTEGER DEFAULT 0,
+      timestamp TEXT,
+      metadata  TEXT DEFAULT '{}',
+      FOREIGN KEY (threadId) REFERENCES playground_threads(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_pg_messages_thread ON playground_messages(threadId);
+    CREATE INDEX IF NOT EXISTS idx_pg_threads_updated ON playground_threads(updatedAt DESC);
+  `);
+  const hasCol = (t, c) => db.prepare(`PRAGMA table_info(${t})`).all().some((x) => x.name === c);
+  if (!hasCol('playground_history', 'threadId')) db.exec("ALTER TABLE playground_history ADD COLUMN threadId TEXT");
+  if (!hasCol('playground_history', 'turnIndex')) db.exec("ALTER TABLE playground_history ADD COLUMN turnIndex INTEGER");
+  console.log('[migration v26] playground_threads + playground_messages created');
+}
+
 // ── VS Code sessions ────────────────────────────────────────────────────────
 
+// Upsert keyed on sessionId. CRITICAL: the SessionEnd hook calls this WITHOUT a
+// watermark (lastLineCount/lastScanAt undefined → null), while the transcript
+// scanner calls it WITH one. COALESCE preserves the scanner's watermark when the
+// hook path writes, and advances it when the scanner writes — so neither path
+// clobbers the other. createdAt advances to "now" on every write so a re-pended
+// long-running session stays inside getPendingVscodeSessions' recency window.
 function insertVscodeSession(s) {
-  stmt(`INSERT OR REPLACE INTO vscode_session
-    (sessionId,project,projectPath,transcriptPath,turnCount,toolUseCount,editCount,bashCount,transcriptBytes,endReason,endedAt,status,createdAt,metadata)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+  stmt(`INSERT INTO vscode_session
+    (sessionId,project,projectPath,transcriptPath,turnCount,toolUseCount,editCount,bashCount,transcriptBytes,endReason,endedAt,status,createdAt,metadata,lastLineCount,lastScanAt)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(sessionId) DO UPDATE SET
+      project=excluded.project,
+      projectPath=excluded.projectPath,
+      transcriptPath=excluded.transcriptPath,
+      turnCount=excluded.turnCount,
+      toolUseCount=excluded.toolUseCount,
+      editCount=excluded.editCount,
+      bashCount=excluded.bashCount,
+      transcriptBytes=COALESCE(NULLIF(excluded.transcriptBytes,0), vscode_session.transcriptBytes),
+      endReason=COALESCE(excluded.endReason, vscode_session.endReason),
+      endedAt=COALESCE(excluded.endedAt, vscode_session.endedAt),
+      status=excluded.status,
+      createdAt=excluded.createdAt,
+      metadata=excluded.metadata,
+      lastLineCount=COALESCE(excluded.lastLineCount, vscode_session.lastLineCount),
+      lastScanAt=COALESCE(excluded.lastScanAt, vscode_session.lastScanAt)`)
     .run(s.sessionId, s.project || null, s.projectPath || null, s.transcriptPath || null,
       s.turnCount || 0, s.toolUseCount || 0, s.editCount || 0, s.bashCount || 0, s.transcriptBytes || 0,
       s.endReason || null, s.endedAt || null, s.status || 'pending_digest',
-      s.createdAt || new Date().toISOString(), JSON.stringify(s.metadata || {}));
+      s.createdAt || new Date().toISOString(), JSON.stringify(s.metadata || {}),
+      Number.isFinite(s.lastLineCount) ? s.lastLineCount : null,
+      s.lastScanAt || null);
+}
+
+// Watermark read for the transcript scanner: how far we've already digested this
+// session's transcript (line count) + the file size we last saw (skip-fast guard).
+function getSessionWatermark(sessionId) {
+  const r = stmt('SELECT lastLineCount, transcriptBytes, status FROM vscode_session WHERE sessionId = ?').get(sessionId);
+  return r ? { lastLineCount: r.lastLineCount || 0, transcriptBytes: r.transcriptBytes || 0, status: r.status } : null;
 }
 
 function getPendingVscodeSessions(hours = 24, limit = 50) {
@@ -2116,6 +2196,71 @@ function savePlaygroundHistory(list) {
     db.exec('DELETE FROM playground_history');
     for (const r of list) s.run(r.id, r.agentName, r.prompt, r.output, r.duration, r.status, r.error, r.rating, r.feedback, r.timestamp, JSON.stringify(r.metadata || {}));
   })();
+}
+
+// Row-level upsert keyed on PK id. The backend run handler and the frontend POST
+// both call this with the SAME id (the frontend's genId → body.historyId →
+// backend reuse), so INSERT OR REPLACE makes the write idempotent — exactly one
+// row per run regardless of which side writes last. Replaces the destructive
+// savePlaygroundHistory(rewrite-whole-table) for single-run persistence so no
+// concurrent run can clobber another's row. Prunes to the latest 200.
+function upsertPlaygroundHistoryRow(row) {
+  stmt(`INSERT OR REPLACE INTO playground_history
+    (id,agentName,prompt,output,duration,status,error,rating,feedback,timestamp,metadata,threadId,turnIndex)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(row.id, row.agentName ?? null, row.prompt ?? null, row.output ?? null,
+         row.duration ?? 0, row.status ?? 'success', row.error ?? null,
+         row.rating ?? null, row.feedback ?? null,
+         row.timestamp || new Date().toISOString(), JSON.stringify(row.metadata || {}),
+         row.threadId ?? null, row.turnIndex ?? null);
+  stmt(`DELETE FROM playground_history WHERE id NOT IN (
+    SELECT id FROM playground_history ORDER BY timestamp DESC LIMIT 200)`).run();
+  return row.id;
+}
+
+function getPlaygroundHistoryRow(id) {
+  const r = stmt('SELECT * FROM playground_history WHERE id = ?').get(id);
+  return r ? { ...r, metadata: JSON.parse(r.metadata || '{}') } : null;
+}
+
+// ── Playground Threads (multi-turn conversations) ───────────────────────────
+
+function listPlaygroundThreads(limit = 100) {
+  return stmt(`SELECT t.*, COUNT(m.id) AS messageCount
+    FROM playground_threads t
+    LEFT JOIN playground_messages m ON m.threadId = t.id
+    GROUP BY t.id ORDER BY t.updatedAt DESC LIMIT ?`).all(limit);
+}
+
+function getPlaygroundThread(id) {
+  const thread = stmt('SELECT * FROM playground_threads WHERE id = ?').get(id);
+  if (!thread) return null;
+  const messages = stmt('SELECT id, role, content, status, duration, timestamp, metadata FROM playground_messages WHERE threadId = ? ORDER BY timestamp, rowid').all(id)
+    .map(m => ({ ...m, metadata: JSON.parse(m.metadata || '{}') }));
+  return { ...thread, messages };
+}
+
+function createPlaygroundThread({ id, title, agentName }) {
+  const now = new Date().toISOString();
+  stmt('INSERT OR IGNORE INTO playground_threads (id,title,agentName,createdAt,updatedAt) VALUES (?,?,?,?,?)')
+    .run(id, (title || 'Untitled').slice(0, 200), agentName || null, now, now);
+  return getPlaygroundThread(id);
+}
+
+function appendPlaygroundMessage(threadId, msg) {
+  const now = msg.timestamp || new Date().toISOString();
+  stmt('INSERT INTO playground_messages (id,threadId,role,content,status,duration,timestamp,metadata) VALUES (?,?,?,?,?,?,?,?)')
+    .run(msg.id, threadId, msg.role, msg.content ?? '', msg.status || 'success',
+         msg.duration || 0, now, JSON.stringify(msg.metadata || {}));
+  stmt('UPDATE playground_threads SET updatedAt = ? WHERE id = ?').run(now, threadId);
+  return msg.id;
+}
+
+function deletePlaygroundThread(id) {
+  // ON DELETE CASCADE clears messages; ensure FK pragma is on for this connection.
+  getDb().pragma('foreign_keys = ON');
+  stmt('DELETE FROM playground_threads WHERE id = ?').run(id);
+  return { ok: true };
 }
 
 // ── Pending Approvals ───────────────────────────────────────────────────────
@@ -3149,7 +3294,7 @@ module.exports = {
   loadAgentRuns, insertAgentRun, getRecentAgentRuns,
   insertAgentRunStub, completeAgentRun, reconcileOrphanRuns,
   // Learning Loop (VS Code sessions → review inbox)
-  insertVscodeSession, getPendingVscodeSessions, markVscodeSessionsDigested, getAgentRunsBySession,
+  insertVscodeSession, getSessionWatermark, getPendingVscodeSessions, markVscodeSessionsDigested, getAgentRunsBySession,
   insertLearningCandidate, listLearningInbox, getLearningCandidate,
   updateLearningStatus, updateLearningPayload, getInboxCounts, pruneLearningInbox,
   // Run observability (Pillar 1)
@@ -3177,7 +3322,8 @@ module.exports = {
   // Chat
   loadChatHistory, saveChatHistory,
   // Playground
-  loadPlaygroundHistory, savePlaygroundHistory,
+  loadPlaygroundHistory, savePlaygroundHistory, upsertPlaygroundHistoryRow, getPlaygroundHistoryRow,
+  listPlaygroundThreads, getPlaygroundThread, createPlaygroundThread, appendPlaygroundMessage, deletePlaygroundThread,
   // Approvals
   loadApprovals, saveApprovals,
   // Audit Log

@@ -2538,6 +2538,19 @@ export const getLearningInbox = (status: string) =>
 
 export const getLearningInboxCounts = () => request<InboxCounts>('/learning/inbox/counts')
 
+export interface LearningDigestStatus {
+  lastRunAt: string | null
+  lastRunStatus: string | null
+  lastRunSummary: string | null
+  sessionsScanned: number | null
+  captured: number | null
+  staged: number | null
+  deduped: number | null
+  scan: { upserted: number; repended: number } | null
+  nextRunAt: string | null
+}
+export const getLearningStatus = () => request<LearningDigestStatus>('/learning/status')
+
 export const approveCandidate = (id: string) =>
   // capture embeds via local Ollama — allow a little longer than the default.
   request<{ ok: boolean; capturedRef: string }>(`/learning/inbox/${id}/approve`, { method: 'POST', timeoutMs: 20000 })

@@ -5,8 +5,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import {
-  getLearningInbox, approveCandidate, rejectCandidate, editCandidate,
-  type LearningCandidate, type LearningType, type InboxCounts,
+  getLearningInbox, approveCandidate, rejectCandidate, editCandidate, getLearningStatus,
+  type LearningCandidate, type LearningType, type InboxCounts, type LearningDigestStatus,
 } from '../lib/api'
 import { useCachedApi } from '../hooks/useCachedApi'
 import { CacheKeys } from '../lib/cacheKeys'
@@ -26,11 +26,11 @@ const TYPE_META: Record<LearningType, { label: string; Icon: LucideIcon; cls: st
 function relTime(iso: string): string {
   const t = new Date(iso).getTime()
   if (!Number.isFinite(t)) return ''
-  const s = Math.round((Date.now() - t) / 1000)
+  const diff = Date.now() - t
+  const s = Math.round(Math.abs(diff) / 1000)
   if (s < 60) return 'just now'
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
-  return `${Math.floor(s / 86400)}d ago`
+  const v = s < 3600 ? `${Math.floor(s / 60)}m` : s < 86400 ? `${Math.floor(s / 3600)}h` : `${Math.floor(s / 86400)}d`
+  return diff < 0 ? `in ${v}` : `${v} ago`
 }
 
 export default function LearningInbox() {
@@ -38,6 +38,7 @@ export default function LearningInbox() {
   const status: string = tab === 'pending' ? 'pending' : 'auto'
   const { data, loading, refreshing, error, refetch, setData } =
     useCachedApi<InboxData>(CacheKeys.learningInbox(status), () => getLearningInbox(status))
+  const { data: digestStatus } = useCachedApi<LearningDigestStatus>(CacheKeys.learningStatus, getLearningStatus)
 
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
@@ -103,6 +104,14 @@ export default function LearningInbox() {
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Learning Inbox</h1>
             <p className="text-[13px] text-text-secondary">Lessons your AI team found in your VS Code projects — approve to save them to memory.</p>
+            {digestStatus?.lastRunAt && (
+              <p className="text-[11px] text-text-muted mt-0.5">
+                Last digest {relTime(digestStatus.lastRunAt)}
+                {digestStatus.lastRunStatus && <> · <span className={digestStatus.lastRunStatus === 'success' ? 'text-emerald-400' : 'text-red-400'}>{digestStatus.lastRunStatus}</span></>}
+                {digestStatus.lastRunSummary && ` · ${digestStatus.lastRunSummary}`}
+                {digestStatus.nextRunAt && ` · next ${relTime(digestStatus.nextRunAt)}`}
+              </p>
+            )}
           </div>
         </div>
         <button
