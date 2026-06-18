@@ -12,6 +12,7 @@ const { discoverProjects } = require('../lib/discovery');
 const db = require('../db');
 const claudeBinary = require('../lib/claudeBinary');
 const configService = require('../lib/configService');
+const runRegistry = require('../lib/playgroundRuns');
 
 // Strip API keys + bearer tokens from stderr before surfacing to the client.
 // Prevents accidental credential leakage into logs/UI.
@@ -257,21 +258,17 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
   res.flushHeaders();
 
   let ended = false;
-  let streamDead = false;
 
-  const safeWrite = (raw) => {
-    if (ended || streamDead) return true;
-    try {
-      return res.write(raw);
-    } catch (err) {
-      streamDead = true;
-      console.error('[playground] sse write failed', { agent: agentName || 'custom', reqId, code: err.code, msg: err.message });
-      try { if (typeof hardKill === 'function') hardKill('stream_dead'); } catch { /* proc not ready yet */ }
-      return false;
-    }
-  };
-  const send = (data) => safeWrite(`data: ${JSON.stringify(data)}\n\n`);
-  const sendComment = (text) => safeWrite(`: ${text}\n\n`);
+  // Register this run and attach the initial client as a subscriber. The RUN is
+  // the source of truth; the HTTP response is just one detachable viewer. On
+  // client disconnect we UNSUBSCRIBE — we never kill the process, so a refresh
+  // can re-attach and keep watching the same generation. Explicit Stop hits the
+  // cancel route → run.kill(). `send`/`sendComment` fan out to every subscriber
+  // (initial client + any reattached clients) and buffer text for replay.
+  const run = runRegistry.createRun({ id: historyId, threadId, agentName, prompt: userPrompt });
+  runRegistry.subscribe(run, res);
+  const send = (data) => { runRegistry.broadcast(run, data); return true; };
+  const sendComment = (text) => { runRegistry.broadcastComment(run, text); return true; };
 
   let instructions = '';
   if (agentName) {
@@ -282,7 +279,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       send({ type: 'error', error: 'Invalid agent name' });
       logAgentRun({ agentName: 'invalid', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'invalid_agent_name', metadata: { reqId } });
       persistPlaygroundRow({ historyId, agentName, prompt: userPrompt, output: '', duration: 0, status: 'error', error: 'invalid_agent_name', reqId, threadId });
-      try { res.end(); } catch {}
+      runRegistry.markDone(run);
       return;
     }
 
@@ -301,7 +298,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       });
       logAgentRun({ agentName: agentName || 'custom', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'agent_not_found', metadata: { reqId, tried: lookup.tried } });
       persistPlaygroundRow({ historyId, agentName, prompt: userPrompt, output: '', duration: 0, status: 'error', error: 'agent_not_found', reqId, threadId });
-      try { res.end(); } catch {}
+      runRegistry.markDone(run);
       return;
     }
 
@@ -415,7 +412,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     });
     logAgentRun({ agentName: agentName || 'custom', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'claude_binary_missing', metadata: { reqId } });
     persistPlaygroundRow({ historyId, agentName, prompt: userPrompt, output: '', duration: 0, status: 'error', error: 'claude_binary_missing', reqId, threadId });
-    try { res.end(); } catch {}
+    runRegistry.markDone(run);
     return;
   }
 
@@ -497,6 +494,8 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     sigkillTimer = setTimeout(() => killSignal('SIGKILL'), 5000);
     if (sigkillTimer && typeof sigkillTimer.unref === 'function') sigkillTimer.unref();
   }
+  // Expose force-stop so the explicit cancel route can end a background run.
+  run.kill = hardKill;
 
   const touchActivity = () => { lastActivityAt = Date.now(); };
 
@@ -524,7 +523,9 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     clearInterval(idleTimer);
     clearInterval(heartbeatTimer);
     if (attachDir) { try { fs.rmSync(attachDir, { recursive: true, force: true }); } catch { /* best-effort */ } attachDir = null; }
-    try { res.end(); } catch {}
+    // End every attached client + keep the finished run for a grace window so a
+    // client that reloads right at the end can still fetch the result.
+    runRegistry.markDone(run);
   };
 
   const playgroundStartTime = Date.now();
@@ -591,30 +592,21 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
   proc.stdout.on('data', (data) => {
     if (ended) return;
     touchActivity();
-    if (streamDead) return;
     jsonBuf += data.toString();
     const lines = jsonBuf.split('\n');
     jsonBuf = lines.pop() || '';
-    let backpressured = false;
-    for (const line of lines) {
-      if (handleStreamEvent(line) === false) backpressured = true;
-    }
-    if (backpressured) {
-      proc.stdout.pause();
-      res.once('drain', () => {
-        if (!ended && !streamDead) proc.stdout.resume();
-      });
-    }
+    // Fan out each parsed event to all subscribers (initial + reattached). No
+    // per-socket backpressure: output is bounded (≤400KB guard) and a slow/dead
+    // subscriber is simply dropped — the process keeps running regardless.
+    for (const line of lines) handleStreamEvent(line);
   });
 
   proc.stderr.on('data', (data) => {
     if (ended) return;
     touchActivity();
     const raw = data.toString();
-    // Accumulate redacted stderr into a ring buffer regardless of streamDead
-    // — we still want to surface the tail on close.
+    // Keep the last ~2KB of stderr for diagnostic surfacing on failure.
     stderrTail = (stderrTail + redactSecrets(raw)).slice(-STDERR_TAIL_CAP);
-    if (streamDead) return;
     const trimmed = raw.trim();
     if (!trimmed) return;
     // Log full stderr server-side; send only safe, non-sensitive lines to client.
@@ -677,8 +669,11 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     } else if (killReason === 'stdin_error') {
       status = 'error'; runError = 'stdin_error';
       logAgentRun({ ...baseLog, output: finalOutput, status, error: runError });
-    } else if (killReason === 'client_disconnect') {
-      status = 'cancelled'; runError = 'client_disconnect';
+    } else if (killReason === 'user_cancel' || killReason === 'client_disconnect') {
+      // Explicit Stop. Broadcast a terminal event so any attached client renders
+      // the partial answer and stops, and commit the partial as the turn.
+      send({ type: 'done', output: finalOutput, cancelled: true, durationMs: duration, historyId, threadId: threadId || null });
+      status = 'cancelled'; runError = 'cancelled';
       logAgentRun({ ...baseLog, output: finalOutput, status, error: runError });
     } else if (killReason === 'stream_dead') {
       status = 'error'; runError = 'stream_dead';
@@ -812,9 +807,70 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     });
   }
 
+  // Client disconnect (refresh / navigate / tab close) only DETACHES this viewer
+  // — the generation keeps running in the background so the user can re-attach
+  // after a reload. The process is killed only by an explicit Stop (cancel route)
+  // or the server-side wall/idle timeouts. This is the core "survive refresh" fix.
   res.on('close', () => {
-    if (!killReason) hardKill('client_disconnect');
+    runRegistry.unsubscribe(run, res);
   });
+});
+
+// GET /api/playground/active?threadId=X — is a run still generating for this
+// conversation? The frontend calls this on load to know whether to re-attach.
+router.get('/playground/active', rateLimit('read'), (req, res) => {
+  const threadId = String(req.query.threadId || '');
+  const run = threadId ? runRegistry.getActiveByThread(threadId) : null;
+  if (!run) return res.json({ active: false });
+  res.json({
+    active: true,
+    runId: run.id,
+    threadId: run.threadId,
+    agentName: run.agentName,
+    prompt: run.prompt,          // so the UI can render the in-flight user bubble
+    output: run.output,          // text generated so far
+    startedAt: run.startedAt,
+  });
+});
+
+// GET /api/playground/run/:id/stream — RE-ATTACH to a background run as an SSE
+// viewer. Replays the text produced so far, then streams live until the run
+// finishes. If the run is unknown/evicted, tells the client to fall back to the
+// persisted thread.
+router.get('/playground/run/:id/stream', rateLimit('read'), (req, res) => {
+  const run = runRegistry.getRun(req.params.id);
+  res.setTimeout(0);
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+  if (!run) {
+    res.write(`data: ${JSON.stringify({ type: 'error', code: 'run_not_found', error: 'Run not found — it may have finished. Reloading the conversation.' })}\n\n`);
+    try { res.end(); } catch {}
+    return;
+  }
+  // Re-announce + replay everything generated so far.
+  res.write(`data: ${JSON.stringify({ type: 'start', agent: run.agentName, historyId: run.id, threadId: run.threadId, reattach: true })}\n\n`);
+  if (run.output) res.write(`data: ${JSON.stringify({ type: 'chunk', content: run.output })}\n\n`);
+  if (run.status === 'running') {
+    runRegistry.subscribe(run, res);
+    res.on('close', () => runRegistry.unsubscribe(run, res));
+  } else {
+    // Finished while we were away — send the terminal event + close.
+    if (run.finalEvent) res.write(`data: ${JSON.stringify(run.finalEvent)}\n\n`);
+    else res.write(`data: ${JSON.stringify({ type: 'done', output: run.output, durationMs: (run.endedAt || Date.now()) - run.startedAt })}\n\n`);
+    try { res.end(); } catch {}
+  }
+});
+
+// POST /api/playground/run/:id/cancel — explicit Stop. Force-kills the
+// background process (refresh does NOT — only this does).
+router.post('/playground/run/:id/cancel', rateLimit('write'), (req, res) => {
+  const run = runRegistry.getRun(req.params.id);
+  if (!run || run.status !== 'running') return res.json({ ok: true, alreadyDone: true });
+  if (typeof run.kill === 'function') run.kill('user_cancel');
+  res.json({ ok: true });
 });
 
 // GET /api/playground/preflight

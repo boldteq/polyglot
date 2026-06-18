@@ -1,6 +1,7 @@
 @font-face {
   font-family: "Canela";
   src: url("canela.woff2") format("woff2");
+  font-weight: 400;
   font-display: swap;
 }
 :root { --font-heading: "Canela", Georgia, serif; }

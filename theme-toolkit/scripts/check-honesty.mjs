@@ -351,4 +351,54 @@ for (const file of targets) {
   }
 }
 
+// ── 7. Template-SEEDED fabrication (re-dogfood round 3, 2026-06-19) ──
+// The fabrication vector moved from section DEFAULTS to TEMPLATE INSTANCE settings: a section
+// shipped honest [CLAIM] defaults but templates/*.json OVERRODE them with fabricated clinical
+// figures ("97%", "12x", "Independent 12-week study") + named "Verified purchase" testimonials —
+// and §1-6 missed bare metrics ("97%"/"12x" have no "of customers"/"weight" anchor). This parses
+// template block settings (the rendered, customer-facing values) and catches it at the source.
+{
+  const REVIEW_APP = /judge\.?me|yotpo|okendo|\bloox\b|stamped|reviews\.io|\bjdgm\b|trustpilot|growave|\bopinew\b|\bjunip\b/i
+  const walkR = (d, acc = []) => { const a = path.resolve(cwd, d); if (!fs.existsSync(a)) return acc; for (const e of fs.readdirSync(a, { withFileTypes: true })) { const r = path.join(d, e.name); e.isDirectory() ? walkR(r, acc) : acc.push(r) } return acc }
+  let reviewApp = false
+  for (const f of ['sections', 'snippets', 'config', 'layout'].flatMap(d => walkR(d))) { try { if (REVIEW_APP.test(fs.readFileSync(path.resolve(cwd, f), 'utf-8'))) { reviewApp = true; break } } catch { /* skip */ } }
+
+  const METRIC = /^\s*[+~]?\d{1,3}(?:[.,]\d+)?\s*(?:%|x|×|wks?|weeks?|days?|hrs?|hours?)\s*$/i
+  const STUDY = /\b(?:stud(?:y|ies)|clinical(?:ly)?|trial|control(?: group)?|independent|proven|satisfaction|efficacy|dermatologist|in[\s-]?vivo|consumer[\s-]?test)\b/i
+  const SEEDED_VERB = /clinically[\s-]?(?:proven|tested)|dermatologist[\s-]?(?:tested|recommended|reviewed|approved)|independent\s+\d+[\s-]?week\s+study|untreated\s+control|backed by (?:science|research|clinical)/i
+  const CERT = /\b(?:derm(?:atologist)?[\s-]?tested|clinically[\s-]?tested|cruelty[\s-]?free|vegan|fragrance[\s-]?free|hypoallergenic|paraben[\s-]?free|non[\s-]?comedogenic|gmp[\s-]?certified|fda[\s-]?(?:approved|registered))\b/i
+  const VERIFIED = /verified\s+(?:purchase|buyer|customer|review)/i
+  const PERSON = (v) => /^[A-Z][a-z]+\.?\s+[A-Z]\.?$/.test(v.trim()) || /^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(v.trim())
+
+  for (const tf of walkR('templates').filter(f => /\.json$/.test(f))) {
+    let j; try { j = JSON.parse(fs.readFileSync(path.resolve(cwd, tf), 'utf-8')) } catch { continue }
+    const groups = []
+    for (const [sk, s] of Object.entries(j.sections || {})) {
+      if (s && s.settings) groups.push({ loc: `${path.basename(tf)}:${sk}`, settings: s.settings })
+      for (const [bk, b] of Object.entries((s && s.blocks) || {})) if (b && b.settings) groups.push({ loc: `${path.basename(tf)}:${sk}.${bk}`, settings: b.settings, blk: b })
+    }
+    for (const g of groups) {
+      const vals = Object.values(g.settings).filter(v => typeof v === 'string')
+      const text = vals.join(' | ')
+      if (/\[CLAIM/i.test(text)) continue // honestly gated → ok
+      // a) fabricated clinical stat — a bare metric value + study/clinical framing in the same block, no citation
+      const metricVals = vals.filter(v => METRIC.test(v))
+      if (metricVals.length && STUDY.test(text) && !/https?:\/\/|doi\.org/i.test(text)) {
+        blocker('honesty.fabricated-clinical-stat', g.loc, `seeded stat block ships metric(s) ${metricVals.map(v => `"${v.trim()}"`).join(', ')} with clinical/study framing ("${trunc((text.match(STUDY) || [''])[0], 28)}") and no citation — a study-backed-looking figure with no real study is fabrication. Cite a real study/DOI or ship [CLAIM — needs substantiation].`, trunc(text, 70))
+      }
+      // b) seeded clinical verb (hyphen-tolerant; the in-template analog of §6 efficacy-claim)
+      const vb = text.match(SEEDED_VERB); if (vb) add(warnings, 'honesty.efficacy-claim', g.loc, `seeded clinical claim "${trunc(vb[0], 40)}" in a template setting with no source — substantiate (real study) or soften`, trunc(vb[0], 60))
+      // c) cert/standard claim shipped as a seeded label (regulated)
+      const ct = text.match(CERT); if (ct && !/\[CLAIM/i.test(text)) add(warnings, 'honesty.cert-claim', g.loc, `cert/standard claim "${trunc(ct[0], 28)}" shipped as a seeded label — confirm it is truly certified for THIS store (regulated claim) or ship [CLAIM]/blank`, trunc(ct[0], 50))
+      // d) fabricated testimonial — named author + quote + "verified", no review app
+      const hasVerified = VERIFIED.test(text) || g.blk?.settings?.verified === true || /"verified"\s*:\s*true/i.test(JSON.stringify(g.settings))
+      const hasPerson = vals.some(PERSON)
+      const hasQuote = vals.some(v => v.length > 30 && /[a-z]\s+[a-z]/i.test(v))
+      if (hasVerified && hasPerson && hasQuote && !reviewApp) {
+        blocker('honesty.fabricated-testimonial', g.loc, `a testimonial block ships a named author + quote + a "verified" badge with NO review app wired — fabricated UGC presented as a verified purchase. Wire a real review app or ship reviews blank/[CLAIM].`, trunc(text, 70))
+      }
+    }
+  }
+}
+
 finish(null)

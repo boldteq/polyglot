@@ -2,5 +2,11 @@
   "typography": {
     "allowed_px": [16, 20, 25, 31, 39, 49],
     "fonts": { "heading": "Canela serif-display", "body": "Söhne sans" }
+  },
+  "buttons": {
+    "variants": {
+      "primary": { "class": "btn btn--primary" },
+      "secondary": { "class": "btn btn--secondary" }
+    }
   }
 }

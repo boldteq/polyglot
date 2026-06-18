@@ -134,6 +134,41 @@ function main() {
   const settingsRaw = read('config/settings_data.json')
   const settingsSchemaRaw = read('config/settings_schema.json')
 
+  // ── 0. reference integrity (whole-theme; round-2 dogfood: a referenced-but-missing theme.js
+  // [404 <script>] and {% section 'header/footer' %} files were render-fatal and NO gate caught them).
+  // A referenced section/snippet/asset that doesn't exist throws a Liquid/render error → BLOCK. On a real
+  // committed base all refs resolve (the base ships them); only a genuinely-missing target flags. ──
+  const allLiquidText = [...walkAll('sections', ['.liquid']), ...walkAll('snippets', ['.liquid']), ...walkAll('layout', ['.liquid'])].map(read).join('\n')
+  const missingSections = new Set()
+  for (const m of layoutText.matchAll(/\{%-?\s*section\s+['"]([a-z0-9_-]+)['"]/gi)) { if (!fs.existsSync(path.resolve(cwd, 'sections', `${m[1]}.liquid`))) missingSections.add(m[1]) }
+  for (const m of layoutText.matchAll(/\{%-?\s*sections\s+['"]([a-z0-9_-]+)['"]/gi)) { if (!fs.existsSync(path.resolve(cwd, 'sections', `${m[1]}.json`))) missingSections.add(`${m[1]} (group)`) }
+  const emptyRendered = []
+  for (const tf of walkAll('templates', ['.json'])) {
+    let j; try { j = JSON.parse(read(tf)) } catch { continue }
+    for (const [key, s] of Object.entries(j.sections || {})) {
+      const t = s && s.type
+      if (!t || !/^[a-z0-9_-]+$/i.test(t)) continue
+      const sectionPath = path.resolve(cwd, 'sections', `${t}.liquid`)
+      if (!fs.existsSync(sectionPath)) { missingSections.add(t); continue }
+      // hollow render (round-2 "headings over empty grids"): the instance wires NO blocks but the
+      // section renders its content via a `section.blocks` loop → it paints a header over nothing.
+      const blocksEmpty = (!s.blocks || Object.keys(s.blocks).length === 0) && (!Array.isArray(s.block_order) || s.block_order.length === 0)
+      if (blocksEmpty && /\{%-?\s*for\s+\w+\s+in\s+section\.blocks\b/.test(read(`sections/${t}.liquid`))) emptyRendered.push(`${path.basename(tf)}:${key} (${t})`)
+    }
+  }
+  evidence.emptyRendered = emptyRendered
+  if (emptyRendered.length) {
+    warnings.push({ id: 'rw.empty-rendered-section', page: 'templates', detail: `${emptyRendered.length} section instance(s) ship with NO blocks but render via a section.blocks loop (${emptyRendered.join(', ')}) — they paint a header over an empty grid (the round-2 "hollow homepage" look). Either give the section honest non-block default content / an empty-state, seed real blocks, or omit the section until data exists — never a heading over a void.`, evidence: emptyRendered.join(', ') })
+  }
+  const missingSnippets = new Set()
+  for (const m of allLiquidText.matchAll(/\{%-?\s*(?:render|include)\s+['"]([a-z0-9_/-]+)['"]/gi)) { if (!fs.existsSync(path.resolve(cwd, 'snippets', `${m[1]}.liquid`))) missingSnippets.add(m[1]) }
+  const missingAssets = new Set()
+  for (const m of allLiquidText.matchAll(/['"]([a-z0-9_.\-]+\.(?:js|css|css\.liquid|woff2?|otf|ttf|svg|png|jpe?g|json))['"]\s*\|\s*asset_(?:url|img_url)/gi)) { if (!fs.existsSync(path.resolve(cwd, 'assets', m[1]))) missingAssets.add(m[1]) }
+  evidence.referenceIntegrity = { missingSections: [...missingSections], missingSnippets: [...missingSnippets], missingAssets: [...missingAssets] }
+  if (missingSections.size) blocker('rw.section-missing', 'layout/templates', `${missingSections.size} referenced section(s) do not exist as files: ${[...missingSections].join(', ')} — \`{% section %}\` / template "type" to a missing section throws a render error (the page cannot load). Add the section file or remove the reference (a real Minimog/Dawn base ships its chrome; a bare scaffold is incomplete).`, [...missingSections].join(', '))
+  if (missingSnippets.size) blocker('rw.snippet-missing', 'sections/layout', `${missingSnippets.size} referenced snippet(s) do not exist: ${[...missingSnippets].join(', ')} — \`{% render/include %}\` to a missing snippet is a LiquidError. Add the snippet or remove the reference.`, [...missingSnippets].join(', '))
+  if (missingAssets.size) blocker('rw.asset-missing', 'theme', `${missingAssets.size} referenced asset(s) do not exist in assets/: ${[...missingAssets].join(', ')} — a \`| asset_url\` to a missing file ships a 404 <script>/<link> (e.g. a dead carousel/JS controller). Add the asset or remove the reference.`, [...missingAssets].join(', '))
+
   // ── 1. color-scheme resolution ──────────────────────────────────────────────
   const schemesRef = new Set()
   for (const m of sectionText.matchAll(/\b(?:color-scheme|m-color|scheme)-([0-9]{1,2})\b/gi)) schemesRef.add(m[1])
@@ -147,9 +182,11 @@ function main() {
 
   // ── 2 & 3. font wiring ──────────────────────────────────────────────────────
   let headingFont = ''
+  let dsObj = null
   if (fs.existsSync(path.resolve(cwd, DS))) {
     try {
       const ds = JSON.parse(read(DS))
+      dsObj = ds
       const hf = ds.typography?.fonts?.heading ?? ds.fonts?.heading ?? ds.typography?.heading
       headingFont = typeof hf === 'string'
         ? hf
@@ -176,6 +213,45 @@ function main() {
   const setsFontFamily = /font-family\s*:/i.test(sectionText) || /--font-heading\s*:/.test(sectionText)
   if (!setsFontFamily && !definesHeadingVar) {
     warnings.push({ id: 'rw.heading-font-not-applied', page: 'sections', detail: `no custom section sets \`font-family\` and no \`--font-heading\` var is defined anywhere — headings inherit the browser/base default, not the niche's declared face. Apply the heading family (or a defined --font-heading var) on heading rules.`, evidence: '' })
+  }
+
+  // ── 3b. button variants declared but never rendered (A2 depth, 2026-06-18) ──
+  // A "premium 2-button system" that only ever renders .btn--primary is really a 1-button
+  // system — the secondary/tertiary variant is a phantom design-system entry. WARN per dead variant.
+  const variantClasses = {}
+  for (const [name, v] of Object.entries(dsObj?.buttons?.variants || {})) {
+    const classes = String(v?.class || '').split(/\s+/).map(s => s.trim()).filter(Boolean)
+      .filter(c => /(?:btn|button|cta)/i.test(c) && !/^(?:btn|button|cta)$/i.test(c)) // the variant-distinguishing class, not the base
+    if (classes.length) variantClasses[name] = classes
+  }
+  const deadVariants = []
+  for (const [name, classes] of Object.entries(variantClasses)) {
+    if (!classes.some(c => sectionText.includes(c))) deadVariants.push(`${name} (${classes[0]})`)
+  }
+  evidence.buttonVariants = { declared: Object.keys(variantClasses), dead: deadVariants }
+  if (Object.keys(variantClasses).length >= 2 && deadVariants.length) {
+    warnings.push({ id: 'rw.button-variant-unrendered', page: DS, detail: `${deadVariants.length} declared button variant(s) never render in any section (${deadVariants.join(', ')}) — a declared-but-unused variant is a phantom design-system entry (the build effectively ships fewer button styles than the contract claims). Render it or drop it from buttons.variants.`, evidence: deadVariants.join(', ') })
+  }
+
+  // ── 3c. bold weight used but not loaded → synthetic-bold flatness (A2 depth) ──
+  // When a Google-Fonts <link> or @font-face loads the family, the weights it ships are explicit
+  // (wght@400;600 / font-weight: 600). If sections set a bold weight (≥600) the load doesn't include,
+  // the browser fakes it (faux-bold) — a premium-typography tell. Best-effort; WARN. (Skips when no
+  // explicit font load to read weights from — fontLoaded via picker/asset can't enumerate weights.)
+  const fontUrlMatch = (layoutText + repoStyle).match(/wght@([0-9.;,\s]+)/i)
+  const faceWeights = [...(repoStyle.matchAll(/@font-face[\s\S]{0,200}?font-weight\s*:\s*([0-9]{3})/gi))].map(m => Number(m[1]))
+  if (fontUrlMatch || faceWeights.length) {
+    const loaded = new Set([
+      ...(fontUrlMatch ? fontUrlMatch[1].split(/[;,\s]+/).map(s => Number(String(s).split('..').pop())).filter(Boolean) : []),
+      ...faceWeights,
+    ])
+    const usedBold = new Set()
+    for (const m of (sectionText + repoStyle).matchAll(/font-weight\s*:\s*([0-9]{3})\b/gi)) { const w = Number(m[1]); if (w >= 600) usedBold.add(w) }
+    const missing = [...usedBold].filter(w => !loaded.has(w))
+    evidence.fontWeights = { loaded: [...loaded].sort(), usedBold: [...usedBold].sort(), missing }
+    if (missing.length) {
+      warnings.push({ id: 'rw.font-weight-synthetic', page: 'sections', detail: `bold weight(s) ${missing.join(', ')} are used in CSS but NOT in the loaded font (${[...loaded].sort().join(', ') || 'none'}) — the browser fakes them (faux-bold), which looks flat/heavy vs a real weight. Add the weight to the font <link>/@font-face or use a loaded weight.`, evidence: `used ${[...usedBold].join(',')} / loaded ${[...loaded].join(',')}` })
+    }
   }
 
   // ── 4. placeholder-only imagery (WARN) ──────────────────────────────────────

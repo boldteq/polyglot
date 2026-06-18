@@ -1,0 +1,8 @@
+{% schema %}{ "name": "Product", "settings": [] }{% endschema %}
+<section class="product">
+  <span class="price-item">{{ product.price | money }}</span>
+  {% form 'product', product %}
+    <variant-radios>{{ product.selected_or_first_available_variant.id }}</variant-radios>
+    <button type="submit" name="add">Add to cart</button>
+  {% endform %}
+</section>

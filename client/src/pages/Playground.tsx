@@ -13,7 +13,7 @@ import {
   getUnifiedAgents, addTraining,
   getPlaygroundHistory, savePlaygroundHistoryItem, apiError,
   getPlaygroundPreflight, getPlaygroundThreads, getPlaygroundThread, deletePlaygroundThread,
-  renamePlaygroundThread,
+  renamePlaygroundThread, getActivePlaygroundRun, cancelPlaygroundRun,
 } from '../lib/api'
 import type { PlaygroundHistoryItem, PlaygroundRunStatus, PlaygroundThread, PlaygroundPreflight } from '../lib/api'
 import { formatAgentDisplay } from '../lib/agentDisplay'
@@ -86,6 +86,9 @@ const STORAGE_KEY = STORAGE_KEY_PLAYGROUND_HISTORY
 const SETTINGS_KEY = STORAGE_KEY_PLAYGROUND_SETTINGS
 const SESSION_KEY = STORAGE_KEY_PLAYGROUND_SESSION
 const TEMPLATES_KEY = STORAGE_KEY_PLAYGROUND_TEMPLATES
+// Tracks the in-flight run across a page refresh so we can re-attach to a
+// background generation on reload. { runId, threadId, prompt }
+const ACTIVE_RUN_KEY = 'polyglot.playground.activeRun'
 
 // Stable ID with random suffix — avoids collisions on same-ms events
 const genId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -256,6 +259,9 @@ export default function Playground() {
   const hasWarnedLongOutputRef = useRef(false)
   // Active thread id for the in-flight run (ref so runTest closure reads latest)
   const activeThreadIdRef = useRef<string | null>(null)
+  // The in-flight run's id (= its historyId). Drives Stop→server-cancel and lets
+  // us re-attach to a background generation after a page refresh.
+  const activeRunIdRef = useRef<string | null>(null)
   // Race-safety: ids deleted this session. A refreshThreads() that was already
   // in-flight when the delete fired must NOT resurrect them, so every list write
   // filters this set. Cleared only on successful server delete reconcile.
@@ -647,6 +653,14 @@ export default function Playground() {
       setActiveThreadId(threadIdForRun)
     }
     let resolvedThreadId: string = threadIdForRun
+    // Track this run so Stop can server-cancel it, and persist it so a page
+    // refresh mid-generation can RE-ATTACH to the background run on reload.
+    activeRunIdRef.current = historyId
+    try { localStorage.setItem(ACTIVE_RUN_KEY, JSON.stringify({ runId: historyId, threadId: threadIdForRun, prompt: testPrompt })) } catch { /* quota */ }
+    // Did this run reach a terminal state HERE (vs. the stream being aborted by a
+    // page navigation/refresh, which leaves the run generating in the background)?
+    // Only a true terminal clears the reattach marker — see the finally block.
+    let reachedTerminal = false
     // Snapshot the running transcript so copy/export/fullscreen still reflect the
     // whole conversation (the chat bubbles render from `messages`, not this).
     const existing = transcriptPrefix || output || ''
@@ -776,11 +790,13 @@ export default function Playground() {
             const secs = Math.round((event.idleMs || 0) / 1000)
             setActivityLog(prev => [...prev.slice(-49), { message: `Stream stalled: no output for ${secs}s (server will terminate soon)`, time: elapsed }])
           } else if (event.type === 'done') {
+            reachedTerminal = true // an actual terminal EVENT (not just a closed socket)
             fullOutput = event.output || fullOutput
             setOutput(fullOutput)
             if (event.threadId) resolvedThreadId = event.threadId
             terminalState = fullOutput.trim() ? 'success' : 'empty'
           } else if (event.type === 'error') {
+            reachedTerminal = true
             // Build a structured error block. Show error line, then code/cause/tip
             // /stderrTail as labeled rows so the operator can self-diagnose.
             const lines: string[] = [`Error: ${event.error || 'Unknown error'}`]
@@ -831,6 +847,10 @@ export default function Playground() {
       if (buffer.trim()) {
         for (const line of buffer.split('\n')) processLine(line)
       }
+      // NOTE: reachedTerminal is set only when an actual done/error EVENT was
+      // received (in processLine) — NOT merely because the socket closed. A
+      // navigation/refresh closes the socket WITHOUT a terminal event, leaving
+      // the reattach marker intact so the reloaded page reconnects.
 
       const duration = Date.now() - startTimeRef.current
       const agentDisplay = resolvedAgent?.name || agentToUse || 'No Agent'
@@ -891,6 +911,7 @@ export default function Playground() {
       let bubbleStatus: PlaygroundRunStatus = 'error'
       let bubbleText = ''
       if (isIdleTimeout) {
+        reachedTerminal = true // client gave up; the server idle-timeout has killed it
         const msg = `No bytes received for ${Math.round(CLIENT_IDLE_MS / 1000)}s — stream aborted. This usually means a dev proxy is buffering the live stream. Reload, or open the app on http://localhost:3847 (the built server streams directly).`
         setOutput(prev => prev ? `${prev}\n\n---\nError: ${msg}` : `Error: ${msg}`)
         setRunState('timeout')
@@ -911,6 +932,7 @@ export default function Playground() {
         setRunState('cancelled')
         bubbleStatus = 'cancelled'; bubbleText = (outputAccRef.current ? `${outputAccRef.current}\n\n---\n` : '') + '*Cancelled by user*'
       } else {
+        reachedTerminal = true // a genuine network/parse failure — not a navigation
         const errMsg = err instanceof Error ? err.message : String(err)
         setOutput(`Error: ${errMsg}`)
         setRunState('error')
@@ -941,10 +963,111 @@ export default function Playground() {
       }
       setRunning(false)
       abortRef.current = null
+      // Clear the reattach marker ONLY if the run actually finished here. If the
+      // stream was aborted by a page refresh/navigation, the run keeps generating
+      // server-side — leave the marker so the reloaded page re-attaches to it.
+      if (reachedTerminal) {
+        activeRunIdRef.current = null
+        try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* ignore */ }
+      }
     }
   }, [prompt, running, selectedAgent, settings, allAgents, persistResult, refreshThreads])
 
-  const cancelRun = () => { abortRef.current?.abort() }
+  // Stop = explicit cancel. Refresh/navigate does NOT stop a run (it keeps
+  // generating in the background); only this kills the server-side process.
+  const cancelRun = () => {
+    const runId = activeRunIdRef.current
+    if (runId) cancelPlaygroundRun(runId).catch(() => { /* best-effort; stream will end anyway */ })
+    // Explicit Stop = the run is over: drop the reattach marker so a later reload
+    // doesn't try to reconnect to a cancelled run.
+    activeRunIdRef.current = null
+    try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* ignore */ }
+    abortRef.current?.abort()
+  }
+
+  // Re-attach to a generation that was already running on the server (e.g. after
+  // a page refresh). Loads the conversation, then streams the rest of the live
+  // answer and persists/reloads on completion. The work never stopped — we're
+  // just reconnecting a viewer to it.
+  const reattachRun = useCallback(async (runId: string, threadId: string, prompt: string) => {
+    if (running || abortRef.current) return
+    activeRunIdRef.current = runId
+    activeThreadIdRef.current = threadId
+    setActiveThreadId(threadId)
+    try {
+      const thread = await getPlaygroundThread(threadId)
+      setMessages((thread.messages || []).map(m => ({ id: m.id || genId(), role: m.role, content: m.content || '', status: (m.status as PlaygroundRunStatus) || 'success' })))
+      if (thread.agentName) setSelectedAgent(thread.agentName)
+    } catch { /* brand-new thread without persisted turns yet — fine */ }
+    setLiveUserMsg(prompt)
+    setOutput('')
+    outputAccRef.current = ''
+    setRunState('running')
+    setRunning(true)
+    setElapsedMs(0)
+    startTimeRef.current = Date.now()
+    atBottomRef.current = true
+    abortRef.current = new AbortController()
+    toast('success', 'Reconnected — your chat kept running')
+    let finished = false
+    try {
+      const resp = await fetch(`/api/playground/run/${encodeURIComponent(runId)}/stream`, { signal: abortRef.current.signal })
+      if (!resp.body) throw new Error('No reattach stream')
+      const reader = resp.body.getReader(); const dec = new TextDecoder(); let buffer = ''
+      const processLine = (line: string) => {
+        const t = line.trim(); if (!t.startsWith('data: ')) return
+        try {
+          const e = JSON.parse(t.slice(6))
+          if (e.type === 'chunk') { outputAccRef.current += e.content; setOutput(outputAccRef.current) }
+          else if (e.type === 'activity') { setActivityLog(prev => [...prev.slice(-49), { message: e.message, time: Date.now() - startTimeRef.current }]) }
+          else if (e.type === 'done') { finished = true }
+          else if (e.type === 'error') { finished = true; if (e.code !== 'run_not_found') setOutput(prev => prev || `Error: ${e.error || 'run failed'}`) }
+        } catch { /* ignore malformed */ }
+      }
+      while (true) { const { done, value } = await reader.read(); if (done) break; buffer += dec.decode(value, { stream: true }); const parts = buffer.split('\n'); buffer = parts.pop() ?? ''; for (const l of parts) processLine(l) }
+      if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l)
+    } catch { /* aborted or network drop — the run keeps going server-side */ } finally {
+      setRunning(false); abortRef.current = null; setLiveUserMsg('')
+      activeRunIdRef.current = null
+      try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* ignore */ }
+      if (finished) {
+        // The completed turn is now persisted — reload the conversation from DB.
+        try {
+          const thread = await getPlaygroundThread(threadId)
+          setMessages((thread.messages || []).map(m => ({ id: m.id || genId(), role: m.role, content: m.content || '', status: (m.status as PlaygroundRunStatus) || 'success' })))
+          const lastA = [...(thread.messages || [])].reverse().find(m => m.role === 'assistant')
+          setOutput(lastA?.content || '')
+          setRunState(thread.messages?.some(m => m.role === 'assistant' && m.status !== 'success') ? 'error' : 'success')
+        } catch { /* ignore */ }
+        refreshThreads()
+      }
+    }
+  }, [running, refreshThreads])
+
+  // On load, re-attach to a generation that was still running when the page was
+  // last refreshed / navigated away. THIS is the "survive refresh" payoff: the
+  // run never stopped server-side; we reconnect a viewer and keep streaming.
+  const reattachCheckedRef = useRef(false)
+  useEffect(() => {
+    if (reattachCheckedRef.current) return
+    reattachCheckedRef.current = true
+    let raw: string | null = null
+    try { raw = localStorage.getItem(ACTIVE_RUN_KEY) } catch { return }
+    if (!raw) return
+    let saved: { runId?: string; threadId?: string; prompt?: string } | null = null
+    try { saved = JSON.parse(raw) } catch { try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ }; return }
+    if (!saved?.runId || !saved?.threadId) { try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ }; return }
+    const { runId, threadId, prompt } = saved
+    getActivePlaygroundRun(threadId).then(info => {
+      if (info.active && info.runId === runId) {
+        reattachRun(runId, threadId, info.prompt || prompt || '')
+      } else {
+        // Finished while we were away — the result is persisted; just open it.
+        try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ }
+        openThread(threadId)
+      }
+    }).catch(() => { try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ } })
+  }, [reattachRun, openThread])
 
   // ─── Actions ──────────────────────────────────────────────────────────
 

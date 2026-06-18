@@ -60,6 +60,12 @@ const GATES = [
   // Render-wiring — tokens must RENDER, not just conform on paper (static; closes the #8/#12 blind
   // spot where color schemes + fonts are declared but never wired → flat black-on-white default).
   { name: 'render-wiring', number: 14, kind: 'static', runner: 'node', script: 'check-render-wiring.mjs' },
+  // Commerce-readiness — the PDP must be able to TRANSACT, not just render (static; catches an
+  // editorial-only product template with no form/price/variant — a store that sells nothing).
+  { name: 'commerce-readiness', number: 15, kind: 'static', runner: 'node', script: 'check-commerce-readiness.mjs' },
+  // Static a11y — the high-frequency a11y/mobile defects axe (#5, url-kind) can't catch pre-deploy
+  // (advisory WARN; A11Y_STRICT=1 promotes to block). Complements, doesn't replace, the runtime axe gate.
+  { name: 'a11y-static', number: 16, kind: 'static', runner: 'node', script: 'check-a11y-static.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────

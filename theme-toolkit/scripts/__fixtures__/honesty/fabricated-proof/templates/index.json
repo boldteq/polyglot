@@ -2,7 +2,12 @@
   "sections": {
     "sp": {
       "type": "social-proof",
-      "settings": { "summary_rating": "4.9", "total_reviews": "1,284" }
+      "settings": { "summary_rating": "4.9", "total_reviews": "1,284" },
+      "blocks": {
+        "s1": { "type": "stat", "settings": { "number": "97%", "label": "Satisfaction Rate", "caption": "Independent clinical study" } },
+        "r1": { "type": "review", "settings": { "author": "Jane D.", "quote": "This serum genuinely transformed my skin over a few weeks of daily use", "badge": "Verified purchase" } }
+      },
+      "block_order": ["s1", "r1"]
     }
   },
   "order": ["sp"]

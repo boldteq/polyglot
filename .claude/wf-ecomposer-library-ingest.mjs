@@ -1,14 +1,14 @@
 export const meta = {
   name: 'ecomposer-library-ingest',
-  description: 'Ingest a 17-page EComposer batch (9 single-product LANDING/PDP + 8 multi-product HOMEPAGE/storefront) into ~/.claude/memory/design/ecom/component-library-premium/: regenerate catalog snapshot → fetch+extract each /preview render → ordered section list → map-to-catalog → reconcile/dedup barrier (collapse the Glowly homepage family to one canonical record) → author template records + new cards + variant appends (single writer per shared file) → single map-author pass on _concept-section-map.json → verify. Banks the first multi-product HOMEPAGE recipes (prior templates were all conversion spines). New niches flagged not authored; no agent retrain patch.',
+  description: 'Ingest a per-batch set of EComposer demo pages (PDP/LANDING/HOMEPAGE + non-ecom edge cases) into ~/.claude/memory/design/ecom/component-library-premium/: regenerate catalog snapshot → fetch+extract each /preview render → ordered section list → taxonomy-aware map-to-catalog → reconcile/dedup barrier → author template records + new cards (with section-family match-guidance) + variant appends (single writer per shared file) → single map-author pass on _concept-section-map.json + register new categories in _section-taxonomy.json → verify. Section-family taxonomy keeps matching scalable to 500+ cards. New niches flagged not authored; no agent retrain patch.',
   phases: [
-    { title: 'Snapshot', detail: 'rebuild .catalog-snapshot.tmp.txt from components/*/*.md + _concept-section-map.json so the mapper sees the true current catalog (~90 cards)' },
+    { title: 'Snapshot', detail: 'rebuild .catalog-snapshot.tmp.txt from components/*/*.md + _concept-section-map.json so the mapper sees the true current catalog' },
     { title: 'Extract', detail: 'one agent per page: fetch the EComposer /preview render → ordered section list (structure + HTML sketch + guessed concept), honesty-flag risky sections' },
-    { title: 'Map', detail: 'each section labelled REUSE/VARIANT/NEW/SKIP against the catalog + concept match_tokens' },
-    { title: 'Reconcile', detail: 'single barrier agent: collapse the Glowly homepage family (4→1) + cross-page dup cards, demote false-NEW to VARIANT, emit authoritative work order' },
-    { title: 'Author', detail: 'write ~13 template records + canonical new cards + variant appends; single index sub-writer for all _index.md + ingest log (Builder=EComposer)' },
+    { title: 'Map', detail: 'taxonomy-aware: pick section family (_section-taxonomy.json) → scan family categories → REUSE/VARIANT/NEW/SKIP against the catalog' },
+    { title: 'Reconcile', detail: 'single barrier agent: collapse dedup families + cross-page dup cards, demote false-NEW to VARIANT, emit authoritative work order' },
+    { title: 'Author', detail: 'write template records + new cards (Section-family/Use-when/Matches enrichment) + variant appends; single index sub-writer for all shared files incl. _section-taxonomy.json' },
     { title: 'MapAuthor', detail: 'single agent updates _concept-section-map.json with new concepts (only writer, runs last)' },
-    { title: 'Verify', detail: 'no dup cards, dedup family collapsed, every path resolves, JSON valid, indexes + log updated, honesty notes present, niches flagged, claims accurate' },
+    { title: 'Verify', detail: 'no dup cards, dedup collapsed, every path resolves, JSON valid, indexes + log + taxonomy updated, enrichment present, honesty notes present, niches flagged, claims accurate' },
   ],
 }
 
@@ -49,40 +49,26 @@ DISCIPLINE:
 
 // EComposer demo render route: the /preview suffix returns REAL server-rendered HTML.
 // The bare /demo/{id} is a JS shell that returns only <title> — DO NOT use it.
-// Append future EComposer demo IDs to PAGES to turn this into a batch.
-// NOTE: 10329 (LUMISMOOTH body shaver) already ingested in the first run — excluded here.
-// This batch = 17 unique pages: 9 LANDING/PDP + 8 HOMEPAGE.
-// Glowly skincare homepages (10556/10107/10104/10102) are the SAME brand-template family →
-//   10556 ("GLOWLY SKIN", richest) is canonical owner; 10107/10104/10102 collapse to it (Reconcile
-//   dedups cross-page: their unique sections become variant appends, no duplicate records).
-// Recruitment landings 7391 (ambassador) + 8733 (affiliate) are near-dups but BOTH ingested (Yash).
+// PAGES is REPLACED per batch (the workflow re-extracts everything in PAGES — it does not skip
+// already-ingested pages). Prior batches (LUMISMOOTH + 18-page p2/p3) are already on disk; do not re-list them.
+//
+// BATCH 3 (page 4 of category 86) — 8 pages: 3 single-product PDPs + 3 storefront HOMEPAGEs + 2 non-ecom edge cases.
+// Edge cases (case-study, service-business) are OUT of the core ecom domain but Yash said "extract all" —
+// they bank new section types (service-cards, booking-CTA, case-study client-overview) and are flagged non-ecom.
 const PAGES = [
-  // ---- LUMISMOOTH (10329): first EComposer template; was moved to _quarantine-replo-2026-06-15/
-  //      during an unrelated Replo cleanup. Re-ingested here so it lands cleanly in the active library
-  //      alongside the rest of the cohort, deduped against the CURRENT 112-card catalog. ----
-  { id: '10329', slug: 'ecomposer-lumismooth-body-shaver-landing',   niche: "women's personal care / beauty device (electric body shaver / grooming appliance)", newNiche: true, productName: 'LUMISMOOTH™ Electric Body Shaver' },
+  // ---- Single-product PDP conversion templates (3) ----
+  { id: '6016', slug: 'ecomposer-coffee-machine-pdp',          niche: 'home-kitchen / small kitchen appliance (4-in-1 coffee machine)',  newNiche: false, productName: 'Coffee Center Barista Bar 4-in-1 Coffee Machine', pageTypeHint: 'PDP' },
+  { id: '5981', slug: 'ecomposer-automatic-tent-pdp',          niche: 'outdoor-gear / camping (automatic pop-up tent)',                  newNiche: false, productName: 'Automatic Tent (AM Tent)',                          pageTypeHint: 'PDP' },
+  { id: '5530', slug: 'ecomposer-biotin-gummies-pdp',          niche: 'supplements / beauty (biotin hair-skin-nails gummies)',           newNiche: false, productName: 'Undeniable Beauty — Beauty Boost Biotin Gummies',    pageTypeHint: 'PDP' },
 
-  // ---- Single-product LANDING / PDP conversion templates (9) ----
-  { id: '8134', slug: 'ecomposer-waterpik-water-flosser-landing',   niche: 'electronics-appliance / oral-care device (water flosser)',        newNiche: true,  productName: 'Waterpik Cordless Select Water Flosser' },
-  { id: '7254', slug: 'ecomposer-air-fryer-pro-pdp',                niche: 'home-kitchen / small kitchen appliance (air fryer)',             newNiche: true,  productName: 'Air Fryer Pro 4-in-1' },
-  { id: '7244', slug: 'ecomposer-drone-electronics-landing',        niche: 'electronics-appliance / drone (aerial tech)',                    newNiche: true,  productName: 'Ecom Drone (DJI Mini SE)' },
-  { id: '7232', slug: 'ecomposer-portable-speaker-landing',         niche: 'electronics-appliance / audio (portable Bluetooth speaker)',     newNiche: true,  productName: 'Portable Bluetooth Speaker' },
-  { id: '6670', slug: 'ecomposer-wireless-charging-dock-landing',   niche: 'electronics-appliance / charging accessory (3-in-1 dock)',        newNiche: true,  productName: '3-in-1 Magnetic Wireless Charging Dock' },
-  { id: '6388', slug: 'ecomposer-hair-dryer-se-landing',            niche: 'electronics-appliance / hair-styling tool (ionic hair dryer)',    newNiche: true,  productName: 'Hair Dryer SE' },
-  { id: '7391', slug: 'ecomposer-ambassador-program-landing',       niche: 'apparel / partner-recruitment (ambassador program)',             newNiche: false, productName: 'EComposer Ambassador Program' },
-  { id: '8733', slug: 'ecomposer-affiliate-program-landing',        niche: 'apparel / partner-recruitment (affiliate program)',              newNiche: false, productName: 'Affiliate Program (unbranded)' },
-  { id: '9708', slug: 'ecomposer-fresh-dog-food-landing',           niche: 'pet / fresh dog food delivery (subscription)',                   newNiche: false, productName: 'Fresh Dog Food Delivery (Dindex)' },
+  // ---- Multi-product storefront HOMEPAGE templates (3) ----
+  { id: '5532', slug: 'ecomposer-supplements-homepage',        niche: 'supplements / brand storefront homepage (quiz + sub-and-save)',   newNiche: false, productName: 'Ancient Nutrition (plant-based supplements homepage)', pageTypeHint: 'HOMEPAGE' },
+  { id: '5442', slug: 'ecomposer-standing-desk-homepage',      niche: 'furniture-home-decor / ergonomic office furniture (standing desks)', newNiche: true,  productName: 'Standing Desk / Ergonomic Office Furniture (homepage)', pageTypeHint: 'HOMEPAGE' },
+  { id: '5186', slug: 'ecomposer-makeup-city-homepage',        niche: 'beauty/skincare / cosmetics brand storefront homepage',           newNiche: false, productName: 'Makeup City (cosmetics homepage)',                  pageTypeHint: 'HOMEPAGE' },
 
-  // ---- Multi-product / storefront HOMEPAGE templates (8) ----
-  { id: '10556', slug: 'ecomposer-glowly-skincare-homepage',        niche: 'beauty/skincare / brand storefront homepage',                    newNiche: false, productName: 'GLOWLY SKIN (skincare brand homepage)', dedupFamily: 'glowly-homepage', canonicalOfFamily: true },
-  { id: '10107', slug: 'ecomposer-glowly-skincare-homepage-v2',     niche: 'beauty/skincare / brand storefront homepage',                    newNiche: false, productName: 'Glowly (clean-science skincare homepage)', dedupFamily: 'glowly-homepage' },
-  { id: '10104', slug: 'ecomposer-glowly-skincare-homepage-v3',     niche: 'beauty/skincare / brand storefront homepage',                    newNiche: false, productName: 'Glowly / Simply Radiant (minimalist skincare homepage)', dedupFamily: 'glowly-homepage' },
-  { id: '10102', slug: 'ecomposer-glowly-skincare-homepage-v4',     niche: 'beauty/skincare / brand storefront homepage',                    newNiche: false, productName: 'Glowly (clean/vegan skincare homepage)', dedupFamily: 'glowly-homepage' },
-  { id: '7242',  slug: 'ecomposer-power-station-homepage',          niche: 'electronics-appliance / portable power & solar (brand homepage)', newNiche: true,  productName: 'Anker SOLIX Portable Power Station (homepage)' },
-  { id: '6877',  slug: 'ecomposer-power-station-homepage-v2',       niche: 'electronics-appliance / portable power station (brand homepage)', newNiche: true,  productName: 'Portable Power Station (generic brand homepage)', dedupFamily: 'power-station-homepage' },
-  { id: '6695',  slug: 'ecomposer-electronics-store-homepage',      niche: 'electronics-appliance / multi-category electronics storefront',  newNiche: true,  productName: 'Electronics Store (multi-SKU storefront homepage)' },
-  { id: '7236',  slug: 'ecomposer-personalized-gifts-homepage',     niche: 'home-kitchen / personalized seasonal gifts (storefront homepage)', newNiche: true,  productName: 'Personalized Christmas Gifts (storefront homepage)' },
-  { id: '7365',  slug: 'ecomposer-gaming-hardware-homepage',        niche: 'electronics-appliance / gaming & computing hardware storefront',  newNiche: true,  productName: 'Gaming/Computing Hardware Store (homepage)' },
+  // ---- Non-ecom edge cases (banked for structure; flagged OUT of core ecom domain) ----
+  { id: '5475', slug: 'ecomposer-agency-case-study-landing',   niche: 'NON-ECOM / agency case-study & portfolio layout (placeholder demo content)', newNiche: true, productName: 'GreenGrow Essentials (agency case-study template)', pageTypeHint: 'LANDING', nonEcom: true },
+  { id: '5091', slug: 'ecomposer-chiropractic-clinic-homepage', niche: 'NON-ECOM / local service business (chiropractic & wellness clinic — booking, not add-to-cart)', newNiche: true, productName: 'Chiropractic & Wellness Clinic (service homepage)', pageTypeHint: 'HOMEPAGE', nonEcom: true },
 ]
 
 const url = (p) => `https://ecomposer.app/demo/${p.id}/preview`
@@ -261,11 +247,14 @@ Known niche hint: ${p.niche}. Product: ${p.productName}. Page slug: ${p.slug}.
 
 Use WebFetch on ${url(p)}. If it returns a password page, 404, or empty skeleton, set accessible=false and explain in "note".
 For EACH section: order, name, a structural description, a guessed kebab concept key, a representative semantic HTML skeleton (generic — no real copy), and honestyFlag=true if it is a countdown/scarcity/price/discount/BNPL/test-cert/OOS/live-viewer-count ("N people viewing")/award-superlative ("Voted #1") block.
-Set pageType accurately from what you actually see — do NOT assume LANDING. It may be PDP, LANDING, FUNNEL, or HOMEPAGE (multi-product storefront). Capture EVERY section in true top-to-bottom order, however many there are (these range ~7–16 sections).
+Set pageType accurately from what you actually see — do NOT assume LANDING. Expected pageType for this page: ${p.pageTypeHint || 'detect it'}. It may be PDP, LANDING, FUNNEL, or HOMEPAGE (multi-product storefront). Capture EVERY section in true top-to-bottom order, however many there are (these range ~7–16 sections).
+${p.nonEcom ? 'NOTE: this page is NON-ECOM (a service business or agency case-study) — it has no add-to-cart. Still extract its structure faithfully; its sections (service cards, booking CTA, doctor/team profiles, client-overview, goal/solution cards) are valuable structural recipes even though they sit outside core ecom. Flag newNiche=true.' : ''}
 PAGE-TYPE VOCAB:
 - LANDING / PDP / FUNNEL: hero, award/social-proof badge, value-prop, brand-trust logos, feature cards, stat block, tabbed gallery, feature grid, guarantee, limited-edition/scarcity block, testimonials, bundle/deal grid, comparison table, final CTA, footer.
 - HOMEPAGE / storefront: hero/promo banner, brand pillars, social-proof stats, "shop by category" grid, "shop by recipient" grid, featured/curated collection grid, new-arrivals grid, multi-SKU product carousel, embedded featured-product (mini-PDP) block, brand-story/credentials, routine/how-to steps, before/after carousel, blog/editorial grid, lookbook/IG gallery, newsletter signup, multi-column footer with link groups. Treat each distinct merchandising block as its own section.
 - Partner-recruitment (ambassador/affiliate) LANDING: hero, value-prop, benefit cards, how-it-works steps, commission/earnings block, application/CTA, FAQ — NO product/price/buy-box.
+- Service business (clinic/agency): hero + booking CTA, services grid, about/credentials, "why choose us", staff/doctor profile grid, booking form, testimonials, FAQ — sells appointments, not products.
+- Agency case-study: client-overview (name/industry/location), goals, solution cards, results, single testimonial, transform-your-business CTA.
 Return ONLY the structured object.`,
     { label: `extract:${p.slug}`, phase: 'Extract', schema: EXTRACT_SCHEMA },
   ),
@@ -279,7 +268,8 @@ Return ONLY the structured object.`,
       `You are the catalog-mapper for the Boldteq ecom component library. For each extracted section of this page, decide REUSE / VARIANT / NEW / SKIP against the EXISTING catalog.
 
 READ FIRST:
-- ${LIB}/.catalog-snapshot.tmp.txt  (every existing card + every concept's match_tokens — this is your matcher)
+- ${LIB}/_section-taxonomy.json  (THE TOP-LEVEL MATCHER: 10 section families → categories. For each section, first decide its FAMILY by what it DOES — hero? social-proof? offer? comparison? merchandising? — then scan only that family's member categories. This narrows ~80 categories to ~3-16 candidates fast.)
+- ${LIB}/.catalog-snapshot.tmp.txt  (every existing card + every concept's match_tokens — confirm the exact card within the family's categories)
 - ${LIB}/_concept-section-map.json  (concept rungs + tokens)
 
 PAGE: ${p.slug}  (${extract.pageType}, niche: ${extract.niche})
@@ -347,6 +337,10 @@ await parallel(work.canonicalNewCards.map((c) => () => {
 Card spec: concept "${c.concept}", rung ${c.rung}, conversion job: ${c.conversionJob}. Owner page: ${c.ownerSlug}${ownerUrl ? ` (${ownerUrl})` : ''}.
 ${c.newCategory ? `This needs a NEW category folder — create ${LIB}/${c.path.replace(/\/[^/]+$/, '/_index.md')} too (H1 category + 1-para description + table header + this card's row).` : `Append this card's row to the existing category _index.md.`}
 Re-fetch the owner page (its /preview URL) if you need the real structure. Match the card format EXACTLY (read the reference). Semantic accessible HTML (ARIA, no inline styles), mobile-first CSS custom props, optional JS as a custom element.
+
+MATCH-GUIDANCE ENRICHMENT (REQUIRED — this is how agents find the card at 500+ scale): immediately AFTER the "**Category:** · **Concept:** · **Rung:**" header line, add a second metadata line:
+**Section family:** <one of the 10 families in ${LIB}/_section-taxonomy.json — read it and pick the family whose member categories include this card's category> · **Use when:** <one concrete sentence: the buyer-funnel moment / page job this section does> · **Matches section names:** <3-6 comma-separated aliases a builder might call this section, e.g. "buy box", "add to cart", "purchase block", "product CTA">
+Then keep the existing "**Conversion job:**" paragraph as-is. The family MUST match where this card's category sits in _section-taxonomy.json (if the category is brand-new, pick the best-fit family and note it — the index writer will register it).
 ${c.honesty ? 'HONESTY: this card carries real-data binding (countdown/scarcity/price/discount/BNPL/test-cert/OOS/live-viewer-count/award). Placeholder figures must be clearly bound to real store/provider data + real ISO deadline, never invented. A "N people viewing" element must bind a real concurrency feed or be OMITTED — never a random/incrementing fake. State this in "## Responsive notes".' : ''}
 ${FORMAT_REFS}
 Write the file(s). Return a one-line confirmation of the path(s) written.`,
@@ -366,11 +360,11 @@ This page OWNS new cards: ${JSON.stringify(t.newCardPaths)} and appends variants
 Its mapped sections (authoritative):
 ${JSON.stringify(m?.mappedSections, null, 1)}
 
-This page is part of a 17-page EComposer batch (the library already has one EComposer template — LUMISMOOTH body shaver — so do NOT call this "the first EComposer template").${p?.dedupFamily ? ` NOTE: this page belongs to dedup-family "${p.dedupFamily}"${p?.canonicalOfFamily ? ' and is the CANONICAL record for it — fold the family\'s collapsed siblings\' unique sections in as variant appends and name the collapsed slugs in the brief.' : ' — if you were asked to write this record it is the canonical owner.'}` : ''}
+The library already holds many EComposer templates (LANDING/PDP/HOMEPAGE) — do NOT claim any "first EComposer" or "first homepage" milestone.${p?.nonEcom ? ' NOTE: this page is NON-ECOM (service business / agency case-study) — in "## Niche note" mark it clearly as OUT of the core ecom domain (structure banked for reuse, but not an ecom conversion recipe); flag the niche for Yash.' : ''}${p?.dedupFamily ? ` NOTE: this page belongs to dedup-family "${p.dedupFamily}"${p?.canonicalOfFamily ? ' and is the CANONICAL record for it — fold the family\'s collapsed siblings\' unique sections in as variant appends and name the collapsed slugs in the brief.' : ' — if you were asked to write this record it is the canonical owner.'}` : ''}
 
 Match the template-record format EXACTLY (read ${LIB}/templates/seal-gem-road-bike-landing.md): H1 "# Template — <Name>", Slug/URL/Niche/Page type, 1-para brief, the "## Ordered section list → component mapping" table, "## New cards written", "## New category _index.md introduced", "## Proposed new concepts (kebab)" (propose only — do NOT edit the JSON), "## Variant appends made (target + delta)", "## Niche note", "## pageType".
-For "## Niche note": if niche "${m?.niche}" is new to the library, write "Structure banked · no DNA pack yet — apply the closest existing DNA pack (name it: e.g. for an electronics/appliance device, the closest is the spec-driven hard-goods recipe; for a storefront homepage, there is no taste pack — escalate merchandising taste to Yash) and escalate niche-specific taste to Yash." Carry the honesty constraints for any badge/stat/scarcity/price/discount/OOS/viewer-count/award sections this page has.
-For "## pageType": state whether this is PDP / LANDING / FUNNEL / HOMEPAGE and what distinguishes it. If HOMEPAGE, note it is the library's first multi-product storefront-homepage recipe family and list the merchandising sections it banks (category-nav, shop-by-recipient, multi-collection grids, featured-PDP-embed, brand-story, routine steps, blog grid, lookbook/IG gallery).
+For "## Niche note": if niche "${m?.niche}" is new to the library, write "Structure banked · no DNA pack yet — apply the closest existing DNA pack (name it) and escalate niche-specific taste to Yash." Carry the honesty constraints for any badge/stat/scarcity/price/discount/OOS/viewer-count/award sections this page has.
+For "## pageType": state whether this is PDP / LANDING / FUNNEL / HOMEPAGE / service-business / case-study and what distinguishes it. If HOMEPAGE, list the merchandising sections it banks (category-nav, shop-by-recipient, multi-collection grids, featured-PDP-embed, brand-story, routine steps, blog grid, lookbook/IG gallery).
 ${FORMAT_REFS}
 Write the file. Return a one-line confirmation.`,
     { label: `tmpl:${t.slug}`, phase: 'Author' },
@@ -392,10 +386,12 @@ ${JSON.stringify(allVariantAppends, null, 1)}
 
 3. MASTER INDEX — update ${LIB}/components/_index.md: add any new categories and add rows to the "New niches surfaced" table for: ${JSON.stringify(work.newNiches)} (each "Structure banked · no DNA pack yet").
 
-4. INGEST LOG — append to ${LIB}/components/_templates-ingested.md one table row per written template (${JSON.stringify(work.templates.map((t) => t.slug))}) with Date ${TODAY}, **Builder ${BUILDER}**, correct Page type + niche + section count + Record link. Then in the DEDUP/SKIP block at the bottom add the notes: ${JSON.stringify(work.dedupNotes)}. Add a one-line milestone note: "EComposer batch (${work.templates.length} records) — first multi-product HOMEPAGE/storefront recipes banked in the library (prior templates were all single-product LANDING/PDP/FUNNEL conversion spines)."
+4. INGEST LOG — append to ${LIB}/components/_templates-ingested.md one table row per written template (${JSON.stringify(work.templates.map((t) => t.slug))}) with Date ${TODAY}, **Builder ${BUILDER}**, correct Page type + niche + section count + Record link. Then in the DEDUP/SKIP block at the bottom add the notes: ${JSON.stringify(work.dedupNotes)}. Add a one-line batch note describing what this batch added (page types + any new niches: ${JSON.stringify(work.newNiches)}).
+
+5. SECTION TAXONOMY — for EVERY new category folder created this batch (any new path in ${JSON.stringify(work.canonicalNewCards.filter((c) => c.newCategory).map((c) => c.path))}), open ${LIB}/_section-taxonomy.json and add the category NAME to the "categories" array of its best-fit family (Hero/Social-Proof/Benefits/Product-Detail/Comparison/Offer-Pricing/Urgency-Conversion/Merchandising/Content/Logistics-Chrome). Bump that family's count and _meta.categories_mapped. Keep every category in exactly ONE family. Validate the JSON still parses (node JSON.parse). This keeps the 500+-scale matcher complete.
 
 Read the format references first. ${FORMAT_REFS}
-Do NOT touch _concept-section-map.json (the MapAuthor stage owns it). Return a summary of files written.`,
+Do NOT touch _concept-section-map.json (the MapAuthor stage owns it). Return a summary of files written (incl. which categories were added to which taxonomy family).`,
   { label: 'index-writer', phase: 'Author' },
 )
 
@@ -430,8 +426,10 @@ const verdict = await agent(
 6. INDEXES + LOG — _templates-ingested.md has a row per written template (${work.templates.length} expected) + the DEDUP/SKIP notes; _index.md "New niches surfaced" updated; new categories have _index.md.
 7. HONESTY — every badge/stat/scarcity/price/discount/OOS/live-viewer-count card written carries the honest-by-construction note in "## Responsive notes". Any live-viewer-count element explicitly states "bind real concurrency feed or omit — never invented".
 8. NICHES FLAGGED — new niches ${JSON.stringify(work.newNiches)} appear as "Structure banked · no DNA pack"; nothing was written under niche-dna-packs/. (ls)
-9. DEDUP COLLAPSE — the Glowly-homepage family (10556 canonical + 10107/10104/10102) produced exactly ONE template record (no per-sibling records); same for power-station family if collapsed. Collapsed slugs appear in the DEDUP/SKIP block. (ls templates/ + grep)
-10. CLAIMS ACCURATE — any milestone/diversity wording added to _index.md or the ingest log must be literally TRUE. Do NOT assert "first non-GemPages ingest" (false — Replo live-site mines + the prior LUMISMOOTH EComposer template already exist). The correct claim is "first multi-product HOMEPAGE/storefront recipes banked." Flag any overstated wording as a FAIL with the exact line.
+9. DEDUP COLLAPSE — any dedup-family in this batch produced exactly ONE template record (no per-sibling -vN records on disk); collapsed slugs appear in the DEDUP/SKIP block. (ls templates/ + grep)
+10. CLAIMS ACCURATE — any milestone wording added to _index.md or the ingest log must be literally TRUE. Do NOT assert "first" anything that already exists (homepages, EComposer templates, non-GemPages builders all already exist). Flag overstated wording as a FAIL with the exact line.
+11. ENRICHMENT — every NEW card written this batch (${JSON.stringify(work.canonicalNewCards.map((c) => c.path))}) carries the match-guidance line "**Section family:** … · **Use when:** … · **Matches section names:** …" right after its Category/Concept/Rung header. (grep "Section family:")
+12. TAXONOMY COVERAGE — every new category folder created this batch appears in exactly one family's "categories" array in _section-taxonomy.json, and the JSON still parses. Run: node scripts/build-section-index.mjs --check (from the Polyglot repo) — it must report "no drift" (exit 0). If it lists unmapped categories, that's a FAIL.
 
 Use Bash grep/ls/node + Read. Return a checklist with PASS/FAIL + the specific defect for any FAIL.`,
   { label: 'verify', phase: 'Verify' },

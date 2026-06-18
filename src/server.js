@@ -395,17 +395,24 @@ app.listen(PORT, HOST, () => {
     console.warn(`  System schedules: boot failed — ${err.message}`);
   }
 
-  // Learning-digest catch-up: node-cron silently skips the nightly 04:00 run if
-  // the Mac was asleep/off. On boot (after a settle delay) + hourly, run the
-  // digest if its last SUCCESS is older than the catch-up window. Guarded
-  // internally (disabled/inflight/fresh → no-op), so it never double-runs.
+  // Daily-brain catch-up: node-cron silently skips a scheduled run if the Mac was
+  // asleep/off at that minute. On boot (after a settle delay) + hourly, run each
+  // overdue daily brain job if its last SUCCESS is older than the catch-up window.
+  // Without this, sys-brain-aggregate (Phase B signal producer) emits nothing until
+  // the next 06:00 cron — cold-starting the entire Phase B→C learning loop for a day.
+  // Each is guarded internally (disabled/inflight/fresh → no-op), so never double-runs.
+  // Order matters: witness (classify + ingest evals) → brain-aggregate (cross-project
+  // signals) so the aggregator sees the day's freshly-classified runs.
   const catchupHours = (() => { try { return require('./lib/configService').getConfig('learning.vscode.catchupHours') ?? 20; } catch { return 20; } })();
-  setTimeout(() => {
-    try { systemSchedules.runIfOverdue('sys-learning-digest', catchupHours); } catch (err) { console.warn(`[catchup] boot check failed: ${err.message}`); }
-  }, 30_000);
-  setInterval(() => {
-    try { systemSchedules.runIfOverdue('sys-learning-digest', catchupHours); } catch (err) { console.warn(`[catchup] hourly check failed: ${err.message}`); }
-  }, 60 * 60 * 1000);
+  const BOOT_CATCHUP = ['sys-learning-digest', 'sys-witness', 'sys-brain-aggregate'];
+  const runCatchups = (phase) => {
+    for (const id of BOOT_CATCHUP) {
+      try { systemSchedules.runIfOverdue(id, catchupHours); }
+      catch (err) { console.warn(`[catchup] ${phase} check failed for ${id}: ${err.message}`); }
+    }
+  };
+  setTimeout(() => runCatchups('boot'), 30_000);
+  setInterval(() => runCatchups('hourly'), 60 * 60 * 1000);
 
   console.log('');
 });

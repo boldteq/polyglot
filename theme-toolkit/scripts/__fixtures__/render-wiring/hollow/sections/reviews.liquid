@@ -1,0 +1,5 @@
+{% schema %}{ "name": "Reviews", "blocks": [{"type":"review","name":"Review"}], "settings": [] }{% endschema %}
+<section class="reviews"><h2>What customers say</h2>
+  {% for block in section.blocks %}<p>{{ block.settings.text }}</p>{% endfor %}
+</section>
+{% style %}.reviews{padding-top:80px;padding-bottom:80px}.reviews h2{font-size:39px}{% endstyle %}

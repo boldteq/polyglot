@@ -30,11 +30,14 @@ function runGate(themeDir) {
   return { code: r.status, report }
 }
 
-console.log('case (a) wired theme (schemes + font actually wired) → expect exit 0')
+console.log('case (a) wired theme (schemes + font actually wired) → expect exit 0 + font-weight-synthetic warn')
 {
   const { code, report } = runGate(path.join(HERE, 'wired'))
   if (code === 0) pass(`exit 0 (pass=${report?.pass})`)
   else fail(`expected exit 0, got ${code}; blockers=${JSON.stringify(report?.blockers?.map(b => b.id))}`)
+  const warnIds = new Set((report?.warnings || []).map(w => w.id))
+  if (warnIds.has('rw.font-weight-synthetic')) pass('warning present: rw.font-weight-synthetic (used 600, loaded 400)')
+  else fail(`missing expected warning: rw.font-weight-synthetic (saw ${[...warnIds].join(', ') || 'none'})`)
 }
 
 console.log('case (b) unwired theme (color-scheme classes + custom font, nothing wired) → expect exit 1')
@@ -47,6 +50,31 @@ console.log('case (b) unwired theme (color-scheme classes + custom font, nothing
     if (ids.has(id)) pass(`blocker present: ${id}`)
     else fail(`missing expected blocker: ${id} (saw ${[...ids].join(', ') || 'none'})`)
   }
+  const warnIds = new Set((report?.warnings || []).map(w => w.id))
+  if (warnIds.has('rw.button-variant-unrendered')) pass('warning present: rw.button-variant-unrendered (secondary declared, never rendered)')
+  else fail(`missing expected warning: rw.button-variant-unrendered (saw ${[...warnIds].join(', ') || 'none'})`)
+}
+
+console.log('case (c) broken-refs theme (missing section/snippet/asset references) → expect exit 1')
+{
+  const { code, report } = runGate(path.join(HERE, 'broken-refs'))
+  const ids = new Set((report?.blockers || []).map(b => b.id))
+  if (code === 1) pass('exit 1 (block)')
+  else fail(`expected exit 1, got ${code}; blockers=${JSON.stringify([...ids])}`)
+  for (const id of ['rw.section-missing', 'rw.snippet-missing', 'rw.asset-missing']) {
+    if (ids.has(id)) pass(`blocker present: ${id}`)
+    else fail(`missing expected blocker: ${id} (saw ${[...ids].join(', ') || 'none'})`)
+  }
+}
+
+console.log('case (d) hollow theme (section wired with no blocks but renders section.blocks) → expect exit 0 + empty-rendered warn')
+{
+  const { code, report } = runGate(path.join(HERE, 'hollow'))
+  if (code === 0) pass('exit 0 (advisory)')
+  else fail(`expected exit 0, got ${code}; blockers=${JSON.stringify(report?.blockers?.map(b => b.id))}`)
+  const warnIds = new Set((report?.warnings || []).map(w => w.id))
+  if (warnIds.has('rw.empty-rendered-section')) pass('warning present: rw.empty-rendered-section')
+  else fail(`missing expected warning: rw.empty-rendered-section (saw ${[...warnIds].join(', ') || 'none'})`)
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
