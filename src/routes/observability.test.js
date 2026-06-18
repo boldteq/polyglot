@@ -6,6 +6,7 @@
 const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
+const http = require('node:http');
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -33,9 +34,26 @@ before(async () => {
   base = `http://127.0.0.1:${server.address().port}/api`;
 });
 
-after(() => { server?.closeAllConnections?.(); server?.close(); });
+after(async () => {
+  await new Promise((resolve) => (server ? server.close(resolve) : resolve()));
+  try { db.getDb().close(); } catch { /* already closed */ }
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* best-effort */ }
+});
 
-const get = async (p) => (await fetch(base + p)).json();
+// node:http with `agent: false` so no keep-alive socket pool is created. Global
+// fetch() (undici) would pin the event loop with an idle keep-alive socket and force
+// a dependency on --test-force-exit; this lets the process exit on its own.
+const get = (p) => new Promise((resolve, reject) => {
+  const req = http.request(base + p, { agent: false }, (res) => {
+    let body = '';
+    res.on('data', (chunk) => { body += chunk; });
+    res.on('end', () => {
+      try { resolve(JSON.parse(body)); } catch (err) { reject(err); }
+    });
+  });
+  req.on('error', reject);
+  req.end();
+});
 
 test('GET /observability/spend returns real cost', async () => {
   const spend = await get('/observability/spend');

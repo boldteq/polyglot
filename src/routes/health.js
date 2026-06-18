@@ -30,8 +30,8 @@ function getDiskStats() {
   return data;
 }
 
-// GET /api/health — Q29: deep health (DB ping + disk + memory + uptime)
-router.get('/health', (req, res) => {
+// GET /api/health — Q29: deep health (DB ping + disk + memory + uptime + brain calibration)
+router.get('/health', async (req, res) => {
   const memUsage = process.memoryUsage();
   const result = {
     status: 'ok',
@@ -61,6 +61,23 @@ router.get('/health', (req, res) => {
   } catch (err) {
     result.db = { status: 'error', error: 'DB unavailable' };
     result.status = 'degraded';
+  }
+
+  // Brain: is the LLM-judge calibrated? When it's missing/stale the self-improvement
+  // loop silently HOLDS every auto-patch (governor fail-safe). Surface that here so a
+  // paused brain is observable from /health, not only buried in a weekly tutor run.
+  try {
+    const { getEvalCalibration } = await import('../intelligence/governor.mjs');
+    const calib = getEvalCalibration();
+    result.brain = { evalCalibrated: calib.calibrated, reason: calib.reason, calibrationAgeDays: calib.ageDays };
+    if (!calib.calibrated) {
+      result.brain.evalMissing = calib.reason === 'missing';
+      result.alerts.push(calib.reason === 'missing'
+        ? 'Eval judge never calibrated — self-improvement autos are held (run sys-intel-eval)'
+        : `Eval judge ${calib.reason} — self-improvement autos are held`);
+    }
+  } catch (err) {
+    result.brain = { evalCalibrated: false, reason: 'error', error: 'calibration read failed' };
   }
 
   // Disk space (Q59: alert at <10% free) — cached 60s, see getDiskStats.

@@ -5,7 +5,7 @@
 const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
-const { test, before } = require('node:test');
+const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'polyglot-obs-'));
@@ -14,6 +14,13 @@ process.env.POLYGLOT_DB_PATH = path.join(TMP, 'test.db');
 const db = require('./db');
 
 before(() => { db.getDb(); }); // run migrations v1..v23 on the temp DB
+
+// Close the sqlite handle + remove the temp dir so the process exits on its own
+// (no open connection pinning the event loop → no dependency on --test-force-exit).
+after(() => {
+  try { db.getDb().close(); } catch { /* already closed */ }
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* best-effort */ }
+});
 
 test('cost_logs: real-vs-estimated spend roll-up', () => {
   db.logCost({ runId: 'r1', agentName: 'spark', model: 'claude-opus-4-8', inputTokens: 1200, outputTokens: 800, costUsd: 0.078, estimated: false, source: 'test' });

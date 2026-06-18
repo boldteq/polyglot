@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import {
   Brain, Zap, Eye, RotateCcw, AlertTriangle, CheckCircle2, XCircle, ShieldCheck,
-  Layers, Database, Clock, TrendingUp, GitBranch, Sparkles, FileText,
+  Layers, Database, Clock, TrendingUp, TrendingDown, GitBranch, Sparkles, FileText,
   Loader2, Check, X, AlertCircle, Trash2, Activity,
   type LucideIcon,
 } from 'lucide-react'
 import {
   getBrainPatches, getBrainTimeline, applyBrainPatch, rejectBrainPatch,
-  type BrainOverview, type BrainPatch, type BrainTimelineEntry, type EvalTrendPoint,
+  getBrainSignals, updateBrainSignalStatus,
+  type BrainOverview, type BrainPatch, type BrainSignal, type BrainTimelineEntry, type EvalTrendPoint,
 } from '../lib/api'
 import { useCachedApi } from '../hooks/useCachedApi'
 import { CacheKeys } from '../lib/cacheKeys'
@@ -84,6 +85,89 @@ function EvalSpark({ trend }: { trend: EvalTrendPoint[] }) {
         const tone = p.overall >= 0.7 ? 'bg-emerald/70' : p.overall >= 0.5 ? 'bg-amber/70' : 'bg-red/60'
         return <div key={i} className={`flex-1 rounded-sm ${tone}`} style={{ height: h }} title={`${Math.round(p.overall * 100)}%${p.caseId ? ` · ${p.caseId}` : ''} · ${relTime(p.ts)}`} />
       })}
+    </div>
+  )
+}
+
+// ── Detected weaknesses: eval_drop signals (consequence-learning, gap #2) ──────
+// These are raw "an agent's judge score fell below floor" detections from the
+// Witness sweep. They route to REVIEW (never auto) — a low score may be the
+// agent's fault OR the judge's (when miscalibrated, severity is forced 'low' and
+// judge_calibrated:false). Human triage: acknowledge (seen, no action) or dismiss
+// (stop re-surfacing). Patches, if any, still flow through Training Review above.
+function num(e: Record<string, unknown>, k: string): number | null {
+  const v = e[k]
+  return typeof v === 'number' && Number.isFinite(v) ? v : null
+}
+function EvalDropSignals() {
+  const signals = useCachedApi(CacheKeys.brainSignals('open'), () => getBrainSignals('open', 'eval_drop'))
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const items = (signals.data?.items ?? []).filter((s) => s.kind === 'eval_drop')
+
+  async function triage(s: BrainSignal, status: 'acknowledged' | 'dismissed') {
+    setBusyId(s.id)
+    try {
+      await updateBrainSignalStatus(s.id, status)
+      toast(status === 'dismissed' ? 'warn' : 'success',
+        status === 'dismissed' ? `Dismissed · won't re-surface for ${agentName(s.agent)}` : `Acknowledged · ${agentName(s.agent)}`)
+      signals.refetch()
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Update failed')
+    } finally { setBusyId(null) }
+  }
+
+  // Silent when clean — no card noise if nothing's wrong.
+  if ((signals.loading && !signals.data) || items.length === 0) return null
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <TrendingDown className="w-4 h-4 text-amber" />
+        <h3 className="text-sm font-semibold text-text">Detected weaknesses</h3>
+        <span className="text-[11px] text-text-muted">{items.length} agent{items.length === 1 ? '' : 's'} below the eval floor</span>
+      </div>
+      <div className="space-y-2.5">
+        {items.map((s) => {
+          const mean = num(s.evidence, 'mean')
+          const floor = num(s.evidence, 'floor')
+          const n = num(s.evidence, 'n')
+          const fails = num(s.evidence, 'fails')
+          const calibrated = s.evidence.judge_calibrated !== false
+          const reason = typeof s.evidence.judge_reason === 'string' ? s.evidence.judge_reason : null
+          const busy = busyId === s.id
+          return (
+            <div key={s.id} className="card p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase ${SEVERITY_META[s.severity] ?? SEVERITY_META.low}`}>{s.severity}</span>
+                    <span className="text-sm font-semibold text-text">{agentName(s.agent)}</span>
+                    {!calibrated && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-border bg-surface-2 text-text-muted" title={`The eval judge is ${reason ?? 'miscalibrated'} — this score isn't credible evidence against the agent, so no PIP is triggered.`}>
+                        judge {reason ?? 'miscalibrated'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-text-muted mt-1">
+                    <span>mean <strong className={mean != null && floor != null && mean < floor ? 'text-red' : 'text-text'}>{mean != null ? mean.toFixed(2) : '—'}</strong> / floor {floor != null ? floor.toFixed(2) : '—'}</span>
+                    {n != null && <span>n={n}</span>}
+                    {fails != null && fails > 0 && <span>{fails} fail{fails === 1 ? '' : 's'}</span>}
+                    <span>{relTime(s.ts)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => triage(s, 'dismissed')} disabled={busy} className="btn-ghost btn-sm text-text-muted hover:bg-surface-2 disabled:opacity-50" title="Dismiss — stop re-surfacing this signal">
+                    {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />} Dismiss
+                  </button>
+                  <button onClick={() => triage(s, 'acknowledged')} disabled={busy} className="btn-ghost btn-sm disabled:opacity-50" title="Acknowledge — mark seen, keep watching">
+                    {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Acknowledge
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -210,6 +294,9 @@ export default function BrainPanel({ ov, loading, error, onRetry }: BrainPanelPr
           )}
         </div>
       </div>
+
+      {/* Detected weaknesses (eval_drop signals) — consequence learning made visible */}
+      <EvalDropSignals />
 
       {/* Training Review inbox */}
       <div>

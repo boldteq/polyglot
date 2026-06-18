@@ -23,10 +23,13 @@
 
 const db = require('../db');
 
+// These two MUST stay in lock-step with governor.AUTO_POLICY (minOccurrences/minProjects)
+// — the aggregator emits the evidence, the governor reads it back to decide auto-vs-review.
+// If you change the bar, change it in BOTH places (governor.mjs AUTO_POLICY ↔ here).
 const DEFAULTS = {
   windowDays: 30,
-  minOccurrences: 3, // governor's auto bar (kept in sync with governor.AUTO_POLICY)
-  minProjects: 2,
+  minOccurrences: 3, // ↔ governor.AUTO_POLICY.minOccurrences
+  minProjects: 2,    // ↔ governor.AUTO_POLICY.minProjects
 };
 
 // Runs whose agent we can't attribute to a specific specialist — skip (a signal
@@ -67,6 +70,32 @@ function decodeProject(projectId) {
   return raw;
 }
 
+// VS Code / Playground runs carry a sessionId but usually NO projectId (the digest
+// captures the SESSION's project; the run/inbox row doesn't echo the path). Those rows
+// used to collapse to 'unknown', so a genuine cross-project weakness from VS Code work
+// could never reach the 2-distinct-project auto bar — it stayed stuck at review forever.
+// We recover the real project from vscode_session.project, keyed by sessionId. Built
+// ONCE per scan (one query, not N) and shared across all three scanners.
+function loadSessionProjectMap() {
+  const map = new Map();
+  try {
+    const rows = db.getDb().prepare(
+      "SELECT sessionId, project FROM vscode_session WHERE project IS NOT NULL AND project != ''"
+    ).all();
+    for (const r of rows) if (r.sessionId && r.project) map.set(r.sessionId, String(r.project));
+  } catch { /* table absent in a minimal probe DB — fall back to 'unknown' */ }
+  return map;
+}
+
+// Resolve a row to its real project: an explicit project / decoded projectId wins;
+// otherwise recover it from the session map; otherwise 'unknown'.
+function resolveProject({ project, projectId, sessionId } = {}, sessionMap) {
+  const direct = project || decodeProject(projectId);
+  if (direct && direct !== 'unknown') return direct;
+  if (sessionId && sessionMap && sessionMap.has(sessionId)) return sessionMap.get(sessionId);
+  return 'unknown';
+}
+
 // Meets the governor's auto bar → 'high' severity hint; weaker repeat → 'medium'.
 function severityFor(occurrences, projectCount, cfg) {
   return (occurrences >= cfg.minOccurrences && projectCount >= cfg.minProjects) ? 'high' : 'medium';
@@ -101,7 +130,7 @@ function emitSignal(payload) {
 
 // ── Source 1 — failure clusters from agent_runs ──────────────────────────────
 
-function scanFailures(cfg) {
+function scanFailures(cfg, sessionMap) {
   const out = [];
   let runs = [];
   try { runs = db.getRecentAgentRuns(cfg.windowDays * 24) || []; } catch { runs = []; }
@@ -112,7 +141,7 @@ function scanFailures(cfg) {
     if (UNATTRIBUTABLE.has(agent)) continue;
     const sig = normalizeSignature(r.error || r.prompt || '');
     if (!sig || sig.length < 6) continue; // too thin to be a real signature
-    const proj = decodeProject(r.metadata && r.metadata.projectId) || 'unknown';
+    const proj = resolveProject({ projectId: r.metadata && r.metadata.projectId, sessionId: r.metadata && r.metadata.sessionId }, sessionMap);
     const key = `${agent}|${sig}`;
     let g = groups.get(key);
     if (!g) { g = { agent, sig, count: 0, projects: new Set(), sample: r.error || r.prompt || '' }; groups.set(key, g); }
@@ -175,7 +204,7 @@ function scanCorrections(cfg) {
 // names one; otherwise bucket under a domain tag (still useful as a cross-project
 // trend, just not auto-patchable — the governor will route it to review).
 
-function scanLearningAntipatterns(cfg) {
+function scanLearningAntipatterns(cfg, sessionMap) {
   const out = [];
   let rows = [];
   try {
@@ -199,7 +228,7 @@ function scanLearningAntipatterns(cfg) {
     const bucket = UNATTRIBUTABLE.has(agent) ? `domain:${(payload.domain || 'general')}` : agent;
     const sig = normalizeSignature(`${r.title} ${rootCause}`);
     if (!sig || sig.length < 6) continue;
-    const proj = r.project || 'unknown';
+    const proj = resolveProject({ project: r.project, sessionId: r.sessionId }, sessionMap);
     const key = `${bucket}|${sig}`;
     let g = groups.get(key);
     if (!g) { g = { agent: bucket, sig, count: 0, projects: new Set(), title: r.title, rootCause }; groups.set(key, g); }
@@ -224,9 +253,12 @@ function scanLearningAntipatterns(cfg) {
 
 function detectCrossProjectSignals(opts = {}) {
   const cfg = { ...DEFAULTS, ...opts };
-  const failures = scanFailures(cfg);
-  const corrections = scanCorrections(cfg);
-  const antipatterns = scanLearningAntipatterns(cfg);
+  // One shared sessionId→project map: recovers the real project for VS Code/Playground
+  // rows that carry only a sessionId, so they reach the cross-project auto bar (FIX #7).
+  const sessionMap = loadSessionProjectMap();
+  const failures = scanFailures(cfg, sessionMap);
+  const corrections = scanCorrections(cfg); // corrections carry no project (P0 regardless)
+  const antipatterns = scanLearningAntipatterns(cfg, sessionMap);
 
   const all = [...failures.emitted, ...corrections.emitted, ...antipatterns.emitted];
   const newCount = all.filter((s) => s && s.isNew).length;
@@ -250,4 +282,6 @@ module.exports = {
   detectCrossProjectSignals,
   normalizeSignature, // exported for tests + the trainer's signature matching
   decodeProject,
+  resolveProject,        // exported for tests (FIX #7 — session→project recovery)
+  loadSessionProjectMap,
 };

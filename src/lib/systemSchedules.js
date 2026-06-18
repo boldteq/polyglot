@@ -126,8 +126,8 @@ const DEFINITIONS = [
   {
     id: 'sys-intel-eval',
     name: 'Intelligence eval self-test (weekly)',
-    description: 'Run the LLM-as-judge golden self-test (Pillar 3), catch judge drift, ingest scores into eval_scores for Witness.',
-    cron: '0 5 * * 0',
+    description: 'Run the LLM-as-judge golden self-test (Pillar 3), catch judge drift, ingest scores into eval_scores for Witness. Runs Sun 01:00 — BEFORE sys-tutor (02:00) so the trainer reads a fresh calibration, not last week\'s.',
+    cron: '0 1 * * 0',
     agentName: 'luna',
     handler: 'intelEval',
     needsLlm: true,
@@ -306,7 +306,23 @@ const HANDLERS = {
   async witnessSweep() {
     const { org, experience, hr, loadRecentAgentRuns } = requireDeps();
     const recent = loadRecentAgentRuns(24);
-    const result = hr.runWitnessSweep(org, experience, recent);
+
+    // Pillar 3 → Witness: pull any new LLM-judge scores from eval-runs.jsonl into
+    // eval_scores BEFORE the sweep reads them — otherwise runWitnessSweep classifies
+    // on yesterday's eval_scores and today's judged outputs never raise an eval_drop
+    // (the learn-from-consequences loop was dead until this ran first). Idempotent.
+    let evalIngested = 0;
+    try { evalIngested = (db.ingestEvalRuns() || {}).ingested || 0; } catch (err) {
+      console.warn(`[systemSchedules] eval ingest failed: ${err.message}`);
+    }
+
+    // FIX #11 — read the judge calibration ONCE and hand it to the sweep so eval_drop /
+    // PIP decisions agree with the rest of the brain (no double-read, no drift).
+    let evalCalibration;
+    try { evalCalibration = (await import('../intelligence/governor.mjs')).getEvalCalibration(); }
+    catch (err) { console.warn(`[systemSchedules] calibration read failed: ${err.message}`); evalCalibration = undefined; }
+
+    const result = hr.runWitnessSweep(org, experience, recent, { evalCalibration });
 
     let escalationsAdvanced = 0;
     try {
@@ -322,13 +338,6 @@ const HANDLERS = {
       tasks.reconcileLoad();
     } catch (err) {
       console.warn(`[systemSchedules] task reconcile failed: ${err.message}`);
-    }
-
-    // Pillar 3 → Witness: pull any new LLM-judge scores from eval-runs.jsonl into
-    // eval_scores so Witness reasons on the independent judge, not self-report.
-    let evalIngested = 0;
-    try { evalIngested = (db.ingestEvalRuns() || {}).ingested || 0; } catch (err) {
-      console.warn(`[systemSchedules] eval ingest failed: ${err.message}`);
     }
 
     return {
@@ -373,6 +382,7 @@ const HANDLERS = {
   // touched (the governor forces those to review). Runs weekly after sys-brain-aggregate.
   async tutorTraining() {
     const { runTrainerPass } = await import('../intelligence/trainer.mjs');
+    const { getEvalCalibration } = await import('../intelligence/governor.mjs');
     const cfgN = (k, d) => { const v = configService.getConfig(k); return Number.isFinite(v) ? v : d; };
     const cfg = {
       observeWindowHours: cfgN('trainer.observeWindowHours', 504),
@@ -381,16 +391,43 @@ const HANDLERS = {
       cooldownHours: cfgN('trainer.cooldownHours', 48),
       minObserveHours: cfgN('trainer.minObserveHours', 24),
     };
-    const { cycle, impact } = runTrainerPass({ apply: true, cfg });
+    // FIX #9 — read the judge calibration ONCE, here, with explicit error logging, and
+    // pass the boolean into the trainer so the whole cycle agrees on one reading. A
+    // swallowed SQLITE_BUSY used to silently hold every auto with no trace; getEvalCalibration
+    // already logs + fails safe (calibrated:false, reason:'error').
+    const calib = getEvalCalibration();
+    const { cycle, impact } = runTrainerPass({ apply: true, cfg, evalCalibrated: calib.calibrated });
     // Phase D.1 — if the trainer changed any agent .md, wake the reindex drain so the
     // new guardrail is searchable in ~60s (the trainer already queued the changed refs).
     if (cycle.applied.length || impact.reverted.length) {
       try { agentSync.events.emit('memory.changed', { reason: 'trainer' }); } catch { /* nightly reindex backstop */ }
     }
-    const evalNote = cycle.evalCalibrated ? '' : ' [eval miscalibrated → autos held for review]';
+    // FIX #6 — when the judge is miscalibrated the trainer HOLDS every auto. Make that
+    // blocker VISIBLE (a kind='alert' Brain-timeline row + /api/health), not a buried
+    // inline note: a silently-stuck self-improvement loop looks identical to "nothing to do".
+    const BLOCKER_WHY = {
+      missing: 'eval selftest never recorded — run sys-intel-eval to calibrate the judge',
+      stale: `eval selftest ${calib.ageDays}d old (> ${calib.maxAgeDays}d) — re-run sys-intel-eval`,
+      'weak-ratio': 'eval selftest pass-ratio below 0.8 — judge not separating good from bad',
+      'low-separation': 'eval selftest good–bad separation below 0.3 — judge drift',
+      invalid: 'eval selftest record malformed — re-run sys-intel-eval',
+      error: `eval calibration read errored: ${calib.error || 'unknown'}`,
+    };
+    if (!calib.calibrated) {
+      const why = BLOCKER_WHY[calib.reason] || `eval miscalibrated (${calib.reason})`;
+      try {
+        db.logSelfImprovement({ kind: 'alert', agent: 'tutor', decision: calib.reason,
+          summary: `Self-improvement autos HELD — ${why}`,
+          data: { blocker: 'eval-miscalibrated', ...calib } });
+      } catch (e) { console.warn('[tutorTraining] alert log failed:', e.message); }
+    }
+    // FIX #10 — name the calibration state in the run output: age when healthy, reason when blocked.
+    const calibNote = calib.calibrated
+      ? (calib.ageDays != null ? ` [calibration: ${calib.ageDays}d old]` : '')
+      : ` [eval miscalibrated (${calib.reason}) → autos held for review]`;
     return {
-      output: `Trainer: ${cycle.applied.length} auto-applied · ${cycle.proposed.length} to review · ${cycle.rejected.length} rejected · ${cycle.skipped.length} skipped (of ${cycle.scanned} open signals)${evalNote}. Impact: ${impact.measured.length} measured, ${impact.reverted.length} rolled back, ${impact.waiting.length} settling.`,
-      metadata: { trainer: true, cycle, impact },
+      output: `Trainer: ${cycle.applied.length} auto-applied · ${cycle.proposed.length} to review · ${cycle.rejected.length} rejected · ${cycle.skipped.length} skipped (of ${cycle.scanned} open signals)${calibNote}. Impact: ${impact.measured.length} measured, ${impact.reverted.length} rolled back, ${impact.waiting.length} settling.`,
+      metadata: { trainer: true, cycle, impact, calibration: calib },
     };
   },
 
@@ -597,7 +634,22 @@ const HANDLERS = {
     const res = await runIntelScript('eval/run-eval.mjs', ['--selftest'], { ctx, timeoutMs: 12 * 60 * 1000, label: 'eval' });
     let ingested = 0;
     try { ingested = (db.ingestEvalRuns() || {}).ingested || 0; } catch (err) { console.warn('[systemSchedules] ingestEvalRuns failed:', err.message); }
-    return { output: `${res.output}; ingested ${ingested} eval score(s) into Witness`, metadata: { ...res.metadata, ingested } };
+    // FIX #10 — surface the selftest that was just written: it IS the calibration the
+    // trainer reads next (now at 02:00, after this 01:00 run). Name pass-ratio + separation
+    // so judge drift is visible here, not only later when the trainer holds autos.
+    let selftest = null, calibration = null;
+    try {
+      const { getEvalCalibration } = await import('../intelligence/governor.mjs');
+      selftest = db.getLatestSelftest?.() || null;
+      calibration = getEvalCalibration();
+    } catch (err) { console.warn('[systemSchedules] selftest read failed:', err.message); }
+    const stPart = selftest
+      ? `; selftest ${selftest.calibrated}/${selftest.total} calibrated, sep ${Number(selftest.meanSeparation ?? 0).toFixed(3)} → ${calibration?.calibrated ? 'CALIBRATED' : `miscalibrated (${calibration?.reason})`}`
+      : '; no selftest record written';
+    return {
+      output: `${res.output}; ingested ${ingested} eval score(s) into Witness${stPart}`,
+      metadata: { ...res.metadata, ingested, selftest, calibration },
+    };
   },
 
   // Phase D.1: drain the reindex change-queue and SCOPED-incrementally re-embed

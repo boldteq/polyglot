@@ -8,7 +8,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { decide, selftestCalibrated } from './governor.mjs'
+import { decide, selftestCalibrated, evalCalibration } from './governor.mjs'
 
 // Fixed clock so freshness checks are deterministic (no Date.now flake).
 const NOW = Date.parse('2026-06-18T00:00:00.000Z')
@@ -106,4 +106,49 @@ test('decide: multi-agent blast radius downgrades a strong signal → review', (
 test('decide: a P0 Yash correction clears the evidence bar on its own → auto', () => {
   const v = decide({ ...STRONG, signal: { kind: 'yash_correction', severity: 'p0' } }, { evalCalibrated: true })
   assert.equal(v.decision, 'auto', v.reasons.join(','))
+})
+
+// ── evalCalibration: the rich assessment behind the boolean (FIX #9/#10) ──────
+// Every blocking reason is distinct so /health + the tutor alert can say WHY the
+// brain paused (missing vs stale vs weak) instead of an opaque "not calibrated".
+test('evalCalibration: fresh passing self-test → ok + ageDays', () => {
+  const a = evalCalibration(PASSING, { now: NOW })
+  assert.equal(a.calibrated, true)
+  assert.equal(a.reason, 'ok')
+  assert.equal(a.ageDays, 1)
+  assert.equal(a.maxAgeDays, 14)
+})
+
+test('evalCalibration: missing self-test → reason "missing", null age', () => {
+  const a = evalCalibration(null, { now: NOW })
+  assert.deepEqual([a.calibrated, a.reason, a.ageDays], [false, 'missing', null])
+})
+
+test('evalCalibration: total 0 → reason "invalid"', () => {
+  const a = evalCalibration({ total: 0, calibrated: 0, meanSeparation: 0.8, at: isoDaysAgo(1) }, { now: NOW })
+  assert.equal(a.calibrated, false)
+  assert.equal(a.reason, 'invalid')
+})
+
+test('evalCalibration: low ratio → reason "weak-ratio"', () => {
+  const a = evalCalibration({ total: 6, calibrated: 4, meanSeparation: 0.8, at: isoDaysAgo(1) }, { now: NOW })
+  assert.equal(a.reason, 'weak-ratio')
+})
+
+test('evalCalibration: weak separation → reason "low-separation"', () => {
+  const a = evalCalibration({ total: 6, calibrated: 6, meanSeparation: 0.2, at: isoDaysAgo(1) }, { now: NOW })
+  assert.equal(a.reason, 'low-separation')
+})
+
+test('evalCalibration: stale self-test → reason "stale" + the real age', () => {
+  const a = evalCalibration({ ...PASSING, at: isoDaysAgo(30) }, { now: NOW })
+  assert.equal(a.calibrated, false)
+  assert.equal(a.reason, 'stale')
+  assert.equal(a.ageDays, 30)
+})
+
+test('evalCalibration: selftestCalibrated boolean shim matches .calibrated', () => {
+  for (const st of [PASSING, null, { total: 6, calibrated: 4, meanSeparation: 0.8, at: isoDaysAgo(1) }, { ...PASSING, at: isoDaysAgo(30) }]) {
+    assert.equal(selftestCalibrated(st, { now: NOW }), evalCalibration(st, { now: NOW }).calibrated)
+  }
 })

@@ -1702,6 +1702,22 @@ export const renamePlaygroundThread = (id: string, title: string) =>
 export const deletePlaygroundThread = (id: string) =>
   request(`/playground/threads/${encodeURIComponent(id)}`, { method: 'DELETE' })
 
+// Background-run resilience: is a generation still running for this conversation
+// (e.g. after a page refresh)? Used to re-attach to the live stream on reload.
+export interface ActivePlaygroundRun {
+  active: boolean
+  runId?: string
+  threadId?: string | null
+  agentName?: string
+  prompt?: string
+  output?: string
+  startedAt?: number
+}
+export const getActivePlaygroundRun = (threadId: string) =>
+  request<ActivePlaygroundRun>(`/playground/active?threadId=${encodeURIComponent(threadId)}`)
+export const cancelPlaygroundRun = (runId: string) =>
+  request<{ ok: boolean; alreadyDone?: boolean }>(`/playground/run/${encodeURIComponent(runId)}/cancel`, { method: 'POST', body: '{}' })
+
 // ── Backup System ─────────────────────────────────────────────────────────────
 
 export type BackupErrorCode =
@@ -2775,8 +2791,18 @@ export interface BrainPatch {
 }
 export const getBrainPatches = (status = 'proposed') =>
   request<{ items: BrainPatch[]; counts: BrainStats['patches'] }>(`/brain/patches?status=${encodeURIComponent(status)}`)
-export const getBrainSignals = (status?: string) =>
-  request<{ items: BrainSignal[] }>(`/brain/signals${status ? `?status=${encodeURIComponent(status)}` : ''}`)
+export const getBrainSignals = (status?: string, kind?: string) => {
+  const qs = new URLSearchParams()
+  if (status) qs.set('status', status)
+  if (kind) qs.set('kind', kind)
+  const q = qs.toString()
+  return request<{ items: BrainSignal[] }>(`/brain/signals${q ? `?${q}` : ''}`)
+}
+export const updateBrainSignalStatus = (id: string, status: 'acknowledged' | 'dismissed' | 'open') =>
+  request<{ ok: boolean; id: string; status: string }>(`/brain/signals/${id}/status`, {
+    method: 'POST',
+    body: JSON.stringify({ status }),
+  })
 export const getBrainTimeline = (limit = 50) =>
   request<{ items: BrainTimelineEntry[] }>(`/brain/timeline?limit=${limit}`)
 export const applyBrainPatch = (id: string) =>

@@ -34,6 +34,18 @@ const REVIEWS_DIR = path.join(ORG_DIR, 'reviews');
 const ONBOARDING_DIR = path.join(ORG_DIR, 'onboarding');
 const PLAYBOOKS_DIR = path.join(ORG_DIR, 'playbooks');
 
+// Best-effort SYNC read of the LLM-judge calibration (FIX #11). The governor is ESM;
+// require(esm) works on the pinned Node 20.20.1. If it can't load, default to calibrated
+// so a module-load hiccup never silently DISABLES agent accountability — the scheduled
+// sweep passes the authoritative value via opts.evalCalibration anyway.
+function readEvalCalibrationSafe() {
+  try {
+    return require('./intelligence/governor.mjs').getEvalCalibration();
+  } catch {
+    return { calibrated: true, reason: 'unknown' };
+  }
+}
+
 const WITNESS_LOG = path.join(ORG_DIR, 'witness-log.jsonl');
 const DAILY_SCORES = path.join(ORG_DIR, 'daily-scores.jsonl');
 const RECOMMENDATIONS = path.join(ORG_DIR, 'recommendations.json');
@@ -189,8 +201,10 @@ function getWitnessLog({ agent, days = 30, limit = 500 } = {}) {
  * @param {object} orgModule    — src/org.js
  * @param {object} experienceModule — src/experience.js
  * @param {array}  agentRuns    — last 24h of agent-runs.json entries
+ * @param {object} [opts]       — { evalCalibration } pre-read judge calibration from the
+ *                                caller (the scheduled handler passes it); else read here.
  */
-function runWitnessSweep(orgModule, experienceModule, agentRuns) {
+function runWitnessSweep(orgModule, experienceModule, agentRuns, opts = {}) {
   const startedAt = new Date().toISOString();
   const registry = orgModule.loadRegistry();
   const agents = registry.agents || {};
@@ -250,7 +264,15 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns) {
   // so eval_drop routes to REVIEW in the governor — it never silently auto-patches.
   const evalFloor = configService.getConfig('eval.witness.floor') ?? 0.6;
   const evalMinSample = configService.getConfig('eval.witness.minSample') ?? 3;
-  const evalByAgent = {}; // id → { mean, n, fails }
+  // FIX #11 — calibration PREFLIGHT. A low judge score only means the AGENT is weak if
+  // the JUDGE itself is trustworthy. When the eval self-test is miscalibrated (missing /
+  // stale / drifted), a low rolling mean is at least as likely to be the judge's fault —
+  // so we DOWNGRADE eval_drop to severity 'low' + judge_calibrated:false and DO NOT let it
+  // drive a PIP. The signal is still emitted (visible/reviewable in the Brain tab), never
+  // silently dropped; it just can't punish an agent on an unreliable measurement.
+  const evalCalib = opts.evalCalibration || readEvalCalibrationSafe();
+  const judgeCalibrated = evalCalib.calibrated !== false;
+  const evalByAgent = {}; // id → { mean, n, fails, judgeCalibrated }
   try {
     for (const id of Object.keys(agents)) {
       if (agents[id].status === 'retired') continue;
@@ -259,21 +281,21 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns) {
       const recent = rows.slice(0, Math.max(evalMinSample, 8));
       const mean = recent.reduce((acc, r) => acc + (Number(r.overall) || 0), 0) / recent.length;
       const fails = recent.filter((r) => r.pass === false).length;
-      evalByAgent[id] = { mean: Number(mean.toFixed(3)), n: recent.length, fails };
+      evalByAgent[id] = { mean: Number(mean.toFixed(3)), n: recent.length, fails, judgeCalibrated };
       if (mean < evalFloor) {
         try {
           const res = dbModule.upsertTrainingSignal({
             agent: id, kind: 'eval_drop', mode: 'set',
             signature: 'rolling judge eval below floor',
             occurrences: recent.length, projects: [],
-            severity: mean < evalFloor * 0.7 ? 'high' : 'medium',
-            evidence: { source: 'eval_scores', mean: Number(mean.toFixed(3)), n: recent.length, fails, floor: evalFloor },
+            severity: !judgeCalibrated ? 'low' : (mean < evalFloor * 0.7 ? 'high' : 'medium'),
+            evidence: { source: 'eval_scores', mean: Number(mean.toFixed(3)), n: recent.length, fails, floor: evalFloor, judge_calibrated: judgeCalibrated, judge_reason: evalCalib.reason || null },
           });
           if (res && res.isNew) {
             dbModule.logSelfImprovement({
               kind: 'signal', agent: id, refId: res.id, decision: null,
-              summary: `eval_drop · ${id}: judge mean ${mean.toFixed(2)} < ${evalFloor} (n=${recent.length})`,
-              data: { kind: 'eval_drop', mean: Number(mean.toFixed(3)), n: recent.length, fails },
+              summary: `eval_drop · ${id}: judge mean ${mean.toFixed(2)} < ${evalFloor} (n=${recent.length})${judgeCalibrated ? '' : ' [judge miscalibrated → low severity, no PIP]'}`,
+              data: { kind: 'eval_drop', mean: Number(mean.toFixed(3)), n: recent.length, fails, judge_calibrated: judgeCalibrated },
             });
           }
         } catch { /* signal best-effort — never break the sweep */ }
@@ -313,8 +335,10 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns) {
     // Eval consequence — fold the judge score into PIP (Phase B). If the agent
     // already triggered PIP above, append the eval reason (and escalate severity);
     // otherwise a sustained low eval is itself a PIP trigger.
+    // Only a CALIBRATED judge can drive a PIP (FIX #11) — a miscalibrated judge's low
+    // score is not credible evidence against the agent.
     const ev = evalByAgent[id];
-    if (ev && ev.mean < evalFloor) {
+    if (ev && ev.mean < evalFloor && ev.judgeCalibrated !== false) {
       const evalReason = `Eval ${ev.mean} < ${evalFloor} (n=${ev.n}${ev.fails ? `, ${ev.fails} fail` : ''})`;
       const existing = pipCandidates.find((p) => p.agent === id);
       if (existing) {
@@ -348,7 +372,8 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns) {
 
     // Promotion eligibility — level crossed threshold, success rate high, 30+ days
     // at level, AND no sustained low judge eval (consequences gate promotion too).
-    const evalBlocksPromo = ev && ev.mean < evalFloor;
+    // A miscalibrated judge also can't BLOCK a promotion (symmetric with the PIP gate).
+    const evalBlocksPromo = ev && ev.mean < evalFloor && ev.judgeCalibrated !== false;
     if (a.level != null && a.level < 8 && successRate >= 0.85 && antipatterns === 0 && !evalBlocksPromo) {
       const needsRuns = a.level >= 3 ? (stats.patternsContributed || 0) >= 1 : true;
       if (needsRuns) {

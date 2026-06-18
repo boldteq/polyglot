@@ -132,43 +132,88 @@ export function decide(proposal = {}, ctx = {}) {
 // broken and block every self-improvement. Unknown / stale / empty → NOT calibrated
 // (fail-safe → review, never silent auto).
 
-// Pure predicate over a self-test record ({total, calibrated, meanSeparation, at}).
+// Pure ASSESSMENT over a self-test record ({total, calibrated, meanSeparation, at}).
 // No I/O — testable in isolation. `now` is injectable so freshness is deterministic.
-export function selftestCalibrated(selftest, { minRatio = 0.8, minSeparation = 0.3, maxAgeDays = 14, now = Date.now() } = {}) {
-  if (!selftest) return false
+// Returns { calibrated, reason, ageDays, maxAgeDays } so callers can SURFACE *why* the
+// judge is blocking autos (missing vs stale vs weak) instead of an opaque false.
+//   reason ∈ 'ok' | 'missing' | 'invalid' | 'weak-ratio' | 'low-separation' | 'stale'
+export function evalCalibration(selftest, { minRatio = 0.8, minSeparation = 0.3, maxAgeDays = 14, now = Date.now() } = {}) {
+  if (!selftest) return { calibrated: false, reason: 'missing', ageDays: null, maxAgeDays }
   const total = Number(selftest.total || 0)
   const calibrated = Number(selftest.calibrated || 0)
   const sep = Number(selftest.meanSeparation || 0)
-  if (total <= 0) return false
-  if (calibrated / total < minRatio) return false
-  if (sep < minSeparation) return false
   const at = selftest.at ? Date.parse(selftest.at) : NaN
-  if (Number.isNaN(at)) return false
-  if ((now - at) / 86400000 > maxAgeDays) return false
-  return true
+  const ageDays = Number.isNaN(at) ? null : Number(((now - at) / 86400000).toFixed(1))
+  if (total <= 0) return { calibrated: false, reason: 'invalid', ageDays, maxAgeDays }
+  if (calibrated / total < minRatio) return { calibrated: false, reason: 'weak-ratio', ageDays, maxAgeDays }
+  if (sep < minSeparation) return { calibrated: false, reason: 'low-separation', ageDays, maxAgeDays }
+  if (Number.isNaN(at)) return { calibrated: false, reason: 'invalid', ageDays: null, maxAgeDays }
+  if (ageDays > maxAgeDays) return { calibrated: false, reason: 'stale', ageDays, maxAgeDays }
+  return { calibrated: true, reason: 'ok', ageDays, maxAgeDays }
+}
+
+// Boolean shim — the auto-gate only needs yes/no. Kept so decide()/isEvalCalibrated and
+// the governor test-suite stay on a simple predicate (fail-safe FALSE on null/stale/weak).
+export function selftestCalibrated(selftest, opts = {}) {
+  return evalCalibration(selftest, opts).calibrated
+}
+
+// Rich live read — returns the full assessment from the latest stored self-test. On a
+// DB error it FAILS SAFE (calibrated:false) but now LOGS the real cause: a transient
+// SQLITE_BUSY used to silently hold every auto with zero trace. reason='error' is
+// distinguishable from a genuine 'missing'/'stale' so operators can tell them apart.
+export function getEvalCalibration(opts = {}) {
+  try {
+    const db = require('../db.js')
+    return evalCalibration(db.getLatestSelftest(), opts)
+  } catch (e) {
+    console.warn('[governor] getEvalCalibration read failed (holding autos):', e.message)
+    return { calibrated: false, reason: 'error', ageDays: null, maxAgeDays: opts.maxAgeDays ?? 14, error: e.message }
+  }
 }
 
 export function isEvalCalibrated(opts = {}) {
   try {
     const db = require('../db.js')
     return selftestCalibrated(db.getLatestSelftest(), opts)
-  } catch {
+  } catch (e) {
+    console.warn('[governor] isEvalCalibrated read failed (holding autos):', e.message)
     return false
   }
 }
 
-// ── Persist a decision to the Brain timeline ─────────────────────────────────
-// Records the verdict + the evidence that drove it. Returns the verdict for chaining.
+// ── Persist a decision to the Brain timeline + the decision journal ───────────
+// TWO writes, two surfaces:
+//   • self_improvement_log (kind='decision') — the human-readable audit timeline
+//     (getBrainStats counts decisions from here; never drop this write).
+//   • reflections (kind='decision', outcome='pending') — the LEARN-FROM-CONSEQUENCES
+//     journal the resolution loop reads back (getUnresolvedDecisions / getDecisionAccuracy).
+//     Without this the journal is write-only: decisions are made, logged, never scored.
+// confidence ≈ how sure we are this verdict was right, so rolling accuracy is meaningful.
+const DECISION_CONFIDENCE = { auto: 0.9, review: 0.5, reject: 0.2 }
 export function recordDecision(proposal, verdict) {
+  const summary = `${verdict.decision.toUpperCase()} · ${proposal.patchType || 'patch'} → ${proposal.agent || '?'} [${verdict.reasons.join(', ')}]`
+  const refId = proposal.signalId || proposal.id || null
   try {
     const db = require('../db.js')
     db.logSelfImprovement({
       kind: 'decision',
       agent: proposal.agent || null,
-      refId: proposal.signalId || proposal.id || null,
+      refId,
       decision: verdict.decision,
-      summary: `${verdict.decision.toUpperCase()} · ${proposal.patchType || 'patch'} → ${proposal.agent || '?'} [${verdict.reasons.join(', ')}]`,
+      summary,
       data: { reasons: verdict.reasons, evidence: verdict.evidence, targetFile: proposal.targetFile || null },
+    })
+    // Mirror into the decision journal so the consequence half of the loop is reachable.
+    const project = (proposal.signal && Array.isArray(proposal.signal.projects) && proposal.signal.projects.filter(Boolean)[0]) || null
+    db.insertReflection({
+      kind: 'decision',
+      project,
+      summary,
+      detail: `${proposal.agent || '?'} · ${proposal.patchType || 'patch'} · ${verdict.reasons.join('; ')}`,
+      confidence: DECISION_CONFIDENCE[verdict.decision] ?? 0.5,
+      outcome: 'pending',
+      data: { decision: verdict.decision, agent: proposal.agent || null, refId, reasons: verdict.reasons, evidence: verdict.evidence, targetFile: proposal.targetFile || null },
     })
   } catch (e) {
     if (process.env.DEBUG_BRAIN) console.warn('[governor] recordDecision failed:', e.message)

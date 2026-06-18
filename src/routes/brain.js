@@ -134,6 +134,25 @@ router.get('/brain/signals', rateLimit('read'), (req, res) => {
   }
 });
 
+// POST /api/brain/signals/:id/status  { status:'acknowledged'|'dismissed'|'open' }
+// Human triage of a detected weakness (esp. eval_drop, which routes to review, never
+// auto). 'dismissed' tells the daily aggregator not to re-surface it; 'acknowledged'
+// marks it seen without acting. Idempotent set-mode re-scans respect a non-open status.
+router.post('/brain/signals/:id/status', rateLimit('write'), (req, res) => {
+  try {
+    const status = (req.body && req.body.status) || '';
+    const ALLOWED = new Set(['acknowledged', 'dismissed', 'open']);
+    if (!ALLOWED.has(status)) {
+      return res.status(400).json({ error: "status must be 'acknowledged', 'dismissed', or 'open'" });
+    }
+    db.updateTrainingSignalStatus(req.params.id, status);
+    try { brainEvents.emit('memory', { kind: 'signal-triaged', id: req.params.id, status }); } catch { /* ignore */ }
+    res.json({ ok: true, id: req.params.id, status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/brain/timeline — the self-improvement log (signals→patches→rollbacks) ─
 router.get('/brain/timeline', rateLimit('read'), (req, res) => {
   try {

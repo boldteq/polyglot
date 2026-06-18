@@ -26,12 +26,14 @@ function rateLimit(tier) {
   };
 }
 
-// Cleanup stale entries every 5 minutes
+// Cleanup stale entries every 5 minutes. .unref() so this background timer never
+// keeps the process alive on its own (the server's own handles hold it open in
+// production; in tests, the process can exit once everything real has torn down).
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of rateLimitMap) {
     if (now - entry.start > RATE_LIMIT_WINDOW * 2) rateLimitMap.delete(key);
   }
-}, 300_000);
+}, 300_000).unref();
 
 module.exports = { rateLimit, RATE_LIMITS };

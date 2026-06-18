@@ -451,6 +451,15 @@ async function approveOne(id) {
   const upd = db.updateLearningStatus(id, { status: 'approved', capturedRef });
   if (!upd.changed) return { id, ok: false, status: 409, error: 'Lost the race — already reviewed' };
   try { inboxEvents.emit('reviewed', { id, status: 'approved' }); } catch { /* ignore */ }
+  // Live memory (Phase D.1): a human-approved memory write must wake the 60s reindex
+  // drain so the new/superseded belief is searchable in ~1min — not at the 02:30 cron.
+  // feedback (feedback.md, human-only path) + decay_review (no write) are intentionally
+  // excluded. Best-effort: a miss is caught by the nightly full reindex.
+  const REINDEX_ON_APPROVE = new Set(['lesson', 'bug', 'decision', 'golden', 'identity', 'preference', 'contradiction']);
+  if (capturedRef && REINDEX_ON_APPROVE.has(cand.type)) {
+    try { require('../lib/systemSchedules').enqueueMemoryChange(capturedRef, `approve:${cand.type}`); }
+    catch (e) { console.error('[learning-approve] reindex enqueue failed:', e.message); }
+  }
   return { id, ok: true, capturedRef, skipped };
 }
 

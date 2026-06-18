@@ -54,14 +54,19 @@ function normalizeIds(x) {
   return (Array.isArray(x) ? x : [x]).filter(v => typeof v === 'string' && v.trim())
 }
 
-// Returns { supersedes, conflictsWith, nearDuplicateOf } and side-effects the OLD
-// superseded records' metadata. Pure-ish: only mutates olds it decides to supersede.
+// Returns { supersedes, conflictsWith, nearDuplicateOf } and side-effects the OTHER
+// records' metadata: superseded olds get supersededBy=id; conflicting olds get THIS
+// id added to their conflictsWith (BIDIRECTIONAL — a later read of either record must
+// surface the ⚠, not just the newer one). Must run AFTER the new item is upserted so
+// the neighbour search can see concurrent siblings (closes the asymmetric-relation race).
 async function reviseBeliefs({ id, type, text, vector, explicitSupersedes }) {
   const supersedes = new Set(normalizeIds(explicitSupersedes))
-  const conflictsWith = new Set(), nearDuplicateOf = new Set()
+  const conflicts = new Map() // otherId → its EXISTING conflictsWith[] (so the back-patch merges, never clobbers)
+  const nearDuplicateOf = new Set()
   if (BELIEF_TYPES.has(type)) {
     let neighbors = []
-    try { neighbors = await getStore().search(vector, { topK: 4 }) } catch { neighbors = [] }
+    // topK 5: the new item is now in the store and self-skipped, so ask for one extra.
+    try { neighbors = await getStore().search(vector, { topK: 5 }) } catch { neighbors = [] }
     const corr = looksLikeCorrection(text)
     for (const n of neighbors) {
       const rec = n.record; if (!rec || rec.id === id || !BELIEF_TYPES.has(rec.source_type)) continue
@@ -69,14 +74,18 @@ async function reviseBeliefs({ id, type, text, vector, explicitSupersedes }) {
       if (cos < SIM.conflict) continue
       if (corr) supersedes.add(rec.id)                    // high-sim + correction → revise it
       else if (cos >= SIM.dup) nearDuplicateOf.add(rec.id)// same belief again → reinforcement
-      else conflictsWith.add(rec.id)                      // similar but maybe divergent → flag
+      else conflicts.set(rec.id, Array.isArray(rec.metadata?.conflictsWith) ? rec.metadata.conflictsWith : []) // divergent → flag both ways
     }
   }
   const store = getStore(); const now = new Date().toISOString()
   for (const oldId of supersedes) {
+    if (conflicts.has(oldId)) conflicts.delete(oldId) // supersede dominates a soft conflict for the same pair
     try { await store.patchMetadata(oldId, { supersededBy: id, supersededAt: now }) } catch { /* best-effort */ }
   }
-  return { supersedes: [...supersedes], conflictsWith: [...conflictsWith], nearDuplicateOf: [...nearDuplicateOf] }
+  for (const [otherId, existing] of conflicts) {
+    try { await store.patchMetadata(otherId, { conflictsWith: [...new Set([...existing, id])] }) } catch { /* best-effort */ }
+  }
+  return { supersedes: [...supersedes], conflictsWith: [...conflicts.keys()], nearDuplicateOf: [...nearDuplicateOf] }
 }
 
 // `origin` records WHERE the capture came from (agent direct, vscode-digest,
@@ -98,21 +107,32 @@ export async function captureItem(type, fields, origin = 'direct', opts = {}) {
   // 2) embed the new item
   const { vector } = await embedOne(text)
 
-  // 3) belief revision — mark any older belief this one corrects (down-rank, never delete)
-  const revision = await reviseBeliefs({ id, type, text, vector, explicitSupersedes: opts.supersedes })
-
-  // 4) index the new item for immediate retrieval
+  // 3) index the new item FIRST — so a concurrent capture of near-identical text can
+  //    SEE this one in its own neighbour search. With the old order (revise→upsert) two
+  //    simultaneous captures each searched a store missing the other → asymmetric /
+  //    lost supersede+conflict edges. LocalStore writes are synchronous (atomic between
+  //    awaits), so upsert-first + the bidirectional back-patch below converge cleanly.
   await getStore().upsert([{
     id, source_type: type, source_ref: id, chunk_index: 0,
     chunk_text: text, embedding: vector,
-    metadata: {
-      ...fields, title: titleOf(type, fields), captured: true, origin, confidence, verified,
-      ...(revision.supersedes.length ? { supersedes: revision.supersedes } : {}),
-      ...(revision.conflictsWith.length ? { conflictsWith: revision.conflictsWith } : {}),
-      ...(revision.nearDuplicateOf.length ? { nearDuplicateOf: revision.nearDuplicateOf } : {}),
-    },
+    metadata: { ...fields, title: titleOf(type, fields), captured: true, origin, confidence, verified },
     content_hash: id, updated_at: created_at,
   }])
+
+  // 4) belief revision — now the neighbour search includes any concurrent sibling +
+  //    back-patches the OTHER records (supersededBy / bidirectional conflictsWith).
+  const revision = await reviseBeliefs({ id, type, text, vector, explicitSupersedes: opts.supersedes })
+
+  // 5) stamp the relations onto THIS record too (merge, no re-embed). Skipped when empty.
+  if (revision.supersedes.length || revision.conflictsWith.length || revision.nearDuplicateOf.length) {
+    try {
+      await getStore().patchMetadata(id, {
+        ...(revision.supersedes.length ? { supersedes: revision.supersedes } : {}),
+        ...(revision.conflictsWith.length ? { conflictsWith: revision.conflictsWith } : {}),
+        ...(revision.nearDuplicateOf.length ? { nearDuplicateOf: revision.nearDuplicateOf } : {}),
+      })
+    } catch { /* best-effort — relation is also recoverable from the returned value */ }
+  }
   return { id, type, created_at, ...revision }
 }
 
