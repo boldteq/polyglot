@@ -114,9 +114,13 @@ Open **Learning** in the sidebar (the 📥 icon). It has three tabs:
 
 The visual dashboard — your one place to see the loop working:
 
-- **Four numbers at a glance:** lessons learned, items pending your review, sessions digested this week, duplicates skipped.
-- **Nightly digest history:** a little bar chart of recent runs (green = saved, amber = waiting for you, red = a run that failed) with the last run + next run time.
+- **Four numbers at a glance:** lessons learned (the true count of everything captured), **% improvement** (your real agents' success rate this week vs last), pending review, and sessions digested this week.
+- **Where lessons came from:** a breakdown — auto-saved · you reviewed · captured directly by agents — so every learning is accounted for, plus a "memory brain" count of the broader pattern library.
+- **Knowledge growth:** an 8-week chart of how many lessons were captured each week.
+- **Nightly digest history:** a bar chart of recent runs (green = saved, amber = waiting for you, red = a failed run) with the last + next run time.
 - **What your team has learned:** the most recent lessons captured from your real work.
+
+> **In plain English:** "Lessons learned" counts the *actual captured knowledge* (not just the review queue), so the number always matches what's listed below it. "% improvement" shows "building baseline" until there's a couple weeks of real work to compare — it never shows a made-up number.
 
 ### 2. Pending review
 
