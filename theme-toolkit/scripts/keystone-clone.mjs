@@ -140,7 +140,7 @@ console.log(`
                      --set "ADMIN_KEY=$(openssl rand -hex 24)" \\
                      --set "SCOPES=<copy [access_scopes].scopes from shopify.app.toml — server.mjs fallback OMITS the nav scopes>" \\
                      --set "CLIENT_ID=<after the next step>" --set "CLIENT_SECRET=<…>"
-   shopify app config link                   # register the app in your org (org = Insight Infoway; interactive — approve)
+   shopify app config link                   # register the app — pick the correct Partner org for this client (interactive — approve)
    # ⚠ config link OVERWRITES shopify.app.toml → embedded-app defaults (placeholder URLs, embedded=true,
    #   drops use_legacy_install_flow + privacy webhooks). RESTORE the catcher toml BEFORE deploy or /callback breaks.
    shopify app deploy                        # push scopes + URLs to Shopify (ONLY after restoring the toml)

@@ -1,0 +1,8 @@
+{
+  "current": {
+    "color_schemes": {
+      "scheme-1": { "settings": { "background": "#FBF9F6", "text": "#1A1816" } },
+      "scheme-2": { "settings": { "background": "#1A1816", "text": "#FBF9F6", "accent": "#8261C5" } }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{%- comment -%} Real countdown: end-time is a FIXED date from settings, not now+duration. {%- endcomment -%}
+<div class="sale-countdown" data-end="{{ section.settings.sale_ends_at }}">
+  <span class="sale-countdown__label">Sale ends</span>
+  <time datetime="2026-12-31T23:59:00">Dec 31, 2026</time>
+</div>
+<script src="{{ 'sale-countdown.js' | asset_url }}" defer></script>
+
+{% schema %}
+{ "name": "Sale countdown", "settings": [ { "type": "text", "id": "sale_ends_at", "label": "Sale end (ISO)" } ] }
+{% endschema %}

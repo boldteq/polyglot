@@ -1,0 +1,26 @@
+{
+  "comment": "PagePilot ARCH-PP-01 on Minimog 6.0.0 — REUSE/CONFIGURE only, ZERO custom code (configure-rich theme). Representative settings; exact Minimog block keys are set in the customizer. Sections verified present in the Minimog 6.0.0 base: icon-box, collapsible-tabs, product-recommendations, mobile-sticky-bar (mobile-sticky-bar lives in the footer group, not this template's order). Copy is placeholder — bind real data.",
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "settings": { "comment": "product template buy module — configure blocks (title/price/variant/qty/buy_buttons) + sticky ATC + gallery layout in the customizer" }
+    },
+    "benefits": {
+      "type": "icon-box",
+      "settings": { "title": "Why you'll love it", "comment": "4 icon blocks — outcome-led benefit copy, bind real; color via Minimog scheme (--color-foreground/--color-button)" }
+    },
+    "stats": {
+      "type": "icon-box",
+      "settings": { "title": "Real customers reported", "comment": "big-number stat content (static) — reuse-first: no custom ring on Minimog; bind real self-reported % + disclaimer" }
+    },
+    "faq": {
+      "type": "collapsible-tabs",
+      "settings": { "title": "Frequently asked questions", "comment": "tab blocks — truthful answers; policy rows reference real pages" }
+    },
+    "related": {
+      "type": "product-recommendations",
+      "settings": { "heading": "You may also like", "limit": 8, "columns": 4 }
+    }
+  },
+  "order": ["main", "benefits", "stats", "faq", "related"]
+}

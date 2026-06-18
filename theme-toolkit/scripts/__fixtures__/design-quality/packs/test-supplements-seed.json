@@ -1,0 +1,60 @@
+{
+  "$schema_version": "1.0",
+  "niche": "test-supplements-seed",
+  "reference_brands": ["AG1", "Ritual", "Care/of", "Hims", "Native"],
+  "niche_benchmark": 0.10,
+
+  "type_scale": {
+    "ratio": 1.25,
+    "ratio_tolerance": 0.06,
+    "max_sizes_per_page": 6,
+    "heading_style": "sans",
+    "accent_font_role": "none"
+  },
+
+  "spacing_rhythm": {
+    "section_rhythm_px": [64, 96],
+    "rhythm_tolerance_px": 8,
+    "density": "dense"
+  },
+
+  "canonical_components": {
+    "required_min": 5,
+    "list": [
+      "product-macro-hero",
+      "science-credibility-strip",
+      "ingredient-cards",
+      "trust-trio",
+      "subscription-toggle",
+      "reviews-module",
+      "sticky-atc",
+      "free-shipping-bar"
+    ]
+  },
+
+  "hero_treatment": {
+    "archetype": "product + science credibility strip",
+    "carousel_allowed": false
+  },
+
+  "color_roles": {
+    "scheme_count_max": 3,
+    "hero_scheme": "scheme-2",
+    "accent_role": "credibility/clinical"
+  },
+
+  "imagery": {
+    "product_ratio": "4:5",
+    "hero_ratio": "16:9",
+    "treatment": "clinical-clean"
+  },
+
+  "human_review": [
+    "Does it look like a premium brand (not a generic Shopify theme demo)?"
+  ],
+
+  "_meta": {
+    "calibration": "seed",
+    "note": "FIXTURE seed pack — identical measurables to test-supplements but calibration:seed so failures DEMOTE to warnings (proves calibration gating)."
+  }
+}

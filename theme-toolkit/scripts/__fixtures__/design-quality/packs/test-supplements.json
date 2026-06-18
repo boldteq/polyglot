@@ -1,0 +1,63 @@
+{
+  "$schema_version": "1.0",
+  "niche": "test-supplements",
+  "reference_brands": ["AG1", "Ritual", "Care/of", "Hims", "Native"],
+  "niche_benchmark": 0.10,
+
+  "type_scale": {
+    "ratio": 1.25,
+    "ratio_tolerance": 0.06,
+    "max_sizes_per_page": 6,
+    "heading_style": "sans",
+    "accent_font_role": "none"
+  },
+
+  "spacing_rhythm": {
+    "section_rhythm_px": [64, 96],
+    "rhythm_tolerance_px": 8,
+    "density": "dense"
+  },
+
+  "canonical_components": {
+    "required_min": 5,
+    "list": [
+      "product-macro-hero",
+      "science-credibility-strip",
+      "ingredient-cards",
+      "trust-trio",
+      "subscription-toggle",
+      "reviews-module",
+      "sticky-atc",
+      "free-shipping-bar"
+    ]
+  },
+
+  "hero_treatment": {
+    "archetype": "product + science credibility strip",
+    "carousel_allowed": false
+  },
+
+  "pdp_order": ["buy-box", "benefits", "ingredient-cards", "reviews", "recommendations"],
+
+  "color_roles": {
+    "scheme_count_max": 3,
+    "hero_scheme": "scheme-2",
+    "accent_role": "credibility/clinical"
+  },
+
+  "imagery": {
+    "product_ratio": "4:5",
+    "hero_ratio": "16:9",
+    "treatment": "clinical-clean"
+  },
+
+  "human_review": [
+    "Does it look like a premium brand (not a generic Shopify theme demo)?",
+    "Is it superior to the niche's top competitors (decoder benchmark: AG1 / Ritual)?"
+  ],
+
+  "_meta": {
+    "calibration": "tuned",
+    "note": "FIXTURE pack for check-design-quality.mjs self-test — calibration:tuned so measurable failures BLOCK."
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "sp": {
+      "type": "social-proof",
+      "settings": { "summary_rating": "4.9", "total_reviews": "1,284" }
+    }
+  },
+  "order": ["sp"]
+}

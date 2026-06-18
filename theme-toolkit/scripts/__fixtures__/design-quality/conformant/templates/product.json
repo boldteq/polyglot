@@ -1,0 +1,8 @@
+{
+  "sections": {
+    "main": { "type": "main-product" },
+    "ingredient-cards": { "type": "ingredient-cards" },
+    "reviews": { "type": "reviews-module" }
+  },
+  "order": ["main", "ingredient-cards", "reviews"]
+}

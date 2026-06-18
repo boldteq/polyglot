@@ -1,0 +1,6 @@
+{
+  "typography": {
+    "allowed_px": [16, 20, 25, 31, 39, 49],
+    "fonts": { "heading": "Canela serif-display", "body": "Söhne sans" }
+  }
+}

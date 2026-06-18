@@ -1,0 +1,9 @@
+{%- comment -%} Real scarcity: bound to live inventory, not a hardcoded number. {%- endcomment -%}
+{%- assign variant = product.selected_or_first_available_variant -%}
+{%- if variant.inventory_management and variant.inventory_quantity > 0 and variant.inventory_quantity <= 10 -%}
+  <p class="product-scarcity">Only {{ variant.inventory_quantity }} left in stock</p>
+{%- endif -%}
+
+{% schema %}
+{ "name": "Product scarcity", "settings": [] }
+{% endschema %}

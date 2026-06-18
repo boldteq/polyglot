@@ -1,0 +1,8 @@
+@font-face {
+  font-family: "Canela";
+  src: url("canela.woff2") format("woff2");
+  font-display: swap;
+}
+:root { --font-heading: "Canela", Georgia, serif; }
+.color-scheme-1 { background: #FBF9F6; color: #1A1816; }
+.color-scheme-2 { background: #1A1816; color: #FBF9F6; }

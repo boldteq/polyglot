@@ -51,6 +51,15 @@ const GATES = [
   { name: 'functional', number: 10, kind: 'url', runner: 'node', script: 'gate-functional.mjs' },
   // Prevention — dead-code/bloat anti-patterns (static; the rest of the library is gates above + the review board).
   { name: 'antipatterns', number: 11, kind: 'static', runner: 'node', script: 'check-antipatterns.mjs' },
+  // Design QUALITY — per-niche taste fingerprint vs the DNA pack (static; calibration-gated so
+  // an untuned pack warns rather than blocks). Covered by --static-only + --verify/--require-full.
+  { name: 'design-quality', number: 12, kind: 'static', runner: 'node', script: 'check-design-quality.mjs' },
+  // Honesty — fake-urgency / fabricated-scarcity / unsourced-claim killer (static; blocks
+  // evergreen countdowns + hardcoded scarcity, warns on fake-activity/unsourced stats).
+  { name: 'honesty', number: 13, kind: 'static', runner: 'node', script: 'check-honesty.mjs' },
+  // Render-wiring — tokens must RENDER, not just conform on paper (static; closes the #8/#12 blind
+  // spot where color schemes + fonts are declared but never wired → flat black-on-white default).
+  { name: 'render-wiring', number: 14, kind: 'static', runner: 'node', script: 'check-render-wiring.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────

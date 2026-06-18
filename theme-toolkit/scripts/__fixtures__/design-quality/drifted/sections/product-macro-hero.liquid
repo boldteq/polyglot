@@ -1,0 +1,13 @@
+<section class="hero color-scheme-1 color-scheme-2 color-scheme-3 color-scheme-4 color-scheme-5" data-swiper="true">
+  <div class="swiper" data-autoplay="true">
+    {% for block in section.blocks %}
+      <div class="swiper-slide">{{ block.settings.heading }}</div>
+    {% endfor %}
+  </div>
+  <h1>Hero</h1>
+</section>
+{% style %}
+  .hero h1 { font-size: 16px; }
+  .hero .big { font-size: 48px; }
+  .hero { padding-top: 80px; padding-bottom: 80px; }
+{% endstyle %}

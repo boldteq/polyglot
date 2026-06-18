@@ -1,0 +1,55 @@
+{
+  "comment": "PagePilot ARCH-PP-01 advertorial PDP crafted on Dawn. buy-module=native main-product (CONFIGURE); benefit-grid=native multicolumn (CONFIGURE, NOT custom); quantified-social-proof=pp-stat-circles (BUILD-CUSTOM, on Dawn vars); FAQ=native collapsible-content (CONFIGURE); cross-sell=native related-products (REUSE). Copy is placeholder — bind real data.",
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "title": { "type": "title", "settings": {} },
+        "price": { "type": "price", "settings": {} },
+        "variant_picker": { "type": "variant_picker", "settings": { "picker_type": "button" } },
+        "quantity": { "type": "quantity_selector", "settings": {} },
+        "buy_buttons": { "type": "buy_buttons", "settings": { "show_dynamic_checkout": true } },
+        "description": { "type": "description", "settings": {} }
+      },
+      "block_order": ["title", "price", "variant_picker", "quantity", "buy_buttons", "description"],
+      "settings": { "enable_sticky_info": true, "gallery_layout": "thumbnail" }
+    },
+    "benefits": {
+      "type": "multicolumn",
+      "blocks": {
+        "c1": { "type": "column", "settings": { "title": "Benefit one", "text": "<p>Outcome-led benefit copy — bind to real product value.</p>" } },
+        "c2": { "type": "column", "settings": { "title": "Benefit two", "text": "<p>Outcome-led benefit copy — bind real.</p>" } },
+        "c3": { "type": "column", "settings": { "title": "Benefit three", "text": "<p>Outcome-led benefit copy — bind real.</p>" } },
+        "c4": { "type": "column", "settings": { "title": "Benefit four", "text": "<p>Outcome-led benefit copy — bind real.</p>" } }
+      },
+      "block_order": ["c1", "c2", "c3", "c4"],
+      "settings": { "title": "Why you'll love it", "columns_desktop": 4, "color_scheme": "scheme-1" }
+    },
+    "stats": {
+      "type": "pp-stat-circles",
+      "blocks": {
+        "s1": { "type": "stat", "settings": { "value": 94, "suffix": "%", "label": "felt a difference" } },
+        "s2": { "type": "stat", "settings": { "value": 89, "suffix": "%", "label": "would repurchase" } },
+        "s3": { "type": "stat", "settings": { "value": 92, "suffix": "%", "label": "recommend it" } },
+        "s4": { "type": "stat", "settings": { "value": 97, "suffix": "%", "label": "noticed results" } }
+      },
+      "block_order": ["s1", "s2", "s3", "s4"],
+      "settings": { "heading": "Real customers reported", "columns": 4, "columns_mobile": 2, "color_scheme": "scheme-2" }
+    },
+    "faq": {
+      "type": "collapsible-content",
+      "blocks": {
+        "r1": { "type": "collapsible_row", "settings": { "heading": "How do I use it?", "row_content": "<p>Placeholder answer — bind to real, truthful usage guidance.</p>" } },
+        "r2": { "type": "collapsible_row", "settings": { "heading": "What's your returns policy?", "row_content": "<p>Placeholder — reference the real published policy page.</p>" } },
+        "r3": { "type": "collapsible_row", "settings": { "heading": "When will it ship?", "row_content": "<p>Placeholder — bind real shipping window.</p>" } }
+      },
+      "block_order": ["r1", "r2", "r3"],
+      "settings": { "heading": "Frequently asked questions", "color_scheme": "scheme-1" }
+    },
+    "related": {
+      "type": "related-products",
+      "settings": { "heading": "You may also like", "products_to_show": 4, "columns_desktop": 4 }
+    }
+  },
+  "order": ["main", "benefits", "stats", "faq", "related"]
+}
