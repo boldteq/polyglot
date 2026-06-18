@@ -2,6 +2,9 @@
 
 const { Router } = require('express');
 const { EventEmitter } = require('events');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const { rateLimit } = require('../middleware/rateLimit');
 const db = require('../db');
 const configService = require('../lib/configService');
@@ -219,35 +222,70 @@ router.get('/learning/overview', rateLimit('read'), async (req, res) => {
     const runs = runRows.map((r) => {
       const m = r.metadata || {};
       return {
-        id: r.id,
-        timestamp: r.timestamp,
-        status: r.status,
-        durationMs: r.duration || 0,
-        sessions: m.sessions || 0,
-        captured: m.captured || 0,
-        staged: m.staged || 0,
-        deduped: m.deduped || 0,
+        id: r.id, timestamp: r.timestamp, status: r.status, durationMs: r.duration || 0,
+        sessions: m.sessions || 0, captured: m.captured || 0, staged: m.staged || 0, deduped: m.deduped || 0,
       };
     });
     const deduped7d = runs.reduce((a, r) => a + (r.deduped || 0), 0);
 
-    // Recent captured learnings (pure file read — no embeddings needed).
+    // Captured ledger (the single source of truth — counts data/intel/*.jsonl) +
+    // recent items. captureStats is no-double-count: jsonl is written once per capture.
+    let captured = { total: 0, byType: {}, byOrigin: {}, last7d: 0, prev7d: 0, weekly: [] };
     let recent = [];
     try {
-      const { recentItems } = await import('../intelligence/capture.mjs');
+      const { captureStats, recentItems } = await import('../intelligence/capture.mjs');
+      captured = captureStats();
       const titleOf = (it) => it.problem || it.symptom || it.decision || it.title || it.directive || '(untitled)';
       const pick = (type, n) => (recentItems(type, n) || []).map((it) => ({
         id: it.id, type, title: String(titleOf(it)).slice(0, 120),
         project: it.project || it.domain || it.scope || null, created_at: it.created_at || null,
       }));
-      recent = [...pick('lesson', 8), ...pick('bug', 5), ...pick('decision', 5)]
+      recent = [...pick('lesson', 8), ...pick('bug', 5), ...pick('decision', 5), ...pick('golden', 3)]
         .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
         .slice(0, 15);
     } catch (err) {
-      console.error('[learning/overview] recent captures unavailable:', err.message);
+      console.error('[learning/overview] capture ledger unavailable:', err.message);
     }
 
-    res.json({ counts, status, sessions, deduped7d, runs, recent });
+    // By-source breakdown (sums to captured.total — direct absorbs legacy/agent/other).
+    const o = captured.byOrigin || {};
+    const autoSaved = o['vscode-digest'] || 0;
+    const reviewed = o['review'] || 0;
+    const bySource = { autoSaved, reviewed, direct: Math.max(0, captured.total - autoSaved - reviewed) };
+
+    // Memory-brain context — counts the broader stores so the 131 Mira patterns +
+    // feedback directives are VISIBLE (kept distinct from the structured ledger).
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const memory = { patterns: 0, feedbackDirectives: 0 };
+    try {
+      const base = path.join(os.homedir(), '.claude', 'memory', 'patterns');
+      for (const sub of ['good', 'avoid']) {
+        try { memory.patterns += fs.readdirSync(path.join(base, sub)).filter((f) => f.endsWith('.md')).length; } catch { /* dir absent */ }
+      }
+    } catch { /* ignore */ }
+    try {
+      const fb = fs.readFileSync(path.join(os.homedir(), '.claude', 'memory', 'user', 'feedback.md'), 'utf-8');
+      memory.feedbackDirectives = (fb.match(/^## ★ /gm) || []).length;
+    } catch { /* ignore */ }
+
+    // Improvement — honest, real-data, with a "building baseline" guard on thin data.
+    const rr = db.getRealRunStats();
+    const rate = (w) => (w.total > 0 ? Math.round((w.success / w.total) * 100) : null);
+    const sample = rr.thisWeek.total + rr.prevWeek.total;
+    const enough = sample >= 8;
+    const improvement = {
+      enough, sample,
+      thisWeekPct: rate(rr.thisWeek), prevWeekPct: rate(rr.prevWeek),
+      deltaPct: (enough && rate(rr.thisWeek) !== null && rate(rr.prevWeek) !== null) ? rate(rr.thisWeek) - rate(rr.prevWeek) : null,
+      qualityMean: null, qualitySample: 0,
+    };
+    try {
+      const scores = (db.getEvalScores ? db.getEvalScores({ limit: 200 }) : []) || [];
+      const sc = scores.filter((s) => typeof s.overall === 'number');
+      if (sc.length) { improvement.qualityMean = +(sc.reduce((a, s) => a + s.overall, 0) / sc.length).toFixed(2); improvement.qualitySample = sc.length; }
+    } catch { /* eval optional */ }
+
+    res.json({ counts, status, sessions, deduped7d, runs, recent, captured, bySource, memory, improvement });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -296,35 +334,139 @@ router.patch('/learning/inbox/:id', rateLimit('write'), (req, res) => {
   }
 });
 
+// Append-only IDENTITY-LOCK ledger. Every L1/L5 identity change (added/superseded)
+// that a human signs off in the inbox is recorded here, never rewritten — the audit
+// trail for "the constitution is never silently self-modified" (Yash, 2026-06-18).
+const IDENTITY_CHANGELOG = path.join(os.homedir(), '.claude', 'org', 'identity-changelog.md');
+function appendIdentityChangelog({ action, kind, statement, scope, candidateId, oldId, newId }) {
+  try {
+    fs.mkdirSync(path.dirname(IDENTITY_CHANGELOG), { recursive: true });
+    if (!fs.existsSync(IDENTITY_CHANGELOG)) {
+      fs.writeFileSync(IDENTITY_CHANGELOG,
+        '# Identity Changelog (append-only)\n\n' +
+        'Every identity/preference fact change signed off by Yash via the Learning Inbox.\n' +
+        'IDENTITY-LOCK: nothing here is auto-written — each entry corresponds to a human approve.\n\n');
+    }
+    const ts = new Date().toISOString();
+    const refs = [
+      `signoff=inbox:${candidateId}`,
+      oldId ? `old=${oldId}` : null,
+      newId ? `new=${newId}` : null,
+      scope ? `scope=${scope}` : null,
+    ].filter(Boolean).join(' ');
+    const line = `- ${ts} **${action}** [${kind}] ${String(statement || '').replace(/\n/g, ' ').slice(0, 240)} — ${refs}\n`;
+    fs.appendFileSync(IDENTITY_CHANGELOG, line);
+    return IDENTITY_CHANGELOG;
+  } catch (err) {
+    // Never let a changelog write failure undo an already-committed identity write.
+    console.error('[identity-changelog] append failed:', err.message);
+    return null;
+  }
+}
+
 // POST /api/learning/inbox/:id/approve — write to memory (lesson/bug/decision/golden)
-// or append to feedback.md (feedback). Keeps the row 'pending' on capture failure
-// so it can be retried (e.g. Ollama was down).
+// or append to feedback.md (feedback), or — for the continuity-brain candidate types
+// — commit a human-signed-off identity/preference change, supersede a contradiction,
+// open a loop, or acknowledge a decay review. Keeps the row 'pending' on capture
+// failure so it can be retried (e.g. Ollama was down).
+// Shared approve path for one candidate. Returns a result object instead of
+// touching res, so both the single and bulk endpoints reuse identical capture
+// logic + race/status guards. Throws only on capture failure (keeps it pending).
+async function approveOne(id) {
+  const cand = db.getLearningCandidate(id);
+  if (!cand) return { id, ok: false, status: 404, error: 'Candidate not found' };
+  if (cand.status !== 'pending') return { id, ok: false, status: 409, error: `Already ${cand.status}` };
+
+  let capturedRef = null;
+  let skipped = false;
+  if (cand.type === 'feedback') {
+    const f = cand.payload || {};
+    const { appendFeedback } = await import('../intelligence/feedbackWriter.mjs');
+    const r = await appendFeedback({ title: cand.title, directive: f.directive || cand.title, context: f.context || '' });
+    capturedRef = r.anchor;
+    skipped = !!r.skipped; // directive already existed — counted as approved, no duplicate written
+    // The approve IS the human write to feedback.md → flip the structured event.
+    if (!skipped && f.feedbackEventId) {
+      try { db.setFeedbackEventApplied(f.feedbackEventId); } catch (e) { console.error('[feedback-event] flip failed:', e.message); }
+    }
+  } else if (cand.type === 'lesson' || cand.type === 'bug' || cand.type === 'decision' || cand.type === 'golden') {
+    const { captureItem } = await import('../intelligence/capture.mjs');
+    const r = await captureItem(cand.type, cand.payload || {}, 'review');
+    capturedRef = r.id;
+  } else if (cand.type === 'identity' || cand.type === 'preference') {
+    // The inbox approve IS the Yash sign-off → bySignoff:true is justified here and
+    // ONLY here. identity carries its own kind (value|voice|non_negotiable|opinion);
+    // preference candidates write the 'preference' kind.
+    const p = cand.payload || {};
+    const kind = cand.type === 'preference' ? 'preference' : (p.kind || 'opinion');
+    const r = db.insertIdentityFact({
+      kind,
+      statement: p.statement || cand.title,
+      detail: p.detail || null,
+      scope: p.scope || 'global',
+      confidence: p.confidence != null ? Number(p.confidence) : 1.0,
+      source: `inbox:${id}`,
+      bySignoff: true,
+    });
+    capturedRef = r.id;
+    appendIdentityChangelog({ action: 'added', kind, statement: p.statement || cand.title, scope: p.scope || 'global', candidateId: id, newId: r.id });
+  } else if (cand.type === 'contradiction') {
+    // Belief revision: write the new fact (signed off) then mark the old one superseded.
+    const p = cand.payload || {};
+    const kind = p.kind || 'opinion';
+    const r = db.insertIdentityFact({
+      kind,
+      statement: p.statement || cand.title,
+      detail: p.detail || null,
+      scope: p.scope || 'global',
+      confidence: p.confidence != null ? Number(p.confidence) : 1.0,
+      source: `inbox:${id}`,
+      bySignoff: true,
+    });
+    if (p.oldId) { try { db.supersedeIdentityFact(p.oldId, r.id); } catch (e) { console.error('[contradiction] supersede failed:', e.message); } }
+    capturedRef = r.id;
+    appendIdentityChangelog({ action: 'superseded', kind, statement: p.statement || cand.title, scope: p.scope || 'global', candidateId: id, oldId: p.oldId || null, newId: r.id });
+  } else if (cand.type === 'open_loop') {
+    const p = cand.payload || {};
+    const r = db.insertOpenLoop({
+      title: p.title || cand.title,
+      detail: p.detail || null,
+      owner: p.owner || 'claude',
+      project: p.project || null,
+      sessionId: p.sessionId || null,
+      dueAt: p.dueAt || null,
+      source: 'inbox',
+    });
+    capturedRef = r.id;
+  } else if (cand.type === 'decay_review') {
+    // Review-only acknowledgement — no memory write. Record that a human triaged it.
+    capturedRef = null;
+    try {
+      db.logSelfImprovement({ kind: 'hygiene', summary: `decay review acknowledged: ${cand.title}`, data: cand.payload || {} });
+    } catch { /* logging is best-effort; the status flip below is the real record */ }
+  } else {
+    return { id, ok: false, status: 400, error: `Unsupported candidate type: ${cand.type}` };
+  }
+
+  const upd = db.updateLearningStatus(id, { status: 'approved', capturedRef });
+  if (!upd.changed) return { id, ok: false, status: 409, error: 'Lost the race — already reviewed' };
+  try { inboxEvents.emit('reviewed', { id, status: 'approved' }); } catch { /* ignore */ }
+  return { id, ok: true, capturedRef, skipped };
+}
+
+// Shared reject path for one candidate. Pure status flip, no capture.
+function rejectOne(id) {
+  const upd = db.updateLearningStatus(id, { status: 'rejected' });
+  if (!upd.changed) return { id, ok: false, status: 409, error: 'Not found or already reviewed' };
+  try { inboxEvents.emit('reviewed', { id, status: 'rejected' }); } catch { /* ignore */ }
+  return { id, ok: true };
+}
+
 router.post('/learning/inbox/:id/approve', rateLimit('write'), async (req, res) => {
   try {
-    const cand = db.getLearningCandidate(req.params.id);
-    if (!cand) return res.status(404).json({ error: 'Candidate not found' });
-    if (cand.status !== 'pending') return res.status(409).json({ error: `Already ${cand.status}` });
-
-    let capturedRef = null;
-    let skipped = false;
-    if (cand.type === 'feedback') {
-      const f = cand.payload || {};
-      const { appendFeedback } = await import('../intelligence/feedbackWriter.mjs');
-      const r = await appendFeedback({ title: cand.title, directive: f.directive || cand.title, context: f.context || '' });
-      capturedRef = r.anchor;
-      skipped = !!r.skipped; // directive already existed — counted as approved, no duplicate written
-    } else if (cand.type === 'lesson' || cand.type === 'bug' || cand.type === 'decision' || cand.type === 'golden') {
-      const { captureItem } = await import('../intelligence/capture.mjs');
-      const r = await captureItem(cand.type, cand.payload || {});
-      capturedRef = r.id;
-    } else {
-      return res.status(400).json({ error: `Unsupported candidate type: ${cand.type}` });
-    }
-
-    const upd = db.updateLearningStatus(req.params.id, { status: 'approved', capturedRef });
-    if (!upd.changed) return res.status(409).json({ error: 'Lost the race — already reviewed' });
-    try { inboxEvents.emit('reviewed', { id: req.params.id, status: 'approved' }); } catch { /* ignore */ }
-    res.json({ ok: true, capturedRef, skipped });
+    const r = await approveOne(req.params.id);
+    if (!r.ok) return res.status(r.status || 500).json({ error: r.error });
+    res.json({ ok: true, capturedRef: r.capturedRef, skipped: r.skipped });
   } catch (err) {
     // Capture/append failed (e.g. Ollama unreachable) — leave it pending, retryable.
     res.status(500).json({ error: err.message, hint: 'Is Ollama running? The candidate stays pending — retry after fixing.' });
@@ -334,10 +476,77 @@ router.post('/learning/inbox/:id/approve', rateLimit('write'), async (req, res) 
 // POST /api/learning/inbox/:id/reject
 router.post('/learning/inbox/:id/reject', rateLimit('write'), (req, res) => {
   try {
-    const upd = db.updateLearningStatus(req.params.id, { status: 'rejected' });
-    if (!upd.changed) return res.status(409).json({ error: 'Not found or already reviewed' });
-    try { inboxEvents.emit('reviewed', { id: req.params.id, status: 'rejected' }); } catch { /* ignore */ }
+    const r = rejectOne(req.params.id);
+    if (!r.ok) return res.status(r.status || 500).json({ error: r.error });
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/learning/inbox/bulk-approve  { ids: string[] }
+// Processes each id independently (capture can fail per-item, e.g. Ollama down).
+// Returns per-id results so the client knows which stayed pending. 200 even on
+// partial failure — the body carries the breakdown.
+router.post('/learning/inbox/bulk-approve', rateLimit('write'), async (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((x) => typeof x === 'string') : [];
+  if (!ids.length) return res.status(400).json({ error: 'ids must be a non-empty array of strings' });
+  if (ids.length > 200) return res.status(400).json({ error: 'Too many ids (max 200 per batch)' });
+
+  const results = [];
+  for (const id of ids) {
+    try {
+      results.push(await approveOne(id));
+    } catch (err) {
+      // Capture failed — candidate stays pending, retryable.
+      results.push({ id, ok: false, status: 500, error: err.message });
+    }
+  }
+  const approved = results.filter((r) => r.ok).map((r) => r.id);
+  const failed = results.filter((r) => !r.ok).map((r) => ({ id: r.id, error: r.error }));
+  res.json({ ok: failed.length === 0, approved, failed, total: ids.length });
+});
+
+// POST /api/learning/inbox/bulk-reject  { ids: string[] }
+router.post('/learning/inbox/bulk-reject', rateLimit('write'), (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((x) => typeof x === 'string') : [];
+  if (!ids.length) return res.status(400).json({ error: 'ids must be a non-empty array of strings' });
+  if (ids.length > 200) return res.status(400).json({ error: 'Too many ids (max 200 per batch)' });
+
+  const results = ids.map((id) => {
+    try { return rejectOne(id); }
+    catch (err) { return { id, ok: false, status: 500, error: err.message }; }
+  });
+  const rejected = results.filter((r) => r.ok).map((r) => r.id);
+  const failed = results.filter((r) => !r.ok).map((r) => ({ id: r.id, error: r.error }));
+  res.json({ ok: failed.length === 0, rejected, failed, total: ids.length });
+});
+
+// POST /api/feedback — the one-keystroke "/feedback" capture path. Records the
+// correction as a STRUCTURED feedback_event immediately, then STAGES a feedback
+// candidate into the Learning Inbox. CRITICAL (Yash, 2026-06-18): feedback.md stays
+// human-only — this never writes the file. Only a human approve of the staged
+// candidate runs appendFeedback (and flips appliedToFeedbackMd via feedbackEventId).
+router.post('/feedback', rateLimit('write'), (req, res) => {
+  try {
+    const { directive, context = null, severity = 'normal', project = null, sessionId = null, source = 'manual' } = req.body || {};
+    if (!directive || !String(directive).trim()) {
+      return res.status(400).json({ error: 'directive is required' });
+    }
+    const sev = severity === 'p0' ? 'p0' : 'normal';
+    const ev = db.insertFeedbackEvent({ directive, context, severity: sev, project, sessionId, source: source === 'manual' ? '/feedback' : source });
+    if (!ev) return res.status(400).json({ error: 'directive is required' });
+
+    const title = String(directive).trim().slice(0, 120);
+    const cand = db.insertLearningCandidate({
+      type: 'feedback',
+      title,
+      source: 'feedback-command',
+      confidence: sev === 'p0' ? 0.95 : 0.7,
+      payload: { directive: String(directive).trim(), context: context || '', severity: sev, feedbackEventId: ev.id },
+    });
+    try { inboxEvents.emit('candidate', { id: cand?.id, type: 'feedback', title }); } catch { /* best-effort */ }
+    res.json({ ok: true, feedbackEventId: ev.id, candidateId: cand?.id || null, staged: !!cand?.id, note: 'Staged for review — feedback.md is written only on your approve.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

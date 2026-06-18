@@ -144,6 +144,10 @@ function runMigrations(db) {
     { version: 24, name: 'learning_loop', fn: learningLoopMigration },
     { version: 25, name: 'vscode_session_watermark', fn: vscodeSessionWatermarkMigration },
     { version: 26, name: 'playground_threads', fn: playgroundThreadsMigration },
+    { version: 27, name: 'change_log_actor', fn: changeLogActorMigration },
+    { version: 28, name: 'self_improving_brain', fn: selfImprovingBrainMigration },
+    { version: 29, name: 'continuity_brain', fn: continuityBrainMigration },
+    { version: 30, name: 'decision_journal_resolution', fn: decisionJournalResolutionMigration },
   ];
 
   for (const mig of migrations) {
@@ -1881,6 +1885,195 @@ function playgroundThreadsMigration(db) {
   console.log('[migration v26] playground_threads + playground_messages created');
 }
 
+// ── Migration v28: self-improving brain (2026-06-18) ─────────────────────────
+// The closed learning loop: detectors EMIT training_signals → the governor routes
+// them → trainer applies training_patches (with rollback) → self_improvement_log
+// records every decision for the Brain timeline. Purely additive. These three
+// tables were specced in tutor.md but never created — this migration makes the
+// "learn from mistakes" loop real instead of prose.
+function selfImprovingBrainMigration(db) {
+  db.exec(`
+    -- A detected "something is wrong / could be better" event. Sources (kind):
+    --   'antipattern'     cross-project recurrence (Phase B aggregator)
+    --   'eval_drop'       rolling LLM-judge score fell below threshold (Phase B)
+    --   'yash_correction' a P0 human correction (strongest)
+    --   'rework'          VS Code ask→not-done→retry loop (learning digest)
+    --   'failure_cluster' repeated run failures of one class
+    CREATE TABLE IF NOT EXISTS training_signals (
+      id          TEXT PRIMARY KEY,
+      ts          TEXT NOT NULL,
+      agent       TEXT NOT NULL,
+      kind        TEXT NOT NULL,
+      signature   TEXT,                  -- normalized fingerprint for recurrence dedup
+      severity    TEXT DEFAULT 'medium', -- p0 | high | medium | low
+      occurrences INTEGER DEFAULT 1,
+      projects    TEXT DEFAULT '[]',     -- JSON array of distinct project ids it recurred in
+      evidence    TEXT DEFAULT '{}',     -- JSON: { runIds, examples, scores, detail }
+      status      TEXT DEFAULT 'open',   -- open | patched | dismissed | superseded
+      createdAt   TEXT NOT NULL,
+      updatedAt   TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_training_signals_agent  ON training_signals(agent, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_training_signals_status ON training_signals(status, ts DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_training_signals_sig ON training_signals(agent, kind, signature);
+
+    -- A concrete, reversible change to an agent .md (or memory). before_text is the
+    -- exact prior text — the rollback payload that makes auto-apply safe.
+    CREATE TABLE IF NOT EXISTS training_patches (
+      id              TEXT PRIMARY KEY,
+      ts              TEXT NOT NULL,
+      agent           TEXT NOT NULL,
+      signalId        TEXT,                    -- → training_signals.id
+      patchType       TEXT NOT NULL,           -- anti_pattern | smart_default | auto_fix | pattern_addition | update_existing
+      targetFile      TEXT NOT NULL,           -- ~/.claude/agents/<name>.md
+      section         TEXT,                    -- heading the edit landed under
+      before_text     TEXT,                    -- rollback_content (exact prior text; '' = pure insert)
+      after_text      TEXT,                    -- inserted/edited text
+      decision        TEXT NOT NULL,           -- governor verdict: auto | review | reject
+      decisionReasons TEXT DEFAULT '[]',       -- JSON array of reason codes
+      status          TEXT DEFAULT 'proposed', -- proposed | applied | reverted | rejected
+      appliedAt       TEXT,
+      revertedAt      TEXT,
+      impact          TEXT DEFAULT '{}',       -- { scoreBefore, scoreAfter, runsObserved, regressionPct }
+      createdAt       TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_training_patches_agent  ON training_patches(agent, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_training_patches_status ON training_patches(status, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_training_patches_signal ON training_patches(signalId);
+
+    -- The Brain timeline: one row per governor decision + lifecycle event. The
+    -- single queryable source for "how the factory is improving itself".
+    CREATE TABLE IF NOT EXISTS self_improvement_log (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts        TEXT NOT NULL,
+      kind      TEXT NOT NULL,   -- signal | decision | patch_applied | patch_reverted | conflict | hygiene
+      agent     TEXT,
+      refId     TEXT,            -- signalId or patchId this row is about
+      decision  TEXT,            -- auto | review | reject (when kind='decision')
+      summary   TEXT,
+      data      TEXT DEFAULT '{}'
+    );
+    CREATE INDEX IF NOT EXISTS idx_self_improvement_ts   ON self_improvement_log(ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_self_improvement_kind ON self_improvement_log(kind, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_self_improvement_agent ON self_improvement_log(agent, ts DESC);
+  `);
+  console.log('[migration v28] self-improving brain: training_signals + training_patches + self_improvement_log created');
+}
+
+// ── Migration v29: continuity brain (2026-06-18) ─────────────────────────────
+// Materializes the 4 mission layers that today live only as prose markdown, into
+// queryable/decayable/surfaceable state — so the brain can RECALL at session START,
+// not just capture at session END. Purely additive + idempotent (re-run safe).
+//   identity_facts  — L1 IDENTITY + L5 PREFERENCE (values/voice/non-negotiables/opinions/prefs)
+//   reflections     — L2 EPISODIC + L7 META (per-session felt-notes, uncertainty, decision journal)
+//   open_loops      — L6 GOAL/INTENT (unfinished promises with owner/due/status)
+//   feedback_events — L5 structured correction log (feedback.md stays the human-only canonical file)
+// SAFETY: identity_facts writes for kind in (value,voice,non_negotiable,preference) are SIGN-OFF
+// GATED — the system may PROPOSE via learning_inbox but NEVER auto-writes them here (locked decision:
+// identity/prefs human-only). open_loops + reflections are episodic/operational → safe to auto-write.
+// Rollback: DROP TABLE identity_facts, reflections, open_loops, feedback_events;
+//           DELETE FROM schema_migrations WHERE version=29;
+function continuityBrainMigration(db) {
+  db.exec(`
+    -- L1 IDENTITY + L5 PREFERENCE. kind: value | voice | non_negotiable | opinion | preference.
+    -- Append-only belief revision: a correction supersedes (never deletes) the prior fact.
+    CREATE TABLE IF NOT EXISTS identity_facts (
+      id           TEXT PRIMARY KEY,
+      kind         TEXT NOT NULL,          -- value | voice | non_negotiable | opinion | preference
+      statement    TEXT NOT NULL,          -- the fact in one line
+      detail       TEXT,                   -- optional elaboration / the "why"
+      scope        TEXT DEFAULT 'global',  -- global | <projectName>
+      confidence   REAL DEFAULT 1.0,
+      source       TEXT,                   -- yash_signoff | seed | inbox:<candidateId>
+      status       TEXT DEFAULT 'active',  -- active | superseded | retired
+      supersededBy TEXT,                   -- id of the fact that replaced it (belief revision)
+      createdAt    TEXT NOT NULL,
+      updatedAt    TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_identity_facts_kind   ON identity_facts(kind, status);
+    CREATE INDEX IF NOT EXISTS idx_identity_facts_status ON identity_facts(status, updatedAt DESC);
+
+    -- L2 EPISODIC + L7 META. kind: episodic | reflection | uncertainty | decision.
+    -- decision rows carry confidence + outcome for the decision-journal re-score loop (later phase).
+    CREATE TABLE IF NOT EXISTS reflections (
+      id          TEXT PRIMARY KEY,
+      ts          TEXT NOT NULL,
+      kind        TEXT NOT NULL,          -- episodic | reflection | uncertainty | decision
+      sessionId   TEXT,
+      project     TEXT,
+      summary     TEXT NOT NULL,          -- what happened / what I felt / what I'm unsure about
+      detail      TEXT,
+      confidence  REAL DEFAULT 0,         -- decision-journal confidence (re-scored over time)
+      outcome     TEXT DEFAULT 'pending', -- pending | confirmed | wrong
+      data        TEXT DEFAULT '{}',
+      createdAt   TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_reflections_ts      ON reflections(ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_reflections_kind    ON reflections(kind, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_reflections_session ON reflections(sessionId);
+
+    -- L6 GOAL/INTENT — open loops: unfinished promises/intents with owner+due+status.
+    CREATE TABLE IF NOT EXISTS open_loops (
+      id          TEXT PRIMARY KEY,
+      ts          TEXT NOT NULL,
+      title       TEXT NOT NULL,          -- the unfinished thing
+      detail      TEXT,
+      owner       TEXT DEFAULT 'claude',  -- claude | yash | <agent>
+      project     TEXT,
+      sessionId   TEXT,
+      dueAt       TEXT,                   -- optional deadline
+      status      TEXT DEFAULT 'open',    -- open | done | dropped
+      source      TEXT,                   -- digest | manual | inbox
+      closedAt    TEXT,
+      createdAt   TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_open_loops_status  ON open_loops(status, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_open_loops_project ON open_loops(project, status);
+    -- Dedup: the same unfinished thing re-detected across digests shouldn't pile up.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_open_loops_dedup ON open_loops(title, project);
+
+    -- L5 PREFERENCE (structured correction log). Each /feedback or detected correction
+    -- becomes a structured event; feedback.md remains the human-only canonical file
+    -- (appliedToFeedbackMd flips to 1 only after a human approves the write).
+    CREATE TABLE IF NOT EXISTS feedback_events (
+      id                  TEXT PRIMARY KEY,
+      ts                  TEXT NOT NULL,
+      directive           TEXT NOT NULL,          -- the rule/correction to follow next time
+      context             TEXT,                   -- where it came up
+      severity            TEXT DEFAULT 'normal',  -- p0 | normal
+      project             TEXT,
+      sessionId           TEXT,
+      source              TEXT,                   -- /feedback | digest | manual
+      appliedToFeedbackMd INTEGER DEFAULT 0,      -- 1 once a human approved → written to feedback.md
+      createdAt           TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_feedback_events_ts       ON feedback_events(ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_feedback_events_severity ON feedback_events(severity, ts DESC);
+  `);
+  console.log('[migration v29] continuity brain: identity_facts + reflections + open_loops + feedback_events created');
+}
+
+// v30 — decision-journal resolution loop. Closes the "learn from consequences"
+// gap for L7 decisions: a decision (reflections.kind='decision') is logged with a
+// confidence; later we record whether it turned out right. resolvedAt stamps when
+// the outcome was set; correctnessScore (0..1) lets the weekly re-score compute a
+// rolling decision-accuracy. Review-only — nothing here auto-writes identity/memory.
+function decisionJournalResolutionMigration(db) {
+  const hasCol = (t, c) => db.prepare(`PRAGMA table_info(${t})`).all().some((x) => x.name === c);
+  if (!hasCol('reflections', 'resolvedAt')) {
+    db.exec(`ALTER TABLE reflections ADD COLUMN resolvedAt TEXT`);
+  }
+  if (!hasCol('reflections', 'correctnessScore')) {
+    db.exec(`ALTER TABLE reflections ADD COLUMN correctnessScore REAL`);
+  }
+  db.exec(`
+    -- Surface aged-unresolved decisions fast (kind='decision', outcome='pending').
+    CREATE INDEX IF NOT EXISTS idx_reflections_resolved
+      ON reflections(kind, outcome, resolvedAt);
+  `);
+  console.log('[migration v30] decision-journal resolution: reflections.resolvedAt + correctnessScore + idx_reflections_resolved');
+}
+
 // ── VS Code sessions ────────────────────────────────────────────────────────
 
 // Upsert keyed on sessionId. CRITICAL: the SessionEnd hook calls this WITHOUT a
@@ -1929,6 +2122,25 @@ function getPendingVscodeSessions(hours = 24, limit = 50) {
   return stmt(`SELECT * FROM vscode_session WHERE status = 'pending_digest' AND createdAt >= ?
     ORDER BY createdAt DESC LIMIT ?`).all(cutoff, limit)
     .map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
+}
+
+// Success-rate of REAL agent work (this 7d vs prior 7d), excluding
+// 'system-schedule' infra runs (which are ~always success and would skew the
+// "are agents getting better?" signal). Powers the Overview's improvement %.
+function getRealRunStats() {
+  const now = Date.now(), DAY = 86400000;
+  const wk1 = new Date(now - 7 * DAY).toISOString();
+  const wk2 = new Date(now - 14 * DAY).toISOString();
+  const rows = stmt(`SELECT timestamp, status FROM agent_runs
+    WHERE timestamp >= ? AND COALESCE(source,'') != 'system-schedule'`).all(wk2);
+  const acc = (from, to) => {
+    let total = 0, success = 0;
+    for (const r of rows) {
+      if (r.timestamp >= from && (to === null || r.timestamp < to)) { total += 1; if (r.status === 'success') success += 1; }
+    }
+    return { total, success };
+  };
+  return { thisWeek: acc(wk1, null), prevWeek: acc(wk2, wk1) };
 }
 
 // Counts of sessions already digested (for the Learning Overview cards).
@@ -2276,6 +2488,13 @@ function appendPlaygroundMessage(threadId, msg) {
          msg.duration || 0, now, JSON.stringify(msg.metadata || {}));
   stmt('UPDATE playground_threads SET updatedAt = ? WHERE id = ?').run(now, threadId);
   return msg.id;
+}
+
+function renamePlaygroundThread(id, title) {
+  const clean = String(title || '').trim().slice(0, 200) || 'Untitled';
+  const r = stmt('UPDATE playground_threads SET title = ?, updatedAt = ? WHERE id = ?')
+    .run(clean, new Date().toISOString(), id);
+  return r.changes > 0 ? getPlaygroundThread(id) : null;
 }
 
 function deletePlaygroundThread(id) {
@@ -2822,9 +3041,18 @@ function createChangeLog(db) {
   `);
 }
 
-function logChange(tableName, rowKey, action, oldData, newData) {
-  stmt('INSERT INTO db_change_log (tableName, rowKey, action, oldData, newData, changedAt) VALUES (?,?,?,?,?,?)')
-    .run(tableName, String(rowKey), action, oldData ? JSON.stringify(oldData) : null, newData ? JSON.stringify(newData) : null, new Date().toISOString());
+// ── Migration v27: change-log actor (2026-06-15) ───────────────────────────
+// Records WHO performed each edit/delete/revert. Idempotent — only adds the
+// column if it doesn't already exist. Existing rows backfill to 'ui' via the
+// column DEFAULT.
+function changeLogActorMigration(db) {
+  const hasCol = db.prepare(`PRAGMA table_info(db_change_log)`).all().some((c) => c.name === 'actor');
+  if (!hasCol) db.exec("ALTER TABLE db_change_log ADD COLUMN actor TEXT DEFAULT 'ui'");
+}
+
+function logChange(tableName, rowKey, action, oldData, newData, actor = 'ui') {
+  stmt('INSERT INTO db_change_log (tableName, rowKey, action, oldData, newData, actor, changedAt) VALUES (?,?,?,?,?,?,?)')
+    .run(tableName, String(rowKey), action, oldData ? JSON.stringify(oldData) : null, newData ? JSON.stringify(newData) : null, actor, new Date().toISOString());
 }
 
 function getChanges(tableName, limit = 100) {
@@ -2856,7 +3084,7 @@ function getColumnSet(tableName) {
   return new Set(getDb().prepare(`PRAGMA table_info("${tableName}")`).all().map(c => c.name));
 }
 
-function updateRow(tableName, pkValue, updates) {
+function updateRow(tableName, pkValue, updates, actor = 'ui') {
   const d = getDb();
   const pkCol = getPrimaryKeyColumn(tableName);
   if (!pkCol) throw new Error(`No primary key found for table ${tableName}`);
@@ -2888,12 +3116,12 @@ function updateRow(tableName, pkValue, updates) {
   const newRow = d.prepare(`SELECT * FROM "${tableName}" WHERE "${pkCol}" = ?`).get(pkValue);
 
   // Log the change
-  logChange(tableName, pkValue, 'update', oldRow, newRow);
+  logChange(tableName, pkValue, 'update', oldRow, newRow, actor);
 
   return newRow;
 }
 
-function revertChange(changeId) {
+function revertChange(changeId, actor = 'ui') {
   const d = getDb();
   const change = d.prepare('SELECT * FROM db_change_log WHERE id = ?').get(changeId);
   if (!change) throw new Error('Change not found');
@@ -2926,12 +3154,12 @@ function revertChange(changeId) {
   d.prepare('UPDATE db_change_log SET reverted = 1 WHERE id = ?').run(changeId);
 
   // Log the revert as its own change
-  logChange(change.tableName, change.rowKey, 'revert', currentRow, oldData);
+  logChange(change.tableName, change.rowKey, 'revert', currentRow, oldData, actor);
 
   return { ok: true, restoredData: oldData };
 }
 
-function deleteRow(tableName, pkValue) {
+function deleteRow(tableName, pkValue, actor = 'ui') {
   const d = getDb();
   const pkCol = getPrimaryKeyColumn(tableName);
   if (!pkCol) throw new Error(`No primary key found for table ${tableName}`);
@@ -2940,7 +3168,7 @@ function deleteRow(tableName, pkValue) {
   if (!oldRow) throw new Error(`Row not found: ${pkCol}=${pkValue}`);
 
   d.prepare(`DELETE FROM "${tableName}" WHERE "${pkCol}" = ?`).run(pkValue);
-  logChange(tableName, pkValue, 'delete', oldRow, null);
+  logChange(tableName, pkValue, 'delete', oldRow, null, actor);
 
   return { ok: true };
 }
@@ -3269,6 +3497,324 @@ function ingestEvalRuns(jsonlPath) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SELF-IMPROVING BRAIN (v28) — signals → governed patches → timeline
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Upsert a detected signal. Keyed on (agent, kind, signature) so a recurring
+// antipattern bumps occurrences + merges the project set instead of duplicating.
+// Returns { id, occurrences, projects, isNew }.
+// mode:'increment' (default) — event-driven: a single new occurrence bumps the
+//   count by `occurrences` and UNIONs the project. Use when each call = 1 real event.
+// mode:'set' — idempotent re-scan: `occurrences`/`projects` are the CURRENT truth
+//   computed from the full source window; REPLACE (never accumulate) so a daily
+//   aggregator can re-run without inflating counts, and a weakness that stops
+//   recurring decays out of the window honestly. Terminal statuses
+//   (dismissed/patched/resolved) are preserved — a re-scan never auto-reopens them.
+function upsertTrainingSignal({ agent, kind, signature, severity = 'medium', projects = [], evidence = {}, occurrences = 1, mode = 'increment' } = {}) {
+  if (!agent || !kind) return null;
+  const sig = signature || `${kind}:${agent}`;
+  const now = new Date().toISOString();
+  const existing = stmt('SELECT * FROM training_signals WHERE agent = ? AND kind = ? AND signature = ?').get(agent, kind, sig);
+  if (existing) {
+    const mergedProjects = mode === 'set'
+      ? Array.from(new Set(projects))
+      : Array.from(new Set([...(JSON.parse(existing.projects || '[]')), ...projects]));
+    const occ = mode === 'set' ? occurrences : (existing.occurrences || 1) + occurrences;
+    stmt('UPDATE training_signals SET occurrences = ?, projects = ?, evidence = ?, severity = ?, status = CASE WHEN status IN (\'dismissed\',\'patched\',\'resolved\') THEN status ELSE \'open\' END, updatedAt = ? WHERE id = ?')
+      .run(occ, JSON.stringify(mergedProjects), JSON.stringify(evidence || {}), severity, now, existing.id);
+    return { id: existing.id, occurrences: occ, projects: mergedProjects, isNew: false, status: existing.status };
+  }
+  const id = `sig:${require('crypto').randomUUID().slice(0, 8)}`;
+  const projs = Array.from(new Set(projects));
+  stmt('INSERT INTO training_signals (id,ts,agent,kind,signature,severity,occurrences,projects,evidence,status,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(id, now, agent, kind, sig, severity, occurrences, JSON.stringify(projs), JSON.stringify(evidence || {}), 'open', now, now);
+  return { id, occurrences, projects: projs, isNew: true, status: 'open' };
+}
+
+function getTrainingSignals({ status, agent, kind, limit = 200 } = {}) {
+  const conds = [], args = [];
+  if (status) { conds.push('status = ?'); args.push(status); }
+  if (agent)  { conds.push('agent = ?'); args.push(agent); }
+  if (kind)   { conds.push('kind = ?'); args.push(kind); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM training_signals${where} ORDER BY ts DESC LIMIT ?`).all(...args, Math.min(Number(limit) || 200, 2000))
+    .map(r => ({ ...r, projects: JSON.parse(r.projects || '[]'), evidence: JSON.parse(r.evidence || '{}') }));
+}
+
+function updateTrainingSignalStatus(id, status) {
+  if (!id || !status) return;
+  stmt('UPDATE training_signals SET status = ?, updatedAt = ? WHERE id = ?').run(status, new Date().toISOString(), id);
+}
+
+function insertTrainingPatch(p = {}) {
+  const id = p.id || `patch:${require('crypto').randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  stmt(`INSERT INTO training_patches
+    (id,ts,agent,signalId,patchType,targetFile,section,before_text,after_text,decision,decisionReasons,status,appliedAt,revertedAt,impact,createdAt)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, p.ts || now, p.agent || null, p.signalId || null, p.patchType || 'anti_pattern',
+      // targetFile is NOT NULL; an unattributable patch (domain-bucket signal, no
+      // agent .md) legitimately has no target → store '' not null. Downstream guards
+      // (`if (!patch.targetFile)`) treat '' and null identically, so behavior is
+      // preserved and the daily trainer cycle no longer throws on such a signal.
+      p.targetFile || '', p.section || null, p.before_text ?? '', p.after_text ?? '',
+      p.decision || 'review', JSON.stringify(p.decisionReasons || []), p.status || 'proposed',
+      p.appliedAt || null, p.revertedAt || null, JSON.stringify(p.impact || {}), now);
+  return { id };
+}
+
+function getTrainingPatches({ status, agent, signalId, limit = 200 } = {}) {
+  const conds = [], args = [];
+  if (status)   { conds.push('status = ?'); args.push(status); }
+  if (agent)    { conds.push('agent = ?'); args.push(agent); }
+  if (signalId) { conds.push('signalId = ?'); args.push(signalId); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM training_patches${where} ORDER BY ts DESC LIMIT ?`).all(...args, Math.min(Number(limit) || 200, 2000))
+    .map(r => ({ ...r, decisionReasons: JSON.parse(r.decisionReasons || '[]'), impact: JSON.parse(r.impact || '{}') }));
+}
+
+function getTrainingPatch(id) {
+  const r = stmt('SELECT * FROM training_patches WHERE id = ?').get(id);
+  return r ? { ...r, decisionReasons: JSON.parse(r.decisionReasons || '[]'), impact: JSON.parse(r.impact || '{}') } : null;
+}
+
+function updateTrainingPatch(id, patch = {}) {
+  const cur = stmt('SELECT * FROM training_patches WHERE id = ?').get(id);
+  if (!cur) return false;
+  const next = { ...cur, ...patch };
+  stmt('UPDATE training_patches SET status = ?, appliedAt = ?, revertedAt = ?, impact = ? WHERE id = ?')
+    .run(next.status, next.appliedAt || null, next.revertedAt || null,
+      JSON.stringify(typeof next.impact === 'string' ? JSON.parse(next.impact || '{}') : (next.impact || {})), id);
+  return true;
+}
+
+function logSelfImprovement({ kind, agent, refId, decision, summary, data = {} } = {}) {
+  if (!kind) return;
+  stmt('INSERT INTO self_improvement_log (ts,kind,agent,refId,decision,summary,data) VALUES (?,?,?,?,?,?,?)')
+    .run(new Date().toISOString(), kind, agent || null, refId || null, decision || null, (summary || '').slice(0, 500), JSON.stringify(data || {}));
+}
+
+function getSelfImprovementLog({ kind, agent, limit = 200 } = {}) {
+  const conds = [], args = [];
+  if (kind)  { conds.push('kind = ?'); args.push(kind); }
+  if (agent) { conds.push('agent = ?'); args.push(agent); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM self_improvement_log${where} ORDER BY ts DESC LIMIT ?`).all(...args, Math.min(Number(limit) || 200, 2000))
+    .map(r => ({ ...r, data: JSON.parse(r.data || '{}') }));
+}
+
+// Brain summary for the System/Brain dashboard — counts that frame the loop.
+function getBrainStats() {
+  const sig = stmt(`SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) AS open,
+      SUM(CASE WHEN status='patched' THEN 1 ELSE 0 END) AS patched
+    FROM training_signals`).get() || {};
+  const pat = stmt(`SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN status='applied' THEN 1 ELSE 0 END) AS applied,
+      SUM(CASE WHEN status='proposed' THEN 1 ELSE 0 END) AS proposed,
+      SUM(CASE WHEN status='reverted' THEN 1 ELSE 0 END) AS reverted
+    FROM training_patches`).get() || {};
+  const dec = stmt(`SELECT decision, COUNT(*) AS n FROM self_improvement_log WHERE kind='decision' GROUP BY decision`).all() || [];
+  const decisions = { auto: 0, review: 0, reject: 0 };
+  for (const d of dec) if (d.decision in decisions) decisions[d.decision] = d.n;
+  return {
+    signals: { total: sig.total || 0, open: sig.open || 0, patched: sig.patched || 0 },
+    patches: { total: pat.total || 0, applied: pat.applied || 0, proposed: pat.proposed || 0, reverted: pat.reverted || 0 },
+    decisions,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTINUITY BRAIN (v29) — identity / reflections / open-loops / feedback events
+// The stored state that the SessionStart hook reads back as a "since last time"
+// brief, closing the capture→recall loop.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const IDENTITY_KINDS = new Set(['value', 'voice', 'non_negotiable', 'opinion', 'preference']);
+// Kinds that may NEVER be auto-written — only a human sign-off (inbox approve) inserts
+// these. Mirrors the governor's feedback.md guard: identity + preferences are human-only.
+const IDENTITY_SIGNOFF_KINDS = new Set(['value', 'voice', 'non_negotiable', 'preference']);
+
+// Insert an identity fact. `bySignoff` MUST be true for sign-off-gated kinds — the
+// digest/agents path can only ever insert 'opinion' (a tacit belief, low blast radius);
+// values/voice/non_negotiables/preferences require a human approve. Throws on violation
+// so a mis-wired caller fails loud instead of silently writing the constitution.
+function insertIdentityFact({ kind, statement, detail = null, scope = 'global', confidence = 1.0, source = null, bySignoff = false } = {}) {
+  if (!kind || !IDENTITY_KINDS.has(kind)) throw new Error(`insertIdentityFact: invalid kind "${kind}"`);
+  if (!statement || !String(statement).trim()) throw new Error('insertIdentityFact: statement required');
+  if (IDENTITY_SIGNOFF_KINDS.has(kind) && !bySignoff) {
+    throw new Error(`insertIdentityFact: kind "${kind}" is sign-off-gated (human approve only) — refusing auto-write`);
+  }
+  const id = `idf:${require('crypto').randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  stmt(`INSERT INTO identity_facts (id,kind,statement,detail,scope,confidence,source,status,supersededBy,createdAt,updatedAt)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, kind, String(statement).slice(0, 500), detail, scope || 'global',
+      Number.isFinite(confidence) ? confidence : 1.0, source, 'active', null, now, now);
+  return { id };
+}
+
+function getIdentityFacts({ kind, scope, status = 'active', limit = 200 } = {}) {
+  const conds = [], args = [];
+  if (kind)   { conds.push('kind = ?'); args.push(kind); }
+  if (scope)  { conds.push('(scope = ? OR scope = \'global\')'); args.push(scope); }
+  if (status) { conds.push('status = ?'); args.push(status); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM identity_facts${where} ORDER BY kind, updatedAt DESC LIMIT ?`)
+    .all(...args, Math.min(Number(limit) || 200, 2000));
+}
+
+// Belief revision: mark an existing fact superseded by a newer one (never deletes).
+function supersedeIdentityFact(oldId, newId) {
+  if (!oldId) return;
+  stmt("UPDATE identity_facts SET status = 'superseded', supersededBy = ?, updatedAt = ? WHERE id = ?")
+    .run(newId || null, new Date().toISOString(), oldId);
+}
+
+function insertReflection({ kind = 'episodic', sessionId = null, project = null, summary, detail = null, confidence = 0, outcome = 'pending', data = {} } = {}) {
+  if (!summary || !String(summary).trim()) return null;
+  const id = `ref:${require('crypto').randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  stmt(`INSERT INTO reflections (id,ts,kind,sessionId,project,summary,detail,confidence,outcome,data,createdAt)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, now, kind, sessionId, project, String(summary).slice(0, 1000), detail,
+      Number.isFinite(confidence) ? confidence : 0, outcome, JSON.stringify(data || {}), now);
+  return { id };
+}
+
+function getRecentReflections({ kind, project, limit = 5 } = {}) {
+  const conds = [], args = [];
+  if (kind)    { conds.push('kind = ?'); args.push(kind); }
+  if (project) { conds.push('project = ?'); args.push(project); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM reflections${where} ORDER BY ts DESC LIMIT ?`)
+    .all(...args, Math.min(Number(limit) || 5, 200))
+    .map(r => ({ ...r, data: JSON.parse(r.data || '{}') }));
+}
+
+// INSERT OR IGNORE on (title, project) so the same unfinished thing re-detected by a
+// later digest doesn't pile up. Returns { id, inserted }.
+function insertOpenLoop({ title, detail = null, owner = 'claude', project = null, sessionId = null, dueAt = null, source = 'manual' } = {}) {
+  if (!title || !String(title).trim()) return { id: null, inserted: false };
+  const id = `loop:${require('crypto').randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const info = stmt(`INSERT OR IGNORE INTO open_loops (id,ts,title,detail,owner,project,sessionId,dueAt,status,source,closedAt,createdAt)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, now, String(title).slice(0, 300), detail, owner, project, sessionId, dueAt, 'open', source, null, now);
+  return { id, inserted: info.changes > 0 };
+}
+
+function getOpenLoops({ status = 'open', project, owner, limit = 50 } = {}) {
+  const conds = [], args = [];
+  if (status)  { conds.push('status = ?'); args.push(status); }
+  if (project) { conds.push('project = ?'); args.push(project); }
+  if (owner)   { conds.push('owner = ?'); args.push(owner); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM open_loops${where} ORDER BY (dueAt IS NULL), dueAt ASC, ts DESC LIMIT ?`)
+    .all(...args, Math.min(Number(limit) || 50, 500));
+}
+
+// Close a loop (done|dropped). Guarded so a double-close is a no-op.
+function closeOpenLoop(id, status = 'done') {
+  if (!id) return { changed: 0 };
+  const info = stmt("UPDATE open_loops SET status = ?, closedAt = ? WHERE id = ? AND status = 'open'")
+    .run(status === 'dropped' ? 'dropped' : 'done', new Date().toISOString(), id);
+  return { changed: info.changes };
+}
+
+function insertFeedbackEvent({ directive, context = null, severity = 'normal', project = null, sessionId = null, source = 'manual', appliedToFeedbackMd = 0 } = {}) {
+  if (!directive || !String(directive).trim()) return null;
+  const id = `fbk:${require('crypto').randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  stmt(`INSERT INTO feedback_events (id,ts,directive,context,severity,project,sessionId,source,appliedToFeedbackMd,createdAt)
+        VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, now, String(directive).slice(0, 500), context, severity === 'p0' ? 'p0' : 'normal',
+      project, sessionId, source, appliedToFeedbackMd ? 1 : 0, now);
+  return { id };
+}
+
+function getRecentFeedbackEvents({ severity, limit = 10 } = {}) {
+  const conds = [], args = [];
+  if (severity) { conds.push('severity = ?'); args.push(severity); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM feedback_events${where} ORDER BY ts DESC LIMIT ?`)
+    .all(...args, Math.min(Number(limit) || 10, 200));
+}
+
+// Flip a feedback_event to "written to feedback.md" — called ONLY from the human
+// approve path after appendFeedback actually wrote the file. Idempotent.
+function setFeedbackEventApplied(id) {
+  if (!id) return { changed: 0 };
+  const info = stmt('UPDATE feedback_events SET appliedToFeedbackMd = 1 WHERE id = ? AND appliedToFeedbackMd = 0').run(id);
+  return { changed: info.changes };
+}
+
+// ── Decision journal (v30) — learn from consequences ────────────────────────
+// Record the real outcome of a past decision (reflections.kind='decision').
+// outcome: 'confirmed' (right) | 'wrong'. correctnessScore is the 0..1 signal the
+// weekly re-score averages into a rolling decision-accuracy. resolvedAt stamps it.
+function updateReflectionOutcome({ id, outcome, correctnessScore = null, note = null } = {}) {
+  if (!id) return { changed: 0 };
+  const norm = outcome === 'confirmed' ? 'confirmed' : outcome === 'wrong' ? 'wrong' : null;
+  if (!norm) throw new Error(`updateReflectionOutcome: outcome must be 'confirmed'|'wrong' (got ${outcome})`);
+  const score = correctnessScore == null
+    ? (norm === 'confirmed' ? 1 : 0)
+    : Math.max(0, Math.min(1, Number(correctnessScore) || 0));
+  const now = new Date().toISOString();
+  // Merge an optional resolution note into the existing data JSON without clobbering it.
+  const row = stmt("SELECT data FROM reflections WHERE id = ? AND kind = 'decision'").get(id);
+  if (!row) return { changed: 0 };
+  let data = {};
+  try { data = JSON.parse(row.data || '{}'); } catch { data = {}; }
+  if (note) data.resolutionNote = String(note).slice(0, 1000);
+  const info = stmt(`UPDATE reflections SET outcome = ?, correctnessScore = ?, resolvedAt = ?, data = ?
+                     WHERE id = ? AND kind = 'decision'`)
+    .run(norm, score, now, JSON.stringify(data), id);
+  return { changed: info.changes, outcome: norm, correctnessScore: score };
+}
+
+// Aged-but-unresolved decisions: kind='decision', outcome still 'pending', older
+// than daysOld. Drives the weekly re-score nudge + the /decisions/unresolved view.
+function getUnresolvedDecisions({ daysOld = 0, project = null, limit = 50 } = {}) {
+  const conds = ["kind = 'decision'", "outcome = 'pending'"];
+  const args = [];
+  if (daysOld > 0) {
+    const cutoff = new Date(Date.now() - daysOld * 86400000).toISOString();
+    conds.push('ts <= ?'); args.push(cutoff);
+  }
+  if (project) { conds.push('project = ?'); args.push(project); }
+  return stmt(`SELECT * FROM reflections WHERE ${conds.join(' AND ')} ORDER BY ts ASC LIMIT ?`)
+    .all(...args, Math.min(Number(limit) || 50, 500));
+}
+
+// Rolling decision accuracy from resolved decisions (correctnessScore mean).
+// Review-only telemetry for the weekly re-score + Brain timeline.
+function getDecisionAccuracy({ sinceDays = 90 } = {}) {
+  const cutoff = new Date(Date.now() - sinceDays * 86400000).toISOString();
+  const row = stmt(`SELECT COUNT(*) AS n, AVG(correctnessScore) AS acc
+                    FROM reflections
+                    WHERE kind = 'decision' AND outcome IN ('confirmed','wrong')
+                      AND resolvedAt IS NOT NULL AND resolvedAt >= ?`).get(cutoff);
+  return { resolved: row?.n || 0, accuracy: row?.acc == null ? null : Number(row.acc) };
+}
+
+// Assemble the "since last time" brief the SessionStart hook reads back. One cheap
+// read across the continuity tables — identity + open loops + last reflections +
+// recent corrections — scoped to the active project (global facts always included).
+function getSessionBrief({ project = null, identityLimit = 12, loopLimit = 8, reflectionLimit = 5, feedbackLimit = 6 } = {}) {
+  return {
+    generatedAt: new Date().toISOString(),
+    project: project || null,
+    identity: getIdentityFacts({ scope: project || undefined, status: 'active', limit: identityLimit }),
+    openLoops: getOpenLoops({ status: 'open', limit: loopLimit }),
+    reflections: getRecentReflections({ limit: reflectionLimit }),
+    feedback: getRecentFeedbackEvents({ limit: feedbackLimit }),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // DISPATCH POLICY (Pillar 5) — policy_audit + non-throwing model-routing check
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -3316,7 +3862,7 @@ module.exports = {
   loadAgentRuns, insertAgentRun, getRecentAgentRuns,
   insertAgentRunStub, completeAgentRun, reconcileOrphanRuns,
   // Learning Loop (VS Code sessions → review inbox)
-  insertVscodeSession, getSessionWatermark, getPendingVscodeSessions, getDigestedSessionStats, markVscodeSessionsDigested, getAgentRunsBySession,
+  insertVscodeSession, getSessionWatermark, getPendingVscodeSessions, getDigestedSessionStats, getRealRunStats, markVscodeSessionsDigested, getAgentRunsBySession,
   insertLearningCandidate, listLearningInbox, getLearningCandidate,
   updateLearningStatus, updateLearningPayload, getInboxCounts, pruneLearningInbox,
   // Run observability (Pillar 1)
@@ -3324,6 +3870,18 @@ module.exports = {
   logAgentEvent, getAgentEvents,
   trackDelegation, getDelegations,
   recordEvalScore, getEvalScores, ingestEvalRuns,
+  // Self-improving brain (v28): signals → governed patches → timeline
+  upsertTrainingSignal, getTrainingSignals, updateTrainingSignalStatus,
+  insertTrainingPatch, getTrainingPatches, getTrainingPatch, updateTrainingPatch,
+  logSelfImprovement, getSelfImprovementLog, getBrainStats,
+  // Continuity brain (v29): identity / reflections / open-loops / feedback → session brief
+  insertIdentityFact, getIdentityFacts, supersedeIdentityFact,
+  insertReflection, getRecentReflections,
+  insertOpenLoop, getOpenLoops, closeOpenLoop,
+  insertFeedbackEvent, getRecentFeedbackEvents, setFeedbackEventApplied,
+  getSessionBrief,
+  // Decision journal (v30): resolve loop + rolling accuracy (review-only)
+  updateReflectionOutcome, getUnresolvedDecisions, getDecisionAccuracy,
   // Dispatch policy (Pillar 5)
   getModelRoutingViolation, logPolicyAudit, getPolicyAudit,
   // Node position overrides (drag-and-drop persistence)
@@ -3346,7 +3904,7 @@ module.exports = {
   // Playground
   loadPlaygroundHistory, savePlaygroundHistory, upsertPlaygroundHistoryRow, getPlaygroundHistoryRow,
   deletePlaygroundHistoryRow, clearPlaygroundHistory,
-  listPlaygroundThreads, getPlaygroundThread, createPlaygroundThread, appendPlaygroundMessage, deletePlaygroundThread,
+  listPlaygroundThreads, getPlaygroundThread, createPlaygroundThread, appendPlaygroundMessage, renamePlaygroundThread, deletePlaygroundThread,
   // Approvals
   loadApprovals, saveApprovals,
   // Audit Log

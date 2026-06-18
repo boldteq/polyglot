@@ -50,6 +50,16 @@ const DEFINITIONS = [
     cancellable: false,
   },
   {
+    id: 'sys-brain-aggregate',
+    name: 'Brain signal aggregator (daily)',
+    description: 'Mine agent_runs + corrections + learning inbox across ALL projects; emit cross-project training_signals for recurring weaknesses (Phase B — generalize + learn from consequences). Local, no token cost.',
+    cron: '0 6 * * *',
+    agentName: 'witness',
+    handler: 'brainAggregate',
+    needsLlm: false,
+    cancellable: false,
+  },
+  {
     id: 'sys-cadence',
     name: 'Cadence weekly review',
     description: 'Apply promotions, open PIPs, run weekly org health review.',
@@ -61,14 +71,13 @@ const DEFINITIONS = [
   },
   {
     id: 'sys-tutor',
-    name: 'Tutor weekly training',
-    description: 'Read last 7d training signals, apply training patches.',
+    name: 'Tutor weekly training (deterministic)',
+    description: 'Phase C — consume open training_signals → synthesize rollback-armed patches → governor routes auto/review/reject → surgically patch agent .md for autos → measure impact + auto-rollback regressions. Local, no token cost; feedback.md never auto-written.',
     cron: '0 2 * * 0',
     agentName: 'tutor',
     handler: 'tutorTraining',
-    needsLlm: true,
+    needsLlm: false,
     cancellable: true,
-    costEstimate: { lowUsd: 0.05, highUsd: 0.30 },
   },
   {
     id: 'sys-forge',
@@ -104,6 +113,17 @@ const DEFINITIONS = [
     cancellable: true,
   },
   {
+    id: 'sys-reindex-drain',
+    name: 'Reindex change-queue drain (event-driven)',
+    description: 'Phase D.1 — ~60s after the last agent/memory edit, drain ~/.claude/memory/.brain/reindex-queue.jsonl and run a SCOPED incremental reindex of just the changed files (edit → searchable in ~1 min, not 12.5 h). Local Ollama, no token cost. The 02:30 full reindex is the backstop.',
+    cron: null,
+    trigger: 'event:memory.changed',
+    agentName: 'mira',
+    handler: 'reindexDrain',
+    needsLlm: false,
+    cancellable: true,
+  },
+  {
     id: 'sys-intel-eval',
     name: 'Intelligence eval self-test (weekly)',
     description: 'Run the LLM-as-judge golden self-test (Pillar 3), catch judge drift, ingest scores into eval_scores for Witness.',
@@ -125,11 +145,42 @@ const DEFINITIONS = [
     cancellable: true,
     costEstimate: { lowUsd: 0.02, highUsd: 0.25 },
   },
+  {
+    id: 'sys-memory-hygiene',
+    name: 'Memory hygiene + forgetting curve (monthly)',
+    description: 'Phase E — flag orphaned (retired-agent) chunks, surface stale unverified captures, stamp index freshness. Reversibly down-weights retired agents in the decay sidecar (never deletes); everything else is recommended to Training Review. Local, no token cost.',
+    cron: '0 3 1 * *',
+    agentName: 'mira',
+    handler: 'memoryHygiene',
+    needsLlm: false,
+    cancellable: true,
+  },
+  {
+    id: 'sys-behavioral-drift',
+    name: 'Behavioral drift detector (weekly)',
+    description: 'Review-only — compare each agent\'s recent-5-run success rate against its 7-day rate; a sharp decline emits a low-severity behavior_drift training_signal for human review (never auto-patched). Local, no token cost.',
+    cron: '0 10 * * 1',
+    agentName: 'witness',
+    handler: 'behavioralDriftDetector',
+    needsLlm: false,
+    cancellable: true,
+  },
+  {
+    id: 'sys-decision-rescore',
+    name: 'Decision-journal re-score (weekly)',
+    description: 'Review-only — surface aged-unresolved decisions (kind=decision, ≥14d, no outcome) as open loops to nudge resolution, and log the rolling decision-accuracy from resolved ones. Writes no memory/identity. Local, no token cost.',
+    cron: '0 11 * * 1',
+    agentName: 'mira',
+    handler: 'decisionJournalRescore',
+    needsLlm: false,
+    cancellable: true,
+  },
 ];
 
 const DEFAULT_ENABLED = true;
 const HANDLER_TIMEOUT_MS = 5 * 60 * 1000;
 const MIRA_DEBOUNCE_MS = 60 * 1000;
+const REINDEX_DEBOUNCE_MS = 60 * 1000; // Phase D.1 — drain the change-queue ~60s after the last edit
 
 // In-memory state
 const activeJobs = new Map();      // id → cron job
@@ -138,6 +189,7 @@ const inflight = new Map();
 let injectedDeps = null;            // { org, experience, hr, loadRecentAgentRuns }
 let miraDebounceTimer = null;
 let miraQueuedBuildIds = [];
+let reindexDebounceTimer = null;    // Phase D.1 — event-debounced reindex drain
 
 // ── Public lookup ──────────────────────────────────────────────────────────
 
@@ -285,6 +337,24 @@ const HANDLERS = {
     };
   },
 
+  // Phase B — cross-project signal aggregator. Runs after Witness (03:00) and the
+  // learning digest (04:00) so it sees the day's freshly-classified runs + ingested
+  // lessons. Idempotent: re-scans the whole window with set-semantics (no daily
+  // double-counting). Emits training_signals the Tutor/trainer (Phase C) acts on.
+  async brainAggregate() {
+    const brainSignals = require('./brainSignals');
+    const cfgN = (k, d) => { const v = configService.getConfig(k); return Number.isFinite(v) ? v : d; };
+    const result = brainSignals.detectCrossProjectSignals({
+      windowDays: cfgN('brain.aggregator.windowDays', 30),
+      minOccurrences: cfgN('brain.aggregator.minOccurrences', 3),
+      minProjects: cfgN('brain.aggregator.minProjects', 2),
+    });
+    return {
+      output: `Brain aggregate: ${result.emitted} signal(s) [${result.byKind.failure_cluster} fail · ${result.byKind.yash_correction} correction · ${result.byKind.antipattern} antipattern], ${result.new} new, ${result.atAutoBar} at auto-bar (scanned ${result.scanned.runs} runs / ${result.scanned.corrections} corrections / ${result.scanned.inbox} inbox)`,
+      metadata: { aggregate: { scanned: result.scanned, emitted: result.emitted, new: result.new, atAutoBar: result.atAutoBar, byKind: result.byKind }, sampleSignals: result.signals.slice(0, 10) },
+    };
+  },
+
   async cadenceReview() {
     const { org, experience, hr, loadRecentAgentRuns } = requireDeps();
     const recent = loadRecentAgentRuns(24 * 7);
@@ -295,20 +365,33 @@ const HANDLERS = {
     };
   },
 
-  async tutorTraining(def, ctx) {
-    if (!validateAgentExists('tutor')) {
-      throw new Error('tutor agent .md not found in ~/.claude/agents/');
+  // Phase C — the Trainer. Deterministic (no LLM, no token cost): consume open
+  // training_signals → synthesize concrete rollback-armed patches → governor decides
+  // auto/review/reject → surgically edit ~/.claude/agents/<agent>.md for autos (inside
+  // the managed AUTOLEARN block only) → record patch + changelog + enqueue reindex →
+  // measure impact and auto-rollback any regression. feedback.md/constitution are never
+  // touched (the governor forces those to review). Runs weekly after sys-brain-aggregate.
+  async tutorTraining() {
+    const { runTrainerPass } = await import('../intelligence/trainer.mjs');
+    const cfgN = (k, d) => { const v = configService.getConfig(k); return Number.isFinite(v) ? v : d; };
+    const cfg = {
+      observeWindowHours: cfgN('trainer.observeWindowHours', 504),
+      minRunsForImpact: cfgN('trainer.minRunsForImpact', 5),
+      regressionThreshold: cfgN('trainer.regressionThreshold', 0.10),
+      cooldownHours: cfgN('trainer.cooldownHours', 48),
+      minObserveHours: cfgN('trainer.minObserveHours', 24),
+    };
+    const { cycle, impact } = runTrainerPass({ apply: true, cfg });
+    // Phase D.1 — if the trainer changed any agent .md, wake the reindex drain so the
+    // new guardrail is searchable in ~60s (the trainer already queued the changed refs).
+    if (cycle.applied.length || impact.reverted.length) {
+      try { agentSync.events.emit('memory.changed', { reason: 'trainer' }); } catch { /* nightly reindex backstop */ }
     }
-    const task = [
-      'Run the weekly training batch.',
-      '1. Read training_signals + training_queue from the last 7 days via the SQLite db (data/polyglot.db).',
-      '2. For each signal/queue item, draft a training patch (no edits yet — produce the patch text).',
-      '3. Output: a numbered list of (agent, weakness, patch summary, priority).',
-      'Keep output ≤ 80 lines. Skip empty queues with a single line.',
-    ].join('\n');
-    const prompt = buildAgentPrompt(def.agentName, task);
-    const { output, usage } = await runLLMWithUsage(prompt, ctx);
-    return { output, usage, metadata: { llm: true } };
+    const evalNote = cycle.evalCalibrated ? '' : ' [eval miscalibrated → autos held for review]';
+    return {
+      output: `Trainer: ${cycle.applied.length} auto-applied · ${cycle.proposed.length} to review · ${cycle.rejected.length} rejected · ${cycle.skipped.length} skipped (of ${cycle.scanned} open signals)${evalNote}. Impact: ${impact.measured.length} measured, ${impact.reverted.length} rolled back, ${impact.waiting.length} settling.`,
+      metadata: { trainer: true, cycle, impact },
+    };
   },
 
   async forgeGapScan(def, ctx) {
@@ -403,12 +486,74 @@ const HANDLERS = {
     const candidates = parseCandidates(text).slice(0, maxItems);
     const ids = sessions.map((s) => s.sessionId);
 
-    let captured = 0, staged = 0, deduped = 0;
+    let captured = 0, staged = 0, deduped = 0, loops = 0, reflections = 0;
     const { captureItem } = await import('../intelligence/capture.mjs');
     const { retrieve } = await import('../intelligence/retrieve.mjs');
 
     for (const c of candidates) {
-      if (!c || !c.type || !c.title || !VALID_CANDIDATE_TYPES.has(c.type)) continue;
+      if (!c || !c.type || !c.title) continue;
+
+      // L6 GOAL/INTENT + L2/L7 EPISODIC — continuity rows the SessionStart brief reads
+      // back. These are episodic/operational (NOT identity or preferences), so they are
+      // safe to auto-write directly to the continuity tables. The (title,project) unique
+      // index dedups a loop re-detected across digests.
+      if (c.type === 'open_loop') {
+        const f = c.fields || {};
+        try {
+          const r = db.insertOpenLoop({
+            title: c.title, detail: f.detail || null,
+            owner: f.owner === 'yash' ? 'yash' : 'claude',
+            project: c.project || null, sessionId: c.sourceSessionId || null,
+            dueAt: f.dueAt || null, source: 'digest',
+          });
+          if (r.inserted) loops++;
+        } catch { /* best-effort */ }
+        continue;
+      }
+      if (c.type === 'reflection') {
+        const f = c.fields || {};
+        try {
+          const r = db.insertReflection({
+            kind: f.kind === 'uncertainty' ? 'uncertainty' : 'reflection',
+            summary: c.title, detail: f.detail || null,
+            project: c.project || null, sessionId: c.sourceSessionId || null,
+            confidence: c.confidence,
+          });
+          if (r) reflections++;
+        } catch { /* best-effort */ }
+        continue;
+      }
+
+      // L1/L5 IDENTITY + PREFERENCE — who-Yash-is facts, durable preferences, and
+      // explicit reversals. IDENTITY-LOCK: these are NEVER auto-written — always staged
+      // for human sign-off (the inbox approve IS the sign-off). Dedup against existing
+      // active facts; resolve a contradiction's superseded fact id so approve can
+      // supersede the old belief (belief revision).
+      if (c.type === 'identity' || c.type === 'preference' || c.type === 'contradiction') {
+        const f = { ...(c.fields || {}) };
+        const statement = String(f.statement || c.title || '').trim();
+        if (!statement) continue;
+        const scope = f.scope || 'global';
+        const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+        let existing = [];
+        try { existing = db.getIdentityFacts({ scope, status: 'active', limit: 500 }) || []; } catch { existing = []; }
+        const nStmt = norm(statement);
+        if (existing.some((e) => norm(e.statement) === nStmt)) { deduped++; continue; }
+        if (c.type === 'contradiction' && !f.oldId) {
+          const prior = norm(f.priorStatement);
+          if (prior) {
+            const overlap = (a, b) => { const A = new Set(a.split(' ')); const B = b.split(' ').filter((w) => w.length > 3); const hit = B.filter((w) => A.has(w)).length; return B.length ? hit / B.length : 0; };
+            let best = null, bestScore = 0;
+            for (const e of existing) { const s = overlap(norm(e.statement), prior); if (s > bestScore) { bestScore = s; best = e; } }
+            if (best && bestScore >= 0.5) f.oldId = best.id;
+          }
+        }
+        const ins = db.insertLearningCandidate(toCandidateRow({ ...c, fields: f }));
+        if (ins.inserted) staged++;
+        continue;
+      }
+
+      if (!VALID_CANDIDATE_TYPES.has(c.type)) continue;
       // Dedup against the brain (local Ollama embeddings → no token cost).
       try {
         const hits = await retrieve(candidateQuery(c), { topK: 3 });
@@ -418,7 +563,7 @@ const HANDLERS = {
       const isCaptureType = c.type === 'lesson' || c.type === 'bug' || c.type === 'decision';
       if (mode === 'auto' && isCaptureType && (c.confidence ?? 0) >= autoConfidence) {
         try {
-          const r = await captureItem(c.type, c.fields || {});
+          const r = await captureItem(c.type, c.fields || {}, 'vscode-digest');
           db.insertLearningCandidate({ ...toCandidateRow(c), status: 'auto', capturedRef: r.id, reviewedAt: new Date().toISOString() });
           captured++;
           continue;
@@ -430,11 +575,13 @@ const HANDLERS = {
 
     db.markVscodeSessionsDigested(ids);
     if (staged > 0) { try { agentSync.events.emit('learning.candidate', { staged }); } catch { /* SSE best-effort */ } }
+    // A new open loop / reflection changes the next SessionStart brief — nudge the Brain tab.
+    if (loops > 0 || reflections > 0) { try { agentSync.events.emit('memory.changed', { reason: 'continuity', loops, reflections }); } catch { /* SSE best-effort */ } }
 
     return {
-      output: `learning digest: ${sessions.length} session(s) → ${captured} auto-captured, ${staged} staged, ${deduped} deduped (scanned ${scan.scanned}, +${scan.upserted}/~${scan.repended})`,
+      output: `learning digest: ${sessions.length} session(s) → ${captured} auto-captured, ${staged} staged, ${deduped} deduped, ${loops} open-loop(s), ${reflections} reflection(s) (scanned ${scan.scanned}, +${scan.upserted}/~${scan.repended})`,
       usage,
-      metadata: { llm: true, mode, sessions: sessions.length, captured, staged, deduped, scan },
+      metadata: { llm: true, mode, sessions: sessions.length, captured, staged, deduped, loops, reflections, scan },
     };
   },
 
@@ -451,6 +598,172 @@ const HANDLERS = {
     let ingested = 0;
     try { ingested = (db.ingestEvalRuns() || {}).ingested || 0; } catch (err) { console.warn('[systemSchedules] ingestEvalRuns failed:', err.message); }
     return { output: `${res.output}; ingested ${ingested} eval score(s) into Witness`, metadata: { ...res.metadata, ingested } };
+  },
+
+  // Phase D.1: drain the reindex change-queue and SCOPED-incrementally re-embed
+  // just the files that changed. Runs IN-PROCESS (local Ollama — capture.mjs already
+  // proves in-process embedding works), so there is no child to register/cancel.
+  async reindexDrain() {
+    const refs = drainReindexQueue(); // reads then clears the queue file
+    if (refs.length === 0) return { output: 'reindex-drain: queue empty', metadata: { drained: 0, embedded: 0 } };
+    try {
+      const { reindex } = await import('../intelligence/reindex.mjs');
+      const res = await reindex({ only: refs });
+      try { agentSync.events.emit('memory.reindexed', { embedded: res.embedded, drained: refs.length }); } catch { /* SSE best-effort */ }
+      return {
+        output: `reindex-drain: ${refs.length} queued → embedded ${res.embedded}, skipped ${res.skipped} unchanged in ${(res.ms / 1000).toFixed(1)}s`,
+        metadata: { drained: refs.length, embedded: res.embedded, skipped: res.skipped, chunks: res.chunks, ms: res.ms },
+      };
+    } catch (err) {
+      // Don't lose the changes — re-enqueue so the next event (or the 02:30 full
+      // reindex) still picks them up.
+      for (const r of refs) appendReindexQueue(r, 're-drain');
+      throw err;
+    }
+  },
+
+  // Phase E: monthly forgetting-curve + hygiene. Reversibly down-weights retired-agent
+  // chunks via the store decay sidecar (never deletes); reports orphans/stale/freshness.
+  async memoryHygiene() {
+    const { buildMemoryHygieneReport } = require('./memoryHygiene');
+    const r = await buildMemoryHygieneReport({ apply: true });
+    try { agentSync.events.emit('memory.hygiene', { generatedAt: r.generatedAt, decayFlaggedRefs: r.decayFlaggedRefs }); } catch { /* SSE best-effort */ }
+
+    // Item 1 producer — stage a `decay_review` inbox candidate for every recommendation
+    // that needs a human verdict (retire/keep). Down-weighting retired-agent chunks is
+    // already auto + reversible (severity 'auto'); only 'review' items become candidates.
+    // Deterministic id per recommendation kind → INSERT OR IGNORE dedups across months
+    // so a recurring condition never re-nags once triaged.
+    let staged = 0;
+    for (const rec of (r.recommendations || [])) {
+      if (rec.severity !== 'review') continue;
+      const ins = db.insertLearningCandidate({
+        id: `decay:${rec.kind}`,
+        type: 'decay_review',
+        title: rec.detail,
+        payload: { kind: rec.kind, detail: rec.detail, agents: rec.agents || [], generatedAt: r.generatedAt },
+        source: 'memory-hygiene',
+        confidence: 0.6,
+      });
+      if (ins.inserted) staged++;
+    }
+    if (staged > 0) { try { agentSync.events.emit('learning.candidate', { staged }); } catch { /* SSE best-effort */ } }
+
+    const f = r.freshness || {};
+    return {
+      output: `hygiene: ${r.totalChunks} chunks · ${r.recommendations.length} recommendation(s) · ${staged} decay-review staged · ${r.decayFlaggedRefs} decay-flagged · ${r.superseded} superseded · avg age ${f.avgAgeDays}d, oldest ${f.oldestAgeDays}d · ${r.staleCapturedTotal} stale`,
+      metadata: { totalChunks: r.totalChunks, recommendations: r.recommendations.length, decayReviewStaged: staged, decayFlaggedRefs: r.decayFlaggedRefs, superseded: r.superseded, staleCaptured: r.staleCapturedTotal, avgAgeDays: f.avgAgeDays, oldestAgeDays: f.oldestAgeDays },
+    };
+  },
+
+  // Item 4 — behavioral drift detector (weekly, REVIEW-ONLY). Compares each agent's
+  // most-recent-N success rate against its full 7-day rate; a sharp decline emits a
+  // low-severity `behavior_drift` training_signal. The trainer's ruleLineFor returns
+  // null for this kind → planPatch skips it → the signal stays open for human review
+  // in the Brain tab and is NEVER auto-patched. Local (no LLM, no token cost).
+  async behavioralDriftDetector() {
+    const cfgN = (k, d) => { const v = configService.getConfig(k); return Number.isFinite(v) ? v : d; };
+    const windowHours = cfgN('drift.windowHours', 24 * 7);
+    const minTotal    = cfgN('drift.minTotalRuns', 8);
+    const recentN     = cfgN('drift.recentWindow', 5);
+    const dropThresh  = cfgN('drift.dropThreshold', 0.25);
+
+    const { decodeProject } = require('./brainSignals');
+    let runs = [];
+    try { runs = db.getRecentAgentRuns(windowHours) || []; } catch { runs = []; }
+
+    // runs come back timestamp-DESC, so the first N per agent are the most recent.
+    const byAgent = new Map();
+    for (const r of runs) {
+      const agent = r.agentName;
+      if (!agent || agent === 'unknown') continue;
+      let g = byAgent.get(agent);
+      if (!g) { g = { runs: [], projects: new Set() }; byAgent.set(agent, g); }
+      g.runs.push(r);
+      const proj = decodeProject(r.metadata && r.metadata.projectId);
+      if (proj) g.projects.add(proj);
+    }
+
+    const isOk = (r) => r.status === 'success';
+    const rate = (arr) => (arr.length ? arr.filter(isOk).length / arr.length : 0);
+    let flagged = 0; const samples = [];
+    for (const [agent, g] of byAgent) {
+      const n = g.runs.length;
+      if (n < minTotal) continue;
+      const recent = g.runs.slice(0, recentN);
+      if (recent.length < recentN) continue;
+      const recentRate = rate(recent);
+      const fullRate = rate(g.runs);
+      const drop = fullRate - recentRate;
+      if (drop < dropThresh) continue; // only a genuine, sharp decline
+
+      const evidence = {
+        source: 'agent_runs',
+        recentRate: Number(recentRate.toFixed(3)),
+        fullRate: Number(fullRate.toFixed(3)),
+        drop: Number(drop.toFixed(3)),
+        recentWindow: recentN,
+        totalRuns: n,
+        note: 'review-only — recent success rate fell sharply vs the 7-day baseline',
+      };
+      db.upsertTrainingSignal({
+        agent, kind: 'behavior_drift', signature: 'recent-success-rate-decline',
+        severity: 'low', occurrences: 1, mode: 'set',
+        projects: [...g.projects], evidence,
+      });
+      flagged++;
+      if (samples.length < 10) samples.push({ agent, ...evidence });
+    }
+    if (flagged > 0) { try { agentSync.events.emit('memory.changed', { reason: 'behavior-drift', flagged }); } catch { /* SSE best-effort */ } }
+
+    return {
+      output: `behavioral drift: ${byAgent.size} agent(s) scanned (${runs.length} runs / ${windowHours}h), ${flagged} flagged for review (recent-${recentN} success rate down ≥${Math.round(dropThresh * 100)}%) — review-only, never auto-patched`,
+      metadata: { scannedAgents: byAgent.size, scannedRuns: runs.length, flagged, samples },
+    };
+  },
+
+  // Item 3 — decision-journal weekly re-score (REVIEW-ONLY). Surfaces aged-unresolved
+  // decisions (kind='decision', ≥14d old, outcome still 'pending') as open loops so
+  // they get a confirmed/wrong verdict, and logs the rolling decision accuracy from
+  // already-resolved ones. Writes NO memory/identity/feedback. Local (no token cost).
+  async decisionJournalRescore() {
+    const cfgN = (k, d) => { const v = configService.getConfig(k); return Number.isFinite(v) ? v : d; };
+    const daysOld   = cfgN('decisions.rescoreDaysOld', 14);
+    const surfaceN  = cfgN('decisions.rescoreSurface', 10);
+    const accuracyWindow = cfgN('decisions.accuracyDays', 90);
+
+    let aged = [];
+    try { aged = db.getUnresolvedDecisions({ daysOld, limit: 50 }) || []; } catch { aged = []; }
+
+    // Dedup against open loops already surfaced (don't re-nag the same decision weekly).
+    const existing = new Set();
+    try {
+      for (const l of db.getOpenLoops({ status: 'open', limit: 500 }) || []) {
+        existing.add(`${l.title}||${l.project || ''}`);
+      }
+    } catch { /* best-effort dedup */ }
+
+    let surfaced = 0;
+    for (const d of aged.slice(0, surfaceN)) {
+      const title = `Resolve decision: ${String(d.summary || d.id).slice(0, 200)}`;
+      const key = `${title.slice(0, 300)}||${d.project || ''}`;
+      if (existing.has(key)) continue;
+      const ins = db.insertOpenLoop({
+        title, detail: d.detail || null, owner: 'claude', project: d.project || null,
+        source: 'decision-rescore',
+      });
+      if (ins.inserted) { surfaced++; existing.add(key); }
+    }
+
+    let accuracy = { resolved: 0, accuracy: null };
+    try { accuracy = db.getDecisionAccuracy({ sinceDays: accuracyWindow }); } catch { /* telemetry best-effort */ }
+    if (surfaced > 0) { try { agentSync.events.emit('memory.changed', { reason: 'decision-rescore', surfaced }); } catch { /* SSE best-effort */ } }
+
+    const accStr = accuracy.accuracy == null ? 'n/a' : `${Math.round(accuracy.accuracy * 100)}%`;
+    return {
+      output: `decision re-score: ${aged.length} aged-unresolved (≥${daysOld}d), ${surfaced} surfaced as open loop(s); rolling accuracy ${accStr} over ${accuracy.resolved} resolved (${accuracyWindow}d) — review-only`,
+      metadata: { agedUnresolved: aged.length, surfaced, accuracy },
+    };
   },
 };
 
@@ -475,6 +788,45 @@ function runIntelScript(relPath, args, { ctx, timeoutMs = 10 * 60 * 1000, label 
     proc.on('close', finish);
     proc.on('error', (e) => { if (done) return; done = true; clearTimeout(timer); resolve({ output: `${label}: spawn failed — ${e.message}`, metadata: { error: e.message } }); });
   });
+}
+
+// ── Reindex change-queue (Phase D.1) ─────────────────────────────────────────
+// The trainer (ESM) and any CJS write-path append {ts,ref,reason} lines here; a
+// `memory.changed` event wakes the debounced drain. The FILE is the durable source
+// of refs (survives restarts); the event is just the "wake up and drain" signal.
+const REINDEX_QUEUE_FILE = require('path').join(require('os').homedir(), '.claude', 'memory', '.brain', 'reindex-queue.jsonl');
+
+function appendReindexQueue(ref, reason = 'change') {
+  const fs = require('fs'); const path = require('path');
+  try {
+    fs.mkdirSync(path.dirname(REINDEX_QUEUE_FILE), { recursive: true });
+    fs.appendFileSync(REINDEX_QUEUE_FILE, JSON.stringify({ ts: new Date().toISOString(), ref, reason }) + '\n', 'utf8');
+  } catch (err) { console.warn('[systemSchedules] appendReindexQueue failed:', err.message); }
+}
+
+// Read every queued ref, dedupe, and clear the file. Returns unique source_refs.
+// NOTE: a write that lands between the read and the truncate is rare (60s debounce)
+// and is caught by the 02:30 full reindex — the queue is an optimization, not the
+// source of truth for what's indexed.
+function drainReindexQueue() {
+  const fs = require('fs');
+  let raw = '';
+  try { raw = fs.readFileSync(REINDEX_QUEUE_FILE, 'utf8'); } catch { return []; }
+  const refs = new Set();
+  for (const line of raw.split('\n')) {
+    const t = line.trim(); if (!t) continue;
+    try { const o = JSON.parse(t); if (o && o.ref) refs.add(o.ref); } catch { /* skip malformed */ }
+  }
+  try { fs.writeFileSync(REINDEX_QUEUE_FILE, '', 'utf8'); } catch (err) { console.warn('[systemSchedules] queue truncate failed:', err.message); }
+  return [...refs];
+}
+
+// Public entry point: record a memory/agent file change and wake the debounced
+// drain. Call this from agent/memory write paths (routes/agents.js, editors).
+function enqueueMemoryChange(ref, reason = 'change') {
+  if (!ref) return;
+  appendReindexQueue(ref, reason);
+  try { agentSync.events.emit('memory.changed', { ref, reason }); } catch { /* drained on next event / nightly */ }
 }
 
 function requireDeps() {
@@ -624,7 +976,7 @@ function buildDigestPrompt(blocks, maxItems) {
     '',
     'Each candidate object:',
     '{',
-    '  "type": "lesson" | "bug" | "decision" | "feedback",',
+    '  "type": "lesson" | "bug" | "decision" | "feedback" | "open_loop" | "reflection" | "identity" | "preference" | "contradiction",',
     '  "title": "short title (≤100 chars)",',
     '  "confidence": 0.0-1.0,   // how clearly reusable + correct this is',
     '  "sourceSessionId": "the session id it came from",',
@@ -632,12 +984,19 @@ function buildDigestPrompt(blocks, maxItems) {
     '  "fields": { ... }        // see per-type fields below',
     '}',
     'Fields by type:',
-    '  lesson   → { "domain", "problem", "root_cause", "solution", "prevention" }',
-    '  bug      → { "severity" (S1-S4), "symptom", "root_cause", "fix", "prevention" }',
-    '  decision → { "scope", "situation", "decision", "thinking", "alternatives", "outcome" }',
-    '  feedback → { "directive" (the rule/correction to always follow), "context" }  // use for moments where the user CORRECTED the agent',
+    '  lesson      → { "domain", "problem", "root_cause", "solution", "prevention" }',
+    '  bug         → { "severity" (S1-S4), "symptom", "root_cause", "fix", "prevention" }',
+    '  decision    → { "scope", "situation", "decision", "thinking", "alternatives", "outcome" }',
+    '  feedback    → { "directive" (the rule/correction to always follow), "context" }  // use for moments where the user CORRECTED the agent',
+    '  open_loop   → { "detail" (what is still unfinished/promised), "owner" ("claude"|"yash"), "dueAt" (ISO date or null) }  // an UNFINISHED thread to pick up next time',
+    '  reflection  → { "kind" ("reflection"|"uncertainty"), "detail" }  // a felt note about how the work went, or something you are UNSURE about',
+    '  identity    → { "kind" ("value"|"voice"|"non_negotiable"|"opinion"), "statement" (the durable fact about who the user is / how they work), "detail", "scope" ("global" or a project name), "confidence" }',
+    '  preference  → { "statement" (a durable preference for how work should be done), "detail", "scope", "confidence" }',
+    '  contradiction → { "statement" (the NEW belief that now holds), "priorStatement" (the OLD belief it REPLACES, in the user\'s words), "kind" ("value"|"voice"|"non_negotiable"|"opinion"), "detail", "scope", "confidence" }',
     '',
-    'Guidance: a "feedback" candidate is for a durable preference/correction the user gave (a rule for next time). A "lesson"/"bug"/"decision" is reusable technical knowledge. Prefer fewer, higher-quality items. Be honest with confidence.',
+    'Guidance: a "feedback" candidate is for a durable preference/correction the user gave (a rule for next time). A "lesson"/"bug"/"decision" is reusable technical knowledge. An "open_loop" is something explicitly left unfinished or promised ("I\'ll do X next", "still need to Y", a TODO the session ended on) — title = the unfinished thing. A "reflection" captures uncertainty or a notable felt-sense from the session ("unsure whether the cache invalidation is fully correct").',
+    'IDENTITY-LOCK — "identity"/"preference"/"contradiction" are HIGH-STAKES who-the-user-is facts. Emit one ONLY when the user STATES a durable truth about themselves or how they want work done ("I am the founder", "I always want premium-first", "stop asking permission for obvious steps"). A "contradiction" is for an EXPLICIT reversal — the user changed a previously-stated belief ("actually, never do X anymore — do Y"); put the new belief in "statement" and the old one in "priorStatement". These are NEVER auto-applied — every one is staged for the user to sign off. Be conservative: a one-off task instruction is NOT identity. Set confidence honestly.',
+    'Prefer fewer, higher-quality items. Be honest with confidence. Only emit an open_loop/reflection/identity/preference/contradiction when it is genuinely durable for continuity — not routine activity.',
     '',
     'REWORK LOOPS — IMPORTANT. Some sessions contain a "rework loops" section: the user asked for X, the agent did something, the user REJECTED it ("not done", "still broken", "no", "that\'s wrong"), and the agent retried until accepted. These are the highest-value lessons — they are real mistakes. For each genuine loop, emit ONE compact "lesson":',
     '  domain     = the area (e.g. "react-state", "shopify-liquid", "sqlite")',
@@ -830,6 +1189,20 @@ function onBuildSuccessEvent(payload) {
   }, MIRA_DEBOUNCE_MS);
 }
 
+// ── Event-driven reindex-drain trigger (Phase D.1) ──────────────────────────
+// Any `memory.changed` resets a 60s timer; when it fires, drain the queue once.
+// Coalesces a burst of edits into a single scoped reindex.
+function onMemoryChangedEvent() {
+  if (!isEnabled('sys-reindex-drain')) return;
+  if (reindexDebounceTimer) clearTimeout(reindexDebounceTimer);
+  reindexDebounceTimer = setTimeout(() => {
+    reindexDebounceTimer = null;
+    runHandler('sys-reindex-drain', { async: true }).catch(err =>
+      console.warn(`[systemSchedule] sys-reindex-drain unhandled: ${err.message}`)
+    );
+  }, REINDEX_DEBOUNCE_MS);
+}
+
 // ── Boot / shutdown ────────────────────────────────────────────────────────
 
 function bootAll(deps = {}) {
@@ -847,11 +1220,12 @@ function bootAll(deps = {}) {
     }
   }
   agentSync.events.on('agent_run.recorded', onBuildSuccessEvent);
+  agentSync.events.on('memory.changed', onMemoryChangedEvent);
 
   // Log retention — 03:15 UTC nightly. Plain DB op, no LLM, no agent_runs stub.
   startLogRetentionJob();
 
-  console.log(`  System schedules: ${active} cron-driven active, ${disabled} disabled, sys-mira event-listener wired, log-retention nightly`);
+  console.log(`  System schedules: ${active} cron-driven active, ${disabled} disabled, sys-mira + sys-reindex-drain event-listeners wired, log-retention nightly`);
 }
 
 let _logRetentionJob = null;
@@ -878,8 +1252,13 @@ function stopAll() {
     clearTimeout(miraDebounceTimer);
     miraDebounceTimer = null;
   }
+  if (reindexDebounceTimer) {
+    clearTimeout(reindexDebounceTimer);
+    reindexDebounceTimer = null;
+  }
   if (_logRetentionJob) { try { _logRetentionJob.stop(); } catch {} _logRetentionJob = null; }
   try { agentSync.events.off('agent_run.recorded', onBuildSuccessEvent); } catch {}
+  try { agentSync.events.off('memory.changed', onMemoryChangedEvent); } catch {}
 }
 
 // Catch-up for a PC that was asleep/off at the scheduled minute (node-cron
@@ -909,6 +1288,9 @@ module.exports = {
   stopAll,
   runHandler,
   runIfOverdue,
+  enqueueMemoryChange,
+  appendReindexQueue, // exported for tests + write-path callers
+  drainReindexQueue,  // exported for tests
   setEnabled,
   isEnabled,
   getAllForApi,

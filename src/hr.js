@@ -243,6 +243,44 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns) {
     dbModule.appendDailyScore(s);
   }
 
+  // 2b. Eval consequences (Phase B — "learn from consequences"). Witness used to
+  // ignore the independent LLM-judge entirely. Now: any agent whose rolling eval
+  // (n ≥ minSample) sits below the floor gets an `eval_drop` training_signal (so the
+  // trainer can act) AND is flagged for PIP below. A judge score is a QUALITY signal,
+  // so eval_drop routes to REVIEW in the governor — it never silently auto-patches.
+  const evalFloor = configService.getConfig('eval.witness.floor') ?? 0.6;
+  const evalMinSample = configService.getConfig('eval.witness.minSample') ?? 3;
+  const evalByAgent = {}; // id → { mean, n, fails }
+  try {
+    for (const id of Object.keys(agents)) {
+      if (agents[id].status === 'retired') continue;
+      const rows = dbModule.getEvalScores({ agent: id, limit: 12 }) || [];
+      if (rows.length < evalMinSample) continue;
+      const recent = rows.slice(0, Math.max(evalMinSample, 8));
+      const mean = recent.reduce((acc, r) => acc + (Number(r.overall) || 0), 0) / recent.length;
+      const fails = recent.filter((r) => r.pass === false).length;
+      evalByAgent[id] = { mean: Number(mean.toFixed(3)), n: recent.length, fails };
+      if (mean < evalFloor) {
+        try {
+          const res = dbModule.upsertTrainingSignal({
+            agent: id, kind: 'eval_drop', mode: 'set',
+            signature: 'rolling judge eval below floor',
+            occurrences: recent.length, projects: [],
+            severity: mean < evalFloor * 0.7 ? 'high' : 'medium',
+            evidence: { source: 'eval_scores', mean: Number(mean.toFixed(3)), n: recent.length, fails, floor: evalFloor },
+          });
+          if (res && res.isNew) {
+            dbModule.logSelfImprovement({
+              kind: 'signal', agent: id, refId: res.id, decision: null,
+              summary: `eval_drop · ${id}: judge mean ${mean.toFixed(2)} < ${evalFloor} (n=${recent.length})`,
+              data: { kind: 'eval_drop', mean: Number(mean.toFixed(3)), n: recent.length, fails },
+            });
+          }
+        } catch { /* signal best-effort — never break the sweep */ }
+      }
+    }
+  } catch { /* eval wiring best-effort */ }
+
   // 3. Generate PIP + promotion recommendations
   const pipCandidates = [];
   const promotionCandidates = [];
@@ -272,6 +310,23 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns) {
       pipCandidates.push({ agent: id, reasons: [pipReason], severity: pipSeverity });
     }
 
+    // Eval consequence — fold the judge score into PIP (Phase B). If the agent
+    // already triggered PIP above, append the eval reason (and escalate severity);
+    // otherwise a sustained low eval is itself a PIP trigger.
+    const ev = evalByAgent[id];
+    if (ev && ev.mean < evalFloor) {
+      const evalReason = `Eval ${ev.mean} < ${evalFloor} (n=${ev.n}${ev.fails ? `, ${ev.fails} fail` : ''})`;
+      const existing = pipCandidates.find((p) => p.agent === id);
+      if (existing) {
+        existing.reasons.push(evalReason);
+        if (ev.mean < evalFloor * 0.7) existing.severity = 'high';
+      } else {
+        pipReason = evalReason;
+        pipSeverity = ev.mean < evalFloor * 0.7 ? 'high' : 'medium';
+        pipCandidates.push({ agent: id, reasons: [evalReason], severity: pipSeverity });
+      }
+    }
+
     // Auto-open escalation for any new PIP candidate. Severity maps:
     //   PIP severity 'high'   → P1 escalation
     //   PIP severity 'medium' → P2
@@ -291,8 +346,10 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns) {
       } catch { /* dedup will handle re-runs of the same day */ }
     }
 
-    // Promotion eligibility — level crossed threshold, success rate high, 30+ days at level
-    if (a.level != null && a.level < 8 && successRate >= 0.85 && antipatterns === 0) {
+    // Promotion eligibility — level crossed threshold, success rate high, 30+ days
+    // at level, AND no sustained low judge eval (consequences gate promotion too).
+    const evalBlocksPromo = ev && ev.mean < evalFloor;
+    if (a.level != null && a.level < 8 && successRate >= 0.85 && antipatterns === 0 && !evalBlocksPromo) {
       const needsRuns = a.level >= 3 ? (stats.patternsContributed || 0) >= 1 : true;
       if (needsRuns) {
         promotionCandidates.push({
@@ -311,12 +368,17 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns) {
     }
   }
 
+  const evalFlags = Object.entries(evalByAgent)
+    .filter(([, v]) => v.mean < evalFloor)
+    .map(([agent, v]) => ({ agent, mean: v.mean, n: v.n, fails: v.fails }));
+
   const recommendations = {
     generatedAt: startedAt,
     completedAt: new Date().toISOString(),
     runsClassified: classified.length,
     pipCandidates,
     promotionCandidates,
+    evalFlags,
   };
   dbModule.saveRecommendations(recommendations);
 

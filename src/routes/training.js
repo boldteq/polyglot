@@ -9,6 +9,7 @@ const { rateLimit } = require('../middleware/rateLimit');
 const { validateName } = require('../lib/validators');
 const { atomicWriteText, atomicWriteJson, ensureDir } = require('../lib/atomicIo');
 const db = require('../db');
+const agentSync = require('../lib/agentSync');
 
 const router = Router();
 
@@ -38,6 +39,32 @@ router.post('/training/:name', validateName, rateLimit('write'), (req, res) => {
   };
   data.push(entry);
   saveTraining(req.params.name, data);
+
+  // Also stage a learning_inbox candidate so this correction surfaces in the
+  // Learning Inbox for human review/approval (not just the separate training
+  // store). Best-effort: a staging failure must NOT fail the primary training
+  // save. The dedup index is UNIQUE(sessionId,type,title) — with a null
+  // sessionId two distinct corrections that happen to share an issue text would
+  // collapse (INSERT OR IGNORE). Use a synthetic per-correction sessionId so
+  // every correction stages as its own candidate.
+  try {
+    const cand = db.insertLearningCandidate({
+      type: 'feedback',
+      title: `Correction for ${req.params.name}: ${issue}`.slice(0, 200),
+      payload: { directive: correction, context: issue, agent: req.params.name },
+      source: `playground:${req.params.name}`,
+      sessionId: `playground-${entry.id}`,
+      status: 'pending',
+      confidence: 1,
+    });
+    // Push the inbox badge live (learning.js bridges this onto inbox SSE).
+    if (cand.inserted) {
+      try { agentSync.events.emit('learning.candidate', { id: cand.id, source: `playground:${req.params.name}` }); } catch { /* best-effort */ }
+    }
+  } catch (err) {
+    console.warn('[training] failed to stage learning candidate:', err.message);
+  }
+
   res.json(entry);
 });
 
