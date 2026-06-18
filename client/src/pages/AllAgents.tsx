@@ -36,6 +36,7 @@ import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import type { UnifiedAgent } from '../types'
 import { toast } from '../components/Toast'
+import { PageShell } from '../components/PageShell'
 import { SquadCard } from '../components/SquadCard'
 import { CategoryFilterPills } from '../components/AgentCategoryBadge'
 
@@ -188,30 +189,23 @@ export default function AllAgents() {
   if (loading) return <div className="p-8 flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>
   if (error) return <ErrorState message={error} onRetry={refetch} />
 
+  const globalCount = (agents || []).filter(a => a.scope === 'global').length
+  const projectCount = (agents || []).filter(a => a.scope === 'project').length
+
   return (
-    <div className="p-6 max-w-6xl">
-      {/* Compact header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold tracking-tight">Agents</h1>
-          <span className="text-xs text-text-muted bg-surface-2 px-2 py-0.5 rounded-full">
-            {(agents || []).filter(a => a.scope === 'global').length} global
-            {(agents || []).filter(a => a.scope === 'project').length > 0 && (
-              <> · {(agents || []).filter(a => a.scope === 'project').length} project</>
-            )}
-          </span>
-        </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
-        >
+    <PageShell
+      title="Agents"
+      subtitle={`${globalCount} global${projectCount > 0 ? ` · ${projectCount} project` : ''}`}
+      actions={
+        <button onClick={() => setCreating(true)} className="btn-primary btn-sm">
           <Plus className="w-3.5 h-3.5" /> New Agent
         </button>
-      </div>
-
+      }
+    >
+      <div className="max-w-6xl">
       {/* Drift banner — agents on disk with no org registration */}
       {!driftDismissed && drift && drift.onlyOnDisk.length > 0 && (
-        <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 mb-4 text-amber-400">
+        <div className="flex items-center gap-3 bg-amber/10 border border-amber/30 rounded-xl px-4 py-3 mb-4 text-amber">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <p className="text-xs flex-1">
             <span className="font-semibold">{drift.onlyOnDisk.length} agent{drift.onlyOnDisk.length !== 1 ? 's' : ''}</span>
@@ -220,18 +214,18 @@ export default function AllAgents() {
           </p>
           <button
             onClick={() => navigate('/org-chart')}
-            className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-amber-500/20 hover:bg-amber-500/30 rounded-lg transition-colors shrink-0"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-amber/20 hover:bg-amber/30 rounded-lg transition-colors shrink-0"
           >
             <Network className="w-3 h-3" /> Open Org Chart
           </button>
-          <button onClick={() => setDriftDismissed(true)} className="text-amber-400/60 hover:text-amber-400 transition-colors shrink-0">
+          <button onClick={() => setDriftDismissed(true)} className="text-amber/60 hover:text-amber transition-colors shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* Unified filter bar */}
-      <div className="bg-surface rounded-xl border border-border p-3 mb-4 space-y-3">
+      <div className="card p-3 mb-4 space-y-3">
         {/* Row 1: Search + Scope + View */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -240,7 +234,7 @@ export default function AllAgents() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, description, or filename..."
-              className="w-full bg-surface-2 border border-border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+              className="input pl-9 pr-3"
             />
             {search && (
               <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-surface text-text-muted">
@@ -248,14 +242,12 @@ export default function AllAgents() {
               </button>
             )}
           </div>
-          <div className="flex bg-surface-2 rounded-lg p-0.5 shrink-0">
+          <div className="segmented">
             {(['all', 'global', 'project'] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setScopeFilter(s)}
-                className={`px-2.5 py-1.5 text-[11px] font-medium rounded-md transition-colors ${
-                  scopeFilter === s ? 'bg-accent text-white' : 'text-text-muted hover:text-text'
-                }`}
+                className={scopeFilter === s ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}
               >
                 {s === 'all' ? 'All' : s === 'global' ? 'Global' : 'Project'}
               </button>
@@ -331,13 +323,13 @@ export default function AllAgents() {
                 onChange={(e) => setDispatchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleDispatch()}
                 placeholder="Describe the task... e.g. 'build auth middleware for nextjs'"
-                className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+                className="input flex-1"
                 autoFocus
               />
               <button
                 onClick={handleDispatch}
                 disabled={dispatchLoading || !dispatchQuery.trim()}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
+                className="btn-primary btn-md"
               >
                 {dispatchLoading ? <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
                 Match
@@ -414,20 +406,20 @@ export default function AllAgents() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Agent name..."
-              className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+              className="input flex-1"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
-            <select value={newCategory} onChange={e => setNewCategory(e.target.value)} className="bg-surface-2 border border-border rounded-lg px-2 py-2 text-xs">
+            <select value={newCategory} onChange={e => setNewCategory(e.target.value)} className="input w-auto">
               {allCategoryNames.filter(c => c !== 'uncategorized').map(c => (
                 <option key={c} value={c}>{c.replace(/-/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase())}</option>
               ))}
             </select>
-            <select value={createScope} onChange={(e) => setCreateScope(e.target.value)} className="bg-surface-2 border border-border rounded-lg px-2 py-2 text-xs">
+            <select value={createScope} onChange={(e) => setCreateScope(e.target.value)} className="input w-auto">
               <option value="global">Global</option>
               {uniqueProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <button onClick={handleCreate} disabled={createLoading} className="px-4 py-2 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40">
+            <button onClick={handleCreate} disabled={createLoading} className="btn-primary btn-md">
               {createLoading ? '...' : 'Create'}
             </button>
           </div>
@@ -442,12 +434,12 @@ export default function AllAgents() {
             <button onClick={() => { setActionAgent(null); setActionType(null) }} className="text-text-muted hover:text-text"><X className="w-4 h-4" /></button>
           </div>
           <div className="flex gap-2">
-            <select value={actionTarget} onChange={(e) => setActionTarget(e.target.value)} className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm">
+            <select value={actionTarget} onChange={(e) => setActionTarget(e.target.value)} className="input flex-1">
               <option value="">Select destination...</option>
               {actionAgent.scope !== 'global' && <option value="global">Global</option>}
               {uniqueProjects.filter((p) => p.id !== actionAgent.projectId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <button onClick={handleAction} disabled={!actionTarget || actioning} className="px-4 py-2 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40">
+            <button onClick={handleAction} disabled={!actionTarget || actioning} className="btn-primary btn-md">
               {actioning ? '...' : actionType === 'copy' ? 'Copy' : 'Move'}
             </button>
           </div>
@@ -463,7 +455,7 @@ export default function AllAgents() {
           <div className="h-4 w-px bg-border" />
           {/* Squad bulk-set */}
           <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold mr-1">Squad →</span>
+            <span className="text-[10px] text-text-muted font-semibold mr-1">Squad →</span>
             {SQUADS.map(sq => (
               <button
                 key={sq.id}
@@ -479,7 +471,7 @@ export default function AllAgents() {
             <button
               onClick={() => bulkApply({ squad: null }, 'no squad')}
               disabled={bulkBusy}
-              className="px-2 py-0.5 rounded-full text-[11px] text-text-muted hover:text-red-400 disabled:opacity-40"
+              className="px-2 py-0.5 rounded-full text-[11px] text-text-muted hover:text-red disabled:opacity-40"
             >
               clear squad
             </button>
@@ -487,7 +479,7 @@ export default function AllAgents() {
           <div className="h-4 w-px bg-border" />
           {/* Status bulk-set */}
           <div className="flex items-center gap-1">
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold mr-1">Status →</span>
+            <span className="text-[10px] text-text-muted font-semibold mr-1">Status →</span>
             {AGENT_STATUSES.map(s => (
               <button
                 key={s}
@@ -518,7 +510,7 @@ export default function AllAgents() {
 
       {/* Results */}
       {filtered.length === 0 ? (
-        <div className="bg-surface rounded-xl border border-border p-12 text-center text-text-muted">
+        <div className="card p-12 text-center text-text-muted">
           <p className="text-sm font-medium">{search ? 'No agents match' : 'No agents found'}</p>
           <p className="text-xs mt-1">{search ? 'Try a different search' : 'Create your first agent'}</p>
         </div>
@@ -561,7 +553,7 @@ export default function AllAgents() {
             <div className="bg-surface rounded-xl border border-dashed border-border p-4">
               <div className="flex items-center gap-2 mb-2 text-text-muted">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider">
+                <span className="text-[11px] font-semibold ">
                   Unassigned ({squadMembers.unassignedSquad.length})
                 </span>
                 <span className="text-[10px]">— assign these to a vertical squad</span>
@@ -583,6 +575,7 @@ export default function AllAgents() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </PageShell>
   )
 }

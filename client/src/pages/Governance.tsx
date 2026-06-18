@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   Shield, DollarSign, AlertTriangle, ListChecks, RefreshCw,
   Loader2, TrendingUp, AlertCircle, Activity,
@@ -12,11 +12,14 @@ import {
 } from '../lib/api'
 import { toast } from '../components/Toast'
 
-const TIER_COLORS: Record<string, string> = {
-  deep:  '#a855f7',
-  fast:  '#3b82f6',
-  cheap: '#10b981',
+// Token-backed badge classes (flip with theme) — replaces the inline
+// color-mix() styles. Compose with `.pill`.
+const TIER_PILL: Record<string, string> = {
+  deep:  'bg-purple/12 text-purple border border-purple/25',
+  fast:  'bg-blue/12 text-blue border border-blue/25',
+  cheap: 'bg-emerald/12 text-emerald border border-emerald/25',
 }
+const TIER_PILL_FALLBACK = 'bg-gray/12 text-gray border border-gray/25'
 
 const TIER_LABELS: Record<string, string> = {
   deep:  'Deep · Opus',
@@ -30,6 +33,10 @@ export default function Governance() {
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
   const [showOnlyOpen, setShowOnlyOpen] = useState(true)
+  const [settingMode, setSettingMode] = useState(false)
+
+  // Stable identity for the per-tier cards so they don't re-create each render.
+  const tierEntries = useMemo(() => Object.entries(cost?.tiers ?? {}), [cost?.tiers])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -61,7 +68,7 @@ export default function Governance() {
 
   if (err && !cost) {
     return (
-      <div className="px-8 py-10 text-red-400 text-sm">
+      <div className="px-8 py-10 text-red text-sm">
         <AlertCircle className="w-5 h-5 inline mr-2" />
         {err}
       </div>
@@ -74,29 +81,35 @@ export default function Governance() {
           carries the enforcement-mode toggle + refresh button only. */}
       <div className="pb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Shield className="w-4 h-4 text-purple-400" />
+          <Shield className="w-4 h-4 text-purple" />
           <p className="text-xs text-text-muted">Cost · Escalations · Policy enforcement</p>
           {cost && (
-            <div className="ml-3 flex items-center gap-1 bg-surface-2 rounded-lg p-0.5 border border-border" title="Model-routing enforcement mode">
+            <div className="ml-3 segmented" title="Model-routing enforcement mode">
               {(['advisory', 'warn', 'block'] as const).map((m) => {
                 const active = cost.enforcementMode === m
-                const colorActive = m === 'block' ? 'bg-red-500 text-white' : m === 'warn' ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white'
                 return (
                   <button
                     key={m}
+                    disabled={settingMode}
                     onClick={async () => {
-                      if (active) return
+                      if (active || settingMode) return
+                      const prev = cost.enforcementMode
+                      setSettingMode(true)
+                      // Optimistic: reflect the new mode immediately so the toggle
+                      // feels responsive; revert on failure.
+                      setCost((c) => (c ? { ...c, enforcementMode: m } : c))
                       try {
                         await setEnforcementMode(m)
                         toast('success', `Enforcement → ${m}`)
                         load()
                       } catch (e: unknown) {
+                        setCost((c) => (c ? { ...c, enforcementMode: prev } : c))
                         toast('error', e instanceof Error ? e.message : 'Failed to flip mode')
+                      } finally {
+                        setSettingMode(false)
                       }
                     }}
-                    className={`text-[9px] px-2 py-1 rounded-md font-bold uppercase tracking-wider transition-all ${
-                      active ? colorActive : 'text-text-muted hover:text-text'
-                    }`}
+                    className={`${active ? 'segmented-btn segmented-btn-active' : 'segmented-btn'} disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     {m}
                   </button>
@@ -105,11 +118,7 @@ export default function Governance() {
             </div>
           )}
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-surface border border-border text-text-muted hover:text-text disabled:opacity-50"
-        >
+        <button onClick={load} disabled={loading} className="btn-secondary btn-sm">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
           Refresh
         </button>
@@ -121,14 +130,14 @@ export default function Governance() {
         {cost && (
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <DollarSign className="w-4 h-4 text-emerald-400" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+              <DollarSign className="w-4 h-4 text-emerald" />
+              <h2 className="text-sm font-bold text-text-muted">
                 Cost — last {Math.round(cost.windowHours / 24)}d
               </h2>
             </div>
 
             {/* Total */}
-            <div className="rounded-2xl border border-border bg-surface p-5 mb-3">
+            <div className="card p-5 mb-3">
               <div className="flex items-end justify-between mb-3">
                 <div>
                   <div className="text-3xl font-bold tabular-nums">
@@ -141,14 +150,14 @@ export default function Governance() {
                 <div className="text-right">
                   <div
                     className={`text-2xl font-bold tabular-nums ${
-                      (cost.total.burnPct ?? 0) > 100 ? 'text-red-400' :
-                      (cost.total.burnPct ?? 0) > 75  ? 'text-amber-400' :
-                                                       'text-emerald-400'
+                      (cost.total.burnPct ?? 0) > 100 ? 'text-red' :
+                      (cost.total.burnPct ?? 0) > 75  ? 'text-amber' :
+                                                       'text-emerald'
                     }`}
                   >
                     {cost.total.burnPct ?? 0}%
                   </div>
-                  <div className="text-[10px] text-text-muted uppercase tracking-wider">burn</div>
+                  <div className="text-[10px] text-text-muted ">burn</div>
                 </div>
               </div>
               <BurnBar pct={cost.total.burnPct ?? 0} />
@@ -156,16 +165,12 @@ export default function Governance() {
 
             {/* Per-tier */}
             <div className="grid grid-cols-3 gap-3">
-              {Object.entries(cost.tiers).map(([key, t]) => (
-                <div key={key} className="rounded-xl border border-border bg-surface p-4">
+              {tierEntries.map(([key, t]) => (
+                <div key={key} className="card p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span
-                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                      style={{
-                        backgroundColor: `${TIER_COLORS[key] || '#6b7280'}20`,
-                        color: TIER_COLORS[key] || '#6b7280',
-                        border: `1px solid ${TIER_COLORS[key] || '#6b7280'}40`,
-                      }}
+                      className={`pill font-bold ${TIER_PILL[key] || TIER_PILL_FALLBACK}`}
+                      aria-label={`Tier: ${TIER_LABELS[key] || key}`}
                     >
                       {TIER_LABELS[key] || key}
                     </span>
@@ -186,14 +191,14 @@ export default function Governance() {
         {cost && cost.violations.length > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+              <AlertTriangle className="w-4 h-4 text-amber" />
+              <h2 className="text-sm font-bold text-text-muted">
                 Model-routing violations
               </h2>
               <span className="text-xs text-text-muted">({cost.violationCount} in window)</span>
             </div>
-            <div className="rounded-2xl border border-border bg-surface overflow-hidden">
-              <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-surface-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">
+            <div className="card overflow-hidden">
+              <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-surface-2 text-[10px] font-bold text-text-muted">
                 <div className="col-span-3">Agent</div>
                 <div className="col-span-2">Tier</div>
                 <div className="col-span-2">Expected</div>
@@ -206,12 +211,12 @@ export default function Governance() {
                     <div className="col-span-3 font-semibold truncate">{v.agentName}</div>
                     <div className="col-span-2 text-text-muted">{v.tier}</div>
                     <div className="col-span-2">
-                      <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-emerald-500/10 text-emerald-400">
+                      <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-emerald/10 text-emerald">
                         {v.expected}
                       </span>
                     </div>
                     <div className="col-span-2">
-                      <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-red-500/10 text-red-400">
+                      <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-red/10 text-red">
                         {v.actual}
                       </span>
                     </div>
@@ -228,31 +233,27 @@ export default function Governance() {
         {/* Escalations */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <ListChecks className="w-4 h-4 text-amber-400" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+            <ListChecks className="w-4 h-4 text-amber" />
+            <h2 className="text-sm font-bold text-text-muted">
               Escalations
             </h2>
-            <span className="ml-auto flex items-center gap-1 text-xs">
+            <span className="ml-auto segmented">
               <button
                 onClick={() => setShowOnlyOpen(true)}
-                className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-colors ${
-                  showOnlyOpen ? 'bg-accent text-white' : 'text-text-muted hover:text-text'
-                }`}
+                className={showOnlyOpen ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}
               >
                 Open
               </button>
               <button
                 onClick={() => setShowOnlyOpen(false)}
-                className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-colors ${
-                  !showOnlyOpen ? 'bg-accent text-white' : 'text-text-muted hover:text-text'
-                }`}
+                className={!showOnlyOpen ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}
               >
                 All
               </button>
             </span>
           </div>
           {escalations.length === 0 ? (
-            <div className="rounded-2xl border border-border border-dashed bg-surface px-5 py-8 text-center">
+            <div className="card border-dashed px-5 py-8 text-center">
               <Activity className="w-5 h-5 text-text-muted mx-auto mb-2" />
               <p className="text-xs text-text-muted">
                 {showOnlyOpen ? 'No open escalations' : 'No escalations recorded yet'}
@@ -279,62 +280,53 @@ export default function Governance() {
 function BurnBar({ pct, small = false }: { pct: number; small?: boolean }) {
   const clamped = Math.max(0, Math.min(150, pct))
   const overflow = clamped > 100
-  const fillColor = clamped > 100 ? '#ef4444' : clamped > 75 ? '#f59e0b' : '#10b981'
+  // Semantic token classes instead of inline color-mix/hex — flips with theme.
+  const fillClass = clamped > 100 ? 'bg-red' : clamped > 75 ? 'bg-amber' : 'bg-emerald'
   return (
     <div className={`relative w-full bg-surface-2 rounded-full overflow-hidden ${small ? 'h-1.5' : 'h-2.5'}`}>
       <div
-        className="absolute inset-y-0 left-0 transition-all"
-        style={{ width: `${Math.min(100, clamped)}%`, backgroundColor: fillColor }}
+        className={`absolute inset-y-0 left-0 transition-all ${fillClass}`}
+        style={{ width: `${Math.min(100, clamped)}%` }}
       />
-      {overflow && (
-        <div
-          className="absolute inset-y-0 left-0 animate-pulse"
-          style={{ width: '100%', backgroundColor: '#ef4444', opacity: 0.5 }}
-        />
-      )}
+      {/* Over-budget: a subtle static red wash rather than a noisy pulse — the
+          red fill already signals the over-budget state. */}
+      {overflow && <div className="absolute inset-y-0 left-0 w-full bg-red/30" />}
     </div>
   )
 }
 
+// Token-backed badge classes (flip with theme) — replace inline color-mix().
+const TIER_BADGE: Record<string, string> = {
+  specialist: 'bg-blue/12 text-blue border border-blue/25',
+  'pod-lead': 'bg-amber/12 text-amber border border-amber/25',
+  vp:         'bg-purple/12 text-purple border border-purple/25',
+}
+const TIER_BADGE_FALLBACK = 'bg-red/12 text-red border border-red/25' // yash
+const SEV_BADGE: Record<string, string> = {
+  p0: 'bg-red/12 text-red border border-red/25',
+  p1: 'bg-amber/12 text-amber border border-amber/25',
+}
+const SEV_BADGE_FALLBACK = 'bg-gray/12 text-gray border border-gray/25'
+
 function EscalationCard({ esc }: { esc: Escalation }) {
-  const tierColor =
-    esc.tier === 'specialist' ? '#3b82f6' :
-    esc.tier === 'pod-lead'   ? '#f59e0b' :
-    esc.tier === 'vp'         ? '#a855f7' :
-                                 '#ef4444'  // yash
-  const sevColor =
-    esc.severity === 'p0' ? '#ef4444' :
-    esc.severity === 'p1' ? '#f59e0b' :
-                            '#6b7280'
+  const tierClass = TIER_BADGE[esc.tier] ?? TIER_BADGE_FALLBACK
+  const sevClass = SEV_BADGE[esc.severity] ?? SEV_BADGE_FALLBACK
   const isOpen = esc.status === 'open'
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
+    <div className="card p-4">
       <div className="flex items-center gap-2 mb-2">
-        <span
-          className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border"
-          style={{
-            backgroundColor: `${sevColor}20`,
-            color: sevColor,
-            borderColor: `${sevColor}40`,
-          }}
-        >
+        <span className={`pill font-bold ${sevClass}`} aria-label={`Severity: ${esc.severity}`}>
           {esc.severity}
         </span>
-        <span
-          className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border"
-          style={{
-            backgroundColor: `${tierColor}20`,
-            color: tierColor,
-            borderColor: `${tierColor}40`,
-          }}
-        >
+        <span className={`pill font-bold ${tierClass}`} aria-label={`Tier: ${esc.tier}`}>
           {esc.tier}
         </span>
         <span
-          className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ml-auto ${
-            isOpen ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                   : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+          className={`pill font-bold ml-auto ${
+            isOpen ? 'bg-amber/15 text-amber border border-amber/30'
+                   : 'bg-emerald/15 text-emerald border border-emerald/30'
           }`}
+          aria-label={`Status: ${esc.status}`}
         >
           {esc.status}
         </span>

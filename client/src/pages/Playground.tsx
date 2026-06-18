@@ -1,14 +1,21 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  Play, Copy, Trash2, Loader, CheckCircle, AlertCircle, Square,
-  ChevronDown, RotateCcw, Clock, Sparkles, Download, Search,
+  Copy, Trash2, AlertCircle,
+  ChevronDown, Clock, Sparkles, Download, Search,
   Settings2, X, ArrowDown, Terminal, ThumbsUp, ThumbsDown,
   Maximize2, Minimize2, Save, BookmarkPlus, Bookmark,
+  MessageSquare, Plus, Ban, Paperclip, FileText,
+  Send, StopCircle, Bot, User, Zap, PanelLeft,
+  MoreVertical, Pencil, Check, Loader2,
 } from 'lucide-react'
 import {
   getUnifiedAgents, addTraining,
-  getPlaygroundHistory, savePlaygroundHistoryItem, deletePlaygroundHistoryItem, clearPlaygroundHistoryApi, apiError} from '../lib/api'
-import type { PlaygroundHistoryItem } from '../lib/api'
+  getPlaygroundHistory, savePlaygroundHistoryItem, apiError,
+  getPlaygroundPreflight, getPlaygroundThreads, getPlaygroundThread, deletePlaygroundThread,
+  renamePlaygroundThread,
+} from '../lib/api'
+import type { PlaygroundHistoryItem, PlaygroundRunStatus, PlaygroundThread, PlaygroundPreflight } from '../lib/api'
 import { formatAgentDisplay } from '../lib/agentDisplay'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
@@ -34,14 +41,33 @@ interface TestResult {
   prompt: string
   output: string
   duration: number
-  status: 'success' | 'error'
+  status: PlaygroundRunStatus
   timestamp: Date
+  threadId?: string | null
+}
+
+// Explicit run lifecycle — replaces fragile `output.startsWith('Error:')`
+// sniffing so the UI shows a distinct header/icon for each terminal outcome and
+// the spinner can never get stuck.
+type RunState = 'idle' | 'running' | 'success' | 'error' | 'timeout' | 'cancelled' | 'empty'
+
+// Chat bubbles — the render source of truth for the conversation. Built from
+// STRUCTURED data at every update point (run done, openThread, reply, history),
+// never by string-parsing the transcript (agent output contains `---` rules that
+// would break naive splitting). The in-flight turn renders from `liveUserMsg` +
+// the streaming `output` buffer, then commits into `messages` on done.
+interface ChatMsg {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  status?: PlaygroundRunStatus
 }
 
 interface PlaygroundSettings {
   timeoutMs: number
   customInstructions: string
   outputMode: 'markdown' | 'raw'
+  fastMode?: boolean   // run on a faster model (Sonnet) for snappy replies
 }
 
 interface PromptTemplate {
@@ -79,6 +105,7 @@ const DEFAULT_SETTINGS: PlaygroundSettings = {
   timeoutMs: PLAYGROUND_DEFAULT_TIMEOUT_MS,
   customInstructions: '',
   outputMode: 'markdown',
+  fastMode: false,
 }
 
 function loadPersistedSettings(): PlaygroundSettings {
@@ -127,35 +154,69 @@ function toHistoryItem(r: TestResult): PlaygroundHistoryItem {
   return { ...r, timestamp: r.timestamp.toISOString() }
 }
 
+// Cold-start example prompts shown in the empty output state.
+const EXAMPLE_PROMPTS = [
+  'Validate this SaaS idea: an AI tool that auto-generates Shopify product descriptions.',
+  'Review the security of the current branch and flag any critical issues.',
+  'Write a landing-page hero headline + subhead for a developer-focused analytics tool.',
+  'Design the database schema for a multi-tenant task manager with RLS.',
+]
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function Playground() {
+  const navigate = useNavigate()
   const { data: agents } = useApi(getUnifiedAgents, [], CacheKeys.unifiedAgents)
 
   // Core state — use lazy initializers so loadPersistedSession runs once, not on every render
   const [selectedAgent, setSelectedAgent] = useState<string>(() => loadPersistedSession().selectedAgent)
   const [prompt, setPrompt] = useState(() => loadPersistedSession().prompt)
-  // C12: gate the first real Claude run of a session behind a cost confirm.
+  // C12: gate the first run of a session behind a confirm (it spawns the local
+  // Claude Code CLI on your subscription — see the dialog copy).
   const runConfirmedRef = useRef(false)
   const [pendingRun, setPendingRun] = useState<{ prompt?: string; agent?: string } | null>(null)
   const [running, setRunning] = useState(false)
+  const [runState, setRunState] = useState<RunState>('idle')
   const [output, setOutput] = useState(() => loadPersistedSession().output)
   const [activityLog, setActivityLog] = useState<ActivityEntry[]>([])
   const [history, setHistory] = useState<TestResult[]>(loadPersistedHistory)
   const [settings, setSettings] = useState<PlaygroundSettings>(loadPersistedSettings)
+  // Preflight readiness (binary/auth/node). Drives the banner + Run disable.
+  const [preflight, setPreflight] = useState<PlaygroundPreflight | null>(null)
+  const [preflightDismissed, setPreflightDismissed] = useState(false)
+  // Multi-turn threads
+  const [threads, setThreads] = useState<PlaygroundThread[]>([])
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
+  const [threadFilter, setThreadFilter] = useState('')
+  const [threadsLoading, setThreadsLoading] = useState(true)
+  // Generic delete-confirmation gate — every destructive list action routes
+  // through this so nothing is ever deleted on a single click (production-grade).
+  const [pendingDelete, setPendingDelete] = useState<null | { title: string; message: string; confirmLabel: string; onConfirm: () => void }>(null)
+  // Row actions kebab (⋮) — fixed-positioned so it never clips inside the
+  // scrolling list. Holds which row is open + where to anchor the menu.
+  const [rowMenu, setRowMenu] = useState<null | { id: string; kind: 'thread' | 'history'; x: number; y: number }>(null)
+  // Inline rename state for a thread row.
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  // Rendered transcript of prior turns when in a thread — the current streaming
+  // turn is appended below it so the output reads as a full chat (user-chosen).
+  const [transcriptPrefix, setTranscriptPrefix] = useState('')
+  // Chat bubble model (render source of truth). `messages` = committed turns;
+  // `liveUserMsg` = the user message of the in-flight turn (its assistant half
+  // streams from `output`).
+  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [liveUserMsg, setLiveUserMsg] = useState('')
 
   // UI state
   const [showAgentPicker, setShowAgentPicker] = useState(false)
   const [agentFilter, setAgentFilter] = useState('')
   const [showSettings, setShowSettings] = useState(false)
-  const [historyFilter, setHistoryFilter] = useState('')
   const [elapsedMs, setElapsedMs] = useState(0)
   const [showScrollBottom, setShowScrollBottom] = useState(false)
   const [showRating, setShowRating] = useState(false)
   const [ratingIssue, setRatingIssue] = useState('')
   const [ratingCorrection, setRatingCorrection] = useState('')
   const [ratingSubmitting, setRatingSubmitting] = useState(false)
-  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
   const [fullscreenOutput, setFullscreenOutput] = useState(false)
   const [focusedAgentIdx, setFocusedAgentIdx] = useState(-1)
   const [templates, setTemplates] = useState<PromptTemplate[]>(loadPersistedTemplates)
@@ -163,8 +224,23 @@ export default function Playground() {
   const [templateName, setTemplateName] = useState('')
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
 
+  // Attachments — files the agent reads via the claude CLI (cost-free, no API).
+  const [attachments, setAttachments] = useState<{ name: string; content: string; encoding: 'utf8' | 'base64'; size: number }[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const attachmentsRef = useRef(attachments)
+  attachmentsRef.current = attachments
+
+  // Mobile rail drawer (chat-app left sidebar collapses under md).
+  const [railOpen, setRailOpen] = useState(false)
+
   // Refs
   const outputRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const promptRef = useRef<HTMLTextAreaElement>(null)
+  // Auto-scroll only follows new content when the user is already at the bottom.
+  // Updated by the scroll listener; reset to true when a fresh run/thread starts.
+  const atBottomRef = useRef(true)
+  const settingsRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const startTimeRef = useRef<number>(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -178,6 +254,16 @@ export default function Playground() {
   const rafIdRef = useRef<number>(0)
   // Warning guard: only show the >400KB toast once per run
   const hasWarnedLongOutputRef = useRef(false)
+  // Active thread id for the in-flight run (ref so runTest closure reads latest)
+  const activeThreadIdRef = useRef<string | null>(null)
+  // Race-safety: ids deleted this session. A refreshThreads() that was already
+  // in-flight when the delete fired must NOT resurrect them, so every list write
+  // filters this set. Cleared only on successful server delete reconcile.
+  const deletedThreadIdsRef = useRef<Set<string>>(new Set())
+  // Last finished run — used to seed a thread when the user clicks "Reply".
+  // Prefix (transcript so far + current "You/Agent" headers) prepended to the
+  // live-streaming output when continuing a thread. (promptRef declared above.)
+  const currentTurnRef = useRef('')
 
   // Cancel pending rAF on unmount to prevent setState on unmounted component
   useEffect(() => {
@@ -209,14 +295,38 @@ export default function Playground() {
     a.filename === selectedAgent || a.name === selectedAgent
   )
 
-  const filteredHistory = useMemo(() => {
-    if (!historyFilter.trim()) return history
-    const q = historyFilter.toLowerCase()
-    return history.filter(h =>
-      h.agentName.toLowerCase().includes(q) ||
-      h.prompt.toLowerCase().includes(q)
+  // Memoize the active-thread lookup so it isn't re-found on every message render.
+  const activeThread = useMemo(
+    () => threads.find(t => t.id === activeThreadId) ?? null,
+    [threads, activeThreadId],
+  )
+
+  const filteredThreads = useMemo(() => {
+    if (!threadFilter.trim()) return threads
+    const q = threadFilter.toLowerCase()
+    return threads.filter(t =>
+      (t.title || '').toLowerCase().includes(q) ||
+      (t.agentName || '').toLowerCase().includes(q)
     )
-  }, [history, historyFilter])
+  }, [threads, threadFilter])
+
+  // When streaming a turn inside a thread, show the prior transcript + the live
+  // current turn beneath it (full-chat view). Otherwise `output` already holds
+  // what to show (a one-shot answer, or a reopened thread's full transcript).
+  const displayedOutput = (running && currentTurnRef.current)
+    ? currentTurnRef.current + output
+    : output
+
+  // Bubbles to render = committed `messages` (structured, never string-parsed)
+  // plus the in-flight turn while running: the live user message, and — once the
+  // first token arrives — the streaming assistant bubble fed by `output`. Before
+  // the first token, the typing indicator row covers the assistant side.
+  const renderedMessages = useMemo<ChatMsg[]>(() => {
+    if (!running) return messages
+    const live: ChatMsg[] = [{ id: 'live-u', role: 'user', content: liveUserMsg }]
+    if (output) live.push({ id: 'live-a', role: 'assistant', content: output })
+    return [...messages, ...live]
+  }, [messages, running, liveUserMsg, output])
 
   // ─── Persist history + settings + templates (single effect) ──────────
 
@@ -236,6 +346,24 @@ export default function Playground() {
     return () => { if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current) }
   }, [selectedAgent, prompt, output])
 
+  // Load threads on mount (inline so it doesn't depend on the refreshThreads
+  // callback declared further down).
+  useEffect(() => {
+    setThreadsLoading(true)
+    getPlaygroundThreads()
+      .then(list => setThreads(list.filter(t => !deletedThreadIdsRef.current.has(t.id))))
+      .catch(err => apiError('Playground threads', err))
+      .finally(() => setThreadsLoading(false))
+  }, [])
+
+  // Preflight readiness on mount + whenever the selected agent changes, so the
+  // user gets an actionable banner instead of an 18s spin → claude_binary_missing.
+  useEffect(() => {
+    getPlaygroundPreflight(selectedAgent || undefined)
+      .then(p => { setPreflight(p); setPreflightDismissed(false) })
+      .catch(err => { console.error('[playground] preflight failed:', err?.message); setPreflight(null) })
+  }, [selectedAgent])
+
   // Sync history from server on mount
   useEffect(() => {
     getPlaygroundHistory().then(serverItems => {
@@ -254,25 +382,72 @@ export default function Playground() {
     }).catch(err => apiError('Playground history', err))
   }, [])
 
+  // Hot-start: focus the prompt on mount so a user can type immediately.
+  useEffect(() => {
+    promptRef.current?.focus()
+  }, [])
+
+  // Hot-start: if no agent is selected yet, pre-select the most-recently-used
+  // one (from history) once agents have loaded — saves a cold-start click.
+  const hotStartedRef = useRef(false)
+  useEffect(() => {
+    if (hotStartedRef.current) return
+    if (selectedAgent || !allAgents.length || !history.length) return
+    const recent = history.find(h => h.agent && allAgents.some(a => a.filename === h.agent || a.name === h.agent))
+    if (recent?.agent) {
+      setSelectedAgent(recent.agent)
+      hotStartedRef.current = true
+    }
+  }, [allAgents, history, selectedAgent])
+
   // ─── Auto-scroll output ──────────────────────────────────────────────
 
+  // Single, scroll-aware auto-follow. Only sticks to the bottom when the user is
+  // already there (atBottomRef) — scrolling up to read earlier output is never
+  // yanked back. Instant ('auto') while streaming to avoid smooth-scroll jank on
+  // every token; smooth on a completed/idle turn. The "jump to latest" button is
+  // the way back when scrolled up.
   useEffect(() => {
-    if (running && outputRef.current) {
-      outputRef.current.scrollTo({ top: outputRef.current.scrollHeight, behavior: 'smooth' })
-    }
-  }, [output, running])
+    const el = outputRef.current
+    if (!el || !atBottomRef.current) return
+    el.scrollTo({ top: el.scrollHeight, behavior: running ? 'auto' : 'smooth' })
+  }, [displayedOutput, messages.length, running])
+
+  // Auto-grow the composer textarea between its min/max heights (render-support).
+  useEffect(() => {
+    const el = promptRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
+  }, [prompt])
 
   // ─── Scroll detection ────────────────────────────────────────────────
 
+  // Attach once on mount (not per-token). Tracks distance from bottom to drive
+  // both the "jump to latest" button and the auto-follow gate (atBottomRef).
   useEffect(() => {
     const el = outputRef.current
     if (!el) return
     const handleScroll = () => {
-      setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 100)
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+      atBottomRef.current = distanceFromBottom < 80
+      setShowScrollBottom(distanceFromBottom > 100)
     }
-    el.addEventListener('scroll', handleScroll)
+    el.addEventListener('scroll', handleScroll, { passive: true })
     return () => el.removeEventListener('scroll', handleScroll)
-  }, [output])
+  }, [])
+
+  // Settings panel: close on Escape or click outside.
+  useEffect(() => {
+    if (!showSettings) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowSettings(false) }
+    const onDown = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onDown)
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onDown) }
+  }, [showSettings])
 
   // ─── Click outside agent picker ───────────────────────────────────────
 
@@ -325,12 +500,135 @@ export default function Playground() {
     })
   }, [])
 
+  // ─── Threads (multi-turn conversations) ───────────────────────────────
+  // Always strip session-deleted ids so a stale in-flight fetch can't resurrect
+  // a just-deleted thread (race-safe).
+  const applyThreads = useCallback((list: PlaygroundThread[]) => {
+    setThreads(list.filter(t => !deletedThreadIdsRef.current.has(t.id)))
+  }, [])
+  const refreshThreads = useCallback(() => {
+    setThreadsLoading(true)
+    getPlaygroundThreads()
+      .then(applyThreads)
+      .catch(err => apiError('Playground threads', err))
+      .finally(() => setThreadsLoading(false))
+  }, [applyThreads])
+
+  const startNewThread = useCallback(() => {
+    activeThreadIdRef.current = null
+    setActiveThreadId(null)
+    setOutput('')
+    setPrompt('')
+    setActivityLog([])
+    setRunState('idle')
+    setTranscriptPrefix('')
+    currentTurnRef.current = ''
+    setMessages([])
+    setLiveUserMsg('')
+  }, [])
+
+  const openThread = useCallback((id: string) => {
+    if (running) { toast('error', 'Finish the running test first'); return }
+    getPlaygroundThread(id).then(thread => {
+      activeThreadIdRef.current = thread.id
+      setActiveThreadId(thread.id)
+      if (thread.agentName) setSelectedAgent(thread.agentName)
+      // Bubbles come straight from the structured thread messages (no parsing).
+      setMessages((thread.messages || []).map(m => ({
+        id: m.id || genId(),
+        role: m.role,
+        content: m.content || '',
+        status: (m.status as PlaygroundRunStatus) || 'success',
+      })))
+      setLiveUserMsg('')
+      setTranscriptPrefix('')
+      currentTurnRef.current = ''
+      // `output` mirrors the latest answer so copy/export/fullscreen keep working.
+      const lastAgent = [...(thread.messages || [])].reverse().find(m => m.role === 'assistant')
+      setOutput(lastAgent?.content || '')
+      setRunState(thread.messages?.some(m => m.role === 'assistant' && m.status !== 'success') ? 'error' : 'success')
+      atBottomRef.current = true   // open a thread scrolled to its latest turn
+    }).catch(err => apiError('Open thread', err))
+  }, [running])
+
+  // Optimistic, race-safe delete: remove from the list instantly, mark the id so
+  // any in-flight refresh can't bring it back, then sync the server. On failure,
+  // un-mark + refresh so the row reappears (error recovery).
+  const removeThread = useCallback((id: string) => {
+    deletedThreadIdsRef.current.add(id)
+    setThreads(prev => prev.filter(t => t.id !== id))
+    if (activeThreadIdRef.current === id) startNewThread()
+    deletePlaygroundThread(id)
+      .then(() => toast('success', 'Conversation deleted'))
+      .catch(err => {
+        deletedThreadIdsRef.current.delete(id)
+        apiError('Delete thread', err)
+        refreshThreads()
+      })
+  }, [startNewThread, refreshThreads])
+
+  const clearThreads = useCallback(() => {
+    if (threads.length === 0) return
+    const ids = threads.map(t => t.id)
+    ids.forEach(id => deletedThreadIdsRef.current.add(id))
+    setThreads([])
+    if (activeThreadIdRef.current) startNewThread()
+    Promise.all(ids.map(id => deletePlaygroundThread(id).catch(() => null)))
+      .then(() => toast('success', `Deleted ${ids.length} conversation${ids.length === 1 ? '' : 's'}`))
+      .catch(() => apiError('Delete threads', new Error('Some conversations failed to delete')))
+  }, [threads, startNewThread])
+
+  // Rename a conversation — inline edit, optimistic update, persisted via PATCH.
+  const startRename = useCallback((id: string) => {
+    const t = threads.find(x => x.id === id)
+    setRenamingId(id)
+    setRenameValue(t?.title || '')
+  }, [threads])
+  const cancelRename = useCallback(() => { setRenamingId(null); setRenameValue('') }, [])
+  const commitRename = useCallback((id: string) => {
+    const title = renameValue.trim()
+    setRenamingId(null)
+    const current = threads.find(t => t.id === id)
+    if (!title || !current || title === current.title) return
+    setThreads(prev => prev.map(t => t.id === id ? { ...t, title } : t)) // optimistic
+    renamePlaygroundThread(id, title)
+      .then(() => toast('success', 'Conversation renamed'))
+      .catch(err => { apiError('Rename conversation', err); refreshThreads() })
+  }, [renameValue, threads, refreshThreads])
+
+  // Read picked files into memory (text inline, binary/image/PDF as base64).
+  // The CLI reads them via temp paths — cost-free, no API.
+  const TEXT_RE = /\.(md|txt|json|csv|js|jsx|ts|tsx|html|css|ya?ml|xml|log|sh|py|rb|go|rs|java|sql|env|toml|ini)$/i
+  const onPickFiles = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files || [])
+    e.target.value = '' // allow re-picking the same file
+    for (const file of picked) {
+      if (attachmentsRef.current.length >= 3) { toast('error', 'Up to 3 files'); break }
+      if (file.size > 5 * 1024 * 1024) { toast('error', `${file.name} is over 5MB`); continue }
+      const isText = file.type.startsWith('text/') || TEXT_RE.test(file.name)
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result
+        if (typeof result !== 'string') return
+        const content = isText ? result : (result.split(',')[1] || '') // strip "data:...;base64," prefix
+        setAttachments(prev => prev.length >= 3 ? prev : [...prev, { name: file.name, content, encoding: isText ? 'utf8' : 'base64', size: file.size }])
+      }
+      reader.onerror = () => toast('error', `Couldn't read ${file.name}`)
+      if (isText) reader.readAsText(file); else reader.readAsDataURL(file)
+    }
+  }, [])
+  const removeAttachment = useCallback((name: string) => setAttachments(prev => prev.filter(a => a.name !== name)), [])
+
   const runTest = useCallback(async (overridePrompt?: string, overrideAgent?: string) => {
     const testPrompt = (overridePrompt ?? prompt).trim()
     if (!testPrompt) { toast('error', 'Enter a test prompt'); return }
 
-    // C12: first run of the session must be confirmed (spawns the real Claude
-    // API and costs tokens). Subsequent runs skip the prompt.
+    // D1: guard against concurrent runs. A second runTest while one is in flight
+    // would overwrite abortRef and orphan the first stream. Bail with a toast.
+    if (running || abortRef.current) { toast('error', 'A run is already in progress'); return }
+
+    // C12: first run of the session must be confirmed (spawns the local Claude
+    // Code CLI on your subscription). Subsequent runs skip the prompt.
     if (!runConfirmedRef.current) {
       setPendingRun({ prompt: overridePrompt, agent: overrideAgent })
       return
@@ -338,23 +636,45 @@ export default function Playground() {
 
     const agentToUse = overrideAgent ?? selectedAgent
     const resolvedAgent = allAgents.find(a => a.filename === agentToUse || a.name === agentToUse)
+    const historyId = genId()
+    // Single-system chat: EVERY message belongs to a conversation (thread). If no
+    // conversation is active (a fresh "New chat"), mint one now so this and all
+    // following replies append to the SAME thread — never a new flat entry.
+    let threadIdForRun = activeThreadIdRef.current
+    if (!threadIdForRun) {
+      threadIdForRun = genId()
+      activeThreadIdRef.current = threadIdForRun
+      setActiveThreadId(threadIdForRun)
+    }
+    let resolvedThreadId: string = threadIdForRun
+    // Snapshot the running transcript so copy/export/fullscreen still reflect the
+    // whole conversation (the chat bubbles render from `messages`, not this).
+    const existing = transcriptPrefix || output || ''
+    setTranscriptPrefix(existing)
+    currentTurnRef.current = `${existing ? existing + '\n\n---\n\n' : ''}### 🧑 You\n\n${testPrompt}\n\n### 🤖 Agent\n\n`
+    // Do NOT reset `messages` — it accumulates the conversation. It's cleared only
+    // by "New chat" (startNewThread) or by opening a different conversation.
+    setLiveUserMsg(testPrompt)
+    setPrompt('')                 // clear composer after sending (chat UX)
+    atBottomRef.current = true    // a fresh turn always lands in view
     setRunning(true)
+    setRunState('running')
     setOutput('')
     outputAccRef.current = ''
     flushPendingRef.current = false
     hasWarnedLongOutputRef.current = false
     setActivityLog([])
     setElapsedMs(0)
-    setActiveHistoryId(null)
     setShowRating(false)
     startTimeRef.current = Date.now()
     abortRef.current = new AbortController()
 
-    // Client-side idle watchdog. Server sends heartbeat comments every ~15s so the
-    // 90s idle timer only fires if the stream is truly dead (server crash, network
-    // drop, proxy buffering). The read loop below calls resetIdleTimer() each time
-    // reader.read() returns bytes, including heartbeats.
-    const CLIENT_IDLE_MS = 90_000
+    // Client-side idle watchdog. Server sends heartbeat comments every ~8s, so this
+    // 180s timer only fires if the stream is TRULY dead (server crash, network drop,
+    // or a proxy buffering the SSE so no bytes arrive). Generous so a slow first
+    // token (opus can think 20–30s before any text) never aborts a live run. The
+    // read loop calls resetIdleTimer() on every reader.read(), including heartbeats.
+    const CLIENT_IDLE_MS = 180_000
     const resetIdleTimer = () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
       idleTimerRef.current = setTimeout(() => {
@@ -372,9 +692,16 @@ export default function Playground() {
         agentName: agentToUse || undefined,
         prompt: testPrompt,
         timeoutMs: settings.timeoutMs,
+        historyId,                                   // B4: shared id ⇒ no dup rows
+        threadId: threadIdForRun,                    // always threaded (single-system chat)
+        model: settings.fastMode ? 'fast' : undefined, // Fast toggle → faster model
       }
       if (settings.customInstructions.trim()) {
         body.customInstructions = settings.customInstructions.trim()
+      }
+      if (attachmentsRef.current.length) {
+        body.files = attachmentsRef.current.map(a => ({ name: a.name, content: a.content, encoding: a.encoding }))
+        setAttachments([]) // consumed by this run
       }
 
       const response = await fetch('/api/playground/run', {
@@ -407,6 +734,10 @@ export default function Playground() {
       let buffer = ''
       let fullOutput = ''
       let hadError = false
+      // Terminal outcome captured from the SSE stream (default to 'error' so a
+      // stream that ends with NO terminal event is treated as a failure, not a
+      // silent success — D4). Resolved threadId comes back on start/done.
+      let terminalState: RunState = 'error'
 
       // rAF-based flush: batches rapid SSE chunks into single React state updates
       const flushOutput = () => { setOutput(outputAccRef.current); flushPendingRef.current = false }
@@ -419,6 +750,7 @@ export default function Playground() {
         try {
           const event = JSON.parse(trimmed.slice(6))
           if (event.type === 'start') {
+            if (event.threadId) resolvedThreadId = event.threadId
             resetIdleTimer()
           } else if (event.type === 'chunk') {
             fullOutput += event.content
@@ -446,6 +778,8 @@ export default function Playground() {
           } else if (event.type === 'done') {
             fullOutput = event.output || fullOutput
             setOutput(fullOutput)
+            if (event.threadId) resolvedThreadId = event.threadId
+            terminalState = fullOutput.trim() ? 'success' : 'empty'
           } else if (event.type === 'error') {
             // Build a structured error block. Show error line, then code/cause/tip
             // /stderrTail as labeled rows so the operator can self-diagnose.
@@ -464,6 +798,8 @@ export default function Playground() {
             fullOutput = fullOutput ? `${fullOutput}\n\n---\n${block}` : block
             setOutput(fullOutput)
             hadError = true
+            // D3: timeouts get a distinct state from generic errors.
+            terminalState = (event.code === 'wall_timeout' || event.code === 'idle_timeout') ? 'timeout' : 'error'
             // CTA toast for spawn / binary-missing — link operator to /setup.
             if (event.code === 'claude_binary_missing' || (event.code && event.code.startsWith('spawn_'))) {
               toast('error', 'Claude CLI problem. Open /setup → Run Self-Test for diagnostics.')
@@ -500,17 +836,50 @@ export default function Playground() {
       const agentDisplay = resolvedAgent?.name || agentToUse || 'No Agent'
       // Ensure final output state is synced (flush any pending rAF)
       setOutput(outputAccRef.current)
+      // D4: map the captured terminal state to status; a stream that ended with
+      // no terminal event stays 'error' so the UI never shows a fake success.
+      const statusMap: Record<RunState, PlaygroundRunStatus> = {
+        idle: 'success', running: 'success', success: 'success',
+        empty: 'error', error: 'error', timeout: 'timeout', cancelled: 'cancelled',
+      }
+      if (terminalState === 'error' && !hadError && !fullOutput.trim()) {
+        // Stream closed cleanly but emitted no done/error — surface it.
+        setOutput(prev => prev || 'Error: stream ended without a result.')
+      }
+      setRunState(terminalState)
+      // Active thread stays in sync if the server created/continued one.
+      if (resolvedThreadId && resolvedThreadId !== activeThreadIdRef.current) {
+        activeThreadIdRef.current = resolvedThreadId
+        setActiveThreadId(resolvedThreadId)
+      }
+      const finalTurnOutput = outputAccRef.current
+      // The displayed assistant text (includes any error block appended above).
+      const committedAssistant = fullOutput || finalTurnOutput
+      const finalStatus = statusMap[terminalState]
       const newItem: TestResult = {
-        id: genId(),
+        id: historyId,                                 // shared id ⇒ dedupe
         agent: agentToUse || '',
         agentName: agentDisplay,
         prompt: testPrompt,
-        output: fullOutput,
+        output: finalTurnOutput,
         duration,
-        status: hadError ? 'error' : 'success',
+        status: finalStatus,
         timestamp: new Date(),
+        threadId: resolvedThreadId,
       }
       persistResult(newItem)
+      // Commit the turn into the chat bubble list (render source of truth).
+      setMessages(prev => [
+        ...prev,
+        { id: `${historyId}-u`, role: 'user', content: testPrompt, status: 'success' },
+        { id: `${historyId}-a`, role: 'assistant', content: committedAssistant || '(no output)', status: finalStatus },
+      ])
+      setLiveUserMsg('')
+      if (resolvedThreadId) {
+        currentTurnRef.current = ''
+        refreshThreads()
+        setTimeout(() => promptRef.current?.focus(), 50)
+      }
 
     } catch (err: unknown) {
       const duration = Date.now() - startTimeRef.current
@@ -519,26 +888,35 @@ export default function Playground() {
         && (abortReason?.name === 'TimeoutError' || (err as Error & { cause?: { name?: string } }).cause?.name === 'TimeoutError')
 
       const agentDisplay = resolvedAgent?.name || agentToUse || 'No Agent'
+      let bubbleStatus: PlaygroundRunStatus = 'error'
+      let bubbleText = ''
       if (isIdleTimeout) {
-        const msg = `No response from server for ${Math.round(CLIENT_IDLE_MS / 1000)}s — stream aborted. The agent may have crashed or the server is unreachable.`
+        const msg = `No bytes received for ${Math.round(CLIENT_IDLE_MS / 1000)}s — stream aborted. This usually means a dev proxy is buffering the live stream. Reload, or open the app on http://localhost:3847 (the built server streams directly).`
         setOutput(prev => prev ? `${prev}\n\n---\nError: ${msg}` : `Error: ${msg}`)
+        setRunState('timeout')
+        bubbleStatus = 'timeout'; bubbleText = `Error: ${msg}`
         persistResult({
-          id: genId(),
+          id: historyId,
           agent: agentToUse || '',
           agentName: agentDisplay,
           prompt: testPrompt,
           output: `Error: ${msg}`,
           duration,
-          status: 'error',
+          status: 'timeout',
           timestamp: new Date(),
+          threadId: resolvedThreadId,
         })
       } else if (err instanceof Error && err.name === 'AbortError') {
         setOutput(prev => prev ? prev + '\n\n---\n*Test cancelled by user*' : 'Test cancelled.')
+        setRunState('cancelled')
+        bubbleStatus = 'cancelled'; bubbleText = (outputAccRef.current ? `${outputAccRef.current}\n\n---\n` : '') + '*Cancelled by user*'
       } else {
         const errMsg = err instanceof Error ? err.message : String(err)
         setOutput(`Error: ${errMsg}`)
+        setRunState('error')
+        bubbleStatus = 'error'; bubbleText = `Error: ${errMsg}`
         persistResult({
-          id: genId(),
+          id: historyId,
           agent: agentToUse || '',
           agentName: agentDisplay,
           prompt: testPrompt,
@@ -546,8 +924,16 @@ export default function Playground() {
           duration,
           status: 'error',
           timestamp: new Date(),
+          threadId: resolvedThreadId,
         })
       }
+      // Commit the failed/cancelled turn as bubbles too (chat reflects reality).
+      setMessages(prev => [
+        ...prev,
+        { id: `${historyId}-u`, role: 'user', content: testPrompt, status: 'success' },
+        { id: `${historyId}-a`, role: 'assistant', content: bubbleText, status: bubbleStatus },
+      ])
+      setLiveUserMsg('')
     } finally {
       if (idleTimerRef.current) {
         clearTimeout(idleTimerRef.current)
@@ -556,7 +942,7 @@ export default function Playground() {
       setRunning(false)
       abortRef.current = null
     }
-  }, [prompt, selectedAgent, settings, allAgents, persistResult])
+  }, [prompt, running, selectedAgent, settings, allAgents, persistResult, refreshThreads])
 
   const cancelRun = () => { abortRef.current?.abort() }
 
@@ -581,41 +967,18 @@ export default function Playground() {
     URL.revokeObjectURL(url)
   }
 
-  const loadFromHistory = (item: TestResult) => {
-    setSelectedAgent(item.agent)
-    setPrompt(item.prompt)
-    setOutput(item.output)
-    setActiveHistoryId(item.id)
-    setShowRating(false)
-  }
-
-  const rerunFromHistory = (item: TestResult) => {
-    setSelectedAgent(item.agent)
-    setPrompt(item.prompt)
-    runTest(item.prompt, item.agent)
-  }
-
-  const removeHistoryItem = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation()
-    setHistory(prev => prev.filter(h => h.id !== id))
-    deletePlaygroundHistoryItem(id).catch(err => apiError('Playground history', err))
-    if (activeHistoryId === id) setActiveHistoryId(null)
-  }
-
-  const clearHistory = () => {
-    setHistory([])
-    localStorage.removeItem(STORAGE_KEY)
-    clearPlaygroundHistoryApi().catch(err => apiError('Playground history', err))
-    setActiveHistoryId(null)
-  }
-
   const clearAll = () => {
     setOutput('')
     setPrompt('')
     setSelectedAgent('')
     setActivityLog([])
     setShowRating(false)
-    setActiveHistoryId(null)
+    setRunState('idle')
+    activeThreadIdRef.current = null
+    setActiveThreadId(null)
+    setMessages([])
+    setLiveUserMsg('')
+    setTranscriptPrefix('')
   }
 
   // ─── Templates ────────────────────────────────────────────────────────
@@ -638,7 +1001,6 @@ export default function Playground() {
     setPrompt(tmpl.prompt)
     if (tmpl.agentName) setSelectedAgent(tmpl.agentName)
     setShowTemplates(false)
-    setActiveHistoryId(null)
   }
 
   const removeTemplate = (e: React.MouseEvent, id: string) => {
@@ -649,10 +1011,12 @@ export default function Playground() {
   // ─── Keyboard ─────────────────────────────────────────────────────────
 
   const handlePromptKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault()
-      runTest()
-    }
+    if (e.key !== 'Enter') return
+    // Shift+Enter inserts a newline (chat-app convention) — let it through.
+    if (e.shiftKey) return
+    // Plain Enter or ⌘/Ctrl+Enter both send.
+    e.preventDefault()
+    runTest()
   }
 
   const handleAgentPickerKeyDown = (e: React.KeyboardEvent) => {
@@ -714,9 +1078,9 @@ export default function Playground() {
         <div className="flex-1 overflow-y-auto p-8">
           <div className="max-w-4xl mx-auto">
             {settings.outputMode === 'markdown' ? (
-              <div className="text-sm leading-relaxed"><MarkdownRenderer content={output} /></div>
+              <div className="text-sm leading-relaxed"><MarkdownRenderer content={displayedOutput} /></div>
             ) : (
-              <pre className="text-sm text-text whitespace-pre-wrap leading-relaxed font-mono break-words">{output}</pre>
+              <pre className="text-sm text-text whitespace-pre-wrap leading-relaxed font-mono break-words">{displayedOutput}</pre>
             )}
           </div>
         </div>
@@ -725,11 +1089,11 @@ export default function Playground() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-full min-h-0 flex flex-col">
       <ConfirmDialog
         open={!!pendingRun}
         title="Run this agent?"
-        message={`This spawns the real Claude API${selectedAgent ? ` as "${selectedAgent}"` : ''} and costs tokens. Shown once per session.`}
+        message={`Runs ${selectedAgent ? `"${selectedAgent}"` : 'this agent'} through your local Claude Code CLI — your Claude Code subscription session, NOT the metered API. Shown once per session.`}
         confirmLabel="Run"
         onClose={() => setPendingRun(null)}
         onConfirm={() => {
@@ -739,71 +1103,138 @@ export default function Playground() {
           runTest(p?.prompt, p?.agent)
         }}
       />
-      {/* Header */}
-      <div className="px-6 py-3 border-b border-border bg-surface shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-accent" />
-              Agent Playground
-            </h1>
-            <p className="text-[11px] text-text-muted mt-0.5">
-              Test any agent with a prompt. Real-time streaming output.
-              {history.length > 0 && (
-                <span className="ml-2 text-text-secondary">
-                  {successCount} passed · {errorCount} failed · avg {formatDuration(avgDuration)}
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              title="Settings"
-              className={`p-2 rounded-lg transition-colors ${showSettings ? 'bg-accent-muted text-accent' : 'text-text-muted hover:text-text hover:bg-surface-2'}`}
-            >
-              <Settings2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={clearAll}
-              title="Clear editor"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-surface-2 transition-colors text-text-muted hover:text-text"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear
-            </button>
-          </div>
-        </div>
-      </div>
 
-      {/* Main Content */}
+      {/* Destructive-action confirmation — gates every delete / clear so nothing
+          is removed on a single click. */}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        danger
+        title={pendingDelete?.title || 'Delete?'}
+        message={pendingDelete?.message}
+        confirmLabel={pendingDelete?.confirmLabel || 'Delete'}
+        cancelLabel="Cancel"
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => { pendingDelete?.onConfirm(); setPendingDelete(null) }}
+      />
+
+      {/* Conversation actions menu (⋮) — fixed-positioned so it never clips inside
+          the scrolling list. Labeled, click-outside dismissable. */}
+      {rowMenu && (() => {
+        const t = threads.find(x => x.id === rowMenu.id)
+        if (!t) return null
+        const close = () => setRowMenu(null)
+        const itemCls = 'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] hover:bg-surface-2 transition-colors'
+        return (
+          <>
+            <div className="fixed inset-0 z-[80]" onClick={close} onContextMenu={(e) => { e.preventDefault(); close() }} />
+            <div
+              role="menu"
+              aria-label="Conversation actions"
+              className="fixed z-[81] w-44 bg-surface border border-border rounded-xl shadow-pop py-1 text-text"
+              style={{ top: Math.min(rowMenu.y + 4, window.innerHeight - 170), left: Math.max(8, rowMenu.x - 176) }}
+            >
+              <button role="menuitem" className={itemCls} onClick={() => { close(); openThread(t.id); setRailOpen(false) }}>
+                <MessageSquare className="w-4 h-4 text-text-muted" /> Open
+              </button>
+              <button role="menuitem" className={itemCls} onClick={() => { close(); startRename(t.id) }}>
+                <Pencil className="w-4 h-4 text-text-muted" /> Rename
+              </button>
+              <div className="my-1 border-t border-border" />
+              <button role="menuitem" className={`${itemCls} text-red`} onClick={() => {
+                close()
+                setPendingDelete({
+                  title: 'Delete conversation?',
+                  message: `“${t.title || 'Untitled'}” and its ${t.messageCount ?? 0} message${(t.messageCount ?? 0) === 1 ? '' : 's'} will be permanently deleted. This can't be undone.`,
+                  confirmLabel: 'Delete',
+                  onConfirm: () => removeThread(t.id),
+                })
+              }}>
+                <Trash2 className="w-4 h-4" /> Delete
+              </button>
+            </div>
+          </>
+        )
+      })()}
+
+      {/* Preflight banners — thin strip above the chat so readiness problems still
+          surface without taking over the page as a header. */}
+      {preflight && !preflight.okToRun && !preflightDismissed && (
+        <div className="px-6 py-2.5 bg-red/10 border-b border-red/30 flex items-start justify-between gap-3 shrink-0">
+          <div className="flex items-start gap-2 text-xs text-red min-w-0">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="font-medium">Agent runs are not ready.</p>
+              <p className="text-text-muted mt-0.5 break-words">
+                {preflight.binary?.error || preflight.auth?.hint || 'Claude CLI / auth not available.'}
+                {' '}Open <a href="/setup" className="underline hover:text-text">/setup → Run Self-Test</a> for diagnostics.
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setPreflightDismissed(true)} className="text-text-muted hover:text-text shrink-0" title="Dismiss">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+      {preflight && preflight.okToRun && preflight.env?.nodeOk === false && !preflightDismissed && (
+        <div className="px-6 py-2 bg-amber/10 border-b border-amber/30 flex items-center justify-between gap-3 shrink-0">
+          <span className="flex items-center gap-2 text-xs text-amber">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            Server is on Node {preflight.env.node} — better-sqlite3 expects Node 20. Restart under Node 20 if DB calls fail.
+          </span>
+          <button onClick={() => setPreflightDismissed(true)} className="text-text-muted hover:text-text shrink-0"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
+
+      {/* Chat shell — left rail + center chat column + composer */}
       <div className="flex-1 flex min-h-0 relative">
-        {/* Left: Input + History — 35% */}
-        <div className="w-[35%] min-w-[320px] max-w-[500px] flex flex-col border-r border-border min-w-0">
-          {/* Agent Picker */}
-          <div className="px-5 py-3 border-b border-border shrink-0">
+
+        {/* ── Zone A: Left rail ─────────────────────────────────────────── */}
+        {/* Mobile backdrop when the drawer is open */}
+        {railOpen && (
+          <div className="fixed inset-0 z-30 bg-bg/60 md:hidden" onClick={() => setRailOpen(false)} />
+        )}
+        <div role="complementary" aria-label="History and conversation threads" className={`${railOpen ? 'flex absolute z-40 inset-y-0 left-0 shadow-pop' : 'hidden'} md:flex md:static md:z-auto md:shadow-none w-[280px] min-w-[280px] border-r border-border bg-surface flex-col shrink-0`}>
+          {/* Rail header — title + New chat */}
+          <div className="p-4 border-b border-border shrink-0">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-accent" /> Playground
+              </h2>
+              <button onClick={() => setRailOpen(false)} className="md:hidden p-1 rounded text-text-muted hover:text-text" title="Close">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <button
+              onClick={() => { startNewThread(); setRailOpen(false) }}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> New chat
+            </button>
+          </div>
+
+          {/* Agent picker (compact) */}
+          <div className="px-3 py-3 border-b border-border shrink-0">
             <label className="text-[11px] font-medium text-text-muted block mb-1.5">Agent</label>
             <div className="relative" ref={agentPickerRef}>
               <button
                 onClick={() => { setShowAgentPicker(!showAgentPicker); setAgentFilter(''); setFocusedAgentIdx(-1) }}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-surface-2 border border-border text-sm text-text hover:border-accent/40 transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-surface-2 border border-border text-sm text-text hover:border-accent/40 transition-colors"
               >
                 <span className="flex items-center gap-2 min-w-0">
                   {agents === null ? (
                     <>
                       <span className="w-5 h-5 rounded-full bg-surface-3 animate-pulse shrink-0" />
-                      <span className="w-24 h-3 rounded bg-surface-3 animate-pulse" />
+                      <span className="w-20 h-3 rounded bg-surface-3 animate-pulse" />
                     </>
                   ) : currentAgent ? (
                     <>
                       <AgentIcon name={currentAgent.name} uid={`pg-${currentAgent.name}`} size={20} global={currentAgent.scope === 'global'} />
-                      <span className="font-medium truncate">{currentAgent.name}</span>
-                      <span className="text-[10px] text-text-muted shrink-0">({currentAgent.model})</span>
+                      <span className="font-medium truncate text-[13px]">{currentAgent.name}</span>
                     </>
                   ) : (
                     <>
                       <Terminal className="w-4 h-4 text-text-muted shrink-0" />
-                      <span className="text-text-muted">No agent (raw prompt)</span>
+                      <span className="text-text-muted text-[13px]">Raw prompt</span>
                     </>
                   )}
                 </span>
@@ -811,7 +1242,7 @@ export default function Playground() {
               </button>
 
               {showAgentPicker && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-2xl z-20 max-h-[350px] flex flex-col overflow-hidden">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-pop z-50 max-h-[350px] flex flex-col overflow-hidden">
                   <div className="p-2 border-b border-border shrink-0">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
@@ -820,7 +1251,7 @@ export default function Playground() {
                         onChange={e => { setAgentFilter(e.target.value); setFocusedAgentIdx(-1) }}
                         onKeyDown={handleAgentPickerKeyDown}
                         placeholder="Search agents..."
-                        className="w-full bg-surface-2 border border-border rounded-lg pl-8 pr-3 py-2 text-sm text-text focus:outline-none focus:border-accent/50"
+                        className="input bg-surface-2 pl-8"
                         autoFocus
                       />
                     </div>
@@ -828,7 +1259,7 @@ export default function Playground() {
                   <div className="overflow-y-auto flex-1">
                     {/* No Agent option */}
                     <button
-                      onClick={() => { setSelectedAgent(''); setShowAgentPicker(false); setAgentFilter(''); setActiveHistoryId(null) }}
+                      onClick={() => { setSelectedAgent(''); setShowAgentPicker(false); setAgentFilter('') }}
                       className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-surface-2 transition-colors ${
                         !selectedAgent ? 'bg-accent-muted text-accent' : 'text-text-secondary'
                       } ${focusedAgentIdx === 0 ? 'ring-1 ring-inset ring-accent/40' : ''}`}
@@ -840,7 +1271,7 @@ export default function Playground() {
                     {/* Global agents */}
                     {filteredGlobal.length > 0 && (
                       <>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted px-3 pt-2 pb-1">
+                        <p className="text-[10px] font-semibold text-text-muted px-3 pt-2 pb-1">
                           Global ({filteredGlobal.length})
                         </p>
                         {filteredGlobal.map((agent, gi) => {
@@ -848,7 +1279,7 @@ export default function Playground() {
                           return (
                             <button
                               key={`g-${agent.filename}`}
-                              onClick={() => { setSelectedAgent(agent.filename || agent.name); setShowAgentPicker(false); setAgentFilter(''); setActiveHistoryId(null) }}
+                              onClick={() => { setSelectedAgent(agent.filename || agent.name); setShowAgentPicker(false); setAgentFilter('') }}
                               className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-2 transition-colors ${
                                 selectedAgent === agent.filename || selectedAgent === agent.name ? 'bg-accent-muted text-accent' : ''
                               } ${focusedAgentIdx === listIdx ? 'ring-1 ring-inset ring-accent/40' : ''}`}
@@ -868,7 +1299,7 @@ export default function Playground() {
                     {/* Project agents */}
                     {filteredProject.length > 0 && (
                       <>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted px-3 pt-2 pb-1">
+                        <p className="text-[10px] font-semibold text-text-muted px-3 pt-2 pb-1">
                           Project ({filteredProject.length})
                         </p>
                         {filteredProject.map((agent, pi) => {
@@ -876,7 +1307,7 @@ export default function Playground() {
                           return (
                             <button
                               key={`p-${agent.filename}-${agent.projectName}`}
-                              onClick={() => { setSelectedAgent(agent.filename || agent.name); setShowAgentPicker(false); setAgentFilter(''); setActiveHistoryId(null) }}
+                              onClick={() => { setSelectedAgent(agent.filename || agent.name); setShowAgentPicker(false); setAgentFilter('') }}
                               className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-2 transition-colors ${
                                 selectedAgent === agent.filename || selectedAgent === agent.name ? 'bg-accent-muted text-accent' : ''
                               } ${focusedAgentIdx === listIdx ? 'ring-1 ring-inset ring-accent/40' : ''}`}
@@ -900,488 +1331,665 @@ export default function Playground() {
                 </div>
               )}
             </div>
-
-            {/* Agent description */}
-            {currentAgent?.description && (
-              <p className="text-[11px] text-text-muted mt-1.5 px-0.5 line-clamp-2">{currentAgent.description}</p>
-            )}
           </div>
 
-          {/* Prompt Input */}
-          <div className="flex flex-col px-5 py-3 shrink-0">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-medium text-text-muted">Test Prompt</label>
-              <div className="relative" ref={templateRef}>
-                <div className="flex items-center gap-1">
-                  {prompt.trim() && (
-                    <button
-                      onClick={() => setShowSaveTemplate(true)}
-                      className="text-[10px] text-text-muted hover:text-accent transition-colors flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-surface-2"
-                      title="Save as template"
-                    >
-                      <Save className="w-3 h-3" />
-                    </button>
-                  )}
-                  {templates.length > 0 && (
-                    <button
-                      onClick={() => setShowTemplates(!showTemplates)}
-                      className="text-[10px] text-text-muted hover:text-accent transition-colors flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-surface-2"
-                      title="Load template"
-                    >
-                      <Bookmark className="w-3 h-3" />
-                      Templates ({templates.length})
-                    </button>
-                  )}
+          {/* Conversations list header — single system, no tabs. */}
+          <div className="px-3 py-2 flex items-center justify-between gap-2 shrink-0">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted shrink-0">
+              <MessageSquare className="w-3 h-3" /> Chats {threads.length > 0 && <span className="text-text-muted/70">({threads.length})</span>}
+            </span>
+            <div className="flex items-center gap-1.5">
+              {threads.length > 1 && (
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-text-muted" />
+                  <input
+                    value={threadFilter}
+                    onChange={e => setThreadFilter(e.target.value)}
+                    placeholder="Search…"
+                    aria-label="Search conversations"
+                    className="input w-28 bg-surface-2 pl-6 pr-2 py-1 text-[10px]"
+                  />
                 </div>
-
-                {/* Save template form */}
-                {showSaveTemplate && (
-                  <div className="absolute right-0 top-full mt-1 w-56 bg-surface border border-border rounded-xl shadow-2xl z-20 p-3 space-y-2">
-                    <p className="text-[11px] font-medium text-text">Save as template</p>
-                    <input
-                      value={templateName}
-                      onChange={e => setTemplateName(e.target.value)}
-                      placeholder="Template name..."
-                      className="w-full bg-surface-2 border border-border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-accent/50"
-                      autoFocus
-                      onKeyDown={e => { if (e.key === 'Enter') saveTemplate(); if (e.key === 'Escape') setShowSaveTemplate(false) }}
-                    />
-                    <div className="flex gap-1.5">
-                      <button onClick={saveTemplate} disabled={!templateName.trim()} className="px-2.5 py-1 text-[10px] font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors">Save</button>
-                      <button onClick={() => setShowSaveTemplate(false)} className="px-2.5 py-1 text-[10px] text-text-muted hover:text-text rounded-lg hover:bg-surface-2 transition-colors">Cancel</button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Templates dropdown */}
-                {showTemplates && (
-                  <div className="absolute right-0 top-full mt-1 w-64 bg-surface border border-border rounded-xl shadow-2xl z-20 max-h-[250px] overflow-y-auto">
-                    {templates.map(tmpl => (
-                      <div
-                        key={tmpl.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => loadTemplate(tmpl)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            loadTemplate(tmpl)
-                          }
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors group cursor-pointer"
-                      >
-                        <BookmarkPlus className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[12px] font-medium truncate">{tmpl.name}</p>
-                          <p className="text-[10px] text-text-muted truncate">{tmpl.prompt.slice(0, 60)}</p>
-                        </div>
-                        <button
-                          onClick={(e) => removeTemplate(e, tmpl.id)}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-red transition-all shrink-0"
-                          aria-label="Remove template"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <textarea
-              value={prompt}
-              onChange={e => { setPrompt(e.target.value); setActiveHistoryId(null) }}
-              placeholder={currentAgent
-                ? `Test "${currentAgent.name}" with a prompt...\n\ne.g. Write a Shopify App Store listing for Pinzo`
-                : 'Enter a raw prompt to test without any agent...'
-              }
-              className="bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm text-text resize-y focus:outline-none focus:border-accent/50 transition-colors placeholder:text-text-muted font-mono min-h-[100px] max-h-[200px]"
-              onKeyDown={handlePromptKeyDown}
-            />
-            <div className="flex items-center justify-between mt-2.5">
-              <p className="text-[10px] text-text-muted">
-                {prompt.length > 0 && <span className="text-text-secondary">{prompt.length} chars</span>}
-                {prompt.length > 0 && ' · '}
-                <kbd className="px-1 py-0.5 rounded bg-surface-2 border border-border text-[9px] font-mono">⌘Enter</kbd> to run
-                {settings.customInstructions && (
-                  <span className="ml-2 text-amber">· custom instructions active</span>
-                )}
-              </p>
-              <div className="flex gap-2">
-                {running ? (
-                  <button
-                    onClick={cancelRun}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-red/90 text-white rounded-xl text-xs font-medium hover:bg-red transition-colors"
-                  >
-                    <Square className="w-3 h-3 fill-current" />
-                    Stop ({formatDuration(elapsedMs)})
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => runTest()}
-                    disabled={!prompt.trim()}
-                    className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Play className="w-4 h-4" /> Run Test
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* History — gets remaining space */}
-          <div className="border-t border-border flex-1 flex flex-col min-h-[200px]">
-            <div className="px-5 py-2 flex items-center justify-between shrink-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                <Clock className="w-3 h-3" />
-                History ({history.length})
-              </p>
-              <div className="flex items-center gap-1.5">
-                {history.length > 3 && (
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-text-muted" />
-                    <input
-                      value={historyFilter}
-                      onChange={e => setHistoryFilter(e.target.value)}
-                      placeholder="Filter..."
-                      className="w-28 bg-surface-2 border border-border rounded-md pl-6 pr-2 py-1 text-[10px] focus:outline-none focus:border-accent/50"
-                    />
-                  </div>
-                )}
-                {history.length > 0 && (
-                  <button
-                    onClick={clearHistory}
-                    className="text-[10px] text-text-muted hover:text-red transition-colors px-1"
-                    title="Clear all history"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 pb-2">
-              {filteredHistory.length === 0 ? (
-                <p className="text-[11px] text-text-muted text-center py-3">
-                  {history.length === 0 ? 'No tests run yet.' : 'No matches.'}
-                </p>
-              ) : (
-                <div className="space-y-0.5">
-                  {filteredHistory.map(item => (
-                    <div
-                      key={item.id}
-                      onClick={() => loadFromHistory(item)}
-                      className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer ${
-                        activeHistoryId === item.id ? 'bg-accent-muted/40 border-l-2 border-l-accent' : ''
-                      }`}
-                    >
-                      {item.status === 'success'
-                        ? <CheckCircle className="w-3.5 h-3.5 text-green shrink-0" />
-                        : <AlertCircle className="w-3.5 h-3.5 text-red shrink-0" />
-                      }
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-[11px] font-medium truncate">{item.agentName}</p>
-                          <span className="text-[9px] text-text-muted">{formatTime(item.timestamp)}</span>
-                        </div>
-                        <p className="text-[10px] text-text-muted truncate">{item.prompt}</p>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-[10px] text-text-muted">{formatDuration(item.duration)}</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); exportItem(item) }}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-accent transition-all"
-                          title="Export this test"
-                        >
-                          <Download className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); rerunFromHistory(item) }}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-accent transition-all"
-                          title="Re-run this test"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={(e) => removeHistoryItem(e, item.id)}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-red transition-all"
-                          title="Remove from history"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              )}
+              {threads.length > 0 && (
+                <button
+                  onClick={() => setPendingDelete({
+                    title: 'Delete all conversations?',
+                    message: `All ${threads.length} conversation${threads.length === 1 ? '' : 's'} and their messages will be permanently deleted. This can't be undone.`,
+                    confirmLabel: 'Delete all',
+                    onConfirm: clearThreads,
+                  })}
+                  className="text-[10px] font-medium text-text-muted hover:text-red transition-colors px-1.5 py-0.5 rounded hover:bg-red/10 shrink-0"
+                  title="Delete all conversations"
+                >
+                  Clear all
+                </button>
               )}
             </div>
           </div>
+
+          {/* Conversations list */}
+          <div className="flex-1 overflow-y-auto px-2 pb-2">
+            {threadsLoading && threads.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-[11px] text-text-muted">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading chats…
+              </div>
+            ) : threads.length === 0 ? (
+              <div className="flex flex-col items-center text-center py-8 px-3">
+                <MessageSquare className="w-6 h-6 text-text-muted/50 mb-2" />
+                <p className="text-[11px] text-text-muted">No chats yet.</p>
+                <p className="text-[10px] text-text-muted/70 mt-0.5">Type a message below to start your first conversation.</p>
+              </div>
+            ) : filteredThreads.length === 0 ? (
+                <p className="text-[11px] text-text-muted text-center py-4 px-2">No conversations match “{threadFilter}”.</p>
+              ) : (
+                <div className="space-y-0.5">
+                  {filteredThreads.map(t => {
+                    const renaming = renamingId === t.id
+                    return (
+                    <div
+                      key={t.id}
+                      onClick={() => { if (!renaming) { openThread(t.id); setRailOpen(false) } }}
+                      role="button"
+                      tabIndex={renaming ? -1 : 0}
+                      onKeyDown={(e) => { if (!renaming && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openThread(t.id); setRailOpen(false) } }}
+                      className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors ${renaming ? '' : 'cursor-pointer'} ${activeThreadId === t.id ? 'bg-accent/10 ring-1 ring-accent/20' : rowMenu?.id === t.id ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-accent shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        {renaming ? (
+                          <input
+                            autoFocus
+                            value={renameValue}
+                            onChange={e => setRenameValue(e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            onKeyDown={e => {
+                              e.stopPropagation()
+                              if (e.key === 'Enter') { e.preventDefault(); commitRename(t.id) }
+                              else if (e.key === 'Escape') { e.preventDefault(); cancelRename() }
+                            }}
+                            onBlur={() => commitRename(t.id)}
+                            maxLength={200}
+                            aria-label="Rename conversation"
+                            className="input bg-surface-2 px-1.5 py-0.5 text-[11px] w-full"
+                          />
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-[11px] font-medium truncate flex-1 text-text">{t.title || 'Untitled'}</p>
+                              <span className="text-[9px] text-text-muted shrink-0">{formatTime(new Date(t.updatedAt))}</span>
+                            </div>
+                            <p className="text-[10px] text-text-muted truncate">{t.agentName || 'No agent'} · {t.messageCount ?? 0} message{(t.messageCount ?? 0) === 1 ? '' : 's'}</p>
+                          </>
+                        )}
+                      </div>
+                      {renaming ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); commitRename(t.id) }}
+                          className="p-1.5 rounded-lg text-accent hover:bg-accent/10 transition-all shrink-0"
+                          title="Save name" aria-label="Save name"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const r = e.currentTarget.getBoundingClientRect()
+                            setRowMenu({ id: t.id, kind: 'thread', x: r.right, y: r.bottom })
+                          }}
+                          className={`p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-all shrink-0 ${rowMenu?.id === t.id ? 'opacity-100 bg-surface-2' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
+                          title="Conversation actions"
+                          aria-label={`Actions for ${t.title || 'Untitled'}`}
+                          aria-haspopup="menu"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )})}
+                </div>
+              )}
+          </div>
         </div>
 
-        {/* Right: Output — 65% */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
+        {/* ── Zone B: Center chat column ────────────────────────────────── */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* Progress bar while running */}
           {running && (
-            <div className="absolute top-0 left-0 right-0 h-0.5 z-10">
+            <div className="absolute top-0 left-0 right-0 h-0.5 z-20">
               <div className="h-full bg-gradient-to-r from-accent via-purple to-accent animate-pulse rounded-full" />
             </div>
           )}
 
-          {/* Output header */}
-          <div className="flex items-center justify-between px-5 py-2.5 border-b border-border shrink-0">
-            <p className="text-xs font-medium text-text-muted flex items-center gap-1.5">
-              {running ? (
-                <>
-                  <Loader className="w-3.5 h-3.5 animate-spin text-purple" />
-                  <span>
-                    {output ? 'Streaming' : 'Thinking'}... <span className="text-text-secondary font-mono">{formatDuration(elapsedMs)}</span>
-                    {!output && activityLog.length > 0 && (
-                      <span className="text-text-muted ml-1">({activityLog.length} activities)</span>
-                    )}
-                  </span>
-                </>
-              ) : output ? (
-                <>
-                  {output.startsWith('Error:') ? (
-                    <><AlertCircle className="w-3.5 h-3.5 text-red" /> Error</>
-                  ) : (
-                    <><CheckCircle className="w-3.5 h-3.5 text-green" /> Output</>
-                  )}
-                  {history[0] && (
-                    <span className="text-text-muted font-mono ml-1">({formatDuration(history[0].duration)})</span>
-                  )}
-                </>
+          {/* Slim chat header */}
+          <div className="px-6 py-3 border-b border-border bg-surface flex items-center justify-between gap-3 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                onClick={() => setRailOpen(true)}
+                className="md:hidden p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors shrink-0"
+                title="Open sidebar"
+              >
+                <PanelLeft className="w-4 h-4" />
+              </button>
+              {/* Agent avatar — anchors the conversation to "who am I talking to". */}
+              {currentAgent ? (
+                <AgentIcon name={currentAgent.name} uid={`hdr-${currentAgent.name}`} size={32} global={currentAgent.scope === 'global'} className="shrink-0" />
               ) : (
-                <><Terminal className="w-3.5 h-3.5" /> Output</>
+                <div className="w-8 h-8 rounded-full bg-surface-2 border border-border flex items-center justify-center shrink-0">
+                  <Terminal className="w-4 h-4 text-text-muted" />
+                </div>
               )}
-            </p>
-            <div className="flex items-center gap-1">
-              {output && !running && (
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="text-sm font-semibold truncate text-text">
+                    {currentAgent?.name || 'Raw prompt'}
+                  </h3>
+                  {currentAgent?.model && (
+                    <span className="text-[9px] font-mono uppercase tracking-wide text-text-muted bg-surface-2 border border-border rounded px-1.5 py-0.5 shrink-0">{currentAgent.model}</span>
+                  )}
+                  {/* Auth chip — refined pill with a status dot so it reads as a badge. */}
+                  {preflight?.auth?.source === 'subscription' && (
+                    <span className="flex items-center gap-1.5 bg-green-muted text-green rounded-full pl-1.5 pr-2 py-0.5 text-[10px] font-medium shrink-0" title="Every run uses your Claude Code subscription session — never the metered API.">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green shrink-0" /> Subscription
+                    </span>
+                  )}
+                  {preflight?.auth?.source === 'api_key' && (
+                    <span className="flex items-center gap-1.5 bg-amber-muted text-amber rounded-full pl-1.5 pr-2 py-0.5 text-[10px] font-medium shrink-0" title="Runs against the metered Claude API — billed per token.">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber shrink-0" /> API key · metered
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-text-muted flex items-center gap-2 truncate mt-0.5">
+                  {activeThreadId && (
+                    <span className="flex items-center gap-1 text-accent truncate">
+                      <MessageSquare className="w-3 h-3 shrink-0" /> {activeThread?.title || 'Conversation'}
+                    </span>
+                  )}
+                  {/* Run outcome chip — distinct visual per terminal RunState. */}
+                  {!running && runState === 'timeout' && (
+                    <span className="flex items-center gap-1 text-amber shrink-0"><Clock className="w-3 h-3" /> Timed out</span>
+                  )}
+                  {!running && runState === 'cancelled' && (
+                    <span className="flex items-center gap-1 text-text-muted shrink-0"><Ban className="w-3 h-3" /> Cancelled</span>
+                  )}
+                  {!running && runState === 'error' && (
+                    <span className="flex items-center gap-1 text-red shrink-0"><AlertCircle className="w-3 h-3" /> Error</span>
+                  )}
+                  {!running && runState === 'empty' && (
+                    <span className="flex items-center gap-1 text-amber shrink-0"><AlertCircle className="w-3 h-3" /> No output</span>
+                  )}
+                  {history.length > 0 && (
+                    <span className="text-text-secondary shrink-0">
+                      {successCount} passed · {errorCount} failed · avg {formatDuration(avgDuration)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {output && (
                 <>
-                  <button
-                    onClick={() => runTest()}
-                    disabled={!prompt.trim()}
-                    className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors"
-                    title="Re-run test"
-                  >
-                    <RotateCcw className="w-3 h-3" /> Re-run
+                  <button onClick={copyOutput} title="Copy output" aria-label="Copy output" className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
+                    <Copy className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={copyOutput}
-                    className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors"
-                    title="Copy output"
-                  >
-                    <Copy className="w-3 h-3" /> Copy
-                  </button>
-                  <button
-                    onClick={() => exportItem()}
-                    className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors"
-                    title="Export as Markdown"
-                  >
-                    <Download className="w-3 h-3" /> Export
-                  </button>
-                  <button
-                    onClick={() => setFullscreenOutput(true)}
-                    className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors"
-                    title="Fullscreen"
-                  >
-                    <Maximize2 className="w-3 h-3" />
+                  <button onClick={() => exportItem()} title="Export as Markdown" aria-label="Export as Markdown" className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
+                    <Download className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setSettings(s => ({ ...s, outputMode: s.outputMode === 'markdown' ? 'raw' : 'markdown' }))}
-                    className="text-[11px] text-text-muted hover:text-text px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors"
                     title="Toggle output format"
+                    className="px-2 py-1.5 text-[11px] rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
                   >
                     {settings.outputMode === 'markdown' ? 'Raw' : 'Rendered'}
                   </button>
+                  <button onClick={() => setFullscreenOutput(true)} title="Fullscreen" aria-label="Fullscreen output" className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
                 </>
               )}
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                title="Settings"
+                aria-label="Settings"
+                aria-pressed={showSettings}
+                className={`p-2 rounded-lg transition-colors ${showSettings ? 'bg-accent-muted text-accent' : 'text-text-muted hover:text-text hover:bg-surface-2'}`}
+              >
+                <Settings2 className="w-4 h-4" />
+              </button>
+              <button onClick={clearAll} title="Clear chat" aria-label="Clear chat" className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          {/* Output content */}
-          <div ref={outputRef} className="flex-1 overflow-y-auto p-5">
-            {output ? (
-              settings.outputMode === 'markdown' ? (
-                <div className="text-sm leading-relaxed">
-                  <MarkdownRenderer content={output} />
-                  {running && (
-                    <span className="inline-block w-0.5 h-4 bg-purple animate-pulse ml-0.5 align-middle rounded-full" />
+          {/* Messages */}
+          <div ref={outputRef} role="region" aria-label="Agent output" className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-4 relative">
+            {renderedMessages.length === 0 && !running ? (
+              /* Empty state */
+              <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-3">
+                  {currentAgent ? (
+                    <AgentIcon name={currentAgent.name} uid={`empty-${currentAgent.name}`} size={32} global={currentAgent.scope === 'global'} />
+                  ) : (
+                    <Sparkles className="w-6 h-6 text-accent" />
                   )}
                 </div>
-              ) : (
-                <pre className="text-sm text-text whitespace-pre-wrap leading-relaxed font-mono break-words">
-                  {output}
-                  {running && (
-                    <span className="inline-block w-0.5 h-4 bg-purple animate-pulse ml-0.5 align-middle rounded-full" />
-                  )}
-                </pre>
-              )
-            ) : running ? (
-              <div className="h-full flex flex-col">
-                {/* Activity header */}
-                <div className="flex items-center gap-2 mb-4">
-                  <Loader className="w-4 h-4 animate-spin text-purple shrink-0" />
-                  <p className="text-sm font-medium text-text-secondary">
-                    Agent is thinking... <span className="font-mono text-text-muted text-xs">{formatDuration(elapsedMs)}</span>
-                  </p>
-                </div>
-
-                {/* Activity log */}
-                {activityLog.length > 0 ? (
-                  <div className="flex-1 overflow-y-auto space-y-1 font-mono">
-                    {activityLog.map((entry, i) => (
-                      <div
-                        key={`activity-${i}-${entry.time}`}
-                        className={`text-[11px] leading-relaxed px-3 py-1.5 rounded-lg ${
-                          i === activityLog.length - 1
-                            ? 'bg-purple-muted/30 text-purple border border-purple/20'
-                            : 'text-text-muted'
-                        }`}
-                      >
-                        <span className="text-text-muted/50 mr-2 select-none text-[10px]">+{(entry.time / 1000).toFixed(1)}s</span>
-                        {entry.message}
-                      </div>
-                    ))}
-                    <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] text-text-muted">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple animate-pulse" />
-                      Waiting for next activity...
+                <p className="text-sm font-medium text-text-secondary mb-1">
+                  Ask {currentAgent?.name || 'an agent'} anything
+                </p>
+                <p className="text-xs text-text-muted max-w-[300px] mb-5">
+                  Type a message below and press Enter. Real-time streaming output, no metered API cost.
+                </p>
+                {!prompt && (
+                  <div className="w-full max-w-md">
+                    <p className="text-[10px] font-semibold text-text-muted mb-2">Try an example</p>
+                    <div className="grid gap-2">
+                      {EXAMPLE_PROMPTS.map(ex => (
+                        <button
+                          key={ex}
+                          onClick={() => { setPrompt(ex); promptRef.current?.focus() }}
+                          className="text-left text-xs px-3 py-2 rounded-lg bg-surface-2 border border-border text-text-secondary hover:text-text hover:border-accent/30 transition-colors"
+                        >
+                          {ex}
+                        </button>
+                      ))}
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <div className="w-14 h-14 rounded-2xl bg-purple-muted flex items-center justify-center mb-3 animate-pulse">
-                      <Sparkles className="w-6 h-6 text-purple" />
-                    </div>
-                    <p className="text-xs text-text-muted max-w-[280px]">
-                      Initializing agent process... Activity will appear here as the agent works.
-                    </p>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <div className="w-14 h-14 rounded-2xl bg-purple-muted flex items-center justify-center mb-3">
-                  <Play className="w-6 h-6 text-purple" />
-                </div>
-                <p className="text-sm font-medium text-text-secondary mb-1">No output yet</p>
-                <p className="text-xs text-text-muted max-w-[280px]">
-                  Select an agent, write a test prompt, and click Run Test to see real-time streaming output.
-                </p>
+              <>
+                {renderedMessages.map((m, i) => {
+                  const isUser = m.role === 'user'
+                  const isLastAssistant = !isUser && i === renderedMessages.length - 1
+                  return (
+                    <div key={m.id || `msg-${i}`} className={`flex gap-3 ${isUser ? 'justify-end' : ''}`}>
+                      {!isUser && (
+                        <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+                          {currentAgent ? (
+                            <AgentIcon name={currentAgent.name} uid={`bubble-${currentAgent.name}`} size={18} global={currentAgent.scope === 'global'} />
+                          ) : (
+                            <Bot className="w-4 h-4 text-accent" />
+                          )}
+                        </div>
+                      )}
+                      <div className={`min-w-0 max-w-[85%] sm:max-w-[78%] ${isUser ? '' : 'lg:max-w-[760px]'} rounded-2xl px-4 py-2.5 ${
+                        isUser
+                          ? 'bg-accent text-white rounded-br-md'
+                          : 'bg-surface-2 border border-border rounded-bl-md'
+                      }`}>
+                        {isUser ? (
+                          <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                        ) : settings.outputMode === 'raw' ? (
+                          <pre className="text-sm text-text whitespace-pre-wrap leading-relaxed font-mono break-words">
+                            {m.content}
+                            {isLastAssistant && running && <span className="inline-block w-2 h-4 ml-0.5 bg-accent animate-pulse rounded-sm align-middle" />}
+                          </pre>
+                        ) : (
+                          <div className="text-sm prose-sm">
+                            <MarkdownRenderer content={m.content} />
+                            {isLastAssistant && running && <span className="inline-block w-2 h-4 ml-0.5 bg-accent animate-pulse rounded-sm" />}
+                          </div>
+                        )}
+                      </div>
+                      {isUser && (
+                        <div className="w-7 h-7 rounded-lg bg-surface-2 flex items-center justify-center shrink-0 mt-0.5">
+                          <User className="w-4 h-4 text-text-muted" />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Typing row — running with no output yet */}
+                {running && !output && (
+                  <div className="flex gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+                      {currentAgent ? (
+                        <AgentIcon name={currentAgent.name} uid={`typing-${currentAgent.name}`} size={18} global={currentAgent.scope === 'global'} />
+                      ) : (
+                        <Bot className="w-4 h-4 text-accent" />
+                      )}
+                    </div>
+                    <div className="max-w-[75%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-surface-2 border border-border">
+                      <p className="text-sm text-text-secondary flex items-center gap-1.5">
+                        {/* Animated typing dots so the wait reads as "actively working". */}
+                        <span className="inline-flex gap-0.5" aria-hidden>
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce [animation-delay:-0.3s]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce [animation-delay:-0.15s]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" />
+                        </span>
+                        <span>
+                          {activityLog.length > 0 ? activityLog[activityLog.length - 1].message : 'Thinking'}
+                        </span>
+                        <span className="font-mono text-text-muted text-xs">{formatDuration(elapsedMs)}</span>
+                      </p>
+                      {activityLog.length === 0 && elapsedMs > 4000 && (
+                        <p className="text-[11px] text-text-muted italic mt-1">
+                          {settings.fastMode ? 'Fast mode — first words should arrive shortly.' : 'First token can take 15–25s on Opus — tip: toggle Fast for snappier replies.'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Rating bar — below the last assistant bubble when done */}
+                {output && !running && (
+                  <div className="flex justify-start pl-10">
+                    <div className="max-w-[75%] w-full">
+                      {!showRating ? (
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-text-muted">Rate this output:</span>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await addTraining(selectedAgent || 'playground', '', 'Output is correct — positive example')
+                                toast('success', 'Positive signal saved')
+                              } catch {
+                                toast('success', 'Positive signal noted')
+                              }
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-text-secondary hover:text-emerald hover:bg-emerald/10 transition-colors"
+                          >
+                            <ThumbsUp className="w-3.5 h-3.5" /> Good
+                          </button>
+                          <button
+                            onClick={() => setShowRating(true)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-text-secondary hover:text-red hover:bg-red-muted transition-colors"
+                          >
+                            <ThumbsDown className="w-3.5 h-3.5" /> Needs Fix
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 bg-surface border border-border rounded-xl p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-text-secondary">Train this agent:</span>
+                            <button onClick={() => setShowRating(false)} className="text-text-muted hover:text-text">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <input
+                            value={ratingIssue}
+                            onChange={e => setRatingIssue(e.target.value)}
+                            placeholder="What was wrong?"
+                            className="input bg-surface-2 py-1.5 text-xs"
+                            autoFocus
+                          />
+                          <input
+                            value={ratingCorrection}
+                            onChange={e => setRatingCorrection(e.target.value)}
+                            placeholder="What should it do instead?"
+                            className="input bg-surface-2 py-1.5 text-xs"
+                          />
+                          <button
+                            onClick={async () => {
+                              if (!ratingIssue.trim() || !ratingCorrection.trim()) return
+                              setRatingSubmitting(true)
+                              try {
+                                const agentKey = selectedAgent || 'playground'
+                                await addTraining(agentKey, ratingIssue.trim(), ratingCorrection.trim())
+                                toast('success', 'Correction saved — review it in Learning', { action: { label: 'Open Learning', onClick: () => navigate('/learning?tab=pending') } })
+                                setShowRating(false)
+                                setRatingIssue('')
+                                setRatingCorrection('')
+                              } catch (err) {
+                                toast('error', err instanceof Error ? err.message : 'Failed to save')
+                              } finally {
+                                setRatingSubmitting(false)
+                              }
+                            }}
+                            disabled={ratingSubmitting || !ratingIssue.trim() || !ratingCorrection.trim()}
+                            className="btn-primary btn-sm"
+                          >
+                            {ratingSubmitting ? 'Saving...' : 'Save Correction'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            <div ref={messagesEndRef} />
+
+            {/* Scroll to bottom */}
+            {showScrollBottom && (
+              <div className="sticky bottom-2 flex justify-end pr-1 pointer-events-none">
+                <button
+                  onClick={() => outputRef.current?.scrollTo({ top: outputRef.current.scrollHeight, behavior: 'smooth' })}
+                  aria-label="Scroll to latest"
+                  title="Scroll to latest"
+                  className="pointer-events-auto p-2 rounded-full bg-surface border border-border shadow-card hover:bg-surface-2 transition-all text-text-muted hover:text-text"
+                >
+                  <ArrowDown className="w-4 h-4" />
+                </button>
               </div>
             )}
           </div>
 
-          {/* Rating UI — shown for ALL outputs, not just agent-selected */}
-          {output && !running && (
-            <div className="border-t border-border bg-surface px-5 py-3">
-              {!showRating ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-text-muted">Rate this output:</span>
+          {/* ── Zone C: Bottom composer ───────────────────────────────── */}
+          <div className="px-6 py-4 border-t border-border bg-surface shrink-0">
+            <div className="bg-surface-2 border border-border rounded-xl px-3 py-2 flex items-end gap-2 focus-within:border-accent/50 transition-colors">
+              {/* Left: attachments + templates */}
+              <div className="flex items-center gap-1 pb-1 shrink-0">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={running || attachments.length >= 3}
+                  title={attachments.length >= 3 ? 'Up to 3 files' : 'Attach files (the agent reads them — no API cost)'}
+                  className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
+                <div className="relative" ref={templateRef}>
                   <button
-                    onClick={async () => {
-                      try {
-                        await addTraining(selectedAgent || 'playground', '', 'Output is correct — positive example')
-                        toast('success', 'Positive signal saved')
-                      } catch {
-                        toast('success', 'Positive signal noted')
-                      }
+                    onClick={() => {
+                      if (templates.length) setShowTemplates(v => !v)
+                      else if (prompt.trim()) setShowSaveTemplate(true)
+                      else toast('warn', 'Type a prompt first, then save it as a reusable template.')
                     }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-text-secondary hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                    title={templates.length ? `Templates (${templates.length})` : prompt.trim() ? 'Save this prompt as a template' : 'Save as template — type a prompt first'}
+                    aria-label="Templates"
+                    className={`relative p-1.5 rounded-lg transition-colors ${showTemplates || showSaveTemplate ? 'bg-accent-muted text-accent' : 'text-text-muted hover:text-text hover:bg-surface'}`}
                   >
-                    <ThumbsUp className="w-3.5 h-3.5" /> Good
+                    <Bookmark className="w-4 h-4" />
+                    {templates.length > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-accent text-white text-[8px] font-bold flex items-center justify-center">{templates.length}</span>
+                    )}
                   </button>
-                  <button
-                    onClick={() => setShowRating(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-text-secondary hover:text-red hover:bg-red-muted transition-colors"
-                  >
-                    <ThumbsDown className="w-3.5 h-3.5" /> Needs Fix
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-text-secondary">Train this agent:</span>
-                    <button onClick={() => setShowRating(false)} className="text-text-muted hover:text-text">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <input
-                    value={ratingIssue}
-                    onChange={e => setRatingIssue(e.target.value)}
-                    placeholder="What was wrong?"
-                    className="w-full bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-accent/50"
-                    autoFocus
-                  />
-                  <input
-                    value={ratingCorrection}
-                    onChange={e => setRatingCorrection(e.target.value)}
-                    placeholder="What should it do instead?"
-                    className="w-full bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-accent/50"
-                  />
-                  <button
-                    onClick={async () => {
-                      if (!ratingIssue.trim() || !ratingCorrection.trim()) return
-                      setRatingSubmitting(true)
-                      try {
-                        const agentKey = selectedAgent || 'playground'
-                        await addTraining(agentKey, ratingIssue.trim(), ratingCorrection.trim())
-                        toast('success', 'Correction saved — will be applied on next run')
-                        setShowRating(false)
-                        setRatingIssue('')
-                        setRatingCorrection('')
-                      } catch (err) {
-                        toast('error', err instanceof Error ? err.message : 'Failed to save')
-                      } finally {
-                        setRatingSubmitting(false)
-                      }
-                    }}
-                    disabled={ratingSubmitting || !ratingIssue.trim() || !ratingCorrection.trim()}
-                    className="px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
-                  >
-                    {ratingSubmitting ? 'Saving...' : 'Save Correction'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* Scroll to bottom — offset when rating visible */}
-          {showScrollBottom && output && (
-            <div className={`absolute ${output && !running ? 'bottom-20' : 'bottom-4'} right-4`}>
-              <button
-                onClick={() => outputRef.current?.scrollTo({ top: outputRef.current.scrollHeight, behavior: 'smooth' })}
-                className="p-2 rounded-full bg-surface border border-border shadow-lg hover:bg-surface-2 transition-all text-text-muted hover:text-text"
-              >
-                <ArrowDown className="w-4 h-4" />
-              </button>
+                  {/* Save template form */}
+                  {showSaveTemplate && (
+                    <div className="absolute left-0 bottom-full mb-2 w-56 bg-surface border border-border rounded-xl shadow-pop z-30 p-3 space-y-2">
+                      <p className="text-[11px] font-medium text-text">Save as template</p>
+                      <input
+                        value={templateName}
+                        onChange={e => setTemplateName(e.target.value)}
+                        placeholder="Template name..."
+                        className="input bg-surface-2 px-2.5 py-1.5 text-xs"
+                        autoFocus
+                        onKeyDown={e => { if (e.key === 'Enter') saveTemplate(); if (e.key === 'Escape') setShowSaveTemplate(false) }}
+                      />
+                      <div className="flex gap-1.5">
+                        <button onClick={saveTemplate} disabled={!templateName.trim()} className="btn-primary btn-sm">Save</button>
+                        <button onClick={() => setShowSaveTemplate(false)} className="btn-ghost btn-sm">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Templates dropdown */}
+                  {showTemplates && (
+                    <div className="absolute left-0 bottom-full mb-2 w-64 bg-surface border border-border rounded-xl shadow-pop z-30 max-h-[250px] overflow-y-auto">
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+                        <span className="text-[11px] font-medium text-text">Templates ({templates.length})</span>
+                        {prompt.trim() && (
+                          <button onClick={() => { setShowTemplates(false); setShowSaveTemplate(true) }} className="text-[10px] text-accent hover:text-accent-hover flex items-center gap-0.5">
+                            <Save className="w-3 h-3" /> Save current
+                          </button>
+                        )}
+                      </div>
+                      {templates.map(tmpl => (
+                        <div
+                          key={tmpl.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => loadTemplate(tmpl)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              loadTemplate(tmpl)
+                            }
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors group cursor-pointer"
+                        >
+                          <BookmarkPlus className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[12px] font-medium truncate">{tmpl.name}</p>
+                            <p className="text-[10px] text-text-muted truncate">{tmpl.prompt.slice(0, 60)}</p>
+                          </div>
+                          <button
+                            onClick={(e) => removeTemplate(e, tmpl.id)}
+                            className="p-1 rounded opacity-0 group-hover:opacity-100 text-text-muted hover:text-red transition-all shrink-0"
+                            aria-label="Remove template"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Middle: textarea */}
+              <textarea
+                ref={promptRef}
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                onKeyDown={handlePromptKeyDown}
+                placeholder={activeThreadId
+                  ? 'Reply to continue…'
+                  : currentAgent
+                  ? `Message ${currentAgent.name}…`
+                  : 'Message…'
+                }
+                rows={1}
+                className="flex-1 bg-transparent text-sm text-text resize-none focus:outline-none placeholder:text-text-muted min-h-[40px] max-h-[200px] py-2 leading-relaxed"
+              />
+
+              {/* Right: Fast toggle + Send / Stop */}
+              <div className="flex items-center gap-1.5 pb-0.5 shrink-0">
+                {/* Fast toggle — replies run on the fastest model (Haiku) for snappy
+                    testing; off uses the agent's own model. Placed at the composer
+                    so it reads as a per-message speed control. */}
+                <button
+                  type="button"
+                  onClick={() => setSettings(s => ({ ...s, fastMode: !s.fastMode }))}
+                  disabled={running}
+                  aria-pressed={settings.fastMode}
+                  title={settings.fastMode ? 'Fast mode ON — replies run on the fastest model (Haiku). Click for higher quality.' : 'Fast mode OFF — uses the agent’s own model. Click for snappier replies (Haiku).'}
+                  className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-40 ${
+                    settings.fastMode
+                      ? 'bg-accent text-white border-accent'
+                      : 'text-text-muted border-border hover:text-text hover:bg-surface'
+                  }`}
+                >
+                  <Zap className={`w-3.5 h-3.5 ${settings.fastMode ? 'fill-current' : ''}`} />
+                  Fast
+                </button>
+                {running ? (
+                  <button
+                    onClick={cancelRun}
+                    title="Stop generating"
+                    aria-label="Stop run"
+                    className="p-2 rounded-lg bg-red text-white hover:bg-red/90 transition-colors"
+                  >
+                    <StopCircle className="w-5 h-5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => runTest()}
+                    disabled={!prompt.trim() || (preflight ? !preflight.okToRun : false)}
+                    title={preflight && !preflight.okToRun ? 'Agent runs are not ready — see the banner above' : `${activeThreadId ? 'Send' : 'Run'}  ·  ⏎`}
+                    aria-label={activeThreadId ? 'Send message' : 'Run agent'}
+                    className="p-2 rounded-lg bg-accent text-white hover:bg-accent-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
             </div>
-          )}
+
+            {/* Attachment chips */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {attachments.map(a => (
+                  <span key={a.name} className="flex items-center gap-1 text-[11px] bg-surface-2 border border-border rounded-lg pl-2 pr-1 py-1 text-text-secondary">
+                    <FileText className="w-3 h-3 text-text-muted" />
+                    <span className="max-w-[160px] truncate">{a.name}</span>
+                    <span className="text-text-muted">{a.size > 1024 ? `${Math.round(a.size / 1024)}KB` : `${a.size}B`}</span>
+                    <button onClick={() => removeAttachment(a.name)} className="p-1 rounded hover:bg-surface text-text-muted hover:text-red" title="Remove" aria-label={`Remove ${a.name}`}>
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={onPickFiles} />
+
+            {/* Minimal meta — deliberately does NOT echo the Fast toggle (the pill
+                already shows its on/off state in place), so clicking Fast only
+                recolors the pill and never adds/removes a row below the composer.
+                Only genuinely transient info shows here. */}
+            {(prompt.length > 200 || settings.customInstructions || pendingRun) && (
+              <div className="flex items-center justify-between mt-1.5 px-1 text-[10px] text-text-muted">
+                <span className="flex items-center gap-2">
+                  {prompt.length > 200 && <span className="text-text-secondary">{prompt.length.toLocaleString()} chars</span>}
+                  {settings.customInstructions && <span className="text-amber">Custom instructions on</span>}
+                </span>
+                {pendingRun && <span className="text-accent font-medium">Confirm to run</span>}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Settings slide-out panel */}
+        {/* Settings drawer — a fixed viewport sheet (overlays everything cleanly,
+            never overlaps the chat header or participates in page scroll). */}
+        {showSettings && (
+          <div
+            className="fixed inset-0 z-[70] bg-bg/50 backdrop-blur-[1px] transition-opacity"
+            onClick={() => setShowSettings(false)}
+            aria-hidden
+          />
+        )}
         <div
-          className={`absolute right-0 top-0 h-full w-[320px] bg-surface border-l border-border shadow-2xl z-30 transform transition-transform duration-200 ${
-            showSettings ? 'translate-x-0' : 'translate-x-full'
+          ref={settingsRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Playground settings"
+          className={`fixed inset-y-0 right-0 z-[71] w-full sm:w-[360px] max-w-[92vw] bg-surface border-l border-border shadow-pop flex flex-col transition-transform duration-200 will-change-transform ${
+            showSettings ? 'translate-x-0' : 'translate-x-full pointer-events-none'
           }`}
         >
-          <div className="p-5 space-y-4 h-full overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-text flex items-center gap-2">
-                <Settings2 className="w-4 h-4 text-accent" />
-                Settings
-              </p>
-              <button onClick={() => setShowSettings(false)} className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+          {/* Pinned header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+            <p className="text-sm font-semibold text-text flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-accent" />
+              Settings
+            </p>
+            <button onClick={() => setShowSettings(false)} className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors" aria-label="Close settings">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {/* Scrollable body */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-5">
             <div className="space-y-4">
               <div>
                 <label className="text-[11px] font-medium text-text-muted block mb-1.5">Timeout</label>
                 <select
                   value={settings.timeoutMs}
                   onChange={e => setSettings(s => ({ ...s, timeoutMs: Number(e.target.value) }))}
-                  className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-accent/50"
+                  className="input bg-surface-2 py-2.5 text-xs"
                 >
                   {PLAYGROUND_TIMEOUT_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -1393,7 +2001,7 @@ export default function Playground() {
                 <select
                   value={settings.outputMode}
                   onChange={e => setSettings(s => ({ ...s, outputMode: e.target.value as 'markdown' | 'raw' }))}
-                  className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-accent/50"
+                  className="input bg-surface-2 py-2.5 text-xs"
                 >
                   <option value="markdown">Markdown (rendered)</option>
                   <option value="raw">Raw text</option>
@@ -1408,7 +2016,7 @@ export default function Playground() {
                   value={settings.customInstructions}
                   onChange={e => setSettings(s => ({ ...s, customInstructions: e.target.value }))}
                   placeholder="Leave empty to use agent's default instructions..."
-                  className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-xs font-mono resize-none focus:outline-none focus:border-accent/50 h-32"
+                  className="input bg-surface-2 py-2.5 text-xs font-mono resize-none h-32"
                 />
               </div>
             </div>

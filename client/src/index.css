@@ -2,51 +2,111 @@
 
 /* ─── Light mode (default) ───────────────────────────────────────────────── */
 @theme {
-  --color-bg: #f4f6f8;
+  /* PagePilot-matched light theme — shadcn slate base + #6959ff brand accent.
+     Near-white page, white cards w/ hairline border + subtle shadow. */
+  --color-bg: oklch(98.5% 0.002 247.8);
   --color-surface: #ffffff;
-  --color-surface-2: #eef1f5;
-  --color-surface-3: #e0e5ec;
-  --color-border: #c8d0db;
-  --color-border-subtle: #dde2ea;
+  --color-surface-2: oklch(96.7% 0.003 264.5);
+  --color-surface-3: oklch(94.5% 0.005 264.5);
+  --color-border: oklch(92.8% 0.006 264.5);
+  --color-border-subtle: oklch(94.6% 0.005 264.5);
 
-  /* Text — high contrast hierarchy */
-  --color-text: #0d1117;
-  --color-text-secondary: #3a4558;
-  --color-text-muted: #5c6a82;
+  /* Sidebar — white (pops against the faint-gray content bg), PagePilot-style. */
+  --color-sidebar: #ffffff;
+  --color-sidebar-accent: oklch(96.7% 0.003 264.5);
+  --color-sidebar-border: oklch(92.8% 0.006 264.5);
 
-  /* Accent (indigo) — slightly deeper for light bg contrast */
-  --color-accent: #4f46e5;
-  --color-accent-hover: #4338ca;
-  --color-accent-muted: rgba(79, 70, 229, 0.12);
+  /* Subtle elevation — PagePilot's shadow-xs / shadow-sm / shadow-lg. */
+  --shadow-soft: 0 1px 2px 0 oklab(0% 0 0 / 0.05);
+  --shadow-card: 0 1px 3px 0 oklab(0% 0 0 / 0.1), 0 1px 2px -1px oklab(0% 0 0 / 0.1);
+  --shadow-pop: 0 10px 15px -3px oklab(0% 0 0 / 0.1), 0 4px 6px -4px oklab(0% 0 0 / 0.1);
 
-  /* Status colors — deeper, readable on white */
-  --color-green: #15803d;
-  --color-green-muted: rgba(21, 128, 61, 0.1);
-  --color-amber: #b45309;
-  --color-amber-muted: rgba(180, 83, 9, 0.1);
-  --color-red: #b91c1c;
-  --color-red-muted: rgba(185, 28, 28, 0.1);
+  /* Text — near-black slate hierarchy */
+  --color-text: oklch(13% 0.028 261.7);
+  --color-text-secondary: oklch(37% 0.025 264.4);
+  --color-text-muted: oklch(55.1% 0.027 264.4);
+
+  /* Brand accent — PagePilot indigo (#6959ff) + dark gradient end (#4a25ff) */
+  --color-accent: #6959ff;
+  --color-accent-hover: #5749e6;
+  --color-accent-muted: rgba(105, 89, 255, 0.12);
+  --color-brand-dark: #4a25ff;
+
+  /* Status colors — PagePilot success/warning/destructive */
+  --color-green: oklch(72.3% 0.191 142.5);
+  --color-green-muted: oklch(72.3% 0.191 142.5 / 0.1);
+  --color-amber: oklch(75% 0.183 55.9);
+  --color-amber-muted: oklch(75% 0.183 55.9 / 0.1);
+  --color-red: oklch(57.7% 0.245 27.3);
+  --color-red-muted: oklch(57.7% 0.245 27.3 / 0.1);
   --color-purple: #6d28d9;
   --color-purple-muted: rgba(109, 40, 217, 0.1);
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  /* Extended semantic palette — one canonical token per family (replaces ad-hoc
+     -400/-500 shades). Light-mode values are deeper for contrast on white;
+     the dark-mode block below brightens each. `-muted` = low-alpha fill. */
+  --color-emerald: #059669;
+  --color-emerald-muted: rgba(5, 150, 105, 0.1);
+  --color-blue: #2563eb;
+  --color-blue-muted: rgba(37, 99, 235, 0.1);
+  --color-sky: #0284c7;
+  --color-sky-muted: rgba(2, 132, 199, 0.1);
+  --color-cyan: #0891b2;
+  --color-cyan-muted: rgba(8, 145, 178, 0.1);
+  --color-teal: #0d9488;
+  --color-teal-muted: rgba(13, 148, 136, 0.1);
+  --color-indigo: #4f46e5;
+  --color-indigo-muted: rgba(79, 70, 229, 0.1);
+  --color-violet: #7c3aed;
+  --color-violet-muted: rgba(124, 58, 237, 0.1);
+  --color-fuchsia: #c026d3;
+  --color-fuchsia-muted: rgba(192, 38, 211, 0.1);
+  --color-pink: #db2777;
+  --color-pink-muted: rgba(219, 39, 119, 0.1);
+  --color-rose: #e11d48;
+  --color-rose-muted: rgba(225, 29, 72, 0.1);
+  --color-orange: #ea580c;
+  --color-orange-muted: rgba(234, 88, 12, 0.1);
+  --color-yellow: #ca8a04;
+  --color-yellow-muted: rgba(202, 138, 4, 0.1);
+  --color-lime: #65a30d;
+  --color-lime-muted: rgba(101, 163, 13, 0.1);
+  --color-zinc: #71717a;
+  --color-zinc-muted: rgba(113, 113, 122, 0.1);
+  --color-slate: #64748b;
+  --color-slate-muted: rgba(100, 116, 139, 0.1);
+  --color-gray: #6b7280;
+  --color-gray-muted: rgba(107, 114, 128, 0.1);
+
+  --font-sans: 'Geist', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Fira Code', monospace;
 }
 
 /* ─── Dark mode override ─────────────────────────────────────────────────── */
 html[data-theme="dark"] {
-  --color-bg: #09090b;
-  --color-surface: #18181b;
-  --color-surface-2: #27272a;
-  --color-surface-3: #303033;
-  --color-border: #3f3f46;
-  --color-border-subtle: #27272a;
+  /* Warm Premium dark — faint warmth; elevation via surface-step + border, not shadow. */
+  --color-bg: #0c0c10;
+  --color-surface: #18181d;
+  --color-surface-2: #232329;
+  --color-surface-3: #2d2d34;
+  --color-border: #3a3a43;
+  --color-border-subtle: #26262c;
+  /* Sidebar — slightly darker than content for separation. */
+  --color-sidebar: #131318;
+  --color-sidebar-accent: #232329;
+  --color-sidebar-border: #2a2a31;
+  /* On near-black, drop shadows are invisible — neutralize so cards read clean. */
+  --shadow-soft: 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55);
   --color-text: #fafafa;
   --color-text-secondary: #a1a1aa;
   --color-text-muted: #71717a;
-  --color-accent: #6366f1;
-  --color-accent-hover: #818cf8;
-  --color-accent-muted: rgba(99, 102, 241, 0.15);
+  /* Brand accent harmonized for dark (brighter #6959ff) */
+  --color-accent: #7c6fff;
+  --color-accent-hover: #9486ff;
+  --color-accent-muted: rgba(124, 111, 255, 0.18);
+  --color-brand-dark: #4a25ff;
   --color-green: #22c55e;
   --color-green-muted: rgba(34, 197, 94, 0.15);
   --color-amber: #f59e0b;
@@ -55,6 +115,40 @@ html[data-theme="dark"] {
   --color-red-muted: rgba(239, 68, 68, 0.15);
   --color-purple: #a78bfa;
   --color-purple-muted: rgba(167, 139, 250, 0.15);
+
+  /* Extended palette — dark mode (brighter for dark backgrounds). */
+  --color-emerald: #34d399;
+  --color-emerald-muted: rgba(52, 211, 153, 0.15);
+  --color-blue: #60a5fa;
+  --color-blue-muted: rgba(96, 165, 250, 0.15);
+  --color-sky: #38bdf8;
+  --color-sky-muted: rgba(56, 189, 248, 0.15);
+  --color-cyan: #22d3ee;
+  --color-cyan-muted: rgba(34, 211, 238, 0.15);
+  --color-teal: #2dd4bf;
+  --color-teal-muted: rgba(45, 212, 191, 0.15);
+  --color-indigo: #818cf8;
+  --color-indigo-muted: rgba(129, 140, 248, 0.15);
+  --color-violet: #a78bfa;
+  --color-violet-muted: rgba(167, 139, 250, 0.15);
+  --color-fuchsia: #e879f9;
+  --color-fuchsia-muted: rgba(232, 121, 249, 0.15);
+  --color-pink: #f472b6;
+  --color-pink-muted: rgba(244, 114, 182, 0.15);
+  --color-rose: #fb7185;
+  --color-rose-muted: rgba(251, 113, 133, 0.15);
+  --color-orange: #fb923c;
+  --color-orange-muted: rgba(251, 146, 60, 0.15);
+  --color-yellow: #facc15;
+  --color-yellow-muted: rgba(250, 204, 21, 0.15);
+  --color-lime: #a3e635;
+  --color-lime-muted: rgba(163, 230, 53, 0.15);
+  --color-zinc: #a1a1aa;
+  --color-zinc-muted: rgba(161, 161, 170, 0.15);
+  --color-slate: #94a3b8;
+  --color-slate-muted: rgba(148, 163, 184, 0.15);
+  --color-gray: #9ca3af;
+  --color-gray-muted: rgba(156, 163, 175, 0.15);
 }
 
 @layer base {
@@ -88,6 +182,70 @@ html[data-theme="dark"] {
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-text-muted;
   }
+  /* Firefox — thin subtle scrollbar to match the webkit treatment above. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+}
+
+/* ─── Warm Premium component classes ─────────────────────────────────────────
+   Single control point for the app's surface + control styling. Sweep inline
+   `bg-surface rounded-xl border border-border` → `card`; new UI uses these.
+   See client/DESIGN.md. */
+@layer components {
+  /* Elevated surface — PagePilot card: white, hairline border, ~14px radius, xs shadow. */
+  .card {
+    @apply bg-surface rounded-[14px] border border-border shadow-soft;
+  }
+  /* Interactive card — lifts on hover. Compose with `.card`. */
+  .card-hover {
+    @apply transition-all hover:shadow-card hover:-translate-y-px;
+  }
+
+  /* Buttons — color/shape only; compose with a size (.btn-sm/md/lg) which sets
+     px/py/text. e.g. class="btn-primary btn-md". */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent text-white font-semibold shadow-soft hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-surface border border-border text-text-secondary font-medium hover:bg-surface-2 hover:text-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg text-text-muted font-medium hover:bg-surface-2 hover:text-text disabled:opacity-50 transition-colors;
+  }
+  /* Button sizes — the 3 canonical steps. */
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .btn-md { @apply px-4 py-2 text-sm; }
+  .btn-lg { @apply px-5 py-2.5 text-sm; }
+
+  /* Segmented control — pill toggle group (filter pills, view/mode toggles). */
+  .segmented {
+    @apply inline-flex items-center gap-0.5 bg-surface-2 border border-border-subtle rounded-lg p-0.5 shrink-0;
+  }
+  .segmented-btn {
+    @apply px-2.5 py-1 text-xs font-medium rounded-md text-text-muted hover:text-text transition-colors;
+  }
+  .segmented-btn-active {
+    @apply bg-surface text-text shadow-soft;
+  }
+
+  /* Circular icon badge for stat cards / list leading icons. */
+  .stat-badge {
+    @apply rounded-full flex items-center justify-center shrink-0;
+  }
+
+  /* Pill — small status/label badge. Compose with a color: `pill bg-green-muted
+     text-green` (or via lib/colors statusPill()). Replaces ad-hoc inline badge
+     styles across the app. */
+  .pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium leading-none;
+  }
+
+  /* Standard form field. */
+  .input {
+    @apply w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/60 transition-colors;
+  }
 }
 
 /* ─── Chat animations ────────────────────────────────────────────────────── */
@@ -110,6 +268,22 @@ html[data-theme="dark"] {
 
 .animate-slide-in {
   animation: slide-in-right 0.2s ease-out;
+}
+
+/* ─── Reduced motion (WCAG 2.3.3) ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .chat-fade-in,
+  .animate-slide-in {
+    animation: none;
+  }
 }
 
 /* ─── Markdown in chat ───────────────────────────────────────────────────── */
@@ -351,4 +525,53 @@ html[data-theme="dark"] {
   pointer-events: none;
   height: 0;
   opacity: 0.5;
+}
+
+/* ─── React Flow (@xyflow/react v12) — theme to tokens, light + dark ──────── */
+/* The canvas/dots/empty-state colors are token-driven on the elements; these
+   rules theme React Flow's own chrome (controls, edges, handles, minimap) which
+   ships with light-only defaults that clash on the premium theme. */
+.react-flow__controls {
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text);
+}
+.react-flow__controls-button:hover {
+  background: var(--color-surface-2);
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
+.react-flow__edge-path {
+  stroke: var(--color-border);
+  stroke-width: 1.5;
+}
+.react-flow__edge.animated .react-flow__edge-path,
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--color-accent);
+}
+.react-flow__connectionline .react-flow__connection-path {
+  stroke: var(--color-accent);
+}
+.react-flow__handle {
+  background: var(--color-accent);
+  border-color: var(--color-surface);
+}
+.react-flow__minimap {
+  border-radius: 12px;
+  overflow: hidden;
+}
+.react-flow__minimap-mask {
+  fill: var(--color-surface-2);
+  opacity: 0.6;
+}
+.react-flow__attribution {
+  display: none;
 }

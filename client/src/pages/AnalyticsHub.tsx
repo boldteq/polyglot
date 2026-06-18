@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageShell, TabNav } from '../components/PageShell'
+import { Spinner } from '../components/Skeleton'
 
 const OverviewTab = lazy(() => import('./Analytics'))
 const RunsTab = lazy(() => import('./RunHistory'))
@@ -8,21 +9,15 @@ const HealthTab = lazy(() => import('./AgentHealth'))
 const GovernanceTab = lazy(() => import('./Governance'))
 const ObservabilityTab = lazy(() => import('./Observability'))
 
+// Tab ids are stable (used by ?tab= deep links + the /governance redirect);
+// labels are free to be clearer. 'governance' → "Cost & Enforcement".
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'runs', label: 'Runs' },
   { id: 'health', label: 'Agent Health' },
-  { id: 'governance', label: 'Governance' },
+  { id: 'governance', label: 'Cost & Enforcement' },
   { id: 'observability', label: 'Observability' },
 ]
-
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center h-48">
-      <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-}
 
 export default function AnalyticsHub() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -39,7 +34,7 @@ export default function AnalyticsHub() {
   }
 
   return (
-    <PageShell title="Analytics" subtitle="Agent performance and run history">
+    <PageShell title="Analytics" subtitle="Performance, runs, cost & enforcement, and observability for every agent">
       <TabNav tabs={TABS} active={activeTab} onChange={handleTabChange} />
       <Suspense fallback={<Spinner />}>
         {activeTab === 'overview' && <OverviewTab />}

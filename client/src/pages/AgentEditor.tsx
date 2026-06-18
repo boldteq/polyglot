@@ -17,9 +17,12 @@ import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { useUnsavedGuard } from '../hooks/useUnsavedGuard'
 import { toast } from '../components/Toast'
+import ConfirmDialog from '../components/ConfirmDialog'
 import AgentIcon from '../components/AgentIcon'
 import RichMarkdownEditor from '../components/RichMarkdownEditor'
 import AgentHealthBar from '../components/AgentHealthBar'
+import Breadcrumbs, { type BreadcrumbItem } from '../components/Breadcrumbs'
+import { projectNameFromId } from '../lib/projectId'
 
 interface Props {
   scope: 'global' | 'project'
@@ -42,6 +45,14 @@ function parseFrontmatter(raw: string): { meta: Record<string, string>; body: st
     if (key) meta[key] = val
   }
   return { meta, body: match[2].replace(/^\n+/, '') }
+}
+
+// True when the source LOOKS like it has frontmatter (opens with `---`) but the
+// closing fence is missing/malformed, so parseFrontmatter would silently swallow
+// the whole block into the body — the data-loss case we must warn about.
+function hasUnparseableFrontmatter(raw: string): boolean {
+  if (!/^---\s*\n/.test(raw)) return false
+  return !/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.test(raw)
 }
 
 // Serialize frontmatter + body back to raw markdown
@@ -93,6 +104,7 @@ export default function AgentEditor({ scope }: Props) {
 
   // View mode: 'rich' or 'source'
   const [viewMode, setViewMode] = useState<'rich' | 'source'>('rich')
+  const [richGuardOpen, setRichGuardOpen] = useState(false)
 
   // Source text for source mode
   const [sourceText, setSourceText] = useState('')
@@ -140,6 +152,9 @@ export default function AgentEditor({ scope }: Props) {
       setOriginalContent(raw)
       setDirty(false)
       toast('success', 'Agent saved')
+      // Refresh any mounted list/cache that shows this entity (lib/cacheKeys.ts
+      // listens for this) so the edit appears app-wide without a manual refresh.
+      window.dispatchEvent(new Event('polyglot:file-applied'))
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -176,11 +191,17 @@ export default function AgentEditor({ scope }: Props) {
     setViewMode('source')
   }
 
-  const switchToRich = () => {
+  const doSwitchToRich = () => {
     const parsed = parseFrontmatter(sourceText)
     setMeta(parsed.meta)
     setBody(parsed.body)
     setViewMode('rich')
+  }
+
+  const switchToRich = () => {
+    // Guard the data-loss case: malformed frontmatter would be silently dropped.
+    if (hasUnparseableFrontmatter(sourceText)) { setRichGuardOpen(true); return }
+    doSwitchToRich()
   }
 
   const toggleTools = (tool: string) => {
@@ -198,6 +219,17 @@ export default function AgentEditor({ scope }: Props) {
   const activeCorrections = (trainingData || []).filter(c => c.status === 'active')
 
   const backPath = scope === 'global' ? '/agents' : `/projects/${projectId}`
+
+  const displayName = meta.name || name || ''
+  const crumbs: BreadcrumbItem[] =
+    scope === 'global'
+      ? [{ label: 'Agents', to: '/agents' }, { label: displayName }]
+      : [
+          { label: 'Projects', to: '/' },
+          { label: projectNameFromId(projectId || ''), to: `/projects/${projectId}` },
+          { label: 'Agents', to: `/projects/${projectId}` },
+          { label: displayName },
+        ]
 
   if (loading) {
     return (
@@ -234,7 +266,8 @@ export default function AgentEditor({ scope }: Props) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <AgentIcon name={name!} uid={`editor-${name}`} size={40} global={scope === 'global'} />
-          <div>
+          <div className="min-w-0">
+            <Breadcrumbs items={crumbs} className="mb-1" />
             <h1 className="text-lg font-bold">{meta.name || name}</h1>
             <p className="text-xs text-text-muted mt-0.5">
               {scope === 'global' ? 'Global agent' : 'Project agent'}
@@ -245,20 +278,16 @@ export default function AgentEditor({ scope }: Props) {
 
         <div className="flex items-center gap-2">
           {/* Mode toggle */}
-          <div className="flex items-center bg-surface-2 border border-border rounded-lg p-0.5 mr-2">
+          <div className="segmented mr-2">
             <button
               onClick={viewMode === 'source' ? switchToRich : undefined}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                viewMode === 'rich' ? 'bg-accent text-white' : 'text-text-muted hover:text-text'
-              }`}
+              className={viewMode === 'rich' ? 'segmented-btn segmented-btn-active flex items-center gap-1.5' : 'segmented-btn flex items-center gap-1.5'}
             >
               <Eye className="w-3.5 h-3.5" /> Rich Editor
             </button>
             <button
               onClick={viewMode === 'rich' ? switchToSource : undefined}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                viewMode === 'source' ? 'bg-accent text-white' : 'text-text-muted hover:text-text'
-              }`}
+              className={viewMode === 'source' ? 'segmented-btn segmented-btn-active flex items-center gap-1.5' : 'segmented-btn flex items-center gap-1.5'}
             >
               <Code className="w-3.5 h-3.5" /> Source
             </button>
@@ -272,7 +301,7 @@ export default function AgentEditor({ scope }: Props) {
           <button
             onClick={handleSave}
             disabled={!dirty || saving}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-30 transition-colors"
+            className="btn-primary btn-md"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
@@ -297,7 +326,7 @@ export default function AgentEditor({ scope }: Props) {
             {/* Frontmatter sidebar */}
             <div className="w-[300px] min-w-[300px] border-r border-border bg-surface overflow-y-auto">
               <div className="p-5 space-y-5">
-                <div className="flex items-center gap-2 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-xs font-semibold text-text-muted ">
                   <FileText className="w-3.5 h-3.5" />
                   Agent Config
                 </div>
@@ -310,7 +339,7 @@ export default function AgentEditor({ scope }: Props) {
                   <input
                     value={meta.name || ''}
                     onChange={e => updateMeta('name', e.target.value)}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm text-text focus:outline-none focus:border-accent/50 transition-colors"
+                    className="input"
                     placeholder="Agent Name"
                   />
                 </div>
@@ -329,7 +358,7 @@ export default function AgentEditor({ scope }: Props) {
                     }}
                     onFocus={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                     rows={4}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm text-text focus:outline-none focus:border-accent/50 transition-colors leading-relaxed"
+                    className="input leading-relaxed"
                     style={{ minHeight: '100px', resize: 'vertical' }}
                     placeholder="Describe what this agent does, its responsibilities, and when to use it. Be specific — this description helps route tasks to the right agent."
                   />
@@ -430,7 +459,7 @@ export default function AgentEditor({ scope }: Props) {
                     <input
                       value={meta.category || ''}
                       onChange={e => updateMeta('category', e.target.value)}
-                      className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2 text-sm text-text focus:outline-none focus:border-accent/50 transition-colors"
+                      className="input"
                       placeholder="Type or select a category..."
                     />
                   </div>
@@ -444,7 +473,7 @@ export default function AgentEditor({ scope }: Props) {
                   <input
                     value={meta.tags || ''}
                     onChange={e => updateMeta('tags', e.target.value)}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2 text-sm text-text focus:outline-none focus:border-accent/50 transition-colors"
+                    className="input"
                     placeholder="comma, separated, tags"
                   />
                   {meta.tags && (
@@ -466,7 +495,7 @@ export default function AgentEditor({ scope }: Props) {
                   <select
                     value={meta.output_template || ''}
                     onChange={e => updateMeta('output_template', e.target.value)}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm text-text focus:outline-none focus:border-accent/50 transition-colors appearance-none cursor-pointer"
+                    className="input appearance-none cursor-pointer"
                   >
                     <option value="">None (free-form output)</option>
                     {(templates || []).map(t => (
@@ -509,7 +538,7 @@ export default function AgentEditor({ scope }: Props) {
                       <input
                         value={val}
                         onChange={e => updateMeta(key, e.target.value)}
-                        className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm text-text focus:outline-none focus:border-accent/50 transition-colors"
+                        className="input"
                       />
                     </div>
                   ))
@@ -535,13 +564,23 @@ export default function AgentEditor({ scope }: Props) {
             <textarea
               value={sourceText}
               onChange={e => handleSourceChange(e.target.value)}
-              className="w-full h-full bg-surface border border-border rounded-xl p-5 font-mono text-sm text-text resize-none focus:outline-none focus:border-accent/50 transition-colors leading-relaxed"
+              className="input h-full p-5 font-mono resize-none leading-relaxed"
               placeholder={'---\nname: Agent Name\ndescription: What this agent does\nmodel: sonnet\ntools: Read,Write,Edit\n---\n\nAgent instructions...'}
               spellCheck={false}
             />
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={richGuardOpen}
+        onClose={() => setRichGuardOpen(false)}
+        onConfirm={() => { setRichGuardOpen(false); doSwitchToRich() }}
+        title="Frontmatter looks malformed"
+        message="The opening --- has no matching closing ---, so switching to the rich editor will drop the frontmatter into the body. Fix the closing fence in source view, or switch anyway."
+        confirmLabel="Switch anyway"
+        danger
+      />
     </div>
   )
 }

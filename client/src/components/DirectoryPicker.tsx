@@ -65,7 +65,7 @@ export default function DirectoryPicker({ open, onClose, onSelect, existingDirs 
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+      <div className="relative bg-surface border border-border rounded-2xl shadow-pop w-full max-w-2xl max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
@@ -238,7 +238,7 @@ export default function DirectoryPicker({ open, onClose, onSelect, existingDirs 
             <button
               onClick={handleSelect}
               disabled={!selected}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="btn-primary btn-md"
             >
               <Check className="w-4 h-4" />
               Add Directory

@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Clock, FolderOpen, Search, FileCode } from 'lucide-react'
 import { getUnifiedCommands, deleteProjectCommand, sanitizeName, updateProjectCommand } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
 import type { UnifiedCommand } from '../types'
 import { toast } from '../components/Toast'
+import { confirmDialog } from '../lib/confirm'
 
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime()
@@ -27,25 +29,28 @@ export default function AllCommands() {
   const [createLoading, setCreateLoading] = useState(false)
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set())
 
-  const filtered = (commands || []).filter((c) => {
+  const filtered = useMemo(() => (commands || []).filter((c) => {
     if (!search) return true
     const q = search.toLowerCase()
     return c.name.toLowerCase().includes(q) || c.projectName.toLowerCase().includes(q)
-  })
+  }), [commands, search])
 
   // Group by project
-  const groups = new Map<string, UnifiedCommand[]>()
-  for (const c of filtered) {
-    const key = c.projectName
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(c)
-  }
+  const groups = useMemo(() => {
+    const map = new Map<string, UnifiedCommand[]>()
+    for (const c of filtered) {
+      const key = c.projectName
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(c)
+    }
+    return map
+  }, [filtered])
 
   // Unique projects for new-command form
-  const projects = [...new Map((commands || []).map(c => [c.projectId, { id: c.projectId, name: c.projectName }])).values()]
+  const projects = useMemo(() => [...new Map((commands || []).map(c => [c.projectId, { id: c.projectId, name: c.projectName }])).values()], [commands])
 
   const handleDelete = async (cmd: UnifiedCommand) => {
-    if (!confirm(`Delete "/${cmd.name}"?`)) return
+    if (!(await confirmDialog({ title: 'Delete command?', message: `"/${cmd.name}" will be permanently deleted.`, danger: true, confirmLabel: 'Delete' }))) return
     const key = `${cmd.projectId}-${cmd.name}`
     setDeletingKeys(prev => new Set(prev).add(key))
     try {
@@ -85,10 +90,7 @@ export default function AllCommands() {
           <h2 className="text-base font-semibold">Commands</h2>
           <p className="text-xs text-text-muted mt-0.5">{(commands || []).length} slash commands across all projects</p>
         </div>
-        <button
-          onClick={() => setCreating(c => !c)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-medium rounded-lg transition-colors"
-        >
+        <button onClick={() => setCreating(c => !c)} className="btn-primary btn-sm">
           <Plus className="w-3.5 h-3.5" />
           New Command
         </button>
@@ -96,40 +98,36 @@ export default function AllCommands() {
 
       {/* Create form */}
       {creating && (
-        <div className="bg-surface border border-border rounded-xl p-4 mb-4">
+        <div className="card p-4 mb-4">
           <p className="text-xs font-semibold mb-3">New Command</p>
           <div className="flex gap-2">
-            <div className="flex items-center gap-1.5 flex-1 bg-surface-2 border border-border rounded-lg px-2.5 py-1.5">
-              <span className="text-text-muted text-xs">/</span>
+            <div className="relative flex-1">
+              <span className="text-text-muted text-sm absolute left-3 top-1/2 -translate-y-1/2 z-10">/</span>
               <input
                 autoFocus
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCreate()}
                 placeholder="command-name"
-                className="flex-1 bg-transparent text-xs outline-none"
+                className="input pl-7"
               />
             </div>
             <select
               value={newProject}
               onChange={e => setNewProject(e.target.value)}
-              className="bg-surface-2 border border-border rounded-lg px-2.5 py-1.5 text-xs outline-none"
+              className="input w-auto"
             >
               <option value="">Select project…</option>
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
-            <button
-              onClick={handleCreate}
-              disabled={createLoading}
-              className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-            >
+            <button onClick={handleCreate} disabled={createLoading} className="btn-primary btn-sm">
               {createLoading ? 'Creating…' : 'Create'}
             </button>
             <button
               onClick={() => { setCreating(false); setNewName(''); setNewProject('') }}
-              className="px-3 py-1.5 text-xs text-text-muted hover:text-text rounded-lg transition-colors"
+              className="btn-ghost btn-sm"
             >
               Cancel
             </button>
@@ -138,13 +136,13 @@ export default function AllCommands() {
       )}
 
       {/* Search */}
-      <div className="flex items-center gap-2 bg-surface border border-border rounded-lg px-2.5 py-1.5 mb-4">
-        <Search className="w-3.5 h-3.5 text-text-muted shrink-0" />
+      <div className="relative mb-4">
+        <Search className="w-3.5 h-3.5 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 z-10" />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search commands…"
-          className="flex-1 bg-transparent text-xs outline-none"
+          className="input pl-9"
         />
       </div>
 
@@ -156,14 +154,17 @@ export default function AllCommands() {
           <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-text-muted">
-          <FileCode className="w-8 h-8 mx-auto mb-2 opacity-30" />
-          <p className="text-xs">{search ? 'No commands match your search' : 'No commands yet'}</p>
-        </div>
+        <EmptyState
+          icon={FileCode}
+          title={search ? 'No commands match your search' : 'No commands yet'}
+          card
+          size="sm"
+          action={search ? undefined : { label: 'New Command', onClick: () => setCreating(true) }}
+        />
       ) : (
         <div className="space-y-4">
           {[...groups.entries()].map(([projectName, cmds]) => (
-            <div key={projectName} className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div key={projectName} className="card overflow-hidden">
               <div className="px-4 py-2.5 border-b border-border bg-surface-2/40 flex items-center gap-2">
                 <FolderOpen className="w-3.5 h-3.5 text-text-muted" />
                 <span className="text-xs font-semibold">{projectName}</span>
@@ -195,6 +196,8 @@ export default function AllCommands() {
                       <button
                         onClick={() => handleDelete(cmd)}
                         disabled={deleting}
+                        title="Delete command"
+                        aria-label={`Delete command /${cmd.name}`}
                         className="p-1 text-text-muted hover:text-red transition-colors rounded disabled:opacity-50"
                       >
                         <Trash2 className="w-3 h-3" />

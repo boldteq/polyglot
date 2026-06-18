@@ -4,6 +4,8 @@ import { Save, ArrowLeft, RotateCcw, Terminal, Info, Eye, Code } from 'lucide-re
 import { getProjectCommand, updateProjectCommand } from '../lib/api'
 import { toast } from '../components/Toast'
 import RichMarkdownEditor from '../components/RichMarkdownEditor'
+import Breadcrumbs, { type BreadcrumbItem } from '../components/Breadcrumbs'
+import { projectNameFromId } from '../lib/projectId'
 
 export default function CommandEditor() {
   const { projectId, name } = useParams()
@@ -58,6 +60,7 @@ export default function CommandEditor() {
       setDirty(false)
       setIsNew(false)
       toast('success', 'Command saved')
+      window.dispatchEvent(new Event('polyglot:file-applied'))
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -73,6 +76,13 @@ export default function CommandEditor() {
 
   const switchToSource = () => { setSourceText(content); setViewMode('source') }
   const switchToRich = () => { setContent(sourceText); setViewMode('rich') }
+
+  const crumbs: BreadcrumbItem[] = [
+    { label: 'Projects', to: '/' },
+    { label: projectNameFromId(projectId || ''), to: `/projects/${projectId}` },
+    { label: 'Commands', to: `/projects/${projectId}` },
+    { label: name || '' },
+  ]
 
   if (loading) {
     return (
@@ -96,10 +106,11 @@ export default function CommandEditor() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber/20 to-orange-500/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber/20 to-orange/20 flex items-center justify-center">
             <Terminal className="w-5 h-5 text-amber" />
           </div>
-          <div>
+          <div className="min-w-0">
+            <Breadcrumbs items={crumbs} className="mb-1" />
             <h1 className="text-lg font-bold flex items-center gap-2">
               <span className="text-text-muted">/</span>{name}
             </h1>
@@ -111,11 +122,11 @@ export default function CommandEditor() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-surface-2 border border-border rounded-lg p-0.5 mr-2">
-            <button onClick={viewMode === 'source' ? switchToRich : undefined} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'rich' ? 'bg-accent text-white' : 'text-text-muted hover:text-text'}`}>
+          <div className="segmented mr-2">
+            <button onClick={viewMode === 'source' ? switchToRich : undefined} className={viewMode === 'rich' ? 'segmented-btn segmented-btn-active flex items-center gap-1.5' : 'segmented-btn flex items-center gap-1.5'}>
               <Eye className="w-3.5 h-3.5" /> Rich
             </button>
-            <button onClick={viewMode === 'rich' ? switchToSource : undefined} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'source' ? 'bg-accent text-white' : 'text-text-muted hover:text-text'}`}>
+            <button onClick={viewMode === 'rich' ? switchToSource : undefined} className={viewMode === 'source' ? 'segmented-btn segmented-btn-active flex items-center gap-1.5' : 'segmented-btn flex items-center gap-1.5'}>
               <Code className="w-3.5 h-3.5" /> Source
             </button>
           </div>
@@ -124,7 +135,7 @@ export default function CommandEditor() {
               <RotateCcw className="w-3.5 h-3.5" /> Reset
             </button>
           )}
-          <button onClick={handleSave} disabled={!dirty || saving} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-30 transition-colors">
+          <button onClick={handleSave} disabled={!dirty || saving} className="btn-primary btn-md">
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
           </button>
@@ -157,7 +168,7 @@ export default function CommandEditor() {
           <textarea
             value={sourceText}
             onChange={e => { setSourceText(e.target.value); setDirty(true) }}
-            className="w-full h-full bg-surface border border-border rounded-xl p-5 font-mono text-sm text-text resize-none focus:outline-none focus:border-accent/50 transition-colors leading-relaxed"
+            className="input h-full p-5 font-mono resize-none leading-relaxed"
             placeholder={`# /${name}\n\nDescribe what this command does.\nUse $ARGUMENTS for user-provided input.`}
             spellCheck={false}
           />

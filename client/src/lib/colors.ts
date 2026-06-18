@@ -73,3 +73,42 @@ export const STATUS_COLORS: Record<string, { text: string; bg: string; border: s
 export function getStatusColor(status: string) {
   return STATUS_COLORS[status] ?? STATUS_COLORS.pending
 }
+
+// Generic semantic intent → token classes. Use with the `.pill` class
+// (`pill ${statusPill('success')}`) so the many inline success/error/warn
+// ternaries scattered across pages collapse to one mapping. `dot` is the
+// solid-color class for a status dot.
+export type Intent = 'success' | 'warning' | 'error' | 'info' | 'neutral'
+
+export const INTENT_PILL: Record<Intent, string> = {
+  success: 'bg-green-muted text-green',
+  warning: 'bg-amber-muted text-amber',
+  error:   'bg-red-muted text-red',
+  info:    'bg-accent-muted text-accent',
+  neutral: 'bg-surface-2 text-text-muted',
+}
+
+export const INTENT_TEXT: Record<Intent, string> = {
+  success: 'text-green', warning: 'text-amber', error: 'text-red', info: 'text-accent', neutral: 'text-text-muted',
+}
+
+export const INTENT_DOT: Record<Intent, string> = {
+  success: 'bg-green', warning: 'bg-amber', error: 'bg-red', info: 'bg-accent', neutral: 'bg-text-muted',
+}
+
+export function statusPill(intent: Intent): string { return INTENT_PILL[intent] }
+export function statusText(intent: Intent): string { return INTENT_TEXT[intent] }
+export function statusDot(intent: Intent): string { return INTENT_DOT[intent] }
+
+// Priority → semantic intent. Collapses the repeated
+// `high ? red : medium ? amber : zinc` ternaries (training queue, etc.) to one
+// mapping so a priority badge is always `pill ${statusPill(priorityIntent(p))}`.
+export const PRIORITY_INTENT: Record<string, Intent> = {
+  high: 'error',
+  medium: 'warning',
+  low: 'neutral',
+}
+
+export function priorityIntent(priority: string): Intent {
+  return PRIORITY_INTENT[priority] ?? 'neutral'
+}

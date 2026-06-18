@@ -7,7 +7,7 @@
 // route through a different code path entirely — see Schedules.tsx).
 
 import { useState, useEffect, useRef } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Clock, Loader2 } from 'lucide-react'
 import {
   createSchedule,
   updateSchedule,
@@ -52,13 +52,14 @@ function initialForm(initial?: Schedule | null): FormState {
 
 export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel }: ScheduleFormProps) {
   const [form, setForm] = useState<FormState>(() => initialForm(initial))
-  const [presetKey, setPresetKey] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [cronError, setCronError] = useState('')
   const [cronHint, setCronHint] = useState('')
+  const [cronValidating, setCronValidating] = useState(false)
   const { presets } = useCronPresets()
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cronInputRef = useRef<HTMLInputElement | null>(null)
 
   // Re-seed form when switching from create→edit or editing a different row.
   useEffect(() => { setForm(initialForm(initial)) }, [initial])
@@ -68,8 +69,22 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
   const updateForm = (patch: Partial<FormState>) => {
     setForm(prev => ({ ...prev, ...patch }))
     if (error) setError('')
-    if ('cronExpr' in patch) { setCronError(''); setCronHint('') }
+    // Instant client-side cron feedback on every keystroke — catches obvious
+    // typos before the debounced server check fires. Clear the server next-run
+    // hint since the value changed; the blur path re-fetches it.
+    if (patch.cronExpr !== undefined) {
+      setCronHint('')
+      const next = patch.cronExpr
+      setCronError(!next || isValidCronClient(next) ? '' : 'Invalid cron format')
+    }
   }
+
+  // Set cron from a preset pill; reuses the same validation path a manual edit
+  // would take. The "Custom" pill focuses the input without changing the value.
+  const applyPreset = (value: string) => {
+    updateForm({ cronExpr: value })
+  }
+  const focusCronInput = () => cronInputRef.current?.focus()
 
   // Debounce server-side cron validation — fire 300ms after blur to avoid
   // hammering the API on each keystroke. Server is authoritative.
@@ -78,6 +93,7 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
     if (!isValidCronClient(form.cronExpr)) { setCronError('Invalid cron expression'); return }
     if (blurTimer.current) clearTimeout(blurTimer.current)
     blurTimer.current = setTimeout(() => {
+      setCronValidating(true)
       validateCronOnServer(form.cronExpr)
         .then(r => {
           if (!r.valid) { setCronError(r.error || 'Invalid cron'); setCronHint('') }
@@ -87,6 +103,7 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
           console.warn('[ScheduleForm] cron validate failed:', err?.message)
           // Don't block on server outage — fall back to client validation only.
         })
+        .finally(() => setCronValidating(false))
     }, 300)
   }
 
@@ -122,23 +139,24 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
   }
 
   return (
-    <div onKeyDown={handleKeyDown} className="bg-surface rounded-xl border border-border p-5 space-y-4">
+    <div onKeyDown={handleKeyDown} className="card p-5 space-y-4">
       <h2 className="text-sm font-semibold">{mode === 'edit' ? 'Edit Schedule' : 'Create Schedule'}</h2>
       {error && (
-        <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 px-3 py-2 rounded-lg">
+        <div className="flex items-center gap-2 text-red text-xs bg-red/10 px-3 py-2 rounded-lg">
           <AlertCircle className="w-3.5 h-3.5" /> {error}
         </div>
       )}
       {agents.length === 0 && (
-        <div className="flex items-center gap-2 text-amber-400 text-xs bg-amber-500/10 px-3 py-2 rounded-lg">
+        <div className="flex items-center gap-2 text-amber text-xs bg-amber/10 px-3 py-2 rounded-lg">
           <AlertCircle className="w-3.5 h-3.5" /> No agents available — create an agent first.
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs text-text-muted mb-1">Name</label>
+          <label htmlFor="schedule-name" className="block text-xs text-text-muted mb-1">Name</label>
           <input
-            className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg focus:border-accent outline-none"
+            id="schedule-name"
+            className="input"
             placeholder="Daily Status Report"
             value={form.name}
             onChange={e => updateForm({ name: e.target.value })}
@@ -146,9 +164,10 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
           />
         </div>
         <div>
-          <label className="block text-xs text-text-muted mb-1">Agent</label>
+          <label htmlFor="schedule-agent" className="block text-xs text-text-muted mb-1">Agent</label>
           <select
-            className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg focus:border-accent outline-none"
+            id="schedule-agent"
+            className="input"
             value={form.agentName}
             onChange={e => updateForm({ agentName: e.target.value })}
             disabled={agents.length === 0}
@@ -162,41 +181,57 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
         </div>
       </div>
       <div>
-        <label className="block text-xs text-text-muted mb-1">Cron Expression</label>
-        <div className="flex gap-2">
-          <input
-            className={`flex-1 px-3 py-2 text-sm bg-surface-2 border rounded-lg focus:border-accent outline-none font-mono ${cronError ? 'border-red-500/60' : 'border-border'}`}
-            placeholder="0 9 * * *"
-            value={form.cronExpr}
-            onChange={e => updateForm({ cronExpr: e.target.value })}
-            onBlur={handleCronBlur}
-          />
-          <select
-            className="px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg outline-none"
-            value={presetKey}
-            onChange={e => {
-              if (e.target.value) updateForm({ cronExpr: e.target.value })
-              setPresetKey('')
-            }}
-          >
-            <option value="">Presets...</option>
-            {presets.map(p => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
+        <label htmlFor="cron-expr" className="block text-xs text-text-muted mb-1">Cron Expression</label>
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <Clock className="w-3.5 h-3.5 text-text-muted" />
+          <div className="segmented flex-wrap">
+            {presets.map(p => {
+              const active = form.cronExpr.trim() === p.value
+              return (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => applyPreset(p.value)}
+                  aria-pressed={active}
+                  className={`segmented-btn ${active ? 'segmented-btn-active' : ''}`}
+                >
+                  {p.label}
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={focusCronInput}
+              className="segmented-btn"
+            >
+              Custom
+            </button>
+          </div>
         </div>
+        <input
+          id="cron-expr"
+          ref={cronInputRef}
+          className={`input font-mono ${cronError ? 'border-red/60' : ''}`}
+          placeholder="0 9 * * *"
+          value={form.cronExpr}
+          onChange={e => updateForm({ cronExpr: e.target.value })}
+          onBlur={handleCronBlur}
+        />
         <p className="text-[10px] text-text-muted mt-1">
-          {cronError
-            ? <span className="text-red-400">{cronError}</span>
-            : cronHint
-              ? <span className="text-emerald-400">{cronHint}</span>
-              : 'Format: minute hour day-of-month month day-of-week (UTC)'}
+          {cronValidating
+            ? <span className="inline-flex items-center gap-1 text-text-muted"><Loader2 className="w-3 h-3 animate-spin" /> Validating…</span>
+            : cronError
+              ? <span className="text-red">{cronError}</span>
+              : cronHint
+                ? <span className="text-emerald">{cronHint}</span>
+                : 'Format: minute hour day-of-month month day-of-week (UTC)'}
         </p>
       </div>
       <div>
-        <label className="block text-xs text-text-muted mb-1">Prompt</label>
+        <label htmlFor="schedule-prompt" className="block text-xs text-text-muted mb-1">Prompt</label>
         <textarea
-          className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg focus:border-accent outline-none min-h-[80px] resize-y"
+          id="schedule-prompt"
+          className="input min-h-[80px] resize-y"
           placeholder="What should this agent do on each run?"
           value={form.prompt}
           onChange={e => updateForm({ prompt: e.target.value })}
@@ -205,16 +240,17 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
       <div className="flex justify-end gap-2">
         <button
           onClick={onCancel}
-          className="px-4 py-2 text-sm rounded-lg bg-surface-2 hover:bg-surface-2/80"
+          disabled={saving}
+          className="btn-secondary btn-md"
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
           disabled={saving || agents.length === 0}
-          className="px-4 py-2 text-sm font-medium rounded-lg bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
+          className="btn-primary btn-md"
         >
-          {saving ? 'Saving...' : (mode === 'edit' ? 'Save Changes' : 'Create Schedule')}
+          {saving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</> : (mode === 'edit' ? 'Save Changes' : 'Create Schedule')}
         </button>
       </div>
     </div>

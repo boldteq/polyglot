@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, type KeyboardEvent } from 'react'
 import { Search, type LucideIcon } from 'lucide-react'
 
 // ── PageShell — consistent page wrapper ──────────────────────────────────────
@@ -15,11 +15,11 @@ interface PageShellProps {
 export function PageShell({ title, subtitle, actions, children, fullHeight, noPadding }: PageShellProps) {
   return (
     <div className={fullHeight ? 'h-full flex flex-col' : ''}>
-      <div className="px-8 pt-6 pb-4 shrink-0">
+      <div className="px-8 pt-7 pb-5 shrink-0">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-            {subtitle && <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>}
+            <h1 className="text-[22px] font-bold tracking-tight">{title}</h1>
+            {subtitle && <p className="text-[13px] text-text-muted mt-1">{subtitle}</p>}
           </div>
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>
@@ -45,14 +45,14 @@ interface SectionCardProps {
 
 export function SectionCard({ title, action, children, className, noPadding }: SectionCardProps) {
   return (
-    <div className={`bg-surface rounded-xl border border-border ${className || ''}`}>
+    <div className={`card ${className || ''}`}>
       {title && (
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">{title}</span>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle">
+          <span className="text-xs font-medium text-text-muted">{title}</span>
           {action}
         </div>
       )}
-      <div className={noPadding ? '' : 'p-4'}>{children}</div>
+      <div className={noPadding ? '' : 'p-5'}>{children}</div>
     </div>
   )
 }
@@ -72,22 +72,16 @@ interface StatRowProps {
 
 export function StatRow({ stats }: StatRowProps) {
   return (
-    <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${Math.min(stats.length, 4)}, 1fr)` }}>
+    <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${Math.min(stats.length, 4)}, 1fr)` }}>
       {stats.map((s) => {
         const Icon = s.icon
         return (
-          <div key={s.label} className="bg-surface rounded-xl border border-border p-4">
-            <div className="flex items-center gap-3">
-              {Icon && (
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${s.color || 'bg-accent/10 text-accent'}`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-              )}
-              <div>
-                <div className="text-xl font-bold tracking-tight">{s.value}</div>
-                <div className="text-[10px] text-text-muted font-medium uppercase tracking-wider">{s.label}</div>
-              </div>
+          <div key={s.label} className="card p-5">
+            <div className="flex items-center gap-2 text-text-muted mb-2.5">
+              {Icon && <Icon className="w-4 h-4" />}
+              <span className="text-[13px] font-medium">{s.label}</span>
             </div>
+            <div className="text-[28px] font-bold tracking-tight leading-none">{s.value}</div>
           </div>
         )
       })}
@@ -129,19 +123,18 @@ export function FilterBar({ search, filters, children }: FilterBarProps) {
             value={search.value}
             onChange={(e) => search.onChange(e.target.value)}
             placeholder={search.placeholder || 'Search...'}
-            className="w-full bg-surface border border-border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-accent/50 transition-colors"
+            className="input pl-9"
           />
         </div>
       )}
       {filters?.map((f) => (
-        <div key={f.label} className="flex bg-surface-2 rounded-lg p-0.5 shrink-0">
+        <div key={f.label} role="group" aria-label={`Filter by ${f.label}`} className="segmented">
           {f.options.map((opt) => (
             <button
               key={opt.value}
               onClick={() => f.onChange(opt.value)}
-              className={`px-2.5 py-1.5 text-[11px] font-medium rounded-md transition-colors ${
-                f.value === opt.value ? 'bg-accent text-white' : 'text-text-muted hover:text-text'
-              }`}
+              aria-pressed={f.value === opt.value}
+              className={`segmented-btn ${f.value === opt.value ? 'segmented-btn-active' : ''}`}
             >
               {opt.label}
             </button>
@@ -162,12 +155,25 @@ interface TabNavProps {
 }
 
 export function TabNav({ tabs, active, onChange }: TabNavProps) {
+  const onKeyDown = (e: KeyboardEvent, idx: number) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    const dir = e.key === 'ArrowRight' ? 1 : -1
+    const next = tabs[(idx + dir + tabs.length) % tabs.length]
+    if (next) onChange(next.id)
+  }
+
   return (
-    <div className="flex items-center gap-1 border-b border-border mb-6">
-      {tabs.map((tab) => (
+    <div role="tablist" aria-orientation="horizontal" className="flex items-center gap-1 border-b border-border-subtle mb-6">
+      {tabs.map((tab, idx) => (
         <button
           key={tab.id}
+          role="tab"
+          id={`tab-${tab.id}`}
+          aria-selected={active === tab.id}
+          tabIndex={active === tab.id ? 0 : -1}
           onClick={() => onChange(tab.id)}
+          onKeyDown={(e) => onKeyDown(e, idx)}
           className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
             active === tab.id
               ? 'text-accent'
@@ -176,7 +182,7 @@ export function TabNav({ tabs, active, onChange }: TabNavProps) {
         >
           {tab.label}
           {tab.count !== undefined && (
-            <span className="ml-1.5 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded-full">{tab.count}</span>
+            <span className="ml-1.5 text-[10px] bg-surface-2 text-text-muted px-1.5 py-0.5 rounded-full">{tab.count}</span>
           )}
           {active === tab.id && (
             <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent rounded-full" />

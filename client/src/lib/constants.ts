@@ -37,12 +37,13 @@ export const PLAYGROUND_TIMEOUT_OPTIONS = [
 /** Playground default settings */
 export const PLAYGROUND_DEFAULT_TIMEOUT_MS = 120_000
 
+// Token-backed (flips with theme). Mirrors SOURCE_COLOR in lib/designTokens.ts.
 export const SOURCE_COLORS: Record<string, string> = {
-  playground: 'bg-purple-500/20 text-purple-400',
-  orchestration: 'bg-blue-500/20 text-blue-400',
-  schedule: 'bg-green-500/20 text-green-400',
-  webhook: 'bg-orange-500/20 text-orange-400',
-  sdk: 'bg-gray-500/20 text-gray-400',
-  'ai-chat': 'bg-pink-500/20 text-pink-400',
-  'project-chat': 'bg-cyan-500/20 text-cyan-400',
+  playground: 'bg-purple/20 text-purple',
+  orchestration: 'bg-blue/20 text-blue',
+  schedule: 'bg-green/20 text-green',
+  webhook: 'bg-orange/20 text-orange',
+  sdk: 'bg-gray/20 text-gray',
+  'ai-chat': 'bg-pink/20 text-pink',
+  'project-chat': 'bg-cyan/20 text-cyan',
 }

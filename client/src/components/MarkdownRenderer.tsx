@@ -21,6 +21,7 @@ function CopyButton({ text, size = 'sm' }: { text: string; size?: 'sm' | 'md' })
           : 'text-[11px] text-text-muted hover:text-text'
       }`}
       title="Copy code"
+      aria-label={copied ? 'Copied to clipboard' : 'Copy code to clipboard'}
     >
       {copied ? (
         <><Check className="w-3 h-3 text-green" /> Copied</>
@@ -45,7 +46,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: { co
 
             if (isInline) {
               return (
-                <code className="font-mono text-[0.88em] text-accent bg-accent/8 px-1.5 py-0.5 rounded-md border border-accent/15">
+                <code className="font-mono text-[0.88em] text-accent bg-accent/8 px-1.5 py-0.5 rounded-md border border-accent/15 break-words">
                   {children}
                 </code>
               )
@@ -81,8 +82,8 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: { co
             )
           },
           pre: ({ children }) => <>{children}</>,
-          h1: ({ children }) => <h3 className="text-[15px] font-bold text-text mt-4 mb-1.5">{children}</h3>,
-          h2: ({ children }) => <h4 className="text-[14px] font-semibold text-text mt-3.5 mb-1.5">{children}</h4>,
+          h1: ({ children }) => <h3 className="text-base font-bold text-text mt-4 mb-1.5">{children}</h3>,
+          h2: ({ children }) => <h4 className="text-sm font-semibold text-text mt-3.5 mb-1.5">{children}</h4>,
           h3: ({ children }) => <h5 className="text-[13px] font-semibold text-text mt-3 mb-1">{children}</h5>,
           h4: ({ children }) => <h6 className="text-[13px] font-medium text-text-secondary mt-2.5 mb-1">{children}</h6>,
           p: ({ children }) => <p className="my-1.5 text-[13px] text-text-secondary leading-relaxed">{children}</p>,

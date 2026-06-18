@@ -34,16 +34,17 @@ const LEVEL_NAMES: Record<number, string> = {
   8: 'Fellow',
 }
 
+// Token-backed (flips light/dark). Mirrors LEVEL_COLOR in lib/designTokens.ts.
 const LEVEL_COLORS: Record<number, { bg: string; text: string; ring: string }> = {
   0: { bg: 'bg-surface-2', text: 'text-text-muted', ring: 'ring-border' },
-  1: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', ring: 'ring-emerald-500/20' },
-  2: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', ring: 'ring-emerald-500/25' },
-  3: { bg: 'bg-teal-500/15', text: 'text-teal-400', ring: 'ring-teal-500/25' },
-  4: { bg: 'bg-blue-500/15', text: 'text-blue-400', ring: 'ring-blue-500/25' },
-  5: { bg: 'bg-purple-500/15', text: 'text-purple-400', ring: 'ring-purple-500/25' },
-  6: { bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-400', ring: 'ring-fuchsia-500/25' },
-  7: { bg: 'bg-amber-500/15', text: 'text-amber-400', ring: 'ring-amber-500/25' },
-  8: { bg: 'bg-yellow-500/20', text: 'text-yellow-300', ring: 'ring-yellow-500/30' },
+  1: { bg: 'bg-emerald/10', text: 'text-emerald', ring: 'ring-emerald/20' },
+  2: { bg: 'bg-emerald/15', text: 'text-emerald', ring: 'ring-emerald/25' },
+  3: { bg: 'bg-teal/15', text: 'text-teal', ring: 'ring-teal/25' },
+  4: { bg: 'bg-blue/15', text: 'text-blue', ring: 'ring-blue/25' },
+  5: { bg: 'bg-purple/15', text: 'text-purple', ring: 'ring-purple/25' },
+  6: { bg: 'bg-fuchsia/15', text: 'text-fuchsia', ring: 'ring-fuchsia/25' },
+  7: { bg: 'bg-amber/15', text: 'text-amber', ring: 'ring-amber/25' },
+  8: { bg: 'bg-yellow/20', text: 'text-yellow', ring: 'ring-yellow/30' },
 }
 
 const SIZES = {
@@ -92,9 +93,9 @@ export default function LevelBadge({
 
   // Special status overlays
   const statusRing =
-    status === 'probation' ? 'ring-amber-500/40 ring-2' :
-    status === 'pip' ? 'ring-red-500/40 ring-2' :
-    status === 'pending' ? 'ring-sky-500/40 ring-2' :
+    status === 'probation' ? 'ring-amber/40 ring-2' :
+    status === 'pip' ? 'ring-red/40 ring-2' :
+    status === 'pending' ? 'ring-sky/40 ring-2' :
     colors.ring
 
   return (

@@ -82,6 +82,13 @@ export default function RunHistoryPage() {
   const pagedRuns = filteredRuns.slice(offset, offset + limit)
   const filteredTotal = filteredRuns.length
 
+  const hasActiveFilters = sourceFilter !== 'all' || statusFilter !== 'all' || agentSearch.trim() !== ''
+  function clearFilters() {
+    setSourceFilter('all')
+    setStatusFilter('all')
+    setAgentSearch('')
+  }
+
   const totalCost = useMemo(() =>
     filteredRuns.reduce((s, r) => s + (r.estimatedCost || 0), 0),
     [filteredRuns])
@@ -96,18 +103,12 @@ export default function RunHistoryPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-8 space-y-6">
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Activity className="w-6 h-6" /> Run History
-          </h1>
-          <p className="text-text-muted text-sm mt-1">All agent runs from every source — unified view</p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-end">
         <button
           onClick={() => exportCsv(filteredRuns)}
           disabled={filteredRuns.length === 0}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border text-xs font-medium hover:border-accent/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="btn-secondary btn-sm"
         >
           <Download className="w-3.5 h-3.5" /> Export CSV
         </button>
@@ -117,13 +118,14 @@ export default function RunHistoryPage() {
       <div className="flex flex-col gap-3">
         {/* Agent search */}
         <div className="relative max-w-xs">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted z-10" aria-hidden="true" />
           <input
             type="text"
             value={agentSearch}
             onChange={e => setAgentSearch(e.target.value)}
             placeholder="Filter by agent name..."
-            className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2 text-xs placeholder-text-muted focus:outline-none focus:border-accent/50"
+            aria-label="Filter by agent name"
+            className="input pl-8"
           />
         </div>
 
@@ -131,14 +133,12 @@ export default function RunHistoryPage() {
           <div className="flex items-center gap-2">
             <Filter className="w-3.5 h-3.5 text-text-muted" />
             <span className="text-xs text-text-muted">Source:</span>
-            <div className="flex gap-1 flex-wrap">
+            <div className="segmented flex-wrap">
               {SOURCES.map(s => (
                 <button
                   key={s}
                   onClick={() => setSourceFilter(s)}
-                  className={`px-2.5 py-1 text-[11px] rounded-lg font-medium transition-colors ${
-                    sourceFilter === s ? 'bg-accent text-white' : 'bg-surface-2 text-text-muted hover:text-text'
-                  }`}
+                  className={sourceFilter === s ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}
                 >
                   {s}
                 </button>
@@ -147,32 +147,40 @@ export default function RunHistoryPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-muted">Status:</span>
-            {['all', 'success', 'error'].map(s => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-2.5 py-1 text-[11px] rounded-lg font-medium transition-colors ${
-                  statusFilter === s ? 'bg-accent text-white' : 'bg-surface-2 text-text-muted hover:text-text'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+            <div className="segmented">
+              {['all', 'success', 'error'].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={statusFilter === s ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
           <span className="text-xs text-text-muted ml-auto">{filteredTotal} runs · total cost: ${totalCost.toFixed(4)}</span>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-surface rounded-xl border border-border overflow-hidden">
+      <div className="card overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-text-muted text-sm">Loading...</div>
         ) : loadError ? (
           <ErrorState message={loadError} onRetry={load} className="h-48" />
         ) : pagedRuns.length === 0 ? (
           <div className="p-12 text-center text-text-muted">
-            <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No runs found</p>
+            <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
+            {hasActiveFilters ? (
+              <>
+                <p className="text-sm">No runs match these filters</p>
+                <p className="text-xs mt-1">Try clearing the source/status filter or search term.</p>
+                <button onClick={clearFilters} className="btn-secondary btn-sm mt-4">Clear filters</button>
+              </>
+            ) : (
+              <p className="text-sm">No runs found</p>
+            )}
           </div>
         ) : (
           <table className="w-full text-xs">
@@ -196,12 +204,22 @@ export default function RunHistoryPage() {
                   <Fragment key={run.id}>
                     <tr
                       onClick={() => toggleExpand(run.id)}
-                      className="border-b border-border/50 hover:bg-surface-2/30 transition-colors cursor-pointer"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          toggleExpand(run.id)
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      aria-label={`${isOpen ? 'Collapse' : 'Expand'} run details for ${run.agentName}`}
+                      className="border-b border-border/50 hover:bg-surface-2/30 transition-colors cursor-pointer focus:outline-none focus-visible:bg-surface-2/50 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/40"
                     >
                       <td className="py-2.5 pl-4 text-text-muted">
                         {isOpen
-                          ? <ChevronDown className="w-3 h-3" />
-                          : <ChevronRight className="w-3 h-3" />
+                          ? <ChevronDown className="w-3 h-3" aria-hidden="true" />
+                          : <ChevronRight className="w-3 h-3" aria-hidden="true" />
                         }
                       </td>
                       <td className="py-2.5 px-4 font-medium">{run.agentName}</td>
@@ -212,8 +230,8 @@ export default function RunHistoryPage() {
                       </td>
                       <td className="py-2.5 px-4">
                         {run.status === 'success'
-                          ? <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                          : <XCircle className="w-3.5 h-3.5 text-red-400" />
+                          ? <CheckCircle className="w-3.5 h-3.5 text-green" />
+                          : <XCircle className="w-3.5 h-3.5 text-red" />
                         }
                       </td>
                       <td className="py-2.5 px-4 text-text-muted max-w-[180px] truncate">{run.prompt}</td>
@@ -227,15 +245,15 @@ export default function RunHistoryPage() {
                         <td colSpan={9} className="px-8 py-3">
                           <div className="space-y-2">
                             <div>
-                              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Full Prompt</span>
+                              <span className="text-[10px] font-semibold text-text-muted">Full Prompt</span>
                               <p className="mt-1 text-xs text-text leading-relaxed whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
                                 {run.prompt || '(empty)'}
                               </p>
                             </div>
                             {run.error && (
                               <div>
-                                <span className="text-[10px] font-semibold uppercase tracking-wider text-red-400">Error</span>
-                                <p className="mt-1 text-xs text-red-400 font-mono leading-relaxed">{run.error}</p>
+                                <span className="text-[10px] font-semibold text-red">Error</span>
+                                <p className="mt-1 text-xs text-red font-mono leading-relaxed">{run.error}</p>
                               </div>
                             )}
                             <div className="flex items-center gap-6 text-[10px] text-text-muted pt-1">
@@ -265,7 +283,7 @@ export default function RunHistoryPage() {
             <button
               onClick={() => setOffset(Math.max(0, offset - limit))}
               disabled={offset === 0}
-              className="px-3 py-1.5 text-xs rounded-lg bg-surface-2 hover:bg-surface-2/80 disabled:opacity-30"
+              className="btn-secondary btn-sm"
             >
               Previous
             </button>
@@ -275,7 +293,7 @@ export default function RunHistoryPage() {
             <button
               onClick={() => setOffset(offset + limit)}
               disabled={offset + limit >= filteredTotal}
-              className="px-3 py-1.5 text-xs rounded-lg bg-surface-2 hover:bg-surface-2/80 disabled:opacity-30"
+              className="btn-secondary btn-sm"
             >
               Next
             </button>

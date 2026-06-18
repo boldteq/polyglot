@@ -10,6 +10,7 @@ import { CacheKeys } from '../lib/cacheKeys'
 import { toast } from '../components/Toast'
 import { getConfig } from '../lib/api'
 import { PageShell } from '../components/PageShell'
+import { statusPill, statusDot, type Intent } from '../lib/colors'
 
 interface SetupStatus {
   pm2Status: string
@@ -64,16 +65,16 @@ const runSetupSelfTest = () =>
       return r.json() as Promise<SelfTestResult>
     })
 
+// Bottom border on every table row except the last — shared so the conditional
+// isn't re-assembled inline per row across both project tables.
+const rowBorder = (index: number, total: number) => (index < total - 1 ? 'border-b border-border' : '')
+
 // ─── Reusable Components ────────────────────────────────────────────────────
 
 function StatusBadge({ ok, warn, label }: { ok: boolean; warn?: boolean; label: string }) {
-  const cls = ok
-    ? 'bg-green-muted text-green border-green/20'
-    : warn
-    ? 'bg-amber-muted text-amber border-amber/20'
-    : 'bg-red-muted text-red border-red/20'
+  const intent: Intent = ok ? 'success' : warn ? 'warning' : 'error'
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${cls}`}>
+    <span className={`pill px-2.5 py-1 text-xs font-medium ${statusPill(intent)}`}>
       {ok ? <CheckCircle className="w-3 h-3" /> : warn ? <AlertTriangle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
       {label}
     </span>
@@ -91,22 +92,17 @@ function StatusCard({
   note?: string
   action?: React.ReactNode
 }) {
-  const colors = {
-    ok:    { bg: 'bg-green-muted',  text: 'text-green',  dot: 'bg-green',  ring: 'border-green/20' },
-    warn:  { bg: 'bg-amber-muted',  text: 'text-amber',  dot: 'bg-amber',  ring: 'border-amber/20' },
-    error: { bg: 'bg-red-muted',    text: 'text-red',    dot: 'bg-red',    ring: 'border-red/20'   },
-  }
-  const c = colors[status]
+  const intent: Intent = status === 'ok' ? 'success' : status === 'warn' ? 'warning' : 'error'
   return (
     <div className="bg-surface border border-border rounded-xl p-5 flex items-start gap-4">
-      <div className={`p-2.5 rounded-lg ${c.bg} ${c.text} shrink-0`}>
+      <div className={`p-2.5 rounded-lg shrink-0 ${statusPill(intent)}`}>
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-4 mb-1">
           <p className="text-sm font-semibold">{title}</p>
-          <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${c.bg} ${c.text} ${c.ring} shrink-0`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
+          <span className={`pill px-2.5 py-1 text-xs font-medium shrink-0 ${statusPill(intent)}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${statusDot(intent)}`} />
             {statusLabel}
           </span>
         </div>
@@ -128,7 +124,7 @@ function CodeBlock({ code, lang = 'bash' }: { code: string; lang?: string }) {
       <pre className="bg-bg border border-border rounded-lg px-4 py-3.5 text-xs font-mono text-text-secondary overflow-x-auto leading-relaxed whitespace-pre-wrap">
         <code>{code}</code>
       </pre>
-      <button onClick={copy} className="absolute top-2 right-2 px-2 py-1 text-[10px] font-medium bg-surface border border-border rounded text-text-muted hover:text-text transition-colors opacity-0 group-hover:opacity-100">
+      <button onClick={copy} aria-label="Copy code to clipboard" className="btn-secondary btn-sm absolute top-2 right-2 opacity-0 group-hover:opacity-100">
         {copied ? 'Copied!' : 'Copy'}
       </button>
       <span className="absolute bottom-2 right-2 text-[10px] text-text-muted/40 font-mono">{lang}</span>
@@ -171,6 +167,8 @@ function Collapsible({ title, children, defaultOpen = false }: { title: string; 
     <div className="border border-border rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-label={`${title}, ${open ? 'expanded' : 'collapsed'}`}
         className="w-full flex items-center justify-between px-5 py-3.5 bg-surface hover:bg-surface-2 transition-colors text-sm font-medium text-left"
       >
         {title}
@@ -259,7 +257,7 @@ export default function Setup() {
       <section>
         <div className="flex items-center justify-between mb-1">
           <SectionHeader icon={Cpu} title="System Health" subtitle="Live status of every component." />
-          <button onClick={() => { refetchStatus(); refetchProjects() }} className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text transition-colors mb-5">
+          <button onClick={() => { refetchStatus(); refetchProjects() }} className="btn-ghost btn-sm mb-5">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
         </div>
@@ -267,7 +265,7 @@ export default function Setup() {
         {statusLoading ? (
           <div className="grid grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-28 bg-surface border border-border rounded-xl animate-pulse" />
+              <div key={`status-skeleton-${i}`} className="h-28 bg-surface border border-border rounded-xl animate-pulse" />
             ))}
           </div>
         ) : (
@@ -387,9 +385,9 @@ export default function Setup() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-2">
-                  <th className="text-left px-5 py-3 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Project</th>
-                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted uppercase tracking-wider">SDK Installed</th>
-                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted uppercase tracking-wider">package.json Entry</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-semibold text-text-muted ">Project</th>
+                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted ">SDK Installed</th>
+                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted ">package.json Entry</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -398,7 +396,7 @@ export default function Setup() {
                   const isInstalling = installingPaths.has(p.path)
                   const needsInstall = !p.hasSdk || !p.hasPackageEntry
                   return (
-                    <tr key={p.path} className={`${i < projects.length - 1 ? 'border-b border-border' : ''} hover:bg-surface-2 transition-colors`}>
+                    <tr key={p.path} className={`${rowBorder(i, projects.length)} hover:bg-surface-2 transition-colors`}>
                       <td className="px-5 py-3.5">
                         <p className="font-medium text-sm">{p.name}</p>
                         <p className="text-[11px] text-text-muted font-mono mt-0.5">{p.path.replace(config?.home || '', '~')}</p>
@@ -414,7 +412,7 @@ export default function Setup() {
                           <button
                             disabled={isInstalling}
                             onClick={() => handleInstallSdk(p.path)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                            className="btn-primary btn-sm"
                           >
                             {isInstalling ? <><RefreshCw className="w-3 h-3 animate-spin" /> Installing...</> : <><Package className="w-3 h-3" /> Install SDK</>}
                           </button>
@@ -460,10 +458,10 @@ export default function Setup() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-surface-2">
-                  <th className="text-left px-5 py-3 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Project</th>
-                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Script</th>
-                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Playwright</th>
-                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Browser</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-semibold text-text-muted ">Project</th>
+                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted ">Script</th>
+                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted ">Playwright</th>
+                  <th className="text-center px-4 py-3 text-[11px] font-semibold text-text-muted ">Browser</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -475,7 +473,7 @@ export default function Setup() {
                   const needsBrowser = scriptReady && p.hasPlaywright && !p.hasBrowser
                   const fullyReady = scriptReady && p.hasPlaywright && p.hasBrowser
                   return (
-                    <tr key={p.path} className={`${i < projects.length - 1 ? 'border-b border-border' : ''} hover:bg-surface-2 transition-colors`}>
+                    <tr key={p.path} className={`${rowBorder(i, projects.length)} hover:bg-surface-2 transition-colors`}>
                       <td className="px-5 py-3.5">
                         <p className="font-medium text-sm">{p.name}</p>
                         <p className="text-[11px] text-text-muted font-mono mt-0.5">{p.path.replace(config?.home || '', '~')}</p>
@@ -502,7 +500,7 @@ export default function Setup() {
                           <button
                             disabled={isInstalling}
                             onClick={() => handleInstallScreenshot(p.path)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                            className="btn-primary btn-sm"
                           >
                             {isInstalling
                               ? <><RefreshCw className="w-3 h-3 animate-spin" /> Installing...</>
@@ -520,7 +518,7 @@ export default function Setup() {
                           <button
                             disabled={isInstalling}
                             onClick={() => handleInstallScreenshot(p.path)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-surface-2 text-text-secondary border border-border rounded-lg hover:bg-surface-3 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="btn-secondary btn-sm"
                           >
                             {isInstalling
                               ? <><RefreshCw className="w-3 h-3 animate-spin" /> Updating...</>
@@ -752,7 +750,7 @@ function SelfTestSection() {
           <button
             onClick={handleRun}
             disabled={running}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-accent text-white rounded-lg disabled:opacity-40 hover:bg-accent-hover transition-colors shrink-0"
+            className="btn-primary btn-md shrink-0"
           >
             {running ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
             {running ? 'Running…' : 'Run Self-Test'}
@@ -798,7 +796,7 @@ function StageRow({ stage }: { stage: SelfTestStage }) {
       >
         <Icon className={`w-3.5 h-3.5 shrink-0 ${tone}`} />
         <span className="text-xs font-medium flex-1">{stage.name.replace(/_/g, ' ')}</span>
-        <span className={`text-[10px] font-bold uppercase tracking-wider ${tone}`}>
+        <span className={`text-[10px] font-bold ${tone}`}>
           {stage.ok ? 'pass' : stage.detail?.skipped ? 'skip' : 'fail'}
         </span>
         {open ? <ChevronDown className="w-3.5 h-3.5 text-text-muted" /> : <ChevronRight className="w-3.5 h-3.5 text-text-muted" />}

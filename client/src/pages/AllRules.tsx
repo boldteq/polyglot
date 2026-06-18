@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Clock, FolderOpen, Search, Globe, Shield } from 'lucide-react'
 import {
@@ -12,8 +12,10 @@ import {
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
 import type { UnifiedRule } from '../types'
 import { toast } from '../components/Toast'
+import { confirmDialog } from '../lib/confirm'
 
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime()
@@ -36,31 +38,34 @@ export default function AllRules() {
   const [createLoading, setCreateLoading] = useState(false)
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set())
 
-  const filtered = (rules || []).filter((r) => {
+  const filtered = useMemo(() => (rules || []).filter((r) => {
     if (scopeFilter === 'global' && r.scope !== 'global') return false
     if (scopeFilter === 'project' && r.scope !== 'project') return false
     if (!search) return true
     const q = search.toLowerCase()
     return r.name.toLowerCase().includes(q) || (r.projectName || '').toLowerCase().includes(q)
-  })
+  }), [rules, scopeFilter, search])
 
   // Group: global first, then by project
-  const globalRules = filtered.filter(r => r.scope === 'global')
-  const projectGroups = new Map<string, UnifiedRule[]>()
-  for (const r of filtered.filter(r => r.scope === 'project')) {
-    const key = r.projectName || 'Unknown'
-    if (!projectGroups.has(key)) projectGroups.set(key, [])
-    projectGroups.get(key)!.push(r)
-  }
+  const { globalRules, projectGroups } = useMemo(() => {
+    const globals = filtered.filter(r => r.scope === 'global')
+    const groups = new Map<string, UnifiedRule[]>()
+    for (const r of filtered.filter(r => r.scope === 'project')) {
+      const key = r.projectName || 'Unknown'
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(r)
+    }
+    return { globalRules: globals, projectGroups: groups }
+  }, [filtered])
 
   // Unique projects for form
-  const projects = [...new Map(
+  const projects = useMemo(() => [...new Map(
     (rules || []).filter(r => r.scope === 'project' && r.projectId)
       .map(r => [r.projectId, { id: r.projectId!, name: r.projectName || '' }])
-  ).values()]
+  ).values()], [rules])
 
   const handleDelete = async (rule: UnifiedRule) => {
-    if (!confirm(`Delete "${rule.name}"?`)) return
+    if (!(await confirmDialog({ title: 'Delete rule?', message: `"${rule.name}" will be permanently deleted.`, danger: true, confirmLabel: 'Delete' }))) return
     const key = rule.scope === 'global' ? `global-${rule.name}` : `${rule.projectId}-${rule.name}`
     setDeletingKeys(prev => new Set(prev).add(key))
     try {
@@ -132,6 +137,8 @@ export default function AllRules() {
           <button
             onClick={() => handleDelete(rule)}
             disabled={deleting}
+            title="Delete rule"
+            aria-label={`Delete rule ${rule.name}`}
             className="p-1 text-text-muted hover:text-red transition-colors rounded disabled:opacity-50"
           >
             <Trash2 className="w-3 h-3" />
@@ -149,10 +156,7 @@ export default function AllRules() {
           <h2 className="text-base font-semibold">Rules</h2>
           <p className="text-xs text-text-muted mt-0.5">{(rules || []).length} rules across all scopes</p>
         </div>
-        <button
-          onClick={() => setCreating(c => !c)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-medium rounded-lg transition-colors"
-        >
+        <button onClick={() => setCreating(c => !c)} className="btn-primary btn-sm">
           <Plus className="w-3.5 h-3.5" />
           New Rule
         </button>
@@ -160,7 +164,7 @@ export default function AllRules() {
 
       {/* Create form */}
       {creating && (
-        <div className="bg-surface border border-border rounded-xl p-4 mb-4">
+        <div className="card p-4 mb-4">
           <p className="text-xs font-semibold mb-3">New Rule</p>
           <div className="flex gap-2">
             <input
@@ -169,12 +173,12 @@ export default function AllRules() {
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
               placeholder="rule-name"
-              className="flex-1 bg-surface-2 border border-border rounded-lg px-2.5 py-1.5 text-xs outline-none"
+              className="input flex-1"
             />
             <select
               value={newScope}
               onChange={e => setNewScope(e.target.value as 'global' | 'project')}
-              className="bg-surface-2 border border-border rounded-lg px-2.5 py-1.5 text-xs outline-none"
+              className="input w-auto"
             >
               <option value="global">Global</option>
               <option value="project">Project</option>
@@ -183,7 +187,7 @@ export default function AllRules() {
               <select
                 value={newProject}
                 onChange={e => setNewProject(e.target.value)}
-                className="bg-surface-2 border border-border rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                className="input w-auto"
               >
                 <option value="">Select project…</option>
                 {projects.map(p => (
@@ -191,16 +195,12 @@ export default function AllRules() {
                 ))}
               </select>
             )}
-            <button
-              onClick={handleCreate}
-              disabled={createLoading}
-              className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-            >
+            <button onClick={handleCreate} disabled={createLoading} className="btn-primary btn-sm">
               {createLoading ? 'Creating…' : 'Create'}
             </button>
             <button
               onClick={() => { setCreating(false); setNewName(''); setNewProject('') }}
-              className="px-3 py-1.5 text-xs text-text-muted hover:text-text rounded-lg transition-colors"
+              className="btn-ghost btn-sm"
             >
               Cancel
             </button>
@@ -210,23 +210,21 @@ export default function AllRules() {
 
       {/* Filters */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex items-center gap-2 bg-surface border border-border rounded-lg px-2.5 py-1.5 flex-1">
-          <Search className="w-3.5 h-3.5 text-text-muted shrink-0" />
+        <div className="relative flex-1">
+          <Search className="w-3.5 h-3.5 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 z-10" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search rules…"
-            className="flex-1 bg-transparent text-xs outline-none"
+            className="input pl-9"
           />
         </div>
-        <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+        <div className="segmented">
           {(['all', 'global', 'project'] as const).map(s => (
             <button
               key={s}
               onClick={() => setScopeFilter(s)}
-              className={`px-3 py-1.5 capitalize transition-colors ${
-                scopeFilter === s ? 'bg-accent text-white' : 'bg-surface text-text-muted hover:bg-surface-2'
-              }`}
+              className={`capitalize ${scopeFilter === s ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}`}
             >
               {s}
             </button>
@@ -242,15 +240,18 @@ export default function AllRules() {
           <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-text-muted">
-          <Shield className="w-8 h-8 mx-auto mb-2 opacity-30" />
-          <p className="text-xs">{search ? 'No rules match your search' : 'No rules yet'}</p>
-        </div>
+        <EmptyState
+          icon={Shield}
+          title={search ? 'No rules match your search' : 'No rules yet'}
+          card
+          size="sm"
+          action={search ? undefined : { label: 'New Rule', onClick: () => setCreating(true) }}
+        />
       ) : (
         <div className="space-y-4">
           {/* Global rules */}
           {globalRules.length > 0 && (
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div className="card overflow-hidden">
               <div className="px-4 py-2.5 border-b border-border bg-surface-2/40 flex items-center gap-2">
                 <Globe className="w-3.5 h-3.5 text-text-muted" />
                 <span className="text-xs font-semibold">Global</span>
@@ -262,7 +263,7 @@ export default function AllRules() {
 
           {/* Project rules */}
           {[...projectGroups.entries()].map(([projectName, prules]) => (
-            <div key={projectName} className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div key={projectName} className="card overflow-hidden">
               <div className="px-4 py-2.5 border-b border-border bg-surface-2/40 flex items-center gap-2">
                 <FolderOpen className="w-3.5 h-3.5 text-text-muted" />
                 <span className="text-xs font-semibold">{projectName}</span>

@@ -6,6 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import Sidebar from './components/Sidebar'
 import AiAssistant from './components/AiAssistant'
 import { ToastContainer } from './components/Toast'
+import { ConfirmHost } from './lib/confirm'
 import CommandPalette from './components/CommandPalette'
 import { useApi } from './hooks/useApi'
 import { getProjects } from './lib/api'
@@ -115,11 +116,12 @@ export default function App() {
         {/* Global overlays */}
         <CommandPalette />
         <ToastContainer />
+        <ConfirmHost />
 
         {/* AI assistant */}
         {aiOpen && (
           <div className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm flex items-end justify-end p-6">
-            <div className="w-[480px] max-w-full bg-surface border border-border rounded-2xl shadow-2xl flex flex-col" style={{ maxHeight: '80vh' }}>
+            <div className="w-[480px] max-w-full bg-surface border border-border rounded-2xl shadow-pop flex flex-col max-h-[80vh]">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                 <span className="text-sm font-semibold flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-accent" /> AI Assistant

@@ -35,6 +35,8 @@ import {
 } from '../lib/api'
 import { toast } from '../components/Toast'
 import { ErrorState } from '../components/ErrorState'
+import { PageShell } from '../components/PageShell'
+import { confirmDialog } from '../lib/confirm'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -328,23 +330,23 @@ function HistoryStatsPanel({ stats }: { stats: MemoryHistoryStats | null }) {
         <div className="bg-surface-2 rounded-xl p-3 text-center">
           <History className="w-4 h-4 mx-auto mb-1 text-accent" />
           <p className="text-lg font-bold text-text">{stats.totalEntries}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider">Changes</p>
+          <p className="text-[10px] text-text-muted ">Changes</p>
         </div>
         <div className="bg-surface-2 rounded-xl p-3 text-center">
           <Plus className="w-4 h-4 mx-auto mb-1 text-green" />
           <p className="text-lg font-bold text-green">{stats.totalAdded}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider">Added</p>
+          <p className="text-[10px] text-text-muted ">Added</p>
         </div>
         <div className="bg-surface-2 rounded-xl p-3 text-center">
           <Minus className="w-4 h-4 mx-auto mb-1 text-red" />
           <p className="text-lg font-bold text-red">{stats.totalRemoved}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider">Removed</p>
+          <p className="text-[10px] text-text-muted ">Removed</p>
         </div>
       </div>
 
       {/* Action breakdown */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+        <p className="text-[10px] font-semibold text-text-muted mb-2">
           By Action
         </p>
         <div className="space-y-1.5">
@@ -377,7 +379,7 @@ function HistoryStatsPanel({ stats }: { stats: MemoryHistoryStats | null }) {
       {/* Hot files */}
       {stats.hotFiles.length > 0 && (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-1">
+          <p className="text-[10px] font-semibold text-text-muted mb-2 flex items-center gap-1">
             <Flame className="w-3 h-3 text-amber" />
             Most Changed
           </p>
@@ -402,7 +404,7 @@ function HistoryStatsPanel({ stats }: { stats: MemoryHistoryStats | null }) {
       {/* Time range */}
       {stats.firstEntry && (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+          <p className="text-[10px] font-semibold text-text-muted mb-2">
             Time Range
           </p>
           <div className="bg-surface-2 rounded-xl p-3 space-y-1">
@@ -423,7 +425,7 @@ function HistoryStatsPanel({ stats }: { stats: MemoryHistoryStats | null }) {
       {/* Daily activity - last 14 days */}
       {Object.keys(stats.dailyCounts).length > 0 && (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+          <p className="text-[10px] font-semibold text-text-muted mb-2">
             Daily Activity
           </p>
           <div className="space-y-0.5">
@@ -524,7 +526,7 @@ export default function MemoryHistory() {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const handleClearHistory = async () => {
-    if (!confirm('Clear all memory history? This cannot be undone.')) return
+    if (!(await confirmDialog({ title: 'Clear all memory history?', message: 'This cannot be undone.', danger: true, confirmLabel: 'Clear all' }))) return
     try {
       await clearMemoryHistory()
       toast('success', 'History cleared')
@@ -547,44 +549,34 @@ export default function MemoryHistory() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
+    <PageShell
+      title="Memory History"
+      subtitle="Audit log of all memory changes with diffs"
+      fullHeight
+      noPadding
+      actions={
+        <>
+          <Link to="/memory" className="btn-secondary btn-sm">
+            <Brain className="w-3.5 h-3.5" />
+            Memory Brain
+          </Link>
+          {total > 0 && (
+            <button
+              onClick={handleClearHistory}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red hover:bg-red-muted rounded-lg transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear
+            </button>
+          )}
+        </>
+      }
+    >
+    <div className="flex h-full overflow-hidden">
       {/* ═══ Main Content ═══ */}
       <div className="flex-1 min-w-0 flex flex-col h-full">
-        {/* Header */}
+        {/* Search + Filters */}
         <div className="px-6 py-4 border-b border-border bg-surface shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-accent-muted">
-                <History className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h1 className="text-[18px] font-bold tracking-tight">Memory History</h1>
-                <p className="text-[12px] text-text-muted">
-                  Audit log of all memory changes with diffs
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link
-                to="/memory"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-text-secondary hover:text-text bg-surface-2 hover:bg-surface-3 rounded-lg transition-colors"
-              >
-                <Brain className="w-3.5 h-3.5" />
-                Memory Brain
-              </Link>
-              {total > 0 && (
-                <button
-                  onClick={handleClearHistory}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-red hover:bg-red-muted rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Search + Filters */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
@@ -593,7 +585,7 @@ export default function MemoryHistory() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && loadEntries(0)}
                 placeholder="Search file paths, names..."
-                className="w-full pl-9 pr-8 py-2 text-[13px] bg-surface-2 border border-border rounded-lg text-text placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors"
+                className="input pl-9 pr-8"
               />
               {searchQuery && (
                 <button
@@ -628,6 +620,7 @@ export default function MemoryHistory() {
             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               <button
                 onClick={() => setActionFilter('')}
+                aria-pressed={!actionFilter}
                 className={`px-2.5 py-1 text-[11px] font-medium rounded-lg transition-colors ${
                   !actionFilter
                     ? 'bg-accent-muted text-accent'
@@ -643,6 +636,7 @@ export default function MemoryHistory() {
                   <button
                     key={action}
                     onClick={() => setActionFilter(isActive ? '' : action)}
+                    aria-pressed={isActive}
                     className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-lg transition-colors ${
                       isActive
                         ? `${meta.bg} ${meta.color}`
@@ -670,7 +664,7 @@ export default function MemoryHistory() {
             <div className="flex items-center justify-center py-20">
               <div className="text-center space-y-3">
                 <History className="w-12 h-12 text-text-muted mx-auto opacity-30" />
-                <p className="text-[15px] text-text-secondary font-medium">
+                <p className="text-base text-text-secondary font-medium">
                   {searchQuery || actionFilter ? 'No matching entries' : 'No history yet'}
                 </p>
                 <p className="text-[12px] text-text-muted max-w-sm">
@@ -703,7 +697,7 @@ export default function MemoryHistory() {
                 <div key={dateLabel}>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="h-px flex-1 bg-border" />
-                    <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider px-2">
+                    <span className="text-[11px] font-semibold text-text-muted px-2">
                       {dateLabel}
                     </span>
                     <div className="h-px flex-1 bg-border" />
@@ -762,6 +756,7 @@ export default function MemoryHistory() {
         <div className="px-3 py-2 border-b border-border shrink-0 flex items-center gap-1">
           <button
             onClick={() => setRightPanel('stats')}
+            aria-pressed={rightPanel === 'stats'}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg transition-colors ${
               rightPanel === 'stats'
                 ? 'bg-accent-muted text-accent'
@@ -773,6 +768,7 @@ export default function MemoryHistory() {
           </button>
           <button
             onClick={() => setRightPanel('detail')}
+            aria-pressed={rightPanel === 'detail'}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg transition-colors ${
               rightPanel === 'detail'
                 ? 'bg-accent-muted text-accent'
@@ -792,7 +788,7 @@ export default function MemoryHistory() {
             <div className="space-y-4">
               {/* Entry detail */}
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+                <p className="text-[10px] font-semibold text-text-muted mb-2">
                   Change Detail
                 </p>
                 <div className="bg-surface-2 rounded-xl p-3 space-y-2">
@@ -822,18 +818,18 @@ export default function MemoryHistory() {
 
               {/* Metrics */}
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+                <p className="text-[10px] font-semibold text-text-muted mb-2">
                   Changes
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-green-muted rounded-lg p-2.5 text-center">
-                    <p className="text-[16px] font-bold text-green">
+                    <p className="text-base font-bold text-green">
                       +{selectedEntry.linesAdded}
                     </p>
                     <p className="text-[10px] text-text-muted">Lines added</p>
                   </div>
                   <div className="bg-red-muted rounded-lg p-2.5 text-center">
-                    <p className="text-[16px] font-bold text-red">
+                    <p className="text-base font-bold text-red">
                       -{selectedEntry.linesRemoved}
                     </p>
                     <p className="text-[10px] text-text-muted">Lines removed</p>
@@ -845,7 +841,7 @@ export default function MemoryHistory() {
               {(selectedEntry.sizeBefore !== undefined ||
                 selectedEntry.sizeAfter !== undefined) && (
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+                  <p className="text-[10px] font-semibold text-text-muted mb-2">
                     File Size
                   </p>
                   <div className="bg-surface-2 rounded-xl p-3 space-y-1">
@@ -889,7 +885,7 @@ export default function MemoryHistory() {
               {selectedEntry.frontmatter &&
                 Object.keys(selectedEntry.frontmatter).length > 0 && (
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+                    <p className="text-[10px] font-semibold text-text-muted mb-2">
                       Metadata
                     </p>
                     <div className="bg-surface-2 rounded-xl p-3 space-y-1">
@@ -906,7 +902,7 @@ export default function MemoryHistory() {
               {/* Move info */}
               {selectedEntry.action === 'move' && (
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+                  <p className="text-[10px] font-semibold text-text-muted mb-2">
                     Move Details
                   </p>
                   <div className="bg-surface-2 rounded-xl p-3 space-y-1">
@@ -949,5 +945,6 @@ export default function MemoryHistory() {
         </div>
       </aside>
     </div>
+    </PageShell>
   )
 }

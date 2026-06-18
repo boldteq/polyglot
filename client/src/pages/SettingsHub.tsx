@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageShell, TabNav } from '../components/PageShell'
+import { Spinner } from '../components/Skeleton'
 
 // Lazy-load tab panels — each loads only when its tab is selected
 const GeneralTab = lazy(() => import('./Settings'))
@@ -12,27 +13,21 @@ const BackupTab = lazy(() => import('./Backup'))
 const DatabaseTab = lazy(() => import('./DatabaseExplorer'))
 const TuningTab = lazy(() => import('./SettingsTuning'))
 
+// Flat, calm tab row (the System/Knowledge clusters read cluttered). ids
+// unchanged so ?tab= deep links still resolve.
 const TABS = [
   { id: 'general', label: 'General' },
   { id: 'tuning', label: 'Tuning' },
   { id: 'claude-md', label: 'CLAUDE.md' },
-  { id: 'commands', label: 'Commands & Rules' },
-  { id: 'templates', label: 'Templates' },
   { id: 'memory', label: 'Memory' },
+  { id: 'templates', label: 'Templates' },
+  { id: 'commands', label: 'Commands & Rules' },
   { id: 'backup', label: 'Backup' },
   { id: 'database', label: 'Database' },
 ]
 
 interface Props {
   onSave: () => void
-}
-
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center h-48">
-      <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
 }
 
 export default function SettingsHub({ onSave }: Props) {

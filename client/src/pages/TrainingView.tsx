@@ -8,6 +8,9 @@ import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
+import { PageShell } from '../components/PageShell'
+import Breadcrumbs, { type BreadcrumbItem } from '../components/Breadcrumbs'
+import { confirmDialog } from '../lib/confirm'
 import type { TrainingCorrection } from '../types'
 
 export default function TrainingView() {
@@ -45,7 +48,7 @@ export default function TrainingView() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this correction?')) return
+    if (!(await confirmDialog({ title: 'Delete correction?', message: 'This correction will be removed.', danger: true, confirmLabel: 'Delete' }))) return
     try {
       await deleteTraining(name!, id)
       refetch()
@@ -55,7 +58,7 @@ export default function TrainingView() {
   }
 
   const handleBake = async () => {
-    if (!confirm(`Bake ${active.length} correction(s) permanently into the agent's system prompt? This cannot be undone.`)) return
+    if (!(await confirmDialog({ title: 'Bake corrections into the agent?', message: `Permanently merge ${active.length} correction(s) into the agent's system prompt. This cannot be undone.`, danger: true, confirmLabel: 'Bake in' }))) return
     setBaking(true)
     try {
       const result = await bakeTraining(name!)
@@ -96,30 +99,19 @@ export default function TrainingView() {
 
   if (error) return <ErrorState message={error} onRetry={refetch} />
 
+  const crumbs: BreadcrumbItem[] = [
+    { label: 'Agents', to: '/agents' },
+    { label: name || '', to: `/global/agents/${name}` },
+    { label: 'Training' },
+  ]
+
   return (
-    <div className="p-8 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-3">
-            <GraduationCap className="w-6 h-6 text-accent" />
-            Training — {name}
-          </h1>
-          <p className="text-text-secondary text-sm mt-1">
-            {active.length} active correction{active.length !== 1 ? 's' : ''} will be injected into the next run
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
-          >
+    <PageShell
+      title={`Training — ${name}`}
+      subtitle={`${active.length} active correction${active.length !== 1 ? 's' : ''} will be injected into the next run`}
+      actions={
+        <>
+          <button onClick={() => setAdding(true)} className="btn-primary btn-md">
             <Plus className="w-4 h-4" />
             Add Correction
           </button>
@@ -127,13 +119,27 @@ export default function TrainingView() {
             <button
               onClick={handleBake}
               disabled={baking}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-amber/10 text-amber border border-amber/30 rounded-lg hover:bg-amber/20 disabled:opacity-40 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-amber/10 text-amber border border-amber/30 rounded-lg hover:bg-amber/20 disabled:opacity-40 transition-colors"
             >
               <ChefHat className="w-4 h-4" />
               {baking ? 'Baking...' : `Bake ${active.length} into Prompt`}
             </button>
           )}
-        </div>
+        </>
+      }
+    >
+      <div className="max-w-4xl">
+      {/* Back + breadcrumbs */}
+      <div className="flex items-center gap-3 mb-5">
+        <button
+          onClick={() => navigate(-1)}
+          className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <Breadcrumbs items={crumbs} />
+        <GraduationCap className="w-4 h-4 text-accent" />
       </div>
 
       {/* Bake explanation */}
@@ -149,10 +155,10 @@ export default function TrainingView() {
 
       {/* Add form */}
       {adding && (
-        <div className="bg-surface border border-accent/30 rounded-xl p-5 mb-6">
+        <div className="card p-5 mb-6 border-accent/30">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold">New Correction</p>
-            <button onClick={() => setAdding(false)} className="text-text-muted hover:text-text">
+            <button onClick={() => setAdding(false)} className="p-1.5 rounded-lg text-text-muted hover:bg-surface-2 hover:text-text">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -162,7 +168,7 @@ export default function TrainingView() {
               <input
                 value={issue}
                 onChange={e => setIssue(e.target.value)}
-                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+                className="input"
                 placeholder="e.g., Used bullet points instead of a table for competitor analysis"
                 autoFocus
               />
@@ -173,14 +179,14 @@ export default function TrainingView() {
                 value={correction}
                 onChange={e => setCorrection(e.target.value)}
                 rows={3}
-                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+                className="input resize-y"
                 placeholder="e.g., Always use a markdown table with columns: Name, Pricing, Key Feature, Weakness"
               />
             </div>
             <button
               onClick={handleAdd}
               disabled={submitting || !issue.trim() || !correction.trim()}
-              className="px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
+              className="btn-primary btn-md"
             >
               {submitting ? 'Adding...' : 'Add Correction'}
             </button>
@@ -190,7 +196,7 @@ export default function TrainingView() {
 
       {/* Active corrections */}
       {active.length === 0 && !adding ? (
-        <div className="bg-surface rounded-xl border border-border p-12 text-center">
+        <div className="card p-12 text-center">
           <GraduationCap className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p className="text-text-secondary font-medium">No corrections yet</p>
           <p className="text-text-muted text-sm mt-1">
@@ -200,25 +206,25 @@ export default function TrainingView() {
       ) : (
         <div className="space-y-3">
           {active.map(c => (
-            <div key={c.id} className="group bg-surface border border-border rounded-xl p-4 hover:border-accent/30 transition-all">
+            <div key={c.id} className="group card card-hover p-4 hover:border-accent/30">
               {editingId === c.id ? (
                 <div className="space-y-3">
                   <input
                     value={editIssue}
                     onChange={e => setEditIssue(e.target.value)}
-                    className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+                    className="input"
                   />
                   <textarea
                     value={editCorrection}
                     onChange={e => setEditCorrection(e.target.value)}
                     rows={2}
-                    className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+                    className="input resize-y"
                   />
                   <div className="flex gap-2">
-                    <button onClick={handleUpdate} className="px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors">
+                    <button onClick={handleUpdate} className="btn-primary btn-sm">
                       Save
                     </button>
-                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs text-text-secondary hover:text-text transition-colors">
+                    <button onClick={() => setEditingId(null)} className="btn-ghost btn-sm">
                       Cancel
                     </button>
                   </div>
@@ -250,7 +256,7 @@ export default function TrainingView() {
                       <Clock className="w-3 h-3" />
                       {new Date(c.timestamp).toLocaleString()}
                     </span>
-                    <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded-full font-medium">
+                    <span className="text-[10px] bg-emerald/10 text-emerald px-1.5 py-0.5 rounded-full font-medium">
                       active
                     </span>
                   </div>
@@ -264,12 +270,12 @@ export default function TrainingView() {
       {/* Archived corrections */}
       {archived.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold text-text-secondary mb-3">
             Archived ({archived.length})
           </h2>
           <div className="space-y-2 opacity-60">
             {archived.map(c => (
-              <div key={c.id} className="bg-surface border border-border rounded-lg p-3">
+              <div key={c.id} className="card p-3">
                 <p className="text-xs text-text-muted">Issue: {c.issue}</p>
                 <p className="text-xs text-text-secondary">Correction: {c.correction}</p>
               </div>
@@ -277,6 +283,7 @@ export default function TrainingView() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageShell>
   )
 }

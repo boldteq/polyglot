@@ -3,9 +3,8 @@
 // edits broadcast a `config:update` SSE event so every other open page picks
 // up the new value within a second — no reload needed.
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import {
-  Sliders,
   History,
   AlertTriangle,
   CheckCircle2,
@@ -30,9 +29,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   api_limits: 'API Limits',
   ui_caps: 'UI Display Caps',
   defaults: 'Default Values',
+  database: 'Database Governance',
 }
 
-const CATEGORY_ORDER = ['health', 'time', 'api_limits', 'ui_caps', 'defaults']
+const CATEGORY_ORDER = ['health', 'time', 'api_limits', 'ui_caps', 'defaults', 'database']
 
 export default function SettingsTuning() {
   const [data, setData] = useState<AppConfigResponse | null>(null)
@@ -57,7 +57,7 @@ export default function SettingsTuning() {
 
   useEffect(() => { load() }, [])
 
-  const handleSave = async (key: string, value: unknown, category: string) => {
+  const handleSave = useCallback(async (key: string, value: unknown, category: string) => {
     setSavingKey(key)
     try {
       await updateAppConfigKey(key, value, category)
@@ -70,7 +70,21 @@ export default function SettingsTuning() {
     } finally {
       setSavingKey(null)
     }
-  }
+  }, [])
+
+  const handleSaveDispatch = useCallback(async (next: DispatchPolicy) => {
+    setSavingKey('dispatch_policy')
+    try {
+      await updateDispatchPolicy(next)
+      toast('success', 'Dispatch policy saved')
+      const fresh = await getAppConfig()
+      setData(fresh)
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setSavingKey(null)
+    }
+  }, [])
 
   const openAuditFor = async (key: string) => {
     if (openAudit === key) { setOpenAudit(null); return }
@@ -86,30 +100,22 @@ export default function SettingsTuning() {
 
   if (loading || !data) {
     return (
-      <div className="p-8 flex items-center justify-center text-text-muted">
+      <div className="flex items-center justify-center h-64 text-text-muted">
         <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Loading config...
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       {data.fallbackActive && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center gap-2 text-xs text-amber-300">
+        <div className="bg-amber/10 border border-amber/30 rounded-xl p-3 flex items-center gap-2 text-xs text-amber">
           <AlertTriangle className="w-4 h-4" />
           Fallback config in use — backend could not read app_config from SQLite. Values reflect hardcoded defaults.
         </div>
       )}
 
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 ring-1 ring-purple-500/20 flex items-center justify-center">
-          <Sliders className="w-5 h-5 text-purple-400" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold">Tuning</h1>
-          <p className="text-xs text-text-muted">Live-tune health thresholds, time windows, API limits, UI caps, defaults & dispatch policy. Changes propagate via SSE.</p>
-        </div>
-      </div>
+      <p className="text-[13px] text-text-muted">Live-tune health thresholds, time windows, API limits, UI caps, defaults & dispatch policy. Changes propagate via SSE.</p>
 
       {CATEGORY_ORDER.map((category) => {
         const groupConfig = (data.config as unknown as Record<string, Record<string, unknown>>)[category]
@@ -117,7 +123,7 @@ export default function SettingsTuning() {
         const groupKeys = Object.entries(groupConfig).filter(([leaf]) => schemas[`${category}.${leaf}`])
         if (groupKeys.length === 0) return null
         return (
-          <section key={category} className="bg-surface rounded-xl border border-border overflow-hidden">
+          <section key={category} className="card overflow-hidden">
             <header className="px-5 py-3 border-b border-border">
               <h2 className="text-sm font-bold">{CATEGORY_LABELS[category]}</h2>
             </header>
@@ -148,19 +154,7 @@ export default function SettingsTuning() {
 
       <DispatchPolicySection
         policy={data.dispatchPolicy}
-        onSave={async (next) => {
-          setSavingKey('dispatch_policy')
-          try {
-            await updateDispatchPolicy(next)
-            toast('success', 'Dispatch policy saved')
-            const fresh = await getAppConfig()
-            setData(fresh)
-          } catch (err) {
-            toast('error', err instanceof Error ? err.message : 'Save failed')
-          } finally {
-            setSavingKey(null)
-          }
-        }}
+        onSave={handleSaveDispatch}
         saving={savingKey === 'dispatch_policy'}
       />
     </div>
@@ -188,7 +182,59 @@ function ConfigRow({
 
   const parseDraft = (): unknown => {
     if (schema.type === 'number') return Number(draft)
+    if (schema.type === 'boolean') return draft === 'true'
     return draft
+  }
+
+  // Boolean keys render an inline toggle that saves immediately on click.
+  if (schema.type === 'boolean') {
+    const on = value === true
+    return (
+      <div className="px-5 py-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold">{schema.label}</div>
+            <div className="text-[10px] text-text-muted font-mono">{leaf}</div>
+            {schema.description && <div className="text-[10px] text-text-muted mt-0.5">{schema.description}</div>}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={on}
+              aria-label={`${schema.label} toggle`}
+              disabled={saving}
+              onClick={() => onSave(fullKey, !on, category)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-40 ${on ? 'bg-accent' : 'bg-surface-2 border border-border'}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${on ? 'translate-x-4' : 'translate-x-1'}`} />
+            </button>
+            <span className="text-[11px] font-mono w-7 text-text-muted">{on ? 'on' : 'off'}</span>
+            <button
+              onClick={() => onAudit(fullKey)}
+              className="p-1.5 text-text-muted hover:text-text rounded-lg transition-colors"
+              title="History"
+              aria-label="View change history"
+            >
+              <History className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+        {auditOpen && (
+          <div className="mt-3 ml-1 pl-3 border-l border-border space-y-1">
+            {auditRows.length === 0 ? (
+              <div className="text-[10px] text-text-muted">No history.</div>
+            ) : auditRows.map((row) => (
+              <div key={row.id} className="text-[10px] font-mono text-text-muted flex items-center gap-2">
+                <span>{new Date(row.changedAt).toLocaleString()}</span>
+                <span className="text-text">{formatValue(row.before)} → {formatValue(row.after)}</span>
+                <span className="text-text-muted/70">{row.source}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -203,7 +249,7 @@ function ConfigRow({
             <select
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              className="bg-surface-2 border border-border rounded-lg px-2 py-1.5 text-xs"
+              className="input w-auto text-xs py-1.5"
             >
               {schema.options!.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
             </select>
@@ -215,13 +261,13 @@ function ConfigRow({
               min={schema.min}
               max={schema.max}
               step={schema.step}
-              className="w-24 bg-surface-2 border border-border rounded-lg px-2 py-1.5 text-xs font-mono text-right"
+              className="input w-24 text-xs py-1.5 font-mono text-right"
             />
           )}
           <button
             onClick={() => onSave(fullKey, parseDraft(), category)}
             disabled={!dirty || saving}
-            className="px-3 py-1.5 text-[11px] font-semibold bg-accent text-white rounded-lg disabled:opacity-30 hover:bg-accent-hover transition-colors"
+            className="btn-primary btn-sm"
           >
             {saving ? '...' : 'Save'}
           </button>
@@ -229,6 +275,7 @@ function ConfigRow({
             onClick={() => onAudit(fullKey)}
             className="p-1.5 text-text-muted hover:text-text rounded-lg transition-colors"
             title="History"
+            aria-label="View change history"
           >
             <History className="w-3.5 h-3.5" />
           </button>
@@ -257,7 +304,7 @@ function formatValue(v: unknown): string {
   return String(v)
 }
 
-function DispatchPolicySection({
+const DispatchPolicySection = memo(function DispatchPolicySection({
   policy, onSave, saving,
 }: {
   policy: DispatchPolicy
@@ -272,7 +319,7 @@ function DispatchPolicySection({
   const weightKeys: Array<keyof DispatchPolicy> = ['skill_weight', 'load_weight', 'success_weight', 'cost_weight_normal', 'cost_weight_downgrade']
 
   return (
-    <section className="bg-surface rounded-xl border border-border overflow-hidden">
+    <section className="card overflow-hidden">
       <header className="px-5 py-3 border-b border-border">
         <h2 className="text-sm font-bold">Dispatch Policy</h2>
         <p className="text-[10px] text-text-muted">Weights used to rank candidate agents for each task.</p>
@@ -294,10 +341,10 @@ function DispatchPolicySection({
           </div>
         ))}
         <div className="border-t border-border/50 pt-3 space-y-2">
-          <div className="text-[10px] uppercase tracking-wider text-text-muted font-bold">Priority Boost</div>
+          <div className="text-[10px] text-text-muted font-bold">Priority Boost</div>
           {(['p0', 'p1', 'p2', 'p3'] as const).map((p) => (
             <div key={p} className="flex items-center gap-3">
-              <label className="text-xs font-medium w-44 text-text-muted uppercase">{p}</label>
+              <label className="text-xs font-medium w-44 text-text-muted">{p}</label>
               <input
                 type="range"
                 min={-0.5}
@@ -315,7 +362,7 @@ function DispatchPolicySection({
           <button
             onClick={() => onSave(draft)}
             disabled={!dirty || saving}
-            className="px-4 py-1.5 text-xs font-semibold bg-accent text-white rounded-lg disabled:opacity-30 hover:bg-accent-hover transition-colors flex items-center gap-1.5"
+            className="btn-primary btn-sm"
           >
             {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
             Save Policy
@@ -323,7 +370,7 @@ function DispatchPolicySection({
           {dirty && (
             <button
               onClick={() => setDraft(policy)}
-              className="px-3 py-1.5 text-[11px] text-text-muted hover:text-text"
+              className="btn-ghost btn-sm"
             >
               Revert
             </button>
@@ -332,4 +379,4 @@ function DispatchPolicySection({
       </div>
     </section>
   )
-}
+})

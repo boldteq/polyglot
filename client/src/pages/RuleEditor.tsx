@@ -4,6 +4,8 @@ import { Save, ArrowLeft, RotateCcw, ShieldCheck, Info, Eye, Code, Globe } from 
 import { getProjectRule, updateProjectRule, getGlobalRule, updateGlobalRule } from '../lib/api'
 import { toast } from '../components/Toast'
 import RichMarkdownEditor from '../components/RichMarkdownEditor'
+import Breadcrumbs, { type BreadcrumbItem } from '../components/Breadcrumbs'
+import { projectNameFromId } from '../lib/projectId'
 
 interface RuleEditorProps {
   scope?: 'global' | 'project'
@@ -70,6 +72,7 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
       setDirty(false)
       setIsNew(false)
       toast('success', 'Rule saved')
+      window.dispatchEvent(new Event('polyglot:file-applied'))
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -85,6 +88,19 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
 
   const switchToSource = () => { setSourceText(content); setViewMode('source') }
   const switchToRich = () => { setContent(sourceText); setViewMode('rich') }
+
+  const crumbs: BreadcrumbItem[] = isGlobal
+    ? [
+        { label: 'Settings', to: '/settings' },
+        { label: 'Rules', to: '/settings?tab=commands' },
+        { label: name || '' },
+      ]
+    : [
+        { label: 'Projects', to: '/' },
+        { label: projectNameFromId(projectId || ''), to: `/projects/${projectId}` },
+        { label: 'Rules', to: `/projects/${projectId}` },
+        { label: name || '' },
+      ]
 
   if (loading) {
     return (
@@ -108,10 +124,11 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isGlobal ? 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20' : 'bg-gradient-to-br from-green/20 to-emerald-500/20'}`}>
-            {isGlobal ? <Globe className="w-5 h-5 text-blue-400" /> : <ShieldCheck className="w-5 h-5 text-green" />}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isGlobal ? 'bg-gradient-to-br from-blue/20 to-indigo/20' : 'bg-gradient-to-br from-green/20 to-emerald/20'}`}>
+            {isGlobal ? <Globe className="w-5 h-5 text-blue" /> : <ShieldCheck className="w-5 h-5 text-green" />}
           </div>
-          <div>
+          <div className="min-w-0">
+            <Breadcrumbs items={crumbs} className="mb-1" />
             <h1 className="text-lg font-bold">{name}</h1>
             <p className="text-xs text-text-muted mt-0.5">
               {isNew ? 'New rule' : isGlobal ? 'Global rule' : 'Project rule'}
@@ -121,11 +138,11 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-surface-2 border border-border rounded-lg p-0.5 mr-2">
-            <button onClick={viewMode === 'source' ? switchToRich : undefined} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'rich' ? 'bg-accent text-white' : 'text-text-muted hover:text-text'}`}>
+          <div className="segmented mr-2">
+            <button onClick={viewMode === 'source' ? switchToRich : undefined} className={viewMode === 'rich' ? 'segmented-btn segmented-btn-active flex items-center gap-1.5' : 'segmented-btn flex items-center gap-1.5'}>
               <Eye className="w-3.5 h-3.5" /> Rich
             </button>
-            <button onClick={viewMode === 'rich' ? switchToSource : undefined} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${viewMode === 'source' ? 'bg-accent text-white' : 'text-text-muted hover:text-text'}`}>
+            <button onClick={viewMode === 'rich' ? switchToSource : undefined} className={viewMode === 'source' ? 'segmented-btn segmented-btn-active flex items-center gap-1.5' : 'segmented-btn flex items-center gap-1.5'}>
               <Code className="w-3.5 h-3.5" /> Source
             </button>
           </div>
@@ -134,7 +151,7 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
               <RotateCcw className="w-3.5 h-3.5" /> Reset
             </button>
           )}
-          <button onClick={handleSave} disabled={!dirty || saving} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-30 transition-colors">
+          <button onClick={handleSave} disabled={!dirty || saving} className="btn-primary btn-md">
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
           </button>
@@ -143,8 +160,8 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
 
       {/* Info banner */}
       <div className="px-6 pt-4 shrink-0">
-        <div className={`border rounded-xl p-3.5 flex items-start gap-3 ${isGlobal ? 'bg-blue-500/5 border-blue-500/20' : 'bg-green-muted border-green/20'}`}>
-          <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isGlobal ? 'text-blue-400' : 'text-green'}`} />
+        <div className={`border rounded-xl p-3.5 flex items-start gap-3 ${isGlobal ? 'bg-blue/5 border-blue/20' : 'bg-green-muted border-green/20'}`}>
+          <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isGlobal ? 'text-blue' : 'text-green'}`} />
           <div className="text-xs text-text-secondary">
             <p>
               {isGlobal
@@ -168,7 +185,7 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
           <textarea
             value={sourceText}
             onChange={e => { setSourceText(e.target.value); setDirty(true) }}
-            className="w-full h-full bg-surface border border-border rounded-xl p-5 font-mono text-sm text-text resize-none focus:outline-none focus:border-accent/50 transition-colors leading-relaxed"
+            className="input h-full p-5 font-mono resize-none leading-relaxed"
             placeholder={`# ${name}\n\n- Always use the project's logger instead of console.log\n- Never hardcode credentials`}
             spellCheck={false}
           />

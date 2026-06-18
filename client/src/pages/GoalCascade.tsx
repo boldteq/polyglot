@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Target, Plus, Trash2, Edit3, Check, X, ChevronDown, ChevronRight, Flag, AlertCircle, CheckCircle, Pause } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
+import { confirmDialog } from '../lib/confirm'
 import {
   getGoals, updateMission, createProjectGoal, deleteProjectGoal,
   createAgentGoal, updateAgentGoal, deleteAgentGoal, getGlobalAgents, getProjects, apiError} from '../lib/api'
@@ -8,15 +9,23 @@ import type { GoalCascade, AgentGoal } from '../lib/api'
 import type { Agent, Project } from '../types'
 
 const PRIORITY_STYLES: Record<string, string> = {
-  high: 'bg-red-500/15 text-red-400 border-red-500/30',
-  medium: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
-  low: 'bg-green-500/15 text-green-400 border-green-500/30',
+  high: 'bg-red/15 text-red border-red/30',
+  medium: 'bg-yellow/15 text-yellow border-yellow/30',
+  low: 'bg-green/15 text-green border-green/30',
 }
 
 const STATUS_ICONS: Record<string, typeof CheckCircle> = {
   active: Flag,
   completed: CheckCircle,
   paused: Pause,
+}
+
+// Single source for the agent-goal status → toggle-button color, instead of
+// recomputing the same ternary inline for every row on every render.
+function statusToggleClass(status: string): string {
+  if (status === 'completed') return 'text-green'
+  if (status === 'paused') return 'text-yellow'
+  return 'text-text-muted hover:text-accent'
 }
 
 export default function GoalCascadePage() {
@@ -75,7 +84,7 @@ export default function GoalCascadePage() {
   }
 
   const handleProjectGoalDelete = async (id: string) => {
-    if (!confirm('Delete this project goal and all linked agent goals?')) return
+    if (!(await confirmDialog({ title: 'Delete project goal?', message: 'This goal and all linked agent goals will be deleted.', danger: true, confirmLabel: 'Delete' }))) return
     try { await deleteProjectGoal(id); load() } catch (err) { apiError('Goal action', err) }
   }
 
@@ -100,6 +109,7 @@ export default function GoalCascadePage() {
   }
 
   const handleAgentGoalDelete = async (id: string) => {
+    if (!(await confirmDialog({ title: 'Delete agent goal?', message: 'This agent goal will be deleted.', danger: true, confirmLabel: 'Delete' }))) return
     try { await deleteAgentGoal(id); load() } catch (err) { apiError('Goal action', err) }
   }
 
@@ -115,6 +125,12 @@ export default function GoalCascadePage() {
   const getAgentGoalsForProject = (projectGoalId: string) =>
     goals.agentGoals.filter(ag => ag.projectGoalId === projectGoalId)
 
+  // True when the in-progress mission edit differs from the saved mission —
+  // drives the "Unsaved changes" cue next to Save.
+  const missionDirty =
+    missionDraft.trim() !== (goals.mission ?? '').trim() ||
+    missionDescDraft.trim() !== (goals.missionDescription ?? '').trim()
+
   if (loading) return <div className="p-8 text-text-muted">Loading goals...</div>
 
   return (
@@ -125,7 +141,7 @@ export default function GoalCascadePage() {
       <div className="bg-surface rounded-2xl border-2 border-accent/20 overflow-hidden">
         <div className="px-5 py-3 bg-accent/5 border-b border-accent/10 flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-accent" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-accent">Company Mission</span>
+          <span className="text-[10px] font-bold text-accent">Company Mission</span>
         </div>
         {editingMission ? (
           <div className="p-5 space-y-3">
@@ -133,6 +149,7 @@ export default function GoalCascadePage() {
               value={missionDraft}
               onChange={e => setMissionDraft(e.target.value)}
               placeholder="Your company mission..."
+              aria-label="Company mission"
               className="w-full px-4 py-3 text-lg font-semibold bg-surface-2 border border-border rounded-xl focus:border-accent outline-none"
               autoFocus
             />
@@ -140,21 +157,27 @@ export default function GoalCascadePage() {
               value={missionDescDraft}
               onChange={e => setMissionDescDraft(e.target.value)}
               placeholder="Description (optional)..."
+              aria-label="Mission description"
               rows={2}
               className="w-full px-4 py-2.5 text-sm bg-surface-2 border border-border rounded-xl focus:border-accent outline-none resize-none"
             />
-            <div className="flex gap-2">
-              <button onClick={handleMissionSave} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-accent text-white hover:bg-accent-hover">
+            <div className="flex items-center gap-2">
+              <button onClick={handleMissionSave} className="btn-primary btn-sm">
                 <Check className="w-3.5 h-3.5" /> Save
               </button>
-              <button onClick={() => setEditingMission(false)} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-surface-2 text-text-muted hover:text-text">
+              <button onClick={() => setEditingMission(false)} className="btn-secondary btn-sm">
                 <X className="w-3.5 h-3.5" /> Cancel
               </button>
+              {missionDirty && (
+                <span className="text-[10px] text-amber font-medium">Unsaved changes</span>
+              )}
             </div>
           </div>
         ) : (
-          <div
-            className="p-5 cursor-pointer hover:bg-surface-2/30 transition-colors group"
+          <button
+            type="button"
+            aria-label={goals.mission ? 'Edit company mission' : 'Set company mission'}
+            className="w-full text-left p-5 cursor-pointer hover:bg-surface-2/30 transition-colors group"
             onClick={() => { setMissionDraft(goals.mission); setMissionDescDraft(goals.missionDescription); setEditingMission(true) }}
           >
             {goals.mission ? (
@@ -166,12 +189,15 @@ export default function GoalCascadePage() {
                 </span>
               </>
             ) : (
-              <div className="flex items-center gap-2 text-text-muted">
+              <div className="flex items-center gap-3 text-text-muted">
                 <AlertCircle className="w-4 h-4" />
-                <span className="text-sm">Click to set your company mission</span>
+                <span className="text-sm">No company mission set yet.</span>
+                <span className="btn-primary btn-sm" aria-hidden>
+                  <Flag className="w-3.5 h-3.5" /> Set Mission
+                </span>
               </div>
             )}
-          </div>
+          </button>
         )}
       </div>
 
@@ -186,12 +212,12 @@ export default function GoalCascadePage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Project Goals</span>
+            <div className="w-3 h-3 rounded-full bg-blue" />
+            <span className="text-[10px] font-bold text-blue">Project Goals</span>
           </div>
           <button
             onClick={() => setShowProjectForm(!showProjectForm)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue/10 text-blue hover:bg-blue/20 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" /> Add Goal
           </button>
@@ -199,7 +225,7 @@ export default function GoalCascadePage() {
 
         {/* Project Goal Form */}
         {showProjectForm && (
-          <div className="bg-surface rounded-xl border border-blue-500/20 p-4 space-y-3">
+          <div className="bg-surface rounded-xl border border-blue/20 p-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-text-muted font-medium mb-1 block">Project</label>
@@ -229,17 +255,19 @@ export default function GoalCascadePage() {
               value={projectForm.goal}
               onChange={e => setProjectForm({ ...projectForm, goal: e.target.value })}
               placeholder="Project goal..."
+              aria-label="Project goal"
               className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg focus:border-accent outline-none"
             />
             <textarea
               value={projectForm.description}
               onChange={e => setProjectForm({ ...projectForm, description: e.target.value })}
               placeholder="Description (optional)..."
+              aria-label="Project goal description"
               rows={2}
               className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg focus:border-accent outline-none resize-none"
             />
             <div className="flex gap-2">
-              <button onClick={handleProjectGoalCreate} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600">
+              <button onClick={handleProjectGoalCreate} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue text-white hover:bg-blue">
                 Create Goal
               </button>
               <button onClick={() => setShowProjectForm(false)} className="px-3 py-1.5 text-xs rounded-lg bg-surface-2 text-text-muted">
@@ -256,10 +284,15 @@ export default function GoalCascadePage() {
           const completedCount = agentGoals.filter(ag => ag.status === 'completed').length
 
           return (
-            <div key={pg.id} className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div key={pg.id} className="card overflow-hidden">
               {/* Project Goal Header */}
               <div className="p-4 flex items-start gap-3">
-                <button onClick={() => toggleProject(pg.id)} className="mt-0.5 p-0.5 rounded hover:bg-surface-2 text-text-muted">
+                <button
+                  onClick={() => toggleProject(pg.id)}
+                  aria-expanded={isExpanded}
+                  aria-label={`${isExpanded ? 'Collapse' : 'Expand'} agent goals for ${pg.projectName}`}
+                  className="mt-0.5 p-0.5 rounded hover:bg-surface-2 text-text-muted"
+                >
                   {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </button>
                 <div className="flex-1 min-w-0">
@@ -275,7 +308,7 @@ export default function GoalCascadePage() {
                     <div className="mt-2 flex items-center gap-2">
                       <div className="flex-1 h-1.5 bg-surface-2 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-green-500 rounded-full transition-all"
+                          className="h-full bg-green rounded-full transition-all"
                           style={{ width: `${agentGoals.length > 0 ? (completedCount / agentGoals.length) * 100 : 0}%` }}
                         />
                       </div>
@@ -283,7 +316,11 @@ export default function GoalCascadePage() {
                     </div>
                   )}
                 </div>
-                <button onClick={() => handleProjectGoalDelete(pg.id)} className="p-1.5 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10">
+                <button
+                  onClick={() => handleProjectGoalDelete(pg.id)}
+                  aria-label={`Delete project goal: ${pg.goal}`}
+                  className="p-1.5 rounded-lg text-text-muted hover:text-red hover:bg-red/10"
+                >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -293,12 +330,12 @@ export default function GoalCascadePage() {
                 <div className="border-t border-border bg-surface-2/30">
                   <div className="px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-green-400">Agent Goals</span>
+                      <div className="w-2 h-2 rounded-full bg-green" />
+                      <span className="text-[10px] font-bold text-green">Agent Goals</span>
                     </div>
                     <button
                       onClick={() => setShowAgentForm(showAgentForm === pg.id ? null : pg.id)}
-                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-md bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-md bg-green/10 text-green hover:bg-green/20"
                     >
                       <Plus className="w-3 h-3" /> Add
                     </button>
@@ -311,6 +348,7 @@ export default function GoalCascadePage() {
                         <select
                           value={agentForm.agentName}
                           onChange={e => setAgentForm({ ...agentForm, agentName: e.target.value })}
+                          aria-label="Select agent"
                           className="px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none"
                         >
                           <option value="">Select agent...</option>
@@ -320,11 +358,12 @@ export default function GoalCascadePage() {
                           value={agentForm.goal}
                           onChange={e => setAgentForm({ ...agentForm, goal: e.target.value })}
                           placeholder="Agent goal..."
+                          aria-label="Agent goal"
                           className="px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg focus:border-accent outline-none"
                         />
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => handleAgentGoalCreate(pg.id)} className="px-2.5 py-1 text-[10px] font-medium rounded-md bg-green-500 text-white hover:bg-green-600">
+                        <button onClick={() => handleAgentGoalCreate(pg.id)} className="px-2.5 py-1 text-[10px] font-medium rounded-md bg-green text-white hover:bg-green">
                           Create
                         </button>
                         <button onClick={() => setShowAgentForm(null)} className="px-2.5 py-1 text-[10px] rounded-md bg-surface text-text-muted">
@@ -342,10 +381,10 @@ export default function GoalCascadePage() {
                         <div key={ag.id} className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-lg hover:bg-surface/50 group">
                           <button
                             onClick={() => handleAgentGoalStatusToggle(ag)}
-                            className={`p-0.5 rounded transition-colors ${
-                              ag.status === 'completed' ? 'text-green-400' : ag.status === 'paused' ? 'text-yellow-400' : 'text-text-muted hover:text-accent'
-                            }`}
+                            aria-label={`${ag.agentName} status: ${ag.status}. Click to cycle to the next status.`}
+                            aria-pressed={ag.status === 'completed'}
                             title={`Status: ${ag.status} (click to cycle)`}
+                            className={`p-0.5 rounded transition-transform hover:scale-110 ${statusToggleClass(ag.status)}`}
                           >
                             <StatusIcon className="w-3.5 h-3.5" />
                           </button>
@@ -357,7 +396,8 @@ export default function GoalCascadePage() {
                           </span>
                           <button
                             onClick={() => handleAgentGoalDelete(ag.id)}
-                            className="p-1 rounded text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label={`Delete agent goal: ${ag.goal} for ${ag.agentName}`}
+                            className="p-1 rounded text-text-muted hover:text-red opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>

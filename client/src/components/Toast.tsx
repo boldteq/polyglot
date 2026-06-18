@@ -88,8 +88,9 @@ export function ToastContainer() {
     dismiss(t.id)
     try {
       await t.action.onClick()
-    } catch {
-      // The action handler is responsible for its own error toast.
+    } catch (e) {
+      // The action handler is responsible for its own error toast; log for diagnostics.
+      console.error('[toast-action]', e instanceof Error ? e.message : e)
     }
   }
 
@@ -107,7 +108,7 @@ export function ToastContainer() {
         <div
           key={t.id}
           role={t.type === 'success' || t.type === 'warn' ? 'status' : 'alert'}
-          className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto transition-all ${
+          className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-card text-sm font-medium pointer-events-auto transition-all ${
             t.type === 'success'
               ? 'bg-green-muted border border-green/30 text-green'
               : t.type === 'warn'
@@ -122,7 +123,8 @@ export function ToastContainer() {
           {t.action && (
             <button
               onClick={() => handleAction(t)}
-              className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/15 hover:bg-white/25 text-current font-semibold text-[12px] transition-colors"
+              aria-label={t.action.label}
+              className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-current/10 hover:bg-current/20 text-current font-semibold text-[12px] transition-colors"
             >
               <Undo2 className="w-3 h-3" />
               {t.action.label}

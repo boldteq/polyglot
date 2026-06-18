@@ -9,6 +9,7 @@ import {
   streamAiChat, getAiHistory, getAiSession,
   saveAiSession, deleteAiSession, getAiContext, applyAiFile, apiError} from '../lib/api'
 import { toast } from './Toast'
+import { confirmDialog } from '../lib/confirm'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface Props {
@@ -84,7 +85,15 @@ function parseFileSuggestions(content: string): FileSuggestion[] {
   const regex = /<file path="([^"]+)">([\s\S]*?)<\/file>/g
   let match
   while ((match = regex.exec(content)) !== null) {
-    results.push({ path: match[1], content: match[2].trim() })
+    const path = match[1].trim()
+    const body = match[2].trim()
+    // Drop malformed suggestions (empty path or empty body) instead of silently
+    // surfacing a broken file card — warn so the dropped suggestion is traceable.
+    if (!path || !body) {
+      console.warn('[ai-assistant] dropped malformed <file> suggestion', { path, hasBody: !!body })
+      continue
+    }
+    results.push({ path, content: body })
   }
   return results
 }
@@ -337,6 +346,20 @@ export default function AiAssistant({ open, onClose }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  // ─── Focus restore on close (a11y) ──────────────────────────────────────
+  // The open effect already moves focus into the panel; capture the trigger on
+  // open and return focus to it when the panel closes so keyboard users aren't
+  // dropped at the top of the page.
+  const triggerFocusRef = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (open) {
+      triggerFocusRef.current = document.activeElement as HTMLElement | null
+    } else if (triggerFocusRef.current) {
+      triggerFocusRef.current.focus?.()
+      triggerFocusRef.current = null
+    }
+  }, [open])
+
   // ─── Auto-resize textarea ──────────────────────────────────────────────
 
   useEffect(() => {
@@ -556,10 +579,18 @@ export default function AiAssistant({ open, onClose }: Props) {
 
   const removeSession = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
+    const ok = await confirmDialog({
+      title: 'Delete chat?',
+      message: 'This conversation will be permanently deleted. This can’t be undone.',
+      danger: true,
+      confirmLabel: 'Delete',
+    })
+    if (!ok) return
     try {
       await deleteAiSession(id)
       loadHistory()
       if (sessionId === id) newChat()
+      toast('success', 'Chat deleted')
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to delete session')
     }
@@ -642,7 +673,7 @@ export default function AiAssistant({ open, onClose }: Props) {
     return (
       <div key={idx} className="group flex gap-3 justify-start chat-fade-in">
         {/* Avatar */}
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple to-accent flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple to-accent flex items-center justify-center shrink-0 mt-0.5 shadow-soft">
           <Sparkles className="w-3.5 h-3.5 text-white" />
         </div>
 
@@ -658,7 +689,7 @@ export default function AiAssistant({ open, onClose }: Props) {
             <div className="bg-surface-2 rounded-2xl rounded-tl-md px-4 py-3">
               <MarkdownRenderer content={displayContent} />
               {/* Action bar */}
-              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50 opacity-60 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => copyText(msg.content, idx)}
                   className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text transition-colors"
@@ -700,7 +731,7 @@ export default function AiAssistant({ open, onClose }: Props) {
             const showSaveAgent = isAgent && !agentExists && !applied
             const showApply = !isAgent || agentExists
             return (
-              <div key={key} className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm">
+              <div key={key} className="bg-surface border border-border rounded-xl overflow-hidden shadow-soft">
                 <div className="flex items-center justify-between px-3.5 py-2.5 bg-surface-2 border-b border-border">
                   <div className="flex items-center gap-2 min-w-0">
                     <FileCode className="w-3.5 h-3.5 text-accent shrink-0" />
@@ -785,7 +816,7 @@ export default function AiAssistant({ open, onClose }: Props) {
               <button
                 onClick={submitEdit}
                 disabled={!editText.trim()}
-                className="px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
+                className="btn-primary btn-sm"
               >
                 Save & Submit
               </button>
@@ -810,7 +841,8 @@ export default function AiAssistant({ open, onClose }: Props) {
             {!loading && (
               <button
                 onClick={() => startEditing(idx)}
-                className="absolute -left-8 top-1/2 -translate-y-1/2 p-1 rounded-md text-text-muted hover:text-text hover:bg-surface-2 opacity-0 group-hover:opacity-100 transition-all"
+                aria-label="Edit message"
+                className="absolute -left-8 top-1/2 -translate-y-1/2 p-1 rounded-md text-text-muted hover:text-text hover:bg-surface-2 opacity-60 group-hover:opacity-100 transition-all"
                 title="Edit message"
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -837,13 +869,13 @@ export default function AiAssistant({ open, onClose }: Props) {
 
       {/* Panel */}
       <div
-        className="w-[520px] bg-surface border-l border-border flex flex-col shadow-2xl h-full will-change-transform"
+        className="w-[520px] bg-surface border-l border-border flex flex-col shadow-pop h-full will-change-transform"
         style={{ transform: open ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)' }}
       >
         {/* ── Header ──────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple to-accent flex items-center justify-center shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple to-accent flex items-center justify-center shadow-soft">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -859,6 +891,7 @@ export default function AiAssistant({ open, onClose }: Props) {
             <button
               onClick={newChat}
               title="New chat"
+              aria-label="New chat"
               className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -867,6 +900,7 @@ export default function AiAssistant({ open, onClose }: Props) {
               onClick={exportChat}
               disabled={messages.length === 0}
               title="Export as Markdown"
+              aria-label="Export chat as Markdown"
               className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <Download className="w-4 h-4" />
@@ -874,12 +908,16 @@ export default function AiAssistant({ open, onClose }: Props) {
             <button
               onClick={() => { setShowHistory(!showHistory); setHistorySearch('') }}
               title="Chat history"
+              aria-label="Chat history"
+              aria-pressed={showHistory}
               className={`p-2 rounded-lg transition-colors ${showHistory ? 'bg-accent-muted text-accent' : 'text-text-muted hover:text-text hover:bg-surface-2'}`}
             >
               <History className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
+              aria-label="Close assistant"
+              title="Close"
               className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
             >
               <X className="w-4 h-4" />
@@ -897,13 +935,13 @@ export default function AiAssistant({ open, onClose }: Props) {
                   value={historySearch}
                   onChange={e => setHistorySearch(e.target.value)}
                   placeholder="Search conversations..."
-                  className="w-full bg-surface-2 border border-border rounded-lg pl-8 pr-3 py-2 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-accent/50 transition-colors"
+                  className="input pl-8 text-xs"
                   autoFocus
                 />
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-3 pb-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted px-1 mb-1.5">
+              <p className="text-[10px] font-semibold text-text-muted px-1 mb-1.5">
                 {filteredHistory.length} conversation{filteredHistory.length !== 1 ? 's' : ''}
               </p>
               {filteredHistory.length === 0 ? (
@@ -933,7 +971,8 @@ export default function AiAssistant({ open, onClose }: Props) {
                       </div>
                       <button
                         onClick={(e) => removeSession(e, s.id)}
-                        className="p-1.5 rounded-md opacity-0 group-hover/item:opacity-100 text-text-muted hover:text-red hover:bg-red-muted transition-all"
+                        aria-label="Delete conversation"
+                        className="p-1.5 rounded-md opacity-60 group-hover/item:opacity-100 text-text-muted hover:text-red hover:bg-red-muted transition-all"
                         title="Delete conversation"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -952,7 +991,7 @@ export default function AiAssistant({ open, onClose }: Props) {
           {messages.length === 0 && !loading && (
             <div className="pt-6 pb-4">
               <div className="text-center mb-8">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple to-accent flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple to-accent flex items-center justify-center mx-auto mb-4 shadow-card">
                   <Sparkles className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="text-base font-bold text-text mb-1">How can I help?</h2>
@@ -963,7 +1002,7 @@ export default function AiAssistant({ open, onClose }: Props) {
               <div className="space-y-4 max-w-sm mx-auto">
                 {STARTER_CATEGORIES.map((cat) => (
                   <div key={cat.label}>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1.5 px-1">
+                    <p className="text-[10px] font-semibold text-text-muted mb-1.5 px-1">
                       {cat.icon} {cat.label}
                     </p>
                     <div className="space-y-1">
@@ -992,7 +1031,7 @@ export default function AiAssistant({ open, onClose }: Props) {
           {/* Streaming / Loading */}
           {loading && (
             <div className="flex gap-3 justify-start chat-fade-in">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple to-accent flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple to-accent flex items-center justify-center shrink-0 mt-0.5 shadow-soft">
                 <Sparkles className="w-3.5 h-3.5 text-white animate-pulse" />
               </div>
               <div className="max-w-[88%] min-w-0 space-y-1">
@@ -1040,7 +1079,8 @@ export default function AiAssistant({ open, onClose }: Props) {
           <div className="absolute bottom-[140px] right-[40px] z-10">
             <button
               onClick={scrollToBottom}
-              className="p-2 rounded-full bg-surface border border-border shadow-lg hover:bg-surface-2 transition-all text-text-muted hover:text-text"
+              aria-label="Scroll to bottom"
+              className="p-2 rounded-full bg-surface border border-border shadow-card hover:bg-surface-2 transition-all text-text-muted hover:text-text"
               title="Scroll to bottom"
             >
               <ArrowDown className="w-4 h-4" />
@@ -1078,7 +1118,7 @@ export default function AiAssistant({ open, onClose }: Props) {
               <Paperclip className="w-3.5 h-3.5 text-accent shrink-0" />
               <span className="text-xs font-mono text-text-secondary flex-1 truncate">{attachedFile.name}</span>
               <span className="text-[10px] text-text-muted">{(attachedFile.content.length / 1024).toFixed(1)}KB</span>
-              <button onClick={() => setAttachedFile(null)} className="p-0.5 text-text-muted hover:text-red transition-colors">
+              <button onClick={() => setAttachedFile(null)} aria-label="Remove attached file" title="Remove" className="p-0.5 text-text-muted hover:text-red transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1109,13 +1149,15 @@ export default function AiAssistant({ open, onClose }: Props) {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={loading}
                   title="Attach file"
+                  aria-label="Attach file"
                   className="p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-accent-muted disabled:opacity-30 transition-colors"
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>
                 <button
                   disabled
-                  title="More options"
+                  title="More options (coming soon)"
+                  aria-label="More options (coming soon)"
                   className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-3 disabled:opacity-30 transition-colors"
                 >
                   <MoreHorizontal className="w-4 h-4" />
@@ -1137,6 +1179,7 @@ export default function AiAssistant({ open, onClose }: Props) {
                     disabled={!input.trim() && !attachedFile}
                     className="p-2 bg-accent text-white rounded-xl hover:bg-accent-hover disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     title="Send message (Enter)"
+                    aria-label="Send message"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -1156,9 +1199,9 @@ export default function AiAssistant({ open, onClose }: Props) {
     {/* ── Save as Agent Modal ──────────────────────────────────────────── */}
     {saveAgentModal && (
       <div className="fixed inset-0 z-[60] flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/40" onClick={() => setSaveAgentModal(null)} />
-        <div className="relative bg-surface border border-border rounded-2xl p-6 w-[420px] shadow-2xl chat-fade-in">
-          <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+        <div className="absolute inset-0 bg-black/40" onClick={() => setSaveAgentModal(null)} aria-hidden="true" />
+        <div className="relative bg-surface border border-border rounded-2xl p-6 w-[420px] shadow-pop chat-fade-in" role="dialog" aria-modal="true" aria-labelledby="save-agent-title">
+          <h3 id="save-agent-title" className="text-base font-semibold mb-4 flex items-center gap-2">
             <Bot className="w-5 h-5 text-purple" />
             Save Agent to Library
           </h3>
@@ -1169,7 +1212,7 @@ export default function AiAssistant({ open, onClose }: Props) {
                 value={saveAgentName}
                 onChange={e => setSaveAgentName(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, ''))}
                 placeholder="agent-name"
-                className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 transition-all"
+                className="input font-mono"
                 autoFocus
               />
             </div>
@@ -1197,7 +1240,7 @@ export default function AiAssistant({ open, onClose }: Props) {
             <button
               onClick={handleSaveAgent}
               disabled={!saveAgentName.trim() || savingAgent}
-              className="flex-1 px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-purple to-accent text-white rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+              className="flex-1 px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-purple to-accent text-white rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-soft"
             >
               {savingAgent ? 'Saving...' : 'Save Agent'}
             </button>

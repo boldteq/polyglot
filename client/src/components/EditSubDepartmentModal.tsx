@@ -108,7 +108,7 @@ export default function EditSubDepartmentModal({
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }}
     >
-      <div className="w-full max-w-lg mx-4 rounded-2xl bg-surface border border-border shadow-2xl">
+      <div className="w-full max-w-lg mx-4 rounded-2xl bg-surface border border-border shadow-pop">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
             <span
@@ -119,7 +119,7 @@ export default function EditSubDepartmentModal({
               <span>{previewLabel}</span>
             </span>
             {deptLabel && (
-              <span className="text-[10px] text-text-muted/70 uppercase tracking-wider">
+              <span className="text-[10px] text-text-muted/70 ">
                 under {deptLabel}
               </span>
             )}
@@ -131,7 +131,7 @@ export default function EditSubDepartmentModal({
 
         <div className="px-5 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">
+            <label className="text-[11px] font-bold text-text-muted mb-1.5 block">
               Sub-Department ID <span className="text-text-muted/70 font-normal normal-case">(immutable — changing would orphan all members)</span>
             </label>
             <div className="px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg font-mono text-text-muted">
@@ -141,7 +141,7 @@ export default function EditSubDepartmentModal({
 
           <div className="grid grid-cols-[80px_1fr] gap-3">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Emoji</label>
+              <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Emoji</label>
               <input
                 value={cardEmoji}
                 onChange={(e) => setCardEmoji(e.target.value)}
@@ -151,7 +151,7 @@ export default function EditSubDepartmentModal({
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Label</label>
+              <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Label</label>
               <input
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
@@ -163,7 +163,7 @@ export default function EditSubDepartmentModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">
+            <label className="text-[11px] font-bold text-text-muted mb-1.5 block">
               Card Label <span className="text-text-muted/70 font-normal normal-case">(optional — overrides Label on the card header)</span>
             </label>
             <input
@@ -176,7 +176,7 @@ export default function EditSubDepartmentModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Color</label>
+            <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Color</label>
             <div className="flex flex-wrap gap-1.5">
               {PRESET_COLORS.map((c) => (
                 <button
@@ -199,7 +199,7 @@ export default function EditSubDepartmentModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Icon (lucide)</label>
+            <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Icon (lucide)</label>
             <input
               value={icon}
               onChange={(e) => setIcon(e.target.value)}
@@ -214,7 +214,7 @@ export default function EditSubDepartmentModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Order</label>
+              <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Order</label>
               <input
                 type="number"
                 value={order}
@@ -225,7 +225,7 @@ export default function EditSubDepartmentModal({
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Status</label>
+              <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as typeof status)}
@@ -239,7 +239,7 @@ export default function EditSubDepartmentModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Display Mode</label>
+            <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Display Mode</label>
             <div className="flex gap-2">
               {(['expanded', 'collapsed', 'hidden'] as const).map((m) => (
                 <button
@@ -264,7 +264,7 @@ export default function EditSubDepartmentModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Description</label>
+            <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -276,7 +276,7 @@ export default function EditSubDepartmentModal({
           </div>
 
           {error && (
-            <div className="px-3 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20">
+            <div className="px-3 py-2 rounded-lg bg-red/10 text-red text-xs font-semibold border border-red/20">
               {error}
             </div>
           )}

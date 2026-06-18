@@ -67,7 +67,7 @@ export default function EditTagModal({
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }}
     >
-      <div className="w-full max-w-md mx-4 rounded-2xl bg-surface border border-border shadow-2xl">
+      <div className="w-full max-w-md mx-4 rounded-2xl bg-surface border border-border shadow-pop">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
             <h2 className="text-sm font-bold">Edit tag</h2>
@@ -82,7 +82,7 @@ export default function EditTagModal({
 
         <div className="px-5 py-5 space-y-4">
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">
+            <label className="text-[11px] font-bold text-text-muted mb-1.5 block">
               Tag key <span className="text-text-muted/70 font-normal normal-case">(immutable — agents reference it)</span>
             </label>
             <div className="px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg font-mono text-text-muted">
@@ -91,7 +91,7 @@ export default function EditTagModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Display label</label>
+            <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Display label</label>
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
@@ -102,7 +102,7 @@ export default function EditTagModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">Description</label>
+            <label className="text-[11px] font-bold text-text-muted mb-1.5 block">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -114,7 +114,7 @@ export default function EditTagModal({
           </div>
 
           {error && (
-            <div className="px-3 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20">
+            <div className="px-3 py-2 rounded-lg bg-red/10 text-red text-xs font-semibold border border-red/20">
               {error}
             </div>
           )}

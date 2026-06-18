@@ -8,6 +8,7 @@ import {
   type ObservabilitySummary,
 } from '../lib/api'
 import { toast } from '../components/Toast'
+import EmptyState from '../components/EmptyState'
 
 // Pillar 1/3/5 dashboard — one /observability/summary call → real spend, the
 // policy-audit block trail, independent judge scores, and the delegation graph.
@@ -16,6 +17,7 @@ export default function Observability() {
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
   const [runningEval, setRunningEval] = useState(false)
+  const [evalError, setEvalError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -33,11 +35,14 @@ export default function Observability() {
 
   const runEval = async () => {
     setRunningEval(true)
+    setEvalError(null)
     try {
       await runScheduleNow('sys-intel-eval')
       toast('success', 'Eval self-test queued — judge scores appear here after it runs')
     } catch (x: unknown) {
-      toast('error', x instanceof Error ? x.message : 'Failed to start eval')
+      const msg = x instanceof Error ? x.message : 'Failed to start eval'
+      setEvalError(msg)
+      toast('error', msg)
     } finally {
       setRunningEval(false)
     }
@@ -53,10 +58,10 @@ export default function Observability() {
   }
   if (err && !data) {
     return (
-      <div className="px-8 py-10 text-red-400 text-sm">
+      <div className="py-10 text-red text-sm">
         <AlertCircle className="w-5 h-5 inline mr-2" />
         {err}
-        <button onClick={load} className="ml-3 px-2 py-1 text-xs rounded bg-surface border border-border text-text-muted hover:text-text">Retry</button>
+        <button onClick={load} className="btn-secondary btn-sm ml-3">Retry</button>
       </div>
     )
   }
@@ -73,11 +78,7 @@ export default function Observability() {
           <Activity className="w-4 h-4 text-accent" />
           <p className="text-xs text-text-muted">Real cost · Policy audit · Judge scores · Delegations</p>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-surface border border-border text-text-muted hover:text-text disabled:opacity-50"
-        >
+        <button onClick={load} disabled={loading} className="btn-secondary btn-sm">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
           Refresh
         </button>
@@ -86,9 +87,9 @@ export default function Observability() {
       <div className="space-y-6 pb-10">
         {/* Spend — real token cost (Pillar 1) */}
         <section>
-          <SectionHead icon={<DollarSign className="w-4 h-4 text-emerald-400" />} title="Token spend (real)" />
+          <SectionHead icon={<DollarSign className="w-4 h-4 text-emerald" />} title="Token spend (real)" />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Stat label="Real cost" value={`$${realCost.toFixed(4)}`} accent="text-emerald-400" />
+            <Stat label="Real cost" value={`$${realCost.toFixed(4)}`} accent="text-emerald" />
             <Stat label="Total (incl. est.)" value={`$${totalCost.toFixed(4)}`} />
             <Stat label="Real calls" value={`${spend.realCalls ?? 0} / ${spend.calls}`} />
             <Stat label="Tokens" value={(spend.tokens ?? 0).toLocaleString()} />
@@ -100,12 +101,12 @@ export default function Observability() {
 
         {/* Policy audit — recent blocks (Pillar 5) */}
         <section>
-          <SectionHead icon={<ShieldAlert className="w-4 h-4 text-red-400" />} title="Recent policy blocks" count={recentBlocks.length} />
+          <SectionHead icon={<ShieldAlert className="w-4 h-4 text-red" />} title="Recent policy blocks" count={recentBlocks.length} />
           {recentBlocks.length === 0 ? (
             <EmptyCard text="No dispatch has been blocked — the gate is allowing everything so far." />
           ) : (
-            <div className="rounded-2xl border border-border bg-surface overflow-hidden">
-              <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-surface-2 text-[10px] font-bold uppercase tracking-wider text-text-muted">
+            <div className="card overflow-hidden">
+              <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-surface-2 text-[10px] font-bold text-text-muted">
                 <div className="col-span-3">Agent</div>
                 <div className="col-span-2">Task</div>
                 <div className="col-span-5">Violations</div>
@@ -118,7 +119,7 @@ export default function Observability() {
                     <div className="col-span-2 text-text-muted">{b.taskType || '—'}</div>
                     <div className="col-span-5 flex flex-wrap gap-1">
                       {b.violations.map((v, i) => (
-                        <span key={i} className={`px-1.5 py-0.5 rounded font-mono font-bold ${v.severity === 'block' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'}`} title={v.detail}>
+                        <span key={i} className={`px-1.5 py-0.5 rounded font-mono font-bold ${v.severity === 'block' ? 'bg-red/10 text-red' : 'bg-amber/10 text-amber'}`} title={v.detail}>
                           {v.code}
                         </span>
                       ))}
@@ -134,25 +135,27 @@ export default function Observability() {
         {/* Eval scores — independent judge (Pillar 3) */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <Gauge className="w-4 h-4 text-blue-400" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">Independent judge scores</h2>
+            <Gauge className="w-4 h-4 text-blue" />
+            <h2 className="text-sm font-bold text-text-muted">Independent judge scores</h2>
             <span className="text-xs text-text-muted">({recentEvalScores.length})</span>
-            <button
-              onClick={runEval}
-              disabled={runningEval}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-lg bg-accent text-white hover:opacity-90 disabled:opacity-50"
-            >
+            <button onClick={runEval} disabled={runningEval} className="btn-primary btn-sm ml-auto">
               {runningEval ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
               Run eval self-test
             </button>
           </div>
+          {evalError && (
+            <p className="text-xs text-red mb-3 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {evalError}
+            </p>
+          )}
           {recentEvalScores.length === 0 ? (
             <EmptyCard text="No judge scores yet — run the eval self-test (or wait for the weekly cron); scores ingest into the Witness loop." />
           ) : (
             <div className="space-y-2">
               {recentEvalScores.map((e) => (
-                <div key={e.id} className="rounded-xl border border-border bg-surface p-3 flex items-center gap-3">
-                  {e.pass ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <XCircle className="w-4 h-4 text-red-400 shrink-0" />}
+                <div key={e.id} className="card p-3 flex items-center gap-3">
+                  {e.pass ? <CheckCircle2 className="w-4 h-4 text-emerald shrink-0" /> : <XCircle className="w-4 h-4 text-red shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-semibold truncate">{e.caseId || 'ad-hoc'}</div>
                     <div className="text-[10px] text-text-muted truncate">{e.agent || '—'}{e.taskType ? ` · ${e.taskType}` : ''}</div>
@@ -167,13 +170,13 @@ export default function Observability() {
 
         {/* Delegations — who delegated to whom (Pillar 1) */}
         <section>
-          <SectionHead icon={<GitBranch className="w-4 h-4 text-purple-400" />} title="Recent delegations" count={recentDelegations.length} />
+          <SectionHead icon={<GitBranch className="w-4 h-4 text-purple" />} title="Recent delegations" count={recentDelegations.length} />
           {recentDelegations.length === 0 ? (
             <EmptyCard text="No delegations recorded yet — orchestration runs populate the graph (run → agent)." />
           ) : (
             <div className="space-y-1.5">
               {recentDelegations.map((d) => (
-                <div key={d.id} className="rounded-lg border border-border bg-surface px-4 py-2 flex items-center gap-2 text-xs">
+                <div key={d.id} className="card px-4 py-2 flex items-center gap-2 text-xs">
                   <span className="text-text-muted">{d.parentAgent || 'run'}</span>
                   <span className="text-text-muted">→</span>
                   <span className="font-semibold">{d.childAgent}</span>
@@ -197,7 +200,7 @@ function SectionHead({ icon, title, count }: { icon: ReactNode; title: string; c
   return (
     <div className="flex items-center gap-2 mb-3">
       {icon}
-      <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">{title}</h2>
+      <h2 className="text-sm font-bold text-text-muted">{title}</h2>
       {count !== undefined && <span className="text-xs text-text-muted">({count})</span>}
     </div>
   )
@@ -205,27 +208,31 @@ function SectionHead({ icon, title, count }: { icon: ReactNode; title: string; c
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
+    <div className="card p-4">
       <div className={`text-xl font-bold tabular-nums ${accent || ''}`}>{value}</div>
-      <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">{label}</div>
+      <div className="text-[10px] text-text-muted mt-0.5">{label}</div>
     </div>
   )
 }
 
 function EmptyCard({ text }: { text: string }) {
-  return (
-    <div className="rounded-2xl border border-border border-dashed bg-surface px-5 py-8 text-center">
-      <Activity className="w-5 h-5 text-text-muted mx-auto mb-2" />
-      <p className="text-xs text-text-muted">{text}</p>
-    </div>
-  )
+  return <EmptyState icon={Activity} title={text} card size="sm" />
 }
 
 function ScoreBar({ score }: { score: number }) {
   const pct = Math.max(0, Math.min(100, score * 100))
-  const color = score >= 0.7 ? '#10b981' : score >= 0.4 ? '#f59e0b' : '#ef4444'
+  // Theme CSS vars (flip light/dark) instead of hardcoded hex — keeps the bar
+  // on the design system and AA-contrast in both modes.
+  const color = score >= 0.7 ? 'var(--color-green)' : score >= 0.4 ? 'var(--color-amber)' : 'var(--color-red)'
   return (
-    <div className="w-24 h-2 bg-surface-2 rounded-full overflow-hidden shrink-0">
+    <div
+      className="w-24 h-2 bg-surface-2 rounded-full overflow-hidden shrink-0"
+      role="progressbar"
+      aria-valuenow={Math.round(pct)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`Judge score: ${pct.toFixed(0)}%`}
+    >
       <div className="h-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
     </div>
   )

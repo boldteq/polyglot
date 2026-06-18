@@ -9,7 +9,7 @@ import Highlight from '@tiptap/extension-highlight'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import { Markdown } from 'tiptap-markdown'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, memo } from 'react'
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough, Code,
   Heading1, Heading2, Heading3,
@@ -27,7 +27,7 @@ interface RichMarkdownEditorProps {
   className?: string
 }
 
-export default function RichMarkdownEditor({ content, onChange, placeholder, className }: RichMarkdownEditorProps) {
+function RichMarkdownEditor({ content, onChange, placeholder, className }: RichMarkdownEditorProps) {
   const isInternalUpdate = useRef(false)
   const lastContent = useRef(content)
 
@@ -121,6 +121,8 @@ export default function RichMarkdownEditor({ content, onChange, placeholder, cla
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       className={`p-1.5 rounded-md transition-colors ${
         active
           ? 'bg-accent/15 text-accent'
@@ -247,3 +249,5 @@ export default function RichMarkdownEditor({ content, onChange, placeholder, cla
     </div>
   )
 }
+
+export default memo(RichMarkdownEditor)

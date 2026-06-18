@@ -22,6 +22,33 @@ export default defineConfig({
         changeOrigin: true,
         headers: { Connection: 'keep-alive' },
       },
+      // Playground run is an SSE stream. Without explicit handling it falls
+      // through to the generic '/api' string rule below, where http-proxy can
+      // buffer the stream so chunks arrive in one end-blob — the UI then looks
+      // frozen for the whole run and the client idle-watchdog aborts it
+      // ("client_disconnect"). The configure() hook force-flushes headers and
+      // disables Nagle/buffering on both sockets so tokens stream the instant
+      // the server emits them.
+      '/api/playground/run': {
+        target: 'http://localhost:3847',
+        changeOrigin: true,
+        headers: { Connection: 'keep-alive' },
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            // Disable Nagle on the upstream socket so small SSE frames aren't held.
+            proxyReq.on('socket', (socket) => socket.setNoDelay(true))
+          })
+          proxy.on('proxyRes', (proxyRes, _req, res) => {
+            // Mirror the server's no-buffer hints and flush headers immediately so
+            // the browser starts receiving events before the first token.
+            proxyRes.headers['x-accel-buffering'] = 'no'
+            proxyRes.headers['cache-control'] = 'no-cache, no-transform'
+            delete proxyRes.headers['content-length']
+            res.socket?.setNoDelay?.(true)
+            res.flushHeaders?.()
+          })
+        },
+      },
       '/api': 'http://localhost:3847',
     },
   },

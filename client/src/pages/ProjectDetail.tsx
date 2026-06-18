@@ -8,7 +8,6 @@ import {
   RotateCcw,
   Plus,
   Trash2,
-  FolderOpen,
   Clock,
   Pencil,
   Bot,
@@ -32,8 +31,10 @@ import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
+import { PageShell, TabNav } from '../components/PageShell'
 import AgentIcon from '../components/AgentIcon'
 import { formatAgentDisplay } from '../lib/agentDisplay'
+import { confirmDialog } from '../lib/confirm'
 
 type Tab = 'overview' | 'claude-md' | 'agents' | 'commands' | 'rules'
 
@@ -51,45 +52,21 @@ export default function ProjectDetail() {
   const { data: commands, refetch: refetchCommands } = useApi(() => getProjectCommands(projectId!), [projectId], CacheKeys.projectCommands(projectId!))
   const { data: rules, refetch: refetchRules } = useApi(() => getProjectRules(projectId!), [projectId], CacheKeys.projectRules(projectId!))
 
-  const tabs: { id: Tab; label: string; icon: React.ElementType; count?: number }[] = [
-    { id: 'overview', label: 'Overview', icon: FolderOpen },
-    { id: 'claude-md', label: 'CLAUDE.md', icon: FileText },
-    { id: 'agents', label: 'Agents', icon: Bot, count: agents?.length },
-    { id: 'commands', label: 'Commands', icon: Terminal, count: commands?.length },
-    { id: 'rules', label: 'Rules', icon: ShieldCheck, count: rules?.length },
+  const tabs: { id: Tab; label: string; count?: number }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'claude-md', label: 'CLAUDE.md' },
+    { id: 'agents', label: 'Agents', count: agents?.length },
+    { id: 'commands', label: 'Commands', count: commands?.length },
+    { id: 'rules', label: 'Rules', count: rules?.length },
   ]
 
   const projectPath = projectId ? atob(projectId.replace(/-/g, '+').replace(/_/g, '/')) : ''
   const projectName = projectPath.split('/').pop() || ''
 
   return (
-    <div className="p-8 max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">{projectName}</h1>
-        <p className="text-text-muted text-sm font-mono">{projectPath.replace(/^\/Users\/[^/]+/, '~')}</p>
-      </div>
-
-      <div className="flex items-center gap-1 mb-6 border-b border-border">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.id
-                ? 'border-accent text-accent-hover'
-                : 'border-transparent text-text-secondary hover:text-text'
-            }`}
-          >
-            <t.icon className="w-4 h-4" />
-            {t.label}
-            {t.count !== undefined && t.count > 0 && (
-              <span className="text-xs bg-surface-2 px-1.5 py-0.5 rounded-full text-text-muted">
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+    <PageShell title={projectName} subtitle={projectPath.replace(/^\/Users\/[^/]+/, '~')}>
+      <div className="max-w-5xl">
+      <TabNav tabs={tabs} active={tab} onChange={(id) => setTab(id as Tab)} />
 
       {tab === 'overview' && (
         <OverviewTab
@@ -110,7 +87,8 @@ export default function ProjectDetail() {
       {tab === 'rules' && (
         <RulesTab rules={rules || []} projectId={projectId!} refetch={refetchRules} />
       )}
-    </div>
+      </div>
+    </PageShell>
   )
 }
 
@@ -143,10 +121,10 @@ function OverviewTab({
           <button
             key={s.label}
             onClick={s.onClick}
-            className="bg-surface rounded-xl border border-border p-5 flex items-start justify-between hover:border-accent/40 transition-all text-left"
+            className="card p-5 flex items-start justify-between hover:border-accent/40 active:scale-[0.98] transition-all text-left"
           >
             <div>
-              <p className="text-text-muted text-xs font-medium uppercase tracking-wider">{s.label}</p>
+              <p className="text-text-muted text-xs font-medium ">{s.label}</p>
               <p className={`text-2xl font-semibold mt-1 ${s.color}`}>{s.value}</p>
             </div>
             <div className={`p-2.5 rounded-lg bg-surface-2 ${s.color}`}>
@@ -157,7 +135,7 @@ function OverviewTab({
       </div>
       <button
         onClick={() => navigate(`/projects/${projectId}/chat`)}
-        className="w-full bg-surface rounded-xl border border-border p-5 flex items-center gap-4 hover:border-accent/40 transition-all text-left"
+        className="w-full card p-5 flex items-center gap-4 hover:border-accent/40 active:scale-[0.99] transition-all text-left"
       >
         <div className="p-3 rounded-xl bg-accent/10 text-accent">
           <MessageSquare className="w-6 h-6" />
@@ -205,7 +183,7 @@ function ClaudeMdTab({ projectId }: { projectId: string }) {
         {dirty && (
           <button
             onClick={() => { if (data) { setContent(data.content); setDirty(false) } }}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-text rounded-lg hover:bg-surface-2 transition-colors"
+            className="btn-ghost btn-md"
           >
             <RotateCcw className="w-4 h-4" /> Reset
           </button>
@@ -213,7 +191,7 @@ function ClaudeMdTab({ projectId }: { projectId: string }) {
         <button
           onClick={handleSave}
           disabled={!dirty || saving}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="btn-primary btn-md"
         >
           <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save'}
         </button>
@@ -221,7 +199,7 @@ function ClaudeMdTab({ projectId }: { projectId: string }) {
       <textarea
         value={content}
         onChange={(e) => { setContent(e.target.value); setDirty(true) }}
-        className="flex-1 w-full bg-surface border border-border rounded-xl p-5 font-mono text-sm text-text resize-none focus:outline-none focus:border-accent/50 transition-colors"
+        className="input flex-1 p-5 font-mono resize-none"
         spellCheck={false}
         placeholder="# Project CLAUDE.md&#10;&#10;Write project-specific instructions here..."
       />
@@ -274,7 +252,7 @@ function AgentsTab({
   }
 
   const handleDelete = async (filename: string, displayName: string) => {
-    if (!confirm(`Delete agent "${displayName}"?`)) return
+    if (!(await confirmDialog({ title: 'Delete agent?', message: `"${displayName}" will be permanently deleted.`, danger: true, confirmLabel: 'Delete' }))) return
     setDeletingKeys((prev) => new Set(prev).add(filename))
     try {
       await deleteProjectAgent(projectId, filename)
@@ -289,18 +267,18 @@ function AgentsTab({
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <button onClick={() => setCreating(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors">
+        <button onClick={() => setCreating(true)} className="btn-primary btn-md">
           <Plus className="w-4 h-4" /> New Agent
         </button>
       </div>
 
       {creating && (
-        <div className="mb-4 bg-surface border border-border rounded-xl p-5">
+        <div className="card p-5 mb-4">
           <p className="text-sm font-medium mb-3">Create New Agent</p>
           <div className="flex gap-3">
-            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Agent name..." disabled={createLoading} className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50 disabled:opacity-60" autoFocus onKeyDown={(e) => e.key === 'Enter' && !createLoading && handleCreate()} />
-            <button onClick={handleCreate} disabled={createLoading} className="px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors">{createLoading ? 'Creating...' : 'Create'}</button>
-            <button onClick={() => { setCreating(false); setNewName('') }} className="px-4 py-2 text-sm text-text-secondary hover:text-text rounded-lg hover:bg-surface-2 transition-colors">Cancel</button>
+            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Agent name..." disabled={createLoading} className="input disabled:opacity-60" autoFocus onKeyDown={(e) => e.key === 'Enter' && !createLoading && handleCreate()} />
+            <button onClick={handleCreate} disabled={createLoading} className="btn-primary btn-md">{createLoading ? 'Creating...' : 'Create'}</button>
+            <button onClick={() => { setCreating(false); setNewName('') }} className="btn-ghost btn-md">Cancel</button>
           </div>
         </div>
       )}
@@ -308,7 +286,7 @@ function AgentsTab({
       {error ? (
         <ErrorState message={error} onRetry={refetch} />
       ) : agents.length === 0 ? (
-        <div className="bg-surface rounded-xl border border-border p-12 text-center">
+        <div className="card p-12 text-center">
           <Bot className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p className="text-text-secondary font-medium">No agents in this project</p>
         </div>
@@ -317,11 +295,11 @@ function AgentsTab({
           {agents.map((agent) => {
             const display = formatAgentDisplay({ name: agent.name, id: agent.filename })
             return (
-            <Link key={agent.filename} to={`/projects/${projectId}/agents/${agent.filename}`} className="group flex items-center justify-between bg-surface border border-border rounded-xl p-5 hover:border-accent/40 transition-all">
+            <Link key={agent.filename} to={`/projects/${projectId}/agents/${agent.filename}`} className="group card card-hover p-5 flex items-center justify-between hover:border-accent/40">
               <div className="flex items-center gap-4">
                 <AgentIcon name={agent.name} uid={`${projectId}-${agent.filename}`} size={44} />
                 <div>
-                  <h3 className="font-semibold text-[15px] group-hover:text-accent-hover transition-colors">
+                  <h3 className="font-semibold text-base group-hover:text-accent-hover transition-colors">
                     {display.emoji && <span className="mr-1.5">{display.emoji}</span>}
                     <span>{display.realName}</span>
                     {display.role && <span className="text-text-muted font-normal"> — {display.role}</span>}
@@ -387,7 +365,7 @@ function CommandsTab({
   }
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Delete command "/${name}"?`)) return
+    if (!(await confirmDialog({ title: 'Delete command?', message: `"/${name}" will be permanently deleted.`, danger: true, confirmLabel: 'Delete' }))) return
     setDeletingKeys((prev) => new Set(prev).add(name))
     try {
       await deleteProjectCommand(projectId, name)
@@ -402,25 +380,25 @@ function CommandsTab({
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <button onClick={() => setCreating(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors">
+        <button onClick={() => setCreating(true)} className="btn-primary btn-md">
           <Plus className="w-4 h-4" /> New Command
         </button>
       </div>
 
       {creating && (
-        <div className="mb-4 bg-surface border border-border rounded-xl p-5">
+        <div className="card p-5 mb-4">
           <p className="text-sm font-medium mb-3">Create New Command</p>
           <div className="flex gap-3">
             <div className="flex items-center bg-surface-2 border border-border rounded-lg px-3 text-sm text-text-muted">/</div>
-            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="command-name" disabled={createLoading} className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent/50 disabled:opacity-60" autoFocus onKeyDown={(e) => e.key === 'Enter' && !createLoading && handleCreate()} />
-            <button onClick={handleCreate} disabled={createLoading} className="px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors">{createLoading ? 'Creating...' : 'Create'}</button>
-            <button onClick={() => { setCreating(false); setNewName('') }} className="px-4 py-2 text-sm text-text-secondary hover:text-text rounded-lg hover:bg-surface-2 transition-colors">Cancel</button>
+            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="command-name" disabled={createLoading} className="input font-mono disabled:opacity-60" autoFocus onKeyDown={(e) => e.key === 'Enter' && !createLoading && handleCreate()} />
+            <button onClick={handleCreate} disabled={createLoading} className="btn-primary btn-md">{createLoading ? 'Creating...' : 'Create'}</button>
+            <button onClick={() => { setCreating(false); setNewName('') }} className="btn-ghost btn-md">Cancel</button>
           </div>
         </div>
       )}
 
       {commands.length === 0 ? (
-        <div className="bg-surface rounded-xl border border-border p-12 text-center">
+        <div className="card p-12 text-center">
           <Terminal className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p className="text-text-secondary font-medium">No commands in this project</p>
           <p className="text-text-muted text-sm mt-1">Create slash commands to automate common prompts</p>
@@ -428,7 +406,7 @@ function CommandsTab({
       ) : (
         <div className="space-y-2">
           {commands.map((cmd) => (
-            <div key={cmd.name} className="bg-surface border border-border rounded-xl overflow-hidden group">
+            <div key={cmd.name} className="card overflow-hidden group">
               <div className="flex items-center justify-between px-4 py-3">
                 <button onClick={() => setExpanded(expanded === cmd.name ? null : cmd.name)} className="flex items-center gap-3 flex-1 text-left">
                   <Terminal className="w-4 h-4 text-amber shrink-0" />
@@ -497,7 +475,7 @@ function RulesTab({
   }
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Delete rule "${name}"?`)) return
+    if (!(await confirmDialog({ title: 'Delete rule?', message: `"${name}" will be permanently deleted.`, danger: true, confirmLabel: 'Delete' }))) return
     setDeletingKeys((prev) => new Set(prev).add(name))
     try {
       await deleteProjectRule(projectId, name)
@@ -512,24 +490,24 @@ function RulesTab({
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <button onClick={() => setCreating(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors">
+        <button onClick={() => setCreating(true)} className="btn-primary btn-md">
           <Plus className="w-4 h-4" /> New Rule
         </button>
       </div>
 
       {creating && (
-        <div className="mb-4 bg-surface border border-border rounded-xl p-5">
+        <div className="card p-5 mb-4">
           <p className="text-sm font-medium mb-3">Create New Rule</p>
           <div className="flex gap-3">
-            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="rule-name (e.g. no-console-log)" disabled={createLoading} className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-accent/50 disabled:opacity-60" autoFocus onKeyDown={(e) => e.key === 'Enter' && !createLoading && handleCreate()} />
-            <button onClick={handleCreate} disabled={createLoading} className="px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors">{createLoading ? 'Creating...' : 'Create'}</button>
-            <button onClick={() => { setCreating(false); setNewName('') }} className="px-4 py-2 text-sm text-text-secondary hover:text-text rounded-lg hover:bg-surface-2 transition-colors">Cancel</button>
+            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="rule-name (e.g. no-console-log)" disabled={createLoading} className="input font-mono disabled:opacity-60" autoFocus onKeyDown={(e) => e.key === 'Enter' && !createLoading && handleCreate()} />
+            <button onClick={handleCreate} disabled={createLoading} className="btn-primary btn-md">{createLoading ? 'Creating...' : 'Create'}</button>
+            <button onClick={() => { setCreating(false); setNewName('') }} className="btn-ghost btn-md">Cancel</button>
           </div>
         </div>
       )}
 
       {rules.length === 0 ? (
-        <div className="bg-surface rounded-xl border border-border p-12 text-center">
+        <div className="card p-12 text-center">
           <ShieldCheck className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p className="text-text-secondary font-medium">No rules in this project</p>
           <p className="text-text-muted text-sm mt-1">Create rules to define constraints Claude must follow</p>
@@ -537,7 +515,7 @@ function RulesTab({
       ) : (
         <div className="space-y-2">
           {rules.map((rule) => (
-            <div key={rule.name} className="bg-surface border border-border rounded-xl overflow-hidden group">
+            <div key={rule.name} className="card overflow-hidden group">
               <div className="flex items-center justify-between px-4 py-3">
                 <button onClick={() => setExpanded(expanded === rule.name ? null : rule.name)} className="flex items-center gap-3 flex-1 text-left">
                   <ShieldCheck className="w-4 h-4 text-green shrink-0" />

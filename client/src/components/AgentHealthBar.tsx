@@ -36,6 +36,8 @@ export default function AgentHealthBar({ agentName, scope, projectId, content }:
   if (loading && !health) {
     return (
       <div className="px-6 py-2 border-b border-border bg-surface-2/40 flex items-center gap-3">
+        {/* status-label placeholder + the three gauge bars */}
+        <div className="h-3.5 w-24 rounded bg-surface-3 animate-pulse" />
         <div className="h-3.5 w-20 rounded bg-surface-3 animate-pulse" />
         <div className="h-3.5 w-32 rounded bg-surface-3 animate-pulse" />
         <div className="h-3.5 w-24 rounded bg-surface-3 animate-pulse" />
@@ -86,12 +88,14 @@ export default function AgentHealthBar({ agentName, scope, projectId, content }:
       {/* Compact row — always visible */}
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        aria-label="Show agent health details"
         className="w-full px-6 py-2 flex items-center gap-4 hover:bg-surface-2/30 transition-colors"
       >
         {/* Status label */}
         <div className={`flex items-center gap-1.5 shrink-0 ${statusConfig.text}`}>
           <StatusIcon className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider">{statusConfig.label}</span>
+          <span className="text-[11px] font-semibold ">{statusConfig.label}</span>
         </div>
 
         {/* Divider */}
@@ -175,7 +179,7 @@ export default function AgentHealthBar({ agentName, scope, projectId, content }:
 function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">{label}</p>
+      <p className="text-[10px] font-semibold text-text-muted">{label}</p>
       <p className="text-sm font-mono font-semibold text-text mt-0.5">{value}</p>
       {sub && <p className="text-[10px] text-text-muted font-mono mt-0.5">{sub}</p>}
     </div>

@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Save, ArrowLeft, RotateCcw, AlertCircle, Code, Eye, LayoutTemplate } from 'lucide-react'
 import { getTemplate, updateTemplate } from '../lib/api'
 import { toast } from '../components/Toast'
+import ConfirmDialog from '../components/ConfirmDialog'
 import RichMarkdownEditor from '../components/RichMarkdownEditor'
+import Breadcrumbs, { type BreadcrumbItem } from '../components/Breadcrumbs'
 
 function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
   const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/)
@@ -20,6 +22,13 @@ function parseFrontmatter(raw: string): { meta: Record<string, string>; body: st
     if (key) meta[key] = val
   }
   return { meta, body: match[2].replace(/^\n+/, '') }
+}
+
+// True when source opens with `---` but lacks a valid closing fence, so a
+// rich-mode switch would silently swallow the frontmatter into the body.
+function hasUnparseableFrontmatter(raw: string): boolean {
+  if (!/^---\s*\n/.test(raw)) return false
+  return !/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.test(raw)
 }
 
 function serializeTemplate(meta: Record<string, string>, body: string): string {
@@ -48,6 +57,7 @@ export default function TemplateEditor() {
   const [body, setBody] = useState('')
   const [viewMode, setViewMode] = useState<'rich' | 'source'>('rich')
   const [sourceText, setSourceText] = useState('')
+  const [richGuardOpen, setRichGuardOpen] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -81,6 +91,7 @@ export default function TemplateEditor() {
       setOriginalContent(raw)
       setDirty(false)
       toast('success', 'Template saved')
+      window.dispatchEvent(new Event('polyglot:file-applied'))
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -111,12 +122,22 @@ export default function TemplateEditor() {
     setViewMode('source')
   }
 
-  const switchToRich = () => {
+  const doSwitchToRich = () => {
     const parsed = parseFrontmatter(sourceText)
     setMeta(parsed.meta)
     setBody(parsed.body)
     setViewMode('rich')
   }
+
+  const switchToRich = () => {
+    if (hasUnparseableFrontmatter(sourceText)) { setRichGuardOpen(true); return }
+    doSwitchToRich()
+  }
+
+  const crumbs: BreadcrumbItem[] = [
+    { label: 'Templates', to: '/settings?tab=templates' },
+    { label: meta.name || name || '' },
+  ]
 
   if (loading) {
     return (
@@ -155,7 +176,8 @@ export default function TemplateEditor() {
           <div className="p-2 rounded-lg bg-accent-muted">
             <LayoutTemplate className="w-5 h-5 text-accent" />
           </div>
-          <div>
+          <div className="min-w-0">
+            <Breadcrumbs items={crumbs} className="mb-1" />
             <h1 className="text-lg font-bold">{meta.name || name}</h1>
             <p className="text-xs text-text-muted mt-0.5">
               Output template
@@ -165,20 +187,16 @@ export default function TemplateEditor() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-surface-2 border border-border rounded-lg p-0.5 mr-2">
+          <div className="segmented mr-2">
             <button
               onClick={viewMode === 'source' ? switchToRich : undefined}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                viewMode === 'rich' ? 'bg-accent text-white' : 'text-text-muted hover:text-text'
-              }`}
+              className={viewMode === 'rich' ? 'segmented-btn segmented-btn-active flex items-center gap-1.5' : 'segmented-btn flex items-center gap-1.5'}
             >
               <Eye className="w-3.5 h-3.5" /> Rich Editor
             </button>
             <button
               onClick={viewMode === 'rich' ? switchToSource : undefined}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                viewMode === 'source' ? 'bg-accent text-white' : 'text-text-muted hover:text-text'
-              }`}
+              className={viewMode === 'source' ? 'segmented-btn segmented-btn-active flex items-center gap-1.5' : 'segmented-btn flex items-center gap-1.5'}
             >
               <Code className="w-3.5 h-3.5" /> Source
             </button>
@@ -192,7 +210,7 @@ export default function TemplateEditor() {
           <button
             onClick={handleSave}
             disabled={!dirty || saving}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-30 transition-colors"
+            className="btn-primary btn-md"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
@@ -207,7 +225,7 @@ export default function TemplateEditor() {
             {/* Metadata sidebar */}
             <div className="w-[280px] min-w-[280px] border-r border-border bg-surface overflow-y-auto">
               <div className="p-5 space-y-5">
-                <div className="flex items-center gap-2 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-xs font-semibold text-text-muted ">
                   <LayoutTemplate className="w-3.5 h-3.5" />
                   Template Config
                 </div>
@@ -217,7 +235,7 @@ export default function TemplateEditor() {
                   <input
                     value={meta.name || ''}
                     onChange={e => updateMeta('name', e.target.value)}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-accent/50"
+                    className="input"
                     placeholder="Template name"
                   />
                 </div>
@@ -228,7 +246,7 @@ export default function TemplateEditor() {
                     value={meta.description || ''}
                     onChange={e => updateMeta('description', e.target.value)}
                     rows={3}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-accent/50"
+                    className="input resize-y"
                     placeholder="What this template is for..."
                   />
                 </div>
@@ -259,13 +277,23 @@ export default function TemplateEditor() {
             <textarea
               value={sourceText}
               onChange={e => { setSourceText(e.target.value); setDirty(true) }}
-              className="w-full h-full bg-surface border border-border rounded-xl p-5 font-mono text-sm resize-none focus:outline-none focus:border-accent/50 leading-relaxed"
+              className="input h-full p-5 font-mono resize-none leading-relaxed"
               placeholder={'---\nname: Template Name\ndescription: What this template formats\n---\n\n# {title}\n\n## Section\n\nContent...'}
               spellCheck={false}
             />
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={richGuardOpen}
+        onClose={() => setRichGuardOpen(false)}
+        onConfirm={() => { setRichGuardOpen(false); doSwitchToRich() }}
+        title="Frontmatter looks malformed"
+        message="The opening --- has no matching closing ---, so switching to the rich editor will drop the frontmatter into the body. Fix the closing fence in source view, or switch anyway."
+        confirmLabel="Switch anyway"
+        danger
+      />
     </div>
   )
 }

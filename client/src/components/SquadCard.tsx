@@ -30,7 +30,9 @@ function groupByRoleBand(
 ): RoleBandGroup[] {
   const byBand = new Map<string, UnifiedAgent[]>()
   for (const agent of agents) {
-    const band = roleBandFor(agent.filename || agent.org?.title || '') || 'lead'
+    // Look up by the stable identifier only. The title is never a valid
+    // role-band key, so passing it as a fallback silently mis-groups agents.
+    const band = roleBandFor(agent.filename || '')
     if (!byBand.has(band)) byBand.set(band, [])
     byBand.get(band)!.push(agent)
   }
@@ -67,6 +69,10 @@ export function SquadCard({
 
   const leadId = squad.lead || null
   const lead = leadId ? members.find(m => m.filename === leadId) : null
+  // Surface a misconfigured squad lead (referenced but absent from members).
+  if (leadId && !lead && members.length > 0) {
+    console.warn(`[SquadCard] squad "${squad.id}" lead "${leadId}" not found among members`)
+  }
   const nonLeadMembers = lead ? members.filter(m => m.filename !== leadId) : members
 
   const roleBands = squad.roleBands && squad.roleBands.length > 0
@@ -79,13 +85,13 @@ export function SquadCard({
 
   return (
     <div
-      className="bg-surface rounded-xl border border-border overflow-hidden transition-colors hover:border-accent/30"
+      className="card overflow-hidden transition-colors hover:border-accent/30"
       style={accentStyle}
     >
       <button
         type="button"
         onClick={() => setCollapsed(c => !c)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         aria-expanded={!collapsed}
         aria-controls={`squad-body-${squad.id}`}
       >
@@ -106,7 +112,7 @@ export function SquadCard({
               {totalCount} {totalCount === 1 ? 'agent' : 'agents'}
             </span>
             {squad.placeholder ? (
-              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber/15 text-amber border border-amber/30">
                 Placeholder
               </span>
             ) : null}
@@ -134,7 +140,7 @@ export function SquadCard({
             />
           ) : null}
 
-          {groups.length === 0 && !lead && !squad.placeholder ? (
+          {groups.length === 0 && dottedMembers.length === 0 && !lead && !squad.placeholder ? (
             <div className="px-4 py-6 text-center text-[12px] text-text-muted">
               No agents assigned yet.
             </div>
@@ -142,7 +148,7 @@ export function SquadCard({
 
           {groups.map(group => (
             <div key={group.band}>
-              <div className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider font-semibold text-text-muted bg-surface-2/40">
+              <div className="px-4 pt-3 pb-1 text-[10px] font-semibold text-text-muted bg-surface-2/40">
                 {group.label}
               </div>
               {group.agents.map(agent => (
@@ -158,7 +164,7 @@ export function SquadCard({
 
           {dottedMembers.length > 0 ? (
             <div className="border-t border-dashed border-border/60">
-              <div className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider font-semibold text-text-muted/80 bg-surface-2/40">
+              <div className="px-4 pt-3 pb-1 text-[10px] font-semibold text-text-muted/80 bg-surface-2/40">
                 Dotted-line specialists
               </div>
               {dottedMembers.map(agent => (
@@ -209,16 +215,8 @@ function AgentRow({ agent, isLead = false, dotted = false, squadColor, onClick }
     ? 'border-l border-dashed border-border/60 opacity-75'
     : 'border-l border-l-transparent'
 
-  const Wrapper = isInteractive ? 'button' : 'div'
-
-  return (
-    <Wrapper
-      type={isInteractive ? 'button' : undefined}
-      onClick={isInteractive ? () => onClick!(agent) : undefined}
-      className={`w-full flex items-center gap-3 px-4 py-2 text-left ${baseClass} ${
-        isInteractive ? 'hover:bg-surface-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40' : ''
-      }`}
-    >
+  const inner = (
+    <>
       <span
         className={`${isLead ? 'w-9 h-9 text-base' : 'w-7 h-7 text-sm'} rounded-full flex items-center justify-center shrink-0 transition-all`}
         style={{ backgroundColor: dotted ? 'transparent' : `${squadColor}14`, color: squadColor }}
@@ -230,17 +228,17 @@ function AgentRow({ agent, isLead = false, dotted = false, squadColor, onClick }
         <div className="flex items-center gap-2">
           <span className={`${isLead ? 'text-sm font-semibold' : 'text-[13px] font-medium'} text-text truncate`}>{display.realName}</span>
           {isLead ? (
-            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-accent text-white font-extrabold">
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent text-white font-extrabold">
               Lead
             </span>
           ) : null}
           {dotted ? (
-            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30">
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple/10 text-purple border border-purple/30">
               Dotted
             </span>
           ) : null}
           {status && status !== 'active' ? (
-            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-surface-2 text-text-muted border border-border">
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-2 text-text-muted border border-border">
               {status}
             </span>
           ) : null}
@@ -249,6 +247,22 @@ function AgentRow({ agent, isLead = false, dotted = false, squadColor, onClick }
           <div className="text-[11px] text-text-muted truncate">{display.role}</div>
         ) : null}
       </div>
-    </Wrapper>
+    </>
+  )
+
+  // Explicit element per interactivity — a real <button> when clickable
+  // (keyboard + focus semantics), a plain <div> otherwise (no button props).
+  return isInteractive ? (
+    <button
+      type="button"
+      onClick={() => onClick!(agent)}
+      className={`w-full flex items-center gap-3 px-4 py-2 text-left ${baseClass} hover:bg-surface-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
+    >
+      {inner}
+    </button>
+  ) : (
+    <div className={`w-full flex items-center gap-3 px-4 py-2 text-left ${baseClass}`}>
+      {inner}
+    </div>
   )
 }

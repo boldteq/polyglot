@@ -22,7 +22,7 @@ import {
   CheckCircle, AlertCircle, Loader, Terminal, FileText,
   LayoutTemplate, X, Sparkles, Copy, Settings2, RotateCcw, HelpCircle,
   ArrowRight, Clock, Eye, Trash, Search, ChevronDown,
-  StopCircle, Layers,
+  StopCircle, Layers, AlertTriangle, SearchX,
 } from 'lucide-react'
 import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHistory, getOrchestrationTemplates } from '../lib/api'
 import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate } from '../lib/api'
@@ -33,6 +33,8 @@ import type { UnifiedAgent } from '../types'
 import { toast } from '../components/Toast'
 import AgentIcon from '../components/AgentIcon'
 import ConfirmDialog from '../components/ConfirmDialog'
+import EmptyState from '../components/EmptyState'
+import { SkeletonCards } from '../components/Skeleton'
 
 // ---- Custom Node ----
 interface AgentNodeData {
@@ -53,20 +55,20 @@ interface AgentNodeData {
 
 function AgentNode({ data, selected }: { data: AgentNodeData; selected: boolean }) {
   const statusMap: Record<string, string> = {
-    idle: 'border-border/60 shadow-md',
-    running: 'border-purple shadow-purple/20 shadow-lg animate-pulse',
-    done: 'border-green shadow-green/10 shadow-lg',
-    error: 'border-red shadow-red/10 shadow-lg',
-    skipped: 'border-yellow-500/50 shadow-yellow-500/10 shadow-lg opacity-60',
+    idle: 'border-border shadow-card',
+    running: 'border-purple shadow-card animate-pulse',
+    done: 'border-green shadow-card',
+    error: 'border-red shadow-card',
+    skipped: 'border-yellow/50 shadow-card opacity-60',
   }
   const statusStyles = statusMap[data.status || 'idle'] || statusMap.idle
 
   return (
     <div
-      className={`relative min-w-[200px] max-w-[240px] rounded-2xl border-2 bg-surface backdrop-blur-sm transition-all duration-300 ${statusStyles} ${selected ? 'ring-2 ring-accent/50 ring-offset-2 ring-offset-[#0d0d0f]' : ''}`}
+      className={`relative min-w-[200px] max-w-[240px] rounded-xl border bg-surface backdrop-blur-sm transition-all duration-300 ${statusStyles} ${selected ? 'ring-2 ring-accent/50 ring-offset-2 ring-offset-bg' : ''}`}
     >
       {data.executionOrder != null && (
-        <span className="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-gradient-to-br from-purple to-accent text-white text-[11px] font-bold flex items-center justify-center shadow-lg z-10">
+        <span className="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-gradient-to-br from-purple to-accent text-white text-[11px] font-bold flex items-center justify-center shadow-card z-10">
           {data.executionOrder}
         </span>
       )}
@@ -79,7 +81,7 @@ function AgentNode({ data, selected }: { data: AgentNodeData; selected: boolean 
               <Zap className="w-4 h-4 text-white" />
             </div>
           ) : data.isCustom ? (
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber to-orange-500 flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber to-orange flex items-center justify-center shrink-0">
               <Terminal className="w-4 h-4 text-white" />
             </div>
           ) : (
@@ -105,7 +107,7 @@ function AgentNode({ data, selected }: { data: AgentNodeData; selected: boolean 
 
         {data.output && (
           <div className="mt-2.5 pt-2 border-t border-border/50">
-            <p className="text-[10px] text-text-muted mb-0.5 uppercase tracking-wider font-medium">Output</p>
+            <p className="text-[10px] text-text-muted mb-0.5 font-medium">Output</p>
             <p className="text-[11px] text-text leading-snug line-clamp-3">{data.output}</p>
           </div>
         )}
@@ -178,6 +180,18 @@ interface RunLog {
   output?: string
   error?: string
   finalOutput?: string
+  ts?: number
+}
+
+// Returns true if adding source->target would create a cycle in the directed graph.
+function wouldCreateCycle(edges: Edge[], source: string, target: string): boolean {
+  if (source === target) return true
+  const adj = new Map<string, string[]>()
+  for (const e of edges) { const a = adj.get(e.source) ?? []; a.push(e.target); adj.set(e.source, a) }
+  // can we already reach `source` from `target`? if so, adding source->target closes a loop
+  const stack = [target]; const seen = new Set<string>()
+  while (stack.length) { const n = stack.pop()!; if (n === source) return true; if (seen.has(n)) continue; seen.add(n); for (const m of adj.get(n) ?? []) stack.push(m) }
+  return false
 }
 
 // Sidebar tab types
@@ -198,9 +212,14 @@ export default function Orchestration() {
   const [showRunPanel, setShowRunPanel] = useState(false)
   const [savedList, setSavedList] = useState<{ id: string; name: string; updatedAt: string; nodeCount: number; edgeCount: number }[]>([])
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [pendingTemplate, setPendingTemplate] = useState<typeof TEMPLATES[0] | null>(null)
+  const [showClearHistory, setShowClearHistory] = useState(false)
+  const [pendingDeleteSaved, setPendingDeleteSaved] = useState<{ id: string; name: string } | null>(null)
   // C12: gate the first multi-node run of a session behind a cost confirm.
   const runConfirmedRef = useRef(false)
   const [showRunConfirm, setShowRunConfirm] = useState(false)
+  // Surface dropped SSE events as a non-fatal run-log warning after the stream ends.
+  const sseParseErrorRef = useRef(false)
   const [showGuide, setShowGuide] = useState(false)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [viewingOutputNodeId, setViewingOutputNodeId] = useState<string | null>(null)
@@ -277,6 +296,14 @@ export default function Orchestration() {
     [nodes, executionOrder]
   )
 
+  // Design-time disconnected nodes (only meaningful with >1 node)
+  const disconnectedNodeLabels = useMemo(() => {
+    if (nodes.length <= 1) return []
+    const connectedIds = new Set<string>()
+    for (const e of edges) { connectedIds.add(e.source); connectedIds.add(e.target) }
+    return nodes.filter(n => !connectedIds.has(n.id)).map(n => (n.data as AgentNodeData).label)
+  }, [nodes, edges])
+
   // Run progress
   const totalNonStartNodes = nodes.filter(n => !(n.data as AgentNodeData).isStart).length
   const completedNodes = runLog.filter(l => l.type === 'done' && !((l as unknown as { skipped?: boolean }).skipped)).length
@@ -286,6 +313,29 @@ export default function Orchestration() {
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [runLog])
+
+  // Keyboard layer: ⌘S save, Esc close panels, ⌘Enter run
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        if (nodes.length > 0 && !saving) handleSave()
+        return
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        if (showRunPanel && task.trim() && !running) handleRun()
+        return
+      }
+      if (e.key === 'Escape') {
+        setSelectedNodeId(null)
+        setViewingOutputNodeId(null)
+        setShowGuide(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes.length, saving, showRunPanel, task, running])
 
   const loadSaved = useCallback(async () => {
     try {
@@ -328,8 +378,23 @@ export default function Orchestration() {
   }, [sidebarTab, loadHistory, loadSaved])
 
   const onConnect = useCallback(
-    (connection: Connection) => setEdges(eds => addEdge({ ...connection, animated: true }, eds)),
-    [setEdges]
+    (connection: Connection) => {
+      if (connection.source === connection.target) {
+        toast('error', "A node can't connect to itself")
+        return
+      }
+      const targetNode = nodes.find(n => n.id === connection.target)
+      if (targetNode && (targetNode.data as AgentNodeData).isStart) {
+        toast('error', "Start nodes can't have an incoming connection")
+        return
+      }
+      if (connection.source && connection.target && wouldCreateCycle(edges, connection.source, connection.target)) {
+        toast('error', 'That connection would create a loop')
+        return
+      }
+      setEdges(eds => addEdge({ ...connection, animated: true }, eds))
+    },
+    [setEdges, nodes, edges]
   )
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
@@ -406,10 +471,7 @@ export default function Orchestration() {
     ))
   }, [selectedNodeId, setNodes])
 
-  const loadTemplate = useCallback((tpl: typeof TEMPLATES[0]) => {
-    if (nodes.length > 0 && !window.confirm(`This will replace your current ${nodes.length} nodes. Continue?`)) {
-      return
-    }
+  const applyTemplate = useCallback((tpl: typeof TEMPLATES[0]) => {
     setNodes(tpl.nodes.map(n => ({ ...n, data: { ...n.data, status: 'idle' } })) as Node[])
     setEdges(tpl.edges as Edge[])
     setOrchName(tpl.name)
@@ -418,9 +480,15 @@ export default function Orchestration() {
     setSelectedNodeId(null)
     setViewingOutputNodeId(null)
     setTimeout(() => rfInstanceRef.current?.fitView({ padding: 0.15 }), 50)
-  }, [setNodes, setEdges, nodes.length])
+  }, [setNodes, setEdges])
+
+  const loadTemplate = useCallback((tpl: typeof TEMPLATES[0]) => {
+    if (nodes.length > 0) { setPendingTemplate(tpl); return }
+    applyTemplate(tpl)
+  }, [nodes.length, applyTemplate])
 
   const handleSave = async () => {
+    if (!orchName.trim()) { toast('error', 'Name your orchestration first'); return }
     setSaving(true)
     try {
       const res = await fetch('/api/orchestrations', {
@@ -495,7 +563,7 @@ export default function Orchestration() {
   }
 
   const processSSEEvent = useCallback((event: RunLog) => {
-    setRunLog(log => [...log, event])
+    setRunLog(log => [...log, { ...event, ts: event.ts ?? Date.now() }])
     if (event.type === 'start' && event.nodeId) {
       setNodes(nds => nds.map(n =>
         n.id === event.nodeId ? { ...n, data: { ...n.data, status: 'running' } } : n
@@ -550,6 +618,7 @@ export default function Orchestration() {
     setSelectedNodeId(null)
     setViewingOutputNodeId(null)
     sseBufferRef.current = ''
+    sseParseErrorRef.current = false
     abortRef.current = new AbortController()
 
     setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: 'idle', output: undefined } })))
@@ -580,7 +649,7 @@ export default function Orchestration() {
           try {
             const event = JSON.parse(trimmed.slice(6))
             processSSEEvent(event)
-          } catch (e) { console.error('[orchestration/sse parse]', e instanceof Error ? e.message : e) }
+          } catch (e) { sseParseErrorRef.current = true; console.error('[orchestration/sse parse]', e instanceof Error ? e.message : e) }
         }
       }
 
@@ -592,10 +661,27 @@ export default function Orchestration() {
           try {
             const event = JSON.parse(trimmed.slice(6))
             processSSEEvent(event)
-          } catch (e) { console.error('[orchestration/sse parse]', e instanceof Error ? e.message : e) }
+          } catch (e) { sseParseErrorRef.current = true; console.error('[orchestration/sse parse]', e instanceof Error ? e.message : e) }
         }
       }
+
+      if (sseParseErrorRef.current) {
+        setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: 'Some streamed output may be missing (parse error).' }])
+      }
     } catch (err: unknown) {
+      // On abort, flush any complete SSE events still sitting in the buffer so a
+      // node's final 'done' isn't silently dropped mid-stream before we clear it.
+      const leftover = sseBufferRef.current
+      if (leftover.trim()) {
+        for (const line of leftover.split('\n')) {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith('data: ')) continue
+          try {
+            const event = JSON.parse(trimmed.slice(6))
+            processSSEEvent(event)
+          } catch (e) { console.warn('[orchestration/sse abort-flush] dropped partial event', e instanceof Error ? e.message : e) }
+        }
+      }
       if (err instanceof Error && err.name === 'AbortError') {
         setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: 'Run cancelled' }])
       } else {
@@ -605,6 +691,9 @@ export default function Orchestration() {
       setRunning(false)
       abortRef.current = null
       sseBufferRef.current = ''
+      // Refresh run history so the just-finished run appears without a manual
+      // Refresh click (the run is persisted server-side as the stream completes).
+      loadHistory()
     }
   }
 
@@ -643,19 +732,61 @@ export default function Orchestration() {
           handleRun()
         }}
       />
+      <ConfirmDialog
+        open={!!pendingTemplate}
+        danger
+        title="Replace current pipeline?"
+        message={`This replaces your current ${nodes.length} node(s).`}
+        confirmLabel="Replace"
+        onConfirm={() => { if (pendingTemplate) applyTemplate(pendingTemplate); setPendingTemplate(null) }}
+        onClose={() => setPendingTemplate(null)}
+      />
+      <ConfirmDialog
+        open={showClearHistory}
+        danger
+        title="Clear all run history?"
+        message="This permanently deletes the run history."
+        confirmLabel="Clear history"
+        onConfirm={async () => {
+          try {
+            await clearRunHistory()
+            setHistoryList([])
+          } catch (err) {
+            toast('error', err instanceof Error ? err.message : 'Failed to clear history')
+          }
+          setShowClearHistory(false)
+        }}
+        onClose={() => setShowClearHistory(false)}
+      />
+      <ConfirmDialog
+        open={!!pendingDeleteSaved}
+        danger
+        title="Delete this orchestration?"
+        message={pendingDeleteSaved ? `"${pendingDeleteSaved.name}" will be permanently deleted.` : ''}
+        confirmLabel="Delete"
+        onConfirm={() => { if (pendingDeleteSaved) handleDelete(pendingDeleteSaved.id); setPendingDeleteSaved(null) }}
+        onClose={() => setPendingDeleteSaved(null)}
+      />
       {/* ======== LEFT SIDEBAR ======== */}
       <div className="w-[260px] min-w-[260px] bg-surface border-r border-border flex flex-col">
         {/* Sidebar tabs */}
-        <div className="flex border-b border-border shrink-0">
+        <div className="flex border-b border-border shrink-0" role="tablist" aria-label="Orchestration panels">
           {([
             { key: 'agents' as SidebarTab, icon: Layers, label: 'Agents' },
             { key: 'templates' as SidebarTab, icon: LayoutTemplate, label: 'Templates' },
             { key: 'saved' as SidebarTab, icon: FileText, label: 'Saved' },
             { key: 'history' as SidebarTab, icon: Clock, label: 'History' },
-          ]).map(tab => (
+          ]).map((tab, i, tabs) => (
             <button
               key={tab.key}
               onClick={() => setSidebarTab(tab.key)}
+              role="tab"
+              aria-selected={sidebarTab === tab.key}
+              tabIndex={sidebarTab === tab.key ? 0 : -1}
+              onKeyDown={e => {
+                if (e.key === 'ArrowRight') { e.preventDefault(); setSidebarTab(tabs[(i + 1) % tabs.length].key) }
+                else if (e.key === 'ArrowLeft') { e.preventDefault(); setSidebarTab(tabs[(i - 1 + tabs.length) % tabs.length].key) }
+              }}
               className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors relative ${
                 sidebarTab === tab.key
                   ? 'text-accent'
@@ -682,7 +813,7 @@ export default function Orchestration() {
                   value={agentSearch}
                   onChange={e => setAgentSearch(e.target.value)}
                   placeholder="Search agents..."
-                  className="w-full bg-surface-2 border border-border rounded-lg pl-8 pr-3 py-2 text-xs text-text focus:outline-none focus:border-accent/50 placeholder:text-text-muted"
+                  className="input pl-8 text-xs"
                 />
               </div>
             </div>
@@ -691,14 +822,16 @@ export default function Orchestration() {
             <div className="px-3 pb-2 flex gap-2 shrink-0">
               <button
                 onClick={addStartNode}
-                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg bg-gradient-to-r from-accent/10 to-purple/10 border border-accent/20 text-accent hover:border-accent/40 transition-all text-xs font-medium"
+                title="Add a Start (task input) node"
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg bg-accent/10 border border-accent/20 text-accent hover:bg-accent/15 hover:border-accent/40 transition-colors text-xs font-medium"
               >
                 <Zap className="w-3.5 h-3.5" />
                 Start
               </button>
               <button
                 onClick={addCustomNode}
-                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg bg-gradient-to-r from-amber/10 to-orange-500/10 border border-amber/20 text-amber hover:border-amber/40 transition-all text-xs font-medium"
+                title="Add a Custom (free-prompt) node"
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg bg-amber/10 border border-amber/20 text-amber hover:bg-amber/15 hover:border-amber/40 transition-colors text-xs font-medium"
               >
                 <Terminal className="w-3.5 h-3.5" />
                 Custom
@@ -709,12 +842,13 @@ export default function Orchestration() {
             <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-3">
               {Object.entries(groupedAgents).map(([scope, agents]) => (
                 <div key={scope}>
-                  <p className="text-[10px] uppercase tracking-wider text-text-muted font-semibold px-1 mb-1.5">{scope}</p>
+                  <p className="text-[10px] text-text-muted font-semibold px-1 mb-1.5">{scope}</p>
                   <div className="space-y-0.5">
                     {agents.map(agent => (
                       <button
                         key={`${agent.scopeLabel}-${agent.name}`}
                         onClick={() => addAgentNode(agent)}
+                        aria-label={`Add ${agent.name} to pipeline`}
                         className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-surface-2 transition-colors text-left group"
                       >
                         <AgentIcon name={agent.name} uid={`pal-${agent.scopeLabel}-${agent.name}`} size={26} global={agent.scopeLabel === 'Global'} />
@@ -731,9 +865,13 @@ export default function Orchestration() {
                 </div>
               ))}
               {filteredAgents.length === 0 && (
-                <p className="text-xs text-text-muted text-center py-6">
-                  {agentSearch ? 'No agents match your search' : 'No agents found'}
-                </p>
+                <EmptyState
+                  icon={agentSearch ? SearchX : Search}
+                  title={agentSearch ? 'No agents match your search' : 'No agents found'}
+                  size="sm"
+                  card={false}
+                  action={agentSearch ? { label: 'Clear search', onClick: () => setAgentSearch('') } : undefined}
+                />
               )}
             </div>
           </div>
@@ -744,7 +882,7 @@ export default function Orchestration() {
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {apiTemplates.length > 0 && (
               <>
-                <p className="text-[10px] font-semibold text-text-muted px-1 uppercase tracking-wider mb-1">Agent Pipelines</p>
+                <p className="text-[10px] font-semibold text-text-muted px-1 mb-1">Agent Pipelines</p>
                 {apiTemplates.map(tpl => (
                   <button
                     key={tpl.id}
@@ -761,7 +899,7 @@ export default function Orchestration() {
                       </div>
                       <ChevronRight className="w-3.5 h-3.5 text-text-muted group-hover:text-accent transition-colors shrink-0" />
                     </div>
-                    <p className="text-[11px] text-text-muted leading-relaxed">{tpl.description}</p>
+                    <p className="text-[11px] text-text-muted leading-relaxed line-clamp-2">{tpl.description}</p>
                     <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                       {tpl.nodes.map((n, i) => (
                         <span key={n.id} className="flex items-center gap-1 text-[10px] text-text-secondary">
@@ -773,7 +911,7 @@ export default function Orchestration() {
                   </button>
                 ))}
                 <div className="mx-1 my-2 border-t border-border" />
-                <p className="text-[10px] font-semibold text-text-muted px-1 uppercase tracking-wider mb-1">Custom Pipelines</p>
+                <p className="text-[10px] font-semibold text-text-muted px-1 mb-1">Custom Pipelines</p>
               </>
             )}
             {!apiTemplates.length && <p className="text-xs text-text-muted px-1 mb-2">Pre-built pipelines to get started quickly</p>}
@@ -793,7 +931,7 @@ export default function Orchestration() {
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-text-muted group-hover:text-accent transition-colors shrink-0" />
                 </div>
-                <p className="text-[11px] text-text-muted leading-relaxed">{tpl.description}</p>
+                <p className="text-[11px] text-text-muted leading-relaxed line-clamp-2">{tpl.description}</p>
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                   {tpl.nodes.map((n, i) => (
                     <span key={n.id} className="flex items-center gap-1 text-[10px] text-text-secondary">
@@ -811,11 +949,13 @@ export default function Orchestration() {
         {sidebarTab === 'saved' && (
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {savedList.length === 0 ? (
-              <div className="text-center py-10">
-                <FileText className="w-8 h-8 text-text-muted mx-auto mb-2 opacity-40" />
-                <p className="text-xs text-text-muted">No saved orchestrations yet</p>
-                <p className="text-[10px] text-text-muted mt-1">Save your pipeline to reuse it later</p>
-              </div>
+              <EmptyState
+                icon={FileText}
+                title="No saved pipelines yet"
+                description="Save a pipeline to reuse it later."
+                size="sm"
+                card={false}
+              />
             ) : (
               savedList.map(o => (
                 <div key={o.id} className="p-3 rounded-xl border border-border hover:border-accent/20 group transition-all">
@@ -836,7 +976,8 @@ export default function Orchestration() {
                       Load
                     </button>
                     <button
-                      onClick={() => handleDelete(o.id)}
+                      onClick={() => setPendingDeleteSaved({ id: o.id, name: o.name })}
+                      aria-label={`Delete ${o.name}`}
                       className="px-2.5 py-1.5 text-text-muted hover:text-red hover:bg-red-muted rounded-lg transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -887,7 +1028,7 @@ export default function Orchestration() {
                          <Sparkles className="w-3.5 h-3.5 text-purple" />}
                         <p className="text-[11px] font-semibold flex-1">{node.label}</p>
                         {output && (
-                          <button onClick={() => copyToClipboard(output)} className="p-0.5 text-text-muted hover:text-text">
+                          <button onClick={() => copyToClipboard(output)} aria-label="Copy output" className="p-0.5 text-text-muted hover:text-text">
                             <Copy className="w-3 h-3" />
                           </button>
                         )}
@@ -905,7 +1046,7 @@ export default function Orchestration() {
                   <div className="rounded-xl bg-accent-muted border border-accent/20 p-3">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[11px] font-semibold text-accent">Final Output</p>
-                      <button onClick={() => copyToClipboard(viewingRun.finalOutput)} className="text-text-muted hover:text-text">
+                      <button onClick={() => copyToClipboard(viewingRun.finalOutput)} aria-label="Copy final output" className="text-text-muted hover:text-text">
                         <Copy className="w-3 h-3" />
                       </button>
                     </div>
@@ -919,7 +1060,7 @@ export default function Orchestration() {
                     setViewingRun(null)
                     setShowRunPanel(true)
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-accent text-white rounded-xl text-xs font-medium hover:bg-accent-hover transition-colors"
+                  className="btn-primary btn-md w-full"
                 >
                   <RotateCcw className="w-3.5 h-3.5" /> Re-run with same task
                 </button>
@@ -930,11 +1071,7 @@ export default function Orchestration() {
                 {historyList.length > 0 && (
                   <div className="flex justify-end mb-1">
                     <button
-                      onClick={async () => {
-                        if (!window.confirm('Clear all run history?')) return
-                        await clearRunHistory()
-                        setHistoryList([])
-                      }}
+                      onClick={() => setShowClearHistory(true)}
                       className="text-[10px] text-red hover:underline"
                     >
                       Clear all
@@ -943,15 +1080,15 @@ export default function Orchestration() {
                 )}
 
                 {historyLoading ? (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader className="w-5 h-5 animate-spin text-text-muted" />
-                  </div>
+                  <SkeletonCards count={4} />
                 ) : historyList.length === 0 ? (
-                  <div className="text-center py-10">
-                    <Clock className="w-8 h-8 text-text-muted mx-auto mb-2 opacity-40" />
-                    <p className="text-xs text-text-muted">No runs yet</p>
-                    <p className="text-[10px] text-text-muted mt-1">Run an orchestration to see history</p>
-                  </div>
+                  <EmptyState
+                    icon={Clock}
+                    title="No runs yet"
+                    description="Run an orchestration to see history."
+                    size="sm"
+                    card={false}
+                  />
                 ) : (
                   historyList.map(run => (
                     <div key={run.id} className="p-3 rounded-xl border border-border hover:border-accent/20 group transition-all">
@@ -987,9 +1124,14 @@ export default function Orchestration() {
                         </button>
                         <button
                           onClick={async () => {
-                            await deleteRun(run.id)
-                            setHistoryList(prev => prev.filter(r => r.id !== run.id))
+                            try {
+                              await deleteRun(run.id)
+                              setHistoryList(prev => prev.filter(r => r.id !== run.id))
+                            } catch (err) {
+                              toast('error', err instanceof Error ? err.message : 'Failed to delete run')
+                            }
                           }}
+                          aria-label={`Delete run for ${run.orchestrationName}`}
                           className="px-2.5 py-1.5 text-text-muted hover:text-red hover:bg-red-muted rounded-lg transition-colors"
                         >
                           <Trash className="w-3.5 h-3.5" />
@@ -1012,7 +1154,8 @@ export default function Orchestration() {
             <input
               value={orchName}
               onChange={e => setOrchName(e.target.value)}
-              className="text-sm font-semibold bg-transparent border-none outline-none focus:ring-0 text-text w-56"
+              aria-label="Orchestration name"
+              className="text-sm font-semibold bg-transparent outline-none focus:ring-0 text-text w-56 border-b border-transparent hover:border-border focus:border-accent rounded-none"
             />
             <div className="flex items-center gap-1.5 text-text-muted text-[11px]">
               <span className="px-1.5 py-0.5 rounded bg-surface-2">{nodes.length} nodes</span>
@@ -1021,20 +1164,21 @@ export default function Orchestration() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <button onClick={() => setShowGuide(true)} className="p-2 rounded-lg text-text-muted hover:text-accent hover:bg-accent-muted transition-colors" title="How it works">
+            <button onClick={() => setShowGuide(true)} aria-label="How orchestration works" className="p-2 rounded-lg text-text-muted hover:text-accent hover:bg-accent-muted transition-colors" title="How it works">
               <HelpCircle className="w-4 h-4" />
             </button>
             <div className="w-px h-5 bg-border mx-0.5" />
             <button onClick={newOrchestration} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg text-text-secondary hover:bg-surface-2 transition-colors" title="New">
               <Plus className="w-3.5 h-3.5" /> New
             </button>
-            <button onClick={() => setShowClearConfirm(true)} disabled={nodes.length === 0} className="p-2 rounded-lg text-text-muted hover:text-red hover:bg-red-muted transition-colors disabled:opacity-20" title="Clear">
+            <button onClick={() => setShowClearConfirm(true)} disabled={nodes.length === 0} aria-label="Clear canvas" className="p-2 rounded-lg text-text-muted hover:text-red hover:bg-red-muted transition-colors disabled:opacity-20" title="Clear">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
             <div className="w-px h-5 bg-border mx-0.5" />
             <button
               onClick={handleSave}
               disabled={nodes.length === 0 || saving}
+              title={nodes.length === 0 ? 'Add nodes before saving' : ''}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-surface-2 transition-colors disabled:opacity-30"
             >
               <Save className="w-3.5 h-3.5" />
@@ -1047,7 +1191,7 @@ export default function Orchestration() {
                 if (task.trim()) { handleRun(); return }
               }}
               disabled={nodes.length === 0}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-accent to-purple text-white hover:opacity-90 transition-all disabled:opacity-30 shadow-sm shadow-accent/20"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-accent to-purple text-white hover:opacity-90 transition-all disabled:opacity-30 shadow-soft shadow-accent/20"
             >
               {running ? (
                 <><Loader className="w-3.5 h-3.5 animate-spin" /> Running...</>
@@ -1065,7 +1209,7 @@ export default function Orchestration() {
           <div className="flex-1 min-w-0">
             {nodes.length === 0 ? (
               /* ---- Empty State ---- */
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-gradient-to-b from-[#0d0d0f] to-surface">
+              <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-bg">
                 <div className="relative mb-6">
                   <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-purple/20 to-accent/20 flex items-center justify-center">
                     <Sparkles className="w-10 h-10 text-purple" />
@@ -1074,7 +1218,7 @@ export default function Orchestration() {
                     <Zap className="w-3 h-3 text-white" />
                   </div>
                 </div>
-                <h2 className="text-lg font-bold mb-2">Agent Orchestration</h2>
+                <h1 className="text-lg font-bold text-text mb-2">Agent Orchestration</h1>
                 <p className="text-text-muted text-sm mb-8 max-w-md leading-relaxed">
                   Chain your Claude agents into powerful multi-step pipelines.
                   Each agent processes the output of the previous step.
@@ -1082,7 +1226,7 @@ export default function Orchestration() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setSidebarTab('templates')}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-accent to-purple text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-accent/20"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-accent to-purple text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all shadow-card shadow-accent/20"
                   >
                     <LayoutTemplate className="w-4 h-4" />
                     Use a Template
@@ -1104,6 +1248,14 @@ export default function Orchestration() {
                 </button>
               </div>
             ) : (
+              <div className="h-full flex flex-col min-h-0">
+                {disconnectedNodeLabels.length > 0 && !running && (
+                  <div className="mx-4 mt-3 flex items-center gap-2 text-xs text-amber bg-amber/10 border border-amber/20 rounded-lg px-3 py-2">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{disconnectedNodeLabels.length} node(s) not connected: {disconnectedNodeLabels.join(', ')}. Connect them before running.</span>
+                  </div>
+                )}
+                <div className="flex-1 min-h-0">
               <ReactFlow
                 nodes={nodesWithOrder}
                 edges={edges}
@@ -1119,16 +1271,18 @@ export default function Orchestration() {
                   instance.fitView({ padding: 0.15 })
                 }}
                 proOptions={{ hideAttribution: true }}
-                className="bg-[#0d0d0f]"
+                className="bg-bg"
               >
-                <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#1a1a1f" />
-                <Controls className="!bg-surface !border-border !rounded-xl !shadow-lg" />
+                <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="var(--color-border)" />
+                <Controls className="!bg-surface !border-border !rounded-xl !shadow-card" />
                 <MiniMap
                   className="!bg-surface !border-border !rounded-xl"
-                  nodeColor="#7c3aed"
-                  maskColor="rgba(0,0,0,0.5)"
+                  nodeColor="var(--color-accent)"
+                  maskColor="var(--color-surface-2)"
                 />
               </ReactFlow>
+                </div>
+              </div>
             )}
           </div>
 
@@ -1140,44 +1294,47 @@ export default function Orchestration() {
                   <Settings2 className="w-4 h-4 text-accent" />
                   Edit Node
                 </p>
-                <button onClick={() => setSelectedNodeId(null)} className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
+                <button onClick={() => setSelectedNodeId(null)} aria-label="Close node editor" className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
                 <div>
-                  <label className="text-xs font-medium text-text-muted block mb-2">Label</label>
+                  <label htmlFor="node-label" className="text-xs font-medium text-text-muted block mb-2">Label</label>
                   <input
+                    id="node-label"
                     value={(selectedNode.data as AgentNodeData).label ?? ''}
                     onChange={e => updateSelectedNodeData({ label: e.target.value })}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm text-text focus:outline-none focus:border-accent/50 transition-colors"
+                    className="input"
                     placeholder="Node label"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-text-muted block mb-2">Description</label>
+                  <label htmlFor="node-description" className="text-xs font-medium text-text-muted block mb-2">Description</label>
                   <input
+                    id="node-description"
                     value={(selectedNode.data as AgentNodeData).description ?? ''}
                     onChange={e => updateSelectedNodeData({ description: e.target.value })}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm text-text focus:outline-none focus:border-accent/50 transition-colors"
+                    className="input"
                     placeholder="What does this step do?"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-text-muted block mb-2">
+                  <label htmlFor="node-instructions" className="text-xs font-medium text-text-muted block mb-2">
                     Instructions
                     {(selectedNode.data as AgentNodeData).agentName && (
                       <span className="ml-1.5 text-[10px] font-normal opacity-60">(overrides agent default)</span>
                     )}
                   </label>
                   <textarea
+                    id="node-instructions"
                     value={(selectedNode.data as AgentNodeData).instructions ?? ''}
                     onChange={e => updateSelectedNodeData({ instructions: e.target.value })}
                     rows={10}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm text-text resize-none focus:outline-none focus:border-accent/50 transition-colors placeholder:text-text-muted leading-relaxed"
+                    className="input resize-none leading-relaxed"
                     placeholder="Describe what this step should do. Leave empty to use the agent's built-in instructions."
                   />
                 </div>
@@ -1186,11 +1343,12 @@ export default function Orchestration() {
                 {!(selectedNode.data as AgentNodeData).isStart && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-medium text-text-muted block mb-1">Retry on Failure</label>
+                      <label htmlFor="node-retry" className="text-xs font-medium text-text-muted block mb-1">Retry on Failure</label>
                       <select
+                        id="node-retry"
                         value={(selectedNode.data as AgentNodeData).retryCount ?? 0}
                         onChange={e => updateSelectedNodeData({ retryCount: parseInt(e.target.value) })}
-                        className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+                        className="input"
                       >
                         <option value={0}>No retry</option>
                         <option value={1}>1 retry</option>
@@ -1199,12 +1357,13 @@ export default function Orchestration() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-text-muted block mb-1">Condition</label>
+                      <label htmlFor="node-condition" className="text-xs font-medium text-text-muted block mb-1">Condition</label>
                       <input
+                        id="node-condition"
                         value={(selectedNode.data as AgentNodeData).condition ?? ''}
                         onChange={e => updateSelectedNodeData({ condition: e.target.value })}
                         placeholder="e.g. PASS"
-                        className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50 placeholder:text-text-muted"
+                        className="input"
                       />
                       <p className="text-[9px] text-text-muted mt-0.5">Skip node if upstream output doesn't contain this text</p>
                     </div>
@@ -1242,20 +1401,21 @@ export default function Orchestration() {
                   <Play className="w-4 h-4 text-accent" />
                   Run Pipeline
                 </p>
-                <button onClick={() => setShowRunPanel(false)} className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
+                <button onClick={() => setShowRunPanel(false)} aria-label="Close run panel" className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Task input */}
               <div className="px-5 py-4 border-b border-border shrink-0">
-                <label className="text-xs font-medium text-text-muted block mb-2">What should this pipeline do?</label>
+                <label htmlFor="run-task" className="text-xs font-medium text-text-muted block mb-2">What should this pipeline do?</label>
                 <textarea
+                  id="run-task"
                   value={task}
                   onChange={e => setTask(e.target.value)}
                   placeholder="e.g. Build a React hook for infinite scroll with TypeScript..."
                   rows={3}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm text-text resize-none focus:outline-none focus:border-accent/50 transition-colors placeholder:text-text-muted leading-relaxed"
+                  className="input resize-none leading-relaxed"
                 />
 
                 <div className="flex gap-2 mt-3">
@@ -1270,9 +1430,10 @@ export default function Orchestration() {
                       </button>
                       <button
                         onClick={resetRunState}
+                        title="Clear previous run results"
                         className="px-4 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-surface-2 transition-colors"
                       >
-                        Reset
+                        Clear log
                       </button>
                     </>
                   ) : (
@@ -1280,7 +1441,7 @@ export default function Orchestration() {
                       <button
                         onClick={handleRun}
                         disabled={!task.trim() || running || nodes.length === 0}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent to-purple text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-30 transition-all shadow-sm shadow-accent/20"
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent to-purple text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-30 transition-all shadow-soft shadow-accent/20"
                       >
                         {running ? <><Loader className="w-4 h-4 animate-spin" /> Running...</> : <><Play className="w-4 h-4" /> Start Run</>}
                       </button>
@@ -1304,10 +1465,21 @@ export default function Orchestration() {
                     <span>{running ? 'Processing...' : runLog.some(l => l.type === 'error' && !l.nodeId) ? 'Failed' : 'Complete'}</span>
                     <span>{completedNodes}/{totalNonStartNodes} steps · {progressPercent}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                  <div
+                    className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={progressPercent}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label="Pipeline progress"
+                  >
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        runLog.some(l => l.type === 'error') ? 'bg-red' : 'bg-gradient-to-r from-accent to-purple'
+                        runLog.some(l => l.type === 'error')
+                          ? 'bg-red'
+                          : running
+                          ? 'bg-gradient-to-r from-accent to-purple animate-pulse'
+                          : 'bg-gradient-to-r from-accent to-purple'
                       }`}
                       style={{ width: `${progressPercent}%` }}
                     />
@@ -1336,6 +1508,7 @@ export default function Orchestration() {
                       {log.type === 'done' && <><CheckCircle className="w-3.5 h-3.5 text-green" /><span className="text-green">{log.label}</span><span className="text-text-muted font-normal ml-auto">done</span></>}
                       {log.type === 'error' && <><AlertCircle className="w-3.5 h-3.5 text-red" /><span className="text-red">{log.label || 'Error'}</span></>}
                       {log.type === 'complete' && <><Sparkles className="w-3.5 h-3.5 text-accent" /><span className="text-accent">Pipeline complete</span></>}
+                      {log.ts != null && <span className="text-[10px] text-text-muted font-normal ml-auto tabular-nums">{new Date(log.ts).toLocaleTimeString()}</span>}
                     </div>
                     {log.output && (
                       <div className="mt-2">
@@ -1381,9 +1554,9 @@ export default function Orchestration() {
       {/* Clear Confirm */}
       {showClearConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowClearConfirm(false)} />
-          <div className="relative bg-surface border border-border rounded-2xl p-6 w-[380px] shadow-2xl">
-            <h3 className="text-base font-bold mb-2">Clear canvas?</h3>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowClearConfirm(false)} aria-hidden="true" />
+          <div className="relative bg-surface border border-border rounded-2xl p-6 w-[380px] shadow-pop" role="dialog" aria-modal="true" aria-labelledby="clear-canvas-title">
+            <h3 id="clear-canvas-title" className="text-base font-bold mb-2">Clear canvas?</h3>
             <p className="text-sm text-text-muted mb-6">This removes all {nodes.length} nodes and {edges.length} edges. Cannot be undone.</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowClearConfirm(false)} className="px-4 py-2.5 text-sm rounded-xl border border-border hover:bg-surface-2 transition-colors">
@@ -1400,14 +1573,14 @@ export default function Orchestration() {
       {/* Guide Modal */}
       {showGuide && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowGuide(false)} />
-          <div className="relative bg-surface border border-border rounded-2xl w-[580px] max-h-[80vh] shadow-2xl flex flex-col">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowGuide(false)} aria-hidden="true" />
+          <div className="relative bg-surface border border-border rounded-2xl w-[580px] max-h-[80vh] shadow-pop flex flex-col" role="dialog" aria-modal="true" aria-labelledby="guide-title">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-              <h3 className="text-base font-bold flex items-center gap-2">
+              <h3 id="guide-title" className="text-base font-bold flex items-center gap-2">
                 <HelpCircle className="w-5 h-5 text-accent" />
                 How Orchestration Works
               </h3>
-              <button onClick={() => setShowGuide(false)} className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted">
+              <button onClick={() => setShowGuide(false)} aria-label="Close guide" className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1456,7 +1629,7 @@ export default function Orchestration() {
               </div>
 
               <div className="pt-3 border-t border-border">
-                <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-2">Tips</p>
+                <p className="text-[11px] font-semibold text-text-muted mb-2">Tips</p>
                 <ul className="space-y-1 text-xs text-text-muted">
                   <li>Press <kbd className="px-1.5 py-0.5 rounded bg-surface-2 border border-border text-[10px] font-mono">Backspace</kbd> to delete selected nodes</li>
                   <li>Connect one node to many for fan-out, many to one for fan-in</li>
@@ -1481,8 +1654,8 @@ export default function Orchestration() {
       {/* Output Viewer Modal */}
       {viewingOutputNodeId && viewingNode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setViewingOutputNodeId(null)} />
-          <div className="relative bg-surface border border-border rounded-2xl w-[640px] max-h-[80vh] shadow-2xl flex flex-col">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setViewingOutputNodeId(null)} aria-hidden="true" />
+          <div className="relative bg-surface border border-border rounded-2xl w-[640px] max-h-[80vh] shadow-pop flex flex-col" role="dialog" aria-modal="true">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
               <div className="flex items-center gap-2.5">
                 {(viewingNode.data as AgentNodeData).status === 'done' ? (
@@ -1499,7 +1672,7 @@ export default function Orchestration() {
                     <Copy className="w-3.5 h-3.5" /> Copy
                   </button>
                 )}
-                <button onClick={() => setViewingOutputNodeId(null)} className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
+                <button onClick={() => setViewingOutputNodeId(null)} aria-label="Close output viewer" className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>

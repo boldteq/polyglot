@@ -9,6 +9,9 @@ import {
 import type { ConversationSummary, Conversation, ConversationMessage } from '../lib/api'
 import type { Agent } from '../types'
 import { MarkdownRenderer } from '../components/MarkdownRenderer'
+import EmptyState from '../components/EmptyState'
+import { toast } from '../components/Toast'
+import { confirmDialog } from '../lib/confirm'
 
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime()
@@ -62,6 +65,15 @@ export default function ProjectChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [activeConvo?.messages, streamingContent])
 
+  // Auto-grow the composer textarea between its min/max heights as the user types
+  // (parity with the Playground composer — a paste of multi-line text expands it).
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }, [input])
+
   const openConvo = async (id: string) => {
     if (!projectId) return
     try {
@@ -86,7 +98,7 @@ export default function ProjectChat() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!projectId || !confirm('Delete this conversation?')) return
+    if (!projectId || !(await confirmDialog({ title: 'Delete conversation?', message: 'This conversation will be permanently deleted.', danger: true, confirmLabel: 'Delete' }))) return
     try {
       await deleteProjectConversation(projectId, id)
       if (activeConvo?.id === id) setActiveConvo(null)
@@ -126,9 +138,11 @@ export default function ProjectChat() {
       loadConvos()
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
+        const errMsg = err instanceof Error ? err.message : 'Message failed to send'
+        toast('error', errMsg)
         setActiveConvo(prev => prev ? {
           ...prev,
-          messages: [...prev.messages, { role: 'assistant', content: `Error: ${(err as Error).message}`, timestamp: new Date().toISOString() }],
+          messages: [...prev.messages, { role: 'assistant', content: `Error: ${errMsg}`, timestamp: new Date().toISOString() }],
         } : null)
       }
       setStreamingContent('')
@@ -166,7 +180,7 @@ export default function ProjectChat() {
           </h2>
           <button
             onClick={() => setShowNewForm(!showNewForm)}
-            className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors"
+            className="btn-primary btn-md mt-3 w-full"
           >
             <Plus className="w-3.5 h-3.5" /> New Conversation
           </button>
@@ -179,21 +193,21 @@ export default function ProjectChat() {
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
               placeholder="Conversation title..."
-              className="w-full px-2.5 py-1.5 text-xs bg-surface-2 border border-border rounded-lg focus:border-accent outline-none"
+              className="input"
               autoFocus
               onKeyDown={e => { if (e.key === 'Enter') handleCreate() }}
             />
             <select
               value={newAgent}
               onChange={e => setNewAgent(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs bg-surface-2 border border-border rounded-lg focus:border-accent outline-none"
+              className="input"
             >
               <option value="">No specific agent (general)</option>
               {agents.map(a => <option key={a.filename} value={a.filename}>{a.name}</option>)}
             </select>
             <div className="flex gap-1.5">
-              <button onClick={handleCreate} className="flex-1 px-2.5 py-1.5 text-[10px] font-medium rounded-md bg-accent text-white">Create</button>
-              <button onClick={() => setShowNewForm(false)} className="px-2.5 py-1.5 text-[10px] rounded-md bg-surface-2 text-text-muted">Cancel</button>
+              <button onClick={handleCreate} className="btn-primary btn-sm flex-1">Create</button>
+              <button onClick={() => setShowNewForm(false)} className="btn-secondary btn-sm">Cancel</button>
             </div>
           </div>
         )}
@@ -212,7 +226,9 @@ export default function ProjectChat() {
                 <span className="text-xs font-medium truncate flex-1">{c.title}</span>
                 <button
                   onClick={e => { e.stopPropagation(); handleDelete(c.id) }}
-                  className="p-1 rounded text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Delete conversation"
+                  title="Delete conversation"
+                  className="p-1 rounded text-text-muted hover:text-red opacity-60 group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -226,10 +242,7 @@ export default function ProjectChat() {
             </div>
           ))}
           {convos.length === 0 && (
-            <div className="p-6 text-center text-text-muted">
-              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-xs">No conversations yet</p>
-            </div>
+            <EmptyState icon={MessageSquare} title="No conversations yet" size="sm" />
           )}
         </div>
       </div>
@@ -275,16 +288,19 @@ export default function ProjectChat() {
                   placeholder={sending ? 'Agent is thinking...' : 'Type a message... (Cmd+Enter to send)'}
                   disabled={sending}
                   rows={2}
-                  className="flex-1 px-4 py-3 text-sm bg-surface-2 border border-border rounded-xl focus:border-accent outline-none resize-none disabled:opacity-50"
+                  aria-label="Chat message input"
+                  className="input flex-1 resize-none disabled:opacity-50"
                 />
                 {sending ? (
-                  <button onClick={handleStop} className="p-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
+                  <button onClick={handleStop} aria-label="Stop generating response" title="Stop generating" className="p-3 rounded-xl bg-red-muted text-red hover:bg-red/20 transition-colors">
                     <StopCircle className="w-5 h-5" />
                   </button>
                 ) : (
                   <button
                     onClick={handleSend}
                     disabled={!input.trim()}
+                    aria-label="Send message"
+                    title="Send message"
                     className="p-3 rounded-xl bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-30"
                   >
                     <Send className="w-5 h-5" />

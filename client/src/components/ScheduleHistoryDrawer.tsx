@@ -5,7 +5,7 @@
 // Always renders three distinct visual states (loading / error / empty)
 // per project rule .claude/rules/error-handling.md.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { X, CheckCircle, XCircle, Clock, RefreshCw, ChevronDown, ChevronRight, AlertCircle, MinusCircle, Loader2 } from 'lucide-react'
 import { getScheduleRuns, subscribeSchedules, type Schedule, type ScheduleRun, apiError } from '../lib/api'
 
@@ -34,7 +34,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
 
   const id = schedule?.id
 
-  const load = useMemo(() => async (sid: string) => {
+  const load = useCallback(async (sid: string) => {
     setLoading(true)
     setLoadError(false)
     try {
@@ -116,7 +116,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-sm font-semibold truncate">{schedule.name}</h2>
               {schedule.kind === 'system' && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple-500/20 text-purple-300">system</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/20 text-purple">system</span>
               )}
             </div>
             <p className="text-xs text-text-muted truncate">
@@ -129,6 +129,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
               disabled={loading}
               className="p-1.5 rounded-lg text-text-muted hover:bg-surface-2 disabled:opacity-50"
               title="Refresh"
+              aria-label="Refresh run history"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -136,6 +137,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
               onClick={onClose}
               className="p-1.5 rounded-lg text-text-muted hover:bg-surface-2"
               title="Close (Esc)"
+              aria-label="Close run history drawer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -151,11 +153,11 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
 
           {!loading && loadError && (
             <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-              <AlertCircle className="w-8 h-8 text-red-400 opacity-60" />
+              <AlertCircle className="w-8 h-8 text-red opacity-60" />
               <p className="text-sm text-text-muted">Failed to load run history</p>
               <button
                 onClick={() => id && load(id)}
-                className="px-4 py-1.5 text-xs font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover"
+                className="btn-primary btn-sm"
               >
                 Retry
               </button>
@@ -173,16 +175,18 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
           {!loading && !loadError && runs.map(run => {
             const isOpen = expanded.has(run.id)
             const StatusIcon =
-              run.status === 'error'     ? <XCircle      className="w-4 h-4 text-red-400 shrink-0" /> :
-              run.status === 'cancelled' ? <MinusCircle  className="w-4 h-4 text-amber-400 shrink-0" /> :
-              run.status === 'crashed'   ? <XCircle      className="w-4 h-4 text-amber-500 shrink-0" /> :
-              run.status === 'running'   ? <Loader2      className="w-4 h-4 text-blue-400 animate-spin shrink-0" /> :
-                                            <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
+              run.status === 'error'     ? <XCircle      className="w-4 h-4 text-red shrink-0" /> :
+              run.status === 'cancelled' ? <MinusCircle  className="w-4 h-4 text-amber shrink-0" /> :
+              run.status === 'crashed'   ? <XCircle      className="w-4 h-4 text-amber shrink-0" /> :
+              run.status === 'running'   ? <Loader2      className="w-4 h-4 text-blue animate-spin shrink-0" /> :
+                                            <CheckCircle className="w-4 h-4 text-green shrink-0" />
             return (
-              <div key={run.id} className="bg-surface-2 rounded-lg border border-border">
+              <div key={run.id} className="card">
                 <button
                   onClick={() => toggleExpand(run.id)}
                   className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-2/70 rounded-lg"
+                  aria-expanded={isOpen}
+                  aria-label="Toggle run details"
                 >
                   {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-text-muted shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-text-muted shrink-0" />}
                   {StatusIcon}
@@ -202,7 +206,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
                 {isOpen && (
                   <div className="px-3 pb-3 pt-1 border-t border-border space-y-2">
                     {run.error && (
-                      <div className="text-[11px] text-red-400 bg-red-500/10 px-2 py-1.5 rounded font-mono whitespace-pre-wrap break-all">
+                      <div className="text-[11px] text-red bg-red/10 px-2 py-1.5 rounded font-mono whitespace-pre-wrap break-all">
                         {run.error}
                       </div>
                     )}

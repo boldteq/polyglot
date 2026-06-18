@@ -7,6 +7,7 @@
 
 import { invalidate, invalidateKey } from './cacheCore'
 import { onOrgChartEvent } from './sseBus'
+import { subscribeLearningStream, subscribeBrainStream } from './api'
 
 export const CacheKeys = {
   projects: 'projects',
@@ -30,6 +31,10 @@ export const CacheKeys = {
   learningInbox: (status: string) => `learning/inbox/${status}`,
   learningStatus: 'learning/status',
   learningOverview: 'learning/overview',
+  brainOverview: 'brain/overview',
+  brainPatches: (status: string) => `brain/patches/${status}`,
+  brainSignals: (status: string) => `brain/signals/${status}`,
+  brainTimeline: 'brain/timeline',
 } as const
 
 // Keys that reflect the agent registry — refetched on any agent mutation.
@@ -60,6 +65,32 @@ export function initCacheInvalidation(): void {
     // task:* events are consumed directly by pages that need live capacity
     // patching (OrgChart load dots, Orchestration step status) via onOrgChartEvent.
   })
+
+  // Learning stream → keep the shared learning cache (inbox counts, status,
+  // overview) fresh across navigation. Without this, approving/staging a
+  // candidate on one page leaves stale counts on Dashboard/Sidebar/Learning
+  // until a hard refresh — the #1 "data doesn't update after I do something"
+  // complaint. Mounted pages with their own subscription still patch live; this
+  // covers the cross-page cache.
+  try {
+    subscribeLearningStream((ev) => {
+      if (ev.type === 'candidate' || ev.type === 'reviewed') {
+        invalidate((k) => k.startsWith('learning/'))
+      }
+    })
+  } catch { /* EventSource unavailable (SSR/test) — non-fatal */ }
+
+  // Brain stream → keep the Brain tab's shared caches fresh cross-page. A `patch`
+  // event (apply/reject) invalidates the patch queue + overview; a `memory` event
+  // (reindex drained, hygiene pass) refreshes the overview's freshness panel. Same
+  // rationale as the learning stream — no hard refresh to see a self-change land.
+  try {
+    subscribeBrainStream((ev) => {
+      if (ev.type === 'patch' || ev.type === 'memory') {
+        invalidate((k) => k.startsWith('brain/'))
+      }
+    })
+  } catch { /* EventSource unavailable (SSR/test) — non-fatal */ }
 
   if (typeof window !== 'undefined') {
     // A file write (AI apply, editor save) can touch anything — invalidate all.

@@ -1646,7 +1646,7 @@ export interface PlaygroundThread {
 
 export interface PlaygroundPreflight {
   binary: { ok: boolean; path: string | null; version: string | null; source: string | null; error: string | null }
-  auth: { ok: boolean; hasApiKey: boolean; hint: string | null }
+  auth: { ok: boolean; hasApiKey: boolean; hint: string | null; source?: 'subscription' | 'api_key' | 'unknown'; subscriptionOnly?: boolean }
   env: { home: string; platform: string; node?: string; nodeOk?: boolean | null }
   agent: { ok: boolean; tried: string[]; candidates?: string[] } | null
   okToRun: boolean
@@ -1695,6 +1695,10 @@ export const getPlaygroundThread = (id: string) =>
   request<PlaygroundThread>(`/playground/threads/${encodeURIComponent(id)}`)
 export const createPlaygroundThread = (body: { id?: string; title?: string; agentName?: string }) =>
   request<PlaygroundThread>('/playground/threads', { method: 'POST', body: JSON.stringify(body) })
+export const seedPlaygroundThread = (id: string, body: { prompt: string; output: string; agentName?: string; status?: string }) =>
+  request<{ ok: boolean; thread?: PlaygroundThread; alreadySeeded?: boolean }>(`/playground/threads/${encodeURIComponent(id)}/seed`, { method: 'POST', body: JSON.stringify(body) })
+export const renamePlaygroundThread = (id: string, title: string) =>
+  request<PlaygroundThread>(`/playground/threads/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ title }) })
 export const deletePlaygroundThread = (id: string) =>
   request(`/playground/threads/${encodeURIComponent(id)}`, { method: 'DELETE' })
 
@@ -2173,8 +2177,9 @@ export interface AppConfigResponse {
 }
 
 export interface ConfigSchemaEntry {
-  type: 'number' | 'string' | 'enum'
+  type: 'number' | 'string' | 'enum' | 'boolean'
   label: string
+  description?: string
   min?: number
   max?: number
   step?: number
@@ -2440,6 +2445,7 @@ export interface DbChangeEntry {
   newData: Record<string, unknown> | null
   changedAt: string
   reverted: boolean
+  actor: string
 }
 
 export const updateDbRow = (table: string, pk: string, data: Record<string, unknown>) =>
@@ -2561,14 +2567,19 @@ export function subscribeLogStream(onEvent: (e: LogStreamEvent) => void): EventS
 }
 
 // ── Learning Inbox (auto-learn from VS Code sessions) ────────────────────────
-export type LearningType = 'lesson' | 'bug' | 'decision' | 'feedback' | 'golden'
+export type LearningType =
+  | 'lesson' | 'bug' | 'decision' | 'feedback' | 'golden'
+  // Continuity-brain candidate types (each approve = a human sign-off / identity-lock):
+  | 'identity' | 'preference' | 'contradiction' | 'open_loop' | 'decay_review'
 export type LearningStatus = 'pending' | 'approved' | 'rejected' | 'auto'
 
 export interface LearningCandidate {
   id: string
   type: LearningType
   title: string
-  payload: Record<string, string>
+  // Most payloads are flat string maps; continuity types may carry typed fields
+  // (confidence, oldId, etc.) so allow a broader value union without `any`.
+  payload: Record<string, string | number | boolean | null>
   source: string | null
   sessionId: string | null
   project: string | null
@@ -2615,6 +2626,23 @@ export interface LearningCapture {
   project: string | null
   created_at: string | null
 }
+export interface LearningCaptured {
+  total: number
+  byType: Record<string, number>
+  byOrigin: Record<string, number>
+  last7d: number
+  prev7d: number
+  weekly: { weekStart: string; count: number }[]
+}
+export interface LearningImprovement {
+  enough: boolean
+  sample: number
+  thisWeekPct: number | null
+  prevWeekPct: number | null
+  deltaPct: number | null
+  qualityMean: number | null
+  qualitySample: number
+}
 export interface LearningOverview {
   counts: InboxCounts
   status: LearningDigestStatus
@@ -2622,6 +2650,10 @@ export interface LearningOverview {
   deduped7d: number
   runs: LearningDigestRun[]
   recent: LearningCapture[]
+  captured: LearningCaptured
+  bySource: { autoSaved: number; reviewed: number; direct: number }
+  memory: { patterns: number; feedbackDirectives: number }
+  improvement: LearningImprovement
 }
 export const getLearningOverview = () => request<LearningOverview>('/learning/overview')
 
@@ -2631,6 +2663,16 @@ export const approveCandidate = (id: string) =>
 
 export const rejectCandidate = (id: string) =>
   request<{ ok: boolean }>(`/learning/inbox/${id}/reject`, { method: 'POST' })
+
+export interface BulkApproveResult { ok: boolean; approved: string[]; failed: { id: string; error: string }[]; total: number }
+export interface BulkRejectResult { ok: boolean; rejected: string[]; failed: { id: string; error: string }[]; total: number }
+
+export const bulkApproveCandidates = (ids: string[]) =>
+  // each item captures via Ollama — scale the timeout with batch size.
+  request<BulkApproveResult>('/learning/inbox/bulk-approve', { method: 'POST', body: JSON.stringify({ ids }), timeoutMs: Math.min(120000, 15000 + ids.length * 5000) })
+
+export const bulkRejectCandidates = (ids: string[]) =>
+  request<BulkRejectResult>('/learning/inbox/bulk-reject', { method: 'POST', body: JSON.stringify({ ids }) })
 
 export const editCandidate = (id: string, body: { title?: string; payload?: Record<string, string> }) =>
   request<{ ok: boolean; candidate: LearningCandidate }>(`/learning/inbox/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
@@ -2648,6 +2690,127 @@ export function subscribeLearningStream(onEvent: (e: LearningStreamEvent) => voi
   es.addEventListener('ready', (ev: MessageEvent) => onEvent({ type: 'ready', pending: Number(parse(ev).pending ?? 0) }))
   es.addEventListener('candidate', (ev: MessageEvent) => onEvent({ type: 'candidate', staged: Number(parse(ev).staged ?? 1) }))
   es.addEventListener('reviewed', (ev: MessageEvent) => onEvent({ type: 'reviewed', id: String(parse(ev).id ?? ''), status: String(parse(ev).status ?? '') }))
+  return es
+}
+
+// ── Brain (Phase F: self-improving loop — Training Review + timeline) ─────────
+export interface BrainStats {
+  signals: { total: number; open: number; patched: number }
+  patches: { total: number; applied: number; proposed: number; reverted: number }
+  decisions: { auto: number; review: number; reject: number }
+}
+export interface MemoryFreshness {
+  count?: number
+  newestAgeDays: number | null
+  avgAgeDays: number | null
+  oldestAgeDays: number | null
+  ageBuckets: Record<string, number>
+}
+export interface BrainHygiene {
+  generatedAt: string
+  totalChunks: number
+  freshness: MemoryFreshness | null
+  superseded: number
+  decayFlaggedRefs: number
+  staleCapturedTotal: number
+  orphans: { retiredAgents: Record<string, number>; unregisteredAgents: Record<string, number>; retiredAgentChunkCount: number } | null
+  recommendations: { kind: string; severity: string; detail: string; agents?: string[] }[]
+}
+export interface BrainTimelineEntry {
+  id: number
+  ts: string
+  kind: string
+  agent: string | null
+  refId: string | null
+  decision: string | null
+  summary: string | null
+  data: Record<string, unknown>
+}
+export interface EvalTrendPoint { ts: string; overall: number; agent: string | null; caseId: string | null }
+export interface BrainOverview {
+  stats: BrainStats
+  hygiene: BrainHygiene | null
+  eval: { trend: EvalTrendPoint[]; mean: number | null; sample: number }
+  recentTimeline: BrainTimelineEntry[]
+}
+export const getBrainOverview = () => request<BrainOverview>('/brain/overview')
+
+export interface BrainSignal {
+  id: string
+  ts: string
+  agent: string
+  kind: string
+  signature: string
+  severity: string
+  occurrences: number
+  projects: string[]
+  evidence: Record<string, unknown>
+  status: string
+}
+export interface BrainPatchImpact {
+  scoreBefore?: number | null
+  scoreAfter?: number | null
+  runsObserved?: number
+  regressionPct?: number | null
+  revertReason?: string
+}
+export interface BrainPatch {
+  id: string
+  ts: string
+  agent: string
+  signalId: string | null
+  patchType: string
+  targetFile: string | null
+  section: string | null
+  before_text: string
+  after_text: string
+  decision: string
+  decisionReasons: string[]
+  status: string
+  appliedAt: string | null
+  revertedAt: string | null
+  impact: BrainPatchImpact
+  signal: Pick<BrainSignal, 'id' | 'kind' | 'severity' | 'signature' | 'occurrences' | 'projects' | 'evidence'> | null
+  evidenceLabel: string | null
+}
+export const getBrainPatches = (status = 'proposed') =>
+  request<{ items: BrainPatch[]; counts: BrainStats['patches'] }>(`/brain/patches?status=${encodeURIComponent(status)}`)
+export const getBrainSignals = (status?: string) =>
+  request<{ items: BrainSignal[] }>(`/brain/signals${status ? `?status=${encodeURIComponent(status)}` : ''}`)
+export const getBrainTimeline = (limit = 50) =>
+  request<{ items: BrainTimelineEntry[] }>(`/brain/timeline?limit=${limit}`)
+export const applyBrainPatch = (id: string) =>
+  // surgical .md edit + reindex enqueue — allow a little longer than the default.
+  request<{ ok: boolean; id: string; alreadyApplied: boolean }>(`/brain/patches/${id}/apply`, { method: 'POST', timeoutMs: 20000 })
+export const rejectBrainPatch = (id: string) =>
+  request<{ ok: boolean; id: string }>(`/brain/patches/${id}/reject`, { method: 'POST' })
+
+export interface BrainMemoryEvent {
+  type: 'memory'
+  kind: string
+  embedded?: number
+  drained?: number
+  generatedAt?: string
+  decayFlaggedRefs?: number
+}
+export type BrainStreamEvent =
+  | { type: 'ready'; proposed: number }
+  | BrainMemoryEvent
+  | { type: 'patch'; id: string; status: string }
+
+export function subscribeBrainStream(onEvent: (e: BrainStreamEvent) => void): EventSource {
+  const es = new EventSource(`${BASE}/brain/stream`)
+  const parse = (ev: MessageEvent): Record<string, unknown> => {
+    try { return ev.data ? JSON.parse(ev.data) : {} } catch (e) { console.warn('[brain/stream parse]', e); return {} }
+  }
+  const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined)
+  const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined)
+  es.addEventListener('ready', (ev: MessageEvent) => onEvent({ type: 'ready', proposed: Number(parse(ev).proposed ?? 0) }))
+  es.addEventListener('memory', (ev: MessageEvent) => {
+    const p = parse(ev)
+    onEvent({ type: 'memory', kind: String(p.kind ?? ''), embedded: num(p.embedded), drained: num(p.drained), generatedAt: str(p.generatedAt), decayFlaggedRefs: num(p.decayFlaggedRefs) })
+  })
+  es.addEventListener('patch', (ev: MessageEvent) => onEvent({ type: 'patch', id: String(parse(ev).id ?? ''), status: String(parse(ev).status ?? '') }))
   return es
 }
 
@@ -2807,4 +2970,5 @@ export interface SystemStatus {
   }
   crons: SystemCron[]
 }
-export const getSystemStatus = () => request<SystemStatus>('/system/status')
+export const getSystemStatus = (force?: boolean) =>
+  request<SystemStatus>(`/system/status${force ? '?force=1' : ''}`)

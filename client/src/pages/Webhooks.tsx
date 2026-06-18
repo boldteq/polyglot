@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Globe, Plus, Trash2, Copy, Eye, EyeOff, AlertCircle, Check } from 'lucide-react'
 import { getWebhooks, getWebhookSecret, createWebhook, deleteWebhook, getGlobalAgents, apiError } from '../lib/api'
 import { ErrorState } from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
+import ConfirmDialog from '../components/ConfirmDialog'
 import type { Webhook } from '../lib/api'
 import type { Agent } from '../types'
 import { resource } from '../lib/cacheCore'
@@ -29,6 +31,8 @@ export default function WebhooksPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [revealedSecrets, setRevealedSecrets] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState('')
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = () => {
     if (webhooksRes.getState().data === null) setLoading(true)
@@ -57,9 +61,12 @@ export default function WebhooksPage() {
     } finally { setSaving(false) }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this webhook?')) return
-    try { await deleteWebhook(id); load() } catch (err) { apiError('Delete webhook', err) }
+  const handleDelete = async () => {
+    if (deleteId === null) return
+    setDeleting(true)
+    try { await deleteWebhook(deleteId); setDeleteId(null); load() }
+    catch (err) { apiError('Delete webhook', err) }
+    finally { setDeleting(false) }
   }
 
   const handleRevealSecret = async (id: string) => {
@@ -85,17 +92,12 @@ export default function WebhooksPage() {
   if (loadError) return <ErrorState message={loadError} onRetry={load} />
 
   return (
-    <div className="max-w-4xl mx-auto p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Globe className="w-6 h-6" /> Webhooks
-          </h1>
-          <p className="text-text-muted text-sm mt-1">Trigger agents from external events (GitHub, Stripe, etc.)</p>
-        </div>
+    <div className="space-y-6">
+      {/* Create button — hub provides the page title */}
+      <div className="flex items-center justify-end">
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors"
+          className="btn-primary btn-md"
         >
           <Plus className="w-4 h-4" /> New Webhook
         </button>
@@ -103,27 +105,29 @@ export default function WebhooksPage() {
 
       {/* Create Form */}
       {showForm && (
-        <div className="bg-surface rounded-xl border border-border p-5 space-y-4">
+        <div className="card p-5 space-y-4">
           <h2 className="text-sm font-semibold">Create Webhook</h2>
           {error && (
-            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 px-3 py-2 rounded-lg">
+            <div className="flex items-center gap-2 text-red text-xs bg-red/10 px-3 py-2 rounded-lg">
               <AlertCircle className="w-3.5 h-3.5" /> {error}
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-text-muted mb-1">Name</label>
+              <label htmlFor="webhook-name" className="block text-xs text-text-muted mb-1">Name</label>
               <input
-                className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg focus:border-accent outline-none"
+                id="webhook-name"
+                className="input"
                 placeholder="GitHub Deploy Hook"
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs text-text-muted mb-1">Agent</label>
+              <label htmlFor="webhook-agent" className="block text-xs text-text-muted mb-1">Agent</label>
               <select
-                className="w-full px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg focus:border-accent outline-none"
+                id="webhook-agent"
+                className="input"
                 value={form.agentName}
                 onChange={e => setForm({ ...form, agentName: e.target.value })}
               >
@@ -135,12 +139,8 @@ export default function WebhooksPage() {
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm rounded-lg bg-surface-2 hover:bg-surface-2/80">Cancel</button>
-            <button
-              onClick={handleCreate}
-              disabled={saving}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
-            >
+            <button onClick={() => setShowForm(false)} className="btn-secondary btn-md">Cancel</button>
+            <button onClick={handleCreate} disabled={saving} className="btn-primary btn-md">
               {saving ? 'Creating...' : 'Create Webhook'}
             </button>
           </div>
@@ -150,12 +150,12 @@ export default function WebhooksPage() {
       {/* Webhook List */}
       <div className="space-y-3">
         {webhooks.map(w => (
-          <div key={w.id} className="bg-surface rounded-xl border border-border p-4 space-y-3">
+          <div key={w.id} className="card p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{w.name}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-medium">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange/20 text-orange font-medium">
                     {w.agentName || 'orchestration'}
                   </span>
                 </div>
@@ -163,7 +163,7 @@ export default function WebhooksPage() {
                   Triggered {w.triggerCount} times &middot; Last: {timeAgo(w.lastTriggeredAt)}
                 </div>
               </div>
-              <button onClick={() => handleDelete(w.id)} className="p-1.5 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors">
+              <button onClick={() => setDeleteId(w.id)} aria-label="Delete webhook" title="Delete webhook" className="p-1.5 rounded-lg text-text-muted hover:text-red hover:bg-red/10 transition-colors">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -171,7 +171,7 @@ export default function WebhooksPage() {
             {/* Trigger URL */}
             <div className="bg-surface-2 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] text-text-muted uppercase font-semibold">Trigger URL</label>
+                <label className="text-[10px] text-text-muted font-semibold">Trigger URL</label>
                 <button
                   onClick={() => copyToClipboard(getTriggerUrl(w.id), `url-${w.id}`)}
                   className="flex items-center gap-1 text-[10px] text-accent hover:text-accent-hover"
@@ -185,7 +185,7 @@ export default function WebhooksPage() {
             {/* Secret */}
             <div className="bg-surface-2 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] text-text-muted uppercase font-semibold">Secret (x-webhook-secret header)</label>
+                <label className="text-[10px] text-text-muted font-semibold">Secret (x-webhook-secret header)</label>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleRevealSecret(w.id)}
@@ -222,13 +222,30 @@ export default function WebhooksPage() {
           </div>
         ))}
         {webhooks.length === 0 && !showForm && (
-          <div className="text-center py-12 text-text-muted">
-            <Globe className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No webhooks yet</p>
-            <p className="text-xs mt-1">Create a webhook to trigger agents from external events</p>
-          </div>
+          <EmptyState
+            icon={Globe}
+            title="No webhooks yet"
+            description="Create a webhook to trigger agents from external events"
+            action={{ label: 'New Webhook', onClick: () => setShowForm(true) }}
+            card
+          />
         )}
       </div>
+
+      <ConfirmDialog
+        danger
+        open={deleteId !== null}
+        loading={deleting}
+        title="Delete webhook?"
+        message={
+          deleteId !== null
+            ? `"${webhooks.find(w => w.id === deleteId)?.name ?? 'This webhook'}" will be permanently deleted. Its trigger URL will stop working.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onClose={() => setDeleteId(null)}
+      />
     </div>
   )
 }

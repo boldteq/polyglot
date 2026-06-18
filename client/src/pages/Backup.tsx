@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import {
   CloudUpload,
   GitBranch,
@@ -48,6 +48,9 @@ import {
 } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { toast } from '../components/Toast'
+import ConfirmDialog from '../components/ConfirmDialog'
+import EmptyState from '../components/EmptyState'
+import { statusPill } from '../lib/colors'
 
 type Tab = 'overview' | 'cloud' | 'snapshots' | 'logs'
 
@@ -87,31 +90,23 @@ export default function BackupPage() {
 
   if (!status) {
     return (
-      <div className="p-8 text-red">Failed to load backup status</div>
+      <div className="text-red">Failed to load backup status</div>
     )
   }
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="px-8 pt-5 pb-4 shrink-0">
+      <div className="shrink-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent/20 to-purple/20 ring-1 ring-accent/20 flex items-center justify-center">
-              <CloudUpload className="w-5 h-5 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold leading-tight">Backup</h1>
-              <p className="text-[11px] text-text-muted">
-                Protect your agents, memory, and config against data loss
-              </p>
-            </div>
-          </div>
+          <p className="text-[13px] text-text-muted">
+            Protect your agents, memory, and config against data loss
+          </p>
 
           <div className="flex items-center gap-2">
             <button
               onClick={refetchStatus}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-text-muted hover:text-text bg-surface-2 rounded-lg hover:bg-surface-3 transition-colors"
+              className="btn-secondary btn-sm"
               title="Refresh status"
             >
               <RefreshCw className="w-3 h-3" /> Refresh
@@ -121,7 +116,7 @@ export default function BackupPage() {
         </div>
 
         {/* Tab bar */}
-        <div className="flex items-center gap-1 mt-5 bg-surface-2 p-0.5 rounded-lg w-fit">
+        <div className="segmented mt-4" role="tablist" aria-label="Backup sections">
           <TabButton active={tab === 'overview'} onClick={() => setTab('overview')}>
             <CloudUpload className="w-3.5 h-3.5" /> Overview
           </TabButton>
@@ -138,7 +133,7 @@ export default function BackupPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-8 pb-8">
+      <div className="flex-1 overflow-y-auto pt-5">
         {tab === 'overview' && <OverviewTab status={status} onRefresh={refetchStatus} />}
         {tab === 'cloud' && <CloudHistoryTab status={status} onRefresh={refetchStatus} />}
         {tab === 'snapshots' && <SnapshotsTab onRefresh={refetchStatus} />}
@@ -153,7 +148,7 @@ export default function BackupPage() {
 function HealthChip({ status }: { status: BackupStatus }) {
   if (!status.configured) {
     return (
-      <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-muted text-amber text-xs font-semibold">
+      <span className={`pill gap-2 px-3 py-1.5 text-xs font-semibold ${statusPill('warning')}`}>
         <AlertTriangle className="w-3.5 h-3.5" />
         Not Configured
       </span>
@@ -161,7 +156,7 @@ function HealthChip({ status }: { status: BackupStatus }) {
   }
   if (!status.enabled) {
     return (
-      <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-2 text-text-muted text-xs font-semibold">
+      <span className={`pill gap-2 px-3 py-1.5 text-xs font-semibold ${statusPill('neutral')}`}>
         <Unplug className="w-3.5 h-3.5" />
         Paused
       </span>
@@ -169,7 +164,7 @@ function HealthChip({ status }: { status: BackupStatus }) {
   }
   if (status.pendingQueue > 0) {
     return (
-      <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-muted text-amber text-xs font-semibold">
+      <span className={`pill gap-2 px-3 py-1.5 text-xs font-semibold ${statusPill('warning')}`}>
         <RefreshCw className="w-3.5 h-3.5" />
         {status.pendingQueue} Queued
       </span>
@@ -177,7 +172,7 @@ function HealthChip({ status }: { status: BackupStatus }) {
   }
   if (status.lastBackupStatus === 'error') {
     return (
-      <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-muted text-red text-xs font-semibold">
+      <span className={`pill gap-2 px-3 py-1.5 text-xs font-semibold ${statusPill('error')}`}>
         <X className="w-3.5 h-3.5" />
         Error
       </span>
@@ -186,7 +181,7 @@ function HealthChip({ status }: { status: BackupStatus }) {
   if (typeof status.pendingChanges === 'number' && status.pendingChanges > 0) {
     return (
       <span
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-semibold"
+        className={`pill gap-2 px-3 py-1.5 text-xs font-semibold ${statusPill('info')}`}
         title={
           status.pendingChangesSample.length > 0
             ? `Recent: ${status.pendingChangesSample.join(', ')}${status.pendingChangesScanLimited ? ' (scan capped at 20K files)' : ''}`
@@ -199,7 +194,7 @@ function HealthChip({ status }: { status: BackupStatus }) {
     )
   }
   return (
-    <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-muted text-green text-xs font-semibold">
+    <span className={`pill gap-2 px-3 py-1.5 text-xs font-semibold ${statusPill('success')}`}>
       <Check className="w-3.5 h-3.5" />
       Protected
     </span>
@@ -214,9 +209,9 @@ function TabButton({ active, onClick, children }: {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-        active ? 'bg-accent text-white shadow-sm shadow-accent/25' : 'text-text-muted hover:text-text'
-      }`}
+      role="tab"
+      aria-selected={active}
+      className={`flex items-center gap-1.5 ${active ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}`}
     >
       {children}
     </button>
@@ -231,6 +226,8 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
   const [repoUrl, setRepoUrl] = useState('')
   const [token, setToken] = useState('')
   const [showConnectForm, setShowConnectForm] = useState(!status.configured)
+  const [confirmPause, setConfirmPause] = useState(false)
+  const [pausing, setPausing] = useState(false)
 
   useEffect(() => {
     const handler = () => setShowConnectForm(true)
@@ -282,13 +279,16 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
   }
 
   const handleDisconnect = async () => {
-    if (!confirm('Pause auto-backup? Your data stays backed up, but new changes won\'t be pushed until you reconnect.')) return
+    setPausing(true)
     try {
       await disconnectBackup()
       toast('success', 'Backup paused')
+      setConfirmPause(false)
       onRefresh()
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to disconnect')
+    } finally {
+      setPausing(false)
     }
   }
 
@@ -341,7 +341,7 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
     <div className="space-y-4 max-w-4xl">
       {/* Connect flow */}
       {showConnectForm && (
-        <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-5 py-3 border-b border-border bg-gradient-to-r from-accent/5 to-transparent">
             <div className="flex items-center gap-2.5">
               <GitBranch className="w-4 h-4 text-accent" />
@@ -365,19 +365,19 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider block mb-1.5">
+              <label className="text-[11px] font-semibold text-text-muted block mb-1.5">
                 Repository URL
               </label>
               <input
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 placeholder="https://github.com/yash/polyglot-backup.git"
-                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10"
+                className="input"
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider block mb-1.5">
+              <label className="text-[11px] font-semibold text-text-muted block mb-1.5">
                 Personal Access Token
               </label>
               <input
@@ -385,7 +385,7 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/10 font-mono"
+                className="input font-mono"
               />
               <p className="text-[10px] text-text-muted mt-1.5">
                 Token is encrypted with a machine-local key before storage. It never leaves your machine in plain text.
@@ -396,7 +396,7 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
               <button
                 onClick={handleConnect}
                 disabled={connecting || !repoUrl.trim() || !token.trim()}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
+                className="btn-primary btn-md"
               >
                 {connecting ? (
                   <>
@@ -413,7 +413,7 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
               {status.configured && (
                 <button
                   onClick={() => setShowConnectForm(false)}
-                  className="px-4 py-2 text-sm font-medium text-text-muted hover:text-text rounded-lg hover:bg-surface-2 transition-colors"
+                  className="btn-ghost btn-md"
                 >
                   Cancel
                 </button>
@@ -435,6 +435,7 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
                   href={`https://github.com/${status.repoOwner}/${status.repoName}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  title={`https://github.com/${status.repoOwner}/${status.repoName}`}
                   className="text-accent hover:underline inline-flex items-center gap-1.5 text-[12px] font-mono"
                 >
                   {status.repoOwner}/{status.repoName}
@@ -518,7 +519,7 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
               onClick={handleBackupNow}
               disabled={running}
               title="Backup Now (B)"
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors shadow-lg shadow-accent/20"
+              className="btn-primary btn-md"
             >
               {running ? (
                 <>
@@ -533,27 +534,27 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
             <button
               onClick={onRefresh}
               title="Refresh (R)"
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-text-muted hover:text-text rounded-lg bg-surface-2 hover:bg-surface-3 transition-colors"
+              className="btn-secondary btn-md"
             >
               <RefreshCw className="w-3.5 h-3.5" /> Refresh
             </button>
             <button
               onClick={handleVerify}
               title="Verify remote via GitHub API (V)"
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-text-muted hover:text-text rounded-lg bg-surface-2 hover:bg-surface-3 transition-colors"
+              className="btn-secondary btn-md"
             >
               <ShieldCheck className="w-3.5 h-3.5" /> Verify
             </button>
             <button
               onClick={() => setShowConnectForm(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-text-muted hover:text-text rounded-lg bg-surface-2 hover:bg-surface-3 transition-colors"
+              className="btn-secondary btn-md"
             >
               <LinkIcon className="w-3.5 h-3.5" /> Change Repo
             </button>
             {status.enabled && (
               <button
-                onClick={handleDisconnect}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red hover:bg-red-muted rounded-lg transition-colors ml-auto"
+                onClick={() => setConfirmPause(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red hover:bg-red-muted rounded-lg transition-colors ml-auto"
               >
                 <Unplug className="w-3.5 h-3.5" /> Pause Auto-Backup
               </button>
@@ -561,7 +562,7 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
           </div>
 
           {/* What's included */}
-          <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+          <div className="card overflow-hidden">
             <div className="px-5 py-3 border-b border-border">
               <h3 className="text-sm font-bold">What's Backed Up</h3>
             </div>
@@ -587,6 +588,16 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmPause}
+        loading={pausing}
+        title="Pause auto-backup?"
+        message="Your data stays backed up, but new changes won't be pushed until you reconnect."
+        confirmLabel="Pause Auto-Backup"
+        onConfirm={handleDisconnect}
+        onClose={() => setConfirmPause(false)}
+      />
     </div>
   )
 }
@@ -603,10 +614,10 @@ function StatCard({
   sublabel?: string
 }) {
   return (
-    <div className="bg-surface rounded-xl border border-border p-4">
+    <div className="card p-4">
       <div className="flex items-center gap-2 mb-2">
         <Icon className="w-3.5 h-3.5 text-text-muted" />
-        <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">{label}</span>
+        <span className="text-[10px] text-text-muted font-semibold">{label}</span>
       </div>
       <div className="text-sm font-bold break-words">{value}</div>
       {sublabel && (
@@ -624,6 +635,7 @@ function CloudHistoryTab({ status, onRefresh }: { status: BackupStatus; onRefres
   const [previewData, setPreviewData] = useState<{ totalFiles: number; changes: BackupDiffFile[]; truncated?: boolean } | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [applying, setApplying] = useState(false)
+  const [confirmApply, setConfirmApply] = useState(false)
 
   const handlePreview = async (commitSha: string) => {
     setPreviewSha(commitSha)
@@ -643,9 +655,8 @@ function CloudHistoryTab({ status, onRefresh }: { status: BackupStatus; onRefres
     }
   }
 
-  const handleApply = async () => {
+  const doApply = async () => {
     if (!previewSha) return
-    if (!confirm(`Restore ~/.claude/ to commit ${previewSha.slice(0, 7)}? This will overwrite current files. A fresh backup will be created first.`)) return
     setApplying(true)
     try {
       // Create a safety backup first
@@ -653,6 +664,7 @@ function CloudHistoryTab({ status, onRefresh }: { status: BackupStatus; onRefres
       const res = await applyBackupRestore(previewSha)
       if (res.ok) {
         toast('success', `Restored to ${previewSha.slice(0, 7)}`)
+        setConfirmApply(false)
         setPreviewSha(null)
         setPreviewData(null)
         onRefresh()
@@ -668,7 +680,7 @@ function CloudHistoryTab({ status, onRefresh }: { status: BackupStatus; onRefres
 
   if (!status.configured) {
     return (
-      <div className="bg-surface rounded-2xl border border-border p-12 text-center">
+      <div className="card p-12 text-center">
         <CloudUpload className="w-10 h-10 text-text-muted mx-auto mb-3 opacity-50" />
         <p className="text-sm font-medium text-text-muted">Connect a GitHub repo first</p>
         <p className="text-xs text-text-muted mt-1">Go to the Overview tab to set up cloud backup.</p>
@@ -682,7 +694,7 @@ function CloudHistoryTab({ status, onRefresh }: { status: BackupStatus; onRefres
         <h2 className="text-sm font-bold">Commit History</h2>
         <button
           onClick={() => { refetch(); onRefresh() }}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-text-muted hover:text-text bg-surface-2 rounded-lg hover:bg-surface-3 transition-colors"
+          className="btn-secondary btn-sm"
         >
           <RefreshCw className="w-3 h-3" /> Refresh
         </button>
@@ -693,13 +705,14 @@ function CloudHistoryTab({ status, onRefresh }: { status: BackupStatus; onRefres
           <Loader className="w-4 h-4 animate-spin mr-2" /> Loading commits...
         </div>
       ) : !commits || commits.length === 0 ? (
-        <div className="bg-surface rounded-2xl border border-border p-10 text-center text-text-muted">
-          <History className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No commits yet</p>
-          <p className="text-xs mt-1">Run a backup from the Overview tab to create the first one.</p>
-        </div>
+        <EmptyState
+          icon={History}
+          title="No commits yet"
+          description="Run a backup from the Overview tab to create the first one."
+          card
+        />
       ) : (
-        <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="divide-y divide-border/50">
             {commits.map((commit, idx) => (
               <CommitRow
@@ -721,14 +734,29 @@ function CloudHistoryTab({ status, onRefresh }: { status: BackupStatus; onRefres
           loading={previewLoading}
           applying={applying}
           onClose={() => { setPreviewSha(null); setPreviewData(null) }}
-          onApply={handleApply}
+          onApply={() => setConfirmApply(true)}
         />
       )}
+
+      <ConfirmDialog
+        danger
+        open={confirmApply}
+        loading={applying}
+        title="Restore ~/.claude/ to this commit?"
+        message={
+          previewSha
+            ? `This will overwrite current files in ~/.claude/ with the state from commit ${previewSha.slice(0, 7)}. A fresh backup is created first, but local changes since then will be replaced.`
+            : undefined
+        }
+        confirmLabel="Restore"
+        onConfirm={doApply}
+        onClose={() => setConfirmApply(false)}
+      />
     </div>
   )
 }
 
-function CommitRow({ commit, isLatest, onPreview }: {
+const CommitRow = memo(function CommitRow({ commit, isLatest, onPreview }: {
   commit: BackupCommit
   isLatest: boolean
   onPreview: () => void
@@ -737,9 +765,7 @@ function CommitRow({ commit, isLatest, onPreview }: {
 
   return (
     <div className="group flex items-center gap-3 px-5 py-3 hover:bg-surface-2/40 transition-colors">
-      <div className="w-2 h-2 rounded-full shrink-0" style={{
-        backgroundColor: isLatest ? 'var(--color-accent)' : 'var(--color-border)',
-      }} />
+      <div className={`w-2 h-2 rounded-full shrink-0 ${isLatest ? 'bg-accent' : 'bg-border'}`} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold truncate">{commit.message}</span>
@@ -762,7 +788,7 @@ function CommitRow({ commit, isLatest, onPreview }: {
       </button>
     </div>
   )
-}
+})
 
 function RestorePreviewModal({
   commitSha,
@@ -779,13 +805,22 @@ function RestorePreviewModal({
   onClose: () => void
   onApply: () => void
 }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !applying) onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [applying, onClose])
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={() => !applying && onClose()}
     >
       <div
-        className="w-full max-w-2xl bg-surface rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="restore-title"
+        className="w-full max-w-2xl bg-surface rounded-2xl border border-border shadow-pop overflow-hidden flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-3">
@@ -794,7 +829,7 @@ function RestorePreviewModal({
               <Download className="w-5 h-5 text-accent" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-base font-bold">Restore Preview</h3>
+              <h3 id="restore-title" className="text-base font-bold">Restore Preview</h3>
               <p className="text-xs text-text-muted font-mono mt-0.5">
                 Commit {commitSha.slice(0, 7)}
               </p>
@@ -803,6 +838,7 @@ function RestorePreviewModal({
           <button
             onClick={onClose}
             disabled={applying}
+            aria-label="Close"
             className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted transition-colors"
           >
             <X className="w-4 h-4" />
@@ -870,7 +906,7 @@ function RestorePreviewModal({
           <button
             onClick={onApply}
             disabled={applying || !data || data.totalFiles === 0}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
+            className="btn-primary btn-md"
           >
             {applying ? (
               <>
@@ -893,14 +929,17 @@ function RestorePreviewModal({
 function SnapshotsTab({ onRefresh }: { onRefresh: () => void }) {
   const { data: snapshots, loading, refetch } = useApi(listBackupSnapshots)
   const [restoring, setRestoring] = useState<string | null>(null)
+  const [confirmName, setConfirmName] = useState<string | null>(null)
 
-  const handleRestore = async (name: string) => {
-    if (!confirm(`Restore this snapshot? It will overwrite the current file.`)) return
+  const handleRestore = async () => {
+    if (confirmName === null) return
+    const name = confirmName
     setRestoring(name)
     try {
       const res = await restoreBackupSnapshot(name)
       if (res.ok) {
         toast('success', `Restored: ${res.restoredTo}`)
+        setConfirmName(null)
         onRefresh()
       } else {
         toast('error', res.error || 'Restore failed')
@@ -923,7 +962,7 @@ function SnapshotsTab({ onRefresh }: { onRefresh: () => void }) {
         </div>
         <button
           onClick={refetch}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-text-muted hover:text-text bg-surface-2 rounded-lg hover:bg-surface-3 transition-colors"
+          className="btn-secondary btn-sm"
         >
           <RefreshCw className="w-3 h-3" /> Refresh
         </button>
@@ -934,27 +973,41 @@ function SnapshotsTab({ onRefresh }: { onRefresh: () => void }) {
           <Loader className="w-4 h-4 animate-spin mr-2" /> Loading snapshots...
         </div>
       ) : !snapshots || snapshots.length === 0 ? (
-        <div className="bg-surface rounded-2xl border border-border p-10 text-center text-text-muted">
-          <Archive className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No snapshots yet</p>
-          <p className="text-xs mt-1">
-            Snapshots are created automatically when Tutor, Hira, or Forge edit files.
-          </p>
-        </div>
+        <EmptyState
+          icon={Archive}
+          title="No snapshots yet"
+          description="Snapshots are created automatically when Tutor, Hira, or Forge edit files."
+          card
+        />
       ) : (
-        <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="divide-y divide-border/50">
             {snapshots.map((snap) => (
               <SnapshotRow
                 key={snap.name}
                 snap={snap}
                 restoring={restoring === snap.name}
-                onRestore={() => handleRestore(snap.name)}
+                onRestore={() => setConfirmName(snap.name)}
               />
             ))}
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        danger
+        open={confirmName !== null}
+        loading={restoring !== null}
+        title="Restore this snapshot?"
+        message={
+          confirmName !== null
+            ? `This will overwrite the current file ${snapshots?.find(s => s.name === confirmName)?.relPath ?? ''} with the snapshot contents. The current version will be lost.`
+            : undefined
+        }
+        confirmLabel="Restore"
+        onConfirm={handleRestore}
+        onClose={() => setConfirmName(null)}
+      />
     </div>
   )
 }
@@ -1136,7 +1189,7 @@ function LogsTab() {
         </div>
         <button
           onClick={refetch}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-text-muted hover:text-text bg-surface-2 rounded-lg hover:bg-surface-3 transition-colors"
+          className="btn-secondary btn-sm"
         >
           <RefreshCw className="w-3 h-3" /> Refresh
         </button>
@@ -1147,11 +1200,12 @@ function LogsTab() {
           <Loader className="w-4 h-4 animate-spin mr-2" /> Loading logs...
         </div>
       ) : !logs || logs.length === 0 ? (
-        <div className="bg-surface rounded-2xl border border-border p-10 text-center text-text-muted">
-          <Terminal className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No logs yet</p>
-          <p className="text-xs mt-1">Run a backup to generate the first entries.</p>
-        </div>
+        <EmptyState
+          icon={Terminal}
+          title="No logs yet"
+          description="Run a backup to generate the first entries."
+          card
+        />
       ) : (
         <div
           ref={scrollRef}

@@ -157,7 +157,10 @@ export default function CommandPalette() {
 
       {/* Palette */}
       <div
-        className="relative w-full max-w-xl bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        className="relative w-full max-w-xl bg-surface border border-border rounded-2xl shadow-pop overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search */}
@@ -169,13 +172,23 @@ export default function CommandPalette() {
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search pages, agents, actions..."
+            role="combobox"
+            aria-expanded
+            aria-controls="command-palette-listbox"
+            aria-activedescendant={filtered[selectedIdx] ? `command-option-${filtered[selectedIdx].id}` : undefined}
+            aria-label="Search pages, agents, actions"
             className="flex-1 bg-transparent text-sm text-text outline-none placeholder:text-text-muted"
           />
           <kbd className="text-[10px] text-text-muted bg-surface-2 px-1.5 py-0.5 rounded border border-border font-mono">ESC</kbd>
         </div>
 
         {/* Results */}
-        <div className="max-h-[360px] overflow-y-auto py-2">
+        <div
+          id="command-palette-listbox"
+          role="listbox"
+          aria-label="Command results"
+          className="max-h-[360px] overflow-y-auto py-2"
+        >
           {filtered.length === 0 ? (
             <div className="px-5 py-8 text-center text-text-muted text-sm">
               No results for "{query}"
@@ -187,10 +200,13 @@ export default function CommandPalette() {
                 return (
                   <button
                     key={item.id}
+                    id={`command-option-${item.id}`}
+                    role="option"
+                    aria-selected={i === selectedIdx}
                     onClick={() => item.action()}
                     onMouseEnter={() => setSelectedIdx(i)}
-                    className={`w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors ${
-                      i === selectedIdx ? 'bg-accent/10 text-accent' : 'text-text hover:bg-surface-2'
+                    className={`w-full flex items-center gap-3 px-5 py-2.5 text-left border-l-2 transition-colors ${
+                      i === selectedIdx ? 'bg-accent/10 text-accent border-accent' : 'text-text border-transparent hover:bg-surface-2'
                     }`}
                   >
                     <Icon className="w-4 h-4 shrink-0 opacity-60" />

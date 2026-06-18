@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Brain,
@@ -45,6 +45,7 @@ import {
   runScheduleNow,
 } from '../lib/api'
 import { toast } from '../components/Toast'
+import DependencyBanner from '../components/DependencyBanner'
 import { useUnsavedGuard } from '../hooks/useUnsavedGuard'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -145,7 +146,7 @@ interface TreeNodeProps {
   searchQuery: string
 }
 
-function TreeNode({
+const TreeNode = memo(function TreeNode({
   node,
   selectedPath,
   onSelect,
@@ -222,6 +223,7 @@ function TreeNode({
                 }}
                 className="p-0.5 rounded text-text-muted hover:text-accent transition-colors"
                 title="Rename folder"
+                aria-label="Rename folder"
               >
                 <Pencil className="w-3 h-3" />
               </button>
@@ -232,6 +234,7 @@ function TreeNode({
                 }}
                 className="p-0.5 rounded text-text-muted hover:text-red transition-colors"
                 title="Delete folder"
+                aria-label="Delete folder"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -285,6 +288,7 @@ function TreeNode({
           <span
             className={`ml-auto shrink-0 w-1.5 h-1.5 rounded-full ${TYPE_META[memType].color.replace('text-', 'bg-')}`}
             title={memType}
+            aria-label={memType}
           />
         )}
       </button>
@@ -297,6 +301,7 @@ function TreeNode({
             }}
             className="p-0.5 rounded text-text-muted hover:text-accent transition-colors"
             title="Rename"
+            aria-label="Rename file"
           >
             <Pencil className="w-3 h-3" />
           </button>
@@ -307,6 +312,7 @@ function TreeNode({
             }}
             className="p-0.5 rounded text-text-muted hover:text-red transition-colors"
             title="Delete"
+            aria-label="Delete file"
           >
             <Trash2 className="w-3 h-3" />
           </button>
@@ -314,11 +320,11 @@ function TreeNode({
       )}
     </div>
   )
-}
+})
 
 // ── Stats Panel ───────────────────────────────────────────────────────────────
 
-function StatsPanel({ stats }: { stats: MemoryStats | null }) {
+const StatsPanel = memo(function StatsPanel({ stats }: { stats: MemoryStats | null }) {
   if (!stats) return null
 
   return (
@@ -328,23 +334,23 @@ function StatsPanel({ stats }: { stats: MemoryStats | null }) {
         <div className="bg-surface-2 rounded-xl p-3 text-center">
           <FileText className="w-4 h-4 mx-auto mb-1 text-accent" />
           <p className="text-lg font-bold text-text">{stats.totalFiles}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider">Files</p>
+          <p className="text-[10px] text-text-muted ">Files</p>
         </div>
         <div className="bg-surface-2 rounded-xl p-3 text-center">
           <Folder className="w-4 h-4 mx-auto mb-1 text-accent" />
           <p className="text-lg font-bold text-text">{stats.totalFolders}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider">Folders</p>
+          <p className="text-[10px] text-text-muted ">Folders</p>
         </div>
         <div className="bg-surface-2 rounded-xl p-3 text-center">
           <HardDrive className="w-4 h-4 mx-auto mb-1 text-accent" />
           <p className="text-lg font-bold text-text">{formatBytes(stats.totalSize)}</p>
-          <p className="text-[10px] text-text-muted uppercase tracking-wider">Size</p>
+          <p className="text-[10px] text-text-muted ">Size</p>
         </div>
       </div>
 
       {/* Type breakdown */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+        <p className="text-[10px] font-semibold text-text-muted mb-2">
           By Type
         </p>
         <div className="space-y-1.5">
@@ -378,7 +384,7 @@ function StatsPanel({ stats }: { stats: MemoryStats | null }) {
 
       {/* Folder breakdown */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+        <p className="text-[10px] font-semibold text-text-muted mb-2">
           By Folder
         </p>
         <div className="space-y-1">
@@ -397,11 +403,11 @@ function StatsPanel({ stats }: { stats: MemoryStats | null }) {
       </div>
     </div>
   )
-}
+})
 
 // ── Info Sidebar ──────────────────────────────────────────────────────────────
 
-function InfoSidebar({
+const InfoSidebar = memo(function InfoSidebar({
   filePath,
   content,
   node,
@@ -421,7 +427,7 @@ function InfoSidebar({
     <div className="space-y-4">
       {/* File info */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+        <p className="text-[10px] font-semibold text-text-muted mb-2">
           File
         </p>
         <div className="bg-surface-2 rounded-xl p-3 space-y-1.5">
@@ -442,7 +448,7 @@ function InfoSidebar({
       {/* Frontmatter */}
       {Object.keys(meta).length > 0 && (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+          <p className="text-[10px] font-semibold text-text-muted mb-2">
             Frontmatter
           </p>
           <div className="bg-surface-2 rounded-xl p-3 space-y-2">
@@ -489,7 +495,7 @@ function InfoSidebar({
       {/* Type card */}
       {typeMeta && (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+          <p className="text-[10px] font-semibold text-text-muted mb-2">
             Memory Type
           </p>
           <div className={`rounded-xl p-3 border ${typeMeta.bg} border-current/10`}>
@@ -508,7 +514,7 @@ function InfoSidebar({
 
       {/* All types legend */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+        <p className="text-[10px] font-semibold text-text-muted mb-2">
           Type Legend
         </p>
         <div className="space-y-1">
@@ -535,7 +541,7 @@ function InfoSidebar({
       </div>
     </div>
   )
-}
+})
 
 // ── Search Results ────────────────────────────────────────────────────────────
 
@@ -629,6 +635,7 @@ function SearchResults({
                       }}
                       className="p-1 rounded-md bg-surface/80 backdrop-blur-sm text-text-muted hover:text-accent hover:bg-accent-muted transition-colors"
                       title="Rename"
+                      aria-label="Rename file"
                     >
                       <Pencil className="w-3 h-3" />
                     </button>
@@ -639,6 +646,7 @@ function SearchResults({
                       }}
                       className="p-1 rounded-md bg-surface/80 backdrop-blur-sm text-text-muted hover:text-red hover:bg-red/10 transition-colors"
                       title="Delete"
+                      aria-label="Delete file"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -689,7 +697,7 @@ function CreateDialog({
         ) : (
           <FolderPlus className="w-3.5 h-3.5 text-accent" />
         )}
-        <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
+        <span className="text-[11px] font-semibold text-text-secondary ">
           New {mode}
         </span>
       </div>
@@ -698,20 +706,20 @@ function CreateDialog({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={mode === 'file' ? 'e.g. user/new-memory.md' : 'e.g. projects/new-project'}
-        className="w-full px-2.5 py-1.5 text-[12px] bg-surface border border-border rounded-lg text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono"
+        className="input text-[12px] py-1.5 font-mono"
       />
       <div className="flex gap-1.5 mt-1.5">
         <button
           type="submit"
           disabled={creating || !value.trim()}
-          className="flex-1 py-1 text-[11px] font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="btn-primary btn-sm flex-1"
         >
           {creating ? 'Creating...' : 'Create'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-1 text-[11px] font-medium bg-surface-2 text-text-secondary rounded-lg hover:text-text transition-colors"
+          className="btn-secondary btn-sm flex-1"
         >
           Cancel
         </button>
@@ -744,6 +752,12 @@ function RenameDialog({
     inputRef.current?.select()
   }, [])
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !saving) onCancel() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [saving, onCancel])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = value.trim()
@@ -755,32 +769,38 @@ function RenameDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => !saving && onCancel()}>
       <form
         onSubmit={handleSubmit}
-        className="bg-surface border border-border rounded-xl p-4 w-80 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rename-title"
+        className="bg-surface border border-border rounded-xl p-4 w-80 shadow-pop"
       >
-        <p className="text-[13px] font-semibold text-text mb-3">
+        <p id="rename-title" className="text-[13px] font-semibold text-text mb-3">
           Rename {isDir ? 'Folder' : 'File'}
         </p>
+        <label htmlFor="rename-input" className="sr-only">New {isDir ? 'folder' : 'file'} name</label>
         <input
+          id="rename-input"
           ref={inputRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="w-full px-3 py-2 text-[13px] bg-surface-2 border border-border rounded-lg text-text focus:outline-none focus:border-accent font-mono"
+          className="input text-[13px] font-mono"
         />
         <div className="flex gap-2 mt-3">
           <button
             type="submit"
             disabled={saving || !value.trim() || value.trim() === currentName}
-            className="flex-1 py-1.5 text-[12px] font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="btn-primary btn-sm flex-1"
           >
             {saving ? 'Renaming...' : 'Rename'}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 py-1.5 text-[12px] font-medium bg-surface-2 text-text-secondary rounded-lg hover:text-text transition-colors"
+            className="btn-secondary btn-sm flex-1"
           >
             Cancel
           </button>
@@ -958,6 +978,10 @@ export default function Memory() {
     setDeletingTarget({ path: filePath, isDir })
   }, [])
 
+  const handleRenameRequest = useCallback((p: string, isDir: boolean) => {
+    setRenamingPath({ path: p, isDir })
+  }, [])
+
   const confirmDelete = useCallback(async () => {
     if (!deletingTarget) return
     const { path: filePath, isDir } = deletingTarget
@@ -1044,12 +1068,13 @@ export default function Memory() {
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-2">
               <Brain className="w-4.5 h-4.5 text-accent" />
-              <span className="text-[14px] font-bold tracking-tight">Memory Brain</span>
+              <span className="text-sm font-bold tracking-tight">Memory Brain</span>
             </div>
             <div className="flex items-center gap-0.5">
               <button
                 onClick={() => setSemanticOpen(true)}
                 title="Semantic search (vector RAG)"
+                aria-label="Semantic search"
                 className="p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-surface-2 transition-colors"
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -1057,6 +1082,7 @@ export default function Memory() {
               <Link
                 to="/memory/history"
                 title="View change history"
+                aria-label="View change history"
                 className="p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-surface-2 transition-colors"
               >
                 <History className="w-3.5 h-3.5" />
@@ -1064,6 +1090,7 @@ export default function Memory() {
               <button
                 onClick={() => setCreateMode(createMode === 'folder' ? null : 'folder')}
                 title="New folder"
+                aria-label="New folder"
                 className={`p-1.5 rounded-lg transition-colors ${createMode === 'folder' ? 'bg-accent-muted text-accent' : 'text-text-muted hover:text-accent hover:bg-surface-2'}`}
               >
                 <FolderPlus className="w-3.5 h-3.5" />
@@ -1071,6 +1098,7 @@ export default function Memory() {
               <button
                 onClick={() => setCreateMode(createMode === 'file' ? null : 'file')}
                 title="New file"
+                aria-label="New file"
                 className={`p-1.5 rounded-lg transition-colors ${createMode === 'file' ? 'bg-accent-muted text-accent' : 'text-text-muted hover:text-accent hover:bg-surface-2'}`}
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -1082,6 +1110,7 @@ export default function Memory() {
                   loadStats()
                 }}
                 title="Refresh"
+                aria-label="Refresh tree"
                 className="p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-surface-2 transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -1091,8 +1120,10 @@ export default function Memory() {
 
           {/* Search bar */}
           <div className="relative">
+            <label htmlFor="memory-search" className="sr-only">Search memory files</label>
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
             <input
+              id="memory-search"
               ref={searchInputRef}
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
@@ -1116,6 +1147,11 @@ export default function Memory() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Ollama offline → semantic search + capture silently return nothing. */}
+        <div className="px-3 pt-2 shrink-0">
+          <DependencyBanner subsystem="memory" hint="Run `ollama serve`." />
         </div>
 
         {/* Filter pills */}
@@ -1171,7 +1207,7 @@ export default function Memory() {
                 setSearchQuery('')
               }}
               onDelete={handleDelete}
-              onRename={(p, isDir) => setRenamingPath({ path: p, isDir })}
+              onRename={handleRenameRequest}
             />
           ) : (
             <div className="h-full overflow-y-auto py-1.5 px-1.5 space-y-0.5">
@@ -1192,7 +1228,7 @@ export default function Memory() {
                     selectedPath={selectedPath}
                     onSelect={handleSelectFile}
                     onDelete={handleDelete}
-                    onRename={(p, isDir) => setRenamingPath({ path: p, isDir })}
+                    onRename={handleRenameRequest}
                     depth={0}
                     typeFilter={typeFilter}
                     searchQuery={searchQuery}
@@ -1261,7 +1297,7 @@ export default function Memory() {
             <button
               onClick={handleSave}
               disabled={!dirty || saving}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="btn-primary btn-sm"
             >
               <Save className="w-3.5 h-3.5" />
               {saving ? 'Saving...' : 'Save'}
@@ -1278,7 +1314,7 @@ export default function Memory() {
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-3 max-w-xs">
                 <Brain className="w-12 h-12 text-text-muted mx-auto opacity-40" />
-                <p className="text-text-secondary text-[15px] font-medium">Select a memory file</p>
+                <p className="text-text-secondary text-base font-medium">Select a memory file</p>
                 <p className="text-text-muted text-[12px] leading-relaxed">
                   Browse the file tree on the left, or use search (Cmd+K) to find memories across
                   all folders.
@@ -1308,7 +1344,7 @@ export default function Memory() {
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full h-full bg-surface border border-border rounded-xl p-4 font-mono text-[13px] text-text resize-none focus:outline-none focus:border-accent/50 transition-colors leading-relaxed"
+              className="input h-full p-4 rounded-xl font-mono text-[13px] resize-none leading-relaxed"
               spellCheck={false}
               placeholder="Start writing..."
             />
@@ -1425,11 +1461,17 @@ function SemanticSearchModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-8" onClick={onClose}>
-      <div className="w-full max-w-2xl bg-surface border border-border rounded-2xl shadow-2xl flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="semantic-search-title"
+        className="w-full max-w-2xl bg-surface border border-border rounded-2xl shadow-pop flex flex-col max-h-[80vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="px-4 py-3 border-b border-border flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-accent" />
-          <span className="text-sm font-bold">Semantic search</span>
-          <span className="text-[10px] text-text-muted">
+          <span id="semantic-search-title" className="text-sm font-bold">Semantic search</span>
+          <span className="text-xs text-text-muted">
             {stats ? `${stats.total.toLocaleString()} chunks · ${stats.store}` : 'vector RAG over the brain'}
           </span>
           <button
@@ -1459,7 +1501,7 @@ function SemanticSearchModal({ onClose }: { onClose: () => void }) {
 
         <div className="flex-1 overflow-y-auto p-4">
           {loading && <div className="flex items-center justify-center h-24 text-text-muted"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Searching…</div>}
-          {err && <div className="text-red-400 text-xs"><AlertTriangle className="w-4 h-4 inline mr-1" />{err}</div>}
+          {err && <div className="text-red text-xs"><AlertTriangle className="w-4 h-4 inline mr-1" />{err}</div>}
           {!loading && !err && results !== null && results.length === 0 && (
             <p className="text-xs text-text-muted text-center py-8">No semantic matches.</p>
           )}
@@ -1469,10 +1511,10 @@ function SemanticSearchModal({ onClose }: { onClose: () => void }) {
           {!loading && results && results.length > 0 && (
             <div className="space-y-2">
               {results.map((r, i) => (
-                <div key={i} className="rounded-xl border border-border bg-surface-2 p-3">
+                <div key={i} className="bg-surface-2 rounded-xl border border-border-subtle p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[10px] font-mono font-bold text-accent tabular-nums">{r.score.toFixed(3)}</span>
-                    <span className="text-[9px] uppercase tracking-wider text-text-muted px-1.5 py-0.5 rounded bg-surface border border-border">{r.source_type}</span>
+                    <span className="text-[9px] text-text-muted px-1.5 py-0.5 rounded bg-surface border border-border">{r.source_type}</span>
                     <span className="text-[11px] font-semibold truncate">{r.heading_path || r.title || r.source_ref}</span>
                   </div>
                   <p className="text-[11px] text-text-muted line-clamp-3 whitespace-pre-wrap">{r.text.slice(0, 280)}</p>
@@ -1522,7 +1564,10 @@ function DeleteConfirmDialog({
       onClick={() => !busy && onCancel()}
     >
       <div
-        className="w-full max-w-md bg-surface rounded-2xl border border-red/30 shadow-2xl overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-title"
+        className="w-full max-w-md bg-surface rounded-2xl border border-red/30 shadow-pop overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1531,7 +1576,7 @@ function DeleteConfirmDialog({
             <AlertTriangle className="w-6 h-6 text-red" />
           </div>
           <div className="flex-1 min-w-0 pt-0.5">
-            <h3 className="text-base font-bold text-text">
+            <h3 id="delete-title" className="text-base font-bold text-text">
               Delete {isDir ? 'folder' : 'file'}?
             </h3>
             <p className="text-[12px] text-text-muted mt-1 leading-relaxed">
@@ -1590,7 +1635,7 @@ function DeleteConfirmDialog({
           <button
             onClick={onConfirm}
             disabled={!canConfirm || busy}
-            className="px-4 py-2 text-sm font-semibold rounded-lg bg-red text-white hover:bg-red/90 disabled:bg-red/30 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm"
+            className="px-4 py-2 text-sm font-semibold rounded-lg bg-red text-white hover:bg-red/90 disabled:bg-red/30 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-soft"
           >
             {busy ? (
               <>

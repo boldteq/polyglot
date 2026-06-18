@@ -11,6 +11,7 @@ import type {
   DbTableInfo, DbTableData, DbQueryResult, DbStats, DbChangeEntry,
 } from '../lib/api'
 import { toast } from '../components/Toast'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 type View = 'tables' | 'query' | 'history' | 'info'
 
@@ -30,6 +31,10 @@ export default function DatabaseExplorer() {
   const [changes, setChanges] = useState<DbChangeEntry[]>([])
   const [editingRow, setEditingRow] = useState<Record<string, unknown> | null>(null)
   const [editPk, setEditPk] = useState<string | null>(null)
+  const [revertId, setRevertId] = useState<number | null>(null)
+  const [reverting, setReverting] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<{ pkCol: string; pkValue: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const limit = 50
 
   useEffect(() => {
@@ -73,15 +78,19 @@ export default function DatabaseExplorer() {
       .catch(() => toast('error', 'Failed to load changes'))
   }
 
-  const handleRevert = async (id: number) => {
-    if (!confirm('Revert this change? The row will be restored to its previous state.')) return
+  const handleRevert = async () => {
+    if (revertId === null) return
+    setReverting(true)
     try {
-      await revertDbChange(id)
+      await revertDbChange(revertId)
       toast('success', 'Change reverted')
+      setRevertId(null)
       loadChanges()
       if (activeTable) refreshTable()
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Revert failed')
+    } finally {
+      setReverting(false)
     }
   }
 
@@ -103,15 +112,23 @@ export default function DatabaseExplorer() {
     }
   }
 
-  const handleDelete = async (pkCol: string, pkValue: string) => {
+  const handleDelete = (pkCol: string, pkValue: string) => {
     if (!activeTable) return
-    if (!confirm(`Delete row ${pkCol}=${pkValue}? You can revert from Change History.`)) return
+    setPendingDelete({ pkCol, pkValue })
+  }
+
+  const doDelete = async () => {
+    if (!activeTable || !pendingDelete) return
+    setDeleting(true)
     try {
-      await deleteDbRow(activeTable, pkValue)
+      await deleteDbRow(activeTable, pendingDelete.pkValue)
       toast('success', 'Row deleted')
+      setPendingDelete(null)
       refreshTable()
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -125,7 +142,7 @@ export default function DatabaseExplorer() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-48">
+      <div className="flex items-center justify-center h-64">
         <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -141,19 +158,19 @@ export default function DatabaseExplorer() {
           <span className="text-text-muted">tables</span>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-surface rounded-lg border border-border text-xs">
-          <Table className="w-3.5 h-3.5 text-blue-400" />
+          <Table className="w-3.5 h-3.5 text-blue" />
           <span className="font-semibold">{totalRows.toLocaleString()}</span>
           <span className="text-text-muted">rows</span>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-surface rounded-lg border border-border text-xs">
-          <HardDrive className="w-3.5 h-3.5 text-green-400" />
+          <HardDrive className="w-3.5 h-3.5 text-green" />
           <span className="font-semibold">{stats?.sizeMb} MB</span>
         </div>
         <button
           onClick={loadChanges}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
             view === 'history'
-              ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+              ? 'bg-amber/15 text-amber border border-amber/30'
               : 'bg-surface border border-border text-text-muted hover:text-text hover:bg-surface-2'
           }`}
         >
@@ -172,7 +189,7 @@ export default function DatabaseExplorer() {
           onClick={() => setView(view === 'info' ? 'tables' : 'info')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
             view === 'info'
-              ? 'bg-green-500/15 text-green-400 border border-green-500/30'
+              ? 'bg-green/15 text-green border border-green/30'
               : 'bg-surface border border-border text-text-muted hover:text-text hover:bg-surface-2'
           }`}
         >
@@ -185,12 +202,14 @@ export default function DatabaseExplorer() {
         {/* Left: table list */}
         <div className="w-52 shrink-0 space-y-2">
           <div className="relative">
+            <label htmlFor="table-search" className="sr-only">Filter tables</label>
             <Search className="w-3.5 h-3.5 text-text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
+              id="table-search"
               value={tableSearch}
               onChange={e => setTableSearch(e.target.value)}
               placeholder="Filter tables..."
-              className="w-full bg-surface border border-border rounded-lg pl-8 pr-2 py-1.5 text-xs focus:outline-none focus:border-accent/50"
+              className="input pl-8 text-xs py-1.5"
             />
           </div>
           <div className="space-y-0.5 max-h-[520px] overflow-y-auto">
@@ -223,12 +242,12 @@ export default function DatabaseExplorer() {
               onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleQuery() }}
               placeholder="SELECT * FROM agents WHERE status = 'active'"
               rows={2}
-              className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-accent/50 resize-none"
+              className="input flex-1 text-xs font-mono resize-y"
             />
             <button
               onClick={handleQuery}
               disabled={queryLoading || !sql.trim()}
-              className="flex items-center gap-1.5 px-4 py-2 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent-hover disabled:opacity-40 transition-colors self-start shrink-0"
+              className="btn-primary btn-md self-start shrink-0"
             >
               {queryLoading ? (
                 <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -243,7 +262,7 @@ export default function DatabaseExplorer() {
           {view === 'info' ? (
             <BackupRecoveryInfo dbPath={stats?.path || ''} />
           ) : view === 'history' ? (
-            <ChangeHistoryView changes={changes} onRevert={handleRevert} />
+            <ChangeHistoryView changes={changes} onRevert={setRevertId} />
           ) : view === 'query' && queryResult ? (
             <QueryResultView result={queryResult} />
           ) : tableData && pkCol ? (
@@ -285,6 +304,28 @@ export default function DatabaseExplorer() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        danger
+        open={revertId !== null}
+        loading={reverting}
+        title="Revert this change?"
+        message="The row will be restored to its previous state. This overwrites the current values and cannot be undone except by reverting again."
+        confirmLabel="Revert"
+        onConfirm={handleRevert}
+        onClose={() => setRevertId(null)}
+      />
+
+      <ConfirmDialog
+        danger
+        open={pendingDelete !== null}
+        loading={deleting}
+        title="Delete this row?"
+        message={pendingDelete ? `Deletes the row where ${pendingDelete.pkCol} = ${pendingDelete.pkValue}. You can revert it later from Change History.` : ''}
+        confirmLabel="Delete row"
+        onConfirm={doDelete}
+        onClose={() => setPendingDelete(null)}
+      />
     </div>
   )
 }
@@ -294,7 +335,7 @@ export default function DatabaseExplorer() {
 function ChangeHistoryView({ changes, onRevert }: { changes: DbChangeEntry[]; onRevert: (id: number) => void }) {
   if (changes.length === 0) {
     return (
-      <div className="bg-surface border border-border rounded-xl p-8 text-center text-text-muted text-xs">
+      <div className="card p-8 text-center text-text-muted text-xs">
         No changes recorded yet. Edits and deletes will appear here with revert capability.
       </div>
     )
@@ -302,7 +343,7 @@ function ChangeHistoryView({ changes, onRevert }: { changes: DbChangeEntry[]; on
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-text-muted font-semibold uppercase tracking-wider">{changes.length} changes</p>
+      <p className="text-[11px] text-text-muted font-semibold ">{changes.length} changes</p>
       <div className="space-y-1.5 max-h-[460px] overflow-y-auto">
         {changes.map(c => (
           <div
@@ -314,9 +355,9 @@ function ChangeHistoryView({ changes, onRevert }: { changes: DbChangeEntry[]; on
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                  c.action === 'delete' ? 'bg-red-500/15 text-red-400' :
-                  c.action === 'revert' ? 'bg-blue-500/15 text-blue-400' :
-                  'bg-amber-500/15 text-amber-400'
+                  c.action === 'delete' ? 'bg-red/15 text-red' :
+                  c.action === 'revert' ? 'bg-blue/15 text-blue' :
+                  'bg-amber/15 text-amber'
                 }`}>
                   {c.action}
                 </span>
@@ -324,11 +365,12 @@ function ChangeHistoryView({ changes, onRevert }: { changes: DbChangeEntry[]; on
                 <span className="text-text-muted font-mono">{c.rowKey}</span>
               </div>
               <div className="flex items-center gap-2">
+                {c.actor && <span className="text-[10px] text-text-muted">by {c.actor}</span>}
                 <span className="text-[10px] text-text-muted">{new Date(c.changedAt).toLocaleString()}</span>
                 {!c.reverted && c.action !== 'revert' && c.oldData && (
                   <button
                     onClick={() => onRevert(c.id)}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
+                    className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue/10 text-blue hover:bg-blue/20 transition-colors"
                   >
                     <RotateCcw className="w-2.5 h-2.5" /> Revert
                   </button>
@@ -383,11 +425,11 @@ function TableDataView({ data, loading, pkCol, editingRow, editPk, onEdit, onEdi
         </div>
         {data.total > limit && (
           <div className="flex items-center gap-1.5">
-            <button onClick={() => onPageChange(Math.max(0, offset - limit))} disabled={offset === 0} className="p-1 rounded hover:bg-surface-2 disabled:opacity-30 text-text-muted">
+            <button onClick={() => onPageChange(Math.max(0, offset - limit))} disabled={offset === 0} aria-label="Previous page" className="p-1 rounded hover:bg-surface-2 disabled:opacity-30 text-text-muted">
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <span className="text-[10px] text-text-muted font-medium">{currentPage}/{totalPages}</span>
-            <button onClick={() => onPageChange(offset + limit)} disabled={offset + limit >= data.total} className="p-1 rounded hover:bg-surface-2 disabled:opacity-30 text-text-muted">
+            <button onClick={() => onPageChange(offset + limit)} disabled={offset + limit >= data.total} aria-label="Next page" className="p-1 rounded hover:bg-surface-2 disabled:opacity-30 text-text-muted">
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -399,9 +441,9 @@ function TableDataView({ data, loading, pkCol, editingRow, editPk, onEdit, onEdi
           <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
       ) : data.rows.length === 0 ? (
-        <div className="bg-surface border border-border rounded-xl p-8 text-center text-text-muted text-xs">No rows</div>
+        <div className="card p-8 text-center text-text-muted text-xs">No rows</div>
       ) : (
-        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -421,19 +463,19 @@ function TableDataView({ data, loading, pkCol, editingRow, editPk, onEdit, onEdi
                         <td className="px-2 py-1.5">
                           {isEditing ? (
                             <div className="flex items-center gap-0.5">
-                              <button onClick={onEditSave} className="p-1 rounded text-green-400 hover:bg-green-500/10" title="Save">
+                              <button onClick={onEditSave} className="p-1 rounded text-green hover:bg-green/10" title="Save" aria-label="Save row">
                                 <Check className="w-3 h-3" />
                               </button>
-                              <button onClick={onEditCancel} className="p-1 rounded text-text-muted hover:bg-surface-2" title="Cancel">
+                              <button onClick={onEditCancel} className="p-1 rounded text-text-muted hover:bg-surface-2" title="Cancel" aria-label="Cancel edit">
                                 <X className="w-3 h-3" />
                               </button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
-                              <button onClick={() => onEdit(row, pkCol)} className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10" title="Edit">
+                              <button onClick={() => onEdit(row, pkCol)} className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10" title="Edit" aria-label="Edit row">
                                 <Pencil className="w-3 h-3" />
                               </button>
-                              <button onClick={() => onDelete(pkCol, String(row[pkCol]))} className="p-1 rounded text-text-muted hover:text-red-400 hover:bg-red-500/10" title="Delete">
+                              <button onClick={() => onDelete(pkCol, String(row[pkCol]))} className="p-1 rounded text-text-muted hover:text-red hover:bg-red/10" title="Delete" aria-label="Delete row">
                                 <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
@@ -472,7 +514,7 @@ function TableDataView({ data, loading, pkCol, editingRow, editPk, onEdit, onEdi
                           <td
                             key={col}
                             className={`px-3 py-2 whitespace-nowrap max-w-[250px] overflow-hidden text-ellipsis ${
-                              isNull ? 'text-text-muted/40 italic' : isJson ? 'font-mono text-[10px] text-blue-400' : 'text-text'
+                              isNull ? 'text-text-muted/40 italic' : isJson ? 'font-mono text-[10px] text-blue' : 'text-text'
                             }`}
                             title={isLong ? display : undefined}
                           >
@@ -498,11 +540,11 @@ function QueryResultView({ result }: { result: DbQueryResult }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full font-semibold">
+        <span className="text-[10px] text-green bg-green/10 px-2 py-0.5 rounded-full font-semibold">
           {result.total} row{result.total !== 1 ? 's' : ''} in {result.duration}ms
         </span>
         {result.total > 500 && (
-          <span className="text-[10px] text-amber-400">Showing first 500</span>
+          <span className="text-[10px] text-amber">Showing first 500</span>
         )}
       </div>
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
@@ -527,7 +569,7 @@ function QueryResultView({ result }: { result: DbQueryResult }) {
                       <td
                         key={col}
                         className={`px-3 py-2 whitespace-nowrap max-w-[250px] overflow-hidden text-ellipsis ${
-                          isNull ? 'text-text-muted/40 italic' : isJson ? 'font-mono text-[10px] text-blue-400' : 'text-text'
+                          isNull ? 'text-text-muted/40 italic' : isJson ? 'font-mono text-[10px] text-blue' : 'text-text'
                         }`}
                         title={display.length > 60 ? display : undefined}
                       >
@@ -578,15 +620,15 @@ function BackupRecoveryInfo({ dbPath }: { dbPath: string }) {
           <p>Your data has <span className="font-semibold text-text">3 layers of protection</span>:</p>
           <div className="space-y-1.5">
             <div className="flex items-start gap-2">
-              <span className="text-green-400 font-bold shrink-0">1.</span>
+              <span className="text-green font-bold shrink-0">1.</span>
               <p><span className="font-semibold text-text">SQLite WAL mode</span> — crash-safe writes. Even if the server crashes mid-write, the database won't corrupt.</p>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-green-400 font-bold shrink-0">2.</span>
+              <span className="text-green font-bold shrink-0">2.</span>
               <p><span className="font-semibold text-text">Auto-backup every 6 hours</span> — full JSON export saved to <code className="text-accent bg-accent/10 px-1 rounded">~/.claude/backups/polyglot-db-backup.json</code></p>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-green-400 font-bold shrink-0">3.</span>
+              <span className="text-green font-bold shrink-0">3.</span>
               <p><span className="font-semibold text-text">GitHub sync</span> — the backup file is inside <code className="text-accent bg-accent/10 px-1 rounded">~/.claude/</code> which auto-syncs to GitHub.</p>
             </div>
           </div>
@@ -597,15 +639,15 @@ function BackupRecoveryInfo({ dbPath }: { dbPath: string }) {
       <Section id="files" title="File Locations">
         <div className="space-y-2">
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">Database</span>
+            <span className="text-[10px] text-text-muted font-semibold">Database</span>
             <Code>{dbPath}</Code>
           </div>
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">Auto-backup (JSON)</span>
+            <span className="text-[10px] text-text-muted font-semibold">Auto-backup (JSON)</span>
             <Code>{'~/.claude/backups/polyglot-db-backup.json'}</Code>
           </div>
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">Original data (migrated)</span>
+            <span className="text-[10px] text-text-muted font-semibold">Original data (migrated)</span>
             <Code>{projectRoot + '/*.json.migrated'}</Code>
           </div>
         </div>
@@ -616,7 +658,7 @@ function BackupRecoveryInfo({ dbPath }: { dbPath: string }) {
         <a
           href="/api/db/export"
           download
-          className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent-hover transition-colors"
+          className="btn-primary btn-md"
         >
           <Download className="w-3.5 h-3.5" />
           Download Full Export
@@ -656,19 +698,19 @@ function BackupRecoveryInfo({ dbPath }: { dbPath: string }) {
         <p className="text-text-secondary mb-2">Paste these into the query box above and hit Run:</p>
         <div className="space-y-2">
           <div>
-            <p className="text-text-muted font-semibold text-[10px] uppercase tracking-wider mb-0.5">All active agents</p>
+            <p className="text-text-muted font-semibold text-[10px] mb-0.5">All active agents</p>
             <Code>{"SELECT id, title, department, status, level FROM agents WHERE status = 'active' ORDER BY level DESC"}</Code>
           </div>
           <div>
-            <p className="text-text-muted font-semibold text-[10px] uppercase tracking-wider mb-0.5">Recent runs</p>
+            <p className="text-text-muted font-semibold text-[10px] mb-0.5">Recent runs</p>
             <Code>{'SELECT agentName, status, duration, estimatedCost, timestamp FROM agent_runs ORDER BY timestamp DESC LIMIT 20'}</Code>
           </div>
           <div>
-            <p className="text-text-muted font-semibold text-[10px] uppercase tracking-wider mb-0.5">Cost by agent</p>
+            <p className="text-text-muted font-semibold text-[10px] mb-0.5">Cost by agent</p>
             <Code>{'SELECT agentName, COUNT(*) as runs, ROUND(SUM(estimatedCost), 4) as totalCost, ROUND(AVG(duration)) as avgMs FROM agent_runs GROUP BY agentName ORDER BY runs DESC'}</Code>
           </div>
           <div>
-            <p className="text-text-muted font-semibold text-[10px] uppercase tracking-wider mb-0.5">Recent changes (audit trail)</p>
+            <p className="text-text-muted font-semibold text-[10px] mb-0.5">Recent changes (audit trail)</p>
             <Code>{'SELECT tableName, rowKey, action, changedAt, reverted FROM db_change_log ORDER BY changedAt DESC LIMIT 20'}</Code>
           </div>
         </div>

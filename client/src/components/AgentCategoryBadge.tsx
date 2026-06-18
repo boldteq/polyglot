@@ -6,29 +6,30 @@ import {
 
 // ── Color System ─────────────────────────────────────────────────────────────
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; dot: string; ring: string; gradient: string }> = {
-  'software-factory': { bg: 'bg-purple-500/10', text: 'text-purple-400', dot: 'bg-purple-400', ring: 'ring-purple-500/20', gradient: 'from-purple-500/20 to-purple-600/5' },
-  personal: { bg: 'bg-blue-500/10', text: 'text-blue-400', dot: 'bg-blue-400', ring: 'ring-blue-500/20', gradient: 'from-blue-500/20 to-blue-600/5' },
-  research: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400', ring: 'ring-emerald-500/20', gradient: 'from-emerald-500/20 to-emerald-600/5' },
-  'client-work': { bg: 'bg-orange-500/10', text: 'text-orange-400', dot: 'bg-orange-400', ring: 'ring-orange-500/20', gradient: 'from-orange-500/20 to-orange-600/5' },
-  automation: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', dot: 'bg-cyan-400', ring: 'ring-cyan-500/20', gradient: 'from-cyan-500/20 to-cyan-600/5' },
-  marketing: { bg: 'bg-pink-500/10', text: 'text-pink-400', dot: 'bg-pink-400', ring: 'ring-pink-500/20', gradient: 'from-pink-500/20 to-pink-600/5' },
-  devops: { bg: 'bg-red-500/10', text: 'text-red-400', dot: 'bg-red-400', ring: 'ring-red-500/20', gradient: 'from-red-500/20 to-red-600/5' },
-  design: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', dot: 'bg-indigo-400', ring: 'ring-indigo-500/20', gradient: 'from-indigo-500/20 to-indigo-600/5' },
-  engineering: { bg: 'bg-sky-500/10', text: 'text-sky-400', dot: 'bg-sky-400', ring: 'ring-sky-500/20', gradient: 'from-sky-500/20 to-sky-600/5' },
-  'ops-strategy': { bg: 'bg-amber-500/10', text: 'text-amber-400', dot: 'bg-amber-400', ring: 'ring-amber-500/20', gradient: 'from-amber-500/20 to-amber-600/5' },
-  hr: { bg: 'bg-rose-500/10', text: 'text-rose-400', dot: 'bg-rose-400', ring: 'ring-rose-500/20', gradient: 'from-rose-500/20 to-rose-600/5' },
-  'content-seo': { bg: 'bg-lime-500/10', text: 'text-lime-400', dot: 'bg-lime-400', ring: 'ring-lime-500/20', gradient: 'from-lime-500/20 to-lime-600/5' },
-  uncategorized: { bg: 'bg-zinc-500/10', text: 'text-zinc-400', dot: 'bg-zinc-400', ring: 'ring-zinc-500/20', gradient: 'from-zinc-500/20 to-zinc-600/5' },
+// Token-backed (flips light/dark). One canonical color per category; semantic
+// keys mirror CATEGORY_COLOR in lib/designTokens.ts. `cat(family)` builds the
+// bg/text/dot/ring/gradient quintet from a single token family.
+function cat(c: string) {
+  return { bg: `bg-${c}/10`, text: `text-${c}`, dot: `bg-${c}`, ring: `ring-${c}/20`, gradient: `from-${c}/20 to-${c}/5` }
 }
 
-const EXTRA_COLORS = [
-  { bg: 'bg-teal-500/10', text: 'text-teal-400', dot: 'bg-teal-400', ring: 'ring-teal-500/20', gradient: 'from-teal-500/20 to-teal-600/5' },
-  { bg: 'bg-lime-500/10', text: 'text-lime-400', dot: 'bg-lime-400', ring: 'ring-lime-500/20', gradient: 'from-lime-500/20 to-lime-600/5' },
-  { bg: 'bg-violet-500/10', text: 'text-violet-400', dot: 'bg-violet-400', ring: 'ring-violet-500/20', gradient: 'from-violet-500/20 to-violet-600/5' },
-  { bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-400', dot: 'bg-fuchsia-400', ring: 'ring-fuchsia-500/20', gradient: 'from-fuchsia-500/20 to-fuchsia-600/5' },
-  { bg: 'bg-rose-500/10', text: 'text-rose-400', dot: 'bg-rose-400', ring: 'ring-rose-500/20', gradient: 'from-rose-500/20 to-rose-600/5' },
-]
+const CATEGORY_COLORS: Record<string, ReturnType<typeof cat>> = {
+  'software-factory': cat('purple'),
+  personal: cat('blue'),
+  research: cat('emerald'),
+  'client-work': cat('orange'),
+  automation: cat('cyan'),
+  marketing: cat('pink'),
+  devops: cat('red'),
+  design: cat('indigo'),
+  engineering: cat('sky'),
+  'ops-strategy': cat('amber'),
+  hr: cat('rose'),
+  'content-seo': cat('lime'),
+  uncategorized: cat('zinc'),
+}
+
+const EXTRA_COLORS = [cat('teal'), cat('lime'), cat('violet'), cat('fuchsia'), cat('rose')]
 
 export function getColors(category: string) {
   if (CATEGORY_COLORS[category]) return CATEGORY_COLORS[category]
@@ -164,7 +165,7 @@ export function CategoryFilterPills({
           onClick={() => onSelect('all')}
           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             selected === 'all'
-              ? 'bg-accent text-white shadow-sm shadow-accent/25'
+              ? 'bg-accent text-white shadow-soft shadow-accent/25'
               : 'bg-surface-2 text-text-secondary hover:text-text hover:bg-surface-3'
           }`}
         >
@@ -218,7 +219,7 @@ export function CategoryFilterPills({
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(cat.name) } }}
               className={`select-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 isActive
-                  ? `${colors.bg} ${colors.text} ring-1 ${colors.ring} shadow-sm`
+                  ? `${colors.bg} ${colors.text} ring-1 ${colors.ring} shadow-soft`
                   : 'bg-surface-2 text-text-secondary hover:text-text hover:bg-surface-3'
               } ${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'ring-2 ring-accent/60' : ''} ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
               title={draggable ? 'Drag to reorder' : undefined}
@@ -254,7 +255,7 @@ export function CategoryFilterPills({
 
       {/* ── Management Panel ── */}
       {expanded && hasManagement && (
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="card overflow-hidden">
           {/* Panel header */}
           <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-gradient-to-r from-accent/5 to-transparent">
             <div className="flex items-center gap-2.5">
@@ -270,7 +271,7 @@ export function CategoryFilterPills({
               {onCreate && (
                 <button
                   onClick={() => setCreatingNew(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors shadow-sm shadow-accent/25"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors shadow-soft shadow-accent/25"
                 >
                   <Plus className="w-3.5 h-3.5" /> New Category
                 </button>
@@ -297,12 +298,12 @@ export function CategoryFilterPills({
                     value={newCatName}
                     onChange={e => setNewCatName(e.target.value)}
                     placeholder="e.g. AI Tools, Client Projects, Internal..."
-                    className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 placeholder:text-text-muted/50"
+                    className="input"
                     autoFocus
                     onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setCreatingNew(false); setNewCatName('') } }}
                   />
                   {newCatName.trim() && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-mono bg-surface-3 px-1.5 py-0.5 rounded">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary font-mono bg-surface-3 px-1.5 py-0.5 rounded">
                       {slugifyCategory(newCatName)}
                     </span>
                   )}
@@ -310,7 +311,7 @@ export function CategoryFilterPills({
                 <button
                   onClick={handleCreate}
                   disabled={!newCatName.trim() || busy}
-                  className="px-5 py-2.5 text-sm font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors shadow-sm"
+                  className="btn-primary btn-lg"
                 >
                   {busy ? 'Creating...' : 'Create'}
                 </button>
@@ -345,12 +346,12 @@ export function CategoryFilterPills({
                         <input
                           value={editValue}
                           onChange={e => setEditValue(e.target.value)}
-                          className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10"
+                          className="input"
                           autoFocus
                           onKeyDown={e => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setEditingCat(null) }}
                         />
                         {editValue.trim() && (
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-mono bg-surface-3 px-1.5 py-0.5 rounded">
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary font-mono bg-surface-3 px-1.5 py-0.5 rounded">
                             {slugifyCategory(editValue)}
                           </span>
                         )}
@@ -358,7 +359,7 @@ export function CategoryFilterPills({
                       <button
                         onClick={handleRename}
                         disabled={busy}
-                        className="px-5 py-2.5 text-sm font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
+                        className="btn-primary btn-lg"
                       >
                         {busy ? 'Saving...' : 'Save'}
                       </button>

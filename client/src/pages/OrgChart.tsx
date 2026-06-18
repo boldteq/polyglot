@@ -859,12 +859,12 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
           e.stopPropagation()
           onSelect(data.id)
         }}
-        className={`relative rounded-2xl border-2 bg-surface shadow-lg transition-all duration-200 text-left block
+        className={`relative rounded-2xl border-2 bg-surface shadow-card transition-all duration-200 text-left block
           ${isSelected
             ? 'ring-2 ring-accent/40 ring-offset-2 ring-offset-bg border-accent'
             : isLocked
-              ? 'border-amber-400/60 hover:border-amber-400/80 hover:shadow-xl'
-              : 'border-border hover:border-accent/40 hover:shadow-xl'
+              ? 'border-amber/60 hover:border-amber/80 hover:shadow-pop'
+              : 'border-border hover:border-accent/40 hover:shadow-pop'
           }`}
         style={{ width: LEADER_WIDTH, height: LEADER_HEIGHT }}
       >
@@ -877,9 +877,9 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
         {/* Crown badge — only `tier === 'leadership'` agents reach this card,
             so the badge always reads LEADERSHIP. (Strict leader rule enforced
             in computeDepartmentLayout.) */}
-        <div className="absolute -top-2.5 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-sm">
+        <div className="absolute -top-2.5 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber to-yellow text-white shadow-soft">
           <Crown className="w-2.5 h-2.5" />
-          <span className="text-[9px] font-bold uppercase tracking-wider">
+          <span className="text-[9px] font-bold ">
             Leadership
           </span>
         </div>
@@ -909,8 +909,8 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
           onPointerDown={(e) => e.stopPropagation()}
           className={`absolute top-2 right-2 z-10 inline-flex items-center justify-center w-6 h-6 rounded-md border transition-colors cursor-pointer ${
             isLocked
-              ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30'
-              : 'bg-surface-2/80 text-text-muted border-border hover:bg-surface-3 hover:text-amber-400 hover:border-amber-500/40 opacity-0 group-hover:opacity-100'
+              ? 'bg-amber/20 text-amber border-amber/40 hover:bg-amber/30'
+              : 'bg-surface-2/80 text-text-muted border-border hover:bg-surface-3 hover:text-amber hover:border-amber/40 opacity-0 group-hover:opacity-100'
           }`}
           style={isLocked ? undefined : { opacity: 1 }}
         >
@@ -930,7 +930,7 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               {data.emoji && <span className="text-base leading-none">{data.emoji}</span>}
-              <span className="text-[15px] font-bold truncate">{data.name}</span>
+              <span className="text-base font-bold truncate">{data.name}</span>
               <LoadDot
                 status={data.loadStatus}
                 active={data.activeTaskCount}
@@ -939,7 +939,7 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
               />
               {badge && (
                 <span
-                  className="text-[8px] px-1.5 py-0.5 rounded-full font-bold shrink-0"
+                  className="text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0"
                   style={{ backgroundColor: badge.bg, color: badge.text, border: `1px solid ${badge.border}` }}
                 >
                   {badge.label}
@@ -951,7 +951,7 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
               <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
                 {data.level != null && data.levelTitle && (
                   <span
-                    className={`text-[9px] font-extrabold uppercase tracking-wider shrink-0 px-1.5 py-0.5 rounded-md border whitespace-nowrap ring-1 ${levelColors(data.level).bg} ${levelColors(data.level).text} ${levelColors(data.level).ring}`}
+                    className={`text-[9px] font-extrabold shrink-0 px-1.5 py-0.5 rounded-md border whitespace-nowrap ring-1 ${levelColors(data.level).bg} ${levelColors(data.level).text} ${levelColors(data.level).ring}`}
                     title={`${data.levelTitle} · ${data.yearsOfExperience ?? 0}y experience`}
                   >
                     {data.levelTitle}
@@ -967,11 +967,11 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
                 )}
                 {data.status && data.status !== 'active' && (
                   <span
-                    className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap border ${
-                      data.status === 'probation' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' :
-                      data.status === 'pip' ? 'bg-red-500/15 text-red-400 border-red-500/30' :
-                      data.status === 'pending' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' :
-                      'bg-zinc-500/10 text-zinc-500 border-zinc-500/20'
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap border ${
+                      data.status === 'probation' ? 'bg-amber/15 text-amber border-amber/30' :
+                      data.status === 'pip' ? 'bg-red/15 text-red border-red/30' :
+                      data.status === 'pending' ? 'bg-sky/15 text-sky border-sky/30' :
+                      'bg-zinc/10 text-zinc border-zinc/20'
                     }`}
                   >
                     {data.status}
@@ -1032,8 +1032,8 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
       />
 
       <div
-        className={`relative rounded-2xl border-2 shadow-lg overflow-hidden h-full flex flex-col ${
-          isLocked ? 'ring-1 ring-amber-400/40' : ''
+        className={`relative rounded-2xl border-2 shadow-card overflow-hidden h-full flex flex-col ${
+          isLocked ? 'ring-1 ring-amber/40' : ''
         } ${data.cardIsPlaceholder ? 'border-dashed' : ''} ${data.cardIsDrift ? 'border-dashed' : ''}`}
         style={{
           borderColor: isLocked
@@ -1071,8 +1071,8 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
           onPointerDown={(e) => e.stopPropagation()}
           className={`absolute top-2 right-2 z-10 inline-flex items-center justify-center w-6 h-6 rounded-md border transition-colors cursor-pointer ${
             isLocked
-              ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30'
-              : 'bg-surface-2/80 text-text-muted border-border hover:bg-surface-3 hover:text-amber-400 hover:border-amber-500/40'
+              ? 'bg-amber/20 text-amber border-amber/40 hover:bg-amber/30'
+              : 'bg-surface-2/80 text-text-muted border-border hover:bg-surface-3 hover:text-amber hover:border-amber/40'
           }`}
         >
           {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
@@ -1092,10 +1092,10 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
               title={data.cardDescription || undefined}
             >
               {data.cardEmoji && (
-                <span className="text-[14px] shrink-0" aria-hidden>{data.cardEmoji}</span>
+                <span className="text-sm shrink-0" aria-hidden>{data.cardEmoji}</span>
               )}
               <h3
-                className="text-[15px] font-bold truncate"
+                className="text-base font-bold truncate"
                 style={{ color: data.phaseColor }}
               >
                 {data.phaseLabel}
@@ -1140,7 +1140,7 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
-                  className="opacity-0 group-hover/cardhdr:opacity-100 transition-opacity ml-1 p-1 rounded hover:bg-surface-2 text-text-muted hover:text-text"
+                  className="opacity-50 hover:opacity-100 transition-opacity ml-1 p-1 rounded hover:bg-surface-2 text-text-muted hover:text-text"
                   title="Edit sub-department settings (label, color, emoji, order, displayMode, status)"
                   aria-label="Edit card settings"
                 >
@@ -1165,7 +1165,7 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
           {/* Lead chip — answers "who can manage all" at a glance. */}
           {data.cardLeadName && (
             <div className="mt-1 flex items-center gap-1.5 text-[11px] text-text-muted min-w-0">
-              <span className="uppercase tracking-wider text-[9px] font-bold opacity-70">Led by</span>
+              <span className="text-[9px] font-bold opacity-70">Led by</span>
               {data.cardLeadEmoji && <span className="text-[12px] shrink-0">{data.cardLeadEmoji}</span>}
               <span className="font-bold text-text truncate" style={{ color: data.phaseColor }}>
                 {data.cardLeadName}
@@ -1196,14 +1196,14 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
                     title={group.description}
                   >
                     <span
-                      className="text-[9px] font-extrabold uppercase tracking-wider"
+                      className="text-[9px] font-extrabold "
                       style={{ color: data.phaseColor, letterSpacing: '0.08em' }}
                     >
                       {group.label}
                     </span>
                     {group.pod && (
                       <span
-                        className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase"
+                        className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase"
                         style={{
                           backgroundColor: `${data.phaseColor}20`,
                           color: data.phaseColor,
@@ -1280,12 +1280,12 @@ function renderMemberRow(
         }}
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group cursor-pointer
           ${isSelected
-            ? 'bg-accent/10 border-accent/50 shadow-md shadow-accent/10 border'
+            ? 'bg-accent/10 border-accent/50 shadow-card shadow-accent/10 border'
             : isLead
-              ? 'bg-accent/[0.06] border-l-[3px] border-l-accent border-r border-y border-border hover:bg-accent/10 hover:border-l-accent hover:shadow-sm'
+              ? 'bg-accent/[0.06] border-l-[3px] border-l-accent border-r border-y border-border hover:bg-accent/10 hover:border-l-accent hover:shadow-soft'
               : isDotted
                 ? 'bg-surface-2/40 border border-dashed border-border/60 hover:bg-surface-3 hover:border-accent/40'
-                : 'bg-surface-2 border border-border hover:bg-surface-3 hover:border-accent/40 hover:shadow-sm'
+                : 'bg-surface-2 border border-border hover:bg-surface-3 hover:border-accent/40 hover:shadow-soft'
           }`}
         style={{
           height: MEMBER_ROW_HEIGHT,
@@ -1304,9 +1304,9 @@ function renderMemberRow(
         <div className="min-w-0" style={{ flex: '1 1 0%' }}>
           {/* Row 1: emoji + name + LEAD / dotted chip + load dot + model badge */}
           <div className="flex items-center gap-2 min-w-0">
-            {member.emoji && <span className="text-[15px] leading-none shrink-0">{member.emoji}</span>}
+            {member.emoji && <span className="text-base leading-none shrink-0">{member.emoji}</span>}
             <span
-              className="text-[14px] font-extrabold truncate tracking-tight text-text"
+              className="text-sm font-extrabold truncate tracking-tight text-text"
               style={{ flex: '1 1 0%', minWidth: 0 }}
             >
               {member.name}
@@ -1321,7 +1321,7 @@ function renderMemberRow(
             )}
             {isDotted && (
               <span
-                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full text-purple-400 border border-purple-500/40 bg-purple-500/10 shrink-0 whitespace-nowrap tracking-wider"
+                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full text-purple border border-purple/40 bg-purple/10 shrink-0 whitespace-nowrap tracking-wider"
                 title="Dotted-line cross-team support"
               >
                 Dotted
@@ -1360,7 +1360,7 @@ function renderMemberRow(
           {member.level != null && (
             <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
               <span
-                className={`text-[10px] font-extrabold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-md border whitespace-nowrap ${levelColors(member.level).bg} ${levelColors(member.level).text} ${levelColors(member.level).ring} ring-1`}
+                className={`text-[10px] font-extrabold shrink-0 px-2 py-0.5 rounded-md border whitespace-nowrap ${levelColors(member.level).bg} ${levelColors(member.level).text} ${levelColors(member.level).ring} ring-1`}
                 title={`${member.levelTitle || ''} · ${member.yearsOfExperience ?? 0}y experience`}
               >
                 {member.levelTitle}
@@ -1376,10 +1376,10 @@ function renderMemberRow(
               {member.status && member.status !== 'active' && (
                 <span
                   className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap border ${
-                    member.status === 'probation' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' :
-                    member.status === 'pip' ? 'bg-red-500/15 text-red-400 border-red-500/30' :
-                    member.status === 'pending' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' :
-                    'bg-zinc-500/10 text-zinc-500 border-zinc-500/20'
+                    member.status === 'probation' ? 'bg-amber/15 text-amber border-amber/30' :
+                    member.status === 'pip' ? 'bg-red/15 text-red border-red/30' :
+                    member.status === 'pending' ? 'bg-sky/15 text-sky border-sky/30' :
+                    'bg-zinc/10 text-zinc border-zinc/20'
                   }`}
                 >
                   {member.status}
@@ -1392,7 +1392,7 @@ function renderMemberRow(
                     e.stopPropagation()
                     onSelect(member.secondaryReportsTo as string)
                   }}
-                  className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap border bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/25 hover:text-purple-300 hover:border-purple-400/50 transition-colors cursor-pointer"
+                  className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap border bg-purple/10 text-purple border-purple/30 hover:bg-purple/25 hover:text-purple hover:border-purple/50 transition-colors cursor-pointer"
                   title={`Mentor / cross-functional report → ${member.secondaryReportsTo} (click to focus)`}
                 >
                   ↗ {member.secondaryReportsTo}
@@ -1545,12 +1545,12 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
 
   const field = (label: string, children: React.ReactNode) => (
     <div>
-      <label className="text-[10px] uppercase tracking-wider text-text-muted font-semibold block mb-1">{label}</label>
+      <label className="text-[10px] text-text-muted font-semibold block mb-1">{label}</label>
       {children}
     </div>
   )
 
-  const selectCls = 'w-full bg-surface-2 border border-border rounded-lg px-2.5 py-1.5 text-xs text-text focus:outline-none focus:border-accent/50 transition-colors'
+  const selectCls = 'input'
 
   // Sub-departments depend on the selected department.
   // Sort by `order` first, then label — matches the org-chart card render order.
@@ -1593,7 +1593,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
     + (form.tier && form.tier !== 'engineer' ? 1 : 0) + (form.secondaryReportsTo ? 1 : 0)
 
   const sectionHeading = (label: string) => (
-    <div className="text-[10px] uppercase tracking-wider text-text-muted/70 font-semibold pt-1 pb-0.5">{label}</div>
+    <div className="text-[10px] text-text-muted/70 font-semibold pt-1 pb-0.5">{label}</div>
   )
 
   return (
@@ -1621,7 +1621,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setEditingSquad(sq) }}
-                  className="w-4 h-4 rounded-full bg-surface border border-border flex items-center justify-center shadow-sm hover:bg-accent hover:text-white hover:border-accent transition-colors"
+                  className="w-4 h-4 rounded-full bg-surface border border-border flex items-center justify-center shadow-soft hover:bg-accent hover:text-white hover:border-accent transition-colors"
                   title="Edit squad"
                   aria-label={`Edit ${sq.label}`}
                 >
@@ -1630,7 +1630,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setDeletingSquad({ squad: sq }) }}
-                  className="w-4 h-4 rounded-full bg-surface border border-border flex items-center justify-center shadow-sm hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors"
+                  className="w-4 h-4 rounded-full bg-surface border border-border flex items-center justify-center shadow-soft hover:bg-red hover:text-white hover:border-red transition-colors"
                   title="Delete squad"
                   aria-label={`Delete ${sq.label}`}
                 >
@@ -1653,7 +1653,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
           <button
             type="button"
             onClick={() => setForm(f => ({ ...f, squad: null }))}
-            className="px-2 py-0.5 rounded-full text-[11px] text-text-muted hover:text-red-400"
+            className="px-2 py-0.5 rounded-full text-[11px] text-text-muted hover:text-red"
           >
             clear
           </button>
@@ -1706,7 +1706,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
                   toast('error', err instanceof Error ? err.message : 'Failed to create squad')
                 }
               }}
-              className="px-2.5 py-1 text-[11px] font-semibold bg-accent text-white rounded-md hover:bg-accent-hover disabled:opacity-40"
+              className="btn-primary btn-sm"
             >
               Create
             </button>
@@ -1752,7 +1752,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
               placeholder="Short label — e.g. Feature Builder"
               maxLength={120}
             />
-            <div className={`text-[10px] mt-1 ${titleTooLong ? 'text-amber-400' : 'text-text-muted'}`}>
+            <div className={`text-[10px] mt-1 ${titleTooLong ? 'text-amber' : 'text-text-muted'}`}>
               {titleTooLong ? `${titleLen}/120 — keep titles short (under 80 chars)` : `${titleLen}/120`}
             </div>
           </div>
@@ -1838,7 +1838,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
                             e.stopPropagation()
                             setEditingTag({ category: catId, tag: t, label: tagDef?.label || t, description: tagDef?.description || '' })
                           }}
-                          className="w-3.5 h-3.5 rounded-full bg-surface border border-border flex items-center justify-center shadow-sm hover:bg-accent hover:text-white hover:border-accent transition-colors"
+                          className="w-3.5 h-3.5 rounded-full bg-surface border border-border flex items-center justify-center shadow-soft hover:bg-accent hover:text-white hover:border-accent transition-colors"
                           title="Edit tag"
                           aria-label={`Edit ${t}`}
                         >
@@ -1850,7 +1850,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
                             e.stopPropagation()
                             setDeletingTag({ category: catId, tag: t })
                           }}
-                          className="w-3.5 h-3.5 rounded-full bg-surface border border-border flex items-center justify-center shadow-sm hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors"
+                          className="w-3.5 h-3.5 rounded-full bg-surface border border-border flex items-center justify-center shadow-soft hover:bg-red hover:text-white hover:border-red transition-colors"
                           title="Delete tag"
                           aria-label={`Delete ${t}`}
                         >
@@ -1887,7 +1887,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
                     <button
                       type="button"
                       onClick={() => { setNewTagFor(null); setNewTagInput('') }}
-                      className="text-[10px] text-text-muted hover:text-red-400"
+                      className="text-[10px] text-text-muted hover:text-red"
                     >
                       ✕
                     </button>
@@ -1913,7 +1913,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
         <button
           type="button"
           onClick={() => setShowAdvanced(s => !s)}
-          className="w-full flex items-center justify-between text-[11px] uppercase tracking-wider text-text-muted/70 font-semibold hover:text-text-muted transition-colors"
+          className="w-full flex items-center justify-between text-[11px] text-text-muted/70 font-semibold hover:text-text-muted transition-colors"
         >
           <span className="flex items-center gap-1.5">
             <ChevronDown className={`w-3 h-3 transition-transform ${showAdvanced ? 'rotate-180' : '-rotate-90'}`} />
@@ -1957,12 +1957,12 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
                   )}
                 </select>
                 {subDeptUnknown && (
-                  <div className="text-[10px] px-2 py-1 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  <div className="text-[10px] px-2 py-1 rounded bg-amber/10 text-amber dark:text-amber border border-amber/20">
                     ⚠️ '{form.subDepartment}' is not registered in departments.json for {currentDept?.label}. Agent will land in "Other" column. Add it to departments.json or pick a valid value.
                   </div>
                 )}
                 {subDeptHasNoPod && (
-                  <div className="text-[10px] px-2 py-1 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  <div className="text-[10px] px-2 py-1 rounded bg-amber/10 text-amber dark:text-amber border border-amber/20">
                     ⚠️ Sub-dept '{selectedSubDept?.label}' has no `pod` field. Agent may render outside the team card.
                   </div>
                 )}
@@ -2037,7 +2037,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
                             toast('error', err instanceof Error ? err.message : 'Failed to create tier')
                           }
                         }}
-                        className="px-2.5 py-1 text-[11px] font-semibold bg-accent text-white rounded-md hover:bg-accent-hover disabled:opacity-40"
+                        className="btn-primary btn-sm"
                       >
                         Create
                       </button>
@@ -2066,7 +2066,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
+        className="btn-primary btn-md w-full"
       >
         {saving ? (
           <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -2201,14 +2201,14 @@ function UnregisteredPanel({
   onSaved: () => void
 }) {
   return (
-    <div className="absolute top-0 right-0 w-[340px] h-full bg-surface border-l border-border z-20 overflow-y-auto shadow-2xl animate-slide-in">
+    <div className="absolute top-0 right-0 w-[340px] h-full bg-surface border-l border-border z-20 overflow-y-auto shadow-pop animate-slide-in">
       <div className="sticky top-0 bg-surface border-b border-border px-5 py-4 flex items-start gap-3 z-10">
-        <div className="w-11 h-11 rounded-xl bg-amber-500/15 ring-1 ring-amber-500/30 flex items-center justify-center shrink-0">
-          <AlertTriangle className="w-5 h-5 text-amber-400" />
+        <div className="w-11 h-11 rounded-xl bg-amber/15 ring-1 ring-amber/30 flex items-center justify-center shrink-0">
+          <AlertTriangle className="w-5 h-5 text-amber" />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-bold truncate">{agentInfo?.name || agentId}</h3>
-          <p className="text-[11px] text-amber-400 mt-0.5">Not registered in org</p>
+          <p className="text-[11px] text-amber mt-0.5">Not registered in org</p>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted transition-colors shrink-0">
           <X className="w-4 h-4" />
@@ -2218,13 +2218,13 @@ function UnregisteredPanel({
       <div className="px-5 py-4 space-y-5">
         {agentInfo?.description && (
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">Description</p>
+            <p className="text-[11px] text-text-muted font-semibold mb-1.5">Description</p>
             <p className="text-xs text-text-secondary leading-relaxed">{agentInfo.description}</p>
           </div>
         )}
 
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-3 flex items-center gap-1.5">
+          <p className="text-[11px] text-text-muted font-semibold mb-3 flex items-center gap-1.5">
             <Settings className="w-3 h-3" /> Org Setup
           </p>
           <OrgSetupForm
@@ -2250,9 +2250,9 @@ function AgentCapacityCard({ node }: { node: OrgChartNode }) {
   const avgDur = node.avgDurationMs
   const color = status === 'free' ? '#10b981' : status === 'busy' ? '#f59e0b' : '#ef4444'
   return (
-    <div className="rounded-xl border border-border bg-surface-2/50 p-3">
+    <div className="bg-surface-2/50 rounded-xl border border-border-subtle p-3">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold">Live capacity</p>
+        <p className="text-[11px] text-text-muted font-semibold">Live capacity</p>
         <span
           className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase"
           style={{ backgroundColor: `${color}20`, color, border: `1px solid ${color}40` }}
@@ -2263,19 +2263,19 @@ function AgentCapacityCard({ node }: { node: OrgChartNode }) {
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>
           <div className="text-base font-bold tabular-nums">{active}/{max}</div>
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Tasks</div>
+          <div className="text-[10px] text-text-muted mt-0.5">Tasks</div>
         </div>
         <div>
           <div className="text-base font-bold tabular-nums">
             {typeof sr === 'number' ? `${Math.round(sr * 100)}%` : '—'}
           </div>
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Success</div>
+          <div className="text-[10px] text-text-muted mt-0.5">Success</div>
         </div>
         <div>
           <div className="text-base font-bold tabular-nums">
             {avgDur ? `${Math.round(avgDur / 1000)}s` : '—'}
           </div>
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Avg dur</div>
+          <div className="text-[10px] text-text-muted mt-0.5">Avg dur</div>
         </div>
       </div>
     </div>
@@ -2305,9 +2305,9 @@ function AgentRecentTasks({ agentId }: { agentId: string }) {
 
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">Recent tasks</p>
+      <p className="text-[11px] text-text-muted font-semibold mb-1.5">Recent tasks</p>
       {loading && <p className="text-xs text-text-muted">Loading…</p>}
-      {err && <p className="text-xs text-red-400">{err}</p>}
+      {err && <p className="text-xs text-red">{err}</p>}
       {!loading && !err && items.length === 0 && (
         <p className="text-xs text-text-muted italic">No tasks dispatched yet.</p>
       )}
@@ -2315,11 +2315,11 @@ function AgentRecentTasks({ agentId }: { agentId: string }) {
         <div className="space-y-1.5">
           {items.map((t) => {
             const statusColor =
-              t.status === 'completed' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' :
-              t.status === 'failed'    ? 'text-red-400 bg-red-500/10 border-red-500/30' :
-              t.status === 'running'   ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' :
-              t.status === 'cancelled' ? 'text-zinc-400 bg-zinc-500/10 border-zinc-500/30' :
-                                         'text-blue-400 bg-blue-500/10 border-blue-500/30'
+              t.status === 'completed' ? 'text-emerald bg-emerald/10 border-emerald/30' :
+              t.status === 'failed'    ? 'text-red bg-red/10 border-red/30' :
+              t.status === 'running'   ? 'text-amber bg-amber/10 border-amber/30' :
+              t.status === 'cancelled' ? 'text-zinc bg-zinc/10 border-zinc/30' :
+                                         'text-blue bg-blue/10 border-blue/30'
             return (
               <div key={t.id} className="rounded-lg bg-surface-2/50 border border-border px-3 py-2">
                 <div className="flex items-center gap-2 mb-1">
@@ -2352,11 +2352,11 @@ function AgentIdentityCard({ node }: { node: OrgChartNode }) {
   const deptColor = node.departmentColor || '#6b7280'
 
   return (
-    <div className="rounded-xl border border-border bg-surface-2/40 p-3">
+    <div className="bg-surface-2/40 rounded-xl border border-border-subtle p-3">
       <div className="grid grid-cols-3 gap-2">
         {/* LEVEL */}
         <div className={`rounded-lg ring-1 ${lvlColors.ring} ${lvlColors.bg} px-2 py-2 text-center`}>
-          <div className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Level</div>
+          <div className="text-[9px] font-bold text-text-muted">Level</div>
           <div className={`text-[13px] font-extrabold mt-0.5 ${lvlColors.text}`}>
             {node.levelTitle || '—'}
           </div>
@@ -2374,7 +2374,7 @@ function AgentIdentityCard({ node }: { node: OrgChartNode }) {
             borderColor: model?.border || 'rgba(107,114,128,0.25)',
           }}
         >
-          <div className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Model</div>
+          <div className="text-[9px] font-bold text-text-muted">Model</div>
           <div
             className="text-[13px] font-extrabold mt-0.5"
             style={{ color: model?.text || 'var(--color-text)' }}
@@ -2391,7 +2391,7 @@ function AgentIdentityCard({ node }: { node: OrgChartNode }) {
             borderColor: `${deptColor}40`,
           }}
         >
-          <div className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Dept</div>
+          <div className="text-[9px] font-bold text-text-muted">Dept</div>
           <div className="text-[13px] font-extrabold mt-0.5 truncate" style={{ color: deptColor }}>
             {node.departmentLabel || '—'}
           </div>
@@ -2409,9 +2409,9 @@ function AgentIdentityCard({ node }: { node: OrgChartNode }) {
           <>
             <span>·</span>
             <span className={`capitalize font-bold ${
-              node.status === 'pip' ? 'text-red-400' :
-              node.status === 'probation' ? 'text-amber-400' :
-              node.status === 'pending' ? 'text-sky-400' :
+              node.status === 'pip' ? 'text-red' :
+              node.status === 'probation' ? 'text-amber' :
+              node.status === 'pending' ? 'text-sky' :
               'text-text-muted'
             }`}>
               {node.status}
@@ -2502,7 +2502,7 @@ function DescriptionBlock({ text }: { text: string }) {
   const hasExpandableContent = parsed.bullets.length > 0 || parsed.rest.length > 0 || !!parsed.hired
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">Role</p>
+      <p className="text-[11px] text-text-muted font-semibold mb-1.5">Role</p>
       <p className="text-sm text-text leading-relaxed font-medium">
         {parsed.lead}
       </p>
@@ -2511,7 +2511,7 @@ function DescriptionBlock({ text }: { text: string }) {
           {parsed.bullets.length > 0 && (
             <div className="mt-3">
               {parsed.bulletLabel && (
-                <p className="text-[10px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">
+                <p className="text-[10px] text-text-muted font-semibold mb-1.5">
                   {parsed.bulletLabel}
                 </p>
               )}
@@ -2531,7 +2531,7 @@ function DescriptionBlock({ text }: { text: string }) {
             </p>
           )}
           {parsed.hired && (
-            <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-2 border border-border text-[10px] uppercase tracking-wider text-text-muted font-semibold">
+            <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-2 border border-border text-[10px] text-text-muted font-semibold">
               <span className="text-accent">Hired</span>
               <span className="text-text-secondary normal-case tracking-normal">{parsed.hired}</span>
             </div>
@@ -2578,7 +2578,7 @@ function DetailPanel({
     : null
 
   return (
-    <div className="absolute top-0 right-0 w-[340px] h-full bg-surface border-l border-border z-20 overflow-y-auto shadow-2xl animate-slide-in">
+    <div className="absolute top-0 right-0 w-[340px] h-full bg-surface border-l border-border z-20 overflow-y-auto shadow-pop animate-slide-in">
       {/* Header */}
       <div className="sticky top-0 bg-surface border-b border-border px-5 py-4 flex items-start gap-3 z-10">
         <AgentIcon name={cleanName} uid={`detail-${node.id}`} size={44} global />
@@ -2587,7 +2587,7 @@ function DetailPanel({
             {emoji && <span className="text-xl">{emoji}</span>}
             <h3 className="text-base font-bold truncate">{cleanName}</h3>
             {locked && (
-              <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-label="Position locked" />
+              <Lock className="w-3.5 h-3.5 text-amber shrink-0" aria-label="Position locked" />
             )}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -2601,8 +2601,8 @@ function DetailPanel({
             title={locked ? 'Unlock card position' : 'Lock card to current position'}
             className={`p-1.5 rounded-lg shrink-0 transition-colors ${
               locked
-                ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25'
-                : 'hover:bg-surface-2 text-text-muted hover:text-amber-400'
+                ? 'bg-amber/15 text-amber hover:bg-amber/25'
+                : 'hover:bg-surface-2 text-text-muted hover:text-amber'
             }`}
           >
             {locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
@@ -2632,7 +2632,7 @@ function DetailPanel({
         {/* Tools */}
         {node.tools && (
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">Tools</p>
+            <p className="text-[11px] text-text-muted font-semibold mb-1.5">Tools</p>
             <div className="flex flex-wrap gap-1.5">
               {node.tools.split(',').map(t => (
                 <span key={t.trim()} className="text-[11px] px-2 py-0.5 rounded-md bg-surface-2 text-text-muted font-mono">
@@ -2646,7 +2646,7 @@ function DetailPanel({
         {/* Reports to */}
         {reportsToNode && (
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">Reports to</p>
+            <p className="text-[11px] text-text-muted font-semibold mb-1.5">Reports to</p>
             <button
               onClick={() => onNavigate(reportsToNode.id)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 transition-colors w-full text-left"
@@ -2663,7 +2663,7 @@ function DetailPanel({
         {/* Direct reports */}
         {directReports.length > 0 && (
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">
+            <p className="text-[11px] text-text-muted font-semibold mb-1.5">
               Direct reports ({directReports.length})
             </p>
             <div className="space-y-1.5">
@@ -2695,7 +2695,7 @@ function DetailPanel({
         <div className="border-t border-border pt-4">
           <button
             onClick={() => setShowOrgSetup(s => !s)}
-            className="w-full flex items-center justify-between text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-2 hover:text-text transition-colors"
+            className="w-full flex items-center justify-between text-[11px] text-text-muted font-semibold mb-2 hover:text-text transition-colors"
           >
             <span className="flex items-center gap-1.5"><Settings className="w-3 h-3" /> Org Setup</span>
             <ChevronDown className={`w-3 h-3 transition-transform ${showOrgSetup ? 'rotate-180' : ''}`} />
@@ -3161,7 +3161,7 @@ function TreeViewInner({
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="!bg-bg" />
         <Controls
           showInteractive={false}
-          className="!bg-surface !border-border !rounded-xl !shadow-lg [&>button]:!bg-surface [&>button]:!border-border [&>button]:!text-text-muted [&>button:hover]:!bg-surface-2"
+          className="!bg-surface !border-border !rounded-xl !shadow-card [&>button]:!bg-surface [&>button]:!border-border [&>button]:!text-text-muted [&>button:hover]:!bg-surface-2"
         />
         <MiniMap
           nodeColor={(n) => {
@@ -3232,7 +3232,7 @@ function TreeViewInner({
             if (locked === 0) return `Auto-adjust layout (clears ${unlocked} dragged card${unlocked === 1 ? '' : 's'})`
             return `Auto-adjust layout (clears ${unlocked} unlocked, ${locked} locked stay)`
           })()}
-          className="h-9 px-3 flex items-center gap-1.5 rounded-lg bg-surface border border-border text-text-muted text-xs font-bold shadow-lg hover:text-accent hover:bg-surface-2 hover:border-accent/30 transition-all"
+          className="h-9 px-3 flex items-center gap-1.5 rounded-lg bg-surface border border-border text-text-muted text-xs font-bold shadow-card hover:text-accent hover:bg-surface-2 hover:border-accent/30 transition-all"
         >
           <Sparkles className="w-3.5 h-3.5" />
           Auto-adjust layout
@@ -3241,7 +3241,7 @@ function TreeViewInner({
           onClick={handleScreenshot}
           disabled={capturing}
           title="Download full org chart as PNG"
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-border text-text-muted shadow-lg hover:text-accent hover:bg-surface-2 hover:border-accent/30 disabled:opacity-60 disabled:cursor-wait transition-all"
+          className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-border text-text-muted shadow-card hover:text-accent hover:bg-surface-2 hover:border-accent/30 disabled:opacity-60 disabled:cursor-wait transition-all"
         >
           {capturing ? (
             <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -3252,7 +3252,7 @@ function TreeViewInner({
         <button
           onClick={toggleFullscreen}
           title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen org chart'}
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-border text-text-muted shadow-lg hover:text-accent hover:bg-surface-2 hover:border-accent/30 transition-all"
+          className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-border text-text-muted shadow-card hover:text-accent hover:bg-surface-2 hover:border-accent/30 transition-all"
         >
           {isFullscreen
             ? <Minimize2 className="w-4 h-4" />
@@ -3504,7 +3504,7 @@ export default function OrgChartPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <p className="text-red-400 font-medium">{error || 'Failed to load org chart'}</p>
+          <p className="text-red font-medium">{error || 'Failed to load org chart'}</p>
           <button
             onClick={loadData}
             className="mt-3 px-4 py-1.5 text-sm bg-surface-2 rounded-lg hover:bg-surface-3 transition-colors"
@@ -3539,19 +3539,19 @@ export default function OrgChartPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-accent" />
                 {data.stats.totalAgents} members
               </span>
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 text-[11px] font-semibold">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple/10 text-purple text-[11px] font-semibold">
                 {data.stats.byModel.opus || 0} Opus
               </span>
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 text-[11px] font-semibold">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue/10 text-blue text-[11px] font-semibold">
                 {data.stats.byModel.sonnet || 0} Sonnet
               </span>
               <span
                 title={live ? 'Live — syncing with disk in real time' : 'Disconnected — reconnecting…'}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                  live ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                  live ? 'bg-emerald/10 text-emerald' : 'bg-red/10 text-red'
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${live ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${live ? 'bg-emerald animate-pulse' : 'bg-red'}`} />
                 {live ? 'Live' : 'Offline'}
               </span>
             </div>
@@ -3574,7 +3574,7 @@ export default function OrgChartPage() {
                 }}
                 placeholder="Search… or press Enter to smart-route a task"
                 title="Type to filter agents. Press Enter to dispatch a new task with this description."
-                className="w-full pl-9 pr-12 py-2 text-xs bg-surface border border-border rounded-lg focus:border-accent focus:ring-2 focus:ring-accent/10 outline-none transition-all"
+                className="input pl-9 pr-12"
               />
               {search.trim() && (
                 <span
@@ -3607,7 +3607,7 @@ export default function OrgChartPage() {
             <button
               onClick={() => setAssignModalOpen(true)}
               title="Smart-route a new task to the best agent"
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-accent to-purple-500 text-white shadow-sm shadow-accent/25 hover:shadow-md hover:shadow-accent/30 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-accent to-purple text-white shadow-soft shadow-accent/25 hover:shadow-card hover:shadow-accent/30 transition-all"
             >
               <Sparkles className="w-3.5 h-3.5" />
               Assign Task
@@ -3620,7 +3620,7 @@ export default function OrgChartPage() {
           <div className="mt-3 bg-surface border border-border rounded-xl p-3 space-y-2.5">
             {/* Squad row */}
             <div className="flex items-start gap-2.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted w-12 shrink-0 pt-1.5">Squad</span>
+              <span className="text-[10px] font-semibold text-text-muted w-12 shrink-0 pt-1.5">Squad</span>
               <div className="flex flex-wrap gap-2">
                 {SQUADS.map(sq => {
                   const active = squadFilters.includes(sq.id)
@@ -3651,7 +3651,7 @@ export default function OrgChartPage() {
                 <div key={catId}>
                   <div className="border-t border-border" />
                   <div className="flex items-start gap-2.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted w-12 shrink-0 pt-1">
+                    <span className="text-[10px] font-semibold text-text-muted w-12 shrink-0 pt-1">
                       {catDef.label}
                     </span>
                     <div className="flex flex-wrap gap-1.5 flex-1">
@@ -3676,7 +3676,7 @@ export default function OrgChartPage() {
                           <button onClick={() => setShowTech(false)} className="px-2 py-0.5 rounded-full text-[11px] text-text-muted hover:text-text">− hide</button>
                         ) : (
                           <button onClick={() => setShowTech(true)} className="px-2 py-0.5 rounded-full text-[11px] text-text-muted hover:text-accent">
-                            +{tagKeys.length - 6} more {activeVals.length > 0 && <span className="text-blue-400 font-semibold">({activeVals.length})</span>}
+                            +{tagKeys.length - 6} more {activeVals.length > 0 && <span className="text-blue font-semibold">({activeVals.length})</span>}
                           </button>
                         )
                       )}
@@ -3738,19 +3738,19 @@ export default function OrgChartPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-accent" />
             {data.stats.totalAgents} members
           </span>
-          <span className="px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 text-[11px] font-semibold">
+          <span className="px-2.5 py-1 rounded-full bg-purple/10 text-purple text-[11px] font-semibold">
             {data.stats.byModel.opus || 0} Opus
           </span>
-          <span className="px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 text-[11px] font-semibold">
+          <span className="px-2.5 py-1 rounded-full bg-blue/10 text-blue text-[11px] font-semibold">
             {data.stats.byModel.sonnet || 0} Sonnet
           </span>
         </div>
 
         {/* Needs Setup banner — agents on disk without org registration */}
         {drift && drift.onlyOnDisk.length > 0 && (
-          <div className="mt-3 flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-            <p className="text-xs text-amber-400 flex-1">
+          <div className="mt-3 flex items-center gap-3 bg-amber/10 border border-amber/30 rounded-xl px-4 py-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber shrink-0" />
+            <p className="text-xs text-amber flex-1">
               <span className="font-semibold">{drift.onlyOnDisk.length} agent{drift.onlyOnDisk.length !== 1 ? 's' : ''}</span>
               {' '}not registered in the org chart:
             </p>
@@ -3761,8 +3761,8 @@ export default function OrgChartPage() {
                   onClick={() => setConfigureId(id)}
                   className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold transition-colors ${
                     configureId === id
-                      ? 'bg-amber-500/40 text-amber-300 ring-1 ring-amber-400/50'
-                      : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                      ? 'bg-amber/40 text-amber ring-1 ring-amber/50'
+                      : 'bg-amber/20 text-amber hover:bg-amber/30'
                   }`}
                 >
                   {id}
@@ -3780,7 +3780,7 @@ export default function OrgChartPage() {
         <button
           type="button"
           onClick={() => focusOnNode('squad-__drifted__')}
-          className="mx-8 mb-3 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2.5 flex items-center gap-3 text-red-400 shrink-0 cursor-pointer hover:bg-red-500/15 hover:border-red-500/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 text-left"
+          className="mx-8 mb-3 bg-red/10 border border-red/30 rounded-xl px-4 py-2.5 flex items-center gap-3 text-red shrink-0 cursor-pointer hover:bg-red/15 hover:border-red/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red/40 text-left"
           title="Click to focus the Drifted column"
         >
           <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -3788,7 +3788,7 @@ export default function OrgChartPage() {
             <span className="font-semibold">{driftCount} agent{driftCount !== 1 ? 's' : ''}</span>
             {' '}reference invalid squad ids in registry. Click to view + reassign via Org Setup → Squad.
           </p>
-          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/40 font-bold shrink-0">
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-red/20 border border-red/40 font-bold shrink-0">
             View
           </span>
         </button>

@@ -19,6 +19,7 @@ import {
   BellOff,
   Search,
   Zap,
+  MoreHorizontal,
 } from 'lucide-react'
 import {
   getErrorLog,
@@ -30,46 +31,48 @@ import {
   type ErrorLogEntry,
 } from '../lib/api'
 import { toast } from '../components/Toast'
+import { PageShell } from '../components/PageShell'
+import { confirmDialog } from '../lib/confirm'
 
 // ── Source metadata ──────────────────────────────────────────────────────────
 
 const SOURCE_META: Record<string, { label: string; color: string }> = {
-  server:   { label: 'Server',   color: 'bg-red-500/15 text-red-400 border-red-500/25' },
-  client:   { label: 'Client',   color: 'bg-orange-500/15 text-orange-400 border-orange-500/25' },
-  schedule: { label: 'Schedule', color: 'bg-blue-500/15 text-blue-400 border-blue-500/25' },
-  db:       { label: 'Database', color: 'bg-purple-500/15 text-purple-400 border-purple-500/25' },
-  backup:   { label: 'Backup',   color: 'bg-amber-500/15 text-amber-400 border-amber-500/25' },
+  server:   { label: 'Server',   color: 'bg-red/15 text-red border-red/25' },
+  client:   { label: 'Client',   color: 'bg-orange/15 text-orange border-orange/25' },
+  schedule: { label: 'Schedule', color: 'bg-blue/15 text-blue border-blue/25' },
+  db:       { label: 'Database', color: 'bg-purple/15 text-purple border-purple/25' },
+  backup:   { label: 'Backup',   color: 'bg-amber/15 text-amber border-amber/25' },
 }
 
 const CATEGORY_META: Record<string, { label: string; color: string }> = {
-  http:        { label: 'HTTP',        color: 'bg-sky-500/15 text-sky-400 border-sky-500/25' },
-  db:          { label: 'DB',          color: 'bg-purple-500/15 text-purple-400 border-purple-500/25' },
-  schedule:    { label: 'Schedule',    color: 'bg-blue-500/15 text-blue-400 border-blue-500/25' },
-  'agent-run': { label: 'Agent Run',   color: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/25' },
-  integration: { label: 'Integration', color: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25' },
-  render:      { label: 'Render',      color: 'bg-rose-500/15 text-rose-400 border-rose-500/25' },
-  sse:         { label: 'SSE',         color: 'bg-teal-500/15 text-teal-400 border-teal-500/25' },
-  api:         { label: 'API',         color: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/25' },
-  runtime:     { label: 'Runtime',     color: 'bg-red-500/15 text-red-400 border-red-500/25' },
-  console:     { label: 'Console',     color: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25' },
-  validation:  { label: 'Validation',  color: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25' },
-  startup:     { label: 'Startup',     color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
-  backup:      { label: 'Backup',      color: 'bg-amber-500/15 text-amber-400 border-amber-500/25' },
-  orchestration:{ label: 'Orchestration', color: 'bg-violet-500/15 text-violet-400 border-violet-500/25' },
-  form:        { label: 'Form',        color: 'bg-pink-500/15 text-pink-400 border-pink-500/25' },
-  manual:      { label: 'Manual',      color: 'bg-slate-500/15 text-slate-400 border-slate-500/25' },
+  http:        { label: 'HTTP',        color: 'bg-sky/15 text-sky border-sky/25' },
+  db:          { label: 'DB',          color: 'bg-purple/15 text-purple border-purple/25' },
+  schedule:    { label: 'Schedule',    color: 'bg-blue/15 text-blue border-blue/25' },
+  'agent-run': { label: 'Agent Run',   color: 'bg-fuchsia/15 text-fuchsia border-fuchsia/25' },
+  integration: { label: 'Integration', color: 'bg-cyan/15 text-cyan border-cyan/25' },
+  render:      { label: 'Render',      color: 'bg-rose/15 text-rose border-rose/25' },
+  sse:         { label: 'SSE',         color: 'bg-teal/15 text-teal border-teal/25' },
+  api:         { label: 'API',         color: 'bg-indigo/15 text-indigo border-indigo/25' },
+  runtime:     { label: 'Runtime',     color: 'bg-red/15 text-red border-red/25' },
+  console:     { label: 'Console',     color: 'bg-zinc/15 text-zinc border-zinc/25' },
+  validation:  { label: 'Validation',  color: 'bg-yellow/15 text-yellow border-yellow/25' },
+  startup:     { label: 'Startup',     color: 'bg-emerald/15 text-emerald border-emerald/25' },
+  backup:      { label: 'Backup',      color: 'bg-amber/15 text-amber border-amber/25' },
+  orchestration:{ label: 'Orchestration', color: 'bg-violet/15 text-violet border-violet/25' },
+  form:        { label: 'Form',        color: 'bg-pink/15 text-pink border-pink/25' },
+  manual:      { label: 'Manual',      color: 'bg-slate/15 text-slate border-slate/25' },
 }
 
 const LEVEL_META: Record<string, { icon: typeof AlertCircle; color: string }> = {
-  error: { icon: AlertCircle,   color: 'text-red-400' },
-  warn:  { icon: AlertTriangle, color: 'text-amber-400' },
-  info:  { icon: Info,          color: 'text-blue-400' },
-  debug: { icon: Info,          color: 'text-zinc-400' },
+  error: { icon: AlertCircle,   color: 'text-red' },
+  warn:  { icon: AlertTriangle, color: 'text-amber' },
+  info:  { icon: Info,          color: 'text-blue' },
+  debug: { icon: Info,          color: 'text-zinc' },
 }
 
 function categoryStyle(cat?: string | null) {
-  if (!cat) return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20'
-  return CATEGORY_META[cat]?.color ?? 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25'
+  if (!cat) return 'bg-zinc/10 text-zinc border-zinc/20'
+  return CATEGORY_META[cat]?.color ?? 'bg-zinc/15 text-zinc border-zinc/25'
 }
 
 function categoryLabel(cat?: string | null) {
@@ -78,7 +81,7 @@ function categoryLabel(cat?: string | null) {
 }
 
 function sourceStyle(source: string) {
-  return SOURCE_META[source]?.color ?? 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25'
+  return SOURCE_META[source]?.color ?? 'bg-zinc/15 text-zinc border-zinc/25'
 }
 
 function formatTs(ts: string) {
@@ -132,6 +135,16 @@ export default function LogsPage() {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [busyIds, setBusyIds] = useState<Set<number>>(new Set())
   const [clearing, setClearing] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close the overflow menu on outside-click (same pattern as Sidebar's ProjectSelector).
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [menuOpen])
 
   // Refs so SSE handler always sees current filter values without reconnecting
   const sourceRef = useRef(sourceFilter)
@@ -261,7 +274,7 @@ export default function LogsPage() {
   }
 
   const handleClear = async (all: boolean) => {
-    if (!confirm(all ? 'Delete ALL error logs? This cannot be undone.' : 'Delete all resolved errors?')) return
+    if (!(await confirmDialog({ title: 'Delete error logs?', message: all ? 'All error logs will be permanently deleted. This cannot be undone.' : 'All resolved errors will be deleted.', danger: true, confirmLabel: 'Delete' }))) return
     setClearing(true)
     try {
       const res = await clearErrorLog(all)
@@ -302,121 +315,88 @@ export default function LogsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="px-8 pt-5 pb-4 shrink-0">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 ring-1 ring-red-500/20 flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-red-400" />
-              {unresolved > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none min-w-[18px] text-center">
-                  {unresolved > 99 ? '99+' : unresolved}
-                </span>
+    <PageShell
+      title="Logs"
+      subtitle={unresolved > 0 ? `${unresolved} unresolved — copy for Claude to fix` : 'No unresolved errors'}
+      fullHeight
+      actions={
+        <>
+          <span className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${live ? 'text-emerald bg-emerald/10' : 'text-zinc bg-zinc/10'}`}>
+            {live ? <Wifi className="w-3 h-3" aria-hidden="true" /> : <WifiOff className="w-3 h-3" aria-hidden="true" />}
+            {live ? 'Live' : 'Disconnected'}
+          </span>
+          <button
+            onClick={() => setNotifyEnabled(v => !v)}
+            title={notifyEnabled ? 'Disable new-error notifications' : 'Enable new-error notifications'}
+            aria-label={notifyEnabled ? 'Notifications on' : 'Notifications muted'}
+            className={`p-1.5 rounded-lg transition-colors ${
+              notifyEnabled ? 'text-accent bg-accent/10 hover:bg-accent/20' : 'text-text-muted hover:bg-surface-2 hover:text-text'
+            }`}
+          >
+            {notifyEnabled ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+          </button>
+          <button onClick={handleCopyAll} className="btn-primary btn-sm">
+            <ClipboardList className="w-3.5 h-3.5" />
+            Copy all for Claude
+          </button>
+          {/* Refresh stays visible; rare/destructive actions tuck into a ⋯ menu. */}
+          <div className="flex items-center gap-0.5">
+            <button onClick={load} disabled={loading} title="Refresh" aria-label="Refresh"
+              className="p-1.5 rounded-lg text-text-muted hover:bg-surface-2 hover:text-text transition-colors disabled:opacity-40">
+              {loading ? <Loader className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            </button>
+            <div className="relative" ref={menuRef}>
+              <button onClick={() => setMenuOpen(v => !v)} title="More actions" aria-label="More actions"
+                aria-haspopup="menu" aria-expanded={menuOpen}
+                className={`p-1.5 rounded-lg transition-colors ${menuOpen ? 'bg-surface-2 text-text' : 'text-text-muted hover:bg-surface-2 hover:text-text'}`}>
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+              {menuOpen && (
+                <div role="menu" className="absolute right-0 top-full mt-1 w-48 z-50 bg-surface border border-border rounded-xl shadow-pop py-1">
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleResolveAll() }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-text-secondary hover:bg-surface-2 hover:text-text transition-colors">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" /> Resolve all errors
+                  </button>
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleClear(false) }} disabled={clearing}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-text-secondary hover:bg-surface-2 hover:text-text transition-colors disabled:opacity-40">
+                    <Trash2 className="w-4 h-4 shrink-0" /> Clear resolved
+                  </button>
+                  <button role="menuitem" onClick={() => { setMenuOpen(false); handleSelftest() }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-text-secondary hover:bg-surface-2 hover:text-text transition-colors">
+                    <Zap className="w-4 h-4 shrink-0" /> Self-test pipeline
+                  </button>
+                </div>
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold leading-tight">Error Logs</h1>
-                <span className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${live ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-400 bg-zinc-500/10'}`}>
-                  {live ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-                  {live ? 'Live' : 'Disconnected'}
-                </span>
-              </div>
-              <p className="text-[11px] text-text-muted">
-                {unresolved > 0
-                  ? `${unresolved} unresolved — copy for Claude to fix`
-                  : 'No unresolved errors'}
-              </p>
-            </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setNotifyEnabled(v => !v)}
-              title={notifyEnabled ? 'Disable new-error notifications' : 'Enable new-error notifications'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border rounded-lg transition-colors ${
-                notifyEnabled
-                  ? 'bg-accent/10 border-accent/30 text-accent hover:bg-accent/20'
-                  : 'bg-surface-2 border-border text-text-muted hover:text-text'
-              }`}
-            >
-              {notifyEnabled ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
-              {notifyEnabled ? 'Notifying' : 'Muted'}
-            </button>
-            <button
-              onClick={handleCopyAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
-            >
-              <ClipboardList className="w-3.5 h-3.5" />
-              Copy all for Claude
-            </button>
-            <button
-              onClick={handleSelftest}
-              title="Emit synthetic logs across all categories to verify pipeline"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-lg hover:bg-surface-3 transition-colors"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              Self-test
-            </button>
-            <button
-              onClick={handleResolveAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-lg hover:bg-surface-3 transition-colors"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Resolve all
-            </button>
-            <button
-              onClick={load}
-              disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-lg hover:bg-surface-3 transition-colors disabled:opacity-40"
-            >
-              {loading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            </button>
-            <button
-              onClick={() => handleClear(false)}
-              disabled={clearing}
-              title="Delete resolved errors"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-surface-2 border border-border rounded-lg hover:bg-surface-3 transition-colors disabled:opacity-40"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear resolved
-            </button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex items-center gap-3 mt-4 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <Filter className="w-3.5 h-3.5 text-text-muted shrink-0" />
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Source</span>
-          </div>
-          <div className="flex bg-surface-2 p-0.5 rounded-lg flex-wrap gap-0.5">
+        </>
+      }
+    >
+      <div className="h-full flex flex-col">
+      {/* Filters */}
+      <div className="px-8 pb-4 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter className="w-3.5 h-3.5 text-text-muted shrink-0" />
+          {/* Source — dropdown (6 pills was too wide) */}
+          <select
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className="input w-auto capitalize"
+            aria-label="Filter by source"
+          >
             {sources.map(s => (
-              <button
-                key={s}
-                onClick={() => setSourceFilter(s)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold capitalize transition-colors ${
-                  sourceFilter === s ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text'
-                }`}
-              >
-                {s === 'all' ? 'All' : (SOURCE_META[s]?.label ?? s)}
-              </button>
+              <option key={s} value={s}>{s === 'all' ? 'All sources' : (SOURCE_META[s]?.label ?? s)}</option>
             ))}
-          </div>
+          </select>
 
-          <div className="flex items-center gap-1.5 ml-2">
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Level</span>
-          </div>
-          <div className="flex bg-surface-2 p-0.5 rounded-lg">
+          {/* Level — compact segmented */}
+          <div className="segmented">
             {levels.map(l => (
               <button
                 key={l}
                 onClick={() => setLevelFilter(l)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold capitalize transition-colors ${
-                  levelFilter === l ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text'
-                }`}
+                aria-pressed={levelFilter === l}
+                className={`capitalize ${levelFilter === l ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}`}
               >
                 {l}
               </button>
@@ -425,24 +405,25 @@ export default function LogsPage() {
 
           <button
             onClick={() => setShowResolved(v => !v)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               showResolved
-                ? 'bg-accent/10 border-accent/30 text-accent'
-                : 'bg-surface-2 border-border text-text-muted hover:text-text'
+                ? 'bg-accent/10 text-accent'
+                : 'bg-surface-2 text-text-muted hover:text-text'
             }`}
           >
-            {showResolved ? <X className="w-3 h-3" /> : null}
-            Show resolved
+            {showResolved && <X className="w-3 h-3" />}
+            Resolved
           </button>
 
           <div className="relative ml-auto">
-            <Search className="w-3 h-3 text-text-muted absolute left-2 top-1/2 -translate-y-1/2" />
+            <Search className="w-3 h-3 text-text-muted absolute left-2.5 top-1/2 -translate-y-1/2 z-10" aria-hidden="true" />
             <input
               type="text"
               value={searchDraft}
               onChange={(e) => setSearchDraft(e.target.value)}
               placeholder="Search message / stack / route…"
-              className="pl-6 pr-2 py-1 w-56 bg-surface-2 border border-border rounded-lg text-[11px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
+              aria-label="Search error logs by message, stack, or route"
+              className={`input w-56 pl-7 ${searchDraft ? 'ring-1 ring-accent/40' : ''}`}
             />
             {searchDraft && (
               <button
@@ -463,9 +444,11 @@ export default function LogsPage() {
         {/* Category row (only show if any categorized entries exist) */}
         {categoriesSeen.length > 0 && (
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Category</span>
+            <span className="text-[10px] font-semibold text-text-muted ">Category</span>
             <button
               onClick={() => setCategoryFilter('all')}
+              aria-pressed={categoryFilter === 'all'}
+              aria-label="Filter by all categories"
               className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
                 categoryFilter === 'all'
                   ? 'bg-accent text-white border-accent'
@@ -478,6 +461,8 @@ export default function LogsPage() {
               <button
                 key={c}
                 onClick={() => setCategoryFilter(c)}
+                aria-pressed={categoryFilter === c}
+                aria-label={`Filter by ${categoryLabel(c)}`}
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
                   categoryFilter === c
                     ? categoryStyle(c)
@@ -500,11 +485,11 @@ export default function LogsPage() {
         ) : loadError ? (
           <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
             <p className="text-sm text-text-muted">Failed to load error logs.</p>
-            <button onClick={load} className="px-4 py-2 text-xs font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors">Retry</button>
+            <button onClick={load} className="btn-primary btn-md">Retry</button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2 text-text-muted">
-            <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+            <CheckCircle2 className="w-8 h-8 text-emerald" />
             <p className="text-sm font-medium">No errors</p>
             <p className="text-xs">{showResolved ? 'Log is empty' : 'No unresolved errors · '}{live ? 'watching live' : ''}</p>
           </div>
@@ -515,7 +500,7 @@ export default function LogsPage() {
               const ctx = parseContext(entry.context)
               const isResolved = entry.resolved === 1
               const LevelIcon = LEVEL_META[entry.level]?.icon ?? AlertCircle
-              const levelColor = LEVEL_META[entry.level]?.color ?? 'text-zinc-400'
+              const levelColor = LEVEL_META[entry.level]?.color ?? 'text-zinc'
 
               return (
                 <div
@@ -524,9 +509,9 @@ export default function LogsPage() {
                     isResolved
                       ? 'border-border/30 opacity-50'
                       : entry.level === 'error'
-                        ? 'border-red-500/20 hover:border-red-500/40'
+                        ? 'border-red/20 hover:border-red/40'
                         : entry.level === 'warn'
-                          ? 'border-amber-500/20 hover:border-amber-500/40'
+                          ? 'border-amber/20 hover:border-amber/40'
                           : 'border-border hover:border-border/70'
                   }`}
                 >
@@ -577,7 +562,7 @@ export default function LogsPage() {
 
                     {/* Duration */}
                     {entry.duration_ms != null && (
-                      <span className={`shrink-0 text-[10px] font-mono ${entry.duration_ms > 1000 ? 'text-amber-400' : 'text-text-muted'}`}>
+                      <span className={`shrink-0 text-[10px] font-mono ${entry.duration_ms > 1000 ? 'text-amber' : 'text-text-muted'}`}>
                         {entry.duration_ms}ms
                       </span>
                     )}
@@ -602,7 +587,7 @@ export default function LogsPage() {
                           onClick={() => handleResolve(entry.id)}
                           disabled={busyIds.has(entry.id)}
                           title="Mark resolved"
-                          className="p-1.5 rounded-lg text-text-muted hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-40"
+                          className="p-1.5 rounded-lg text-text-muted hover:text-emerald hover:bg-emerald/10 transition-colors disabled:opacity-40"
                           aria-label="Mark as resolved"
                         >
                           {busyIds.has(entry.id)
@@ -612,7 +597,7 @@ export default function LogsPage() {
                         </button>
                       )}
                       {isResolved && (
-                        <span className="text-[10px] text-emerald-400 font-semibold px-1.5">✓</span>
+                        <span className="text-[10px] text-emerald font-semibold px-1.5">✓</span>
                       )}
                     </div>
                   </div>
@@ -622,7 +607,7 @@ export default function LogsPage() {
                     <div className="border-t border-border/50 px-4 py-3 space-y-3 bg-surface-2/30">
                       {entry.stack && (
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1.5">Stack Trace</p>
+                          <p className="text-[10px] font-semibold text-text-muted mb-1.5">Stack Trace</p>
                           <pre className="text-[11px] text-text-secondary font-mono whitespace-pre-wrap break-all leading-relaxed bg-surface rounded-lg p-3 border border-border overflow-x-auto max-h-64">
                             {entry.stack}
                           </pre>
@@ -630,24 +615,21 @@ export default function LogsPage() {
                       )}
                       {ctx && (
                         <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1.5">Context</p>
+                          <p className="text-[10px] font-semibold text-text-muted mb-1.5">Context</p>
                           <pre className="text-[11px] text-text-secondary font-mono whitespace-pre-wrap bg-surface rounded-lg p-3 border border-border">
                             {JSON.stringify(ctx, null, 2)}
                           </pre>
                         </div>
                       )}
                       <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => handleCopy(entry)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
-                        >
+                        <button onClick={() => handleCopy(entry)} className="btn-primary btn-sm">
                           <Copy className="w-3 h-3" /> Copy for Claude
                         </button>
                         {!isResolved && (
                           <button
                             onClick={() => handleResolve(entry.id)}
                             disabled={busyIds.has(entry.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-40"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald/10 text-emerald rounded-lg hover:bg-emerald/20 transition-colors disabled:opacity-40"
                           >
                             <CheckCircle2 className="w-3 h-3" /> Mark resolved
                           </button>
@@ -661,6 +643,7 @@ export default function LogsPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </PageShell>
   )
 }

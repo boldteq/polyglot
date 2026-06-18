@@ -3,7 +3,7 @@
 // from spam-clicking ▶. Pure-JS handlers (Roster/Witness/Cadence) skip this
 // modal entirely.
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { AlertTriangle, DollarSign, Loader2 } from 'lucide-react'
 import type { Schedule } from '../lib/api'
 
@@ -22,11 +22,23 @@ function formatCost(low: number, high: number): string {
 }
 
 export default function ConfirmRunModal({ schedule, running, onConfirm, onCancel }: ConfirmRunModalProps) {
+  // Restore focus to the trigger element when the modal closes (a11y).
+  const lastFocusedRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (schedule) {
+      lastFocusedRef.current = document.activeElement as HTMLElement | null
+    } else {
+      lastFocusedRef.current?.focus?.()
+    }
+  }, [schedule])
+
   useEffect(() => {
     if (!schedule) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !running) onCancel()
-      if (e.key === 'Enter' && !running) onConfirm()
+      // preventDefault so the focused Run button doesn't also fire on keyup.
+      if (e.key === 'Enter' && !running) { e.preventDefault(); onConfirm() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -38,18 +50,19 @@ export default function ConfirmRunModal({ schedule, running, onConfirm, onCancel
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 z-50"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
         onClick={() => !running && onCancel()}
         aria-hidden="true"
       />
       <div
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-surface border border-border rounded-xl shadow-2xl p-6"
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-surface border border-border rounded-2xl shadow-pop p-6"
         role="dialog"
+        aria-modal="true"
         aria-labelledby="confirm-run-title"
       >
         <div className="flex items-start gap-3 mb-4">
-          <div className="p-2 rounded-lg bg-amber-500/15 text-amber-400 shrink-0">
-            <AlertTriangle className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-full bg-amber-muted ring-1 ring-amber/30 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 text-amber" />
           </div>
           <div className="min-w-0">
             <h2 id="confirm-run-title" className="text-base font-semibold">Confirm Run</h2>
@@ -64,9 +77,9 @@ export default function ConfirmRunModal({ schedule, running, onConfirm, onCancel
           </div>
           {cost && (
             <div className="flex items-center gap-1.5 text-xs">
-              <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+              <DollarSign className="w-3.5 h-3.5 text-amber" />
               <span className="text-text-muted">Estimated cost:</span>
-              <span className="font-medium text-amber-300">{formatCost(cost.lowUsd, cost.highUsd)}</span>
+              <span className="font-medium text-amber">{formatCost(cost.lowUsd, cost.highUsd)}</span>
             </div>
           )}
           {schedule.description && (

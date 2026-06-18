@@ -6,6 +6,7 @@ import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
+import { confirmDialog } from '../lib/confirm'
 
 export default function TemplateLibrary() {
   const { data: templates, loading, error, refetch } = useApi(getTemplates, [], CacheKeys.templates)
@@ -40,7 +41,7 @@ export default function TemplateLibrary() {
   }
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Delete template "${name}"?`)) return
+    if (!(await confirmDialog({ title: 'Delete template?', message: `"${name}" will be permanently deleted.`, danger: true, confirmLabel: 'Delete' }))) return
     try {
       await deleteTemplate(name)
       refetch()
@@ -52,7 +53,7 @@ export default function TemplateLibrary() {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64">
         <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -61,20 +62,11 @@ export default function TemplateLibrary() {
   if (error) return <ErrorState message={error} onRetry={refetch} />
 
   return (
-    <div className="p-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-3">
-            <LayoutTemplate className="w-6 h-6 text-accent" />
-            Output Templates
-          </h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Locked output formats that agents follow. Consistent results every time.
-          </p>
-        </div>
+    <div className="max-w-5xl">
+      <div className="flex items-center justify-end mb-6">
         <button
           onClick={() => setCreating(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
+          className="btn-primary btn-md"
         >
           <Plus className="w-4 h-4" />
           New Template
@@ -89,16 +81,16 @@ export default function TemplateLibrary() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search templates..."
-          className="w-full bg-surface border border-border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+          className="input pl-9"
         />
       </div>
 
       {/* Create modal */}
       {creating && (
-        <div className="mb-6 bg-surface border border-accent/30 rounded-xl p-5">
+        <div className="mb-6 card p-5 border-accent/30">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold">Create New Template</p>
-            <button onClick={() => { setCreating(false); setNewName('') }} className="text-text-muted hover:text-text">
+            <button onClick={() => { setCreating(false); setNewName('') }} className="p-1.5 rounded-lg text-text-muted hover:bg-surface-2 hover:text-text">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -108,14 +100,14 @@ export default function TemplateLibrary() {
               value={newName}
               onChange={e => setNewName(e.target.value)}
               placeholder="Template name..."
-              className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent/50"
+              className="input flex-1"
               autoFocus
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
             />
             <button
               onClick={handleCreate}
               disabled={createLoading}
-              className="px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
+              className="btn-primary btn-md"
             >
               {createLoading ? 'Creating...' : 'Create'}
             </button>
@@ -125,7 +117,7 @@ export default function TemplateLibrary() {
 
       {/* Templates grid */}
       {filtered.length === 0 ? (
-        <div className="bg-surface rounded-xl border border-border p-12 text-center">
+        <div className="card p-12 text-center">
           <LayoutTemplate className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p className="text-text-secondary font-medium">
             {search ? 'No templates match your search' : 'No templates yet'}
@@ -137,7 +129,7 @@ export default function TemplateLibrary() {
       ) : (
         <div className="grid grid-cols-2 gap-4">
           {filtered.map(template => (
-            <div key={template.filename} className="group bg-surface rounded-xl border border-border p-5 hover:border-accent/30 transition-all">
+            <div key={template.filename} className="group card p-5 hover:border-accent/30 transition-all">
               <div className="flex items-start justify-between">
                 <Link to={`/templates/${template.filename}`} className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5 mb-2">

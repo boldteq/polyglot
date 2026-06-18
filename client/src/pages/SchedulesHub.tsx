@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageShell, TabNav } from '../components/PageShell'
+import { Spinner } from '../components/Skeleton'
 
 const SchedulesTab = lazy(() => import('./Schedules'))
 const WebhooksTab = lazy(() => import('./Webhooks'))
@@ -9,14 +10,6 @@ const TABS = [
   { id: 'schedules', label: 'Schedules' },
   { id: 'webhooks', label: 'Webhooks' },
 ]
-
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center h-48">
-      <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-}
 
 export default function SchedulesHub() {
   const [searchParams, setSearchParams] = useSearchParams()

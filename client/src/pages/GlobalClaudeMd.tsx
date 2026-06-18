@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, FileText, RotateCcw } from 'lucide-react'
+import { Save, RotateCcw } from 'lucide-react'
 import { getGlobalClaudeMd, updateGlobalClaudeMd } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
@@ -44,29 +44,23 @@ export default function GlobalClaudeMd() {
 
   if (loadError) {
     return (
-      <div className="p-8 flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64">
         <p className="text-red">{loadError}</p>
       </div>
     )
   }
 
   return (
-    <div className="p-8 max-w-5xl h-screen flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-3">
-            <FileText className="w-6 h-6 text-accent" />
-            Global CLAUDE.md
-          </h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Instructions that apply to Claude across all projects
-          </p>
-        </div>
+    <div className="flex flex-col h-[calc(100vh-180px)] min-h-[420px]">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[13px] text-text-muted">
+          Instructions that apply to Claude across all projects
+        </p>
         <div className="flex items-center gap-2">
           {dirty && (
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-text rounded-lg hover:bg-surface-2 transition-colors"
+              className="btn-ghost btn-sm"
             >
               <RotateCcw className="w-4 h-4" />
               Reset
@@ -75,7 +69,7 @@ export default function GlobalClaudeMd() {
           <button
             onClick={handleSave}
             disabled={!dirty || saving}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="btn-primary btn-md"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
@@ -87,7 +81,7 @@ export default function GlobalClaudeMd() {
         <textarea
           value={content}
           onChange={(e) => { setContent(e.target.value); setDirty(true) }}
-          className="w-full h-full bg-surface border border-border rounded-xl p-5 font-mono text-sm text-text resize-none focus:outline-none focus:border-accent/50 transition-colors"
+          className="input h-full p-5 rounded-xl font-mono text-sm resize-none"
           placeholder="# Global Instructions for Claude&#10;&#10;Write your global CLAUDE.md content here..."
           spellCheck={false}
         />
@@ -98,7 +92,7 @@ export default function GlobalClaudeMd() {
 
 function PageLoader() {
   return (
-    <div className="p-8 flex items-center justify-center h-64">
+    <div className="flex items-center justify-center h-64">
       <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
     </div>
   )

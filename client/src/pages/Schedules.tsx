@@ -3,10 +3,11 @@
 // Witness daily, Cadence weekly, Tutor weekly, Forge monthly, Mira on-build)
 // in one merged list. Live status via SSE — no polling.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Clock, Plus, Trash2, Play, Pause, AlertCircle, CheckCircle, XCircle,
-  Pencil, PlayCircle, Loader2, Cpu, ChevronRight, StopCircle, MinusCircle,
+  Pencil, PlayCircle, Loader2, Cpu, History, StopCircle, MinusCircle,
+  CalendarClock, Zap,
 } from 'lucide-react'
 import {
   getGlobalAgents,
@@ -19,6 +20,9 @@ import {
 } from '../lib/api'
 import type { Agent } from '../types'
 import { toast } from '../components/Toast'
+import { confirmDialog } from '../lib/confirm'
+import EmptyState from '../components/EmptyState'
+import { StatRow } from '../components/PageShell'
 import { useSchedules } from '../hooks/useSchedules'
 import { formatAgentDisplay } from '../lib/agentDisplay'
 import ScheduleForm from '../components/ScheduleForm'
@@ -71,11 +75,9 @@ export default function SchedulesPage() {
   const [drawerSchedule, setDrawerSchedule] = useState<Schedule | null>(null)
   const [drawerRefresh, setDrawerRefresh] = useState(0)
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
-  const [confirmId, setConfirmId] = useState<string | null>(null)
   const [pendingRun, setPendingRun] = useState<Schedule | null>(null)
   const [confirmStarting, setConfirmStarting] = useState(false)
   const [, setTick] = useState(0)
-  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Fetch agents once.
   useEffect(() => {
@@ -107,8 +109,6 @@ export default function SchedulesPage() {
     }
   }, [schedules, drawerSchedule])
 
-  useEffect(() => () => { if (confirmTimer.current) clearTimeout(confirmTimer.current) }, [])
-
   const setBusy = (id: string, busy: boolean) => {
     setBusyIds(prev => {
       const next = new Set(prev)
@@ -132,18 +132,18 @@ export default function SchedulesPage() {
 
   const handleDelete = async (s: Schedule) => {
     if (busyIds.has(s.id) || s.builtin) return
-    if (confirmId !== s.id) {
-      setConfirmId(s.id)
-      if (confirmTimer.current) clearTimeout(confirmTimer.current)
-      confirmTimer.current = setTimeout(() => setConfirmId(null), 3000)
-      return
-    }
-    if (confirmTimer.current) { clearTimeout(confirmTimer.current); confirmTimer.current = null }
-    setConfirmId(null)
+    const ok = await confirmDialog({
+      title: 'Delete schedule?',
+      message: `“${s.name}” will be permanently deleted and stop running. This can’t be undone.`,
+      danger: true,
+      confirmLabel: 'Delete',
+    })
+    if (!ok) return
     setBusy(s.id, true)
     try {
       await deleteSchedule(s.id)
       await reload()
+      toast('success', 'Schedule deleted')
     } catch (err) {
       apiError('Delete schedule', err)
     } finally {
@@ -212,14 +212,11 @@ export default function SchedulesPage() {
   }
 
   const stats = useMemo(() => {
-    const sys = schedules.filter(s => s.kind === 'system')
-    const user = schedules.filter(s => s.kind === 'user')
-    return {
-      sysActive: sys.filter(s => s.enabled).length,
-      sysTotal: sys.length,
-      userActive: user.filter(s => s.enabled).length,
-      userTotal: user.length,
-    }
+    const total = schedules.length
+    const active = schedules.filter(s => s.enabled).length
+    const system = schedules.filter(s => s.kind === 'system').length
+    const running = schedules.filter(s => s.lastRunStatus === 'running').length
+    return { total, active, system, running }
   }, [schedules])
 
   if (loading || agentsLoading) return (
@@ -230,34 +227,31 @@ export default function SchedulesPage() {
 
   if (loadError) return (
     <div className="p-8 flex flex-col items-center justify-center h-64 gap-4 text-center">
-      <AlertCircle className="w-8 h-8 text-red-400 opacity-60" />
+      <AlertCircle className="w-8 h-8 text-red opacity-60" />
       <p className="text-sm text-text-muted">Failed to load schedules.</p>
-      <button
-        onClick={reload}
-        className="px-4 py-2 text-xs font-semibold bg-accent text-white rounded-lg hover:bg-accent-hover"
-      >
+      <button onClick={reload} className="btn-primary btn-md">
         Retry
       </button>
     </div>
   )
 
   return (
-    <div className="max-w-5xl mx-auto p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Clock className="w-6 h-6" /> Scheduled Runs
-          </h1>
-          <p className="text-text-muted text-sm mt-1">
-            Built-in automation cycles + user-created cron jobs.
-            System: <span className="text-text">{stats.sysActive}/{stats.sysTotal}</span> active ·
-            User: <span className="text-text">{stats.userActive}/{stats.userTotal}</span> active
-          </p>
+    <div className="space-y-6">
+      {/* Summary KPIs + create — hub provides the page title */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <StatRow
+            stats={[
+              { label: 'Total schedules', value: stats.total, icon: CalendarClock },
+              { label: 'Active', value: stats.active, icon: Play },
+              { label: 'System', value: stats.system, icon: Cpu },
+              { label: 'Running now', value: stats.running, icon: Zap },
+            ]}
+          />
         </div>
         <button
           onClick={() => { setShowCreate(true); setEditing(null) }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors shrink-0"
+          className="btn-primary btn-md shrink-0"
         >
           <Plus className="w-4 h-4" /> New Schedule
         </button>
@@ -286,81 +280,86 @@ export default function SchedulesPage() {
       <div className="space-y-3">
         {schedules.map(s => {
           const busy = busyIds.has(s.id)
-          const pendingDelete = confirmId === s.id
           const isSystem = s.kind === 'system'
           const isRunning = s.lastRunStatus === 'running'
           const d = formatAgentDisplay({ name: s.agentName, id: s.agentName })
+          const statusLabel = isRunning ? 'running'
+            : s.lastRunStatus === 'cancelled' ? 'cancelled'
+            : s.lastRunStatus === 'crashed' ? 'crashed'
+            : s.enabled ? 'active' : 'paused'
+          const statusTone = isRunning
+            ? 'bg-blue/15 text-blue'
+            : s.lastRunStatus === 'cancelled' || s.lastRunStatus === 'crashed'
+              ? 'bg-amber/15 text-amber'
+              : s.enabled
+                ? 'bg-green/15 text-green'
+                : 'bg-surface-2 text-text-muted'
+          const dotTone = isRunning ? 'bg-blue animate-pulse'
+            : s.lastRunStatus === 'cancelled' || s.lastRunStatus === 'crashed' ? 'bg-amber'
+            : s.enabled ? 'bg-green' : 'bg-text-muted/40'
           return (
             <div
               key={s.id}
-              className={`bg-surface rounded-xl border p-4 transition-colors ${
-                isRunning ? 'border-blue-500/50 bg-blue-500/5' : 'border-border'
+              className={`card p-4 transition-colors ${
+                isRunning ? 'border-blue/40 bg-blue/[0.03]' : ''
               }`}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-4">
+                {/* Identity */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <button
-                    onClick={() => handleToggle(s)}
-                    disabled={busy}
-                    className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                      s.enabled ? 'text-green-400 hover:bg-green-500/10' : 'text-text-muted hover:bg-surface-2'
-                    }`}
-                    title={s.enabled ? 'Pause schedule' : 'Enable schedule'}
-                  >
-                    {s.enabled ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                  </button>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotTone}`} role="img" aria-label={`Status: ${statusLabel}`} title={statusLabel} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium truncate">{s.name}</span>
+                      <span className="text-sm font-medium text-text truncate">{s.name}</span>
                       {isSystem && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple-500/20 text-purple-300 flex items-center gap-1">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-purple flex items-center gap-1">
                           <Cpu className="w-3 h-3" /> system
                         </span>
                       )}
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        isRunning
-                          ? 'bg-blue-500/20 text-blue-300'
-                          : s.lastRunStatus === 'cancelled'
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : s.lastRunStatus === 'crashed'
-                              ? 'bg-amber-600/20 text-amber-400'
-                              : s.enabled
-                                ? 'bg-green-500/20 text-green-400'
-                                : 'bg-surface-2 text-text-muted'
-                      }`}>
-                        {isRunning ? 'running'
-                          : s.lastRunStatus === 'cancelled' ? 'cancelled'
-                          : s.lastRunStatus === 'crashed' ? 'crashed'
-                          : s.enabled ? 'active' : 'paused'}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusTone}`}>
+                        {statusLabel}
                       </span>
                     </div>
-                    <div className="text-xs text-text-muted mt-0.5 flex items-center gap-2 flex-wrap">
-                      <span className="font-mono bg-surface-2 px-1.5 py-0.5 rounded" title={s.cron || s.trigger || ''}>
+                    <div className="text-xs text-text-muted mt-1 flex items-center gap-2 flex-wrap">
+                      <span title={s.agentName}>{d.fullDisplay}</span>
+                      <span className="text-border">·</span>
+                      <span className="font-mono text-[11px] bg-surface-2 px-1.5 py-0.5 rounded text-secondary" title={s.cron || s.trigger || ''}>
                         {humanizeCron(s.cron)}
                       </span>
-                      <span>·</span>
-                      <span title={s.agentName}>{d.fullDisplay}</span>
+                    </div>
+                    {/* Mobile-only timing fallback — the right-hand timing column is
+                        hidden < sm, so surface last/next inline under the name. */}
+                    <div className="text-[11px] text-text-muted/80 mt-1 flex items-center gap-1.5 sm:hidden">
+                      {isRunning && <Loader2 className="w-3 h-3 text-blue animate-spin shrink-0" />}
+                      <span>Last {timeAgo(s.lastRunAt)}</span>
+                      <span className="text-border">·</span>
+                      <span>Next {timeUntil(s.nextRunAt)}</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right text-xs text-text-muted hidden sm:block min-w-[110px]">
-                    <div className="flex items-center justify-end gap-1">
-                      {isRunning && <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />}
-                      {!isRunning && s.lastRunStatus === 'success'   && <CheckCircle className="w-3 h-3 text-green-400" />}
-                      {!isRunning && s.lastRunStatus === 'error'     && <XCircle    className="w-3 h-3 text-red-400" />}
-                      {!isRunning && s.lastRunStatus === 'cancelled' && <MinusCircle className="w-3 h-3 text-amber-400" />}
-                      {!isRunning && s.lastRunStatus === 'crashed'   && <XCircle    className="w-3 h-3 text-amber-500" />}
-                      Last: {timeAgo(s.lastRunAt)}
-                    </div>
-                    <div className="text-[10px] mt-0.5">Next: {timeUntil(s.nextRunAt)}</div>
+
+                {/* Timing */}
+                <div className="text-right text-xs text-text-muted hidden sm:block min-w-[120px] shrink-0">
+                  <div className="flex items-center justify-end gap-1.5">
+                    {isRunning && <Loader2 className="w-3 h-3 text-blue animate-spin" />}
+                    {!isRunning && s.lastRunStatus === 'success'   && <CheckCircle className="w-3 h-3 text-green" />}
+                    {!isRunning && s.lastRunStatus === 'error'     && <XCircle    className="w-3 h-3 text-red" />}
+                    {!isRunning && s.lastRunStatus === 'cancelled' && <MinusCircle className="w-3 h-3 text-amber" />}
+                    {!isRunning && s.lastRunStatus === 'crashed'   && <XCircle    className="w-3 h-3 text-amber" />}
+                    <span>Last {timeAgo(s.lastRunAt)}</span>
                   </div>
+                  <div className="text-[11px] mt-0.5 text-text-muted/70">Next {timeUntil(s.nextRunAt)}</div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1 shrink-0">
                   {isRunning && s.cancellable ? (
                     <button
                       onClick={() => handleCancel(s)}
                       disabled={busy}
-                      className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 rounded-lg text-amber hover:bg-amber/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Cancel running handler"
+                      aria-label="Cancel running handler"
                     >
                       <StopCircle className="w-4 h-4" />
                     </button>
@@ -368,48 +367,58 @@ export default function SchedulesPage() {
                     <button
                       onClick={() => handleRunNow(s)}
                       disabled={busy || isRunning}
-                      className="p-1.5 rounded-lg text-text-muted hover:text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 rounded-lg text-text-muted hover:text-blue hover:bg-surface-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title={s.needsLlm ? 'Run now (LLM — opens cost confirm)' : 'Run now'}
+                      aria-label={s.needsLlm ? 'Run now (LLM — opens cost confirm)' : 'Run now'}
                     >
                       <PlayCircle className="w-4 h-4" />
-                    </button>
-                  )}
-                  {!isSystem && (
-                    <button
-                      onClick={() => { setEditing(s); setShowCreate(false) }}
-                      disabled={busy}
-                      className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-50"
-                      title="Edit schedule"
-                    >
-                      <Pencil className="w-4 h-4" />
                     </button>
                   )}
                   <button
                     onClick={() => setDrawerSchedule(s)}
                     className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
                     title="View run history"
+                    aria-label="View run history"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <History className="w-4 h-4" />
+                  </button>
+                  {!isSystem && (
+                    <button
+                      onClick={() => { setEditing(s); setShowCreate(false) }}
+                      disabled={busy}
+                      className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-50"
+                      title="Edit schedule"
+                      aria-label="Edit schedule"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleToggle(s)}
+                    disabled={busy}
+                    className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      s.enabled ? 'text-green hover:bg-green/10' : 'text-text-muted hover:bg-surface-2'
+                    }`}
+                    title={s.enabled ? 'Pause schedule' : 'Enable schedule'}
+                    aria-label={s.enabled ? 'Pause schedule' : 'Enable schedule'}
+                  >
+                    {s.enabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   </button>
                   {!isSystem && (
                     <button
                       onClick={() => handleDelete(s)}
                       disabled={busy}
-                      className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                        pendingDelete ? 'text-red-400 bg-red-500/10' : 'text-text-muted hover:text-red-400 hover:bg-red-500/10'
-                      }`}
-                      title={pendingDelete ? 'Click again to confirm delete' : 'Delete schedule'}
+                      className="p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-text-muted hover:text-red hover:bg-red/10"
+                      title="Delete schedule"
+                      aria-label="Delete schedule"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
               </div>
-              {pendingDelete && (
-                <div className="mt-2 text-[11px] text-red-400 pl-10">Click delete again within 3s to confirm.</div>
-              )}
               {s.prompt && (
-                <div className="mt-2 text-xs text-text-muted truncate pl-10" title={s.prompt}>
+                <div className="mt-2 text-xs text-text-muted truncate pl-5" title={s.prompt}>
                   {isSystem ? s.description : s.prompt}
                 </div>
               )}
@@ -417,11 +426,13 @@ export default function SchedulesPage() {
           )
         })}
         {schedules.length === 0 && !showCreate && (
-          <div className="text-center py-12 text-text-muted">
-            <Clock className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No schedules yet</p>
-            <p className="text-xs mt-1">Create a schedule to run agents automatically on a cron timer</p>
-          </div>
+          <EmptyState
+            icon={Clock}
+            title="No schedules yet"
+            description="Create a schedule to run agents automatically on a cron timer"
+            action={{ label: 'New Schedule', onClick: () => { setShowCreate(true); setEditing(null) } }}
+            card
+          />
         )}
       </div>
 
