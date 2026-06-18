@@ -29,6 +29,23 @@ const FALLBACK_CANDIDATES = [
   path.join(os.homedir(), '.volta/bin/claude'),
 ];
 
+// nvm installs claude alongside each node version (e.g.
+// ~/.nvm/versions/node/v20.20.1/bin/claude). The exact version varies per
+// machine, so glob the installed versions rather than hardcoding one. This is
+// the location the Polyglot server actually finds claude in dev — without it, a
+// restart from a shell that doesn't export CLAUDE_PATH would fail with
+// `claude_binary_missing` even though the binary exists.
+function nvmClaudeCandidates() {
+  const out = [];
+  const nvmDir = path.join(os.homedir(), '.nvm/versions/node');
+  try {
+    for (const v of fs.readdirSync(nvmDir)) {
+      out.push(path.join(nvmDir, v, 'bin/claude'));
+    }
+  } catch { /* nvm not installed */ }
+  return out;
+}
+
 let _resolved = null; // { path, version, source, error }
 
 function isExecutable(p) {
@@ -89,6 +106,7 @@ function resolveClaudePath() {
     consider(process.env.CLAUDE_PATH, 'env.CLAUDE_PATH'),
     consider(whichBinary('claude'), `${process.platform === 'win32' ? 'where' : 'which'}`),
     ...FALLBACK_CANDIDATES.map((c) => consider(c, 'fallback-candidate')),
+    ...nvmClaudeCandidates().map((c) => consider(c, 'nvm-candidate')),
   ];
 
   const hit = checks.find(Boolean);
@@ -129,6 +147,16 @@ function invalidate() {
   _resolved = null;
 }
 
+// Whether the playground strips API-key creds from the spawn env (default ON).
+// Lazy require to avoid a load-order cycle with configService.
+function subscriptionOnlyEnabled() {
+  try {
+    return require('./configService').getConfig('playground.subscription_only') !== false;
+  } catch {
+    return true; // safe default: subscription-only
+  }
+}
+
 // Auth check is intentionally lightweight — we DO NOT call `claude login --status`
 // or read credentials files (those locations differ across claude CLI versions).
 // Instead we surface ANTHROPIC_API_KEY presence + a hint. The actual auth
@@ -146,6 +174,12 @@ function runPreflight() {
     auth: {
       ok: !!process.env.ANTHROPIC_API_KEY || !!r.path, // optimistic — claude CLI may have a logged-in session
       hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+      // Auth mode the playground will actually use. subscription_only (default ON,
+      // app_config 'playground.subscription_only') strips the API key from the
+      // spawn env, so runs go through the logged-in Claude Code session — never the
+      // metered API. When false AND a key is present, runs could bill the API.
+      source: subscriptionOnlyEnabled() ? 'subscription' : (process.env.ANTHROPIC_API_KEY ? 'api_key' : 'subscription'),
+      subscriptionOnly: subscriptionOnlyEnabled(),
       hint: process.env.ANTHROPIC_API_KEY
         ? null
         : 'No ANTHROPIC_API_KEY env detected. If claude CLI is logged in via `claude login`, this is fine. Otherwise authenticate before running agents.',
@@ -153,6 +187,11 @@ function runPreflight() {
     env: {
       home: os.homedir(),
       platform: process.platform,
+      node: process.version,
+      // better-sqlite3 is compiled against the Node 20 ABI. Running the server
+      // under another major silently breaks the DB layer (NODE_MODULE_VERSION
+      // mismatch). Surface a warning the UI can show.
+      nodeOk: process.versions.modules === undefined ? null : (parseInt(process.versions.node, 10) === 20),
     },
   };
 }
@@ -254,6 +293,8 @@ function logBootStatus() {
   } else {
     console.warn(`[boot] WARN: claude binary not found. Run Self-Test on /setup for diagnostics. ${r.error}`);
   }
+  const subOnly = subscriptionOnlyEnabled();
+  console.log(`[boot] playground auth mode: ${subOnly ? 'subscription-only (API key stripped from agent env)' : 'api-key allowed if present'}`);
   return r;
 }
 

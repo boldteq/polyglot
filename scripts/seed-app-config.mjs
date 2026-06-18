@@ -60,6 +60,7 @@ function describeKey(key) {
     'defaults.status': 'Default lifecycle status for a new agent.',
     'defaults.budget_lines': 'Default compactor line budget for an agent.',
     'defaults.budget_chars': 'Default compactor character budget for an agent.',
+    'database.allow_edits': 'Enables direct row edit/delete/revert in the Database Explorer. Off by default to prevent accidental writes.',
   };
   return DESC[key] ?? null;
 }

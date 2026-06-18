@@ -111,9 +111,20 @@ router.get('/db/export', rateLimit('read'), (req, res) => {
   }
 });
 
+// Admin gate — direct row edit/delete/revert is off by default. Enable via
+// Settings → Tuning (database.allow_edits) so accidental writes are blocked.
+function assertEditsAllowed() {
+  if (!configService.getConfig('database.allow_edits')) {
+    const err = new Error('Database edits are disabled. Enable them in Settings → Tuning.');
+    err.statusCode = 403;
+    throw err;
+  }
+}
+
 // PUT /api/db/table/:name/:pk
 router.put('/db/table/:name/:pk', rateLimit('write'), (req, res) => {
   try {
+    assertEditsAllowed();
     const d = db.getDb();
     const tableName = assertValidTable(d, req.params.name.replace(/[^a-zA-Z0-9_]/g, ''));
     const pkValue = req.params.pk;
@@ -121,7 +132,7 @@ router.put('/db/table/:name/:pk', rateLimit('write'), (req, res) => {
     if (!updates || typeof updates !== 'object' || Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
     }
-    const row = db.updateRow(tableName, pkValue, updates);
+    const row = db.updateRow(tableName, pkValue, updates, 'ui');
     res.json({ ok: true, row });
   } catch (err) {
     res.status(err.statusCode || 400).json({ error: err.message });
@@ -131,9 +142,10 @@ router.put('/db/table/:name/:pk', rateLimit('write'), (req, res) => {
 // DELETE /api/db/table/:name/:pk
 router.delete('/db/table/:name/:pk', rateLimit('write'), (req, res) => {
   try {
+    assertEditsAllowed();
     const d = db.getDb();
     const tableName = assertValidTable(d, req.params.name.replace(/[^a-zA-Z0-9_]/g, ''));
-    res.json(db.deleteRow(tableName, req.params.pk));
+    res.json(db.deleteRow(tableName, req.params.pk, 'ui'));
   } catch (err) {
     res.status(err.statusCode || 400).json({ error: err.message });
   }
@@ -152,9 +164,10 @@ router.get('/db/changes', rateLimit('read'), (req, res) => {
 // POST /api/db/revert/:id
 router.post('/db/revert/:id', rateLimit('write'), (req, res) => {
   try {
-    res.json(db.revertChange(parseInt(req.params.id)));
+    assertEditsAllowed();
+    res.json(db.revertChange(parseInt(req.params.id), 'ui'));
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(err.statusCode || 400).json({ error: err.message });
   }
 });
 

@@ -47,6 +47,8 @@ const KEY_SCHEMAS = {
   'defaults.budget_lines':  { type: 'number', min: 50, max: 5000,   step: 50,  label: 'Default agent budget (lines)' },
   'defaults.budget_chars':  { type: 'number', min: 1000, max: 200000, step: 500, label: 'Default agent budget (chars)' },
   'defaults.claude_path':   { type: 'string', minLength: 0, maxLength: 500, label: 'claude binary path (empty = auto-detect)' },
+  // database governance
+  'database.allow_edits':   { type: 'boolean', label: 'Allow Database edits', description: 'Enables direct row edit/delete/revert in the Database Explorer. Off by default to prevent accidental writes.' },
 };
 
 function validate(key, value) {
@@ -68,6 +70,11 @@ function validate(key, value) {
   if (schema.type === 'enum') {
     if (!schema.options.includes(value)) return { ok: false, error: `${key} must be one of: ${schema.options.join(', ')}` };
     return { ok: true, value };
+  }
+  if (schema.type === 'boolean') {
+    if (typeof value === 'boolean') return { ok: true, value };
+    if (value === 'true' || value === 'false') return { ok: true, value: value === 'true' };
+    return { ok: false, error: `${key} must be a boolean` };
   }
   return { ok: false, error: `Unhandled schema type for ${key}` };
 }

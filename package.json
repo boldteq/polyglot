@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Central management dashboard for Claude Code agents across all projects",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=20 <22"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "concurrently \"node src/server.js\" \"cd client && npm run dev\"",

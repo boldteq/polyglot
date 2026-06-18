@@ -108,6 +108,7 @@ const { router: schedulesRouter, bootSchedules, stopAllSchedules } = require('./
 const systemSchedules = require('./lib/systemSchedules');
 const webhooksRouter = require('./routes/webhooks');
 const { router: learningRouter } = require('./routes/learning');
+const { router: brainRouter } = require('./routes/brain');
 const { router: orgHrRouter, org, experience, hr, loadRecentAgentRuns } = require('./routes/orgHr');
 const dbExplorerRouter = require('./routes/dbExplorer');
 const healthRouter = require('./routes/health');
@@ -136,6 +137,7 @@ app.use('/api', goalsRouter);
 app.use('/api', schedulesRouter);
 app.use('/api', webhooksRouter);
 app.use('/api', learningRouter);
+app.use('/api', brainRouter);
 app.use('/api', orgHrRouter);
 app.use('/api', dbExplorerRouter);
 app.use('/api', healthRouter);

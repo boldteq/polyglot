@@ -104,8 +104,16 @@ async function build() {
     lastRun: evalSched ? { at: evalSched.lastRunAt, status: evalSched.lastRunStatus } : null,
     scores: { count: scores.length, avgOverall, passRate },
   };
-  evaluation.state = scores.length === 0 ? 'degraded' : (avgOverall >= 0.7 ? 'ok' : 'degraded');
+  // A judge score is a QUALITY signal, not a connectivity one. Don't let a tiny
+  // sample (n<3) drag the whole pipeline to "degraded" — that misreads as "the
+  // system is broken" when everything's actually connected. Below the floor we
+  // report ok with a "building baseline" note; the raw avg/pass still shows.
+  const EVAL_MIN_SAMPLE = 3;
+  evaluation.state = scores.length === 0 ? 'degraded'
+    : scores.length < EVAL_MIN_SAMPLE ? 'ok'
+    : (avgOverall >= 0.7 ? 'ok' : 'degraded');
   evaluation.note = scores.length === 0 ? 'no judge scores yet — run the eval self-test'
+    : scores.length < EVAL_MIN_SAMPLE ? `avg ${avgOverall} · building baseline (${scores.length}/${EVAL_MIN_SAMPLE})`
     : `avg ${avgOverall} · ${Math.round((passRate || 0) * 100)}% pass (${scores.length})`;
 
   // ── observability (Pillar 1/5) ──
@@ -135,7 +143,7 @@ async function build() {
 }
 
 router.get('/system/status', async (req, res) => {
-  if (_cache.data && Date.now() - _cache.at < CACHE_MS) return res.json(_cache.data);
+  if (!req.query.force && _cache.data && Date.now() - _cache.at < CACHE_MS) return res.json(_cache.data);
   try {
     const data = await build();
     _cache = { at: Date.now(), data };

@@ -19,9 +19,9 @@ module.exports = {
     cadence_review_days: 7,
     drift_retention_days: 30,
     claim_expiry_minutes: 30,
-    playground_wall_timeout_ms: 120000,
+    playground_wall_timeout_ms: 180000,
     playground_idle_timeout_ms: 90000,
-    playground_heartbeat_ms: 15000,
+    playground_heartbeat_ms: 8000,
   },
   api_limits: {
     runs_dashboard: 200,
@@ -49,6 +49,9 @@ module.exports = {
     budget_lines: 400,
     budget_chars: 16000,
     claude_path: '',
+  },
+  database: {
+    allow_edits: false,
   },
   dispatch_policy: {
     skill_weight: 0.5,

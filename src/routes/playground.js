@@ -124,7 +124,46 @@ function logAgentRun(entry) {
     metadata: entry.metadata || {},
   };
   try { db.insertAgentRun(run); } catch (err) { console.error('[logAgentRun] DB insert failed:', err.message); }
+  // Pillar 1: when the stream-json `result` event gave us REAL usage, record it
+  // in cost_logs as estimated=0 (overrides the chars/4 estimate above).
+  if (entry.usage && (entry.usage.inputTokens != null || entry.usage.outputTokens != null)) {
+    try {
+      db.logCost({
+        runId: run.id,
+        agentName: run.agentName,
+        model: entry.usage.model || (run.metadata && run.metadata.model) || null,
+        inputTokens: entry.usage.inputTokens || 0,
+        outputTokens: entry.usage.outputTokens || 0,
+        costUsd: entry.usage.costUsd,
+        estimated: false,
+        source: run.source,
+      });
+    } catch (err) { console.error('[logAgentRun] real cost log failed:', err.message); }
+  }
   return run;
+}
+
+// Persist the user-facing playground_history row directly from the run handler,
+// at EVERY terminal state (success/error/timeout/cancel) — so no run is ever
+// lost from the history UI just because the frontend never sent its follow-up
+// POST (aborts, server-side timeouts, stream death never reach the frontend).
+// Idempotent on the shared id, so a later frontend POST just overwrites.
+function persistPlaygroundRow({ historyId, agentName, prompt, output, duration, status, error, reqId, threadId, turnIndex }) {
+  try {
+    db.upsertPlaygroundHistoryRow({
+      id: historyId,
+      agentName: agentName || 'custom',
+      prompt: (prompt || '').slice(0, 10_000),
+      output: (output || '').slice(0, 500_000),
+      duration: duration || 0,
+      status,
+      error: error || null,
+      timestamp: new Date().toISOString(),
+      metadata: { reqId, source: 'backend' },
+      threadId: threadId || null,
+      turnIndex: typeof turnIndex === 'number' ? turnIndex : null,
+    });
+  } catch (e) { console.error('[playground] history persist failed:', e.message); }
 }
 
 // In-memory idempotency store (TTL 5 min). Prevents double-runs on network retries.
@@ -145,12 +184,28 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
   if (!req.body || typeof req.body !== 'object') {
     return res.status(400).json({ error: 'JSON body required' });
   }
-  const { agentName, prompt: userPrompt, customInstructions, timeoutMs, idempotencyKey } = req.body;
+  const { agentName, prompt: userPrompt, customInstructions, timeoutMs, idempotencyKey, model } = req.body;
+  let { historyId, threadId } = req.body;
   if (!userPrompt) return res.status(400).json({ error: 'Prompt is required' });
+  // Optional model override ("Fast" toggle). Allowlist only — never pass arbitrary
+  // strings to the CLI. "fast" → haiku (the fastest tier) for snappy conversational
+  // testing; the agent's heavy model is the default when Fast is off.
+  const MODEL_ALIASES = { fast: 'haiku', sonnet: 'sonnet', haiku: 'haiku', opus: 'opus', default: null };
+  let cliModel = null;
+  if (model != null) {
+    if (typeof model !== 'string' || !(model in MODEL_ALIASES)) {
+      return res.status(400).json({ error: 'Invalid model' });
+    }
+    cliModel = MODEL_ALIASES[model];
+  }
   if (typeof userPrompt !== 'string' || userPrompt.length > 20000)
     return res.status(400).json({ error: 'Prompt must be 1–20,000 chars' });
   if (customInstructions && (typeof customInstructions !== 'string' || customInstructions.length > 10000))
     return res.status(400).json({ error: 'Custom instructions must be ≤10,000 chars' });
+  // historyId / threadId are short client-generated ids; reject anything weird.
+  const okId = (v) => v == null || (typeof v === 'string' && v.length > 0 && v.length <= 64 && !/[^\w-]/.test(v));
+  if (!okId(historyId)) return res.status(400).json({ error: 'Invalid historyId' });
+  if (!okId(threadId)) return res.status(400).json({ error: 'Invalid threadId' });
   if (agentName && (
     typeof agentName !== 'string' ||
     agentName.length > 200 ||
@@ -159,6 +214,22 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     agentName.includes('..') ||
     agentName.includes('\0')
   )) return res.status(400).json({ error: 'Invalid agent name' });
+
+  // Attachments (optional). Written to a temp dir + referenced by path in the
+  // prompt so the `claude` CLI reads them with its own Read tool — cost-free, no
+  // API. Bounded: ≤3 files, ≤5MB each (base64 inflates ~1.37×, so cap raw ~7MB).
+  let attachFiles = [];
+  if (req.body.files !== undefined) {
+    if (!Array.isArray(req.body.files) || req.body.files.length > 3)
+      return res.status(400).json({ error: 'Up to 3 files allowed' });
+    for (const f of req.body.files) {
+      if (!f || typeof f.name !== 'string' || typeof f.content !== 'string')
+        return res.status(400).json({ error: 'Invalid file payload' });
+      if (f.content.length > 7_000_000)
+        return res.status(400).json({ error: `File "${f.name.slice(0, 40)}" too large (max 5MB)` });
+    }
+    attachFiles = req.body.files;
+  }
 
   // Idempotency guard: if this key was already processed, replay cached result.
   if (idempotencyKey) {
@@ -174,6 +245,10 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
   }
 
   const reqId = crypto.randomUUID();
+  // Canonical history id: the frontend sends its own genId so both sides write
+  // the same playground_history row (deduped via INSERT OR REPLACE). Fall back
+  // to reqId when a non-UI caller doesn't supply one.
+  if (!historyId) historyId = reqId;
   res.setTimeout(0);
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -206,6 +281,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     if (agentName.includes('/') || agentName.includes('\\') || agentName.includes('..') || agentName.includes('\0')) {
       send({ type: 'error', error: 'Invalid agent name' });
       logAgentRun({ agentName: 'invalid', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'invalid_agent_name', metadata: { reqId } });
+      persistPlaygroundRow({ historyId, agentName, prompt: userPrompt, output: '', duration: 0, status: 'error', error: 'invalid_agent_name', reqId, threadId });
       try { res.end(); } catch {}
       return;
     }
@@ -224,6 +300,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
         reqId,
       });
       logAgentRun({ agentName: agentName || 'custom', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'agent_not_found', metadata: { reqId, tried: lookup.tried } });
+      persistPlaygroundRow({ historyId, agentName, prompt: userPrompt, output: '', duration: 0, status: 'error', error: 'agent_not_found', reqId, threadId });
       try { res.end(); } catch {}
       return;
     }
@@ -269,9 +346,49 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     instructions = customInstructions;
   }
 
+  // Thread continuity: replay prior turns as context (the `claude -p` spawn stays
+  // single-shot). Load the thread's messages and build a transcript, truncating
+  // OLDEST turns first to keep the assembled prompt within the 20k char cap.
+  let priorMessages = [];
+  let turnIndex = 0;
+  if (threadId) {
+    try {
+      const thread = db.getPlaygroundThread(threadId);
+      if (thread) {
+        priorMessages = thread.messages || [];
+        turnIndex = priorMessages.filter(m => m.role === 'user').length;
+      }
+    } catch (err) {
+      console.warn('[playground] thread load failed', { threadId, reqId, msg: err.message });
+    }
+  }
+
+  let conversationContext = '';
+  if (priorMessages.length > 0) {
+    // Skip non-success assistant turns (e.g. `Error: client_disconnect` junk) — they
+    // pollute the prompt, confuse the model, and slow the first token. Cap each
+    // message so one giant turn can't bloat the context.
+    const PER_MSG_CAP = 1500;
+    const clean = priorMessages.filter(m => !(m.role === 'assistant' && m.status && m.status !== 'success'));
+    const turns = clean.map(m => {
+      const body = (m.content || '').slice(0, PER_MSG_CAP);
+      return `${m.role === 'user' ? 'User' : 'Assistant'}: ${body}`;
+    });
+    // Drop oldest turns until the context comfortably fits alongside instructions.
+    const budget = 20000 - (instructions ? instructions.length : 0) - userPrompt.length - 500;
+    while (turns.length > 0 && turns.join('\n\n').length > Math.max(2000, budget)) {
+      turns.shift();
+    }
+    if (turns.length > 0) {
+      conversationContext = `## Conversation so far:\n${turns.join('\n\n')}\n\n## Current message:\n`;
+    }
+  }
+
   let fullPrompt = '';
   if (instructions) {
-    fullPrompt = `${instructions}\n\n---\n\n## Task:\n${userPrompt}\n\n---\n\nIMPORTANT: Produce the actual deliverable directly. Do NOT write meta-commentary. Output only the finished work product.`;
+    fullPrompt = `${instructions}\n\n---\n\n## Task:\n${conversationContext}${userPrompt}\n\n---\n\nIMPORTANT: Produce the actual deliverable directly. Do NOT write meta-commentary. Output only the finished work product.`;
+  } else if (conversationContext) {
+    fullPrompt = `${conversationContext}${userPrompt}`;
   } else {
     fullPrompt = userPrompt;
   }
@@ -297,8 +414,30 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       reqId,
     });
     logAgentRun({ agentName: agentName || 'custom', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'claude_binary_missing', metadata: { reqId } });
+    persistPlaygroundRow({ historyId, agentName, prompt: userPrompt, output: '', duration: 0, status: 'error', error: 'claude_binary_missing', reqId, threadId });
     try { res.end(); } catch {}
     return;
+  }
+
+  // Materialise attachments to a temp dir + tell the agent where they are. The
+  // CLI Read tool handles text/images/PDF. attachDir is cleaned up in finish().
+  let attachDir = null;
+  if (attachFiles.length) {
+    try {
+      attachDir = fs.mkdtempSync(path.join(os.tmpdir(), 'polyglot-pg-'));
+      const absPaths = [];
+      for (const f of attachFiles) {
+        const safe = (path.basename(f.name).replace(/[^\w.\- ]/g, '_').slice(0, 120)) || 'file';
+        const dest = path.join(attachDir, safe);
+        const buf = f.encoding === 'base64' ? Buffer.from(f.content, 'base64') : Buffer.from(f.content, 'utf8');
+        fs.writeFileSync(dest, buf);
+        absPaths.push(dest);
+      }
+      fullPrompt += `\n\n## Attached files\nThe user attached these files — read them with your Read tool as needed:\n${absPaths.map((p) => `- ${p}`).join('\n')}`;
+    } catch (err) {
+      console.error('[playground] attachment write failed:', err.message);
+      attachDir = null;
+    }
   }
 
   const childEnv = { ...process.env, HOME: os.homedir() };
@@ -306,11 +445,34 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
   delete childEnv.CLAUDE_CODE_ENTRYPOINT;
   delete childEnv.CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING;
   delete childEnv.CLAUDE_AGENT_SDK_VERSION;
-  const proc = spawn(claudePath, ['-p'], { env: childEnv, detached: true });
+  // Subscription-only (default ON): strip API-key credentials so the CLI MUST use
+  // the logged-in Claude Code session (`claude login`) and can never silently fall
+  // back to metered pay-per-token API billing. Overridable via app_config.
+  const subscriptionOnly = configService.getConfig('playground.subscription_only') !== false;
+  if (subscriptionOnly) {
+    delete childEnv.ANTHROPIC_API_KEY;
+    delete childEnv.ANTHROPIC_AUTH_TOKEN;
+  }
+  // stream-json gives token-by-token deltas (live typing) + a final `result`
+  // event with authoritative text AND real token usage/cost. --verbose is
+  // required by the CLI for stream-json; --include-partial-messages emits the
+  // incremental content_block_delta events we forward as `chunk`s.
+  const spawnArgs = ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages'];
+  // "Fast" toggle / model override — run the same agent prompt on a faster model.
+  if (cliModel) spawnArgs.push('--model', cliModel);
+  const proc = spawn(
+    claudePath,
+    spawnArgs,
+    { env: childEnv, detached: true }
+  );
   // Stderr ring buffer — keep last ~2KB for diagnostic surfacing on failure.
   let stderrTail = '';
   const STDERR_TAIL_CAP = 2048;
-  let fullOutput = '';
+  let fullOutput = '';       // accumulated assistant text (from text deltas)
+  let resultText = null;     // authoritative final text from the `result` event
+  let realUsage = null;      // { inputTokens, outputTokens, costUsd, model } from `result`
+  let sessionId = null;      // CLI session id (for future native --resume)
+  let jsonBuf = '';          // partial-line buffer for newline-delimited JSON
   let lastActivityAt = Date.now();
   let killReason = null;
   let sigkillTimer = null;
@@ -361,20 +523,83 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     if (sigkillTimer) clearTimeout(sigkillTimer);
     clearInterval(idleTimer);
     clearInterval(heartbeatTimer);
+    if (attachDir) { try { fs.rmSync(attachDir, { recursive: true, force: true }); } catch { /* best-effort */ } attachDir = null; }
     try { res.end(); } catch {}
   };
 
   const playgroundStartTime = Date.now();
-  send({ type: 'start', agent: agentName || 'custom' });
+  send({ type: 'start', agent: agentName || 'custom', historyId, threadId: threadId || null, reqId });
+
+  // Parse one newline-delimited stream-json event. Forwards text deltas as
+  // `chunk` (live typing) and tool-use as `activity`. Never throws — a malformed
+  // or partial line is ignored. Returns false if a send applied backpressure.
+  const handleStreamEvent = (line) => {
+    const t = line.trim();
+    if (!t) return true;
+    let ev;
+    try { ev = JSON.parse(t); } catch { return true; } // partial/garbage line
+    switch (ev.type) {
+      case 'system': {
+        if (ev.session_id) sessionId = ev.session_id;
+        if (ev.subtype === 'init') return send({ type: 'activity', message: 'Agent initializing…' });
+        return true;
+      }
+      case 'stream_event': {
+        const e = ev.event;
+        if (!e) return true;
+        if (e.type === 'content_block_start' && e.content_block && e.content_block.type === 'tool_use') {
+          const tool = e.content_block.name || 'tool';
+          return send({ type: 'activity', message: `Using ${tool}…` });
+        }
+        if (e.type === 'content_block_delta' && e.delta && e.delta.type === 'text_delta' && e.delta.text) {
+          fullOutput += e.delta.text;
+          if (fullOutput.length > 400_000 && !ended) { /* size guard handled at done */ }
+          return send({ type: 'chunk', content: e.delta.text });
+        }
+        return true;
+      }
+      case 'assistant': {
+        // Fallback accumulator — if partial deltas were unavailable, capture the
+        // assistant message text so we still have output.
+        try {
+          const blocks = ev.message && ev.message.content;
+          if (Array.isArray(blocks) && !fullOutput) {
+            const txt = blocks.filter(b => b.type === 'text').map(b => b.text).join('');
+            if (txt) fullOutput = txt;
+          }
+        } catch { /* ignore */ }
+        return true;
+      }
+      case 'result': {
+        if (typeof ev.result === 'string' && ev.result.trim()) resultText = ev.result;
+        if (ev.is_error) killReason = killReason || 'agent_error';
+        // Real token usage + cost (Pillar 1) — recorded at close via baseLog.usage.
+        const u = ev.usage || {};
+        realUsage = {
+          inputTokens: u.input_tokens ?? 0,
+          outputTokens: u.output_tokens ?? 0,
+          costUsd: typeof ev.total_cost_usd === 'number' ? ev.total_cost_usd : undefined,
+          model: ev.model || (ev.modelUsage && Object.keys(ev.modelUsage)[0]) || null,
+        };
+        return true;
+      }
+      default:
+        return true;
+    }
+  };
 
   proc.stdout.on('data', (data) => {
     if (ended) return;
     touchActivity();
     if (streamDead) return;
-    const chunk = data.toString();
-    fullOutput += chunk;
-    const ok = send({ type: 'chunk', content: chunk });
-    if (ok === false) {
+    jsonBuf += data.toString();
+    const lines = jsonBuf.split('\n');
+    jsonBuf = lines.pop() || '';
+    let backpressured = false;
+    for (const line of lines) {
+      if (handleStreamEvent(line) === false) backpressured = true;
+    }
+    if (backpressured) {
       proc.stdout.pause();
       res.once('drain', () => {
         if (!ended && !streamDead) proc.stdout.resume();
@@ -404,6 +629,8 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
 
   proc.on('close', (code) => {
     if (ended) { if (sigkillTimer) clearTimeout(sigkillTimer); return; }
+    // Flush any trailing partial JSON line buffered at stream end.
+    if (jsonBuf.trim()) { try { handleStreamEvent(jsonBuf); } catch { /* ignore */ } jsonBuf = ''; }
     const runSource = req.body.source || 'playground';
     const duration = Date.now() - playgroundStartTime;
     const baseLog = {
@@ -411,8 +638,18 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       prompt: userPrompt,
       source: runSource,
       duration,
-      metadata: { reqId, exitCode: code, killReason },
+      // Real token usage + cost from the stream-json `result` event (Pillar 1).
+      usage: realUsage || undefined,
+      metadata: { reqId, exitCode: code, killReason, sessionId },
     };
+
+    // Per-branch outcome → single source for both agent_runs + playground_history
+    // + the thread message append below. status/error/finalOutput are computed
+    // here so persistence is uniform across every terminal path. Prefer the
+    // authoritative `result` text over the concatenated deltas.
+    let status = 'success';
+    let runError = null;
+    let finalOutput = (resultText != null ? resultText : fullOutput).trim();
 
     if (killReason === 'wall_timeout') {
       send({
@@ -423,7 +660,8 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
         durationMs: duration,
         reqId,
       });
-      logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: `wall_timeout_${timeout / 1000}s` });
+      status = 'error'; runError = `wall_timeout_${timeout / 1000}s`;
+      logAgentRun({ ...baseLog, output: finalOutput, status, error: runError });
     } else if (killReason === 'idle_timeout') {
       send({
         type: 'error',
@@ -434,13 +672,17 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
         durationMs: duration,
         reqId,
       });
-      logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: `idle_timeout_${Math.round(IDLE_MS / 1000)}s` });
+      status = 'error'; runError = `idle_timeout_${Math.round(IDLE_MS / 1000)}s`;
+      logAgentRun({ ...baseLog, output: finalOutput, status, error: runError });
     } else if (killReason === 'stdin_error') {
-      logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: 'stdin_error' });
+      status = 'error'; runError = 'stdin_error';
+      logAgentRun({ ...baseLog, output: finalOutput, status, error: runError });
     } else if (killReason === 'client_disconnect') {
-      logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'cancelled', error: 'client_disconnect' });
+      status = 'cancelled'; runError = 'client_disconnect';
+      logAgentRun({ ...baseLog, output: finalOutput, status, error: runError });
     } else if (killReason === 'stream_dead') {
-      logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: 'stream_dead' });
+      status = 'error'; runError = 'stream_dead';
+      logAgentRun({ ...baseLog, output: finalOutput, status, error: runError });
     } else if (code !== 0) {
       const partial = fullOutput.trim() ? ' after partial output' : '';
       send({
@@ -454,14 +696,15 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
         durationMs: duration,
         reqId,
       });
-      logAgentRun({ ...baseLog, output: fullOutput.trim(), status: 'error', error: `exit_code_${code}` });
-    } else if (code === 0 && !fullOutput.trim()) {
+      status = 'error'; runError = `exit_code_${code}`;
+      logAgentRun({ ...baseLog, output: finalOutput, status, error: runError });
+    } else if (code === 0 && !finalOutput) {
       const lowered = stderrTail.toLowerCase();
       const tip = lowered.includes('not authenticated') || lowered.includes('login') || lowered.includes('credentials')
         ? 'Run `claude login` to authenticate.'
         : lowered.includes('rate limit') || lowered.includes('429')
         ? 'You hit an upstream rate limit. Retry after a minute.'
-        : 'Check ANTHROPIC_API_KEY env or run `claude --version` to verify the install. Hit /setup → Run Self-Test for full diagnostics.';
+        : 'Make sure the Claude Code CLI is logged in (`claude login`) and installed (`claude --version`). Hit /setup → Run Self-Test for full diagnostics.';
       send({
         type: 'error',
         code: 'empty_output',
@@ -471,16 +714,36 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
         durationMs: duration,
         reqId,
       });
-      logAgentRun({ ...baseLog, output: '', status: 'error', error: 'empty_output' });
+      status = 'error'; runError = 'empty_output'; finalOutput = '';
+      logAgentRun({ ...baseLog, output: '', status, error: runError });
     } else {
-      const trimmedOutput = fullOutput.trim();
-      send({ type: 'done', output: trimmedOutput, exitCode: code, durationMs: duration });
+      const trimmedOutput = finalOutput;
+      send({ type: 'done', output: trimmedOutput, exitCode: code, durationMs: duration, historyId, threadId: threadId || null });
+      status = 'success'; runError = null; finalOutput = trimmedOutput;
       logAgentRun({ ...baseLog, output: trimmedOutput, status: 'success' });
       // Cache for idempotency replay (5-min TTL)
       if (idempotencyKey) {
         idemStore.set(idempotencyKey, { output: trimmedOutput, timestamp: Date.now() });
       }
     }
+
+    // Durable user-facing history row at EVERY terminal state (never lost).
+    persistPlaygroundRow({
+      historyId, agentName, prompt: userPrompt, output: finalOutput,
+      duration, status, error: runError, reqId, threadId, turnIndex,
+    });
+
+    // Thread message append: record the user turn + the assistant turn so the
+    // conversation can be reopened and continued. Append for both success and
+    // error (error turns carry the failure status so the thread reflects reality).
+    if (threadId) {
+      try {
+        db.createPlaygroundThread({ id: threadId, title: userPrompt.slice(0, 80), agentName: agentName || 'custom' });
+        db.appendPlaygroundMessage(threadId, { id: `${historyId}-u`, role: 'user', content: userPrompt, status: 'success', metadata: { reqId } });
+        db.appendPlaygroundMessage(threadId, { id: `${historyId}-a`, role: 'assistant', content: finalOutput || (runError ? `Error: ${runError}` : ''), status, duration, metadata: { reqId, error: runError } });
+      } catch (e) { console.error('[playground] thread append failed:', e.message); }
+    }
+
     finish();
   });
 
@@ -501,15 +764,21 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       tip: 'Visit /setup and click Run Self-Test for full diagnostics.',
       reqId,
     });
+    const spawnDuration = Date.now() - playgroundStartTime;
     logAgentRun({
       agentName: agentName || 'custom',
       prompt: userPrompt,
       output: fullOutput.trim(),
       source: req.body.source || 'playground',
-      duration: Date.now() - playgroundStartTime,
+      duration: spawnDuration,
       status: 'error',
       error: `spawn_error: ${err.code || 'unknown'}`,
       metadata: { reqId, killReason, claudePath },
+    });
+    persistPlaygroundRow({
+      historyId, agentName, prompt: userPrompt, output: fullOutput.trim(),
+      duration: spawnDuration, status: 'error', error: `spawn_error_${err.code || 'unknown'}`,
+      reqId, threadId, turnIndex,
     });
     finish();
   });
@@ -586,44 +855,119 @@ router.get('/playground/history', rateLimit('read'), (req, res) => {
 });
 
 // POST /api/playground/history
+// Non-destructive row upsert (was: rewrite-the-whole-table, which raced and
+// could clobber backend-written rows). The frontend sends the SAME id the
+// backend used for this run, so INSERT OR REPLACE converges on one row.
 router.post('/playground/history', rateLimit('write'), (req, res) => {
-  const { id, agent, agentName, prompt, output, duration, status, timestamp } = req.body;
+  const { id, agent, agentName, prompt, output, duration, status, error, timestamp, threadId, turnIndex } = req.body;
   if (!prompt) return res.status(400).json({ error: 'prompt is required' });
   const MAX_OUTPUT = 500_000;
   const rawOutput = output || '';
   const truncated = rawOutput.length > MAX_OUTPUT;
   const entry = {
     id: id || genId(),
-    agent: agent || '',
-    agentName: agentName || 'Unknown',
+    agentName: agentName || agent || 'Unknown',
     prompt: (prompt || '').slice(0, 10_000),
     output: rawOutput.slice(0, MAX_OUTPUT),
-    truncated,
     duration: duration || 0,
     status: status || 'success',
+    error: error || null,
     timestamp: timestamp || new Date().toISOString(),
+    metadata: { source: 'frontend' },
+    threadId: threadId || null,
+    turnIndex: typeof turnIndex === 'number' ? turnIndex : null,
   };
-  const list = loadPlaygroundHistory();
-  list.unshift(entry);
-  // Hard cap: keep latest 200 entries; prune rows older than 30 days
-  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const pruned = list
-    .filter(h => new Date(h.timestamp).getTime() > thirtyDaysAgo)
-    .slice(0, 200);
-  savePlaygroundHistory(pruned);
+  try {
+    db.upsertPlaygroundHistoryRow(entry);
+  } catch (err) {
+    console.error('[playground] history upsert failed:', err.message);
+    return res.status(500).json({ error: 'history persist failed' });
+  }
   res.status(truncated ? 207 : 200).json({ ...entry, truncated });
 });
 
 // DELETE /api/playground/history/:id
 router.delete('/playground/history/:id', rateLimit('write'), (req, res) => {
-  const list = loadPlaygroundHistory().filter(h => h.id !== req.params.id);
-  savePlaygroundHistory(list);
+  db.deletePlaygroundHistoryRow(req.params.id);
   res.json({ ok: true });
 });
 
 // DELETE /api/playground/history
 router.delete('/playground/history', rateLimit('write'), (req, res) => {
-  savePlaygroundHistory([]);
+  db.clearPlaygroundHistory();
+  res.json({ ok: true });
+});
+
+// ── Playground Threads ──────────────────────────────────────────────────────
+
+// GET /api/playground/threads — list threads (newest first) with messageCount
+router.get('/playground/threads', rateLimit('read'), (req, res) => {
+  res.json(db.listPlaygroundThreads());
+});
+
+// GET /api/playground/threads/:id — full transcript for reopen
+router.get('/playground/threads/:id', rateLimit('read'), (req, res) => {
+  const thread = db.getPlaygroundThread(req.params.id);
+  if (!thread) return res.status(404).json({ error: 'thread not found' });
+  res.json(thread);
+});
+
+// POST /api/playground/threads — create an empty thread
+router.post('/playground/threads', rateLimit('write'), (req, res) => {
+  const { id, title, agentName } = req.body || {};
+  const threadId = (typeof id === 'string' && /^[\w-]{1,64}$/.test(id)) ? id : genId();
+  try {
+    const thread = db.createPlaygroundThread({ id: threadId, title: title || 'New conversation', agentName });
+    res.json(thread);
+  } catch (err) {
+    console.error('[playground] create thread failed:', err.message);
+    res.status(500).json({ error: 'create thread failed' });
+  }
+});
+
+// POST /api/playground/threads/:id/seed — promote a finished one-shot run into a
+// thread by inserting its user prompt + assistant output as the first turn, so
+// the next reply has turn-1 context. Idempotent-ish: only seeds an empty thread.
+router.post('/playground/threads/:id/seed', rateLimit('write'), (req, res) => {
+  const threadId = req.params.id;
+  const { prompt, output, agentName, status } = req.body || {};
+  if (!prompt) return res.status(400).json({ error: 'prompt is required' });
+  try {
+    const existing = db.getPlaygroundThread(threadId);
+    if (existing && existing.messages && existing.messages.length > 0) {
+      return res.json({ ok: true, alreadySeeded: true });
+    }
+    db.createPlaygroundThread({ id: threadId, title: String(prompt).slice(0, 80), agentName: agentName || 'custom' });
+    const base = `seed-${threadId}`;
+    db.appendPlaygroundMessage(threadId, { id: `${base}-u`, role: 'user', content: String(prompt).slice(0, 20000), status: 'success' });
+    db.appendPlaygroundMessage(threadId, { id: `${base}-a`, role: 'assistant', content: String(output || '').slice(0, 500000), status: status || 'success' });
+    res.json({ ok: true, thread: db.getPlaygroundThread(threadId) });
+  } catch (err) {
+    console.error('[playground] seed thread failed:', err.message);
+    res.status(500).json({ error: 'seed thread failed' });
+  }
+});
+
+// PATCH /api/playground/threads/:id — rename a conversation
+router.patch('/playground/threads/:id', rateLimit('write'), (req, res) => {
+  const { title } = req.body || {};
+  if (typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'title is required' });
+  }
+  if (title.length > 200) return res.status(400).json({ error: 'title too long (max 200)' });
+  try {
+    const thread = db.renamePlaygroundThread(req.params.id, title);
+    if (!thread) return res.status(404).json({ error: 'thread not found' });
+    res.json(thread);
+  } catch (err) {
+    console.error('[playground] rename thread failed:', err.message);
+    res.status(500).json({ error: 'rename thread failed' });
+  }
+});
+
+// DELETE /api/playground/threads/:id — delete thread + its messages (cascade)
+router.delete('/playground/threads/:id', rateLimit('write'), (req, res) => {
+  db.deletePlaygroundThread(req.params.id);
   res.json({ ok: true });
 });
 
