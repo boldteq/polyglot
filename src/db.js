@@ -148,6 +148,7 @@ function runMigrations(db) {
     { version: 28, name: 'self_improving_brain', fn: selfImprovingBrainMigration },
     { version: 29, name: 'continuity_brain', fn: continuityBrainMigration },
     { version: 30, name: 'decision_journal_resolution', fn: decisionJournalResolutionMigration },
+    { version: 31, name: 'eval_selftest_calibration', fn: evalSelftestMigration },
   ];
 
   for (const mig of migrations) {
@@ -2074,6 +2075,46 @@ function decisionJournalResolutionMigration(db) {
   console.log('[migration v30] decision-journal resolution: reflections.resolvedAt + correctnessScore + idx_reflections_resolved');
 }
 
+// v31 — judge-calibration source separation. The autonomy governor's eval gate
+// must read JUDGE calibration (does the golden self-test still separate good
+// outputs from bad?), NOT production agent quality scores. A genuinely bad agent
+// output (e.g. spark 0.32) must never make the judge look "miscalibrated" and
+// block every self-improvement. The weekly `run-eval --selftest` already emits
+// kind='selftest' records to eval-runs.jsonl ({total,calibrated,accuracy,
+// meanSeparation}); ingestEvalRuns previously dropped them (kind!=='score'), so
+// the auto-apply gate could never open. This table persists them as the real
+// calibration source. Review-only data — nothing here auto-writes identity/memory.
+function evalSelftestMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS eval_selftests (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts             TEXT NOT NULL,
+      total          INTEGER,
+      calibrated     INTEGER,
+      accuracy       REAL,
+      meanSeparation REAL,
+      results        TEXT DEFAULT '[]',
+      dedupKey       TEXT UNIQUE
+    );
+    CREATE INDEX IF NOT EXISTS idx_eval_selftests_ts ON eval_selftests(ts DESC);
+  `);
+  // Backfill any selftest records already sitting in the JSONL interface.
+  let back = 0;
+  try {
+    const fp = path.join(HOME, 'Desktop', 'Boldteq App', 'Operation', 'Polyglot', 'data', 'intel', 'eval-runs.jsonl');
+    const ins = db.prepare('INSERT OR IGNORE INTO eval_selftests (ts,total,calibrated,accuracy,meanSeparation,results,dedupKey) VALUES (?,?,?,?,?,?,?)');
+    for (const line of fs.readFileSync(fp, 'utf-8').split('\n')) {
+      if (!line.trim()) continue;
+      const r = JSON.parse(line);
+      if (r.kind !== 'selftest' || !r.at) continue;
+      const res = ins.run(r.at, r.total ?? null, r.calibrated ?? null, r.accuracy ?? null,
+        r.meanSeparation ?? null, JSON.stringify(r.results || []), r.at);
+      if (res.changes) back++;
+    }
+  } catch (e) { if (process.env.DEBUG_DB) console.warn('[migration v31] backfill:', e.message); }
+  console.log(`[migration v31] eval_selftests calibration table created (backfilled ${back})`);
+}
+
 // ── VS Code sessions ────────────────────────────────────────────────────────
 
 // Upsert keyed on sessionId. CRITICAL: the SessionEnd hook calls this WITHOUT a
@@ -3475,15 +3516,47 @@ function getEvalScores({ agent, caseId, limit = 200 } = {}) {
     .map(r => ({ ...r, pass: !!r.pass, scores: JSON.parse(r.scores || '{}') }));
 }
 
-// Ingest data/intel/eval-runs.jsonl 'score' records into eval_scores (idempotent).
-// Keeps the JSONL the durable interface; gives the DB/Witness queryable rows.
+// Persist a judge self-test calibration result (kind='selftest' from run-eval
+// --selftest). dedupKey=at makes JSONL ingest idempotent. This is the SOURCE the
+// autonomy governor reads to decide if the judge is calibrated — separate from
+// production agent scores (a bad agent output must not look like a broken judge).
+function recordEvalSelftest({ at, ts, total, calibrated, accuracy, meanSeparation, results } = {}) {
+  const when = at || ts || new Date().toISOString();
+  const res = stmt('INSERT OR IGNORE INTO eval_selftests (ts,total,calibrated,accuracy,meanSeparation,results,dedupKey) VALUES (?,?,?,?,?,?,?)')
+    .run(when, total != null ? Number(total) : null, calibrated != null ? Number(calibrated) : null,
+         accuracy != null ? Number(accuracy) : null, meanSeparation != null ? Number(meanSeparation) : null,
+         JSON.stringify(results || []), when);
+  return res.changes > 0;
+}
+
+// Latest judge calibration self-test (most recent ts). null if none ingested yet.
+function getLatestSelftest() {
+  const r = stmt('SELECT * FROM eval_selftests ORDER BY ts DESC LIMIT 1').get();
+  if (!r) return null;
+  return {
+    at: r.ts, total: r.total, calibrated: r.calibrated,
+    accuracy: r.accuracy, meanSeparation: r.meanSeparation,
+    results: JSON.parse(r.results || '[]'),
+  };
+}
+
+// Ingest data/intel/eval-runs.jsonl into the DB (idempotent). 'score' records →
+// eval_scores (agent-quality, Witness loop); 'selftest' records → eval_selftests
+// (judge calibration, governor gate). Keeps the JSONL the durable interface.
 function ingestEvalRuns(jsonlPath) {
   const fp = jsonlPath || path.join(HOME, 'Desktop', 'Boldteq App', 'Operation', 'Polyglot', 'data', 'intel', 'eval-runs.jsonl');
-  let ingested = 0;
+  let ingested = 0, selftests = 0;
   try {
     for (const line of fs.readFileSync(fp, 'utf-8').split('\n')) {
       if (!line.trim()) continue;
       const r = JSON.parse(line);
+      if (r.kind === 'selftest') {
+        if (recordEvalSelftest({
+          at: r.at, total: r.total, calibrated: r.calibrated,
+          accuracy: r.accuracy, meanSeparation: r.meanSeparation, results: r.results,
+        })) selftests++;
+        continue;
+      }
       if (r.kind !== 'score') continue;
       const ok = recordEvalScore({
         runId: r.runId, caseId: r.case, agent: r.agent, taskType: r.task_type,
@@ -3493,7 +3566,7 @@ function ingestEvalRuns(jsonlPath) {
       if (ok) ingested++;
     }
   } catch (e) { if (process.env.DEBUG_DB) console.warn('[db] ingestEvalRuns:', e.message); }
-  return { ingested };
+  return { ingested, selftests };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3870,6 +3943,7 @@ module.exports = {
   logAgentEvent, getAgentEvents,
   trackDelegation, getDelegations,
   recordEvalScore, getEvalScores, ingestEvalRuns,
+  recordEvalSelftest, getLatestSelftest,
   // Self-improving brain (v28): signals → governed patches → timeline
   upsertTrainingSignal, getTrainingSignals, updateTrainingSignalStatus,
   insertTrainingPatch, getTrainingPatches, getTrainingPatch, updateTrainingPatch,

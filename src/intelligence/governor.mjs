@@ -125,17 +125,33 @@ export function decide(proposal = {}, ctx = {}) {
 }
 
 // ── Eval calibration gate ────────────────────────────────────────────────────
-// The judge is "calibrated" if the most recent self-test golden scores still
-// separate good from bad (mean overall ≥ floor). We read the last few eval_scores;
-// unknown/empty → NOT calibrated (fail-safe → review, never silent auto).
-export function isEvalCalibrated({ floor = 0.6, minSample = 3 } = {}) {
+// "Calibrated" means the JUDGE still works: the most recent golden self-test still
+// separates good outputs from bad. We read it from the self-test record (calibrated
+// /total ratio + mean good–bad separation + freshness), NOT from production agent
+// scores — a genuinely bad agent output (e.g. 0.32) must not make the judge look
+// broken and block every self-improvement. Unknown / stale / empty → NOT calibrated
+// (fail-safe → review, never silent auto).
+
+// Pure predicate over a self-test record ({total, calibrated, meanSeparation, at}).
+// No I/O — testable in isolation. `now` is injectable so freshness is deterministic.
+export function selftestCalibrated(selftest, { minRatio = 0.8, minSeparation = 0.3, maxAgeDays = 14, now = Date.now() } = {}) {
+  if (!selftest) return false
+  const total = Number(selftest.total || 0)
+  const calibrated = Number(selftest.calibrated || 0)
+  const sep = Number(selftest.meanSeparation || 0)
+  if (total <= 0) return false
+  if (calibrated / total < minRatio) return false
+  if (sep < minSeparation) return false
+  const at = selftest.at ? Date.parse(selftest.at) : NaN
+  if (Number.isNaN(at)) return false
+  if ((now - at) / 86400000 > maxAgeDays) return false
+  return true
+}
+
+export function isEvalCalibrated(opts = {}) {
   try {
     const db = require('../db.js')
-    const rows = db.getEvalScores({ limit: 12 }) || []
-    if (rows.length < minSample) return false
-    const recent = rows.slice(0, Math.max(minSample, 6))
-    const mean = recent.reduce((a, r) => a + (Number(r.overall) || 0), 0) / recent.length
-    return mean >= floor
+    return selftestCalibrated(db.getLatestSelftest(), opts)
   } catch {
     return false
   }

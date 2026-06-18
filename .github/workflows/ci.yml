@@ -36,6 +36,10 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+      # Hermetic proof of the self-improving brain loop (governor → trainer →
+      # auto-rollback + safety gates). Self-modifies agent .md files, so it must
+      # stay green on every commit. Runs against a throwaway HOME + DB.
+      - run: pnpm test:brain
 
   audit:
     name: Security Audit
