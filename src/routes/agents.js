@@ -99,6 +99,8 @@ router.put('/global/agents/:name', validateName, rateLimit('write'), (req, res) 
     try { snapshotAgent(req.params.name, fs.readFileSync(filePath, 'utf-8')); } catch {}
   }
   atomicWriteText(filePath, req.body.content);
+  // Phase D.1 — edit → searchable in ~60s: queue this file for a scoped reindex.
+  try { require('../lib/systemSchedules').enqueueMemoryChange(filePath, 'agent-edit'); } catch {}
   res.json({ ok: true, agent: parseAgent(filePath) });
 });
 
@@ -135,6 +137,7 @@ router.post('/global/agents/:name/rollback/:ts', validateName, rateLimit('write'
   const agentPath = path.join(CLAUDE_DIR, 'agents', req.params.name + '.md');
   if (fs.existsSync(agentPath)) snapshotAgent(req.params.name, fs.readFileSync(agentPath, 'utf-8'));
   atomicWriteText(agentPath, fs.readFileSync(versionPath, 'utf-8'));
+  try { require('../lib/systemSchedules').enqueueMemoryChange(agentPath, 'agent-rollback'); } catch {}
   res.json({ ok: true, restoredFrom: req.params.ts });
 });
 

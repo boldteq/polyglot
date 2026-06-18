@@ -62,7 +62,7 @@ async function callTool(name, args = {}) {
     return `Top ${results.length} for "${args.query}":\n\n${formatContext(results)}`
   }
   const captureMap = { capture_lesson: 'lesson', capture_bug: 'bug', capture_decision: 'decision', capture_golden: 'golden' }
-  if (captureMap[name]) { const r = await captureItem(captureMap[name], args); return `Captured ${r.type} ${r.id} — now retrievable via memory_search.` }
+  if (captureMap[name]) { const r = await captureItem(captureMap[name], args, 'agent'); return `Captured ${r.type} ${r.id} — now retrievable via memory_search.` }
   throw new Error(`unknown tool: ${name}`)
 }
 

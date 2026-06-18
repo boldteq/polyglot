@@ -27,23 +27,93 @@ const titleOf = (type, f) => ({
   decision: `Decision: ${f.decision}`, golden: `Golden: ${f.title}`,
 }[type] || type).slice(0, 100)
 
-export async function captureItem(type, fields) {
+// ── Belief revision (Phase D.3) ──────────────────────────────────────────────
+// A new lesson/bug/decision can REVISE an older one. We never delete: we mark the
+// OLD record supersededBy=<newId> (heavily down-ranked at search) when the new item
+// reads like a correction of a near-identical belief; softer overlaps are flagged
+// conflictsWith (for the retrieve-time ⚠) or nearDuplicateOf (reinforcement).
+function numEnv(k, d) { const v = Number(process.env[k]); return Number.isFinite(v) ? v : d }
+const BELIEF_TYPES = new Set(['lesson', 'bug', 'decision']) // golden = exemplar, not a belief
+const SIM = {
+  conflict: numEnv('INTEL_CONFLICT_SIM', 0.82), // ≥ this + correction language → supersede; else flag
+  dup: numEnv('INTEL_DUP_SIM', 0.93),           // ≥ this + no correction → reinforcement (near-dup)
+}
+// provenance defaults → drive salience (confidence/verified). opts can override.
+const ORIGIN_DEFAULTS = {
+  review: { confidence: 0.95, verified: true },          // human-approved in the Learning Inbox
+  agent: { confidence: 0.85, verified: false },          // an agent captured it mid-build (MCP)
+  direct: { confidence: 0.85, verified: false },         // programmatic / default
+  'vscode-digest': { confidence: 0.70, verified: false },// auto-extracted from a session, unreviewed
+}
+
+export function looksLikeCorrection(text) {
+  return /\b(never|don'?t|do not|instead|actually|was wrong|incorrect|correction|supersed|no longer|avoid|stop using|deprecat)\b/i.test(text || '')
+}
+function normalizeIds(x) {
+  if (!x) return []
+  return (Array.isArray(x) ? x : [x]).filter(v => typeof v === 'string' && v.trim())
+}
+
+// Returns { supersedes, conflictsWith, nearDuplicateOf } and side-effects the OLD
+// superseded records' metadata. Pure-ish: only mutates olds it decides to supersede.
+async function reviseBeliefs({ id, type, text, vector, explicitSupersedes }) {
+  const supersedes = new Set(normalizeIds(explicitSupersedes))
+  const conflictsWith = new Set(), nearDuplicateOf = new Set()
+  if (BELIEF_TYPES.has(type)) {
+    let neighbors = []
+    try { neighbors = await getStore().search(vector, { topK: 4 }) } catch { neighbors = [] }
+    const corr = looksLikeCorrection(text)
+    for (const n of neighbors) {
+      const rec = n.record; if (!rec || rec.id === id || !BELIEF_TYPES.has(rec.source_type)) continue
+      const cos = Number.isFinite(n.cosine) ? n.cosine : n.score
+      if (cos < SIM.conflict) continue
+      if (corr) supersedes.add(rec.id)                    // high-sim + correction → revise it
+      else if (cos >= SIM.dup) nearDuplicateOf.add(rec.id)// same belief again → reinforcement
+      else conflictsWith.add(rec.id)                      // similar but maybe divergent → flag
+    }
+  }
+  const store = getStore(); const now = new Date().toISOString()
+  for (const oldId of supersedes) {
+    try { await store.patchMetadata(oldId, { supersededBy: id, supersededAt: now }) } catch { /* best-effort */ }
+  }
+  return { supersedes: [...supersedes], conflictsWith: [...conflictsWith], nearDuplicateOf: [...nearDuplicateOf] }
+}
+
+// `origin` records WHERE the capture came from (agent direct, vscode-digest,
+// review approve, …) so the Learning Overview can show an accurate by-source
+// breakdown. Legacy records without it are treated as 'direct'. `opts` may carry
+// { supersedes, confidence, verified } to override provenance/belief defaults.
+export async function captureItem(type, fields, origin = 'direct', opts = {}) {
   const id = `${type}:${crypto.randomUUID().slice(0, 8)}`
   const created_at = new Date().toISOString()
   const text = render(type, fields)
+  const od = ORIGIN_DEFAULTS[origin] || ORIGIN_DEFAULTS.direct
+  const confidence = Number.isFinite(opts.confidence) ? opts.confidence : od.confidence
+  const verified = typeof opts.verified === 'boolean' ? opts.verified : od.verified
 
-  // 1) durable append-only log
+  // 1) durable append-only log (now carries provenance)
   fs.mkdirSync(DATA_DIR, { recursive: true })
-  fs.appendFileSync(path.join(DATA_DIR, `${type}s.jsonl`), JSON.stringify({ id, type, created_at, ...fields }) + '\n')
+  fs.appendFileSync(path.join(DATA_DIR, `${type}s.jsonl`), JSON.stringify({ id, type, created_at, origin, confidence, verified, ...fields }) + '\n')
 
-  // 2) embed + index for immediate retrieval
+  // 2) embed the new item
   const { vector } = await embedOne(text)
+
+  // 3) belief revision — mark any older belief this one corrects (down-rank, never delete)
+  const revision = await reviseBeliefs({ id, type, text, vector, explicitSupersedes: opts.supersedes })
+
+  // 4) index the new item for immediate retrieval
   await getStore().upsert([{
     id, source_type: type, source_ref: id, chunk_index: 0,
     chunk_text: text, embedding: vector,
-    metadata: { ...fields, title: titleOf(type, fields), captured: true }, content_hash: id, updated_at: created_at,
+    metadata: {
+      ...fields, title: titleOf(type, fields), captured: true, origin, confidence, verified,
+      ...(revision.supersedes.length ? { supersedes: revision.supersedes } : {}),
+      ...(revision.conflictsWith.length ? { conflictsWith: revision.conflictsWith } : {}),
+      ...(revision.nearDuplicateOf.length ? { nearDuplicateOf: revision.nearDuplicateOf } : {}),
+    },
+    content_hash: id, updated_at: created_at,
   }])
-  return { id, type, created_at }
+  return { id, type, created_at, ...revision }
 }
 
 // read recent captured items of a type (for lookups that aren't semantic)
@@ -52,4 +122,41 @@ export function recentItems(type, limit = 20) {
     const lines = fs.readFileSync(path.join(DATA_DIR, `${type}s.jsonl`), 'utf-8').trim().split('\n').filter(Boolean)
     return lines.slice(-limit).map(l => JSON.parse(l)).reverse()
   } catch { return [] }
+}
+
+// Aggregate stats over the WHOLE capture ledger (all 4 jsonl files) — the single
+// source of truth for "how much we've learned". One pass, file-only, no embeddings.
+export function captureStats() {
+  const TYPES = ['lesson', 'bug', 'decision', 'golden']
+  const now = Date.now()
+  const DAY = 86400000
+  const byType = { lesson: 0, bug: 0, decision: 0, golden: 0 }
+  const byOrigin = {}
+  let total = 0, last7d = 0, prev7d = 0
+  // 8 weekly buckets, oldest → newest (index 7 = current week)
+  const weekly = Array.from({ length: 8 }, (_, i) => ({
+    weekStart: new Date(now - (7 - i) * 7 * DAY).toISOString().slice(0, 10), count: 0,
+  }))
+  for (const type of TYPES) {
+    let lines = []
+    try { lines = fs.readFileSync(path.join(DATA_DIR, `${type}s.jsonl`), 'utf-8').trim().split('\n').filter(Boolean) }
+    catch { continue }
+    for (const ln of lines) {
+      let it
+      try { it = JSON.parse(ln) } catch { continue }
+      total += 1
+      byType[type] += 1
+      const origin = it.origin || 'direct'
+      byOrigin[origin] = (byOrigin[origin] || 0) + 1
+      const t = it.created_at ? new Date(it.created_at).getTime() : NaN
+      if (Number.isFinite(t)) {
+        const age = now - t
+        if (age < 7 * DAY) last7d += 1
+        else if (age < 14 * DAY) prev7d += 1
+        const wk = Math.floor((now - t) / (7 * DAY))
+        if (wk >= 0 && wk < 8) weekly[7 - wk].count += 1
+      }
+    }
+  }
+  return { total, byType, byOrigin, last7d, prev7d, weekly }
 }
