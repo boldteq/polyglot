@@ -1,0 +1,33 @@
+{
+  "_README": "The structured BRIEF — gate #0.4 (check-discovery.mjs) requires this at docs/discovery/goals.json before any design/build dispatch. Doctrine: every goal is baseline → target with a measure + horizon (shopify-technical-goals-discovery.md §1). Replace nulls with real numbers; unknown client numbers resolve to niche defaults (conversion → ecom-niche-lift-benchmarks.md, perf → the lumen constants below) and are FLAGGED, never invented as client commitments. Delete this _README key in the real file.",
+  "revenue": {
+    "current_monthly": null,
+    "target_monthly": null,
+    "horizon_days": 90,
+    "aov_current": null,
+    "aov_target": null
+  },
+  "conversion": {
+    "cvr_current_pct": null,
+    "cvr_target_pct": null,
+    "cart_abandon_current_pct": null,
+    "cart_abandon_target_pct": null,
+    "priority_surfaces": ["hero", "pdp", "cart", "checkout", "post-purchase"]
+  },
+  "seo": {
+    "target_keywords": [{ "keyword": "", "market": "en-US", "current_rank": null, "target_rank": null }],
+    "markets": ["en-US"],
+    "organic_traffic_current": null,
+    "organic_traffic_target": null,
+    "migration_redirects_required": false
+  },
+  "performance": {
+    "lcp_current_s": null,
+    "lcp_target_s": 2.5,
+    "inp_target_ms": 200,
+    "cls_target": 0.1,
+    "lighthouse_perf_target": 90,
+    "measured_on": "mobile (primary) + desktop"
+  },
+  "accessibility": { "target": "WCAG 2.1 AA", "axe_critical_allowed": 0 }
+}

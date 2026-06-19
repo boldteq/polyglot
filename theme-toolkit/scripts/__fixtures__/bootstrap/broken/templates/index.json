@@ -1,0 +1,8 @@
+/*
+ * auto-generated header (this part is fine)
+ */
+{
+  "sections": {
+    "hero": { "type": "image-banner", },
+  "order": ["hero"]
+}

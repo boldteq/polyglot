@@ -97,6 +97,17 @@ const GATES = [
   // Gate 0 — theme lock: every push targets the linked theme only, never live/another store
   // (static; lenient on a missing lock — THEME_LOCK_REQUIRED=1 makes absence a blocker at publish).
   { name: 'theme-lock', number: 0, kind: 'static', runner: 'node', script: 'shopify-theme-guard.mjs' },
+  // Gate 0.4 — discovery-complete: the structured BRIEF (docs/discovery/goals.json numeric targets
+  // + docs/design/brand-direction.md) must exist before design/build dispatch. Mechanizes the prose
+  // gate in shopify-technical-goals-discovery.md §4 — the dispatch-time refusal that makes "brief in
+  // → store out" real. Static; warns in dev, BLOCKS at dispatch/publish-grade (DS_REQUIRE_SCOPE).
+  { name: 'discovery', number: 0.4, kind: 'static', runner: 'node', script: 'check-discovery.mjs' },
+  // Gate 0.5 — bootstrap-complete: the FOUNDATION must exist before any QA gate is meaningful
+  // (design-system.json present, JSON templates/config parse, store identity not a placeholder,
+  // baseline tag). Static; warns in dev, BLOCKS at publish-grade (DS_REQUIRE_SCOPE). Stops a build
+  // reaching the gates on a broken base — where ~12 downstream gates "skip — scope unresolvable"
+  // and the run reads as fine. Runs first so the failure is loud + at-the-door.
+  { name: 'bootstrap', number: 0.5, kind: 'static', runner: 'node', script: 'check-bootstrap.mjs' },
   { name: 'lighthouse', number: 1, kind: 'url', runner: 'node', script: 'gate-lighthouse.mjs' },
   { name: 'theme-check', number: 2, kind: 'static', runner: 'node', script: 'gate-theme-check.mjs' },
   { name: 'editability', number: 3, kind: 'static', runner: 'bash', script: 'gate-editability-greps.sh' },

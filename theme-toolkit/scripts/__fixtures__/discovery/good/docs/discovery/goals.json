@@ -1,0 +1,32 @@
+{
+  "revenue": {
+    "current_monthly": 18000,
+    "target_monthly": 45000,
+    "horizon_days": 90,
+    "aov_current": 52,
+    "aov_target": 68
+  },
+  "conversion": {
+    "cvr_current_pct": 1.6,
+    "cvr_target_pct": 2.8,
+    "cart_abandon_current_pct": 71,
+    "cart_abandon_target_pct": 60,
+    "priority_surfaces": ["hero", "pdp", "cart"]
+  },
+  "seo": {
+    "target_keywords": [{ "keyword": "magnesium sleep", "market": "en-US", "current_rank": null, "target_rank": 5 }],
+    "markets": ["en-US"],
+    "organic_traffic_current": 2400,
+    "organic_traffic_target": 8000,
+    "migration_redirects_required": false
+  },
+  "performance": {
+    "lcp_current_s": 4.1,
+    "lcp_target_s": 2.5,
+    "inp_target_ms": 200,
+    "cls_target": 0.1,
+    "lighthouse_perf_target": 90,
+    "measured_on": "mobile (primary) + desktop"
+  },
+  "accessibility": { "target": "WCAG 2.1 AA", "axe_critical_allowed": 0 }
+}

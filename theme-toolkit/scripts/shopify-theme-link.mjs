@@ -21,6 +21,9 @@ import {
   listThemes, findTheme, pushUnpublished,
 } from './lib/shopify-theme-lock.mjs'
 
+// Single-theme mode: client runs ONE theme end-to-end (no staging/unpublished sibling). Permits
+// locking the published/live theme — pushes go there directly; previews use `pnpm theme:dev`.
+
 const t0 = Date.now()
 const cwd = process.cwd()
 const reportDir = process.env.REPORT_DIR || 'gate-reports'
@@ -37,7 +40,7 @@ const block = (id, detail, evidence = {}) => finish(1, { pass: false, blockers: 
 const envFail = (reason) => finish(2, { pass: false, evidence: { skipped: 'env', reason } })
 
 function parseArgs(argv) {
-  const out = { store: null, theme: null, themeName: null, create: false, name: null }
+  const out = { store: null, theme: null, themeName: null, create: false, name: null, single: false }
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i]
     const eq = a.indexOf('=')
@@ -49,6 +52,7 @@ function parseArgs(argv) {
     else if (key === '--theme-name') out.themeName = next()
     else if (key === '--create') out.create = true
     else if (key === '--name') out.name = next()
+    else if (key === '--single') out.single = true
     else if (key === '--help' || key === '-h') { out.help = true }
     else envFail(`unknown arg: ${a}`)
   }
@@ -57,7 +61,7 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv)
 if (args.help) {
-  console.log('Usage: node shopify-theme-link.mjs --store <handle> (--theme <id> | --create --name "..." | --theme-name "...")')
+  console.log('Usage: node shopify-theme-link.mjs --store <handle> (--theme <id> | --create --name "..." | --theme-name "...") [--single]\n  --single  single-theme mode: client runs ONE theme (may be the published theme); pushes target it directly, preview via `pnpm theme:dev`.')
   process.exit(0)
 }
 if (!args.store) envFail('missing --store <handle>.myshopify.com')
@@ -88,14 +92,15 @@ if (args.create) {
   resolved = t
 }
 
-// HARD REFUSAL: never lock the live theme.
-if (isLiveRole(resolved.role)) {
+// HARD REFUSAL: never lock the live theme — UNLESS single-theme mode is explicitly chosen
+// (client runs one theme end-to-end; pushes target it directly, previews via `pnpm theme:dev`).
+if (isLiveRole(resolved.role) && !args.single) {
   block('theme-lock.refuse-live',
-    `refusing to lock the LIVE theme (${resolved.id} "${resolved.name}", role=${resolved.role}). Lock an unpublished/development working theme — pushes must never touch live.`,
+    `refusing to lock the LIVE theme (${resolved.id} "${resolved.name}", role=${resolved.role}). Lock an unpublished/development working theme — pushes must never touch live. If this client intentionally runs ONE theme, re-run with --single.`,
     { themeId: resolved.id, role: resolved.role })
 }
 
-const lock = newLock({ store: args.store, themeId: resolved.id, themeName: resolved.name, role: resolved.role || 'unpublished' })
+const lock = newLock({ store: args.store, themeId: resolved.id, themeName: resolved.name, role: resolved.role || 'unpublished', singleTheme: args.single })
 writeLock(cwd, lock)
-console.log(`  locked theme ${lock.themeId} "${lock.themeName}" (role=${lock.role}) on ${lock.store}`)
-finish(0, { pass: true, evidence: { store: lock.store, themeId: lock.themeId, themeName: lock.themeName, role: lock.role } })
+console.log(`  locked theme ${lock.themeId} "${lock.themeName}" (role=${lock.role})${lock.singleTheme ? ' [SINGLE-THEME mode — pushes target this theme directly]' : ''} on ${lock.store}`)
+finish(0, { pass: true, evidence: { store: lock.store, themeId: lock.themeId, themeName: lock.themeName, role: lock.role, singleTheme: lock.singleTheme } })

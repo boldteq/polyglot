@@ -15,7 +15,7 @@
 // Exit: 0 = pass · 1 = block · 2 = env error
 
 import { writeReport } from './lib/report.mjs'
-import { LOCK_FILE, readLock, lockShapeErrors, isLiveRole, listThemes, findTheme } from './lib/shopify-theme-lock.mjs'
+import { LOCK_FILE, readLock, lockShapeErrors, isLiveRole, isSingleThemeLock, lockTargetsLiveUnsafely, listThemes, findTheme } from './lib/shopify-theme-lock.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -59,8 +59,10 @@ if (shapeErrs.length) {
   finish(null)
 }
 
-if (isLiveRole(lock.role)) {
-  add(blockers, 'theme-lock.live-target', `lock points at the LIVE theme (${lock.themeId} role=${lock.role}) — pushes must never target live. Re-link to an unpublished theme.`)
+if (lockTargetsLiveUnsafely(lock)) {
+  add(blockers, 'theme-lock.live-target', `lock points at the LIVE theme (${lock.themeId} role=${lock.role}) — pushes must never target live. Re-link to an unpublished theme, or set single-theme mode (\`pnpm theme:link --single\`) if this client intentionally runs one theme.`)
+} else if (isSingleThemeLock(lock) && isLiveRole(lock.role)) {
+  add(warnings, 'theme-lock.single-theme-live', `SINGLE-THEME mode: pushes target the published theme ${lock.themeId} directly (no staging theme). Intentional per the lock; previews use ephemeral \`pnpm theme:dev\`.`)
 }
 if (configuredStore && lock.store !== configuredStore) {
   add(blockers, 'theme-lock.store-mismatch', `configured store ${configuredStore} ≠ locked store ${lock.store} — refusing to operate on a store other than the linked one.`)

@@ -32,6 +32,16 @@ export function writeLock(cwd, lock) {
   fs.writeFileSync(lockPath(cwd), `${JSON.stringify(lock, null, 2)}\n`)
 }
 
+// Single-theme mode: the client runs ONE theme end-to-end (no separate staging/unpublished theme),
+// editing + previewing it directly (preview via ephemeral `shopify theme dev`). In this mode the
+// locked theme MAY be the published/live one — that's the whole point — so the "never lock live"
+// refusal is waived for THIS lock only, explicitly + loudly. Two-way safety then comes from the
+// lock pin + the gate-freshness publish precondition, not from a second theme.
+//   A push is allowed to a live-role theme  ⟺  the lock has singleTheme === true.
+export const isSingleThemeLock = lock => lock?.singleTheme === true
+// A live-role target is forbidden UNLESS this is an explicit single-theme lock.
+export const lockTargetsLiveUnsafely = lock => isLiveRole(lock?.role) && !isSingleThemeLock(lock)
+
 // Returns a list of human-readable problems; empty array = valid shape.
 export function lockShapeErrors(lock) {
   const errs = []
@@ -41,20 +51,24 @@ export function lockShapeErrors(lock) {
   if (lock.themeId == null || String(lock.themeId).trim() === '') errs.push('themeId missing')
   if (!lock.role || typeof lock.role !== 'string') errs.push('role missing')
   if (lock.history && !Array.isArray(lock.history)) errs.push('history must be an array')
+  if (lock.singleTheme != null && typeof lock.singleTheme !== 'boolean') errs.push('singleTheme must be a boolean')
   return errs
 }
 
-export function newLock({ store, themeId, themeName, role, lockedBy, history = [] }) {
+export function newLock({ store, themeId, themeName, role, lockedBy, history = [], singleTheme = false }) {
   return {
     version: LOCK_VERSION,
     store,
     themeId: String(themeId),
     themeName: themeName || '',
     role: role || 'unpublished',
+    singleTheme: singleTheme === true,
     lockedAt: new Date().toISOString(),
     lockedBy: lockedBy || process.env.AGENT_NAME || 'mantle',
     history,
-    note: `Boldteq theme lock. All \`pnpm theme:push\` target theme ${themeId} on ${store} only. Re-target with \`pnpm theme:relink --confirm\`.`,
+    note: singleTheme === true
+      ? `Boldteq theme lock — SINGLE-THEME mode. One theme (${themeId}) on ${store}, edited + previewed directly (preview: \`pnpm theme:dev\`). Pushes go here only, even though it may be the published theme. Re-target with \`pnpm theme:relink --confirm\`.`
+      : `Boldteq theme lock. All \`pnpm theme:push\` target theme ${themeId} on ${store} only. Re-target with \`pnpm theme:relink --confirm\`.`,
   }
 }
 

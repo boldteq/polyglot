@@ -1,0 +1,10 @@
+{
+  "tokens": {
+    "color": { "bg": "#ffffff", "fg": "#1a1a1a", "accent": "#6b4eff" }
+  },
+  "type": {
+    "scale": { "base": 16, "ratio": 1.25 },
+    "fonts": { "heading": "Fraunces", "body": "Inter" }
+  },
+  "color_schemes": ["scheme-1", "scheme-2"]
+}

@@ -1,0 +1,12 @@
+{
+  "revenue": {
+    "current_monthly": null,
+    "target_monthly": "more sales",
+    "horizon_days": 90
+  },
+  "conversion": {
+    "cvr_target_pct": null,
+    "priority_surfaces": []
+  },
+  "performance": {}
+}
