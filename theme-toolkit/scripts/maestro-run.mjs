@@ -31,6 +31,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { runMaestroLoop, MAESTRO_MAX_ROUNDS } from './lib/maestro-loop.mjs'
 import { preflight, formatChecklist } from './maestro-preflight.mjs'
+import { readLock, isSingleThemeLock } from './lib/shopify-theme-lock.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const scriptPath = (name) => fileURLToPath(new URL(`./${name}`, import.meta.url))
@@ -138,10 +139,18 @@ export function makeRealDeps(opts = {}) {
   }
 
   // render: make the latest draft visible to Lens. 'dev' = the live `theme:dev` preview already
-  // auto-reloads on edit → no push needed, just carry the URL. 'push' = push to the linked theme.
+  // auto-reloads on edit → no push needed, just carry the URL. 'push' = push the draft to the linked
+  // theme each round. A mid-build draft push is NOT a publish, so it MUST bypass theme-push's publish
+  // preconditions (the full gate-stack verify + the Lens pass) — otherwise every round would block on
+  // "gates not fresh" (they can't be, mid-build) and double-run Lens (the loop already judges via
+  // lens:surface). The publish gate runs later, in maestro:build's gate-stack stage. And in single-theme
+  // mode the linked theme IS the live one, so pushing unfinished drafts would show shoppers a broken
+  // store — refuse, and send the operator to render=dev (a local preview that never touches the theme).
+  const pushUnsafeSingleTheme = renderMode === 'push' && (() => { try { return isSingleThemeLock(readLock(dir)) } catch { return false } })()
   const render = (surface, ctx) => {
     if (renderMode === 'push') {
-      const r = run(process.execPath, [scriptPath('shopify-theme-push.mjs')], {}, TO.render)
+      if (pushUnsafeSingleTheme) return { ok: false, error: 'render=push is unsafe in single-theme mode (the linked theme is LIVE — drafts would reach shoppers). Use --render dev (theme:dev local preview).' }
+      const r = run(process.execPath, [scriptPath('shopify-theme-push.mjs')], { THEME_PUSH_ALLOW_STALE: '1', THEME_PUSH_SKIP_LENS: '1' }, TO.render)
       if (r.error) return { ok: false, error: `theme:push failed to run: ${r.error.message}` }
       if ((r.status ?? 1) !== 0) return { ok: false, error: `theme:push exited ${r.status}` }
     }

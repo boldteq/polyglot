@@ -132,13 +132,30 @@ console.log('case e — consultant exit 1 isolates surface to status=error; loop
   eq(res.converged, ['pdp'], 'pdp still converged')
 }
 
-// ── case (f): render=push pushes the theme each round before judging ──
-console.log('case f — render=push pushes the theme before judging')
+// ── case (f): render=push pushes the theme each round, bypassing PUBLISH preconditions ──
+console.log('case f — render=push pushes the draft + bypasses theme-push publish gates (mid-build, not a publish)')
 {
   const { spawn, calls } = fakeSpawnWith(() => 0)
   const deps = makeRealDeps({ spawn, env: ENV, dir: '/tmp/maestro-f', render: 'push', claudeBin: 'claude' })
   await runMaestro({ deps, surfaces: ['home'], dir: '/tmp/maestro-f', writeReportFile: false })
-  eq(calls.some(c => isPush(c.args)), true, 'theme:push invoked in render=push mode')
+  const pushCall = calls.find(c => isPush(c.args))
+  eq(!!pushCall, true, 'theme:push invoked in render=push mode')
+  eq(pushCall.env?.THEME_PUSH_ALLOW_STALE, '1', 'render=push bypasses the gate-stack verify (gates cannot be fresh mid-build)')
+  eq(pushCall.env?.THEME_PUSH_SKIP_LENS, '1', 'render=push skips theme-push Lens (the loop already judges via lens:surface)')
+}
+
+// ── case (f2): render=push REFUSES single-theme mode (would push drafts to the LIVE theme) ──
+console.log('case f2 — render=push refuses single-theme locks (drafts must not reach shoppers)')
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-f2-'))
+  fs.writeFileSync(path.join(tmp, '.boldteq-theme-lock.json'), JSON.stringify({ version: 1, store: 'demo.myshopify.com', themeId: '123', role: 'main', singleTheme: true }))
+  const { spawn, calls } = fakeSpawnWith(() => 0)
+  const deps = makeRealDeps({ spawn, env: ENV, dir: tmp, render: 'push', claudeBin: 'claude' })
+  const res = await runMaestro({ deps, surfaces: ['home'], dir: tmp, writeReportFile: false })
+  eq(res.surfaces[0].status, 'error', 'single-theme render=push → surface escalates (render refused)')
+  eq(/single-theme/.test(res.surfaces[0].error || ''), true, 'refusal explains single-theme danger')
+  eq(calls.some(c => isPush(c.args)), false, 'no draft push reached the live theme')
+  fs.rmSync(tmp, { recursive: true, force: true })
 }
 
 // ── case (h): per-subprocess timeouts are threaded to spawn (unattended safety) ──
