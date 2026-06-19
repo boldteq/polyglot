@@ -28,6 +28,7 @@ const gatesSpec = require('../lib/workspace/gatesSpec.json');
 const pipelineSpec = require('../lib/workspace/pipelineSpec.json');
 const { bus, startDiskWatcher } = require('../lib/workspace/diskWatcher');
 const { startIndexer } = require('../lib/workspace/indexer');
+const actionRunner = require('../lib/workspace/actionRunner');
 
 const router = Router();
 
@@ -502,6 +503,37 @@ router.get('/workspace/builds/:buildId/files', (req, res) => {
     console.error('[workspace] /files failed:', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── P4: bounded actions (mutating — UI confirm-gates before POST) ────────────
+
+// POST /api/workspace/builds/:buildId/actions/rerun-gates — re-run STATIC gates
+// against the build (writes only to <build>/gate-reports/). Resolves the dir from
+// the known buildId (never a client path). The watcher + indexer pick up the new
+// reports automatically; this returns a runId to poll.
+router.post('/workspace/builds/:buildId/actions/rerun-gates', (req, res) => {
+  try {
+    const dir = resolveBuildDir(req.params.buildId);
+    if (!dir) return res.status(404).json({ error: 'build not found' });
+    const rec = actionRunner.runStaticGates({ buildId: req.params.buildId, dir });
+    res.status(202).json(rec);
+  } catch (err) {
+    console.error('[workspace] rerun-gates failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/workspace/actions/:runId — poll an action's status + log.
+router.get('/workspace/actions/:runId', (req, res) => {
+  const rec = actionRunner.getRun(req.params.runId);
+  if (!rec) return res.status(404).json({ error: 'run not found' });
+  res.json(rec);
+});
+
+// POST /api/workspace/actions/:runId/cancel — best-effort cancel.
+router.post('/workspace/actions/:runId/cancel', (req, res) => {
+  const ok = actionRunner.cancelRun(req.params.runId);
+  res.json({ cancelled: ok });
 });
 
 // GET /api/workspace/stream — SSE: gate:update / changes:update / lens:update /
