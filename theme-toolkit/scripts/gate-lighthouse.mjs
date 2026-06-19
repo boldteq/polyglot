@@ -283,12 +283,28 @@ async function main() {
         metrics[metric] = { value: roundValue(metric, raw), good: band.good, fail: band.fail, band: verdict }
         lineParts.push(`${metric}=${fmt(metric, raw)}`)
         if (verdict === 'block') {
-          blockers.push({
-            id: `lighthouse.${metric}`,
-            page: label,
-            detail: `${metric} ${fmt(metric, raw)} > fail ${fmt(metric, band.fail)} (good ≤ ${fmt(metric, band.good)})`,
-            evidence: `perfScore ${perfScore}; ${target.url}`,
-          })
+          // A `shopify theme dev` / localhost preview has no CDN/edge + hot-reload overhead, so its
+          // perf numbers are NOT representative of the published store (Meridian 2026-06-19: same store
+          // sampled 8-12s LCP on theme dev vs ~1.5s warm). Don't BLOCK publish on dev-server perf —
+          // demote to a warning + tell the operator to re-run on the published preview URL. (Same class
+          // as the functional dev-noise fix; doctrine: run URL gates against the preview-theme URL.)
+          let onDev = false
+          try { onDev = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:|$)/i.test(new URL(target.url).host) } catch { /* keep blocking */ }
+          if (onDev) {
+            warnings.push({
+              id: `lighthouse.${metric}.dev`,
+              page: label,
+              detail: `${metric} ${fmt(metric, raw)} on a DEV/localhost preview — perf is NOT representative (no CDN/edge, hot-reload overhead); demoted to a warning. Re-run against the PUBLISHED preview URL for a real perf verdict.`,
+              evidence: `perfScore ${perfScore}; ${target.url}`,
+            })
+          } else {
+            blockers.push({
+              id: `lighthouse.${metric}`,
+              page: label,
+              detail: `${metric} ${fmt(metric, raw)} > fail ${fmt(metric, band.fail)} (good ≤ ${fmt(metric, band.good)})`,
+              evidence: `perfScore ${perfScore}; ${target.url}`,
+            })
+          }
         } else if (verdict === 'warn') {
           warnings.push({
             id: `lighthouse.${metric}`,
