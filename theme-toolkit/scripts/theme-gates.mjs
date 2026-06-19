@@ -129,6 +129,13 @@ const GATES = [
   // Warns if the review artifact is absent in dev; BLOCKS at publish-grade (DS_REQUIRE_SCOPE) when
   // missing/unapproved/<min-confidence/any-fail. The judgment is onyx's; this enforces it mechanically.
   { name: 'visual-quality', number: 17, kind: 'static', runner: 'node', script: 'check-visual-quality.mjs' },
+  // Visual-truth (Lens · Layer 3) — the static ENFORCER of the Lens pass (lens-capture.mjs renders
+  // every surface; vision subagents judge each frame against its rubric). This gate aggregates
+  // gate-reports/lens/{lens-manifest,judge/*}.json → BLOCKS on render-error / overflow / broken image
+  // / judge FAIL / low-confidence / blocker finding / systemic cross-frame defect. Warns if the Lens
+  // pass is absent in dev; BLOCKS at publish-grade (DS_REQUIRE_SCOPE/LENS_REQUIRE). This is the
+  // pixels-actually-looked-right signal #17 (self-attestation) cannot give. mantle blocks publish on it.
+  { name: 'visual-truth', number: 18, kind: 'static', runner: 'node', script: 'check-visual-truth.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
