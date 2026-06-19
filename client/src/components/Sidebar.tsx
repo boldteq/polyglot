@@ -27,6 +27,7 @@ import {
   Inbox,
   Menu,
   X,
+  Eye,
 } from 'lucide-react'
 import type { Project } from '../types'
 import { useTheme } from '../contexts/ThemeContext'
@@ -307,6 +308,9 @@ export default function Sidebar({ projects }: SidebarProps) {
         </NavLink>
         <NavLink to="/orchestration" className={navLinkClass}>
           <Sparkles className="w-4 h-4" /> Orchestration
+        </NavLink>
+        <NavLink to="/lens" className={navLinkClass}>
+          <Eye className="w-4 h-4" /> Lens
         </NavLink>
 
         <NavSection label="Agents & Teams" />

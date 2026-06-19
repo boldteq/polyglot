@@ -40,6 +40,7 @@ const Setup         = React.lazy(() => import('./pages/Setup'))
 const Documentation = React.lazy(() => import('./pages/Documentation'))
 const MemoryHistory = React.lazy(() => import('./pages/MemoryHistory'))
 const LearningInbox = React.lazy(() => import('./pages/LearningInbox'))
+const Lens = React.lazy(() => import('./pages/Lens'))
 
 // Minimal page-level spinner shown while lazy chunk loads
 function PageLoader() {
@@ -75,6 +76,7 @@ export default function App() {
             <Route path="/agents" element={<AllAgents />} />
             <Route path="/orchestration" element={<Orchestration />} />
             <Route path="/playground" element={<Playground />} />
+            <Route path="/lens" element={<Lens />} />
             <Route path="/analytics" element={<AnalyticsHub />} />
             <Route path="/org-chart" element={<OrgChart />} />
             <Route path="/schedules" element={<SchedulesHub />} />

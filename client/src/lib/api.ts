@@ -124,6 +124,23 @@ export function sanitizeName(name: string): string {
 
 // Config
 export const getConfig = () => request<AppConfig>('/config')
+
+// ── Lens (Visual Truth Layer) ────────────────────────────────────────────────
+export interface LensFinding { check: string; severity: 'blocker' | 'warning'; evidence: string; fix_owner?: string; surface?: string; viewport?: string }
+export interface LensFrame {
+  surface: string; viewport: string; dims: string; rest: string | null; scrollEnd: string | null
+  facts: { nav: string; renderError: string | null; liquidError: string | null; overflowPx: number; brokenImages: number; emptyShells: number; cls: number | null; consoleErrors: number }
+  verdict: { verdict: 'PASS' | 'FAIL'; confidence: number; findings: LensFinding[] } | null
+}
+export interface LensLatest {
+  configured: boolean; present: boolean; dir: string | null; message?: string
+  store: string | null; capturedAt: number | null
+  gate18: { pass: boolean; blockers: { id: string; page: string; detail: string }[]; warnings: { id: string; detail: string }[] } | null
+  summary: { frames: number; fail: number; pass: number; unjudged: number }
+  frames: LensFrame[]; findingsByOwner: Record<string, LensFinding[]>
+}
+export const getLensLatest = (dir?: string) =>
+  request<LensLatest>(`/lens/latest${dir ? `?dir=${encodeURIComponent(dir)}` : ''}`)
 export const updateProjectDirs = (dirs: string[]) =>
   request('/config/project-dirs', { method: 'POST', body: JSON.stringify({ dirs }) })
 
