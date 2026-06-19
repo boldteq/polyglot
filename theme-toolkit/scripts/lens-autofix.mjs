@@ -81,6 +81,30 @@ function dispatchFix(owner, findings) {
   })
 }
 
+// porter store-data triage (opt-in). porter mutates the LIVE store, so this is gated: apply ONLY
+// safe/idempotent/unambiguous settings via porter's tooling; NEVER invent a brand name or products.
+function dispatchPorter(findings) {
+  const list = findings.map(f => `- [${f.surface}/${f.viewport}] ${f.check}: ${f.evidence} (screenshot: ${f.screenshot})`).join('\n')
+  const workorder = path.join(LENS_DIR, 'porter-workorder.md')
+  const prompt = [
+    `You are porter, the Shopify Admin store operator. Lens found STORE-DATA defects on the rendered store (NOT theme code). Working dir: ${cwd}.`,
+    `Defects:\n${list}`,
+    `CLASSIFY each defect, then act:`,
+    `  AUTO = a safe, idempotent, UNAMBIGUOUS store/theme setting you can apply via your gated tooling (e.g. a payment-icons display toggle, a known redirect) WITHOUT inventing content. Apply ONLY these — idempotently, never touching orders/customers/payments — and log them in CHANGES.md.`,
+    `  HUMAN = needs a real decision or real content you MUST NOT invent: a brand/store NAME (you don't know the confirmed brand), an EMPTY collection (needs real products merchandised), missing real photography. NEVER guess these — escalate them.`,
+    `Write a work-order to ${workorder}: a markdown checklist of the HUMAN items (what's wrong + exactly what porter/Yash must provide) and a list of any AUTO items you applied.`,
+    `Print one line: PORTER: applied=<n> escalated=<n>.`,
+  ].join('\n\n')
+  return new Promise((resolve) => {
+    let out = ''
+    const child = spawn(CLAUDE_BIN, ['-p', prompt, '--model', FIX_MODEL, '--no-session-persistence'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    child.stdout.on('data', d => { out += d.toString() })
+    child.stderr.on('data', d => { out += d.toString() })
+    child.on('error', e => resolve({ ok: false, note: `spawn failed: ${e.message}` }))
+    child.on('close', () => resolve({ ok: true, note: (out.match(/PORTER:[^\n]*/) || ['(triaged → porter-workorder.md)'])[0].slice(0, 160) }))
+  })
+}
+
 function escalate(findings, rounds) {
   const p = path.join(LENS_DIR, 'autofix-escalation.json')
   fs.writeFileSync(p, `${JSON.stringify({ rounds, unresolved: findings, ts_note: 'stamp at read time' }, null, 2)}\n`)
@@ -108,20 +132,30 @@ async function main() {
 
     const findings = blockerFindings()
     const code = findings.filter(f => CODE_OWNERS.has(f.fix_owner))
-    const data = findings.filter(f => DATA_OWNERS.has(f.fix_owner) || !CODE_OWNERS.has(f.fix_owner))
+    const data = findings.filter(f => !CODE_OWNERS.has(f.fix_owner)) // porter / store-data
     affected = [...new Set(findings.map(f => f.surface))]
+    const porterOptIn = process.env.LENS_AUTOFIX_PORTER === '1'
 
-    if (!code.length) { // only store-data / unfixable-in-code findings remain
-      console.log(`lens-autofix: no theme-code findings left to auto-fix (${data.length} store-data/escalation).`)
-      escalate(data, round); process.exit(1)
+    // nothing actionable this round → escalate + stop (store mutations stay gated unless opted in)
+    if (!code.length && !(data.length && porterOptIn)) {
+      console.log(`lens-autofix: no auto-fixable findings left (${data.length} store-data → porter/human).`)
+      escalate(data.length ? data : findings, round); process.exit(1)
     }
-    // dispatch one fix batch per code-owner (sequential — avoid concurrent edits to the same theme)
+    // theme-code owners → fix files (sequential — avoid concurrent edits to the same theme)
     const byOwner = {}
     for (const f of code) (byOwner[f.fix_owner] = byOwner[f.fix_owner] || []).push(f)
     for (const [owner, fs2] of Object.entries(byOwner)) {
       console.log(`  → ${owner}: fixing ${fs2.length} finding(s)…`)
       const r = await dispatchFix(owner, fs2)
       console.log(`    ${owner}: ${r.note}`)
+    }
+    // porter (store data) → opt-in triage: apply ONLY safe/idempotent AUTO items, NEVER invent a
+    // brand name / products; HUMAN items get a work-order (the last manual handoff, made actionable).
+    if (data.length && porterOptIn) {
+      console.log(`  → porter: triaging ${data.length} store-data finding(s) (LENS_AUTOFIX_PORTER=1)…`)
+      const r = await dispatchPorter(data); console.log(`    porter: ${r.note}`)
+    } else if (data.length) {
+      console.log(`  → porter: ${data.length} store-data finding(s) deferred (set LENS_AUTOFIX_PORTER=1 to auto-triage)`)
     }
     if (round === MAX_ROUNDS) { escalate(findings, round); console.log(`lens-autofix: ❌ not converged after ${MAX_ROUNDS} rounds.`); process.exit(1) }
   }
