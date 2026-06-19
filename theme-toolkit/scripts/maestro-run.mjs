@@ -41,22 +41,48 @@ export const JUDGE_PASS = 0
 export const JUDGE_FAIL = 1
 export const JUDGE_ENV = 2
 
-// Read the latest per-surface Lens findings (written by lens-judge → gate-reports/lens/). Tolerant:
-// returns [] when absent (fake-spawn fixture, or a defect with no machine report) — the loop still
-// redrafts on a bare FAIL, just without itemised fix_owners.
+// Read the latest per-surface Lens findings so the redraft is routed by fix_owner. THE CONTRACT:
+// lens-judge writes ONE verdict file per FRAME at gate-reports/lens/judge/<surface>-<viewport>.json
+// (shape {surface, viewport, verdict, confidence, findings:[{check, severity, evidence, fix_owner}]}).
+// A surface's findings = the union across its viewport frames (mobile + desktop). Reading a bare
+// lens/<surface>.json (which lens-judge never writes) silently lost every routed finding — so the
+// PRIMARY source is the judge/ dir; the legacy aggregate paths + visual-truth.json remain fallbacks.
+// Tolerant: returns [] when absent — the loop still redrafts on a bare FAIL, just without fix_owners.
 function readLensFindings(dir, reportDir, surface) {
+  const out = []
+  const seen = new Set()
+  const push = (arr) => { for (const f of (arr || [])) { if (!f) continue; const k = `${f.check || f.title || ''}|${f.evidence || f.detail || ''}`; if (seen.has(k)) continue; seen.add(k); out.push(f) } }
+
+  // primary — per-frame judge verdicts (lens/judge/<surface>-<viewport>.json), unioned across viewports
+  const judgeDir = path.resolve(dir, reportDir, 'lens', 'judge')
+  try {
+    for (const fname of fs.readdirSync(judgeDir)) {
+      if (!fname.startsWith(`${surface}-`) || !fname.endsWith('.json')) continue
+      try {
+        const v = JSON.parse(fs.readFileSync(path.join(judgeDir, fname), 'utf-8'))
+        if (v && v.surface === surface && Array.isArray(v.findings)) push(v.findings)
+      } catch { /* skip a bad frame file */ }
+    }
+  } catch { /* no judge dir (fake-spawn fixture / capture not run) */ }
+  if (out.length) return out
+
+  // fallback — legacy aggregate locations + the enforce gate's visual-truth.json (blockers carry page)
   for (const rel of [
     path.join(reportDir, 'lens', `${surface}.json`),
     path.join(reportDir, 'lens', 'verdict.json'),
     path.join(reportDir, 'lens', 'findings.json'),
+    path.join(reportDir, 'lens', 'visual-truth.json'),
+    path.join(reportDir, 'visual-truth.json'),
   ]) {
     try {
       const obj = JSON.parse(fs.readFileSync(path.resolve(dir, rel), 'utf-8'))
-      const f = Array.isArray(obj) ? obj : (obj.findings || obj.surfaces?.[surface]?.findings || [])
-      if (Array.isArray(f) && f.length) return f
+      let f = Array.isArray(obj) ? obj : (obj.findings || obj.blockers || obj.surfaces?.[surface]?.findings || [])
+      f = f.filter(x => !x.page || x.page === surface)
+        .map(x => (x.check ? x : { check: x.id || 'finding', severity: x.severity || 'blocker', evidence: x.detail || x.evidence || '', fix_owner: x.fix_owner || '' }))
+      if (f.length) return f
     } catch { /* missing/parse — try next */ }
   }
-  return []
+  return out
 }
 
 // ── makeRealDeps: the production wiring (injectable spawn for hermetic testing) ──

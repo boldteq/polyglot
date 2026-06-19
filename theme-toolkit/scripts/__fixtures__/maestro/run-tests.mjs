@@ -180,6 +180,25 @@ console.log('case j — budget breaker escalates remaining surfaces (no runaway 
   eq(!cartDraft, true, 'cart never drafted (no claude spawn) once over budget')
 }
 
+// ── case (k): the REAL Lens findings contract — read lens/judge/<surface>-<vp>.json, union viewports ──
+console.log('case k — redraft reads lens-judge\'s per-frame files (gate-reports/lens/judge/) + unions viewports')
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-k-'))
+  const judgeDir = path.join(tmp, 'gate-reports', 'lens', 'judge')
+  fs.mkdirSync(judgeDir, { recursive: true })
+  // lens-judge writes ONE file per frame; a surface's findings = union across its viewports
+  fs.writeFileSync(path.join(judgeDir, 'home-mobile.json'), JSON.stringify({ surface: 'home', viewport: 'mobile', verdict: 'FAIL', confidence: 55, findings: [{ check: 'hero-contrast', severity: 'blocker', evidence: 'amber on cream fails AA', fix_owner: 'loom' }] }))
+  fs.writeFileSync(path.join(judgeDir, 'home-desktop.json'), JSON.stringify({ surface: 'home', viewport: 'desktop', verdict: 'FAIL', confidence: 60, findings: [{ check: 'cta-size', severity: 'warning', evidence: 'CTA below fold on desktop', fix_owner: 'drape' }] }))
+  const { spawn, calls } = fakeSpawnWith((s, n) => (n > 1 ? 0 : 1)) // FAIL round 1, PASS round 2
+  const deps = makeRealDeps({ spawn, env: ENV, dir: tmp, render: 'dev', claudeBin: 'claude' })
+  const res = await runMaestro({ deps, surfaces: ['home'], dir: tmp, writeReportFile: false })
+  eq(res.converged, ['home'], 'home converged on round 2')
+  const round2Prompt = calls.filter(c => isDraft(c.cmd))[1]?.args[1] || ''
+  eq(/hero-contrast/.test(round2Prompt), true, 'round-2 draft carries the mobile-frame finding (judge-dir contract)')
+  eq(/cta-size/.test(round2Prompt), true, 'round-2 draft also carries the desktop-frame finding (viewports unioned)')
+  fs.rmSync(tmp, { recursive: true, force: true })
+}
+
 // ── case (g): the loop ALGORITHM proof (maestro-dryrun) rides this gate ──
 console.log('case g — maestro-dryrun.mjs (algorithm proof) exits 0')
 {
