@@ -22,6 +22,75 @@ function resolveReportDir(override) {
 function readJson(p) { try { return JSON.parse(fs.readFileSync(p, 'utf-8')); } catch { return null; } }
 function vpKey(vp) { const s = String(vp || ''); return s.includes('375') ? 'mobile' : s.includes('768') ? 'tablet' : s.includes('1440') ? 'desktop' : s; }
 
+// Roots scanned to auto-discover client builds. Configurable via app_config
+// "lens.builds_root" (comma-separated) or LENS_BUILDS_ROOT env; defaults cover
+// the Shopify Task client folders + the Polyglot self-build.
+function buildsRoots() {
+  const cfg = configService.getConfig('lens.builds_root') || process.env.LENS_BUILDS_ROOT || '';
+  const fromCfg = String(cfg).split(',').map((s) => s.trim()).filter(Boolean);
+  if (fromCfg.length) return fromCfg.map((r) => path.resolve(r));
+  const home = process.env.HOME || '';
+  return [
+    home && path.join(home, 'Desktop', 'Shopify Task'),
+    path.resolve(process.cwd()),                                   // Polyglot self-build
+    path.resolve(process.cwd(), 'data'),                           // bundled lens-sample
+  ].filter(Boolean);
+}
+
+// Walk a root (≤4 deep) collecting every dir that contains a gate-reports/lens
+// folder. Returns the gate-reports dir (what /lens/latest?dir= expects).
+function discoverReportDirs(root, depth = 0, out = []) {
+  if (depth > 4 || !fs.existsSync(root)) return out;
+  let entries; try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { return out; }
+  // direct hit: <root>/gate-reports/lens
+  const gr = path.join(root, 'gate-reports');
+  if (fs.existsSync(path.join(gr, 'lens')) || fs.existsSync(path.join(gr, 'visual-truth.json'))) out.push(gr);
+  // the bundled sample is itself a reports dir (no gate-reports wrapper)
+  if (fs.existsSync(path.join(root, 'lens')) && path.basename(root) === 'lens-sample') out.push(root);
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    if (e.name === 'node_modules' || e.name === '.git' || e.name === 'gate-reports') continue;
+    discoverReportDirs(path.join(root, e.name), depth + 1, out);
+  }
+  return out;
+}
+
+// A short client label for a reports dir (parent folder, sample-aware).
+function clientLabel(reportsDir) {
+  if (path.basename(reportsDir) === 'lens-sample') return 'sample';
+  return path.basename(path.dirname(reportsDir)) || reportsDir;
+}
+
+// GET /api/lens/runs — auto-discovered list of builds with a Lens result, each
+// with a lightweight verdict summary for the store switcher / grid.
+router.get('/lens/runs', (_req, res) => {
+  const seen = new Set();
+  const runs = [];
+  for (const root of buildsRoots()) {
+    for (const dir of discoverReportDirs(root)) {
+      const abs = path.resolve(dir);
+      if (seen.has(abs)) continue;
+      seen.add(abs);
+      const lensDir = path.join(abs, 'lens');
+      const manifest = readJson(path.join(lensDir, 'lens-manifest.json'));
+      const gate18 = readJson(path.join(abs, 'visual-truth.json')) || readJson(path.join(lensDir, 'visual-truth.json'));
+      runs.push({
+        dir: abs,
+        client: clientLabel(abs),
+        store: (manifest && manifest.previewUrl) || null,
+        capturedAt: (manifest && manifest.capturedAt_ms) || null,
+        pass: gate18 ? !!gate18.pass : null,
+        blockers: gate18 && Array.isArray(gate18.blockers) ? gate18.blockers.length : 0,
+        present: !!manifest,
+      });
+    }
+  }
+  // active = whatever /lens/latest currently resolves to, so the UI can pre-select it
+  const active = resolveReportDir(null);
+  runs.sort((a, b) => (b.capturedAt || 0) - (a.capturedAt || 0));
+  res.json({ active, runs });
+});
+
 // GET /api/lens/latest[?dir=<reports dir>] — the assembled Lens view for the configured/last run.
 router.get('/lens/latest', (req, res) => {
   const dir = resolveReportDir(typeof req.query.dir === 'string' ? req.query.dir : null);
@@ -94,4 +163,5 @@ router.get('/lens/frame', (req, res) => {
   fs.createReadStream(abs).pipe(res);
 });
 
-module.exports = { router };
+// Reused by the Workspace panel (per-platform build discovery) — same logic, no duplication.
+module.exports = { router, buildsRoots, discoverReportDirs, clientLabel, readJson };

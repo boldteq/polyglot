@@ -142,6 +142,83 @@ export interface LensLatest {
 export const getLensLatest = (dir?: string) =>
   request<LensLatest>(`/lens/latest${dir ? `?dir=${encodeURIComponent(dir)}` : ''}`)
 
+export interface LensRun {
+  dir: string; client: string; store: string | null; capturedAt: number | null
+  pass: boolean | null; blockers: number; present: boolean
+}
+export const getLensRuns = () => request<{ active: string | null; runs: LensRun[] }>(`/lens/runs`)
+
+// ── Workspace (per-platform observability panel) ──────────────────────────────
+export interface WorkspaceBuild {
+  dir: string; platform: string; client: string; store: string | null
+  capturedAt: number | null; pass: boolean | null; blockers: number; present: boolean
+}
+export interface WorkspaceData {
+  platform: string; label: string
+  builds: WorkspaceBuild[]
+  agents: { runs: number; costUsd: number; sinceDays: number; byAgent: { agentName: string; runs: number; costUsd: number }[] }
+  summary: { builds: number; clients: number; blocked: number; passed: number }
+}
+export const getWorkspacePlatforms = () =>
+  request<{ platforms: { id: string; label: string }[] }>(`/workspace/platforms`)
+export const getWorkspace = (platform: string) =>
+  request<WorkspaceData>(`/workspace/${encodeURIComponent(platform)}`)
+
+// P0 — assembled + scored builds
+export interface ScoreLine { key: string; weight: number; earned: number; detail: string }
+export interface AssembledBuild {
+  buildId: string; dir: string; platform: string; client: string
+  store: string | null; capturedAt: number | null; present: boolean
+  lensVerdict: 'pass' | 'block' | null
+  gates: { total: number; passed: number; blockersOpen: number }
+  changes: { present: boolean; rate: number; checked: number; total: number }
+  step: { current: number; reached: number; total: number }
+  score: number; grade: string; scoreBreakdown: ScoreLine[]; pending: string[]; maxRealistic: number
+}
+export interface EscalationBuild extends AssembledBuild { reasons: string[] }
+export const getWorkspaceBuilds = () =>
+  request<{ builds: AssembledBuild[]; summary: { total: number; passing: number; blocked: number; avgScore: number } }>(`/workspace/builds`)
+export const getWorkspaceClients = () =>
+  request<{ clients: { client: string; platform: string; store: string | null; builds: number; blocked: number; bestScore: number; lastCapturedAt: number | null }[]; summary: { total: number } }>(`/workspace/clients`)
+export const getWorkspaceEscalations = () =>
+  request<{ escalations: EscalationBuild[]; summary: { total: number } }>(`/workspace/escalations`)
+
+// P1 — Build Detail sections
+export interface BuildAgentActivity { runs: number; costUsd: number; sinceDays: number; correlation: string; note: string; byAgent: { agentName: string; runs: number; costUsd: number }[] }
+export interface BuildDetail { build: AssembledBuild; artifacts: Record<string, boolean>; agents: BuildAgentActivity }
+export const getWorkspaceBuild = (buildId: string) =>
+  request<BuildDetail>(`/workspace/builds/${encodeURIComponent(buildId)}`)
+
+export interface PipelineStep { step: number; key: string; title: string; owner: string; artifact: string; status: 'done' | 'current' | 'pending'; artifactExists: boolean }
+export const getWorkspaceBuildPipeline = (buildId: string) =>
+  request<{ current: number; total: number; steps: PipelineStep[] }>(`/workspace/builds/${encodeURIComponent(buildId)}/pipeline`)
+
+export interface GateFinding { text: string; severity: string }
+export interface GateDetail { number: number | null; name: string; kind: string; blocking: boolean; status: 'pass' | 'fail' | 'missing' | 'warn'; findings: GateFinding[]; reportFile: string; ts: string | null }
+export const getWorkspaceBuildGates = (buildId: string) =>
+  request<{ total: number; reported: number; passed: number; failed: number; missing: number; gates: GateDetail[] }>(`/workspace/builds/${encodeURIComponent(buildId)}/gates`)
+
+// P2 — CHANGES / Agents / Schedules / Results / Files
+export interface ChangesData { present: boolean; total: number; checked: number; rate: number; waivers: string[]; items: { checked: boolean; text: string }[] }
+export const getWorkspaceBuildChanges = (buildId: string) =>
+  request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes`)
+
+export const getWorkspaceBuildAgents = (buildId: string) =>
+  request<BuildAgentActivity>(`/workspace/builds/${encodeURIComponent(buildId)}/agents`)
+
+export interface ScheduleRow { id?: string; name?: string; [k: string]: unknown }
+export const getWorkspaceBuildSchedules = (buildId: string) =>
+  request<{ schedules: ScheduleRow[]; total: number; note: string | null }>(`/workspace/builds/${encodeURIComponent(buildId)}/schedules`)
+
+export interface ResultsData { present: boolean; meta: Record<string, string>; tables: { header: string[]; rows: string[][] }[] }
+export const getWorkspaceBuildResults = (buildId: string) =>
+  request<ResultsData>(`/workspace/builds/${encodeURIComponent(buildId)}/results`)
+
+export interface FileNode { name: string; path: string; dir?: boolean }
+export interface FilesData { buildDir: string; topFiles: { name: string; path: string }[]; tree: { name: string; path: string; children: FileNode[] }[] }
+export const getWorkspaceBuildFiles = (buildId: string) =>
+  request<FilesData>(`/workspace/builds/${encodeURIComponent(buildId)}/files`)
+
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
 export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }
 export interface ProjectPage { slug: string; title: string; status: string; preview_url: string | null; gates: Record<string, unknown>; updated_at: string | null }

@@ -5,7 +5,6 @@ import {
   Bot,
   FolderOpen,
   Settings,
-  Zap,
   Sparkles,
   FlaskConical,
   Sun,
@@ -27,10 +26,9 @@ import {
   Inbox,
   Menu,
   X,
-  Eye,
-  Store,
 } from 'lucide-react'
 import type { Project } from '../types'
+import ModeSwitcher from './ModeSwitcher'
 import { useTheme } from '../contexts/ThemeContext'
 import { getErrorLogCount, subscribeLogStream, getLearningInboxCounts, subscribeLearningStream, getSystemStatus } from '../lib/api'
 import { usePrefetch } from '../hooks/usePrefetch'
@@ -252,12 +250,7 @@ export default function Sidebar({ projects }: SidebarProps) {
       {/* Logo */}
       <div className="px-4 py-3.5 border-b border-border-subtle">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center shrink-0 shadow-soft">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <h1 className="text-base font-bold tracking-tight">Polyglot</h1>
-          </div>
+          <ModeSwitcher mode="polyglot" />
           <div className="flex items-center gap-0.5 shrink-0">
             {/* Mobile-only close button */}
             <button
@@ -309,12 +302,6 @@ export default function Sidebar({ projects }: SidebarProps) {
         </NavLink>
         <NavLink to="/orchestration" className={navLinkClass}>
           <Sparkles className="w-4 h-4" /> Orchestration
-        </NavLink>
-        <NavLink to="/lens" className={navLinkClass}>
-          <Eye className="w-4 h-4" /> Lens
-        </NavLink>
-        <NavLink to="/shopify" className={navLinkClass}>
-          <Store className="w-4 h-4" /> Shopify Stores
         </NavLink>
 
         <NavSection label="Agents & Teams" />

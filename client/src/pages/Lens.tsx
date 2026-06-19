@@ -3,7 +3,7 @@ import { Eye, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { Spinner } from '../components/Skeleton'
-import { getLensLatest, type LensLatest, type LensFrame } from '../lib/api'
+import { getLensLatest, getLensRuns, type LensLatest, type LensFrame, type LensRun } from '../lib/api'
 
 function FactBadges({ facts }: { facts: LensFrame['facts'] }) {
   const items: string[] = []
@@ -23,30 +23,65 @@ export default function Lens() {
   const [data, setData] = useState<LensLatest | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [runs, setRuns] = useState<LensRun[]>([])
+  const [selectedDir, setSelectedDir] = useState<string | null>(null)
 
-  const load = useCallback(() => {
+  const load = useCallback((dir?: string | null) => {
     setLoading(true); setError(null)
-    getLensLatest()
-      .then(setData)
+    getLensLatest(dir || undefined)
+      .then((d) => { setData(d); setSelectedDir(d.dir) })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load Lens'))
       .finally(() => setLoading(false))
   }, [])
-  useEffect(() => { load() }, [load])
+
+  // discover every client build with a Lens result for the store switcher
+  const loadRuns = useCallback(() => {
+    getLensRuns()
+      .then((r) => setRuns(r.runs))
+      .catch((e) => console.error('[lens] runs fetch failed:', e instanceof Error ? e.message : e))
+  }, [])
+
+  // honor ?dir= deep-link (e.g. from the Workspace builds list) on first mount
+  useEffect(() => {
+    const dir = new URLSearchParams(window.location.search).get('dir')
+    load(dir); loadRuns()
+  }, [load, loadRuns])
 
   const verdict = data?.gate18 ? (data.gate18.pass ? 'PASS' : 'BLOCK') : null
+
+  const switcher = runs.length > 1 ? (
+    <select
+      value={selectedDir ?? ''}
+      onChange={(e) => load(e.target.value)}
+      className="input input-sm max-w-[260px]"
+      title="Switch client build"
+    >
+      {!runs.some((r) => r.dir === selectedDir) && selectedDir && <option value={selectedDir}>current</option>}
+      {runs.map((r) => (
+        <option key={r.dir} value={r.dir}>
+          {r.client}{r.pass === null ? '' : r.pass ? ' · PASS' : ` · BLOCK (${r.blockers})`}
+        </option>
+      ))}
+    </select>
+  ) : null
 
   return (
     <PageShell
       title="Lens — Visual Truth"
-      subtitle={data?.store ? `Last run · ${data.store}` : 'Visual-quality layer · capture → judge → enforce → autofix'}
-      actions={<button onClick={load} className="btn-ghost btn-sm flex items-center gap-1.5"><RefreshCw className="w-4 h-4" />Refresh</button>}
+      subtitle={data?.store ? `${data.store}` : 'Visual-quality layer · capture → judge → enforce → autofix'}
+      actions={
+        <div className="flex items-center gap-2">
+          {switcher}
+          <button onClick={() => { load(selectedDir); loadRuns() }} className="btn-ghost btn-sm flex items-center gap-1.5"><RefreshCw className="w-4 h-4" />Refresh</button>
+        </div>
+      }
     >
       {loading ? (
         <Spinner />
       ) : error ? (
         <div className="card p-6 text-red flex items-center gap-2">
           <AlertTriangle className="w-5 h-5" />{error}
-          <button onClick={load} className="underline ml-2">Retry</button>
+          <button onClick={() => load(selectedDir)} className="underline ml-2">Retry</button>
         </div>
       ) : !data?.present ? (
         <EmptyState

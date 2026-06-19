@@ -111,6 +111,7 @@ const { router: learningRouter } = require('./routes/learning');
 const { router: brainRouter } = require('./routes/brain');
 const { router: lensRouter } = require('./routes/lens');
  const { router: shopifyRouter } = require('./routes/shopify');
+const { router: workspaceRouter, startWatcher: startWorkspaceWatcher } = require('./routes/workspace');
 const { router: orgHrRouter, org, experience, hr, loadRecentAgentRuns } = require('./routes/orgHr');
 const dbExplorerRouter = require('./routes/dbExplorer');
 const healthRouter = require('./routes/health');
@@ -142,6 +143,7 @@ app.use('/api', learningRouter);
 app.use('/api', brainRouter);
 app.use('/api', lensRouter);
  app.use('/api', shopifyRouter);
+app.use('/api', workspaceRouter);
 app.use('/api', orgHrRouter);
 app.use('/api', dbExplorerRouter);
 app.use('/api', healthRouter);
@@ -290,6 +292,10 @@ app.listen(PORT, HOST, () => {
   } catch (err) {
     console.log(`  AgentSync: failed to start — ${err.message}`);
   }
+
+  // Workspace dashboard: watch build artifacts (gate-reports/*.json, CHANGES.md)
+  // for live SSE updates on /api/workspace/stream.
+  try { startWorkspaceWatcher(); } catch (err) { console.log(`  Workspace watcher: failed — ${err.message}`); }
 
   // Org JSON file-watcher: re-seed registry + departments into SQLite when the
   // source-of-truth files at ~/.claude/org/ change on disk. Lets users edit

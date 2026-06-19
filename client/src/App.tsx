@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { Sparkles, X } from 'lucide-react'
 import ErrorBoundary from './components/ErrorBoundary'
 import Sidebar from './components/Sidebar'
+import WorkspaceShell from './components/WorkspaceShell'
 import AiAssistant from './components/AiAssistant'
 import { ToastContainer } from './components/Toast'
 import { ConfirmHost } from './lib/confirm'
@@ -41,6 +42,12 @@ const Documentation = React.lazy(() => import('./pages/Documentation'))
 const MemoryHistory = React.lazy(() => import('./pages/MemoryHistory'))
 const LearningInbox = React.lazy(() => import('./pages/LearningInbox'))
 const Lens = React.lazy(() => import('./pages/Lens'))
+const Workspace = React.lazy(() => import('./pages/Workspace'))
+const WorkspaceBuilds = React.lazy(() => import('./pages/WorkspaceBuilds'))
+const WorkspaceClients = React.lazy(() => import('./pages/WorkspaceClients'))
+const WorkspaceBuildDetail = React.lazy(() => import('./pages/WorkspaceBuildDetail'))
+const WorkspaceEscalations = React.lazy(() => import('./pages/WorkspaceEscalations'))
+const WorkspaceResults = React.lazy(() => import('./pages/WorkspaceResults'))
 const Shopify = React.lazy(() => import('./pages/Shopify'))
 const StorePreview = React.lazy(() => import('./pages/StorePreview'))
 
@@ -67,6 +74,29 @@ export default function App() {
   return (
     <ThemeProvider>
     <BrowserRouter>
+      <Routes>
+        {/* WORKSPACE MODE — own shell + sidebar, isolated from Polyglot */}
+        <Route path="/workspace/*" element={
+          <WorkspaceShell>
+            <RouteErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Workspace />} />
+              <Route path="/builds" element={<WorkspaceBuilds />} />
+              <Route path="/builds/:buildId" element={<WorkspaceBuildDetail />} />
+              <Route path="/clients" element={<WorkspaceClients />} />
+              <Route path="/escalations" element={<WorkspaceEscalations />} />
+              <Route path="/results" element={<WorkspaceResults />} />
+              <Route path="/lens" element={<Lens />} />
+              <Route path="*" element={<Navigate to="/workspace" replace />} />
+            </Routes>
+            </Suspense>
+            </RouteErrorBoundary>
+          </WorkspaceShell>
+        } />
+
+        {/* POLYGLOT MODE — default shell + sidebar */}
+        <Route path="/*" element={
       <div className="flex min-h-screen">
         <Sidebar projects={projects || []} />
         <main className="flex-1 min-w-0 h-screen overflow-y-auto">
@@ -78,7 +108,7 @@ export default function App() {
             <Route path="/agents" element={<AllAgents />} />
             <Route path="/orchestration" element={<Orchestration />} />
             <Route path="/playground" element={<Playground />} />
-            <Route path="/lens" element={<Lens />} />
+            <Route path="/lens" element={<Navigate to="/workspace/lens" replace />} />
             <Route path="/shopify" element={<Shopify />} />
             <Route path="/shopify/:id" element={<StorePreview />} />
             <Route path="/analytics" element={<AnalyticsHub />} />
@@ -118,31 +148,33 @@ export default function App() {
           </Suspense>
           </RouteErrorBoundary>
         </main>
+      </div>
+        } />
+      </Routes>
 
-        {/* Global overlays */}
-        <CommandPalette />
-        <ToastContainer />
-        <ConfirmHost />
+      {/* Global overlays — shared across both modes */}
+      <CommandPalette />
+      <ToastContainer />
+      <ConfirmHost />
 
-        {/* AI assistant */}
-        {aiOpen && (
-          <div className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm flex items-end justify-end p-6">
-            <div className="w-[480px] max-w-full bg-surface border border-border rounded-2xl shadow-pop flex flex-col max-h-[80vh]">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-                <span className="text-sm font-semibold flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-accent" /> AI Assistant
-                </span>
-                <button onClick={() => setAiOpen(false)} aria-label="Close AI assistant" className="text-text-muted hover:text-text">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <AiAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
-              </div>
+      {/* AI assistant */}
+      {aiOpen && (
+        <div className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm flex items-end justify-end p-6">
+          <div className="w-[480px] max-w-full bg-surface border border-border rounded-2xl shadow-pop flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+              <span className="text-sm font-semibold flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-accent" /> AI Assistant
+              </span>
+              <button onClick={() => setAiOpen(false)} aria-label="Close AI assistant" className="text-text-muted hover:text-text">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <AiAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </BrowserRouter>
     </ThemeProvider>
   )
