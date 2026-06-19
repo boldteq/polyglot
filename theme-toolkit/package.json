@@ -44,7 +44,8 @@
     "lens:autofix": "node scripts/lens-autofix.mjs",
     "ds:css": "node scripts/generate-design-system-css.mjs",
     "overrides:check": "node scripts/check-client-overrides.mjs",
-    "build-state": "node scripts/build-state.mjs"
+    "build-state": "node scripts/build-state.mjs",
+    "maestro:dryrun": "node scripts/maestro-dryrun.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",
