@@ -42,8 +42,12 @@ function fakeSpawnWith(judgeExit, { draftExit = () => 0 } = {}) {
   const calls = []
   const perSurface = new Map()
   const spawn = (cmd, args, opts) => {
-    calls.push({ cmd, args: args || [], env: opts?.env || {} })
-    if (isDraft(cmd)) return { status: draftExit(args), stdout: 'edited', stderr: '' }
+    calls.push({ cmd, args: args || [], env: opts?.env || {}, timeout: opts?.timeout })
+    if (isDraft(cmd)) {
+      const ex = draftExit(args)
+      if (ex && typeof ex === 'object' && ex.error) return { error: ex.error, status: null, stdout: '', stderr: '' } // timeout-shaped
+      return { status: ex, stdout: 'edited', stderr: '' }
+    }
     if (isJudge(args)) {
       const surface = (args || []).find(a => !a.startsWith('-') && !a.endsWith('.mjs'))
       const n = (perSurface.get(surface) || 0) + 1
@@ -135,6 +139,45 @@ console.log('case f — render=push pushes the theme before judging')
   const deps = makeRealDeps({ spawn, env: ENV, dir: '/tmp/maestro-f', render: 'push', claudeBin: 'claude' })
   await runMaestro({ deps, surfaces: ['home'], dir: '/tmp/maestro-f', writeReportFile: false })
   eq(calls.some(c => isPush(c.args)), true, 'theme:push invoked in render=push mode')
+}
+
+// ── case (h): per-subprocess timeouts are threaded to spawn (unattended safety) ──
+console.log('case h — configurable timeouts reach the draft/judge/record spawns')
+{
+  const { spawn, calls } = fakeSpawnWith(() => 0)
+  const deps = makeRealDeps({ spawn, env: ENV, dir: '/tmp/maestro-h', render: 'dev', claudeBin: 'claude',
+    timeouts: { draft: 11111, judge: 22222, record: 33333 } })
+  await runMaestro({ deps, surfaces: ['home'], dir: '/tmp/maestro-h', writeReportFile: false })
+  eq(calls.find(c => isDraft(c.cmd)).timeout, 11111, 'draft spawn got its timeout')
+  eq(calls.find(c => isJudge(c.args)).timeout, 22222, 'judge spawn got its timeout')
+  eq(calls.find(c => isRecord(c.args)).timeout, 33333, 'record spawn got its timeout')
+}
+
+// ── case (i): a draft TIMEOUT (spawn returns an error) isolates the surface ──
+console.log('case i — a hung draft (spawn error/timeout) isolates the surface; loop continues')
+{
+  const { spawn } = fakeSpawnWith(() => 0, { draftExit: (args) => (/home/.test(argStr(args)) ? { error: new Error('spawnSync ETIMEDOUT') } : 0) })
+  const deps = makeRealDeps({ spawn, env: ENV, dir: '/tmp/maestro-i', render: 'dev', claudeBin: 'claude' })
+  const res = await runMaestro({ deps, surfaces: ['home', 'pdp'], dir: '/tmp/maestro-i', writeReportFile: false })
+  eq(res.surfaces.find(s => s.surface === 'home').status, 'error', 'timed-out draft → status=error (not a hang)')
+  eq(res.surfaces.find(s => s.surface === 'home').error?.includes('ETIMEDOUT'), true, 'timeout reason captured')
+  eq(res.converged, ['pdp'], 'pdp still converged after the hung surface was isolated')
+}
+
+// ── case (j): wall-clock budget breaker — surfaces past the deadline escalate without drafting ──
+console.log('case j — budget breaker escalates remaining surfaces (no runaway overnight)')
+{
+  const { spawn, calls } = fakeSpawnWith(() => 0)
+  // injected clock: t=0 at init, then jumps past the 1000ms budget before surface 2's draft
+  let t = 0
+  const now = () => { const v = t; t += 700; return v } // 0, 700, 1400(>1000), ...
+  const deps = makeRealDeps({ spawn, env: ENV, dir: '/tmp/maestro-j', render: 'dev', claudeBin: 'claude', budgetMs: 1000, now })
+  const res = await runMaestro({ deps, surfaces: ['home', 'pdp', 'cart'], dir: '/tmp/maestro-j', writeReportFile: false })
+  eq(res.converged, ['home'], 'only the first surface (within budget) converged')
+  eq(res.surfaces.find(s => s.surface === 'pdp').status, 'error', 'pdp escalated on budget breach')
+  eq(res.surfaces.find(s => s.surface === 'pdp').error?.includes('budget'), true, 'budget reason captured')
+  const cartDraft = calls.find(c => isDraft(c.cmd) && /cart/.test(argStr(c.args)))
+  eq(!cartDraft, true, 'cart never drafted (no claude spawn) once over budget')
 }
 
 // ── case (g): the loop ALGORITHM proof (maestro-dryrun) rides this gate ──

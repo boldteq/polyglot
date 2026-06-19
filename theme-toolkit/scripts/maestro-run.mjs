@@ -71,16 +71,31 @@ export function makeRealDeps(opts = {}) {
     previewUrl = env.THEME_PREVIEW_URL || env.LENS_PREVIEW_URL || null,
     dryDraft = false, // --dry: skip the claude consultant (wiring smoke only)
     log = () => {},
+    // Unattended safety: every subprocess is bounded so a hung claude/theme-push/lens kills itself
+    // (→ the surface escalates via the existing error handling) instead of freezing the overnight run.
+    timeouts = {},
+    // Optional wall-clock budget breaker: once `budgetMs` of total run time elapses, every further
+    // draft short-circuits → remaining surfaces escalate cleanly (no runaway overnight). 0 = off.
+    budgetMs = Number(env.MAESTRO_BUDGET_MS) || 0,
+    now = () => Date.now(), // injectable clock (the budget breaker is the only Date.now() user)
   } = opts
+  const TO = {
+    draft: timeouts.draft ?? (Number(env.MAESTRO_DRAFT_TIMEOUT_MS) || 600_000),   // 10 min
+    render: timeouts.render ?? (Number(env.MAESTRO_RENDER_TIMEOUT_MS) || 300_000), // 5 min
+    judge: timeouts.judge ?? (Number(env.MAESTRO_JUDGE_TIMEOUT_MS) || 300_000),   // 5 min
+    record: timeouts.record ?? (Number(env.MAESTRO_RECORD_TIMEOUT_MS) || 60_000), // 1 min
+  }
+  const deadline = budgetMs ? now() + budgetMs : null
 
-  const run = (cmd, args, extraEnv) =>
-    spawn(cmd, args, { cwd: dir, encoding: 'utf-8', env: { ...env, ...extraEnv } })
+  const run = (cmd, args, extraEnv, timeout) =>
+    spawn(cmd, args, { cwd: dir, encoding: 'utf-8', env: { ...env, ...extraEnv }, timeout, killSignal: 'SIGKILL' })
 
   // draft: the consultant edits the theme for this surface. round-1 = build; round-N>1 = fix the
   // carried Lens findings. Autonomous (no human) via headless claude. A non-zero claude exit or a
   // missing binary returns { ok:false } → loop records 'error' for the surface and continues.
   const draft = (surface, round, ctx) => {
     if (dryDraft) return { ok: true }
+    if (deadline != null && now() > deadline) return { ok: false, error: `budget exceeded (${Math.round(budgetMs / 60000)}min) — escalating remaining surfaces` }
     const findings = ctx.lastFindings || []
     const prompt = [
       `You are the Maestro consultant for the "${surface}" surface of a Shopify theme build.`,
@@ -90,7 +105,7 @@ export function makeRealDeps(opts = {}) {
         : `Round ${round}: build/refine "${surface}" to render premium, on-brand, and pass Lens. Bind docs/design/design-system.json tokens. Only substantiated claims (no invented stats/urgency).`,
       `Edit theme files directly. Output only a one-line summary of what you changed.`,
     ].filter(Boolean).join('\n\n')
-    const r = run(claudeBin, ['-p', prompt, '--permission-mode', 'acceptEdits'], {})
+    const r = run(claudeBin, ['-p', prompt, '--permission-mode', 'acceptEdits'], {}, TO.draft)
     if (r.error) return { ok: false, error: `consultant unavailable: ${r.error.message}` }
     if ((r.status ?? 1) !== 0) return { ok: false, error: `consultant exited ${r.status}: ${(r.stderr || '').trim().slice(0, 200)}` }
     return { ok: true }
@@ -100,7 +115,7 @@ export function makeRealDeps(opts = {}) {
   // auto-reloads on edit → no push needed, just carry the URL. 'push' = push to the linked theme.
   const render = (surface, ctx) => {
     if (renderMode === 'push') {
-      const r = run(process.execPath, [scriptPath('shopify-theme-push.mjs')], {})
+      const r = run(process.execPath, [scriptPath('shopify-theme-push.mjs')], {}, TO.render)
       if (r.error) return { ok: false, error: `theme:push failed to run: ${r.error.message}` }
       if ((r.status ?? 1) !== 0) return { ok: false, error: `theme:push exited ${r.status}` }
     }
@@ -112,7 +127,7 @@ export function makeRealDeps(opts = {}) {
   // judge: the eyes. lens:surface scopes capture→vision-judge→enforce to ONE surface.
   const judge = (surface, ctx) => {
     const url = ctx.previewUrl || previewUrl
-    const r = run(process.execPath, [scriptPath('lens-surface.mjs'), surface], { THEME_PREVIEW_URL: url || '' })
+    const r = run(process.execPath, [scriptPath('lens-surface.mjs'), surface], { THEME_PREVIEW_URL: url || '' }, TO.judge)
     if (r.error) throw new Error(`lens:surface failed to run: ${r.error.message}`)
     const status = r.status ?? JUDGE_ENV
     if (status === JUDGE_PASS) return { pass: true, confidence: 90, findings: [] }
@@ -124,7 +139,7 @@ export function makeRealDeps(opts = {}) {
   // record: write the surface verdict back to the carried mind (build-state.json/.md).
   const record = (surface, verdict, info) => {
     const v = verdict === 'PASS' ? 'PASS' : 'FAIL'
-    run(process.execPath, [scriptPath('build-state.mjs'), 'record', surface, v, '--rounds', String(info?.rounds ?? 0)], {})
+    run(process.execPath, [scriptPath('build-state.mjs'), 'record', surface, v, '--rounds', String(info?.rounds ?? 0)], {}, TO.record)
   }
 
   return { draft, render, judge, record, log }
