@@ -34,7 +34,8 @@
     "store:apply": "node scripts/porter-apply.mjs",
     "store:verify": "node scripts/porter-verify.mjs",
     "keystone:clone": "node scripts/keystone-clone.mjs",
-    "keystone:token": "node scripts/keystone-token.mjs"
+    "keystone:token": "node scripts/keystone-token.mjs",
+    "lens:autofix": "node scripts/lens-autofix.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",
