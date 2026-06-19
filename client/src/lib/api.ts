@@ -219,6 +219,15 @@ export interface FilesData { buildDir: string; topFiles: { name: string; path: s
 export const getWorkspaceBuildFiles = (buildId: string) =>
   request<FilesData>(`/workspace/builds/${encodeURIComponent(buildId)}/files`)
 
+// P4 — bounded actions (mutating; UI must confirm before calling)
+export interface ActionRun { runId: string; buildId: string; dir: string; action: string; status: 'running' | 'done' | 'failed' | 'error' | 'cancelled'; startedMs: number; endedMs: number | null; exitCode: number | null; log: string }
+export const rerunWorkspaceGates = (buildId: string) =>
+  request<ActionRun>(`/workspace/builds/${encodeURIComponent(buildId)}/actions/rerun-gates`, { method: 'POST' })
+export const getWorkspaceAction = (runId: string) =>
+  request<ActionRun>(`/workspace/actions/${encodeURIComponent(runId)}`)
+export const cancelWorkspaceAction = (runId: string) =>
+  request<{ cancelled: boolean }>(`/workspace/actions/${encodeURIComponent(runId)}/cancel`, { method: 'POST' })
+
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
 export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }
 export interface ProjectPage { slug: string; title: string; status: string; preview_url: string | null; gates: Record<string, unknown>; updated_at: string | null }

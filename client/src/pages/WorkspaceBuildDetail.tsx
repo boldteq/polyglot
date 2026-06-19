@@ -14,6 +14,7 @@ import AgentsTab from '../components/workspace/AgentsTab'
 import SchedulesTab from '../components/workspace/SchedulesTab'
 import ResultsTab from '../components/workspace/ResultsTab'
 import FilesTab from '../components/workspace/FilesTab'
+import ActionsBar from '../components/workspace/ActionsBar'
 import { useBuild } from '../hooks/useBuild'
 
 const TABS = [
@@ -68,9 +69,12 @@ export default function WorkspaceBuildDetail() {
                 {data.build.changes.present && <span><b>{data.build.changes.rate}%</b> <span className="text-text-muted">changes</span></span>}
               </div>
             </div>
-            <button onClick={() => nav(`/workspace/lens?dir=${encodeURIComponent(data.build.dir)}`)} className="btn-primary btn-sm flex items-center gap-1.5 shrink-0">
-              <Eye className="w-4 h-4" /> Open Lens
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <ActionsBar buildId={buildId!} onChanged={reload} />
+              <button onClick={() => nav(`/workspace/lens?dir=${encodeURIComponent(data.build.dir)}`)} className="btn-primary btn-sm flex items-center gap-1.5">
+                <Eye className="w-4 h-4" /> Open Lens
+              </button>
+            </div>
           </div>
 
           {/* tabs */}
