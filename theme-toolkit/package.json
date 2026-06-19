@@ -43,7 +43,8 @@
     "keystone:token": "node scripts/keystone-token.mjs",
     "lens:autofix": "node scripts/lens-autofix.mjs",
     "ds:css": "node scripts/generate-design-system-css.mjs",
-    "overrides:check": "node scripts/check-client-overrides.mjs"
+    "overrides:check": "node scripts/check-client-overrides.mjs",
+    "build-state": "node scripts/build-state.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",
