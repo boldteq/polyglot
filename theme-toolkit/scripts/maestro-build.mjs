@@ -39,6 +39,9 @@ export function makeRealSteps(opts = {}) {
     maxRounds,
     buildStateDir = env.BUILD_STATE_DIR || 'docs',
     spawn = spawnSync,
+    budgetMs = 0,   // unattended wall-clock budget (0 = off) — forwarded to the loop deps
+    timeouts = {},  // per-subprocess timeouts — forwarded to the loop deps
+    now,            // injectable clock (tests only); undefined → makeRealDeps uses Date.now
   } = opts
   const run = (cmd, args, extraEnv) => spawn(cmd, args, { cwd: dir, encoding: 'utf-8', env: { ...env, ...extraEnv }, stdio: 'inherit' })
 
@@ -58,7 +61,7 @@ export function makeRealSteps(opts = {}) {
     runLoop: async () => {
       const surfaces = loadSurfaces(dir, buildStateDir, surfacesOverride)
       if (!surfaces.length) return { allPass: false, converged: [], escalated: [], surfaces: [], error: 'no surfaces (build-state empty)' }
-      const deps = makeRealDeps({ dir, render: renderMode, log: (m) => console.log(`maestro: ${m}`) })
+      const deps = makeRealDeps({ dir, env, render: renderMode, spawn, budgetMs, timeouts, ...(now ? { now } : {}), log: (m) => console.log(`maestro: ${m}`) })
       return runMaestro({ deps, surfaces, maxRounds, dir, buildStateDir })
     },
 
@@ -141,13 +144,15 @@ export async function maestroBuild({ steps, dir = process.cwd(), buildStateDir =
 
 // ── CLI ───────────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const o = { renderMode: 'dev', surfaces: null, maxRounds: undefined, autoPreview: false }
+  const o = { renderMode: 'dev', surfaces: null, maxRounds: undefined, autoPreview: false, budgetMs: 0, timeouts: {} }
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === '--render') o.renderMode = argv[++i]
     else if (a === '--surfaces') o.surfaces = (argv[++i] || '').split(',').map(s => s.trim()).filter(Boolean)
     else if (a === '--max-rounds') o.maxRounds = Number(argv[++i])
     else if (a === '--auto-preview') o.autoPreview = true
+    else if (a === '--budget') o.budgetMs = Math.max(0, Number(argv[++i]) || 0) * 60_000 // minutes → ms (wall-clock breaker)
+    else if (a === '--timeout') { const m = Math.max(0, Number(argv[++i]) || 0) * 60_000; if (m) o.timeouts = { draft: m, render: m, judge: m, record: m } } // minutes → per-step ms
     else if (a === '--help' || a === '-h') o.help = true
   }
   return o
@@ -156,8 +161,10 @@ function parseArgs(argv) {
 async function main() {
   const o = parseArgs(process.argv.slice(2))
   if (o.help) {
-    console.log('Usage: THEME_PREVIEW_URL=<url> node maestro-build.mjs [--render dev|push] [--surfaces a,b] [--max-rounds 3] [--auto-preview]')
-    console.log('  --auto-preview   start `theme:dev` for the run + tear it down after (no second terminal; render=dev only)')
+    console.log('Usage: THEME_PREVIEW_URL=<url> node maestro-build.mjs [--render dev|push] [--surfaces a,b] [--max-rounds 3] [--auto-preview] [--budget <min>] [--timeout <min>]')
+    console.log('  --auto-preview   start theme:dev for the run + tear it down after (no second terminal; render=dev only)')
+    console.log('  --budget <min>   wall-clock budget for the whole loop — once elapsed, remaining surfaces escalate cleanly (unattended cap)')
+    console.log('  --timeout <min>  per-subprocess timeout applied to draft/render/judge/record (a hung child is killed → that surface escalates)')
     process.exit(0)
   }
   if (!['dev', 'push'].includes(o.renderMode)) { console.error(`maestro:build: --render must be dev|push (got ${o.renderMode})`); process.exit(2) }
@@ -165,8 +172,9 @@ async function main() {
   const buildStateDir = process.env.BUILD_STATE_DIR || 'docs'
 
   const doBuild = async () => {
-    const steps = makeRealSteps({ dir, renderMode: o.renderMode, surfaces: o.surfaces, maxRounds: o.maxRounds, buildStateDir })
-    console.log(`maestro:build — hands-off build → publish-ready  ·  render=${o.renderMode}${o.autoPreview ? '  ·  auto-preview' : ''}${o.surfaces ? `  ·  surfaces=${o.surfaces.join(',')}` : ''}`)
+    const steps = makeRealSteps({ dir, renderMode: o.renderMode, surfaces: o.surfaces, maxRounds: o.maxRounds, buildStateDir, budgetMs: o.budgetMs, timeouts: o.timeouts })
+    const budgetNote = o.budgetMs ? `  ·  budget=${Math.round(o.budgetMs / 60000)}min` : ''
+    console.log(`maestro:build — hands-off build → publish-ready  ·  render=${o.renderMode}${o.autoPreview ? '  ·  auto-preview' : ''}${budgetNote}${o.surfaces ? `  ·  surfaces=${o.surfaces.join(',')}` : ''}`)
     return maestroBuild({ steps, dir, buildStateDir, log: (m) => console.log(`maestro:build — ${m}`) })
   }
 

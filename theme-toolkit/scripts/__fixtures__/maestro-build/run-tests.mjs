@@ -14,7 +14,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { maestroBuild } from '../../maestro-build.mjs'
+import { maestroBuild, makeRealSteps } from '../../maestro-build.mjs'
 
 let failures = 0
 const pass = (m) => console.log(`  PASS  ${m}`)
@@ -106,6 +106,26 @@ console.log('case f — docs/publish-readiness.json artifact')
   eq(art2.publishReady, false, 'artifact publishReady=false when blocked')
   eq(art2.stage, 'gates', 'artifact records the blocking stage')
   fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(dir2, { recursive: true, force: true })
+}
+
+// ── case g: makeRealSteps threads budgetMs/timeouts/spawn into the loop deps ──
+console.log('case g — makeRealSteps forwards budgetMs + timeouts + spawn to makeRealDeps (not dropped)')
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-build-g-'))
+  const calls = []
+  let t = 0
+  const now = () => { const v = t; t += 700; return v } // 0, 700, 1400(>1000 budget), …
+  const spawn = (cmd, args, opts) => { calls.push({ cmd, args: args || [], timeout: opts?.timeout }); return { status: 0, stdout: '', stderr: '' } }
+  const steps = makeRealSteps({
+    dir: tmp, env: { THEME_PREVIEW_URL: 'http://127.0.0.1:9292' }, renderMode: 'dev',
+    surfaces: ['home', 'pdp'], buildStateDir: 'docs', spawn, budgetMs: 1000, now, timeouts: { draft: 4242 },
+  })
+  const loop = await steps.runLoop()
+  eq(loop.converged, ['home'], 'budgetMs threaded: only the first surface converged before the budget breach')
+  eq(loop.escalated.includes('pdp'), true, 'pdp escalated on budget (budgetMs reached the loop deps, not dropped)')
+  const draftCall = calls.find(c => c.cmd === 'claude')
+  eq(draftCall?.timeout, 4242, 'timeouts.draft threaded through to the draft subprocess')
+  fs.rmSync(tmp, { recursive: true, force: true })
 }
 
 console.log(failures === 0 ? '\n✓ MAESTRO-BUILD — ALL ORCHESTRATION ASSERTIONS PASS' : `\n✗ ${failures} ASSERTION(S) FAILED`)
