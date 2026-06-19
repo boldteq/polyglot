@@ -19,18 +19,18 @@ function FileRow({ name, path, isDir }: { name: string; path: string; isDir?: bo
   )
 }
 
-function DirSection({ name, path, children }: { name: string; path: string; children: FileNode[] }) {
+function DirSection({ name, items }: { name: string; items: FileNode[] }) {
   const [open, setOpen] = useState(true)
   return (
     <div>
       <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 px-2 py-1.5 w-full text-left text-[13px] font-medium hover:bg-text-muted/5 rounded">
         {open ? <FolderOpen className="w-4 h-4 text-accent" /> : <Folder className="w-4 h-4 text-accent" />}
         <span className="flex-1">{name}</span>
-        <span className="text-[11px] text-text-muted">{children.length}</span>
+        <span className="text-[11px] text-text-muted">{items.length}</span>
       </button>
       {open && (
         <div className="ml-4 border-l border-border pl-2">
-          {children.map((c) => <FileRow key={c.path} name={c.name} path={c.path} isDir={c.dir} />)}
+          {items.map((c) => <FileRow key={c.path} name={c.name} path={c.path} isDir={c.dir} />)}
         </div>
       )}
     </div>
@@ -52,7 +52,7 @@ export default function FilesTab({ buildId, reloadKey }: { buildId: string; relo
         </div>
       )}
       <div className="card p-2 space-y-1">
-        {data.tree.map((d) => <DirSection key={d.path} name={d.name} path={d.path} children={d.children} />)}
+        {data.tree.map((d) => <DirSection key={d.path} name={d.name} items={d.children} />)}
       </div>
     </div>
   )

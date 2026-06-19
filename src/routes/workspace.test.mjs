@@ -79,6 +79,32 @@ test('build detail + pipeline + gates resolve for a discovered build', async () 
   assert.ok(gates.json.gates.length >= 19); // 19 canonical + any extras
 });
 
+test('P2 section routes resolve (changes/agents/schedules/results/files)', async () => {
+  const list = await get('/api/workspace/builds');
+  if (!list.json.builds.length) return;
+  const id = list.json.builds[0].buildId;
+
+  const changes = await get(`/api/workspace/builds/${id}/changes`);
+  assert.equal(changes.status, 200);
+  assert.equal(typeof changes.json.present, 'boolean');
+
+  const agents = await get(`/api/workspace/builds/${id}/agents`);
+  assert.equal(agents.status, 200);
+  assert.equal(agents.json.correlation, 'platform');
+
+  const schedules = await get(`/api/workspace/builds/${id}/schedules`);
+  assert.equal(schedules.status, 200);
+  assert.ok('total' in schedules.json);
+
+  const results = await get(`/api/workspace/builds/${id}/results`);
+  assert.equal(results.status, 200);
+  assert.equal(typeof results.json.present, 'boolean');
+
+  const files = await get(`/api/workspace/builds/${id}/files`);
+  assert.equal(files.status, 200);
+  assert.ok(Array.isArray(files.json.tree));
+});
+
 test('unknown buildId 404s, not 500', async () => {
   const { status } = await get('/api/workspace/builds/deadbeefdead');
   assert.equal(status, 404);

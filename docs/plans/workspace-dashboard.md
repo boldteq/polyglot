@@ -91,7 +91,17 @@ Fixed the rough edges flagged after P1:
 
 NOTE on full-suite count: `npm test` (= `node --test src/`) reports a varying total (73–88) run-to-run due to `--test-force-exit` truncating collection across parallel files — but **fail is always 0**. Pre-existing harness quirk, not introduced here; workspace tests are deterministic in isolation.
 
-**Next: P2** — CHANGES / Agents / Schedules / Results / Files tabs + `useBuildSection` + VS Code deeplinks.
+## ✅ P2 STATUS — SHIPPED 2026-06-19 (uncommitted)
+
+The remaining 5 Build Detail tabs + lazy loader + VS Code deeplinks:
+- **Backend routes:** `/builds/:buildId/{changes,agents,schedules,results,files}`. New parsers `parseBaselineMd.js` (frontmatter + markdown tables, tolerant of absence) + `readBuildFiles.js` (shallow tree of docs/gate-reports/sections/templates/config/layout + top files). Schedules best-effort match by client name with an honest "not wired" note (no build-tag concept exists). Results reads `docs/results/baseline.md` (absent on all current builds → honest empty).
+- **Frontend:** `ChangesTab` (completion bar + waivers + checklist), `AgentsTab` (platform roster activity + honest correlation note, links to Playground), `SchedulesTab` (honest-empty + link to /schedules), `ResultsTab` (meta + tables or empty), `FilesTab` (collapsible tree, `vscode://file/<abs>` deeplinks). `useBuildSection` generic lazy loader (fetch on mount + refetch on reloadKey/SSE, keeps last-good). All 9 tabs wired into `WorkspaceBuildDetail`.
+- **Verified on real data:** changes 53% with real unchecked items ("Substantiate the claims", "Wire a real reviews app"…); files lists real docs (brand-teardown/copy/cro-spec/…) as VS Code links; agents 42 runs platform-level; schedules/results honest-empty. All 8 section routes 200.
+- **Tests:** added P2 section test → workspace suite **10/10**. Client builds + typechecks clean. Specs no-drift.
+
+**Acceptance gate (P2): MET.** Every artifact that EXISTS reachable in ≤2 clicks; CHANGES progress matches the file; absent artifacts (results/schedules) show honest empty states; files open in VS Code.
+
+**Next: P3** — perf/persistence: `workspace_build_index` overlay table + 60s rebuilder so lists stop rescanning disk; `score:trend` via reflections. (P4 = bidirectional, deferred, needs Yash sign-off.)
 
 ---
 
