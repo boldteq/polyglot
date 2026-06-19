@@ -1,0 +1,5 @@
+{% style %}
+.widget { color: rgb(var(--color-foreground)); font-size: 24px; padding: 24px; border-radius: 8px; }
+{% endstyle %}
+<div class="widget">{{ section.settings.t }}</div>
+{% schema %}{ "name": "Widget", "settings": [{ "type": "text", "id": "t", "label": "T" }] }{% endschema %}

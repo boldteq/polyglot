@@ -1,0 +1,6 @@
+{% style %}
+.widget { color: #c8102e; font-size: 50px; padding: 13px; }
+.widget--x { @apply flex; }
+{% endstyle %}
+<div class="widget">{{ section.settings.t }}</div>
+{% schema %}{ "name": "Widget", "settings": [{ "type": "text", "id": "t", "label": "T" }] }{% endschema %}

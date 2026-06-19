@@ -12,9 +12,11 @@ on every push, staging PR, and release tag. Master copy: `Polyglot/theme-toolkit
 cd theme-toolkit
 pnpm theme:audit        # complete STATIC sweep (gates 8/9/11/12/13/14/15/16) → gate-reports/SUMMARY.md
 pnpm theme:audit:full   # + URL gates (lighthouse/axe/seo/conversion/functional) — needs THEME_PREVIEW_URL
-pnpm gates:list         # list all 16 gates + this cheatsheet
+pnpm gates:list         # list all 18 gates + this cheatsheet
+pnpm lens               # Lens visual-truth pass: capture → judge → enforce (#18) — needs THEME_PREVIEW_URL
+pnpm test               # run every gate fixture self-test (regression gate)
 pnpm store:preflight    # live-store access + content-quality preflight (needs SHOPIFY_ADMIN_API_TOKEN)
-pnpm gates:verify       # check a PRIOR full run is fresh+passing (publish gate — does NOT run the gates)
+pnpm gates:verify:full  # the PUBLISH precondition — assert a PRIOR full run is fresh+full+passing at HEAD
 ```
 
 `gate-reports/SUMMARY.md` is the human-readable companion (blocked gates + each blocker with `file:line` + the fix); `summary.json` is the machine-readable one. There is **no** `client-store-preflight-audit.mjs` — that's an agent-driven protocol (`client-store-preflight-audit.md`) producing `docs/preflight-audit.md`; the executable live-store check is `store:preflight`.
@@ -30,7 +32,30 @@ pnpm gates:verify       # check a PRIOR full run is fresh+passing (publish gate 
 
 Orchestrator: `scripts/theme-gates.mjs` (`--static-only` / full / `--gate <name>` / `--verify`).
 Every gate writes `gate-reports/<gate>.json` (exact schema in `scripts/lib/report.mjs`);
-the orchestrator writes `gate-reports/summary.json`.
+the orchestrator writes `gate-reports/summary.json`. The static stack also includes the design/taste
+gates **#8 design-system** (token/Rule-9 conformance) · **#9 consistency** · **#11 antipatterns** ·
+**#12 design-quality** (per-niche taste) · **#13 honesty** (no fabricated claims) · **#14 render-wiring**
+(declared tokens actually render) · **#15 commerce-readiness** · **#16 a11y-static** · **#17 visual-quality**
+(verifies onyx's review artifact) · **#18 visual-truth** (the Lens enforcer, below).
+
+## Lens — Visual Truth Layer (the pixel layer)
+
+Static gates read source; **Lens opens a real browser and judges the rendered pixels** — source-green ≠
+looks-right. Four scripts + a gate, run at Step 13.5 on the staging URL:
+
+1. **`lens-capture.mjs`** — Playwright screenshots every surface × viewport (375/768/1440) × state, with a
+   DOM metrics manifest (overflow / broken images / empty shells / render-error 502-404 / CLS / console).
+2. **`lens-judge.mjs`** — an INDEPENDENT vision judge per frame (headless `claude -p`, subscription, no API
+   key) scores it against `lens-rubrics/<surface>.json` and writes `gate-reports/lens/judge/<id>.json`.
+3. **`check-visual-truth.mjs` (#18)** — BLOCKs on render-error / overflow / broken-image / judge-FAIL /
+   confidence<80 / blocker-finding / systemic cross-frame defect; emits `gate-reports/lens/index.html`.
+4. **`lens-autofix.mjs`** — routes findings by owner (loom/drape/ink fix theme code; **porter store-data
+   findings escalate to a work-order, never a blind edit**) → fix → re-capture → re-judge, ≤3 rounds.
+
+`pnpm lens` runs 1→3; `pnpm lens:autofix` runs the self-healing loop. **Run Lens + the URL gates against
+the PUBLISHED preview URL, not `shopify theme dev`** — the dev server's hot-reload/proxy console noise +
+non-representative perf are auto-demoted as a safety net, but the clean read comes from a real preview.
+Visibility: the Polyglot dashboard `/lens` page renders the latest run.
 
 ## Pre-build validators (stage-specific, run by individual agents — NOT the publish stack)
 

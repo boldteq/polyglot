@@ -1,0 +1,6 @@
+{% style %}
+/* one CSS system — theme vars only, no Tailwind, no @apply here */
+.widget { color: rgb(var(--color-foreground)); font-size: 16px; padding: 16px; }
+{% endstyle %}
+<div class="widget">{{ section.settings.t }}</div>
+{% schema %}{ "name": "Widget", "settings": [{ "type": "text", "id": "t", "label": "T" }] }{% endschema %}

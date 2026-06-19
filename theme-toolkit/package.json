@@ -11,6 +11,8 @@
     "gates:static": "node scripts/theme-gates.mjs --static-only",
     "gates:verify": "node scripts/theme-gates.mjs --verify",
     "gates:verify:full": "node scripts/theme-gates.mjs --verify --require-full",
+    "test": "node scripts/run-all-tests.mjs",
+    "lens": "node scripts/lens-capture.mjs && node scripts/lens-judge.mjs && node scripts/check-visual-truth.mjs",
     "lens:capture": "node scripts/lens-capture.mjs",
     "lens:judge": "node scripts/lens-judge.mjs",
     "lens:enforce": "node scripts/check-visual-truth.mjs",
