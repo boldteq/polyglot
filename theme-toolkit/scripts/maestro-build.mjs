@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url'
 import { preflight, formatChecklist } from './maestro-preflight.mjs'
 import { makeRealDeps, runMaestro, loadSurfaces } from './maestro-run.mjs'
 import { withPreviewServer, DEFAULT_PREVIEW_URL } from './lib/preview-server.mjs'
+import { status, formatStatus } from './maestro-status.mjs'
 
 const scriptPath = (name) => fileURLToPath(new URL(`./${name}`, import.meta.url))
 
@@ -190,7 +191,9 @@ async function main() {
     result = await doBuild()
   }
 
-  console.log(`\n${result.publishReady ? '✅ PUBLISH-READY' : `⛔ NOT READY (stopped at ${result.stage}: ${result.reason})`}  →  ${buildStateDir}/publish-readiness.md`)
+  // The final output IS the morning snapshot — consolidates the artifacts this run just wrote.
+  try { console.log('\n' + formatStatus(status({ dir, buildStateDir }))) }
+  catch { console.log(`\n${result.publishReady ? '✅ PUBLISH-READY' : `⛔ NOT READY (stopped at ${result.stage}: ${result.reason})`}  →  ${buildStateDir}/publish-readiness.md`) }
   if (result.stage === 'preflight' && result.preflight) console.error('\n' + formatChecklist(result.preflight))
   process.exit(result.publishReady ? 0 : 1)
 }
