@@ -149,13 +149,22 @@ async function main() {
         if (overflow > 3) blockers.push({ id: 'fn.overflow', page: `${t.id}@${vp.name}`, detail: `horizontal overflow ${overflow}px beyond the ${vp.width}px viewport (mobile-overflow bug)`, evidence: `scrollWidth - innerWidth = ${overflow}` })
         for (const src of brokenImgs) blockers.push({ id: 'fn.broken-image', page: `${t.id}@${vp.name}`, detail: `broken image (loaded, naturalWidth=0)`, evidence: src })
 
-        // console errors: first-party (same origin or theme cdn, or no url) BLOCK; third-party warn
+        // console errors: first-party (same origin or theme cdn, or no url) BLOCK; third-party warn.
+        // DEV-NOISE is skipped entirely: `shopify theme dev` hot-reload + proxy + Shopify-platform
+        // console errors that DO NOT EXIST on a published store and are not real defects (Meridian
+        // 2026-06-19: a `theme dev` run flooded 22 false blockers — [HotReload] reconnect, dev-proxy
+        // 502, origin-trial CDN CORS). Run URL gates against the preview-theme URL (not `theme dev`)
+        // for a clean read; this filter is the safety net when a dev URL is used.
+        const DEV_NOISE = /\[HotReload\]|Connection closed by the server|hot[- ]?reload|origin_trials|web-pixels-manager|\/wpm[@/]|browser_sync|__shopify_dev|status of 50\d \(Bad Gateway\)|net::ERR_FAILED/i
         const host = new URL(origin).host
+        let devNoise = 0
         for (const ce of consoleErrors) {
+          if (DEV_NOISE.test(ce.text) || DEV_NOISE.test(ce.url || '')) { devNoise += 1; continue }
           const firstParty = !ce.url || ce.url.includes(host) || /cdn\.shopify\.com\/.*\/(assets|t\/)/.test(ce.url)
           const entry = { id: 'fn.console-error', page: `${t.id}@${vp.name}`, detail: `console error: ${ce.text.slice(0, 140)}`, evidence: ce.url || '(inline)' }
           if (firstParty) blockers.push(entry); else warnings.push({ ...entry, id: 'fn.console-error-3p' })
         }
+        if (devNoise) checks.push({ check: 'dev-noise-filtered', page: `${t.id}@${vp.name}`, count: devNoise })
 
         // PDP-specific functional flow (once, on the first viewport that has the PDP)
         if (t.id === 'pdp') {
