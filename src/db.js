@@ -150,6 +150,7 @@ function runMigrations(db) {
     { version: 30, name: 'decision_journal_resolution', fn: decisionJournalResolutionMigration },
     { version: 31, name: 'eval_selftest_calibration', fn: evalSelftestMigration },
     { version: 32, name: 'shopify_client_projects', fn: shopifyClientProjectsMigration },
+    { version: 33, name: 'workspace_build_index', fn: workspaceBuildIndexMigration },
   ];
 
   for (const mig of migrations) {
@@ -420,6 +421,34 @@ function runObservabilityMigration(db) {
     CREATE INDEX IF NOT EXISTS idx_eval_scores_case  ON eval_scores(caseId, ts DESC);
   `);
   console.log('[migration v22] cost_logs + agent_events + delegations + eval_scores tables created');
+}
+
+// ── Migration v33: workspace_build_index (2026-06-19) ────────────────────────
+// PURELY DERIVED read cache for the Workspace dashboard list views. NEVER a
+// source of truth — disk (gate-reports/CHANGES/docs) stays authoritative. The
+// indexer rebuilds it from allAssembledBuilds(); it can be dropped and rebuilt
+// at any time. Keyed by buildId (sha1(dir)); `data` holds the full assembled
+// JSON so list endpoints serve without rescanning disk.
+function workspaceBuildIndexMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS workspace_build_index (
+      buildId      TEXT PRIMARY KEY,
+      dir          TEXT NOT NULL,
+      client       TEXT,
+      platform     TEXT,
+      step         INTEGER,
+      score        INTEGER,
+      grade        TEXT,
+      lensVerdict  TEXT,
+      blockers     INTEGER DEFAULT 0,
+      capturedAt   INTEGER,
+      data         TEXT NOT NULL,
+      lastSeenMs   INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_wbi_platform ON workspace_build_index(platform);
+    CREATE INDEX IF NOT EXISTS idx_wbi_score    ON workspace_build_index(score);
+  `);
+  console.log('[migration v33] workspace_build_index (derived cache) created');
 }
 
 // ── Migration v23: policy_audit (Pillar 5, 2026-06-14) ───────────────────────
@@ -3564,6 +3593,44 @@ function getEvalScores({ agent, caseId, limit = 200 } = {}) {
     .map(r => ({ ...r, pass: !!r.pass, scores: JSON.parse(r.scores || '{}') }));
 }
 
+// ── workspace_build_index (derived cache, v33) — never source of truth ───────
+// Replace the whole index in one transaction: rows absent from `builds` are
+// pruned (a build dir that vanished from disk shouldn't linger in the cache).
+function replaceWorkspaceIndex(builds, nowMs) {
+  const conn = getDb();
+  const ins = conn.prepare(`INSERT OR REPLACE INTO workspace_build_index
+    (buildId,dir,client,platform,step,score,grade,lensVerdict,blockers,capturedAt,data,lastSeenMs)
+    VALUES (@buildId,@dir,@client,@platform,@step,@score,@grade,@lensVerdict,@blockers,@capturedAt,@data,@lastSeenMs)`);
+  const del = conn.prepare('DELETE FROM workspace_build_index WHERE buildId = ?');
+  const keep = new Set(builds.map((b) => b.buildId));
+  conn.transaction(() => {
+    for (const b of builds) {
+      ins.run({
+        buildId: b.buildId, dir: b.dir, client: b.client, platform: b.platform,
+        step: b.step?.current ?? null, score: b.score ?? null, grade: b.grade ?? null,
+        lensVerdict: b.lensVerdict ?? null, blockers: b.gates?.blockersOpen ?? 0,
+        capturedAt: b.capturedAt ?? null, data: JSON.stringify(b), lastSeenMs: nowMs,
+      });
+    }
+    for (const row of conn.prepare('SELECT buildId FROM workspace_build_index').all()) {
+      if (!keep.has(row.buildId)) del.run(row.buildId);
+    }
+  })();
+}
+
+// Read the cached assembled builds (full JSON), newest first. Returns [] when the
+// index has never been built — callers fall back to live assembly.
+function getWorkspaceIndex() {
+  return stmt('SELECT data FROM workspace_build_index ORDER BY capturedAt DESC').all()
+    .map((r) => { try { return JSON.parse(r.data); } catch { return null; } })
+    .filter(Boolean);
+}
+
+function workspaceIndexAgeMs(nowMs) {
+  const row = stmt('SELECT MAX(lastSeenMs) AS m FROM workspace_build_index').get();
+  return row && row.m ? nowMs - row.m : Infinity;
+}
+
 // Persist a judge self-test calibration result (kind='selftest' from run-eval
 // --selftest). dedupKey=at makes JSONL ingest idempotent. This is the SOURCE the
 // autonomy governor reads to decide if the judge is calibrated — separate from
@@ -4034,6 +4101,7 @@ module.exports = {
   updateLearningStatus, updateLearningPayload, getInboxCounts, pruneLearningInbox,
   // Run observability (Pillar 1)
   logCost, getSpend, getCostLogs,
+  replaceWorkspaceIndex, getWorkspaceIndex, workspaceIndexAgeMs,
   logAgentEvent, getAgentEvents,
   trackDelegation, getDelegations,
   recordEvalScore, getEvalScores, ingestEvalRuns,

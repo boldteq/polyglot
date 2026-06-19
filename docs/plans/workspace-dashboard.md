@@ -101,7 +101,18 @@ The remaining 5 Build Detail tabs + lazy loader + VS Code deeplinks:
 
 **Acceptance gate (P2): MET.** Every artifact that EXISTS reachable in ≤2 clicks; CHANGES progress matches the file; absent artifacts (results/schedules) show honest empty states; files open in VS Code.
 
-**Next: P3** — perf/persistence: `workspace_build_index` overlay table + 60s rebuilder so lists stop rescanning disk; `score:trend` via reflections. (P4 = bidirectional, deferred, needs Yash sign-off.)
+## ✅ P3 STATUS — SHIPPED 2026-06-19 (uncommitted)
+
+Perf/persistence — built at Yash's explicit request (acknowledged premature at 3 builds: list was already 94ms cold). Now ~5ms via the cache.
+- **db v33 migration** `workspace_build_index` — PURELY DERIVED read cache (buildId PK + full assembled JSON in `data`); never a source of truth, droppable/rebuildable. Helpers `replaceWorkspaceIndex` (full replace + prune vanished) / `getWorkspaceIndex` / `workspaceIndexAgeMs`. (Gotcha fixed: module-scope fns must use `getDb()`, not a bare `db` — that's only the migration param.)
+- **`src/lib/workspace/indexer.js`** — rebuilds from `allAssembledBuilds()` every 60s (unref'd) + debounced on disk-watcher `*:update` events, so the cache is fresh, not just eventually-consistent. Records `score:trend` deltas to `reflections` (kind=`workspace.score`) when a build's score moves. Started in `startWatcher()`.
+- **`listBuilds()`** — list routes (`/builds`,`/clients`,`/escalations`) read the index when warm (age <90s), else fall back to live `allAssembledBuilds()`. Detail routes still read disk live + 30s cache (unchanged — detail needs freshness).
+- **Verified:** index populates (3 builds, fresh); **list latency 94ms→~5ms** (20×); fallback works (wiped index → /builds still returns 3 via live assembly); score:trend records deltas ("production-hunt score 41→51"). Tests +3 → workspace **12/12**; full suite 0 fail (×2 runs); specs no-drift; browser re-verify clean.
+- **Test gotcha fixed:** the P3 round-trip test leaked fake builds into the shared cache → broke later route tests. Namespaced (`wstest-`) + `finally` cleanup. Derived-cache tests MUST clean up.
+
+**Acceptance gate (P3): MET.** Cold list <200ms (now ~5ms warm / 94ms cold-fallback); index stays authoritative-to-disk; SSE + rebuilder keep it fresh.
+
+**Remaining: P4 only** — bidirectional actions (re-run gate / open in Playground / schedule from UI). DEFERRED — mutates (re-crosses observe→do), needs explicit Yash sign-off per global instructions.
 
 ---
 

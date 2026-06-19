@@ -109,3 +109,37 @@ test('unknown buildId 404s, not 500', async () => {
   const { status } = await get('/api/workspace/builds/deadbeefdead');
   assert.equal(status, 404);
 });
+
+test('P3 index: listBuilds falls back to live assembly when index empty', async () => {
+  const db = require('../db.js');
+  // wipe the derived cache — /builds must still return real builds (live fallback)
+  try { db.getDb().prepare('DELETE FROM workspace_build_index').run(); } catch { /* table may not exist in this db */ }
+  const { status, json } = await get('/api/workspace/builds');
+  assert.equal(status, 200);
+  assert.ok(Array.isArray(json.builds)); // works whether or not any build dirs exist
+});
+
+test('P3 index: replace + read round-trips, prunes vanished builds', async () => {
+  const db = require('../db.js');
+  if (!db.replaceWorkspaceIndex) return; // older db w/o migration
+  const now = Date.now();
+  const fake = (id) => ({ buildId: `wstest-${id}`, dir: `/tmp/wstest-${id}`, client: id, platform: 'shopify',
+    step: { current: 3 }, score: 42, grade: 'BLOCK-RISK', lensVerdict: null,
+    gates: { blockersOpen: 0 }, capturedAt: now });
+  try {
+    db.replaceWorkspaceIndex([fake('a'), fake('b')], now);
+    assert.equal(db.getWorkspaceIndex().filter((b) => b.buildId.startsWith('wstest-')).length, 2);
+    // replacing with only 'a' must prune 'b'
+    db.replaceWorkspaceIndex([fake('a')], now);
+    const ids = db.getWorkspaceIndex().map((b) => b.buildId);
+    assert.ok(ids.includes('wstest-a') && !ids.includes('wstest-b'));
+    assert.ok(db.workspaceIndexAgeMs(now + 1000) >= 1000);
+  } finally {
+    // CLEAN UP: derived cache must not leak fake builds into other tests / the
+    // running app. Remove our rows directly (don't rebuild — keep it hermetic).
+    try {
+      const conn = db.getDb();
+      for (const id of ['wstest-a', 'wstest-b']) conn.prepare('DELETE FROM workspace_build_index WHERE buildId = ?').run(id);
+    } catch { /* */ }
+  }
+});

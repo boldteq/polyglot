@@ -27,6 +27,7 @@ const { platformAgentActivity, buildAgentActivity } = require('../lib/workspace/
 const gatesSpec = require('../lib/workspace/gatesSpec.json');
 const pipelineSpec = require('../lib/workspace/pipelineSpec.json');
 const { bus, startDiskWatcher } = require('../lib/workspace/diskWatcher');
+const { startIndexer } = require('../lib/workspace/indexer');
 
 const router = Router();
 
@@ -236,6 +237,23 @@ function allAssembledBuilds() {
   return dirs.map(assembleBuild).sort((a, b) => (b.capturedAt || 0) - (a.capturedAt || 0));
 }
 
+// List-view source (P3): prefer the derived workspace_build_index cache so list
+// endpoints don't rescan disk. Falls back to live assembly when the index is
+// empty (never built) or stale (>90s — the indexer rebuilds every 60s + on
+// change, so >90s means the rebuilder isn't running). The index is a CACHE only.
+const INDEX_STALE_MS = 90_000;
+function listBuilds() {
+  try {
+    const cached = db.getWorkspaceIndex ? db.getWorkspaceIndex() : [];
+    const age = db.workspaceIndexAgeMs ? db.workspaceIndexAgeMs(Date.now()) : Infinity;
+    if (cached.length && age < INDEX_STALE_MS) {
+      registerDirs(cached.map((b) => b.dir)); // keep buildId→dir resolvable from cache
+      return cached.sort((a, b) => (b.capturedAt || 0) - (a.capturedAt || 0));
+    }
+  } catch (err) { console.error('[workspace] index read failed, using live assembly:', err.message); }
+  return allAssembledBuilds();
+}
+
 // GET /api/workspace/platforms — the switcher options (no data, just labels).
 router.get('/workspace/platforms', (_req, res) => {
   res.json({ platforms: Object.entries(PLATFORMS).map(([id, p]) => ({ id, label: p.label })) });
@@ -248,7 +266,7 @@ router.get('/workspace/platforms', (_req, res) => {
 // GET /api/workspace/builds — flat cross-platform list, assembled + scored.
 router.get('/workspace/builds', (_req, res) => {
   try {
-    const builds = allAssembledBuilds();
+    const builds = listBuilds();
     res.json({
       builds,
       summary: {
@@ -267,7 +285,7 @@ router.get('/workspace/builds', (_req, res) => {
 // GET /api/workspace/clients — one row per client, aggregated across platforms.
 router.get('/workspace/clients', (_req, res) => {
   try {
-    const builds = allAssembledBuilds();
+    const builds = listBuilds();
     const map = new Map();
     for (const b of builds) {
       const key = `${b.platform}:${b.client}`;
@@ -294,7 +312,7 @@ router.get('/workspace/clients', (_req, res) => {
 // below the bar that the pending-artifact gap alone does NOT explain.
 router.get('/workspace/escalations', (_req, res) => {
   try {
-    const builds = allAssembledBuilds();
+    const builds = listBuilds();
     const escalations = builds
       .map((b) => {
         const reasons = [];
@@ -542,10 +560,13 @@ router.get('/workspace/:platform', (req, res) => {
   });
 });
 
-// Called once on server boot to begin live updates. Safe to call repeatedly.
+// Called once on server boot to begin live updates + the index rebuilder.
+// Safe to call repeatedly (both are idempotent).
 function startWatcher() {
   try { startDiskWatcher({ roots: lens.buildsRoots(), bust: bustCache }); }
   catch (err) { console.error('[workspace] startWatcher failed:', err.message); }
+  try { startIndexer({ assembler: allAssembledBuilds, bus }); }
+  catch (err) { console.error('[workspace] startIndexer failed:', err.message); }
 }
 
-module.exports = { router, assembleBuild, allAssembledBuilds, bustCache, buildAgentActivity, dirFor, startWatcher };
+module.exports = { router, assembleBuild, allAssembledBuilds, listBuilds, bustCache, buildAgentActivity, dirFor, startWatcher };
