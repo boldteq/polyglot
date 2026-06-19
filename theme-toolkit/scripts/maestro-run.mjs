@@ -30,6 +30,7 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { runMaestroLoop, MAESTRO_MAX_ROUNDS } from './lib/maestro-loop.mjs'
+import { preflight, formatChecklist } from './maestro-preflight.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const scriptPath = (name) => fileURLToPath(new URL(`./${name}`, import.meta.url))
@@ -181,13 +182,14 @@ export async function runMaestro({ deps, surfaces, maxRounds = MAESTRO_MAX_ROUND
 
 // ── CLI ─────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const o = { surfaces: null, maxRounds: MAESTRO_MAX_ROUNDS, render: 'dev', dry: false }
+  const o = { surfaces: null, maxRounds: MAESTRO_MAX_ROUNDS, render: 'dev', dry: false, skipPreflight: false }
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === '--surfaces') o.surfaces = (argv[++i] || '').split(',').map(s => s.trim()).filter(Boolean)
     else if (a === '--max-rounds') o.maxRounds = Number(argv[++i])
     else if (a === '--render') o.render = argv[++i]
     else if (a === '--dry') o.dry = true
+    else if (a === '--skip-preflight') o.skipPreflight = true
     else if (a === '--help' || a === '-h') o.help = true
   }
   return o
@@ -196,18 +198,25 @@ function parseArgs(argv) {
 async function main() {
   const o = parseArgs(process.argv.slice(2))
   if (o.help) {
-    console.log('Usage: THEME_PREVIEW_URL=<url> node maestro-run.mjs [--surfaces a,b] [--max-rounds 3] [--render dev|push] [--dry]')
+    console.log('Usage: THEME_PREVIEW_URL=<url> node maestro-run.mjs [--surfaces a,b] [--max-rounds 3] [--render dev|push] [--dry] [--skip-preflight]')
     process.exit(0)
   }
   const dir = process.cwd()
   const buildStateDir = process.env.BUILD_STATE_DIR || 'docs'
+
+  // Readiness gate — refuse to start a doomed hands-off run; print the exact fix per missing precondition.
+  if (!o.skipPreflight) {
+    const pf = await preflight({ dir, renderMode: o.render, driver: o.dry ? 'workflow' : 'cli' })
+    if (!pf.ready) {
+      console.error(formatChecklist(pf))
+      console.error('\nmaestro:run: SETUP — preconditions missing (above). Fix them, or pass --skip-preflight to override.')
+      process.exit(2)
+    }
+  }
+
   const surfaces = loadSurfaces(dir, buildStateDir, o.surfaces)
   if (!surfaces.length) {
     console.error('maestro:run: SETUP — no surfaces. Run `pnpm build-state init` (seeds docs/build-state.json) or pass --surfaces home,pdp,cart.')
-    process.exit(2)
-  }
-  if (o.render !== 'push' && !process.env.THEME_PREVIEW_URL && !process.env.LENS_PREVIEW_URL) {
-    console.error('maestro:run: SETUP — THEME_PREVIEW_URL not set. Start `pnpm theme:dev`, copy the URL, then re-run (or use --render push).')
     process.exit(2)
   }
   const deps = makeRealDeps({ dir, render: o.render, dryDraft: o.dry, log: (m) => console.log(`maestro: ${m}`) })
