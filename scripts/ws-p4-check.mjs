@@ -17,8 +17,10 @@ page.on('pageerror', (e) => errors.push('PAGEERR ' + e.message));
 const builds = await (await fetch(BASE + '/api/workspace/builds')).json();
 const bid = (builds.builds.find((b) => b.client === 'gpt test 1') || builds.builds[0]).buildId;
 
-await page.goto(`${BASE}/workspace/builds/${bid}?tab=overview`, { waitUntil: 'networkidle' });
-await page.waitForTimeout(800);
+// NOTE: don't wait for networkidle — the build detail keeps an SSE stream open,
+// so the network never idles. Wait for the actual button instead.
+await page.goto(`${BASE}/workspace/builds/${bid}?tab=overview`, { waitUntil: 'domcontentloaded' });
+await page.getByRole('button', { name: /Re-run gates/i }).first().waitFor({ timeout: 15000 }).catch(() => {});
 
 const hasRerun = await page.getByRole('button', { name: /Re-run gates/i }).count();
 const hasPlayground = await page.getByRole('button', { name: /Playground/i }).count();
