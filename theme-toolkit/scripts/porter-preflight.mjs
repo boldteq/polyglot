@@ -17,7 +17,7 @@
 
 import { writeReport } from './lib/report.mjs'
 import {
-  resolveStore, resolveToken, getGrantedScopes, probeStore,
+  resolveStore, resolveToken, getGrantedScopes, probeStore, adminGraphql, isWeakDescription,
   REQUIRED_SCOPES, FORBIDDEN_SCOPES, AuthError,
 } from './lib/shopify-admin.mjs'
 import { readLock, LOCK_FILE } from './lib/shopify-theme-lock.mjs'
@@ -75,7 +75,39 @@ try {
   if (probe.classification === 'live') {
     add(warnings, 'store-preflight.live-store', `live store with ${probe.products} existing product(s) — destructive ops (delete/replace/bulk) MUST gate behind a dated CHANGES.md sign-off + confirm (preflight §6)`)
   }
-  finish(null, { granted, classification: probe.classification, shop: probe.name, products: probe.products })
+
+  // 3. Product CONTENT quality — an autonomous store that ships placeholder descriptions / no imagery
+  // looks incomplete (atrium audit P1). Sample up to 100 products; WARN by default, BLOCK only at
+  // publish-grade (PORTER_REQUIRE_CONTENT=1) when ≥20% are weak. Image bytes aren't in GraphQL, so we
+  // use pixel dimensions as the unoptimized proxy (resize/WebP happens in porter-apply on upload).
+  let productQuality = null
+  if (probe.products > 0) {
+    const sample = Math.min(probe.products, 100)
+    const Q = `query($n:Int!){ products(first:$n){ nodes{ title descriptionHtml featuredImage{ width height } images(first:3){ nodes{ width height } } } pageInfo{ hasNextPage } } }`
+    let data = null
+    try { data = await adminGraphql(store, token, Q, { n: sample }) } catch { /* leave null — don't fail preflight on a quality probe */ }
+    const nodes = data?.products?.nodes || []
+    if (nodes.length) {
+      let weakDesc = 0, noImage = 0, oversized = 0; const examples = []
+      for (const p of nodes) {
+        if (isWeakDescription(p.descriptionHtml)) { weakDesc += 1; if (examples.length < 5) examples.push(p.title) }
+        if (!p.featuredImage) noImage += 1
+        if ((p.images?.nodes || []).some(i => (i.width || 0) > 2500 || (i.height || 0) > 2500)) oversized += 1
+      }
+      const pct = Math.round((weakDesc / nodes.length) * 100)
+      productQuality = { sampled: nodes.length, totalProducts: probe.products, weakDescriptions: weakDesc, weakPct: pct, noImage, oversizedImages: oversized, examples }
+      const strict = process.env.PORTER_REQUIRE_CONTENT === '1'
+      if (weakDesc) {
+        const msg = `${weakDesc}/${nodes.length} sampled product(s) (${pct}%) have a missing/generic/too-short description (e.g. ${examples.slice(0, 3).join(', ')}) — provide real merchandising copy (compass/client) before publish; a store of placeholder descriptions looks unfinished.`
+        if (strict && pct >= 20) add(blockers, 'store-preflight.weak-descriptions', msg)
+        else add(warnings, 'store-preflight.weak-descriptions', msg)
+      }
+      if (noImage) add(warnings, 'store-preflight.products-no-image', `${noImage}/${nodes.length} sampled product(s) have NO image — every PDP needs real product media.`)
+      if (oversized) add(warnings, 'store-preflight.images-oversized', `${oversized}/${nodes.length} sampled product(s) have an image >2500px — likely unoptimized (slow LCP); porter-apply should resize to ~1200–2048px + WebP on upload.`)
+    }
+  }
+
+  finish(null, { granted, classification: probe.classification, shop: probe.name, products: probe.products, productQuality })
 } catch (err) {
   if (err instanceof AuthError) finish(`token rejected: ${err.message}`)
   finish(`store unreachable / API error: ${err.message}`)

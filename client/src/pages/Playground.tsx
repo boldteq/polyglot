@@ -262,6 +262,11 @@ export default function Playground() {
   // The in-flight run's id (= its historyId). Drives Stop→server-cancel and lets
   // us re-attach to a background generation after a page refresh.
   const activeRunIdRef = useRef<string | null>(null)
+  // True once the page is unloading (refresh/navigate/close). On unload the
+  // in-flight fetch rejects with a generic network error (not an AbortError), so
+  // we must NOT treat that as a real terminal — otherwise we'd wipe the reattach
+  // marker and the reloaded page couldn't reconnect to the still-running gen.
+  const unloadingRef = useRef(false)
   // Race-safety: ids deleted this session. A refreshThreads() that was already
   // in-flight when the delete fired must NOT resurrect them, so every list write
   // filters this set. Cleared only on successful server delete reconcile.
@@ -966,7 +971,9 @@ export default function Playground() {
       // Clear the reattach marker ONLY if the run actually finished here. If the
       // stream was aborted by a page refresh/navigation, the run keeps generating
       // server-side — leave the marker so the reloaded page re-attaches to it.
-      if (reachedTerminal) {
+      // Clear the reattach marker only on a REAL terminal AND when we're not
+      // unloading. A refresh/navigate leaves it so the reloaded page reconnects.
+      if (reachedTerminal && !unloadingRef.current) {
         activeRunIdRef.current = null
         try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* ignore */ }
       }
@@ -1028,8 +1035,13 @@ export default function Playground() {
       if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l)
     } catch { /* aborted or network drop — the run keeps going server-side */ } finally {
       setRunning(false); abortRef.current = null; setLiveUserMsg('')
-      activeRunIdRef.current = null
-      try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* ignore */ }
+      // Only drop the reattach marker if THIS reattach saw a real terminal AND we
+      // aren't unloading. A 2nd refresh mid-reattach leaves the marker so the next
+      // reload reconnects again (same guard as the primary run path).
+      if (finished && !unloadingRef.current) {
+        activeRunIdRef.current = null
+        try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* ignore */ }
+      }
       if (finished) {
         // The completed turn is now persisted — reload the conversation from DB.
         try {
@@ -1047,6 +1059,15 @@ export default function Playground() {
   // On load, re-attach to a generation that was still running when the page was
   // last refreshed / navigated away. THIS is the "survive refresh" payoff: the
   // run never stopped server-side; we reconnect a viewer and keep streaming.
+  // Mark the page as unloading so an in-flight run's network-error-on-unload
+  // isn't mistaken for a real terminal (which would wipe the reattach marker).
+  useEffect(() => {
+    const onHide = () => { unloadingRef.current = true }
+    window.addEventListener('pagehide', onHide)
+    window.addEventListener('beforeunload', onHide)
+    return () => { window.removeEventListener('pagehide', onHide); window.removeEventListener('beforeunload', onHide) }
+  }, [])
+
   const reattachCheckedRef = useRef(false)
   useEffect(() => {
     if (reattachCheckedRef.current) return

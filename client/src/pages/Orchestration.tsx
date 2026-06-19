@@ -24,8 +24,8 @@ import {
   ArrowRight, Clock, Eye, Trash, Search, ChevronDown,
   StopCircle, Layers, AlertTriangle, SearchX,
 } from 'lucide-react'
-import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHistory, getOrchestrationTemplates } from '../lib/api'
-import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate } from '../lib/api'
+import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHistory, getOrchestrationTemplates, startOrchestrationRun, getOrchestrationRun, cancelOrchestrationRun } from '../lib/api'
+import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate, OrchestrationRun, OrchestrationStep } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { formatAgentDisplay } from '../lib/agentDisplay'
@@ -183,6 +183,28 @@ interface RunLog {
   ts?: number
 }
 
+// Tracks the in-flight DURABLE run across a page refresh so we can reconnect to a
+// still-running orchestration on reload. { runId, orchId } — mirrors Playground's
+// ACTIVE_RUN_KEY pattern. The run lives server-side; this is just the viewer's bookmark.
+const ACTIVE_RUN_KEY = 'polyglot.orchestration.activeRun'
+
+// Map a durable step's status → the legacy RunLog event the UI's processSSEEvent
+// already understands. `completed`/`failed` carry the step's output/error.
+// A re-pended step (pending while running) surfaces as a retry.
+function stepToRunLogEvent(step: { nodeId: string; status: string; output?: string | null; error?: string | null }): RunLog | null {
+  const nodeId = step.nodeId
+  switch (step.status) {
+    case 'running':   return { type: 'start', nodeId, label: null }
+    case 'completed': return { type: 'done', nodeId, label: null, output: step.output ?? undefined }
+    case 'approved':  return { type: 'done', nodeId, label: null, output: step.output ?? '[APPROVED]' }
+    case 'failed':    return { type: 'error', nodeId, label: null, error: step.error ?? 'Step failed' }
+    case 'rejected':  return { type: 'error', nodeId, label: null, error: step.error ?? 'Rejected' }
+    case 'skipped':   return { type: 'skipped', nodeId, label: null }
+    case 'pending':   return { type: 'retry', nodeId, label: null }
+    default:          return null // 'paused' has no node-status mapping; handled at run level
+  }
+}
+
 // Returns true if adding source->target would create a cycle in the directed graph.
 function wouldCreateCycle(edges: Edge[], source: string, target: string): boolean {
   if (source === target) return true
@@ -218,8 +240,6 @@ export default function Orchestration() {
   // C12: gate the first multi-node run of a session behind a cost confirm.
   const runConfirmedRef = useRef(false)
   const [showRunConfirm, setShowRunConfirm] = useState(false)
-  // Surface dropped SSE events as a non-fatal run-log warning after the stream ends.
-  const sseParseErrorRef = useRef(false)
   const [showGuide, setShowGuide] = useState(false)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [viewingOutputNodeId, setViewingOutputNodeId] = useState<string | null>(null)
@@ -237,6 +257,14 @@ export default function Orchestration() {
   const rfInstanceRef = useRef<ReactFlowInstance | null>(null)
   const logEndRef = useRef<HTMLDivElement | null>(null)
   const sseBufferRef = useRef('')
+  // The in-flight durable run's id. Drives Stop→server-cancel and lets us
+  // reconnect to a background run after a page refresh.
+  const activeRunIdRef = useRef<string | null>(null)
+  // True once the page is unloading (refresh/navigate/close). On unload the
+  // in-flight fetch rejects with a generic network error (not an AbortError), so
+  // we must NOT treat that as a terminal — otherwise we'd wipe the reattach marker
+  // and the reloaded page couldn't reconnect to the still-running run.
+  const unloadingRef = useRef(false)
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId) ?? null
   const viewingNode = nodes.find(n => n.id === viewingOutputNodeId) ?? null
@@ -487,8 +515,11 @@ export default function Orchestration() {
     applyTemplate(tpl)
   }, [nodes.length, applyTemplate])
 
-  const handleSave = async () => {
-    if (!orchName.trim()) { toast('error', 'Name your orchestration first'); return }
+  // Returns the saved orchestration id (callers that don't need it can ignore the
+  // return). The durable run flow needs a SAVED orchestration, so handleRun awaits
+  // this to ensure an id exists before POSTing a run.
+  const handleSave = async (): Promise<string | null> => {
+    if (!orchName.trim()) { toast('error', 'Name your orchestration first'); return null }
     setSaving(true)
     try {
       const res = await fetch('/api/orchestrations', {
@@ -501,8 +532,10 @@ export default function Orchestration() {
       setOrchId(data.id)
       loadSaved()
       toast('success', 'Orchestration saved')
+      return data.id as string
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to save')
+      return null
     } finally {
       setSaving(false)
     }
@@ -558,7 +591,14 @@ export default function Orchestration() {
     setShowRunPanel(false)
   }
 
+  // Stop = explicit cancel. A refresh/navigate does NOT stop a run (it keeps
+  // executing server-side); only this kills the durable run. Drop the reattach
+  // marker so a later reload doesn't try to reconnect to a cancelled run.
   const cancelRun = () => {
+    const runId = activeRunIdRef.current
+    if (runId) cancelOrchestrationRun(runId, 'cancelled by user').catch(() => { /* best-effort; stream ends anyway */ })
+    activeRunIdRef.current = null
+    try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* ignore */ }
     abortRef.current?.abort()
   }
 
@@ -591,6 +631,121 @@ export default function Orchestration() {
     }
   }, [setNodes])
 
+  // Resolve a node's label from the live canvas so mapped step events show a
+  // human label in the run log (durable steps carry only nodeId).
+  const labelForNode = useCallback((nodeId: string | null): string | null => {
+    if (!nodeId) return null
+    const n = nodes.find(nd => nd.id === nodeId)
+    return (n?.data as AgentNodeData | undefined)?.label ?? nodeId
+  }, [nodes])
+
+  // Feed one durable step through the legacy event mapping + processSSEEvent.
+  const applyStep = useCallback((step: { nodeId: string; status: string; output?: string | null; error?: string | null }) => {
+    const ev = stepToRunLogEvent(step)
+    if (!ev) return
+    processSSEEvent({ ...ev, label: labelForNode(ev.nodeId) })
+  }, [processSSEEvent, labelForNode])
+
+  // Consume the durable run's NAMED-event SSE stream and drive the UI. Shared by
+  // a fresh run (handleRun) and a reconnect-on-reload (reattach effect).
+  //
+  // The durable stream uses `event: <name>\ndata: <json>\n\n` framing (unlike the
+  // legacy data-only stream), so the parser tracks the current `event:` name and
+  // pairs it with the next `data:` line; a blank line resets the pending name.
+  const streamDurableRun = useCallback(async (runId: string) => {
+    activeRunIdRef.current = runId
+    setRunning(true)
+    setShowRunPanel(true)
+    setSelectedNodeId(null)
+    setViewingOutputNodeId(null)
+    sseBufferRef.current = ''
+    abortRef.current = new AbortController()
+
+    // Only a real run-level terminal EVENT (completed/failed/cancelled) clears the
+    // reattach marker. A socket close from a refresh/navigate must leave it intact
+    // so the reloaded page reconnects to the still-running server-side run.
+    let reachedTerminal = false
+
+    try {
+      const response = await fetch(`/api/orchestrations/runs-v2/${encodeURIComponent(runId)}/stream`, {
+        signal: abortRef.current.signal,
+      })
+      if (!response.body) throw new Error('No response body')
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+
+      let pendingEvent = 'message' // current `event:` name awaiting its `data:`
+
+      const dispatch = (name: string, raw: string) => {
+        let payload: unknown
+        try { payload = JSON.parse(raw) } catch { console.error('[orchestration/durable-sse parse]', raw.slice(0, 120)); return }
+        if (name === 'snapshot') {
+          const run = payload as OrchestrationRun
+          // Reset every canvas node to idle, then replay each step so a reload
+          // rebuilds the exact progress-so-far (running/done/error/skipped).
+          setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: 'idle', output: undefined } })))
+          for (const step of (run.steps || [])) applyStep(step)
+        } else if (name === 'step:any') {
+          applyStep(payload as OrchestrationStep)
+        } else if (name === 'run:completed') {
+          reachedTerminal = true
+          const run = payload as Partial<OrchestrationRun>
+          setRunLog(log => [...log, { type: 'complete', nodeId: null, label: null, finalOutput: run.finalOutput ?? '', ts: Date.now() }])
+        } else if (name === 'run:failed') {
+          reachedTerminal = true
+          const run = payload as Partial<OrchestrationRun>
+          setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: run.error || 'Run failed', ts: Date.now() }])
+        } else if (name === 'run:cancelled') {
+          reachedTerminal = true
+          setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: 'Run cancelled', ts: Date.now() }])
+        } else if (name === 'run:paused') {
+          // HITL approval gate — the run is still alive; leave `running` true.
+          toast('warn', 'Paused for approval')
+        }
+      }
+
+      const processLine = (line: string) => {
+        if (line.startsWith('event: ')) { pendingEvent = line.slice(7).trim(); return }
+        if (line.startsWith('data: ')) { dispatch(pendingEvent, line.slice(6)); return }
+        if (line.trim() === '') { pendingEvent = 'message' } // record separator
+        // ':' comment lines (heartbeats) are ignored.
+      }
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        sseBufferRef.current += decoder.decode(value, { stream: true })
+        const parts = sseBufferRef.current.split('\n')
+        sseBufferRef.current = parts.pop() ?? ''
+        for (const line of parts) processLine(line)
+        if (reachedTerminal) break
+      }
+      // Flush any trailing complete line in the buffer.
+      if (sseBufferRef.current.trim()) {
+        for (const line of sseBufferRef.current.split('\n')) processLine(line)
+      }
+    } catch (err: unknown) {
+      // AbortError on Stop/navigation is expected — never a real failure. A genuine
+      // network drop leaves the run going server-side; the reattach marker stays so
+      // a reload reconnects.
+      if (!(err instanceof Error && err.name === 'AbortError')) {
+        setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: err instanceof Error ? err.message : String(err), ts: Date.now() }])
+      }
+    } finally {
+      setRunning(false)
+      abortRef.current = null
+      sseBufferRef.current = ''
+      // Clear the reattach marker ONLY on a real terminal AND when not unloading.
+      // A refresh/navigate (no terminal) leaves it so the reloaded page reconnects.
+      if (reachedTerminal && !unloadingRef.current) {
+        activeRunIdRef.current = null
+        try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* ignore */ }
+        // Refresh run history so the just-finished durable run appears in the list.
+        loadHistory()
+      }
+    }
+  }, [setNodes, applyStep, loadHistory])
+
   const handleRun = async () => {
     if (!task.trim()) { toast('error', 'Enter a task to get started'); return }
     if (nodes.length === 0) { toast('error', 'Add nodes to the canvas first'); return }
@@ -612,90 +767,66 @@ export default function Orchestration() {
       return
     }
 
-    setRunning(true)
-    setRunLog([])
-    setShowRunPanel(true)
-    setSelectedNodeId(null)
-    setViewingOutputNodeId(null)
-    sseBufferRef.current = ''
-    sseParseErrorRef.current = false
-    abortRef.current = new AbortController()
+    // Durable runs require a SAVED orchestration (the server loads its nodes by id).
+    // If unsaved, save first to mint an id; bail if that fails.
+    let id = orchId
+    if (!id) {
+      id = await handleSave()
+      if (!id) { toast('error', 'Save the orchestration before running'); return }
+    }
 
+    setRunLog([])
     setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: 'idle', output: undefined } })))
 
     try {
-      const response = await fetch('/api/orchestrations/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodes, edges, task, orchestrationName: orchName, orchestrationId: orchId }),
-        signal: abortRef.current.signal,
-      })
-
-      if (!response.body) throw new Error('No response body')
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        sseBufferRef.current += decoder.decode(value, { stream: true })
-        const parts = sseBufferRef.current.split('\n')
-        sseBufferRef.current = parts.pop() ?? ''
-
-        for (const line of parts) {
-          const trimmed = line.trim()
-          if (!trimmed.startsWith('data: ')) continue
-          try {
-            const event = JSON.parse(trimmed.slice(6))
-            processSSEEvent(event)
-          } catch (e) { sseParseErrorRef.current = true; console.error('[orchestration/sse parse]', e instanceof Error ? e.message : e) }
-        }
-      }
-
-      const remaining = sseBufferRef.current.trim()
-      if (remaining) {
-        for (const line of remaining.split('\n')) {
-          const trimmed = line.trim()
-          if (!trimmed.startsWith('data: ')) continue
-          try {
-            const event = JSON.parse(trimmed.slice(6))
-            processSSEEvent(event)
-          } catch (e) { sseParseErrorRef.current = true; console.error('[orchestration/sse parse]', e instanceof Error ? e.message : e) }
-        }
-      }
-
-      if (sseParseErrorRef.current) {
-        setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: 'Some streamed output may be missing (parse error).' }])
-      }
+      const { runId } = await startOrchestrationRun(id, { task })
+      // Persist the reattach bookmark so a refresh mid-run reconnects on reload.
+      try { localStorage.setItem(ACTIVE_RUN_KEY, JSON.stringify({ runId, orchId: id })) } catch { /* quota */ }
+      await streamDurableRun(runId)
     } catch (err: unknown) {
-      // On abort, flush any complete SSE events still sitting in the buffer so a
-      // node's final 'done' isn't silently dropped mid-stream before we clear it.
-      const leftover = sseBufferRef.current
-      if (leftover.trim()) {
-        for (const line of leftover.split('\n')) {
-          const trimmed = line.trim()
-          if (!trimmed.startsWith('data: ')) continue
-          try {
-            const event = JSON.parse(trimmed.slice(6))
-            processSSEEvent(event)
-          } catch (e) { console.warn('[orchestration/sse abort-flush] dropped partial event', e instanceof Error ? e.message : e) }
-        }
-      }
-      if (err instanceof Error && err.name === 'AbortError') {
-        setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: 'Run cancelled' }])
-      } else {
-        setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: String(err) }])
-      }
-    } finally {
-      setRunning(false)
-      abortRef.current = null
-      sseBufferRef.current = ''
-      // Refresh run history so the just-finished run appears without a manual
-      // Refresh click (the run is persisted server-side as the stream completes).
-      loadHistory()
+      setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: err instanceof Error ? err.message : String(err), ts: Date.now() }])
+      toast('error', err instanceof Error ? err.message : 'Failed to start run')
     }
   }
+
+  // Mark the page as unloading so an in-flight run's network-error-on-unload isn't
+  // mistaken for a real terminal (which would wipe the reattach marker). Mirrors
+  // Playground's onHide effect.
+  useEffect(() => {
+    const onHide = () => { unloadingRef.current = true }
+    window.addEventListener('pagehide', onHide)
+    window.addEventListener('beforeunload', onHide)
+    return () => { window.removeEventListener('pagehide', onHide); window.removeEventListener('beforeunload', onHide) }
+  }, [])
+
+  // On load, reconnect to a durable run that was still running when the page was
+  // last refreshed/navigated away. THIS is the "survive refresh" payoff: the run
+  // never stopped server-side; we reconnect a viewer and keep streaming. One-shot.
+  const reattachCheckedRef = useRef(false)
+  useEffect(() => {
+    if (reattachCheckedRef.current) return
+    reattachCheckedRef.current = true
+    let raw: string | null = null
+    try { raw = localStorage.getItem(ACTIVE_RUN_KEY) } catch { return }
+    if (!raw) return
+    let saved: { runId?: string; orchId?: string } | null = null
+    try { saved = JSON.parse(raw) } catch { try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ }; return }
+    if (!saved?.runId) { try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ }; return }
+    const { runId } = saved
+    getOrchestrationRun(runId).then(run => {
+      if (run.status === 'running' || run.status === 'paused') {
+        // Restore the orchestration identity from the run, then reconnect. The
+        // snapshot event will rebuild node states from the run's steps.
+        if (run.orchestrationId) setOrchId(run.orchestrationId)
+        if (run.orchestrationName) setOrchName(run.orchestrationName)
+        streamDurableRun(runId)
+      } else {
+        // Finished/cancelled while we were away — result is persisted; drop marker.
+        try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ }
+        loadHistory()
+      }
+    }).catch(() => { try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ } })
+  }, [streamDurableRun, loadHistory])
 
   const finalOutput = runLog.find(l => l.type === 'complete')?.finalOutput || ''
 

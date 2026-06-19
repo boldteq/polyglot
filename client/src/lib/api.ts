@@ -315,11 +315,15 @@ export async function streamAiChat(
   system: string | undefined,
   onChunk: (text: string) => void,
   signal?: AbortSignal,
+  // Background-run resilience: the client mints a runId + passes the current
+  // sessionId so a page refresh can find + re-attach to this generation.
+  runId?: string,
+  sessionId?: string | null,
 ): Promise<string> {
   const res = await fetch(`${BASE}/ai/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, system }),
+    body: JSON.stringify({ messages, system, runId, sessionId: sessionId ?? undefined }),
     signal,
   })
   if (!res.ok) {
@@ -366,6 +370,21 @@ export const saveAiSession = (session: { id?: string; title: string; messages: A
   request<{ id: string }>('/ai/history', { method: 'POST', body: JSON.stringify(session) })
 export const deleteAiSession = (id: string) =>
   request(`/ai/history/${id}`, { method: 'DELETE' })
+
+// Background-run resilience: is an AI chat generation still running for this
+// session (e.g. after a page refresh)? Used to re-attach to the live stream on
+// reload, mirroring the playground pattern.
+export interface ActiveAiRun {
+  active: boolean
+  runId?: string
+  sessionId?: string | null
+  output?: string
+  startedAt?: number
+}
+export const getActiveAiRun = (sessionId: string) =>
+  request<ActiveAiRun>(`/ai/active?sessionId=${encodeURIComponent(sessionId)}`)
+export const cancelAiRun = (runId: string) =>
+  request<{ ok: boolean; alreadyDone?: boolean }>(`/ai/run/${encodeURIComponent(runId)}/cancel`, { method: 'POST', body: '{}' })
 
 // Orchestration Run History
 export interface RunHistoryItem {

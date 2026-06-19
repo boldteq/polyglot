@@ -4,6 +4,21 @@ Vendored QA-gate suite for client-owned Shopify Liquid theme repos (Shopify Webs
 Stack D). One copy lives in every client repo at `toolkit/`; CI workflows enforce the gates
 on every push, staging PR, and release tag. Master copy: `Polyglot/theme-toolkit/`.
 
+## Quick audit — the "find all bugs" commands
+
+> **The gates scan the CURRENT directory.** The pnpm aliases live in `theme-toolkit/package.json`, so run them from `theme-toolkit/`. **In a vendored client repo (toolkit at `toolkit/`), run the script directly from the repo root** instead: `node toolkit/scripts/theme-gates.mjs --static-only`.
+
+```bash
+cd theme-toolkit
+pnpm theme:audit        # complete STATIC sweep (gates 8/9/11/12/13/14/15/16) → gate-reports/SUMMARY.md
+pnpm theme:audit:full   # + URL gates (lighthouse/axe/seo/conversion/functional) — needs THEME_PREVIEW_URL
+pnpm gates:list         # list all 16 gates + this cheatsheet
+pnpm store:preflight    # live-store access + content-quality preflight (needs SHOPIFY_ADMIN_API_TOKEN)
+pnpm gates:verify       # check a PRIOR full run is fresh+passing (publish gate — does NOT run the gates)
+```
+
+`gate-reports/SUMMARY.md` is the human-readable companion (blocked gates + each blocker with `file:line` + the fix); `summary.json` is the machine-readable one. There is **no** `client-store-preflight-audit.mjs` — that's an agent-driven protocol (`client-store-preflight-audit.md`) producing `docs/preflight-audit.md`; the executable live-store check is `store:preflight`.
+
 | # | Gate | Kind | Script | Blocks on |
 |---|------|------|--------|-----------|
 | 1 | lighthouse | URL | `scripts/gate-lighthouse.mjs` | budget breach (`lighthouse-budget.json`, per page × form factor) |

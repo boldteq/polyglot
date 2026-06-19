@@ -77,5 +77,15 @@ console.log('case (d) hollow theme (section wired with no blocks but renders sec
   else fail(`missing expected warning: rw.empty-rendered-section (saw ${[...warnIds].join(', ') || 'none'})`)
 }
 
+console.log('case (e) placeholder-leak (Lorem + seeded [CLAIM] + "your text here") → expect exit 0 + placeholder-text warn')
+{
+  const { code, report } = runGate(path.join(HERE, 'placeholder-leak'))
+  if (code === 0) pass('exit 0 (advisory)')
+  else fail(`expected exit 0, got ${code}; blockers=${JSON.stringify(report?.blockers?.map(b => b.id))}`)
+  const warnIds = new Set((report?.warnings || []).map(w => w.id))
+  if (warnIds.has('rw.placeholder-text')) pass('warning present: rw.placeholder-text')
+  else fail(`missing expected warning: rw.placeholder-text (saw ${[...warnIds].join(', ') || 'none'})`)
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

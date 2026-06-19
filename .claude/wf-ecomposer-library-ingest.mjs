@@ -52,23 +52,23 @@ DISCIPLINE:
 // PAGES is REPLACED per batch (the workflow re-extracts everything in PAGES — it does not skip
 // already-ingested pages). Prior batches (LUMISMOOTH + 18-page p2/p3) are already on disk; do not re-list them.
 //
-// BATCH 3 (page 4 of category 86) — 8 pages: 3 single-product PDPs + 3 storefront HOMEPAGEs + 2 non-ecom edge cases.
-// Edge cases (case-study, service-business) are OUT of the core ecom domain but Yash said "extract all" —
-// they bank new section types (service-cards, booking-CTA, case-study client-overview) and are flagged non-ecom.
+// BATCH 4 (pages 5-10 of category 86) — discovery rated 12 GOOD / 2 SKIP (4805 dup, 4588 placeholder).
+// Split into 2 chunks of ≤8 to avoid session-limit stalls; related pages kept in the SAME chunk so their
+// shared new cards collapse within one Reconcile pass (supplement PDPs together; CPG-food homepages together).
+// CHUNK B (this run, 5 pages). Chunk A (4904/4756/4676/4499/2043/5063/4937) already ingested + verified.
+// The 3 CPG-food homepages (valentine-choc / electrolyte / coffee) are kept together so their shared
+// merchandising cards collapse to canonical within this one Reconcile pass.
 const PAGES = [
-  // ---- Single-product PDP conversion templates (3) ----
-  { id: '6016', slug: 'ecomposer-coffee-machine-pdp',          niche: 'home-kitchen / small kitchen appliance (4-in-1 coffee machine)',  newNiche: false, productName: 'Coffee Center Barista Bar 4-in-1 Coffee Machine', pageTypeHint: 'PDP' },
-  { id: '5981', slug: 'ecomposer-automatic-tent-pdp',          niche: 'outdoor-gear / camping (automatic pop-up tent)',                  newNiche: false, productName: 'Automatic Tent (AM Tent)',                          pageTypeHint: 'PDP' },
-  { id: '5530', slug: 'ecomposer-biotin-gummies-pdp',          niche: 'supplements / beauty (biotin hair-skin-nails gummies)',           newNiche: false, productName: 'Undeniable Beauty — Beauty Boost Biotin Gummies',    pageTypeHint: 'PDP' },
+  // ---- CPG-food storefront HOMEPAGEs (3 — related; shared cards collapse here) ----
+  { id: '3697', slug: 'ecomposer-valentine-chocolate-homepage', niche: 'cpg-food / seasonal confectionery storefront homepage (Valentine)', newNiche: false, productName: 'Valentine Chocolate Collection (homepage)',       pageTypeHint: 'HOMEPAGE' },
+  { id: '1988', slug: 'ecomposer-electrolyte-water-homepage',   niche: 'cpg-food / flavored electrolyte beverage homepage (subscribe + sample-pack)', newNiche: false, productName: 'Meloni / Hydrant Electrolyte Water (homepage)', pageTypeHint: 'HOMEPAGE' },
+  { id: '1835', slug: 'ecomposer-coffee-homepage',              niche: 'cpg-food / coffee brand storefront homepage',                    newNiche: false, productName: 'Strong Coffee (homepage)',                        pageTypeHint: 'HOMEPAGE' },
 
-  // ---- Multi-product storefront HOMEPAGE templates (3) ----
-  { id: '5532', slug: 'ecomposer-supplements-homepage',        niche: 'supplements / brand storefront homepage (quiz + sub-and-save)',   newNiche: false, productName: 'Ancient Nutrition (plant-based supplements homepage)', pageTypeHint: 'HOMEPAGE' },
-  { id: '5442', slug: 'ecomposer-standing-desk-homepage',      niche: 'furniture-home-decor / ergonomic office furniture (standing desks)', newNiche: true,  productName: 'Standing Desk / Ergonomic Office Furniture (homepage)', pageTypeHint: 'HOMEPAGE' },
-  { id: '5186', slug: 'ecomposer-makeup-city-homepage',        niche: 'beauty/skincare / cosmetics brand storefront homepage',           newNiche: false, productName: 'Makeup City (cosmetics homepage)',                  pageTypeHint: 'HOMEPAGE' },
+  // ---- Seasonal apparel HOMEPAGE (1) ----
+  { id: '3321', slug: 'ecomposer-christmas-apparel-homepage',   niche: 'apparel / seasonal festive storefront homepage (Christmas)',      newNiche: false, productName: 'Christmas Fashion Collection ("Chic and Merry")', pageTypeHint: 'HOMEPAGE' },
 
-  // ---- Non-ecom edge cases (banked for structure; flagged OUT of core ecom domain) ----
-  { id: '5475', slug: 'ecomposer-agency-case-study-landing',   niche: 'NON-ECOM / agency case-study & portfolio layout (placeholder demo content)', newNiche: true, productName: 'GreenGrow Essentials (agency case-study template)', pageTypeHint: 'LANDING', nonEcom: true },
-  { id: '5091', slug: 'ecomposer-chiropractic-clinic-homepage', niche: 'NON-ECOM / local service business (chiropractic & wellness clinic — booking, not add-to-cart)', newNiche: true, productName: 'Chiropractic & Wellness Clinic (service homepage)', pageTypeHint: 'HOMEPAGE', nonEcom: true },
+  // ---- Pet product LANDING (1) ----
+  { id: '1416', slug: 'ecomposer-calming-dog-bed-landing',      niche: 'pet / pet furniture (calming donut dog bed)',                    newNiche: false, productName: 'Deep Dish Lux Cuddler Calming Dog Bed',          pageTypeHint: 'LANDING' },
 ]
 
 const url = (p) => `https://ecomposer.app/demo/${p.id}/preview`

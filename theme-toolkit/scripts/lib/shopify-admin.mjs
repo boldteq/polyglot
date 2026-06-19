@@ -121,3 +121,11 @@ export async function probeStore(store, token) {
     classification: products > 0 ? 'live' : 'fresh',
   }
 }
+
+// Pure content-quality helper (porter-preflight #20): is a product description missing / generic /
+// too short to be real merchandising copy? Used to flag autonomous stores shipping placeholder copy.
+const GENERIC_DESC = /^(?:product description|default(?: description)?|description|sample(?: description)?|n\/?a|tbd|todo|placeholder)$|lorem ipsum|dolor sit amet/i
+export function isWeakDescription(html) {
+  const text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim()
+  return !text || text.length < 40 || GENERIC_DESC.test(text)
+}

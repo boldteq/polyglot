@@ -4,6 +4,7 @@ const { Router } = require('express');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { rateLimit } = require('../middleware/rateLimit');
 const { loadConfig } = require('../lib/config');
@@ -11,6 +12,19 @@ const { discoverProjects, listMdFiles } = require('../lib/discovery');
 const { listAgents } = require('../lib/cache');
 const { readFileSafe, ensureDir, atomicWriteText } = require('../lib/atomicIo');
 const db = require('../db');
+const aiRuns = require('../lib/aiRuns');
+
+// Wall timeout for an abandoned background AI run: if every viewer detaches
+// (refresh/navigate) and nobody reattaches, the process is force-killed after
+// this so a truly-orphaned generation can't run forever. Reattach/cancel are
+// unaffected — only a genuinely abandoned run hits this.
+const AI_RUN_WALL_MS = 180_000;
+
+// Validate a client-supplied short id (runId / sessionId). Mirrors the
+// playground `okId` rule: 1–64 chars of [\w-].
+function okShortId(v) {
+  return typeof v === 'string' && v.length > 0 && v.length <= 64 && /^[\w-]+$/.test(v);
+}
 
 const router = Router();
 
@@ -272,13 +286,27 @@ router.post('/ai/chat', rateLimit('heavy'), (req, res) => {
   });
 });
 
-// POST /api/ai/stream
+// POST /api/ai/stream — background-run resilient AI chat.
+//
+// The RUN is the source of truth; the HTTP response is just one detachable
+// viewer (mirrors the proven playground pattern). On client disconnect
+// (refresh / navigate / tab close) we UNSUBSCRIBE — we never kill the process —
+// so a returning client can re-attach to the live generation. The process dies
+// only on an explicit Stop (cancel route) or the wall timeout for a truly
+// abandoned run.
 router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
   res.setTimeout(0);
   const { messages, system } = req.body;
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array required' });
   }
+  // Client-generated runId + sessionId (so a refresh can find + reattach the
+  // run). Validate short [\w-]{1,64}; fall back to a crypto id if absent/bad.
+  let { runId, sessionId } = req.body;
+  if (runId != null && !okShortId(runId)) return res.status(400).json({ error: 'Invalid runId' });
+  if (sessionId != null && !okShortId(sessionId)) return res.status(400).json({ error: 'Invalid sessionId' });
+  if (!runId) runId = crypto.randomUUID();
+  if (!sessionId) sessionId = null;
 
   const systemText = buildAiSystemPrompt(system);
 
@@ -292,7 +320,14 @@ router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
+
+  // Register the run + attach the initial client as a subscriber. `send` fans
+  // out to every subscriber (initial + reattached) and buffers chunks for replay.
+  const run = aiRuns.createRun({ id: runId, sessionId, output: '' });
+  aiRuns.subscribe(run, res);
+  const send = (data) => { aiRuns.broadcast(run, data); };
 
   const claudePath = process.env.CLAUDE_PATH || 'claude';
   const childEnv = { ...process.env, HOME: os.homedir() };
@@ -305,21 +340,36 @@ router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
   let fullOutput = '';
   let errOutput = '';
 
-  proc.stdout.on('data', (data) => {
-    const chunk = data.toString();
-    fullOutput += chunk;
-    res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
-  });
-
-  proc.stderr.on('data', (data) => { errOutput += data.toString(); });
+  // Expose force-stop so the explicit cancel route can end this background run.
+  run.kill = () => { try { proc.kill(); } catch { /* already dead */ } };
 
   let responded = false;
+  // Broadcast a terminal event to every viewer, then mark the run done (ends all
+  // attached responses + schedules grace eviction). Idempotent.
   const endStream = (eventData) => {
     if (responded) return;
     responded = true;
-    res.write(`data: ${JSON.stringify(eventData)}\n\n`);
-    res.end();
+    if (wallTimer) clearTimeout(wallTimer);
+    send(eventData);
+    aiRuns.markDone(run);
   };
+
+  // Wall timeout for an abandoned run (no viewer reattaches). Reattach/cancel
+  // don't reset this — only a genuinely orphaned generation hits it.
+  const wallTimer = setTimeout(() => {
+    if (responded) return;
+    try { proc.kill(); } catch { /* already dead */ }
+    endStream({ type: 'error', error: `AI chat timed out after ${AI_RUN_WALL_MS / 1000}s` });
+  }, AI_RUN_WALL_MS);
+  if (wallTimer.unref) wallTimer.unref();
+
+  proc.stdout.on('data', (data) => {
+    const chunk = data.toString();
+    fullOutput += chunk;
+    send({ type: 'chunk', content: chunk });
+  });
+
+  proc.stderr.on('data', (data) => { errOutput += data.toString(); });
 
   proc.on('close', (code, signal) => {
     if (code !== 0 || signal) {
@@ -335,9 +385,6 @@ router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
     endStream({ type: 'error', error: 'Failed to start agent process' });
   });
 
-  // Filter stderr before forwarding to client (don't leak credentials / paths)
-  proc.stderr.on('data', (data) => { errOutput += data.toString(); });
-
   let streamStdinDone = false;
   proc.stdin.on('error', (err) => {
     if (streamStdinDone) return;
@@ -351,12 +398,68 @@ router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
     try { proc.stdin.end(); } catch {}
   });
 
-  const socket = req.socket;
-  if (socket) {
-    socket.on('close', () => {
-      if (!responded) { try { proc.kill(); } catch {} }
-    });
+  // Client disconnect (refresh / navigate / tab close) only DETACHES this viewer
+  // — the generation keeps running so the user can re-attach after a reload.
+  // The process is killed only by an explicit Stop (cancel route) or the wall
+  // timeout. This is the core "survive refresh" fix.
+  const onClose = () => { aiRuns.unsubscribe(run, res); };
+  res.on('close', onClose);
+  if (req.socket) req.socket.on('close', onClose);
+});
+
+// GET /api/ai/active?sessionId=X — is a run still generating for this chat
+// session? The frontend calls this on load to decide whether to re-attach.
+router.get('/ai/active', rateLimit('read'), (req, res) => {
+  const sessionId = String(req.query.sessionId || '');
+  const run = sessionId ? aiRuns.getActiveBySession(sessionId) : null;
+  if (!run) return res.json({ active: false });
+  res.json({
+    active: true,
+    runId: run.id,
+    sessionId: run.sessionId,
+    output: run.output,          // text generated so far
+    startedAt: run.startedAt,
+  });
+});
+
+// GET /api/ai/run/:id/stream — RE-ATTACH to a background run as an SSE viewer.
+// Replays the text produced so far, then streams live until the run finishes.
+// If the run is unknown/evicted, tells the client to fall back to its persisted
+// session.
+router.get('/ai/run/:id/stream', rateLimit('read'), (req, res) => {
+  const run = aiRuns.getRun(req.params.id);
+  res.setTimeout(0);
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+  if (!run) {
+    res.write(`data: ${JSON.stringify({ type: 'error', code: 'run_not_found', error: 'Run not found — it may have finished. Restoring the conversation.' })}\n\n`);
+    try { res.end(); } catch {}
+    return;
   }
+  // Re-announce + replay everything generated so far.
+  res.write(`data: ${JSON.stringify({ type: 'start', runId: run.id, sessionId: run.sessionId, reattach: true })}\n\n`);
+  if (run.output) res.write(`data: ${JSON.stringify({ type: 'chunk', content: run.output })}\n\n`);
+  if (run.status === 'running') {
+    aiRuns.subscribe(run, res);
+    res.on('close', () => aiRuns.unsubscribe(run, res));
+  } else {
+    // Finished while we were away — send the terminal event + close.
+    if (run.finalEvent) res.write(`data: ${JSON.stringify(run.finalEvent)}\n\n`);
+    else res.write(`data: ${JSON.stringify({ type: 'done', content: run.output })}\n\n`);
+    try { res.end(); } catch {}
+  }
+});
+
+// POST /api/ai/run/:id/cancel — explicit Stop. Force-kills the background
+// process (a refresh does NOT — only this does).
+router.post('/ai/run/:id/cancel', rateLimit('write'), (req, res) => {
+  const run = aiRuns.getRun(req.params.id);
+  if (!run || run.status !== 'running') return res.json({ ok: true, alreadyDone: true });
+  if (typeof run.kill === 'function') run.kill('user_cancel');
+  res.json({ ok: true });
 });
 
 module.exports = router;

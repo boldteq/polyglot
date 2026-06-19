@@ -1,0 +1,2 @@
+# map
+| F | hero | CUSTOM |

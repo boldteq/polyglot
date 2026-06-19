@@ -268,6 +268,24 @@ function main() {
     warnings.push({ id: 'rw.placeholder-imagery', page: placeholderOnly.join(', '), detail: `${placeholderOnly.length} hero/product section(s) rely only on placeholder_svg_tag with no image binding (${placeholderOnly.join(', ')}) — premium gap; do not assert premium on placeholder imagery. Bind a real image (image_picker / product media).`, evidence: placeholderOnly.join(', ') })
   }
 
+  // ── 5. Placeholder TEXT leaking to the customer (round-3 onyx finding + atrium audit P0#6, 2026-06-19) ──
+  // A literal [CLAIM], Lorem ipsum, or "your X here" SEEDED into a template/section value (vs a schema
+  // info-label or a comment) RENDERS to a shopper — unfinished, not premium. Scan in-scope custom sections'
+  // rendered text (outside {% schema %}/{% comment %}) + ALL templates/*.json seeded string values.
+  const PLACEHOLDER = /\blorem ipsum\b|\bdolor sit amet\b|\byour (?:headline|text|content|tagline|copy|title|brand|product)\b[^.<>{}\n]{0,12}\bhere\b|\bplaceholder (?:text|copy|content)\b|\breplace with your\b|\bsample (?:text|copy)\b|\[CLAIM\b/i
+  const leaks = []
+  const stripSchema = (s) => s.replace(/\{%-?\s*schema\s*-?%\}[\s\S]*?\{%-?\s*endschema\s*-?%\}/g, ' ').replace(/\{%-?\s*comment\s*-?%\}[\s\S]*?\{%-?\s*endcomment\s*-?%\}/g, ' ').replace(/<!--[\s\S]*?-->/g, ' ')
+  for (const f of sections) { const m = stripSchema(read(f)).match(PLACEHOLDER); if (m) leaks.push(`${path.basename(f)} ("${String(m[0]).slice(0, 24)}")`) }
+  for (const tf of walkAll('templates', ['.json'])) {
+    let j; try { j = JSON.parse(read(tf)) } catch { continue }
+    const walkVals = (o) => { if (!o || typeof o !== 'object') return; for (const v of Object.values(o)) { if (typeof v === 'string' && PLACEHOLDER.test(v)) leaks.push(`${path.basename(tf)} ("${v.slice(0, 24)}")`); else if (typeof v === 'object') walkVals(v) } }
+    walkVals(j)
+  }
+  evidence.placeholderText = leaks
+  if (leaks.length) {
+    warnings.push({ id: 'rw.placeholder-text', page: 'theme', detail: `${leaks.length} customer-rendered placeholder/[CLAIM]/Lorem string(s) would paint to a shopper: ${leaks.slice(0, 6).join(', ')} — a literal "[CLAIM]"/Lorem/"your text here" reaching the storefront is unfinished, not premium (round-3 dogfood: never paint [CLAIM] to a customer). Seed real content or OMIT the section from the template.`, evidence: leaks.slice(0, 8).join(', ') })
+  }
+
   finish(null, evidence)
 }
 

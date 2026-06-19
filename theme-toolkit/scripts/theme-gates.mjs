@@ -14,6 +14,9 @@
 //   THEME_STORE_PASSWORD       storefront password (URL gates; STOREFRONT_PASSWORD accepted as alias)
 //   SKIP_<GATE>=1              waive a gate (SKIP_THEME_CHECK, SKIP_EDITABILITY,
 //                              SKIP_LIGHTHOUSE, SKIP_AXE, SKIP_SEO)
+//   GATES_SEQUENTIAL=1         run gates one-at-a-time (default = up to 8 in parallel)
+//
+//   node theme-gates.mjs --list   print the live gate manifest (ground audits in THIS, not memory)
 //
 // summary.json: { toolkitVersion, ts, sha, dirty, branch, mode, url,
 //                 gates: { <name>: { pass, blockers, warnings, skipped, reason } }, pass }
@@ -26,10 +29,66 @@
 // Exit: 0 = pass/fresh · 1 = block/stale · 2 = env error
 
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { spawnSync, execFileSync } from 'node:child_process'
+import { spawnSync, spawn, execFileSync } from 'node:child_process'
 import { readJson, toolkitVersion, gitInfo } from './lib/report.mjs'
+
+// Promisified gate spawn — buffers output, enforces a timeout. (P0 #14: parallel gate execution.)
+function runGateProc(runner, gateArgs, opts) {
+  return new Promise((resolve) => {
+    const child = spawn(runner, gateArgs, { cwd: opts.cwd, env: opts.env })
+    let stdout = ''; let stderr = ''
+    child.stdout?.on('data', d => { stdout += d })
+    child.stderr?.on('data', d => { stderr += d })
+    const timer = setTimeout(() => { try { child.kill('SIGKILL') } catch { /* */ } resolve({ code: 2, stdout, stderr, error: new Error('gate timed out') }) }, opts.timeout || 600_000)
+    child.on('error', (err) => { clearTimeout(timer); resolve({ code: 2, stdout, stderr, error: err }) })
+    child.on('close', (code) => { clearTimeout(timer); resolve({ code: code ?? 2, stdout, stderr, error: null }) })
+  })
+}
+
+// Bounded-concurrency pool — runs fn over items, at most `limit` at once.
+async function pool(items, limit, fn) {
+  let i = 0
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    while (i < items.length) { const idx = i++; await fn(items[idx]) }
+  })
+  await Promise.all(workers)
+}
+
+// Human-readable SUMMARY.md — humans read the .md, systems read the .json. Every failure is
+// actionable in plain English (audit P3 + the autonomous-build human touchpoints).
+function writeSummaryMd(dir, selected, results, summary) {
+  const L = ['# Theme Gates — Summary', '']
+  L.push(`**${summary.pass ? '✅ PASS' : '❌ BLOCK'}** · mode=${summary.mode} · ${selected.length} gate(s) · toolkit ${summary.toolkitVersion} · sha ${summary.sha ? summary.sha.slice(0, 7) : 'null'}${summary.dirty ? ' · dirty' : ''}`, '')
+  const cls = (g) => { const r = results[g.name]; return r.waived || r.skipped ? 'skip' : r.pass ? 'pass' : 'block' }
+  const blocked = selected.filter(g => cls(g) === 'block')
+  const skipped = selected.filter(g => cls(g) === 'skip')
+  const passed = selected.filter(g => cls(g) === 'pass')
+  if (blocked.length) {
+    L.push(`## ❌ Blocked (${blocked.length}) — fix before publish`, '')
+    for (const g of blocked) {
+      L.push(`### #${g.number} ${g.name} — ${results[g.name].blockers.length} blocker(s)`)
+      for (const b of results[g.name].blockers) L.push(`- **${b.id}**${b.page ? ` \`${b.page}\`` : ''} — ${b.detail}`)
+      L.push('')
+    }
+  }
+  const warned = selected.filter(g => cls(g) !== 'skip' && (results[g.name].warnings || []).length)
+  if (warned.length) {
+    L.push('## ⚠️ Warnings (advisory)', '')
+    for (const g of warned) {
+      const w = results[g.name].warnings
+      L.push(`### #${g.number} ${g.name} — ${w.length} warning(s)`)
+      for (const x of w.slice(0, 6)) L.push(`- ${x.id}${x.page ? ` \`${x.page}\`` : ''} — ${x.detail}`)
+      if (w.length > 6) L.push(`- …and ${w.length - 6} more (see ${g.name}.json)`)
+      L.push('')
+    }
+  }
+  if (skipped.length) { L.push(`## ⏭️ Skipped / waived (${skipped.length})`, ''); for (const g of skipped) L.push(`- #${g.number} ${g.name} — ${results[g.name].reason || 'skipped'}`); L.push('') }
+  if (passed.length) L.push(`## ✅ Passed (${passed.length})`, '', passed.map(g => `#${g.number} ${g.name}`).join(' · '), '')
+  fs.writeFileSync(path.join(dir, 'SUMMARY.md'), `${L.join('\n')}\n`)
+}
 
 const SCRIPTS_DIR = path.dirname(fileURLToPath(import.meta.url))
 const FRESHNESS_ALLOWLIST = ['gate-reports', 'CHANGES.md', 'merchant-editability.md', 'docs']
@@ -66,6 +125,10 @@ const GATES = [
   // Static a11y — the high-frequency a11y/mobile defects axe (#5, url-kind) can't catch pre-deploy
   // (advisory WARN; A11Y_STRICT=1 promotes to block). Complements, doesn't replace, the runtime axe gate.
   { name: 'a11y-static', number: 16, kind: 'static', runner: 'node', script: 'check-a11y-static.mjs' },
+  // Visual-quality — "gates-green ≠ looks-good" (static VERIFIER of onyx's agentic visual review).
+  // Warns if the review artifact is absent in dev; BLOCKS at publish-grade (DS_REQUIRE_SCOPE) when
+  // missing/unapproved/<min-confidence/any-fail. The judgment is onyx's; this enforces it mechanically.
+  { name: 'visual-quality', number: 17, kind: 'static', runner: 'node', script: 'check-visual-quality.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
@@ -234,7 +297,7 @@ function indent(text) {
     .join('\n')
 }
 
-function runGates(args) {
+async function runGates(args) {
   const cwd = process.cwd()
   const url = resolveUrl()
 
@@ -266,6 +329,8 @@ function runGates(args) {
   fs.mkdirSync(reportDirAbs, { recursive: true })
 
   const results = {} // name → { pass, blockers, warnings, skipped, reason, waived, exitCode }
+  const toSpawn = [] // gates needing a subprocess (after synchronous skip/waive pre-checks)
+
   for (const gate of selected) {
     const skipEnv = skipEnvName(gate.name)
     if (process.env[skipEnv] === '1') {
@@ -284,70 +349,42 @@ function runGates(args) {
       results[gate.name] = { pass: false, blockers: [], warnings: [], skipped: true, reason: `gate script not found: scripts/${gate.script}`, waived: false }
       continue
     }
-
     const reportPath = path.join(reportDirAbs, `${gate.name}.json`)
     fs.rmSync(reportPath, { force: true }) // never read a stale report from a previous run
-
-    process.stdout.write(`  gate ${gate.name} ... `)
-    const childEnv = { ...process.env, REPORT_DIR: args.reportDir }
-    if (url) childEnv.THEME_PREVIEW_URL = url
-    // Authoritative (full) run = publish-grade: static scope-aware gates must BLOCK on an
-    // unresolvable scan scope rather than warn-skip (audit fix: no green-on-nothing at publish).
-    if (mode === 'full' && !childEnv.DS_REQUIRE_SCOPE) childEnv.DS_REQUIRE_SCOPE = '1'
-    // Publish-grade conversion gate: load-bearing CRO mechanics (PDP social proof, a cart mechanic,
-    // an evidence-backed decoder citation) BLOCK rather than warn (audit fix: gate was ~2 trivial checks).
-    if (mode === 'full' && !childEnv.STRICT_CONVERSION) childEnv.STRICT_CONVERSION = '1'
-    // lumen's runbook uses STOREFRONT_PASSWORD — normalize to the canonical name for every gate
-    if (!childEnv.THEME_STORE_PASSWORD && process.env.STOREFRONT_PASSWORD) {
-      childEnv.THEME_STORE_PASSWORD = process.env.STOREFRONT_PASSWORD
-    }
-    const child = spawnSync(gate.runner, [scriptPath], {
-      cwd,
-      encoding: 'utf-8',
-      env: childEnv,
-      timeout: 600_000,
-      maxBuffer: 64 * 1024 * 1024,
-    })
-
-    let report = null
-    try {
-      report = readJson(reportPath)
-    } catch {
-      report = null
-    }
-    const code = child.error ? 2 : (child.status ?? 2)
-
-    if (code === 0 || code === 1) {
-      results[gate.name] = {
-        pass: code === 0,
-        blockers: report?.blockers ?? [],
-        warnings: report?.warnings ?? [],
-        skipped: false,
-        reason: null,
-        waived: false,
-        exitCode: code,
-      }
-      console.log(code === 0 ? 'PASS' : 'BLOCK')
-    } else {
-      const reason =
-        report?.evidence?.reason ??
-        (child.error ? child.error.message : null) ??
-        String(child.stderr || '').split('\n').find(Boolean) ??
-        `gate exited ${code}`
-      results[gate.name] = {
-        pass: false,
-        blockers: report?.blockers ?? [],
-        warnings: report?.warnings ?? [],
-        skipped: true,
-        reason,
-        waived: false,
-        exitCode: code,
-      }
-      console.log(`SKIP-ENV (exit ${code})`)
-    }
-    const output = indent(`${child.stdout || ''}${child.stderr || ''}`)
-    if (output) console.log(output)
+    toSpawn.push({ gate, scriptPath, reportPath })
   }
+
+  // Shared child env (identical semantics to the old per-gate env).
+  const baseEnv = { ...process.env, REPORT_DIR: args.reportDir }
+  if (url) baseEnv.THEME_PREVIEW_URL = url
+  // Authoritative (full) run = publish-grade: static scope-aware gates BLOCK on an unresolvable
+  // scan scope (no green-on-nothing) + the conversion gate runs strict.
+  if (mode === 'full' && !baseEnv.DS_REQUIRE_SCOPE) baseEnv.DS_REQUIRE_SCOPE = '1'
+  if (mode === 'full' && !baseEnv.STRICT_CONVERSION) baseEnv.STRICT_CONVERSION = '1'
+  if (!baseEnv.THEME_STORE_PASSWORD && process.env.STOREFRONT_PASSWORD) baseEnv.THEME_STORE_PASSWORD = process.env.STOREFRONT_PASSWORD
+
+  // P0 #14 fix: run the gates with bounded concurrency — wall-clock = the SLOWEST gate, not the
+  // SUM. Gates are independent processes writing separate reports, so this is safe. SEQUENTIAL=1
+  // forces the old serial behavior. Verbose per-gate output is buffered + printed in selected order.
+  const cap = process.env.GATES_SEQUENTIAL === '1' ? 1 : Math.max(1, Math.min(8, os.cpus?.().length || 4))
+  const logs = {}
+  if (toSpawn.length) console.log(`  running ${toSpawn.length} gate(s) — up to ${cap} in parallel...`)
+  await pool(toSpawn, cap, async ({ gate, scriptPath, reportPath }) => {
+    const child = await runGateProc(gate.runner, [scriptPath], { cwd, env: baseEnv, timeout: 600_000 })
+    let report = null
+    try { report = readJson(reportPath) } catch { report = null }
+    const code = child.error ? 2 : (child.code ?? 2)
+    if (code === 0 || code === 1) {
+      results[gate.name] = { pass: code === 0, blockers: report?.blockers ?? [], warnings: report?.warnings ?? [], skipped: false, reason: null, waived: false, exitCode: code }
+      console.log(`  gate ${gate.name} ... ${code === 0 ? 'PASS' : 'BLOCK'}`)
+    } else {
+      const reason = report?.evidence?.reason ?? (child.error ? child.error.message : null) ?? String(child.stderr || '').split('\n').find(Boolean) ?? `gate exited ${code}`
+      results[gate.name] = { pass: false, blockers: report?.blockers ?? [], warnings: report?.warnings ?? [], skipped: true, reason, waived: false, exitCode: code }
+      console.log(`  gate ${gate.name} ... SKIP-ENV (exit ${code})`)
+    }
+    logs[gate.name] = indent(`${child.stdout || ''}${child.stderr || ''}`)
+  })
+  for (const gate of selected) { if (logs[gate.name]) console.log(logs[gate.name]) }
 
   // pass = all executed gates pass; a SKIP_<GATE>=1 waiver only passes on a FULL run if
   // CHANGES.md `## Waivers` justifies it (audit fix); a dev (static-only/subset) run still
@@ -376,6 +413,7 @@ function runGates(args) {
     pass: overallPass,
   }
   fs.writeFileSync(path.join(reportDirAbs, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`)
+  writeSummaryMd(reportDirAbs, selected, results, summary) // human-readable companion (gate-reports/SUMMARY.md)
 
   // aligned table
   const rows = selected.map(g => {
@@ -396,10 +434,27 @@ function runGates(args) {
 }
 
 // ── main ──────────────────────────────────────────────────────────────────
+// --list prints the live gate manifest (number · name · kind · script). Ground any gap-audit
+// in THIS, not from memory — agent audits go stale fast (atrium's 2026-06-19 audit claimed gates
+// missing that already shipped). One command = the current source of truth.
+if (process.argv.includes('--list')) {
+  console.log(`Boldteq theme gate stack — ${GATES.length} gates (toolkit ${toolkitVersion()})`)
+  for (const g of GATES) console.log(`  #${String(g.number).padStart(2)} ${g.name.padEnd(20)} ${g.kind.padEnd(7)} ${g.script}`)
+  console.log(`
+Audit commands (the gates scan the CURRENT directory — run from the theme repo you're auditing):
+  cd theme-toolkit            # the pnpm aliases live here
+  pnpm theme:audit            # complete STATIC sweep → gate-reports/SUMMARY.md (human-readable)
+  pnpm theme:audit:full       # + URL gates (lighthouse/axe/seo/conversion/functional) — needs THEME_PREVIEW_URL
+  pnpm gates:list             # this manifest
+  pnpm store:preflight        # live-store access + content-quality preflight (needs SHOPIFY_ADMIN_API_TOKEN)
+  pnpm gates:verify           # check a PRIOR full run is fresh+passing (publish gate — does NOT run the gates)
+In a client theme repo (toolkit vendored as toolkit/): run \`node toolkit/scripts/theme-gates.mjs --static-only\` from the repo root.`)
+  process.exit(0)
+}
 const args = parseArgs(process.argv)
 if (args.help) {
   printHelp()
   process.exit(0)
 }
 if (args.verify) verify(args)
-else runGates(args)
+else await runGates(args)

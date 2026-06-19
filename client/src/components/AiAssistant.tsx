@@ -7,7 +7,8 @@ import {
 import type { AiMessage, AiSession, AppContext } from '../lib/api'
 import {
   streamAiChat, getAiHistory, getAiSession,
-  saveAiSession, deleteAiSession, getAiContext, applyAiFile, apiError} from '../lib/api'
+  saveAiSession, deleteAiSession, getAiContext, applyAiFile, apiError,
+  getActiveAiRun, cancelAiRun } from '../lib/api'
 import { toast } from './Toast'
 import { confirmDialog } from '../lib/confirm'
 import { MarkdownRenderer } from './MarkdownRenderer'
@@ -22,6 +23,15 @@ interface FileSuggestion {
   content: string
   applied?: boolean
 }
+
+// Tracks the in-flight AI chat run across a page refresh so we can re-attach to
+// a background generation on reload. Stored as { runId, sessionId }. Mirrors the
+// playground's ACTIVE_RUN_KEY pattern.
+const AI_ACTIVE_RUN_KEY = 'polyglot.ai.activeRun'
+
+// Stable run id with random suffix — avoids collisions on same-ms sends, and is
+// the key the backend registry uses to find this generation on reattach.
+const genRunId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -163,6 +173,14 @@ export default function AiAssistant({ open, onClose }: Props) {
   const [streamingText, setStreamingText] = useState('')
   const [error, setError] = useState('')
   const streamAbortRef = useRef<AbortController | null>(null)
+  // The in-flight run's id. Drives Stop→server-cancel and lets us re-attach to a
+  // background generation after a page refresh.
+  const activeRunIdRef = useRef<string | null>(null)
+  // True once the page is unloading (refresh/navigate/close). On unload the
+  // in-flight fetch rejects with a GENERIC network error (not an AbortError), so
+  // we must NOT treat that as a real terminal — otherwise we'd wipe the reattach
+  // marker and the reloaded page couldn't reconnect to the still-running gen.
+  const unloadingRef = useRef(false)
 
   // UI state
   const [showHistory, setShowHistory] = useState(false)
@@ -236,6 +254,16 @@ export default function AiAssistant({ open, onClose }: Props) {
   messagesRef.current = messages
   streamingTextRef.current = streamingText
   sessionIdRef.current = sessionId
+
+  // Mark the page as unloading so an in-flight run's network-error-on-unload
+  // isn't mistaken for a real terminal (which would wipe the reattach marker and
+  // stop the reloaded page reconnecting to the still-running generation).
+  useEffect(() => {
+    const onHide = () => { unloadingRef.current = true }
+    window.addEventListener('pagehide', onHide)
+    window.addEventListener('beforeunload', onHide)
+    return () => { window.removeEventListener('pagehide', onHide); window.removeEventListener('beforeunload', onHide) }
+  }, [])
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -437,6 +465,17 @@ export default function AiAssistant({ open, onClose }: Props) {
 
     streamAbortRef.current = new AbortController()
 
+    // Mint a run id and persist the reattach marker so a page refresh mid-stream
+    // can reconnect to the still-running background generation. The marker is
+    // cleared ONLY on a real terminal AND when we're not unloading (see finally).
+    const runId = genRunId()
+    activeRunIdRef.current = runId
+    try { localStorage.setItem(AI_ACTIVE_RUN_KEY, JSON.stringify({ runId, sessionId: currentSessionId })) } catch { /* quota */ }
+    // Did this run reach a terminal state HERE (a real done/error EVENT), vs. the
+    // stream being aborted by a navigation/refresh (which leaves the run running
+    // in the background)? Only a true terminal clears the reattach marker.
+    let reachedTerminal = false
+
     try {
       const sys = buildSystemPrompt(contextPrompt)
       const content = await streamAiChat(
@@ -444,7 +483,10 @@ export default function AiAssistant({ open, onClose }: Props) {
         sys,
         (chunk) => setStreamingText(prev => prev + chunk),
         streamAbortRef.current.signal,
+        runId,
+        currentSessionId,
       )
+      reachedTerminal = true // streamAiChat resolves only on a real `done` event
       setStreamingText('')
       const finalMessages: AiMessage[] = [...newMessages, { role: 'assistant', content }]
       setMessages(finalMessages)
@@ -461,17 +503,146 @@ export default function AiAssistant({ open, onClose }: Props) {
           await persistSession(partialMessages, currentSessionId).catch(err => apiError('AI assistant', err))
         }
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to get response')
+        // A network error during page unload is NOT a real terminal — the run
+        // keeps generating server-side so the reloaded page can re-attach. Only
+        // a genuine in-session failure (not unloading) is a terminal error.
+        if (!unloadingRef.current) {
+          reachedTerminal = true
+          setError(err instanceof Error ? err.message : 'Failed to get response')
+        }
       }
     } finally {
       setLoading(false)
       streamAbortRef.current = null
+      // Clear the reattach marker ONLY on a REAL terminal AND when we're not
+      // unloading. A refresh/navigate leaves it so the reloaded page reconnects.
+      if (reachedTerminal && !unloadingRef.current) {
+        activeRunIdRef.current = null
+        try { localStorage.removeItem(AI_ACTIVE_RUN_KEY) } catch { /* ignore */ }
+      }
     }
   }
 
+  // Stop = explicit cancel: force-kill the server-side process, abort the local
+  // stream, and drop the reattach marker (a refresh does NOT stop the run; only
+  // this does).
   const cancelStream = () => {
+    const runId = activeRunIdRef.current
+    if (runId) cancelAiRun(runId).catch(() => { /* best-effort; stream ends anyway */ })
+    activeRunIdRef.current = null
+    try { localStorage.removeItem(AI_ACTIVE_RUN_KEY) } catch { /* ignore */ }
     streamAbortRef.current?.abort()
   }
+
+  // Re-attach to a generation that was still running on the server (e.g. after a
+  // page refresh). The session messages are already restored by the open effect;
+  // here we stream the rest of the live answer into the in-flight assistant
+  // bubble and commit it on done. The work never stopped — we reconnect a viewer.
+  const reattachRun = useCallback(async (runId: string, sid: string | null) => {
+    if (loading || streamAbortRef.current) return
+    activeRunIdRef.current = runId
+    setLoading(true)
+    setStreamingText('')
+    setError('')
+    streamAbortRef.current = new AbortController()
+    toast('success', 'Reconnected — your chat kept running')
+    let reachedTerminal = false
+    let acc = ''
+    try {
+      const resp = await fetch(`/api/ai/run/${encodeURIComponent(runId)}/stream`, { signal: streamAbortRef.current.signal })
+      if (!resp.body) throw new Error('No reattach stream')
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      const processLine = (line: string) => {
+        const t = line.trim()
+        if (!t.startsWith('data: ')) return
+        try {
+          const e = JSON.parse(t.slice(6))
+          if (e.type === 'chunk') { acc += e.content; setStreamingText(acc) }
+          else if (e.type === 'done') { reachedTerminal = true; if (typeof e.content === 'string' && e.content) acc = e.content }
+          else if (e.type === 'error') {
+            reachedTerminal = true
+            // run_not_found = the run finished + was evicted; the persisted
+            // session already holds the answer, so don't surface a scary error.
+            if (e.code !== 'run_not_found') setError(e.error || 'Run failed')
+          }
+        } catch { /* ignore malformed */ }
+      }
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n')
+        buffer = parts.pop() ?? ''
+        for (const l of parts) processLine(l)
+      }
+      if (buffer.trim()) for (const l of buffer.split('\n')) processLine(l)
+    } catch {
+      /* aborted or network drop — the run keeps going server-side */
+    } finally {
+      setLoading(false)
+      streamAbortRef.current = null
+      setStreamingText('')
+      // Commit the completed assistant turn into the conversation + persist it,
+      // but only on a real terminal that produced text.
+      if (reachedTerminal && acc) {
+        const base = messagesRef.current
+        const finalMessages: AiMessage[] = [...base, { role: 'assistant', content: acc }]
+        setMessages(finalMessages)
+        setMessageTimestamps(prev => ({ ...prev, [finalMessages.length - 1]: new Date() }))
+        persistSession(finalMessages, sid).catch(err => apiError('AI assistant', err))
+      }
+      // Drop the marker only on a real terminal AND when not unloading. A 2nd
+      // refresh mid-reattach leaves it so the next reload reconnects again.
+      if (reachedTerminal && !unloadingRef.current) {
+        activeRunIdRef.current = null
+        try { localStorage.removeItem(AI_ACTIVE_RUN_KEY) } catch { /* ignore */ }
+      }
+    }
+  }, [loading, persistSession])
+
+  // ─── Reattach on open (survive refresh/navigation) ────────────────────
+  // One-shot: when the panel first opens, check for a marker left by an
+  // interrupted send. If the run is still generating server-side, reconnect a
+  // viewer and keep streaming. THIS is the "survive refresh" payoff — the run
+  // never stopped; the session messages are restored by the open effect above.
+  const reattachCheckedRef = useRef(false)
+  useEffect(() => {
+    if (!open || reattachCheckedRef.current) return
+    reattachCheckedRef.current = true
+    let raw: string | null = null
+    try { raw = localStorage.getItem(AI_ACTIVE_RUN_KEY) } catch { return }
+    if (!raw) return
+    let saved: { runId?: string; sessionId?: string | null } | null = null
+    try { saved = JSON.parse(raw) } catch { try { localStorage.removeItem(AI_ACTIVE_RUN_KEY) } catch { /* */ }; return }
+    if (!saved?.runId) { try { localStorage.removeItem(AI_ACTIVE_RUN_KEY) } catch { /* */ }; return }
+    const { runId } = saved
+    const sid = saved.sessionId ?? null
+    // Defer slightly so the open effect's synchronous message restore lands first
+    // (the reattach commits the assistant turn on top of those restored messages).
+    const t = setTimeout(() => {
+      if (sid) {
+        // Verify the run is still active for this session before reconnecting.
+        getActiveAiRun(sid).then(info => {
+          if (info.active && info.runId === runId) {
+            reattachRun(runId, sid)
+          } else {
+            // Finished while we were away — the result is in the persisted
+            // session (already restored). Just drop the marker.
+            try { localStorage.removeItem(AI_ACTIVE_RUN_KEY) } catch { /* */ }
+          }
+        }).catch(() => { try { localStorage.removeItem(AI_ACTIVE_RUN_KEY) } catch { /* */ } })
+      } else {
+        // Brand-new chat whose session id wasn't persisted before the refresh —
+        // reattach by runId directly; the stream endpoint replies run_not_found
+        // (handled gracefully) if it already finished + was evicted.
+        reattachRun(runId, null)
+      }
+    }, 260)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, reattachRun])
 
   // ─── Regenerate last response ─────────────────────────────────────────
 
@@ -574,6 +745,10 @@ export default function AiAssistant({ open, onClose }: Props) {
     setEditingIdx(null)
     localStorage.removeItem('polyglot:active-session')
     localStorage.removeItem('polyglot:active-messages')
+    // Abandon any in-flight reattach intent — a fresh chat must not reconnect to
+    // a previous run on the next reload.
+    activeRunIdRef.current = null
+    try { localStorage.removeItem(AI_ACTIVE_RUN_KEY) } catch { /* ignore */ }
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
