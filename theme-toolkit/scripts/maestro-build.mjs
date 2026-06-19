@@ -25,6 +25,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { preflight, formatChecklist } from './maestro-preflight.mjs'
 import { makeRealDeps, runMaestro, loadSurfaces } from './maestro-run.mjs'
+import { withPreviewServer, DEFAULT_PREVIEW_URL } from './lib/preview-server.mjs'
 
 const scriptPath = (name) => fileURLToPath(new URL(`./${name}`, import.meta.url))
 
@@ -140,12 +141,13 @@ export async function maestroBuild({ steps, dir = process.cwd(), buildStateDir =
 
 // ── CLI ───────────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const o = { renderMode: 'dev', surfaces: null, maxRounds: undefined }
+  const o = { renderMode: 'dev', surfaces: null, maxRounds: undefined, autoPreview: false }
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === '--render') o.renderMode = argv[++i]
     else if (a === '--surfaces') o.surfaces = (argv[++i] || '').split(',').map(s => s.trim()).filter(Boolean)
     else if (a === '--max-rounds') o.maxRounds = Number(argv[++i])
+    else if (a === '--auto-preview') o.autoPreview = true
     else if (a === '--help' || a === '-h') o.help = true
   }
   return o
@@ -154,15 +156,32 @@ function parseArgs(argv) {
 async function main() {
   const o = parseArgs(process.argv.slice(2))
   if (o.help) {
-    console.log('Usage: THEME_PREVIEW_URL=<url> node maestro-build.mjs [--render dev|push] [--surfaces a,b] [--max-rounds 3]')
+    console.log('Usage: THEME_PREVIEW_URL=<url> node maestro-build.mjs [--render dev|push] [--surfaces a,b] [--max-rounds 3] [--auto-preview]')
+    console.log('  --auto-preview   start `theme:dev` for the run + tear it down after (no second terminal; render=dev only)')
     process.exit(0)
   }
   if (!['dev', 'push'].includes(o.renderMode)) { console.error(`maestro:build: --render must be dev|push (got ${o.renderMode})`); process.exit(2) }
   const dir = process.cwd()
   const buildStateDir = process.env.BUILD_STATE_DIR || 'docs'
-  const steps = makeRealSteps({ dir, renderMode: o.renderMode, surfaces: o.surfaces, maxRounds: o.maxRounds, buildStateDir })
-  console.log(`maestro:build — hands-off build → publish-ready  ·  render=${o.renderMode}${o.surfaces ? `  ·  surfaces=${o.surfaces.join(',')}` : ''}`)
-  const result = await maestroBuild({ steps, dir, buildStateDir, log: (m) => console.log(`maestro:build — ${m}`) })
+
+  const doBuild = async () => {
+    const steps = makeRealSteps({ dir, renderMode: o.renderMode, surfaces: o.surfaces, maxRounds: o.maxRounds, buildStateDir })
+    console.log(`maestro:build — hands-off build → publish-ready  ·  render=${o.renderMode}${o.autoPreview ? '  ·  auto-preview' : ''}${o.surfaces ? `  ·  surfaces=${o.surfaces.join(',')}` : ''}`)
+    return maestroBuild({ steps, dir, buildStateDir, log: (m) => console.log(`maestro:build — ${m}`) })
+  }
+
+  let result
+  if (o.autoPreview && o.renderMode !== 'push') {
+    // Hands-off: start theme:dev, wait until it serves, run the whole build against it, then tear it down.
+    const url = process.env.THEME_PREVIEW_URL || DEFAULT_PREVIEW_URL
+    result = await withPreviewServer(
+      { url, dir, env: process.env, log: (m) => console.log(`maestro:build — preview: ${m}`) },
+      async (liveUrl) => { process.env.THEME_PREVIEW_URL = liveUrl; return doBuild() },
+    )
+  } else {
+    result = await doBuild()
+  }
+
   console.log(`\n${result.publishReady ? '✅ PUBLISH-READY' : `⛔ NOT READY (stopped at ${result.stage}: ${result.reason})`}  →  ${buildStateDir}/publish-readiness.md`)
   if (result.stage === 'preflight' && result.preflight) console.error('\n' + formatChecklist(result.preflight))
   process.exit(result.publishReady ? 0 : 1)
