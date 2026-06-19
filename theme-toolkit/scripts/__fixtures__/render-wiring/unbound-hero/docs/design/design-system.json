@@ -1,0 +1,7 @@
+{
+  "_note": "Fixture: a hero that OFFERS an image_picker but the template binds image='' → renders Dawn grey placeholder. The design system declares photography is required, so this is a publish BLOCK.",
+  "imagery": {
+    "custom_photography_required": true,
+    "treatment": "full-bleed lifestyle"
+  }
+}

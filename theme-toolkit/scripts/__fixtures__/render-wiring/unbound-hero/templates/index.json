@@ -1,0 +1,13 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "settings": {
+        "image": "",
+        "heading": "Move with intent",
+        "color_scheme": "scheme-1"
+      }
+    }
+  },
+  "order": ["hero"]
+}

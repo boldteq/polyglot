@@ -11,6 +11,7 @@
 // Exit: 0 = pushed (CLI exit 0) · 1 = blocked (lock missing / live / mismatch) or CLI failure · 2 = env error
 
 import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { LOCK_FILE, readLock, lockShapeErrors, isLiveRole, cliAvailable } from './lib/shopify-theme-lock.mjs'
 
 const cwd = process.cwd()
@@ -45,6 +46,25 @@ for (let i = 0; i < argv.length; i += 1) {
   } else {
     passthrough.push(a)
   }
+}
+
+// ── publish precondition: gates must FRESHLY + FULLY pass at the pushed SHA ──
+// The ONLY sanctioned proof a build is shippable is `theme-gates.mjs --verify --require-full`
+// exiting 0: a full orchestrator run whose summary.json is at HEAD, dirty=false, every gate
+// passed, no unjustified waiver, and no per-gate report at a drifting sha. Reading individual
+// gate-report JSONs is NOT proof — the Stride dogfood (2026-06-19) had 7 reports at 3 different
+// SHAs with no aggregate, so a now-clean build looked blocked and a never-coherent tree looked
+// shippable. This is the missing line that binds publish to coherent fresh evidence.
+if (process.env.THEME_PUSH_ALLOW_STALE === '1') {
+  console.warn('theme-push: ⚠ THEME_PUSH_ALLOW_STALE=1 — gate-freshness check SKIPPED. This is an UNVERIFIED publish; record a `## Waivers` entry in CHANGES.md with the reason.')
+} else {
+  const gatesScript = fileURLToPath(new URL('./theme-gates.mjs', import.meta.url))
+  const verify = spawnSync(process.execPath, [gatesScript, '--verify', '--require-full', '--report-dir', 'gate-reports'], { cwd, stdio: 'inherit', env: { ...process.env } })
+  if (verify.error) die(2, `failed to run gate verify: ${verify.error.message}`)
+  if ((verify.status ?? 1) !== 0) {
+    die(1, 'gate evidence is stale, partial, mixed-SHA, or failing — run `pnpm gates` (full static sweep) at HEAD so `theme-gates.mjs --verify --require-full` exits 0 before publishing. Individual gate-report JSONs are NOT ship evidence. (Emergency override: THEME_PUSH_ALLOW_STALE=1 + a CHANGES.md ## Waivers entry.)')
+  }
+  console.log('theme-push: ✓ gate evidence FRESH + FULL at HEAD (verify --require-full passed)')
 }
 
 if (!cliAvailable()) die(2, 'shopify CLI not on PATH (npm install -g @shopify/cli@3)')

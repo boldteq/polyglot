@@ -251,6 +251,25 @@ function verify(args) {
       process.exit(1)
     }
   }
+  // evidence coherence: EVERY per-gate report in the dir must share the summary's sha.
+  // Catches the piecemeal pattern — gates run one-by-one (check-*.mjs) at drifting SHAs produce
+  // a report dir that no single tree ever generated, so summary.json alone (which is internally
+  // consistent) can't see the incoherence. Stride dogfood 2026-06-19: 7 reports across 3 SHAs.
+  const reportDirAbs = path.resolve(cwd, args.reportDir)
+  const incoherent = []
+  try {
+    for (const f of fs.readdirSync(reportDirAbs)) {
+      if (!f.endsWith('.json') || f === 'summary.json') continue
+      let rep
+      try { rep = readJson(path.join(reportDirAbs, f)) } catch { continue }
+      if (rep && typeof rep.sha === 'string' && rep.sha !== summary.sha) incoherent.push(`${f}@${rep.sha.slice(0, 7)}`)
+    }
+  } catch { /* dir scan is best-effort; absence of reports is handled by per-gate verify */ }
+  if (incoherent.length > 0) {
+    console.error(`verify: INCOHERENT — ${incoherent.length} gate-report(s) at a sha ≠ summary ${summary.sha.slice(0, 7)} (piecemeal/mixed-SHA run): ${incoherent.slice(0, 8).join(', ')}`)
+    console.error('  re-run the full orchestrator (`pnpm gates`) so all evidence is produced together at one sha')
+    process.exit(1)
+  }
   if (args.requireFull) {
     if (summary.mode !== 'full') {
       console.error(`verify: FAIL — --require-full but summary mode is "${summary.mode}"`)

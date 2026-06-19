@@ -17,8 +17,10 @@
 //      loads NO font (no @font-face / | font_face / | font_url / font_picker / fonts <link>).
 //   3. rw.heading-font-not-applied (WARN) — no custom section sets font-family and no --font-heading
 //      var is defined anywhere → headings inherit the browser default.
-//   4. rw.placeholder-imagery (WARN) — a hero/product section relies only on placeholder_svg_tag with
-//      no image binding → premium gap (never assert premium on placeholder imagery).
+//   4. rw.placeholder-imagery (WARN; BLOCK at publish-grade if the design system declares
+//      imagery.custom_photography_required:true) — a hero/product section relies only on
+//      placeholder_svg_tag with no image binding → premium gap; if the build's OWN contract
+//      requires real photography, grey placeholders violate it (declared-but-unrendered).
 //
 // Usage: node check-render-wiring.mjs
 // Env:
@@ -254,18 +256,67 @@ function main() {
     }
   }
 
-  // ── 4. placeholder-only imagery (WARN) ──────────────────────────────────────
+  // ── 4. placeholder-only imagery (WARN; BLOCK at publish-grade when the contract REQUIRES photography) ──
+  // Detection must test whether an image is actually BOUND AT RENDER, not whether the section schema
+  // merely OFFERS an image_picker. Stride dogfood 2026-06-19: the hero declared an image_picker but the
+  // template instance set image="" → it falls through to Dawn's grey placeholder_svg_tag at render, yet
+  // the old "schema has image_picker = has image" heuristic scored it as bound and never flagged it.
+  // Precompute every template section instance once, keyed by section type, for binding lookup.
+  const tplInstances = new Map()
+  for (const tf of walkAll('templates', ['.json'])) {
+    let j; try { j = JSON.parse(read(tf)) } catch { continue }
+    for (const inst of Object.values(j.sections || {})) {
+      if (!inst || typeof inst.type !== 'string') continue
+      if (!tplInstances.has(inst.type)) tplInstances.set(inst.type, [])
+      tplInstances.get(inst.type).push(inst)
+    }
+  }
+  const imageSettingIds = (raw) => {
+    const m = raw.match(/\{%-?\s*schema\s*-?%\}([\s\S]*?)\{%-?\s*endschema\s*-?%\}/)
+    if (!m) return []
+    let schema; try { schema = JSON.parse(m[1]) } catch { return [] }
+    const ids = []
+    const scan = (arr) => Array.isArray(arr) && arr.forEach(s => { if (s && s.type === 'image_picker' && s.id) ids.push(s.id) })
+    scan(schema.settings)
+    if (Array.isArray(schema.blocks)) schema.blocks.forEach(b => scan(b.settings))
+    return ids
+  }
+  const imageBoundInTemplate = (sectionType, ids) => {
+    if (!ids.length) return false
+    const nonEmpty = (bag) => bag && ids.some(id => typeof bag[id] === 'string' && bag[id].trim() !== '')
+    for (const inst of (tplInstances.get(sectionType) || [])) {
+      if (nonEmpty(inst.settings)) return true
+      for (const blk of Object.values(inst.blocks || {})) if (nonEmpty(blk.settings)) return true
+    }
+    return false
+  }
   const heroish = sections.filter(f => /hero|banner|product|pdp|featured|main-product|lookbook/i.test(path.basename(f)))
   const placeholderOnly = []
   for (const f of heroish) {
     const raw = read(f)
-    const usesPlaceholder = /placeholder_svg_tag|\bplaceholder\b/i.test(raw)
-    const hasImage = /image_url|image_picker|"type"\s*:\s*"image_picker"|\bproduct\.(?:featured_)?(?:image|media)\b|\{\{\s*[a-z0-9_.]*image/i.test(raw)
-    if (usesPlaceholder && !hasImage) placeholderOnly.push(path.basename(f))
+    if (!/placeholder_svg_tag/i.test(raw)) continue // no grey-placeholder fallback path → nothing to flag
+    // A real dynamic product/media binding renders an actual image regardless of merchant config.
+    if (/\bproduct\.(?:featured_)?(?:image|media)\b|product\.images\b/i.test(raw)) continue
+    // Otherwise the section renders the placeholder UNLESS a template instance binds a real image value.
+    if (!imageBoundInTemplate(path.basename(f, '.liquid'), imageSettingIds(raw))) placeholderOnly.push(path.basename(f))
   }
+  // The design system can DECLARE that real art-directed photography is required for the premium
+  // claim (drape sets imagery.custom_photography_required:true). If it does AND the hero/product
+  // still renders only Dawn's grey placeholder_svg_tag, the build's OWN contract is unmet — the
+  // store ships as grey wireframe boxes (Stride dogfood 2026-06-19: the adversarial "generic" lens
+  // refuted the premium claim on exactly this — 0 image assets, hero fell through to grey SVG).
+  // Declared-but-unrendered is the same class #14 exists to catch (font/scheme) → at publish-grade
+  // this is a BLOCK, not a soft warning that ships anyway.
+  const photoRequired = dsObj?.imagery?.custom_photography_required === true
   evidence.placeholderImagery = placeholderOnly
+  evidence.photographyRequired = photoRequired
   if (placeholderOnly.length) {
-    warnings.push({ id: 'rw.placeholder-imagery', page: placeholderOnly.join(', '), detail: `${placeholderOnly.length} hero/product section(s) rely only on placeholder_svg_tag with no image binding (${placeholderOnly.join(', ')}) — premium gap; do not assert premium on placeholder imagery. Bind a real image (image_picker / product media).`, evidence: placeholderOnly.join(', ') })
+    const base = `${placeholderOnly.length} hero/product section(s) rely only on placeholder_svg_tag with no image binding (${placeholderOnly.join(', ')}) — premium gap; do not assert premium on placeholder imagery. Bind a real image (image_picker / product media / the kept generated placeholder-library — never Dawn grey).`
+    if (photoRequired && REQUIRE_SCOPE) {
+      blocker('rw.placeholder-imagery', placeholderOnly.join(', '), `${base} The design system declares imagery.custom_photography_required:true, so shipping grey placeholders violates the build's OWN premium contract — at publish-grade (DS_REQUIRE_SCOPE=1) this BLOCKS. loom/porter must bind real imagery before publish.`, placeholderOnly.join(', '))
+    } else {
+      warnings.push({ id: 'rw.placeholder-imagery', page: placeholderOnly.join(', '), detail: photoRequired ? `${base} (design system requires custom photography — this BLOCKS at publish-grade DS_REQUIRE_SCOPE=1.)` : base, evidence: placeholderOnly.join(', ') })
+    }
   }
 
   // ── 5. Placeholder TEXT leaking to the customer (round-3 onyx finding + atrium audit P0#6, 2026-06-19) ──

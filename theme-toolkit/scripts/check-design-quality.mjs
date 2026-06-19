@@ -375,8 +375,17 @@ function main() {
   }
 
   // 6. Hero carousel rule — if carousel forbidden, grep hero section(s) for slider markers.
+  // SCOPE FIX (Stride apparel-on-Dawn, 2026-06-19): only consider hero sections the BUILD actually
+  // USES (referenced in a template) or OWNS (in the custom scope) — NOT every base section sitting in
+  // the repo. A real base (Dawn) ships an unused slideshow.liquid; flagging it is a false positive
+  // (the build's own static hero is fine). buildSurface = template-referenced types ∪ custom sections.
   if (pack.hero_treatment?.carousel_allowed === false) {
-    const heroFiles = sectionFiles.filter(f => /hero|banner|slideshow|slider/i.test(path.basename(f)))
+    const buildSurface = new Set([
+      ...templateTypes,
+      ...(Array.isArray(targets) ? targets : []).filter(f => /^sections\/.*\.liquid$/.test(f)).map(f => path.basename(f, '.liquid').toLowerCase()),
+    ])
+    const inSurface = (f) => buildSurface.size === 0 || buildSurface.has(path.basename(f, '.liquid').toLowerCase())
+    const heroFiles = sectionFiles.filter(f => /hero|banner|slideshow|slider/i.test(path.basename(f)) && inSurface(f))
     const CAROUSEL_RE = /\b(swiper|slick|splide|flickity|glide|autoplay|auto-?rotate|slideshow|carousel|slides_per_view|data-slide|\.slide(?:r|s)?\b)/i
     const offenders = []
     for (const f of heroFiles) {
