@@ -42,7 +42,8 @@ console.log('case a — preflight NOT-READY short-circuits before loop/gates')
   const res = await maestroBuild({ steps: s, ...noWrite })
   eq(res.publishReady, false, 'publishReady false')
   eq(res.stage, 'preflight', 'stopped at preflight stage')
-  eq(s.calls, ['preflight'], 'loop + gates never ran')
+  // build-state is seeded BEFORE preflight (so preflight can see it); loop + gates never ran
+  eq(s.calls, ['ensureBuildState', 'preflight'], 'build-state seeded before preflight; loop + gates never ran')
 }
 
 // ── case b: loop escalates → stop before gates ──
@@ -64,7 +65,7 @@ console.log('case c — converged loop + blocked gates → NOT ready at gates st
   eq(res.stage, 'gates', 'stopped at gates stage')
   eq(res.publishReady, false, 'publishReady false when gates block')
   eq(res.gates.blockers, 3, 'blocker count carried into result')
-  eq(s.calls, ['preflight', 'ensureBuildState', 'runLoop', 'runGates'], 'all 4 stages ran in order')
+  eq(s.calls, ['ensureBuildState', 'preflight', 'runLoop', 'runGates'], 'all 4 stages ran in order (build-state seeded first)')
 }
 
 // ── case d: everything passes → PUBLISH-READY ──
@@ -76,16 +77,22 @@ console.log('case d — all stages pass → PUBLISH-READY')
   eq(res.publishReady, true, 'publishReady true')
   eq(res.loop.allPass, true, 'loop allPass carried')
   eq(res.gates.pass, true, 'gates pass carried')
-  eq(s.calls, ['preflight', 'ensureBuildState', 'runLoop', 'runGates'], 'all 4 stages ran in order')
+  eq(s.calls, ['ensureBuildState', 'preflight', 'runLoop', 'runGates'], 'all 4 stages ran in order (build-state seeded first)')
 }
 
-// ── case e: build-state init failure stops the build ──
-console.log('case e — build-state init failure stops at build-state stage')
+// ── case e: build-state runs FIRST and is best-effort (preflight is the real gate) ──
+console.log('case e — build-state seeds before preflight; a seed miss is non-fatal (preflight gates it)')
 {
+  // build-state seed "fails" (bsOk:false) but preflight is READY → the build proceeds (seed is best-effort)
   const s = steps({ bsOk: false })
   const res = await maestroBuild({ steps: s, ...noWrite })
-  eq(res.stage, 'build-state', 'stopped at build-state stage')
-  eq(s.calls.includes('runLoop'), false, 'loop never ran when build-state failed')
+  eq(s.calls[0], 'ensureBuildState', 'ensureBuildState runs FIRST (before preflight)')
+  eq(s.calls[1], 'preflight', 'preflight runs after the seed attempt')
+  eq(res.stage, 'ready', 'a non-fatal seed miss does NOT stop the build when preflight is ready')
+  // and when the seed miss leaves build-state absent, preflight (not ensureBuildState) is what blocks
+  const s2 = steps({ bsOk: false, preflightReady: false })
+  const res2 = await maestroBuild({ steps: s2, ...noWrite })
+  eq(res2.stage, 'preflight', 'a missing build-state surfaces as a preflight block (its checklist), not a silent build-state stop')
 }
 
 // ── case f: readiness artifact written with the right shape ──

@@ -25,8 +25,8 @@ pnpm maestro:build --auto-preview --budget 90 --timeout 12         # unattended 
 store that reads as done:
 
 ```
-1 preflight        every precondition met? (else stop + print the exact fix per missing item)
-2 build-state      seed docs/build-state.json if absent (the carried mind)
+1 build-state      seed docs/build-state.json if absent (the carried mind) — before preflight, which requires it
+2 preflight        every precondition met? (else stop + print the exact fix per missing item)
 3 surface loop     per surface: draft (claude) → render → Lens judge → record; ≤3 rounds then escalate
 4 gate stack       the full publish stack (#0.4→#19 + Lens #18) — pnpm gates
 → docs/publish-readiness.json   PUBLISH-READY only if the loop converged AND the gate stack passed

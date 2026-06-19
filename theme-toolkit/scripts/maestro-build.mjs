@@ -119,15 +119,17 @@ export async function maestroBuild({ steps, dir = process.cwd(), buildStateDir =
     return result
   }
 
-  // 1 — preflight
-  log('stage 1/4 — preflight')
+  // 1 — ensure build-state FIRST: preflight requires build-state.json to exist, so seeding has to
+  // happen before the gate (otherwise the auto-seed is unreachable on a fresh repo and maestro:build
+  // tells the user to run `build-state init` itself — defeating hands-off). Best-effort: if discovery/
+  // bootstrap are missing, init no-ops and the next stage (preflight) reports the real gap.
+  log('stage 1/4 — ensure build-state')
+  await steps.ensureBuildState()
+
+  // 2 — preflight (the gate; now sees the seeded build-state, or reports the missing foundation)
+  log('stage 2/4 — preflight')
   const pf = await steps.preflight()
   if (!pf.ready) return fin('preflight', `preconditions missing: ${pf.checks.filter(c => !c.ok && !c.soft).map(c => c.id).join(', ')}`, { preflight: pf })
-
-  // 2 — build-state
-  log('stage 2/4 — ensure build-state')
-  const bs = await steps.ensureBuildState()
-  if (!bs.ok) return fin('build-state', 'build-state init failed (could not seed surfaces)')
 
   // 3 — surface loop
   log('stage 3/4 — surface loop')
