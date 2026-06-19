@@ -51,6 +51,7 @@ if (isDir(COMPONENTS)) {
 
 const cardDefects = [] // {card, issues:[]}
 let enrichCovered = 0
+let schemaCovered = 0
 let stubCount = 0
 const conceptKeys = (() => { try { return new Set(Object.keys(JSON.parse(read(MAP)))) } catch { return new Set() } })()
 const missingConcepts = new Set()
@@ -81,6 +82,17 @@ for (const rel of cardFiles) {
   if (!/##\s+CSS\b/i.test(body)) issues.push('no ## CSS section')
   if (!/##\s+Responsive notes\b/i.test(body)) issues.push('no ## Responsive notes')
   if (body.length < 600) issues.push(`suspiciously short (${body.length}b — possible stub)`)
+
+  // A5-precursor (bindings completeness): every mapped card-local COLOR var declared in CSS
+  // must be mapped in the ## Design-system bindings block (catch C2 gaps before render).
+  const BIND_VARS = ['--fg','--muted','--accent','--accent-soft','--accent-ink','--accent-fg','--line','--hair','--card-bg','--panel-bg','--surface','--box-bg','--field-bg','--tab-bg','--band-bg','--chip-bg','--row-alt','--thumb-bg','--star','--ok','--verified','--urgent']
+  const bindSec = (body.match(/##\s+Design-system bindings\b([\s\S]*?)(?=\n##\s|$)/) || [])[1] || ''
+  const declared = new Set([...body.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1]).filter((v) => BIND_VARS.includes(v)))
+  const unbound = [...declared].filter((v) => !bindSec.includes(v))
+  if (bindSec && unbound.length) issues.push(`C2 gap: ${unbound.length} declared color var(s) not in Design-system bindings: ${unbound.join(', ')}`)
+
+  // P1 task-2 tracking (advisory WARN, not a fail yet): ## Schema contract present?
+  if (/##\s+Schema contract\b/.test(body)) schemaCovered++
 
   // advisory: enrichment line
   if (/\*\*Section family:\*\*/.test(body)) enrichCovered++
@@ -130,6 +142,7 @@ if (asJson) {
   console.log(`Cards: ${cardFiles.length} checked · ${cardDefects.length} with defects · ${stubCount} stub HTML`)
   console.log(`Templates: ${templateFiles.length} checked · ${tplDefects.length} with defects`)
   console.log(`Enrichment (Section family line): ${enrichCovered}/${cardFiles.length} cards`)
+  console.log(`P1 Schema contract coverage: ${schemaCovered}/${cardFiles.length} cards (advisory — P1 task 2)`)
   console.log(`Concept cross-ref: ${missingConcepts.size} card concept(s) not in _concept-section-map.json\n`)
   if (cardDefects.length) {
     console.log('❌ CARD DEFECTS:')
