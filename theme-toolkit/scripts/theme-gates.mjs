@@ -136,6 +136,12 @@ const GATES = [
   // pass is absent in dev; BLOCKS at publish-grade (DS_REQUIRE_SCOPE/LENS_REQUIRE). This is the
   // pixels-actually-looked-right signal #17 (self-attestation) cannot give. mantle blocks publish on it.
   { name: 'visual-truth', number: 18, kind: 'static', runner: 'node', script: 'check-visual-truth.mjs' },
+  // Section-cohesion (#19, URL) — the render-time "do the sections feel like ONE page?" enforcer.
+  // #8 locks the token SET + #9 counts store-wide variety, but neither sees a rendered page: section A
+  // can ship h2=32 and section B h2=28 and both pass. This pulls COMPUTED styles per section on the
+  // staging URL and BLOCKs cross-section drift (off-ladder type, off-scale padding, multi-H1) against
+  // design-system.json. Content-only (chrome excluded). mantle gates publish.
+  { name: 'section-cohesion', number: 19, kind: 'url', runner: 'node', script: 'check-section-cohesion.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
