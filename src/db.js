@@ -149,6 +149,7 @@ function runMigrations(db) {
     { version: 29, name: 'continuity_brain', fn: continuityBrainMigration },
     { version: 30, name: 'decision_journal_resolution', fn: decisionJournalResolutionMigration },
     { version: 31, name: 'eval_selftest_calibration', fn: evalSelftestMigration },
+    { version: 32, name: 'shopify_client_projects', fn: shopifyClientProjectsMigration },
   ];
 
   for (const mig of migrations) {
@@ -1974,6 +1975,53 @@ function selfImprovingBrainMigration(db) {
 // identity/prefs human-only). open_loops + reflections are episodic/operational → safe to auto-write.
 // Rollback: DROP TABLE identity_facts, reflections, open_loops, feedback_events;
 //           DELETE FROM schema_migrations WHERE version=29;
+// ── Migration v32: Shopify client projects (intake wizard P1 + per-page preview P5) ──────────
+function shopifyClientProjectsMigration(db) {
+  db.exec(`
+    -- One row per client store build. intake_json = the full 15-field upfront discovery (P1),
+    -- captured ONCE so questions are never re-asked. status: intake | building | preview | published.
+    CREATE TABLE IF NOT EXISTS client_projects (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      niche       TEXT,
+      domain      TEXT,
+      status      TEXT DEFAULT 'intake',
+      intake_json TEXT DEFAULT '{}',
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_client_projects_status ON client_projects(status, updated_at DESC);
+
+    -- Per-page build state (P5 preview): one row per page in the project's page set.
+    -- status: pending | built | gates-green | lens-passed | awaiting-review | approved.
+    CREATE TABLE IF NOT EXISTS project_pages (
+      id          TEXT PRIMARY KEY,
+      project_id  TEXT NOT NULL,
+      slug        TEXT NOT NULL,
+      title       TEXT,
+      status      TEXT DEFAULT 'pending',
+      preview_url TEXT,
+      gates_json  TEXT DEFAULT '{}',
+      updated_at  TEXT,
+      UNIQUE(project_id, slug)
+    );
+    CREATE INDEX IF NOT EXISTS idx_project_pages_project ON project_pages(project_id);
+
+    -- Per-page revision requests (P5): Yash requests a change on one page → atrium routes it.
+    CREATE TABLE IF NOT EXISTS project_revisions (
+      id          TEXT PRIMARY KEY,
+      project_id  TEXT NOT NULL,
+      page_slug   TEXT NOT NULL,
+      feedback    TEXT NOT NULL,
+      severity    TEXT DEFAULT 'normal',
+      status      TEXT DEFAULT 'requested',
+      created_at  TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_project_revisions_project ON project_revisions(project_id, created_at DESC);
+  `);
+  console.log('[migration v32] shopify client_projects + project_pages + project_revisions added');
+}
+
 function continuityBrainMigration(db) {
   db.exec(`
     -- L1 IDENTITY + L5 PREFERENCE. kind: value | voice | non_negotiable | opinion | preference.
@@ -3929,8 +3977,54 @@ function getPolicyAudit({ decision, agentId, since, limit = 200 } = {}) {
     .map((r) => ({ ...r, violations: JSON.parse(r.violations || '[]'), context: JSON.parse(r.context || '{}') }));
 }
 
+// ── Shopify client projects (P1 intake + P5 preview) ──────────────────────────
+const _now = () => new Date().toISOString();
+const _uid = () => require('node:crypto').randomUUID();
+function createClientProject({ name, niche = null, domain = null, intake = {} }) {
+  const id = _uid(); const ts = _now();
+  getDb().prepare('INSERT INTO client_projects (id, name, niche, domain, status, intake_json, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)')
+    .run(id, name, niche, domain, 'intake', JSON.stringify(intake || {}), ts, ts);
+  return id;
+}
+function listClientProjects() {
+  return getDb().prepare('SELECT id, name, niche, domain, status, created_at, updated_at FROM client_projects ORDER BY updated_at DESC').all();
+}
+function getClientProject(id) {
+  const row = getDb().prepare('SELECT * FROM client_projects WHERE id = ?').get(id);
+  if (!row) return null;
+  try { row.intake = JSON.parse(row.intake_json || '{}'); } catch { row.intake = {}; }
+  return row;
+}
+function seedProjectPages(projectId, pages = []) {
+  const ins = getDb().prepare('INSERT OR IGNORE INTO project_pages (id, project_id, slug, title, status, updated_at) VALUES (?,?,?,?,?,?)');
+  const tx = getDb().transaction((rows) => { for (const p of rows) ins.run(_uid(), projectId, p.slug, p.title || p.slug, 'pending', _now()); });
+  tx(pages);
+}
+function listProjectPages(projectId) {
+  return getDb().prepare('SELECT slug, title, status, preview_url, gates_json, updated_at FROM project_pages WHERE project_id = ? ORDER BY rowid').all(projectId)
+    .map((r) => { try { r.gates = JSON.parse(r.gates_json || '{}'); } catch { r.gates = {}; } return r; });
+}
+function updatePageStatus(projectId, slug, { status, previewUrl, gates } = {}) {
+  const cur = getDb().prepare('SELECT preview_url, gates_json, status FROM project_pages WHERE project_id=? AND slug=?').get(projectId, slug) || {};
+  getDb().prepare('UPDATE project_pages SET status=?, preview_url=?, gates_json=?, updated_at=? WHERE project_id=? AND slug=?')
+    .run(status ?? cur.status ?? 'pending', previewUrl ?? cur.preview_url ?? null, gates ? JSON.stringify(gates) : (cur.gates_json || '{}'), _now(), projectId, slug);
+}
+function createRevision({ projectId, pageSlug, feedback, severity = 'normal' }) {
+  const id = _uid();
+  getDb().prepare('INSERT INTO project_revisions (id, project_id, page_slug, feedback, severity, status, created_at) VALUES (?,?,?,?,?,?,?)')
+    .run(id, projectId, pageSlug, feedback, severity, 'requested', _now());
+  getDb().prepare('UPDATE project_pages SET status=?, updated_at=? WHERE project_id=? AND slug=?').run('awaiting-review', _now(), projectId, pageSlug);
+  return id;
+}
+function listRevisions(projectId) {
+  return getDb().prepare('SELECT id, page_slug, feedback, severity, status, created_at FROM project_revisions WHERE project_id = ? ORDER BY created_at DESC').all(projectId);
+}
+
 module.exports = {
   getDb, close,
+  // Shopify client projects (P1 intake + P5 preview)
+  createClientProject, listClientProjects, getClientProject, seedProjectPages,
+  listProjectPages, updatePageStatus, createRevision, listRevisions,
   // Agent Runs
   loadAgentRuns, insertAgentRun, getRecentAgentRuns,
   insertAgentRunStub, completeAgentRun, reconcileOrphanRuns,

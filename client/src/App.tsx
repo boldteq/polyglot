@@ -41,6 +41,8 @@ const Documentation = React.lazy(() => import('./pages/Documentation'))
 const MemoryHistory = React.lazy(() => import('./pages/MemoryHistory'))
 const LearningInbox = React.lazy(() => import('./pages/LearningInbox'))
 const Lens = React.lazy(() => import('./pages/Lens'))
+const Shopify = React.lazy(() => import('./pages/Shopify'))
+const StorePreview = React.lazy(() => import('./pages/StorePreview'))
 
 // Minimal page-level spinner shown while lazy chunk loads
 function PageLoader() {
@@ -77,6 +79,8 @@ export default function App() {
             <Route path="/orchestration" element={<Orchestration />} />
             <Route path="/playground" element={<Playground />} />
             <Route path="/lens" element={<Lens />} />
+            <Route path="/shopify" element={<Shopify />} />
+            <Route path="/shopify/:id" element={<StorePreview />} />
             <Route path="/analytics" element={<AnalyticsHub />} />
             <Route path="/org-chart" element={<OrgChart />} />
             <Route path="/schedules" element={<SchedulesHub />} />

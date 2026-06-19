@@ -141,6 +141,18 @@ export interface LensLatest {
 }
 export const getLensLatest = (dir?: string) =>
   request<LensLatest>(`/lens/latest${dir ? `?dir=${encodeURIComponent(dir)}` : ''}`)
+
+// ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
+export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }
+export interface ProjectPage { slug: string; title: string; status: string; preview_url: string | null; gates: Record<string, unknown>; updated_at: string | null }
+export interface ProjectRevision { id: string; page_slug: string; feedback: string; severity: string; status: string; created_at: string }
+export const listShopifyProjects = () => request<{ projects: ClientProject[] }>('/shopify/projects')
+export const getShopifyProject = (id: string) =>
+  request<{ project: ClientProject & { intake: Record<string, unknown> }; pages: ProjectPage[]; revisions: ProjectRevision[] }>(`/shopify/projects/${id}`)
+export const createShopifyIntake = (data: Record<string, unknown>) =>
+  request<{ id: string; name: string; pages: number }>('/shopify/intake', { method: 'POST', body: JSON.stringify(data) })
+export const requestPageRevision = (id: string, slug: string, feedback: string, severity = 'normal') =>
+  request<{ id: string }>(`/shopify/projects/${id}/pages/${slug}/revision`, { method: 'POST', body: JSON.stringify({ feedback, severity }) })
 export const updateProjectDirs = (dirs: string[]) =>
   request('/config/project-dirs', { method: 'POST', body: JSON.stringify({ dirs }) })
 
