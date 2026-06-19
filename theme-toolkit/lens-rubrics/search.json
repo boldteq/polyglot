@@ -1,0 +1,8 @@
+{ "surface": "search", "viewport_notes": "results grid like collection; empty-results state matters.",
+  "checks": [
+    { "id": "results-or-empty-state", "rule": "renders results OR an intentional branded zero-results state with a path forward — never a blank/broken shell", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "horizontal-overflow", "rule": "no sideways scroll", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "chrome-on-brand", "rule": "consent chrome not covering results", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "broken-state", "rule": "no Liquid errors, no missing-image placeholders, no Lorem/[CLAIM]", "severity_if_fail": "blocker", "fix_owner": "loom" }
+  ],
+  "sources": ["theme-page-recipes.md#search"] }

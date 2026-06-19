@@ -1,0 +1,10 @@
+{ "surface": "cart", "viewport_notes": "mobile: checkout CTA reachable. either page or drawer cart.",
+  "checks": [
+    { "id": "cart-essentials", "rule": "line items (image+title+price+qty), subtotal/total, and a clear checkout button all present + legible", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "hierarchy", "rule": "checkout CTA is the clear primary action; totals prominent", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "empty-state", "rule": "if empty, an intentional branded empty state (not a broken/blank shell)", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "horizontal-overflow", "rule": "nothing past the right edge", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "chrome-on-brand", "rule": "consent chrome not covering checkout", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "broken-state", "rule": "no missing-image placeholders, no Liquid errors, no Lorem/[CLAIM] text", "severity_if_fail": "blocker", "fix_owner": "loom" }
+  ],
+  "sources": ["theme-page-recipes.md#cart", "patterns/good/shopify-conversion-gate-checklist.md (C7/C8 cart)"] }

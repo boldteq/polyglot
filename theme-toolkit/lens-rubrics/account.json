@@ -1,0 +1,8 @@
+{ "surface": "account", "viewport_notes": "login/account pages; form usability.",
+  "checks": [
+    { "id": "form-usable", "rule": "login/register form fields + submit are present, legible, ≥16px (no iOS zoom), tap-targets adequate", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "horizontal-overflow", "rule": "no sideways scroll", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "chrome-on-brand", "rule": "page + consent chrome on-brand", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "broken-state", "rule": "no Liquid errors, no broken layout, no Lorem/[CLAIM]", "severity_if_fail": "blocker", "fix_owner": "loom" }
+  ],
+  "sources": ["theme-page-recipes.md#account"] }

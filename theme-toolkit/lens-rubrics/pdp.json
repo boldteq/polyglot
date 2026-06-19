@@ -1,0 +1,12 @@
+{ "surface": "pdp", "viewport_notes": "mobile: buy box reachable, sticky ATC a plus, variant/bundle chips don't overflow. desktop: gallery+buy-box side-by-side.",
+  "checks": [
+    { "id": "buy-box-above-fold", "rule": "product image + title + price + Add-to-Cart all visible above the fold in the rest frame (NOT obscured by any modal/banner)", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "hierarchy", "rule": "price prominent; ATC the clear primary action; title is the H1", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "horizontal-overflow", "rule": "nothing past the right edge; variant/bundle selectors don't overflow", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "section-placement-fit", "rule": "supporting sections (ingredients/reviews/ritual/FAQ) sit BELOW the buy box in the recipe order — never above it", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "spacing-rhythm", "rule": "deliberate gaps; no cramped collisions, no desolate voids", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "broken-state", "rule": "no missing-image placeholders, no Liquid errors, no empty shells, no Lorem/[CLAIM] text, no copy typos in rendered text", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "chrome-on-brand", "rule": "consent/announcement chrome on-brand AND not covering any buy-box control", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "premium-feel", "rule": "intentional premium per the niche scorecard, not a generic demo", "severity_if_fail": "warning", "fix_owner": "drape" }
+  ],
+  "sources": ["theme-page-recipes.md#pdp", "design/ecom/niche-dna-packs/<niche>.json", "patterns/good/ecom-funnel-cro-playbook.md"] }

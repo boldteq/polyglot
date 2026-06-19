@@ -1,0 +1,10 @@
+{ "surface": "collection", "viewport_notes": "mobile: 1-2 col grid, cards don't overflow. desktop: 3-4 col grid, even gutters.",
+  "checks": [
+    { "id": "grid-populated", "rule": "the collection renders REAL product cards — NOT '0 products / No products found' (an empty/unpopulated collection is broken)", "severity_if_fail": "blocker", "fix_owner": "porter" },
+    { "id": "grid-integrity", "rule": "cards align to a consistent grid; equal heights; same image aspect ratio; even gutters", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "horizontal-overflow", "rule": "no sideways scroll; cards don't overflow", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "hierarchy", "rule": "collection title is intentional (not a default like 'Automated Collection'); cards show image+title+price legibly", "severity_if_fail": "warning", "fix_owner": "porter" },
+    { "id": "chrome-on-brand", "rule": "filters/sort + consent chrome on-brand; not covering the grid", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "premium-feel", "rule": "intentional premium per the niche scorecard", "severity_if_fail": "warning", "fix_owner": "drape" }
+  ],
+  "sources": ["theme-page-recipes.md#collection", "store catalog (porter — collection must be populated)"] }
