@@ -210,7 +210,10 @@ for (const file of targets) {
   }
   // Fake form C (JS only): a setInterval/setTimeout countdown ticker with NO fixed-date / metafield
   // / block.settings binding anywhere in the file → unanchored timer (evergreen by omission).
-  if (isJs && !fileWaived && /countdown|count-?down|timer|deadline/i.test(raw)) {
+  // Context gate must be a REAL countdown signal — NOT bare "timer", which matches innocent
+  // identifiers like `checkTimer`/`resizeTimer`/`debounceTimer` in sliders/debouncers (Seraphine
+  // beauty dogfood 2026-06-19: the hero slideshow's `var checkTimer = setTimeout(...)` false-fired).
+  if (isJs && !fileWaived && /count-?down|\bdeadline\b|\bexpires?\b|time[\s_-]?left|sale[\s_-]?ends|hurry|ends?\s+(in|soon)/i.test(raw)) {
     const hasTicker = /set(Interval|Timeout)\s*\(/.test(raw)
     const hasFixedAnchor = RE_ISO.test(raw) || RE_DATE_BINDING.test(raw) || RE_METAFIELD.test(raw)
       || /data-(end|deadline|until|expires?)\s*=/i.test(raw) || /\bgetAttribute\s*\(\s*["']data-(end|deadline|until|expires?)/i.test(raw)

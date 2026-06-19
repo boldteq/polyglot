@@ -1,0 +1,6 @@
+<div class="hero">
+  <div class="hero__slide is-active">{{ section.settings.h | default: 'Editorial hero' }}</div>
+  <div class="hero__slide">Second slide</div>
+</div>
+<script src="{{ 'theme-slider.js' | asset_url }}" defer></script>
+{% schema %}{ "name": "Hero", "settings": [{ "type": "text", "id": "h", "label": "Heading" }], "presets": [{ "name": "Hero" }] }{% endschema %}

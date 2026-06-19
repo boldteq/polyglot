@@ -100,5 +100,15 @@ console.log('case (d) fabricated aggregate (summary_rating/total_reviews, no rev
   else fail(`missing expected warning: honesty.preset-testimonial (saw ${[...warnIds].join(', ') || 'none'})`)
 }
 
+console.log('case (e) slider JS (setTimeout/setInterval in a hero slideshow, var checkTimer, NO countdown words) → expect exit 0 (NOT a fake countdown)')
+{
+  const { code, report } = runGate(path.join(HERE, 'slider'))
+  const ids = new Set((report?.blockers || []).map(b => b.id))
+  if (code === 0) pass('exit 0 (slider timer is not a countdown)')
+  else fail(`expected exit 0, got ${code}; blockers=${JSON.stringify([...ids])}`)
+  if (!ids.has('honesty.fake-countdown')) pass('no honesty.fake-countdown false-positive on slider checkTimer')
+  else fail(`false-positive: honesty.fake-countdown fired on a slider (saw ${[...ids].join(', ')})`)
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

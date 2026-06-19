@@ -290,11 +290,18 @@ function main() {
     }
     return false
   }
+  // A section falls through to a placeholder via EITHER Dawn's raw `placeholder_svg_tag` OR a render
+  // of a custom placeholder snippet (`{% render 'premium-placeholder' %}` etc.) — the sanctioned
+  // Dawn-grey replacement loom is INSTRUCTED to use. Both render a non-photo placeholder when no image
+  // is bound. Keying only on `placeholder_svg_tag` let the snippet route evade the publish BLOCK
+  // (Seraphine beauty dogfood 2026-06-19: unbound hero rendered `premium-placeholder` + passed #14).
+  const usesPlaceholderFallback = (raw) => /placeholder_svg_tag/i.test(raw)
+    || /\{%-?\s*render\s+['"][a-z0-9_-]*placeholder[a-z0-9_-]*['"]/i.test(raw)
   const heroish = sections.filter(f => /hero|banner|product|pdp|featured|main-product|lookbook/i.test(path.basename(f)))
   const placeholderOnly = []
   for (const f of heroish) {
     const raw = read(f)
-    if (!/placeholder_svg_tag/i.test(raw)) continue // no grey-placeholder fallback path → nothing to flag
+    if (!usesPlaceholderFallback(raw)) continue // no placeholder fallback path → nothing to flag
     // A real dynamic product/media binding renders an actual image regardless of merchant config.
     if (/\bproduct\.(?:featured_)?(?:image|media)\b|product\.images\b/i.test(raw)) continue
     // Otherwise the section renders the placeholder UNLESS a template instance binds a real image value.
@@ -311,7 +318,7 @@ function main() {
   evidence.placeholderImagery = placeholderOnly
   evidence.photographyRequired = photoRequired
   if (placeholderOnly.length) {
-    const base = `${placeholderOnly.length} hero/product section(s) rely only on placeholder_svg_tag with no image binding (${placeholderOnly.join(', ')}) — premium gap; do not assert premium on placeholder imagery. Bind a real image (image_picker / product media / the kept generated placeholder-library — never Dawn grey).`
+    const base = `${placeholderOnly.length} hero/product section(s) render only a placeholder (raw placeholder_svg_tag OR a {% render '*placeholder*' %} snippet) with no image bound (${placeholderOnly.join(', ')}) — premium gap; do not assert premium on placeholder imagery. Bind a real image (image_picker value in the template / product media / the kept generated placeholder-library — never Dawn grey).`
     if (photoRequired && REQUIRE_SCOPE) {
       blocker('rw.placeholder-imagery', placeholderOnly.join(', '), `${base} The design system declares imagery.custom_photography_required:true, so shipping grey placeholders violates the build's OWN premium contract — at publish-grade (DS_REQUIRE_SCOPE=1) this BLOCKS. loom/porter must bind real imagery before publish.`, placeholderOnly.join(', '))
     } else {

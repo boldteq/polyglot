@@ -105,5 +105,21 @@ console.log('case (f) unbound-hero (image_picker offered but template binds imag
   else fail(`publish-grade missing rw.placeholder-imagery blocker (saw ${[...pubBlock].join(', ') || 'none'})`)
 }
 
+console.log('case (g) snippet-placeholder (hero renders a {% render \'premium-placeholder\' %} snippet, NO placeholder_svg_tag, image unbound; photography required)')
+{
+  const dev = runGate(path.join(HERE, 'snippet-placeholder'))
+  if (dev.code === 0) pass('dev-grade exit 0 (advisory)')
+  else fail(`dev-grade expected exit 0, got ${dev.code}; blockers=${JSON.stringify(dev.report?.blockers?.map(b => b.id))}`)
+  const devWarn = new Set((dev.report?.warnings || []).map(w => w.id))
+  if (devWarn.has('rw.placeholder-imagery')) pass('dev-grade warning: rw.placeholder-imagery (snippet route caught — not just placeholder_svg_tag)')
+  else fail(`dev-grade missing rw.placeholder-imagery (saw ${[...devWarn].join(', ') || 'none'})`)
+  const pub = runGate(path.join(HERE, 'snippet-placeholder'), { DS_REQUIRE_SCOPE: '1' })
+  const pubBlock = new Set((pub.report?.blockers || []).map(b => b.id))
+  if (pub.code === 1) pass('publish-grade exit 1 (block)')
+  else fail(`publish-grade expected exit 1, got ${pub.code}; blockers=${JSON.stringify([...pubBlock])}`)
+  if (pubBlock.has('rw.placeholder-imagery')) pass('publish-grade blocker: rw.placeholder-imagery (snippet evasion closed)')
+  else fail(`publish-grade missing rw.placeholder-imagery blocker (saw ${[...pubBlock].join(', ') || 'none'})`)
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

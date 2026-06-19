@@ -170,11 +170,14 @@ for (const file of targets) {
   if (!fs.existsSync(abs)) continue
   const raw = fs.readFileSync(abs, 'utf-8')
 
-  // Rule-9 reinforcements on the whole file
-  if (/@apply|@tailwind|\btailwind\b/i.test(raw)) drift('ds.tailwind', file, 'Tailwind/@apply present — one CSS system only (Rule 9); use the theme vars', '')
+  // Rule-9 reinforcements on the whole file. Scan COMMENT-STRIPPED text — a CSS/Liquid comment
+  // like `/* ...no Tailwind, theme vars only */` is documentation, not a Tailwind dependency
+  // (Seraphine beauty dogfood 2026-06-19: a "no Tailwind." comment false-fired ds.tailwind).
+  const rawNoComments = stripComments(raw)
+  if (/@apply|@tailwind|\btailwind\b/i.test(rawNoComments)) drift('ds.tailwind', file, 'Tailwind/@apply present — one CSS system only (Rule 9); use the theme vars', '')
   // Second token system = an unambiguously bolted-on prefix (Tailwind --tw-*, a parallel --ds-*).
   // NOTE: --brand-* is intentionally NOT flagged — many themes expose brand vars as their OWN tokens (Rule-9 compliant).
-  for (const m of raw.matchAll(/--(?:tw|ds)-[a-z0-9-]+/gi)) { drift('ds.second-token', file, `second token system "${m[0]}" — use the theme's design-system vars (Rule 9)`, m[0]); break }
+  for (const m of rawNoComments.matchAll(/--(?:tw|ds)-[a-z0-9-]+/gi)) { drift('ds.second-token', file, `second token system "${m[0]}" — use the theme's design-system vars (Rule 9)`, m[0]); break }
 
   const css = stripComments(extractCss(file, raw))
   const sizesInFile = new Set()
