@@ -88,6 +88,11 @@ export default function WorkspaceBuildDetail() {
           {tab === 'pipeline' && buildId && <PipelineTab buildId={buildId} reloadKey={reloadKey} />}
           {tab === 'gates' && buildId && <GatesTab buildId={buildId} reloadKey={reloadKey} />}
           {tab === 'lens' && <LensTab dir={data.build.dir} reloadKey={reloadKey} />}
+          {tab === 'changes' && buildId && <ChangesTab buildId={buildId} reloadKey={reloadKey} />}
+          {tab === 'agents' && buildId && <AgentsTab buildId={buildId} reloadKey={reloadKey} />}
+          {tab === 'schedules' && buildId && <SchedulesTab buildId={buildId} reloadKey={reloadKey} />}
+          {tab === 'results' && buildId && <ResultsTab buildId={buildId} reloadKey={reloadKey} />}
+          {tab === 'files' && buildId && <FilesTab buildId={buildId} reloadKey={reloadKey} />}
         </div>
       ) : null}
     </PageShell>
