@@ -45,7 +45,8 @@
     "ds:css": "node scripts/generate-design-system-css.mjs",
     "overrides:check": "node scripts/check-client-overrides.mjs",
     "build-state": "node scripts/build-state.mjs",
-    "maestro:dryrun": "node scripts/maestro-dryrun.mjs"
+    "maestro:dryrun": "node scripts/maestro-dryrun.mjs",
+    "maestro:run": "node scripts/maestro-run.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",
