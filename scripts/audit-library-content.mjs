@@ -59,7 +59,21 @@ for (const rel of cardFiles) {
   const body = read(path.join(COMPONENTS, rel)) || ''
   const issues = []
   if (!/^#\s+\S/m.test(body)) issues.push('no H1 title')
-  if (!/\*\*Category:\*\*/.test(body) || !/\*\*Concept:\*\*/.test(body) || !/\*\*Rung:\*\*/.test(body)) issues.push('missing Category/Concept/Rung header')
+  // Convention (post-Atrium-P0): header carries Category + Concept; rung lives in _concept-section-map.json, NOT on the card.
+  if (!/\*\*Category:\*\*/.test(body) || !/\*\*Concept:\*\*/.test(body)) issues.push('missing Category/Concept header')
+  if (/\*\*Category:\*\*[^\n]*\*\*Rung:\*\*/.test(body)) issues.push('C1 violation: **Rung:** on card header (rung belongs only in _concept-section-map.json)')
+  if (!/\*\*Section family:\*\*/.test(body)) issues.push('no recall line (**Section family:** …)')
+  if (!/##\s+Design-system bindings\b/.test(body)) issues.push('C2 violation: no ## Design-system bindings section')
+  // Tailwind utilities appear as STANDALONE class tokens (class="flex items-center px-4").
+  // Token-EXACT check so BEM names that merely contain "grid"/"flex" (svc-grid, pain-grid, track--grid) are NOT flagged.
+  const UTIL_EXACT = new Set(['flex','grid','block','inline-flex','inline-block','w-full','h-full','text-center','text-left','text-right','items-center','items-start','items-end','justify-center','justify-between','justify-start','justify-end','flex-col','flex-row','flex-wrap','mx-auto'])
+  const UTIL_RE = /^(?:px|py|pt|pb|pl|pr|mx|my|mt|mb|ml|mr|gap|space-x|space-y|w|h|text|bg|rounded|shadow)-(?:\d|sm|md|lg|xl|full|center)/
+  let utilHit = false
+  for (const cm2 of body.matchAll(/class="([^"]*)"/g)) {
+    for (const tok of cm2[1].trim().split(/\s+/)) { if (UTIL_EXACT.has(tok) || UTIL_RE.test(tok)) { utilHit = true; break } }
+    if (utilHit) break
+  }
+  if (utilHit) issues.push('C3 violation: Tailwind-shaped utility classes in HTML (use BEM/theme-native)')
   if (!/\*\*Conversion job:\*\*/i.test(body)) issues.push('no Conversion job')
   const html = fenceUnder(body, 'HTML')
   if (html === null) issues.push('no ## HTML section')
