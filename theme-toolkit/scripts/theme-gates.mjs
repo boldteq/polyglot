@@ -142,6 +142,18 @@ const GATES = [
   // staging URL and BLOCKs cross-section drift (off-ladder type, off-scale padding, multi-H1) against
   // design-system.json. Content-only (chrome excluded). mantle gates publish.
   { name: 'section-cohesion', number: 19, kind: 'url', runner: 'node', script: 'check-section-cohesion.mjs' },
+  // Card-bindings (#20, LIBRARY) — proves a component-library card renders DGS-conformant + honest
+  // + wired by instantiating it into a Dawn-style section (binding its ## Design-system bindings
+  // roles to theme-native vars — the loom step) and running #8/#13/#14 against it. Catches a
+  // drifting card BEFORE drape/stitch consume it. kind:'library' — it scans the LIBRARY, not the
+  // theme repo in cwd, so it is EXCLUDED from the static/url theme sweeps; run it explicitly with
+  // `--gate card-bindings` (CI library check) or `node check-card-bindings.mjs` directly.
+  { name: 'card-bindings', number: 20, kind: 'library', runner: 'node', script: 'check-card-bindings.mjs' },
+  // Conversion sign-off (#21, static) — makes catalyst's lift_target MACHINE-CHECKABLE. #7 enforces
+  // CRO mechanics but not the lift TARGET; this verifies docs/cro/catalyst-signoff.json applied the
+  // canonical rule (lift_target = niche_benchmark × 2.5, ×1.5 sparse) + is signed + names surfaces +
+  // cites ≥5 decoder brands. Records the COMPUTED target, never a measured lift. mantle blocks publish.
+  { name: 'conversion-signoff', number: 21, kind: 'static', runner: 'node', script: 'check-conversion-signoff.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────

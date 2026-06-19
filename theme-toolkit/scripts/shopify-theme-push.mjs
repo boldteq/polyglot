@@ -10,6 +10,7 @@
 //
 // Exit: 0 = pushed (CLI exit 0) · 1 = blocked (lock missing / live / mismatch) or CLI failure · 2 = env error
 
+import fs from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { LOCK_FILE, readLock, lockShapeErrors, isLiveRole, cliAvailable } from './lib/shopify-theme-lock.mjs'
@@ -65,6 +66,16 @@ if (process.env.THEME_PUSH_ALLOW_STALE === '1') {
     die(1, 'gate evidence is stale, partial, mixed-SHA, or failing — run `pnpm gates` (full static sweep) at HEAD so `theme-gates.mjs --verify --require-full` exits 0 before publishing. Individual gate-report JSONs are NOT ship evidence. (Emergency override: THEME_PUSH_ALLOW_STALE=1 + a CHANGES.md ## Waivers entry.)')
   }
   console.log('theme-push: ✓ gate evidence FRESH + FULL at HEAD (verify --require-full passed)')
+
+  // CHANGES.md completeness (Plan P0 gap 8) — refuse publish on any unchecked `- [ ]` client ask.
+  // The validator existed but was never wired to the publish path; an unchecked item could ship.
+  const changesPath = fs.existsSync('CHANGES.md') ? 'CHANGES.md' : null
+  if (changesPath) {
+    const clScript = fileURLToPath(new URL('./check-changes-list.mjs', import.meta.url))
+    const cl = spawnSync(process.execPath, [clScript, changesPath], { cwd, stdio: 'inherit', env: { ...process.env } })
+    if ((cl.status ?? 1) !== 0) die(1, 'CHANGES.md has unchecked items — every `- [ ]` client ask must be `- [x]` (or waived in a ## Waivers entry) before publish.')
+    console.log('theme-push: ✓ CHANGES.md complete')
+  }
 }
 
 if (!cliAvailable()) die(2, 'shopify CLI not on PATH (npm install -g @shopify/cli@3)')

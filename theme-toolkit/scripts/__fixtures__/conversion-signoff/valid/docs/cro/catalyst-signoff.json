@@ -1,0 +1,3 @@
+{ "niche":"supplements","niche_benchmark":0.10,"multiplier":2.5,"lift_target":0.25,"sparse_niche":false,
+  "surfaces":["pdp-hero","cart","checkout"],"decoder_brands_cited":["Setu","Ritual","Momentous","AG1","Care/of"],
+  "signed_by":"catalyst","signed_at":"2026-06-19T12:00:00Z","signoff_sha":"abc123" }
