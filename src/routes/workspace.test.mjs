@@ -28,6 +28,19 @@ function get(path) {
   });
 }
 
+function post(path) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(`${base}${path}`);
+    const req = http.request({ hostname: u.hostname, port: u.port, path: u.pathname, method: 'POST', agent: false }, (res) => {
+      let body = '';
+      res.on('data', (c) => { body += c; });
+      res.on('end', () => resolve({ status: res.statusCode, json: (() => { try { return JSON.parse(body); } catch { return null; } })() }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
 test('GET /workspace/builds returns scored builds + summary', async () => {
   const { status, json } = await get('/api/workspace/builds');
   assert.equal(status, 200);
@@ -117,6 +130,16 @@ test('P3 index: listBuilds falls back to live assembly when index empty', async 
   const { status, json } = await get('/api/workspace/builds');
   assert.equal(status, 200);
   assert.ok(Array.isArray(json.builds)); // works whether or not any build dirs exist
+});
+
+test('P4 action: rerun-gates on unknown buildId 404s (no path injection)', async () => {
+  const r = await post('/api/workspace/builds/deadbeefdead/actions/rerun-gates');
+  assert.equal(r.status, 404);
+});
+
+test('P4 action: unknown runId 404s', async () => {
+  const r = await get('/api/workspace/actions/nope-123');
+  assert.equal(r.status, 404);
 });
 
 test('P3 index: replace + read round-trips, prunes vanished builds', async () => {
