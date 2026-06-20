@@ -414,10 +414,22 @@ app.listen(PORT, HOST, () => {
   // Order matters: witness (classify + ingest evals) → brain-aggregate (cross-project
   // signals) so the aggregator sees the day's freshly-classified runs.
   const catchupHours = (() => { try { return require('./lib/configService').getConfig('learning.vscode.catchupHours') ?? 20; } catch { return 20; } })();
-  const BOOT_CATCHUP = ['sys-learning-digest', 'sys-witness', 'sys-brain-aggregate'];
+  const WEEKLY_CATCHUP_HOURS = 150; // ~6.25d — catch up the weekly ACT/CALIBRATE jobs without re-running every boot
+  // The full brain loop on boot, in order: PERCEIVE (daily) → CALIBRATE → ACT. The last two were MISSING,
+  // so on a non-24/7 Mac the weekly sys-tutor tick was silently skipped + never caught up — the brain
+  // produced signals + DECIDED patches but NEVER APPLIED them (patches stuck 'proposed' forever).
+  // sys-intel-eval runs BEFORE sys-tutor so the judge is calibrated when the trainer reads it.
+  // runIfOverdue no-ops when fresh/inflight/disabled, so this is safe on boot + hourly.
+  const BOOT_CATCHUP = [
+    { id: 'sys-learning-digest', hours: catchupHours },
+    { id: 'sys-witness', hours: catchupHours },
+    { id: 'sys-brain-aggregate', hours: catchupHours },
+    { id: 'sys-intel-eval', hours: WEEKLY_CATCHUP_HOURS }, // CALIBRATE the judge
+    { id: 'sys-tutor', hours: WEEKLY_CATCHUP_HOURS },       // ACT — apply auto-approved patches (was never invoked)
+  ];
   const runCatchups = (phase) => {
-    for (const id of BOOT_CATCHUP) {
-      try { systemSchedules.runIfOverdue(id, catchupHours); }
+    for (const { id, hours } of BOOT_CATCHUP) {
+      try { systemSchedules.runIfOverdue(id, hours); }
       catch (err) { console.warn(`[catchup] ${phase} check failed for ${id}: ${err.message}`); }
     }
   };

@@ -15,6 +15,7 @@
     "vigil:install": "pnpm add -D playwright @axe-core/playwright pixelmatch pngjs && npx playwright install chromium",
     "changes:check": "node scripts/check-changes-list.mjs",
     "audit:dead-pages": "node scripts/audit-dead-pages.mjs",
+    "brain:run": "node scripts/brain-run.mjs",
     "test": "node --test --test-force-exit src/",
     "test:brain": "node scripts/brain-proof.mjs"
   },
