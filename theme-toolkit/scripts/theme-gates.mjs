@@ -165,6 +165,12 @@ const GATES = [
   // canonical rule (lift_target = niche_benchmark × 2.5, ×1.5 sparse) + is signed + names surfaces +
   // cites ≥5 decoder brands. Records the COMPUTED target, never a measured lift. mantle blocks publish.
   { name: 'conversion-signoff', number: 21, kind: 'static', runner: 'node', script: 'check-conversion-signoff.mjs' },
+  // CSS-layout (#22, static) — the DETERMINISTIC complement to Lens #18. Lens's vision judge demotes
+  // sub-confidence layout calls to warnings; this catches the deterministic 80% on the BUILD's own CSS
+  // (custom section {% style %} blocks + build-authored assets/*.css; vendor Dawn/Minimog CSS out of
+  // scope): viewport-overflow `100vw` (blocker at publish-grade), no-wrap flex rows / white-space:nowrap /
+  // large negative margins (advisory). Covered by --static-only + --verify/--require-full.
+  { name: 'css-layout', number: 22, kind: 'static', runner: 'node', script: 'check-css-layout.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
