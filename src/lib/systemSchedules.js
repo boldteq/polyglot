@@ -381,7 +381,7 @@ const HANDLERS = {
   // measure impact and auto-rollback any regression. feedback.md/constitution are never
   // touched (the governor forces those to review). Runs weekly after sys-brain-aggregate.
   async tutorTraining() {
-    const { runTrainerPass } = await import('../intelligence/trainer.mjs');
+    const { runTrainerPass, reconcileAutoPatches } = await import('../intelligence/trainer.mjs');
     const { getEvalCalibration } = await import('../intelligence/governor.mjs');
     const cfgN = (k, d) => { const v = configService.getConfig(k); return Number.isFinite(v) ? v : d; };
     const cfg = {
@@ -397,9 +397,13 @@ const HANDLERS = {
     // already logs + fails safe (calibrated:false, reason:'error').
     const calib = getEvalCalibration();
     const { cycle, impact } = runTrainerPass({ apply: true, cfg, evalCalibrated: calib.calibrated });
+    // Reconcile orphaned auto-approved patches (decided 'auto' but left 'proposed' — e.g. from the era
+    // the weekly trainer cron never ran). Applies them via the same surgical path, eval-gated — clears
+    // the backlog the dead ACT layer left behind, and self-heals any future orphan the cycle skips.
+    const reconciled = reconcileAutoPatches({ evalCalibrated: calib.calibrated, by: 'tutor-reconcile' });
     // Phase D.1 — if the trainer changed any agent .md, wake the reindex drain so the
     // new guardrail is searchable in ~60s (the trainer already queued the changed refs).
-    if (cycle.applied.length || impact.reverted.length) {
+    if (cycle.applied.length || impact.reverted.length || reconciled.applied.length) {
       try { agentSync.events.emit('memory.changed', { reason: 'trainer' }); } catch { /* nightly reindex backstop */ }
     }
     // FIX #6 — when the judge is miscalibrated the trainer HOLDS every auto. Make that

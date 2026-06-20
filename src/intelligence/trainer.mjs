@@ -225,6 +225,23 @@ export function rejectProposedPatch(patchId, opts = {}) {
   return { ok: true, id: patchId }
 }
 
+// ── Reconcile orphaned auto-approved patches ─────────────────────────────────
+// A patch the governor decided 'auto' but that was left 'proposed' (created by an apply:false pass, or
+// because the weekly trainer cron never ran — server.js BOOT_CATCHUP omitted sys-tutor) is applied here
+// via the SAME surgical path as the auto-loop, gated on eval calibration exactly like a fresh auto. The
+// cycle SKIPS a signal that already has a proposed patch ('already-queued'), so without this the backlog
+// never clears even after the cron runs. Used by tutorTraining (cron) + `pnpm brain:run` (on-demand).
+export function reconcileAutoPatches({ evalCalibrated = false, by = 'auto-reconcile', limit = 200 } = {}) {
+  if (!evalCalibrated) return { applied: [], held: 'eval-miscalibrated' }
+  const applied = []
+  for (const p of db.getTrainingPatches({ status: 'proposed', limit })) {
+    if (p.decision !== 'auto') continue
+    const r = applyProposedPatch(p.id, { by })
+    if (r && r.ok && !r.alreadyApplied) applied.push({ id: p.id, agent: p.agent })
+  }
+  return { applied }
+}
+
 // ── Reindex queue (Phase D.1 drains it; here we only enqueue, best-effort) ────
 export function enqueueReindex(sourceRef, reason = 'patch') {
   try {
