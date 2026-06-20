@@ -34,6 +34,7 @@
     "check:design-system": "node scripts/check-design-system.mjs",
     "check:consistency": "node scripts/check-consistency.mjs",
     "check:antipatterns": "node scripts/check-antipatterns.mjs",
+    "check:css-layout": "node scripts/check-css-layout.mjs",
     "check:schema": "node scripts/check-metafield-schema.mjs",
     "check:assets": "node scripts/check-asset-budget.mjs",
     "check:handoff": "node scripts/check-handoff-contract.mjs",

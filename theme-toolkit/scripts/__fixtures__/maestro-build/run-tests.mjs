@@ -155,5 +155,40 @@ console.log('case h — makeRealSteps.runGates spawns the gate stack with DS_REQ
   fs.rmSync(tmp, { recursive: true, force: true })
 }
 
+// ── case i: GAP 1 — runGates HEALS whole-store Lens blockers (lens:autofix) then re-grades to PASS ──
+console.log('case i — runGates auto-heals Lens blockers then re-grades to pass (default-on heal)')
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-build-i-'))
+  fs.mkdirSync(path.join(tmp, 'gate-reports'), { recursive: true })
+  // first grade is BLOCKED on a #18 visual-truth blocker
+  fs.writeFileSync(path.join(tmp, 'gate-reports', 'summary.json'), JSON.stringify({ pass: false, gates: { 'visual-truth': { blockers: [{ id: 'vt.overflow' }] } } }))
+  const calls = []
+  const spawn = (cmd, args, opts) => {
+    calls.push({ args: args || [] })
+    // simulate lens:autofix healing the store → rewrite the summary to PASS for the re-grade
+    if ((args || []).some(a => String(a).includes('lens-autofix.mjs'))) fs.writeFileSync(path.join(opts.cwd, 'gate-reports', 'summary.json'), JSON.stringify({ pass: true, gates: {} }))
+    return { status: 0, stdout: '', stderr: '' }
+  }
+  const res = await makeRealSteps({ dir: tmp, env: {}, spawn, heal: true }).runGates()
+  eq(calls.some(c => (c.args || []).some(a => String(a).includes('lens-autofix.mjs'))), true, 'lens:autofix ran (heal triggered on a Lens blocker)')
+  eq(res.pass, true, 're-grade after heal PASSES')
+  eq(res.healed, true, 'result flagged healed')
+  fs.rmSync(tmp, { recursive: true, force: true })
+}
+
+// ── case j: heal:false (--no-heal) → runGates reports Lens blockers WITHOUT auto-healing ──
+console.log('case j — heal:false reports Lens blockers without auto-healing')
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-build-j-'))
+  fs.mkdirSync(path.join(tmp, 'gate-reports'), { recursive: true })
+  fs.writeFileSync(path.join(tmp, 'gate-reports', 'summary.json'), JSON.stringify({ pass: false, gates: { 'visual-truth': { blockers: [{ id: 'vt.overflow' }] } } }))
+  const calls = []
+  const spawn = (cmd, args) => { calls.push({ args: args || [] }); return { status: 0, stdout: '', stderr: '' } }
+  const res = await makeRealSteps({ dir: tmp, env: {}, spawn, heal: false }).runGates()
+  eq(calls.some(c => (c.args || []).some(a => String(a).includes('lens-autofix.mjs'))), false, 'lens:autofix NOT run when heal:false')
+  eq(res.pass, false, 'stays blocked (report-only)')
+  fs.rmSync(tmp, { recursive: true, force: true })
+}
+
 console.log(failures === 0 ? '\n✓ MAESTRO-BUILD — ALL ORCHESTRATION ASSERTIONS PASS' : `\n✗ ${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)
