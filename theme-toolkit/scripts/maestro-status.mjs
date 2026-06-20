@@ -30,6 +30,7 @@ export function status(opts = {}) {
   const report = readJson(path.resolve(dir, buildStateDir, 'maestro-report.json'))
   const readiness = readJson(path.resolve(dir, buildStateDir, 'publish-readiness.json'))
   const summary = readJson(path.resolve(dir, reportDir, 'summary.json'))
+  const questionsDoc = readJson(path.resolve(dir, buildStateDir, 'questions.json')) // the batched human-ask (maestro:escalate)
 
   const hasArtifacts = !!(bs || report || readiness || summary)
 
@@ -67,6 +68,8 @@ export function status(opts = {}) {
     surfaces, converged, escalated,
     gates,
     decisions: Array.isArray(bs?.decisions) ? bs.decisions : [],
+    questions: Array.isArray(questionsDoc?.questions) ? questionsDoc.questions.length : 0,
+    blocked: !!questionsDoc?.blocked,
     updated: readiness?.updated || report?.updated || bs?.updated || null,
   }
 }
@@ -74,8 +77,9 @@ export function status(opts = {}) {
 // the single most useful next action given the state
 export function nextAction(s) {
   if (!s.hasArtifacts) return 'No build has run. Start one: pnpm maestro:build --auto-preview'
-  if (s.publishReady) return 'PUBLISH-READY. Publish: pnpm theme:push (gates:verify:full re-checks freshness at publish).'
+  if (s.publishReady) return 'PUBLISH-READY. Flip live: pnpm theme:publish (re-verifies readiness + gate freshness + CHANGES.md, then `shopify theme publish`). Preview first: pnpm theme:publish --dry-run.'
   if (s.stage === 'preflight') return 'Preconditions missing. Run: pnpm maestro:preflight (shows the fix per gap).'
+  if (s.questions) return `${s.questions} batched question(s) need you → docs/ESCALATION.md (each has a recommended default). Resolve them, then re-run pnpm maestro:build.`
   if (s.escalated.length) return `${s.escalated.length} surface(s) escalated (${s.escalated.join(', ')}). Inspect docs/build-state.md + gate-reports/lens/, fix, re-run pnpm maestro:build.`
   if (s.gates && !s.gates.pass) return `Gate stack blocked${s.gates.blockers ? ` (${s.gates.blockers} blocker(s))` : ''}. See gate-reports/SUMMARY.md, fix, re-run pnpm maestro:build.`
   return s.reason ? `Not publish-ready: ${s.reason}. Re-run pnpm maestro:build.` : 'Not publish-ready. Re-run pnpm maestro:build.'
@@ -89,6 +93,7 @@ export function formatStatus(s) {
     return L.join('\n')
   }
   L.push(`Publish:  ${s.publishReady ? '✅ PUBLISH-READY' : `⛔ NOT READY${s.stage ? ` — stopped at ${s.stage}` : ''}${s.reason ? `: ${s.reason}` : ''}`}`, '')
+  if (s.questions) L.push(`Needs you:  ⚠ ${s.questions} batched question(s) → docs/ESCALATION.md`, '')
 
   if (s.surfaces.length) {
     L.push(`Surfaces (${s.surfaces.length}):`)

@@ -36,6 +36,7 @@
     "check:antipatterns": "node scripts/check-antipatterns.mjs",
     "check:schema": "node scripts/check-metafield-schema.mjs",
     "check:assets": "node scripts/check-asset-budget.mjs",
+    "check:handoff": "node scripts/check-handoff-contract.mjs",
     "store:preflight": "node scripts/porter-preflight.mjs",
     "store:apply": "node scripts/porter-apply.mjs",
     "store:verify": "node scripts/porter-verify.mjs",
@@ -49,7 +50,11 @@
     "maestro:preflight": "node scripts/maestro-preflight.mjs",
     "maestro:run": "node scripts/maestro-run.mjs",
     "maestro:build": "node scripts/maestro-build.mjs",
-    "maestro:status": "node scripts/maestro-status.mjs"
+    "maestro:status": "node scripts/maestro-status.mjs",
+    "maestro:escalate": "node scripts/maestro-escalate.mjs",
+    "aim:dogfood": "node scripts/aim-dogfood.mjs",
+    "theme:publish": "node scripts/shopify-theme-publish.mjs",
+    "check:post-publish": "node scripts/check-post-publish.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",

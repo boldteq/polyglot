@@ -21,12 +21,13 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { spawnSync, execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { preflight, formatChecklist } from './maestro-preflight.mjs'
 import { makeRealDeps, runMaestro, loadSurfaces } from './maestro-run.mjs'
 import { withPreviewServer, DEFAULT_PREVIEW_URL } from './lib/preview-server.mjs'
 import { status, formatStatus } from './maestro-status.mjs'
+import { consolidateEscalation } from './maestro-escalate.mjs'
 
 const scriptPath = (name) => fileURLToPath(new URL(`./${name}`, import.meta.url))
 
@@ -58,6 +59,9 @@ export function makeRealSteps(opts = {}) {
       return { ok: (r.status ?? 1) === 0, initialized: true }
     },
 
+    // AIM dual-loop note: the AUTONOMOUS fixer is THIS consultant redraft loop (draft→render→Lens→record,
+    // ≤3 rounds/surface). `pnpm lens:autofix` is a SEPARATE standalone owner-batch fixer for manual use —
+    // it is NOT invoked here. Stage 4 (runGates) re-captures + judges the whole store for the #18 verdict.
     // 3 — the surface loop (in-process; reuses maestro-run's proven wiring)
     runLoop: async () => {
       const surfaces = loadSurfaces(dir, buildStateDir, surfacesOverride)
@@ -66,9 +70,24 @@ export function makeRealSteps(opts = {}) {
       return runMaestro({ deps, surfaces, maxRounds, dir, buildStateDir })
     },
 
-    // 4 — the full publish gate stack (separate process; reads gate-reports/summary.json for the verdict)
+    // 4 — the full publish gate stack. THREE things make this the WHOLE-STORE verdict, not a loop echo:
+    //   (a) regenerate the design-system CSS cascade (ds:css) so #14 render-wiring + #19 section-cohesion
+    //       grade against FRESH --ds-* vars, not a stale/absent assets/design-system.css;
+    //   (b) re-capture + judge the WHOLE STORE with Lens. The per-surface loop's lens-capture WIPES
+    //       gate-reports/lens each iteration and writes only the LAST surface — so without a whole-store
+    //       re-capture here, #18 visual-truth would grade a stale single-surface manifest. Mirrors
+    //       shopify-theme-push.mjs. Best-effort: no preview URL → capture fails → #18 BLOCKs via LENS_REQUIRE.
+    //   (c) run theme-gates at PUBLISH grade. DS_REQUIRE_SCOPE=1 + LENS_REQUIRE=1 + STRICT_CONVERSION=1
+    //       promote the dispatch/eyes/honesty gates (#0.4 discovery, #0.5 bootstrap, #17 visual-quality,
+    //       #18 Lens, honesty.fake-activity) from dev-WARN to BLOCK — so a SKIP can't read as a PASS.
+    //       maestro:build is the verdict that says "ship"; it MUST grade at publish grade.
+    // (Locked by __fixtures__/maestro-build case h.)
     runGates: () => {
-      const r = run(process.execPath, [scriptPath('theme-gates.mjs')])
+      const pub = { DS_REQUIRE_SCOPE: '1', LENS_REQUIRE: '1', STRICT_CONVERSION: '1' }
+      run(process.execPath, [scriptPath('generate-design-system-css.mjs')])  // (a) fresh --ds-* cascade (best-effort)
+      run(process.execPath, [scriptPath('lens-capture.mjs')], pub)           // (b) whole-store eyes — capture …
+      run(process.execPath, [scriptPath('lens-judge.mjs')], pub)             //     … then judge every frame
+      const r = run(process.execPath, [scriptPath('theme-gates.mjs')], pub)  // (c) publish-grade gate stack
       let pass = (r.status ?? 1) === 0
       let blockers = 0
       try {
@@ -84,7 +103,11 @@ export function makeRealSteps(opts = {}) {
 // ── artifact ────────────────────────────────────────────────────────────────────
 function writeReadiness(dir, buildStateDir, result) {
   const ts = process.env.MAESTRO_TS || 'pending'
-  const json = { updated: ts, publishReady: result.publishReady, stage: result.stage, reason: result.reason, loop: result.loop, gates: result.gates }
+  // Stamp HEAD so theme:publish can bind the PUBLISH-READY proof to the sha it was produced at —
+  // a stale / BUILD_STATE_DIR-redirected readiness then fails theme:publish's sha check (adversarial #1).
+  let sha = null
+  try { sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).trim() } catch { /* not a git repo */ }
+  const json = { updated: ts, sha, publishReady: result.publishReady, stage: result.stage, reason: result.reason, loop: result.loop, gates: result.gates }
   const L = [
     `# Publish Readiness — ${result.publishReady ? '✅ PUBLISH-READY' : '⛔ NOT READY'}   ·  updated ${ts}`,
     '',
@@ -197,6 +220,15 @@ async function main() {
   try { console.log('\n' + formatStatus(status({ dir, buildStateDir }))) }
   catch { console.log(`\n${result.publishReady ? '✅ PUBLISH-READY' : `⛔ NOT READY (stopped at ${result.stage}: ${result.reason})`}  →  ${buildStateDir}/publish-readiness.md`) }
   if (result.stage === 'preflight' && result.preflight) console.error('\n' + formatChecklist(result.preflight))
+  // Not ready → consolidate the scattered escalation artifacts into ONE batched, whitelist-tagged ask
+  // (docs/ESCALATION.md + docs/questions.json). Owner-fixable findings stay in the auto-fix loop; only
+  // whitelist hits become questions — so the human sees one ask, not three files. Best-effort.
+  if (!result.publishReady) {
+    try {
+      const esc = consolidateEscalation({ dir, buildStateDir })
+      if (esc.blocked && esc.questions.length) console.log(`\nmaestro:build — ${esc.questions.length} question(s) need you (batched) → ${buildStateDir}/ESCALATION.md`)
+    } catch (e) { console.error(`maestro:build: escalate consolidation failed — ${e.message}`) }
+  }
   process.exit(result.publishReady ? 0 : 1)
 }
 

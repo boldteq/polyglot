@@ -25,6 +25,7 @@ import https from 'node:https'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { readLock, lockShapeErrors, cliAvailable, LOCK_FILE } from './lib/shopify-theme-lock.mjs'
+import { loadRegistry, resolveRequire } from './check-handoff-contract.mjs'
 
 // ── default real probes (overridable for tests) ─────────────────────────────────
 // GET the preview URL; resolve true on any HTTP response, false on error/timeout. Never throws.
@@ -60,6 +61,7 @@ export async function preflight(opts = {}) {
     renderMode = 'dev',       // 'dev' needs a reachable preview · 'push' does not
     driver = 'cli',           // 'cli' (maestro-run → needs claude) · 'workflow' (wf-maestro-loop → agent)
     goalsFile = 'docs/discovery/goals.json',
+    brandDirFile = 'docs/design/brand-direction.md',
     dsFile = 'docs/design/design-system.json',
     buildStateFile = 'docs/build-state.json',
     previewUrl = env.THEME_PREVIEW_URL || env.LENS_PREVIEW_URL || null,
@@ -71,13 +73,19 @@ export async function preflight(opts = {}) {
   const checks = []
   const add = (c) => checks.push({ soft: false, detail: '', fix: '', ...c })
 
-  // 1 — discovery (#0.4): goals.json present + parseable
+  // 1 — discovery (#0.4): goals.json parseable AND brand-direction.md present. The #0.4 gate
+  // (check-discovery.mjs) requires BOTH — so preflight must too, else a build passes preflight then
+  // gets blocked at the gate for a missing brand-direction. Consistency = no convergence-then-block.
   {
-    const p = path.resolve(dir, goalsFile)
-    const r = exists(p) ? readJson(p) : { ok: false, error: new Error('missing') }
-    add({ id: 'discovery', label: 'Discovery goals (#0.4)', ok: r.ok,
-      detail: r.ok ? goalsFile : `${goalsFile} ${exists(p) ? 'unparseable' : 'missing'}`,
-      fix: 'run discovery → goals.json (`pnpm check:discovery` to verify)' })
+    const gp = path.resolve(dir, goalsFile)
+    const gr = exists(gp) ? readJson(gp) : { ok: false, error: new Error('missing') }
+    const bdOk = exists(path.resolve(dir, brandDirFile))
+    const ok = gr.ok && bdOk
+    const detail = ok ? `${goalsFile} + brand-direction.md`
+      : !gr.ok ? `${goalsFile} ${exists(gp) ? 'unparseable' : 'missing'}`
+      : `${brandDirFile} missing`
+    add({ id: 'discovery', label: 'Discovery (#0.4)', ok, detail,
+      fix: 'run discovery → goals.json + brand-direction.md (`pnpm check:discovery` to verify)' })
   }
 
   // 2 — bootstrap (#0.5): design-system.json present + parseable
@@ -87,6 +95,25 @@ export async function preflight(opts = {}) {
     add({ id: 'bootstrap', label: 'Design system (#0.5)', ok: r.ok,
       detail: r.ok ? dsFile : `${dsFile} ${exists(p) ? 'unparseable' : 'missing'}`,
       fix: 'drape authors design-system.json (`pnpm check:bootstrap` to verify)' })
+  }
+
+  // 2b — handoff contracts (hard-wires "missing contract = no dispatch"): the build loop DRAFTS against
+  // compass's briefs + drape's design-spec — refuse to start the loop if those produced artifacts are
+  // absent, so a build can't begin "on nothing". Reads the registry (aim-handoff-registry.json) so the
+  // enforced set tracks the registry, not a hardcoded list here.
+  {
+    let ok = true; const missing = []
+    try {
+      const reg = loadRegistry()
+      const existsFn = (p) => exists(path.resolve(dir, p))
+      for (const ev of ['content_briefs_ready', 'design_spec_ready']) {
+        const r = resolveRequire(reg, ev, existsFn)
+        if (!r.ok) { ok = false; missing.push(r.missing?.length ? `${ev} (${r.missing.join(', ')})` : ev) }
+      }
+    } catch (e) { ok = false; missing.push(`registry: ${e.message}`) }
+    add({ id: 'handoff-contracts', label: 'Build-input contracts', ok,
+      detail: ok ? 'content_briefs_ready + design_spec_ready satisfied' : `unsatisfied: ${missing.join('; ')}`,
+      fix: 'compass briefs (content/briefs/ + content/sitemap.md) + drape design-spec (docs/design/design-spec.md) must exist before the build loop (pnpm check:handoff <event>)' })
   }
 
   // 3 — theme lock: linked + valid shape (theme:dev/push target)
@@ -148,6 +175,15 @@ export async function preflight(opts = {}) {
       fix: 'install the claude CLI (the cli driver shells `claude -p` for each draft) — or use --driver workflow' })
   } else {
     add({ id: 'consultant', label: 'Consultant (agent)', ok: true, detail: 'driver=workflow — drafts run as agents' })
+  }
+
+  // 8 — CHANGES.md acceptance ledger (SOFT: you can build without it, but theme:publish HARD-requires
+  // it — surface it now so the autonomous path doesn't converge then block at the flip).
+  {
+    const ok = exists(path.resolve(dir, 'CHANGES.md'))
+    add({ soft: true, id: 'changes-ledger', label: 'CHANGES.md ledger', ok,
+      detail: ok ? 'CHANGES.md present' : 'CHANGES.md missing — publish (theme:publish) will block without it',
+      fix: 'create CHANGES.md (one `- [ ]` per client ask; or a `## Waivers` note for a no-asks build)' })
   }
 
   const ready = checks.every(c => c.ok || c.soft)

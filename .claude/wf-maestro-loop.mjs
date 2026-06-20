@@ -17,6 +17,11 @@ export const meta = {
 //     surfaces: ['home','collection','pdp','cart'] } })
 // PRECONDITION: `pnpm theme:dev` running (previewUrl live) + `pnpm build-state init` already run.
 // First live run smoke-tests the wiring; the loop CONTROL is already proven by the dryrun harness.
+//
+// DRIVER SCOPE (decided 2026-06-20): this WF driver is LOOP-ONLY by design — it runs the per-surface
+// build+Lens loop + the escalation consolidation, but it does NOT emit the publish-readiness verdict.
+// Route every PUBLISH-READY verdict through the CLI `pnpm maestro:build` (full gate stack + writeReadiness).
+// CLI = the publish path; WF = the in-session surface-loop driver.
 
 const VERDICT_SCHEMA = {
   type: 'object', additionalProperties: false,
@@ -51,6 +56,9 @@ const repo = args?.repo
 const surfaces = Array.isArray(args?.surfaces) && args.surfaces.length ? args.surfaces : ['home', 'collection', 'pdp', 'cart', 'search', 'account']
 const previewUrl = args?.previewUrl || 'http://127.0.0.1:9292'
 const MAX = args?.maxRounds || 3
+// Absolute path to the Boldteq theme-toolkit (a Workflow script can't resolve its own path — no
+// import.meta/fs in the sandbox). Override via args.toolkit when the Polyglot checkout moves.
+const TOOLKIT = args?.toolkit || '/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/theme-toolkit'
 if (!repo) throw new Error('maestro-loop: args.repo (absolute path to the theme repo) is required')
 
 const draftPrompt = (surface, round, findings) => `You are the surface BUILDER for the "${surface}" surface, working in the Shopify theme repo at ${repo}.
@@ -90,5 +98,18 @@ const escalated = results.filter(r => r.status !== 'PASS')
 log(`Maestro Loop done — ${converged.length}/${results.length} surfaces cleared Lens. ${escalated.length ? `ESCALATE: ${escalated.map(r => `${r.surface}(${r.status},${r.rounds}r)`).join(', ')}` : 'all surfaces PASS.'}`)
 if (escalated.length) {
   log('Escalated surfaces did not converge in ≤' + MAX + ' rounds — a human/onyx must look (do NOT publish a non-converged store). Findings are in docs/build-state.md + gate-reports/lens/.')
+  // Consolidate the scattered escalation artifacts into ONE batched, whitelist-tagged ask. A Workflow
+  // script has no fs access, so dispatch a thin agent to (1) PERSIST the loop result to
+  // docs/maestro-report.json — maestro-escalate reads it for the escalated-surface list + per-surface
+  // findings, which would otherwise be LOST on the WF path — then (2) run the toolkit's maestro:escalate.
+  const reportJson = JSON.stringify({
+    allPass: false,
+    converged,
+    escalated: escalated.map(r => r.surface),
+    decisions: [],
+    surfaces: results.map(r => ({ surface: r.surface, status: r.status === 'PASS' ? 'done' : 'blocked', rounds: r.rounds || 0, findings: r.findings || [], error: r.error || '' })),
+  })
+  await agent(`In the Shopify theme repo at ${repo}: (1) write docs/maestro-report.json containing EXACTLY this JSON (the loop result maestro-escalate reads for escalated surfaces + findings):\n${reportJson}\n(2) then run \`cd "${repo}" && node "${TOOLKIT}/scripts/maestro-escalate.mjs"\` to consolidate every escalation artifact into docs/ESCALATION.md + docs/questions.json. Report the path to docs/ESCALATION.md and the questions it produced (each has a whitelist tag + a recommended default). Do NOT fix store-data findings yourself — only persist + consolidate + report.`, { label: 'escalate', phase: 'Summary' })
+  log('→ Batched questions for Yash consolidated to docs/ESCALATION.md. Resolve them, then re-run the loop.')
 }
 return { converged, escalated: escalated.map(r => r.surface), allPass: escalated.length === 0, surfaces: results }

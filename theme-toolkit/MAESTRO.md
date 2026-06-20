@@ -28,13 +28,23 @@ store that reads as done:
 1 build-state      seed docs/build-state.json if absent (the carried mind) — before preflight, which requires it
 2 preflight        every precondition met? (else stop + print the exact fix per missing item)
 3 surface loop     per surface: draft (claude) → render → Lens judge → record; ≤3 rounds then escalate
-4 gate stack       the full publish stack (#0.4→#19 + Lens #18) — pnpm gates
+4 gate stack       the full publish stack at PUBLISH grade (DS_REQUIRE_SCOPE=1 + LENS_REQUIRE=1 → the
+                   dispatch/eyes gates #0.4/#0.5/#17/#18 BLOCK, not just warn) — pnpm gates
 → docs/publish-readiness.json   PUBLISH-READY only if the loop converged AND the gate stack passed
 ```
 
 The per-surface Lens inside the loop is **not** the publish gate — a store can converge surface-by-surface
 and still fail the whole-store stack. `maestro:build` declares PUBLISH-READY only when **both** are true,
-in one machine-readable artifact `mantle`'s publish precondition can read.
+in one machine-readable artifact `mantle`'s publish precondition can read. **Stage 4 grades at publish
+grade on purpose:** without `DS_REQUIRE_SCOPE=1 + LENS_REQUIRE=1`, a run with missing discovery/bootstrap
+or no Lens evidence would "skip" those gates and the summary would read `pass:true` → a false PUBLISH-READY.
+The verdict gate must block on a skip — a skip is not a pass. (Locked by `__fixtures__/maestro-build` case h.)
+
+When `maestro:build` stops NOT-READY with escalations it consolidates the three scattered escalation
+artifacts (`maestro-report.json` + `lens/autofix-escalation.json` + `lens/porter-workorder.md`) into ONE
+batched, whitelist-tagged ask — `docs/ESCALATION.md` + `docs/questions.json` (also `pnpm maestro:escalate`).
+Owner-fixable findings (loom/drape/ink/conduit) stay in the auto-fix loop; only a `full-autonomy-rules.md`
+whitelist hit (brand identity · real-asset-missing · legal · money · data-loss) becomes a question for Yash.
 
 ## Preconditions (what `maestro:preflight` checks)
 
@@ -93,8 +103,9 @@ Run `pnpm maestro:preflight` any time for a READY / NOT-READY verdict with the f
 | `pnpm maestro:dryrun` | hermetic proof of the loop ALGORITHM (no store/claude/preview) |
 | `pnpm build-state init\|record\|show` | seed / update / print the carried mind |
 | `pnpm lens:surface <surface>` | the iteration unit — capture→judge→enforce scoped to one surface |
-| `pnpm theme:dev` / `theme:push` / `theme:link` | the single-theme preview / push / link (lock-pinned) |
-| `pnpm gates` / `gates:verify:full` | the full publish gate stack / its freshness check (theme:push precondition) |
+| `pnpm theme:dev` / `theme:push` / `theme:link` | the in-loop preview / code-push / link (lock-pinned) |
+| `pnpm theme:publish [--dry-run]` | **the last-mile FLIP** — `shopify theme publish` flips the locked unpublished theme to LIVE, gated on publish-readiness + CHANGES.md + gate-freshness (trusts frozen Lens #18; does not re-run it). `--dry-run` runs the chain + prints the command without flipping |
+| `pnpm gates` / `gates:verify:full` | the full publish gate stack / its freshness check (publish precondition) |
 
 ## Resuming an interrupted run
 

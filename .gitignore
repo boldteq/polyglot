@@ -17,6 +17,17 @@ public-dist/
 # Runtime Claude session logs — generated, never read by Polyglot code (C20 audit)
 projects/
 
+# Orphan stale copies of ~/.claude/* — NOT the backup (backup.js writes to ~/.claude/.backups/repo
+# + a private GitHub repo). Runtime always reads ~/.claude; these repo-root copies are unreferenced.
+# (agent-versions/ is KEPT — routes/agents.js:26 reads it.) Anchored to root so nested .claude/<dir>
+# and src/lib/<dir> are never matched.
+/agents/
+/memory/
+/commands/
+/rules/
+/templates/
+/conversations/
+
 # Standardize on pnpm (C tech-debt audit)
 package-lock.json
 
