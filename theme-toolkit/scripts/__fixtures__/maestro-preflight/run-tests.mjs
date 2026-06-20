@@ -27,6 +27,15 @@ function scaffold(omit = null) {
   fs.mkdirSync(path.join(repo, 'docs/discovery'), { recursive: true })
   fs.mkdirSync(path.join(repo, 'docs/design'), { recursive: true })
   if (omit !== 'discovery') fs.writeFileSync(path.join(repo, 'docs/discovery/goals.json'), JSON.stringify({ conversion: { cvr_target_pct: 2.8 } }))
+  // discovery (#0.4) requires goals.json AND brand-direction.md — both gated by the 'discovery' omit
+  if (omit !== 'discovery') fs.writeFileSync(path.join(repo, 'docs/design/brand-direction.md'), '# Brand Direction\n5 adjectives, 3 reference brands.\n')
+  // build-input handoff contracts: compass briefs + drape design-spec (gated by the 'handoff' omit)
+  if (omit !== 'handoff') {
+    fs.mkdirSync(path.join(repo, 'content/briefs'), { recursive: true })
+    fs.writeFileSync(path.join(repo, 'content/sitemap.md'), '# Sitemap\n- home\n')
+    fs.writeFileSync(path.join(repo, 'content/briefs/home.md'), '# Home brief\n')
+    fs.writeFileSync(path.join(repo, 'docs/design/design-spec.md'), '# Design spec\n')
+  }
   if (omit !== 'bootstrap') fs.writeFileSync(path.join(repo, 'docs/design/design-system.json'), JSON.stringify({ typography: { fonts: { heading: 'Fraunces' } } }))
   if (omit !== 'theme-lock') fs.writeFileSync(path.join(repo, '.boldteq-theme-lock.json'), JSON.stringify({ version: 1, store: 'demo.myshopify.com', themeId: '123', role: 'unpublished', singleTheme: true }))
   if (omit !== 'build-state') fs.writeFileSync(path.join(repo, 'docs/build-state.json'), JSON.stringify({ surfaces: [{ surface: 'home', status: 'todo' }, { surface: 'pdp', status: 'todo' }] }))
@@ -58,6 +67,18 @@ for (const omit of ['discovery', 'bootstrap', 'theme-lock', 'build-state']) {
   // unrelated checks still pass (failure is isolated to the missing one)
   const others = res.checks.filter(c => c.id !== omit && ['discovery', 'bootstrap', 'theme-lock', 'build-state'].includes(c.id))
   eq(others.every(c => c.ok), true, `other artifact checks still ok when only ${omit} missing`)
+  cleanup(repo)
+}
+
+// ── case b2: missing build-input contracts (briefs/design-spec) → handoff-contracts hard-fails ──
+console.log('case b2 — missing briefs/design-spec → handoff-contracts check fails (missing contract = no dispatch)')
+{
+  const repo = scaffold('handoff')
+  const res = await preflight({ dir: repo, env: { THEME_PREVIEW_URL: 'http://x:9292' }, ...GREEN })
+  eq(res.ready, false, 'ready false when build-input contracts unsatisfied')
+  eq(check(res, 'handoff-contracts').ok, false, 'handoff-contracts check fails when briefs/design-spec absent')
+  // the design foundation checks (discovery/bootstrap) still pass — failure is isolated to the contracts
+  eq(check(res, 'discovery').ok, true, 'discovery still ok (failure isolated to handoff-contracts)')
   cleanup(repo)
 }
 

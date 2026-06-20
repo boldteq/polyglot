@@ -1,0 +1,171 @@
+{
+  "schemaVersion": "1.0",
+  "scope": "shopify-website",
+  "title": "AIM v1 — Shopify Website Handoff Contract Registry",
+  "note": "Single naming authority for agent-to-agent handoffs in the Shopify Website department. A contract's `requires[]` are the artifacts/upstream-contracts that MUST exist before the `to` agent may be dispatched (missing contract = no dispatch). `produces[]` are the artifacts the `from` agent emits on done. `gate` is the executable check that proves the contract. `aliases[]` are legacy names found in agent .md prose that resolve to this canonical event — do not introduce new variants. Human doctrine: ~/.claude/memory/patterns/good/aim-handoff-contract-registry.md. Consumed by check-handoff-contract.mjs.",
+  "contracts": [
+    {
+      "event": "intake_ready",
+      "from": "atrium",
+      "to": ["compass", "drape", "catalyst"],
+      "requires": ["CHANGES.md", "docs/discovery/goals.json"],
+      "produces": ["CHANGES.md", "docs/discovery/goals.json"],
+      "gate": "discovery (#0.4)",
+      "aliases": [],
+      "note": "catalyst is intentional cross-squad CRO routing (Growth dept) — it receives the CRO brief at intake; it is NOT a Shopify Website dept contract participant, so it has no AIM Operating Contract block."
+    },
+    {
+      "event": "content_briefs_ready",
+      "from": "compass",
+      "to": ["drape", "ink", "beacon", "stitch"],
+      "requires": ["intake_ready"],
+      "produces": ["content/sitemap.md", "content/briefs/"],
+      "gate": "check-briefs.mjs (#0.4 side)",
+      "aliases": ["briefs_ready"]
+    },
+    {
+      "event": "content_inventory_ready",
+      "from": "compass",
+      "to": ["lattice"],
+      "requires": ["intake_ready"],
+      "produces": ["content/inventory.md"],
+      "gate": null,
+      "aliases": []
+    },
+    {
+      "event": "design_system_ready",
+      "from": "drape",
+      "to": ["loom", "stitch", "onyx"],
+      "requires": ["content_briefs_ready"],
+      "produces": ["docs/design/design-system.json", "docs/design/design-system.md"],
+      "gate": "bootstrap (#0.5) + design-system (#8)",
+      "aliases": []
+    },
+    {
+      "event": "design_spec_ready",
+      "from": "drape",
+      "to": ["stitch", "ink", "onyx"],
+      "requires": ["design_system_ready"],
+      "produces": ["docs/design/design-spec.md"],
+      "gate": "design-quality (#12)",
+      "aliases": []
+    },
+    {
+      "event": "copy_ready",
+      "from": "ink",
+      "to": ["loom"],
+      "requires": ["design_spec_ready", "content_briefs_ready"],
+      "produces": ["content/briefs/ (filled content slots)"],
+      "gate": "honesty (#13)",
+      "aliases": []
+    },
+    {
+      "event": "metafield_schema_published",
+      "from": "lattice",
+      "to": ["conduit", "loom"],
+      "requires": ["content_inventory_ready"],
+      "produces": ["docs/metafield-schema.json"],
+      "gate": "check-metafield-schema.mjs",
+      "aliases": []
+    },
+    {
+      "event": "data_contracts_ready",
+      "from": "conduit",
+      "to": ["loom"],
+      "requires": ["metafield_schema_published"],
+      "produces": ["docs/data-contracts.md"],
+      "gate": "render-wiring (#14, dynamic-bind side)",
+      "aliases": []
+    },
+    {
+      "event": "store_token_ready",
+      "from": "keystone",
+      "to": ["porter"],
+      "requires": [],
+      "produces": ["per-store Admin API token (out of repo)"],
+      "gate": "keystone-token.mjs",
+      "aliases": []
+    },
+    {
+      "event": "skeleton_ready_for_refinement",
+      "from": "stitch",
+      "to": ["loom"],
+      "requires": ["design_spec_ready", "design_system_ready"],
+      "produces": ["section-reuse-map.md", "sections/ (skeletons)", "config/settings_schema.json"],
+      "gate": "check-reuse-map.mjs (reuse-map validator / onyx Audit 7 — not a numbered theme-gate)",
+      "aliases": []
+    },
+    {
+      "event": "store_data_ready",
+      "from": "porter",
+      "to": ["loom", "lumen"],
+      "requires": ["store_token_ready", "metafield_schema_published"],
+      "produces": ["populated store (products, collections, media, metafield/metaobject values)"],
+      "gate": "porter-verify (store:verify)",
+      "aliases": ["store_populated"]
+    },
+    {
+      "event": "theme_ready_for_qa",
+      "from": "loom",
+      "to": ["lumen"],
+      "requires": ["skeleton_ready_for_refinement", "data_contracts_ready", "copy_ready"],
+      "produces": ["sections/", "templates/", "assets/theme.css", "merchant-editability.md"],
+      "gate": "theme-check (#2) + render-wiring (#14) + commerce-readiness (#15)",
+      "aliases": ["theme_ready"]
+    },
+    {
+      "event": "seo_signoff_ready",
+      "from": "beacon",
+      "to": ["lumen", "mantle"],
+      "requires": ["content_briefs_ready", "theme_ready_for_qa"],
+      "produces": ["docs/seo/seo-signoff.md"],
+      "gate": "seo (#6)",
+      "aliases": []
+    },
+    {
+      "event": "qa_passed_ready",
+      "from": "lumen",
+      "to": ["onyx"],
+      "requires": ["theme_ready_for_qa", "store_data_ready"],
+      "produces": ["gate-reports/ (lighthouse, axe, functional, summary.json)"],
+      "gate": "lighthouse (#1) + axe (#5) + functional (#10)",
+      "aliases": ["qa_passed"]
+    },
+    {
+      "event": "code_review_approved",
+      "from": "onyx",
+      "to": ["mantle"],
+      "requires": ["qa_passed_ready"],
+      "produces": ["docs/visual-quality-review.json"],
+      "gate": "visual-quality (#17) + visual-truth (#18, verify-ran)",
+      "aliases": ["code_review_blocked"]
+    },
+    {
+      "event": "publish_readiness_ready",
+      "from": "maestro",
+      "to": ["mantle"],
+      "requires": ["code_review_approved"],
+      "produces": ["docs/publish-readiness.json"],
+      "gate": "maestro-build (loop converged + full stack passed + fresh)",
+      "aliases": []
+    },
+    {
+      "event": "published",
+      "from": "mantle",
+      "to": ["atrium", "client"],
+      "requires": ["publish_readiness_ready", "seo_signoff_ready", "CHANGES.md"],
+      "produces": ["live theme (flipped)", "T+0 post-publish smoke"],
+      "gate": "check-post-publish.mjs + theme-gates --verify --require-full",
+      "aliases": []
+    },
+    {
+      "event": "launch_watch_clear",
+      "from": "lumen",
+      "to": ["atrium"],
+      "requires": ["published"],
+      "produces": ["T+48h watch report"],
+      "gate": null,
+      "aliases": []
+    }
+  ]
+}

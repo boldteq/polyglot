@@ -135,5 +135,25 @@ console.log('case g — makeRealSteps forwards budgetMs + timeouts + spawn to ma
   fs.rmSync(tmp, { recursive: true, force: true })
 }
 
+// ── case h: runGates grades at PUBLISH grade (the linchpin — #0.4/#0.5/#18 BLOCK, not warn) ──
+console.log('case h — makeRealSteps.runGates spawns the gate stack with DS_REQUIRE_SCOPE=1 + LENS_REQUIRE=1')
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-build-h-'))
+  const calls = []
+  const spawn = (cmd, args, opts) => { calls.push({ cmd, args: args || [], env: opts?.env || {} }); return { status: 0, stdout: '', stderr: '' } }
+  const steps = makeRealSteps({ dir: tmp, env: { PATH: '/usr/bin' }, spawn })
+  await steps.runGates()
+  const gateCall = calls.find(c => (c.args || []).some(a => String(a).includes('theme-gates.mjs')))
+  eq(!!gateCall, true, 'runGates spawned theme-gates.mjs')
+  eq(gateCall?.env?.DS_REQUIRE_SCOPE, '1', 'gate stack runs publish-grade: DS_REQUIRE_SCOPE=1 (else #0.4/#0.5/#17 only warn)')
+  eq(gateCall?.env?.LENS_REQUIRE, '1', 'gate stack runs publish-grade: LENS_REQUIRE=1 (else #18 Lens only warns)')
+  eq(gateCall?.env?.STRICT_CONVERSION, '1', 'gate stack runs publish-grade: STRICT_CONVERSION=1 (else honesty.fake-activity only warns)')
+  eq(gateCall?.env?.PATH, '/usr/bin', 'base env preserved (extraEnv merges, does not replace)')
+  // whole-store eyes: runGates re-captures + judges the whole store before grading (not a stale 1-surface manifest)
+  eq(calls.some(c => (c.args || []).some(a => String(a).includes('lens-capture.mjs'))), true, 'runGates re-captures the whole store (lens-capture) before #18')
+  eq(calls.some(c => (c.args || []).some(a => String(a).includes('lens-judge.mjs'))), true, 'runGates re-judges the whole store (lens-judge) before #18')
+  fs.rmSync(tmp, { recursive: true, force: true })
+}
+
 console.log(failures === 0 ? '\n✓ MAESTRO-BUILD — ALL ORCHESTRATION ASSERTIONS PASS' : `\n✗ ${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)
