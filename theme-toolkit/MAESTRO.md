@@ -93,8 +93,9 @@ Run `pnpm maestro:preflight` any time for a READY / NOT-READY verdict with the f
 | `pnpm maestro:dryrun` | hermetic proof of the loop ALGORITHM (no store/claude/preview) |
 | `pnpm build-state init\|record\|show` | seed / update / print the carried mind |
 | `pnpm lens:surface <surface>` | the iteration unit — capture→judge→enforce scoped to one surface |
-| `pnpm theme:dev` / `theme:push` / `theme:link` | the single-theme preview / push / link (lock-pinned) |
-| `pnpm gates` / `gates:verify:full` | the full publish gate stack / its freshness check (theme:push precondition) |
+| `pnpm theme:dev` / `theme:push` / `theme:link` | the in-loop preview / code-push / link (lock-pinned) |
+| `pnpm theme:publish [--dry-run]` | **the last-mile FLIP** — `shopify theme publish` flips the locked unpublished theme to LIVE, gated on publish-readiness + CHANGES.md + gate-freshness (trusts frozen Lens #18; does not re-run it). `--dry-run` runs the chain + prints the command without flipping |
+| `pnpm gates` / `gates:verify:full` | the full publish gate stack / its freshness check (publish precondition) |
 
 ## Resuming an interrupted run
 

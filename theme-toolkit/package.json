@@ -49,7 +49,8 @@
     "maestro:preflight": "node scripts/maestro-preflight.mjs",
     "maestro:run": "node scripts/maestro-run.mjs",
     "maestro:build": "node scripts/maestro-build.mjs",
-    "maestro:status": "node scripts/maestro-status.mjs"
+    "maestro:status": "node scripts/maestro-status.mjs",
+    "theme:publish": "node scripts/shopify-theme-publish.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",

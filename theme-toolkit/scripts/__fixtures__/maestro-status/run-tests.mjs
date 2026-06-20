@@ -56,7 +56,7 @@ console.log('case b — all artifacts, publish-ready')
   eq(s.converged, ['home', 'pdp'], 'converged from report')
   eq(s.gates.pass, true, 'gates PASS')
   eq(s.client, 'Acme', 'client carried from build-state')
-  eq(/PUBLISH-READY/.test(nextAction(s)) && /theme:push/.test(nextAction(s)), true, 'next action = publish')
+  eq(/PUBLISH-READY/.test(nextAction(s)) && /theme:publish/.test(nextAction(s)), true, 'next action = flip live (theme:publish)')
   rm(dir)
 }
 

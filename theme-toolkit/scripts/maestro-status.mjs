@@ -74,7 +74,7 @@ export function status(opts = {}) {
 // the single most useful next action given the state
 export function nextAction(s) {
   if (!s.hasArtifacts) return 'No build has run. Start one: pnpm maestro:build --auto-preview'
-  if (s.publishReady) return 'PUBLISH-READY. Publish: pnpm theme:push (gates:verify:full re-checks freshness at publish).'
+  if (s.publishReady) return 'PUBLISH-READY. Flip live: pnpm theme:publish (re-verifies readiness + gate freshness + CHANGES.md, then `shopify theme publish`). Preview first: pnpm theme:publish --dry-run.'
   if (s.stage === 'preflight') return 'Preconditions missing. Run: pnpm maestro:preflight (shows the fix per gap).'
   if (s.escalated.length) return `${s.escalated.length} surface(s) escalated (${s.escalated.join(', ')}). Inspect docs/build-state.md + gate-reports/lens/, fix, re-run pnpm maestro:build.`
   if (s.gates && !s.gates.pass) return `Gate stack blocked${s.gates.blockers ? ` (${s.gates.blockers} blocker(s))` : ''}. See gate-reports/SUMMARY.md, fix, re-run pnpm maestro:build.`
