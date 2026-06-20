@@ -208,7 +208,7 @@ export default function Build() {
           </SectionCard>
 
           {verdict && (
-            <div className={`card p-4 flex items-start gap-3 ${verdict.publishReady ? 'border-green-500/40' : 'border-amber-500/40'}`}>
+            <div data-testid="build-verdict" className={`card p-4 flex items-start gap-3 ${verdict.publishReady ? 'border-green-500/40' : 'border-amber-500/40'}`}>
               {verdict.publishReady
                 ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
                 : <XCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />}
@@ -221,12 +221,15 @@ export default function Build() {
           )}
 
           {previewUrl && (
-            <SectionCard
-              title="Preview"
-              action={<a href={previewUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-accent hover:underline">Open <ExternalLink className="w-3 h-3" /></a>}
-              noPadding
-            >
-              <iframe title="Store preview" src={previewUrl} className="w-full h-80 rounded-b-[inherit] border-0" />
+            <SectionCard title="Preview">
+              {/* Shopify previews can't be iframed (their X-Frame-Options + our CSP frame-src 'none'),
+                  so the preview opens in a new tab — the correct, working choice. */}
+              <div className="flex flex-col items-center gap-2 py-5">
+                <a href={previewUrl} target="_blank" rel="noreferrer" className="btn-primary btn-sm flex items-center gap-1.5">
+                  <ExternalLink className="w-4 h-4" /> Open live preview
+                </a>
+                <span className="text-[11px] text-text-muted font-mono break-all text-center">{previewUrl}</span>
+              </div>
             </SectionCard>
           )}
         </div>
