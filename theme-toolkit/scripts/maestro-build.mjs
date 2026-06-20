@@ -21,7 +21,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { spawnSync, execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { preflight, formatChecklist } from './maestro-preflight.mjs'
 import { makeRealDeps, runMaestro, loadSurfaces } from './maestro-run.mjs'
@@ -84,7 +84,11 @@ export function makeRealSteps(opts = {}) {
 // ── artifact ────────────────────────────────────────────────────────────────────
 function writeReadiness(dir, buildStateDir, result) {
   const ts = process.env.MAESTRO_TS || 'pending'
-  const json = { updated: ts, publishReady: result.publishReady, stage: result.stage, reason: result.reason, loop: result.loop, gates: result.gates }
+  // Stamp HEAD so theme:publish can bind the PUBLISH-READY proof to the sha it was produced at —
+  // a stale / BUILD_STATE_DIR-redirected readiness then fails theme:publish's sha check (adversarial #1).
+  let sha = null
+  try { sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).trim() } catch { /* not a git repo */ }
+  const json = { updated: ts, sha, publishReady: result.publishReady, stage: result.stage, reason: result.reason, loop: result.loop, gates: result.gates }
   const L = [
     `# Publish Readiness — ${result.publishReady ? '✅ PUBLISH-READY' : '⛔ NOT READY'}   ·  updated ${ts}`,
     '',

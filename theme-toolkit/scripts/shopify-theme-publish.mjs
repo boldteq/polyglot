@@ -27,7 +27,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { spawnSync, execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import {
   LOCK_FILE, readLock, lockShapeErrors, lockTargetsLiveUnsafely,
@@ -39,9 +39,14 @@ const CL_SCRIPT = path.join(HERE, 'check-changes-list.mjs')
 const GATES_SCRIPT = path.join(HERE, 'theme-gates.mjs')
 const FORBIDDEN = new Set(['--live', '-l', '--unpublished', '-u', '--development', '-d'])
 
-// ── pure orchestration (spawn injected → hermetically testable, no live store/CLI) ──────────────
+function gitHeadReal(dir) {
+  try { return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).trim() }
+  catch { return null }
+}
+
+// ── pure orchestration (spawn + gitHead injected → hermetically testable, no live store/CLI/git) ──
 // Returns { ok, blocked, reason, code, finalArgs, store, themeId, role, themeName, lock }.
-export function publishPlan({ dir, argv = [], env = {}, spawn }) {
+export function publishPlan({ dir, argv = [], env = {}, spawn, gitHead = gitHeadReal }) {
   const readinessDir = env.BUILD_STATE_DIR || 'docs'
   const block = (reason, code = 1) => ({ ok: false, blocked: true, reason, code, finalArgs: null })
 
@@ -71,15 +76,28 @@ export function publishPlan({ dir, argv = [], env = {}, spawn }) {
   if (!fs.existsSync(rp)) return block(`no ${readinessDir}/publish-readiness.json — run \`pnpm maestro:build\` to prove PUBLISH-READY (loop converged AND full gate stack passed) before publishing.`, 1)
   let readiness
   try { readiness = JSON.parse(fs.readFileSync(rp, 'utf-8')) } catch (e) { return block(`${readinessDir}/publish-readiness.json invalid JSON: ${e.message}`, 1) }
+  // a non-object (null / number / array — JSON.parse succeeds on these) must BLOCK cleanly, not crash
+  if (!readiness || typeof readiness !== 'object' || Array.isArray(readiness)) {
+    return block(`${readinessDir}/publish-readiness.json must be a JSON object (got ${Array.isArray(readiness) ? 'array' : readiness === null ? 'null' : typeof readiness}) — re-run \`pnpm maestro:build\`.`, 1)
+  }
   if (readiness.publishReady !== true) {
-    return block(`NOT PUBLISH-READY — maestro:build stopped at stage "${readiness.stage}" (${readiness.reason}). Resolve it + re-run \`pnpm maestro:build\`.`, 1)
+    return block(`NOT PUBLISH-READY — maestro:build stopped at stage "${readiness.stage || 'unknown'}" (${readiness.reason || 'no reason recorded'}). Resolve it + re-run \`pnpm maestro:build\`.`, 1)
+  }
+  // freshness: the PUBLISH-READY proof must be at HEAD — defeats a stale or BUILD_STATE_DIR-redirected
+  // artifact from a prior converged build (gate-freshness is sha-bound; this binds the loop proof too).
+  const head = gitHead(dir)
+  if (readiness.sha && head && readiness.sha !== head) {
+    return block(`publish-readiness.json was produced at ${String(readiness.sha).slice(0, 7)} ≠ HEAD ${head.slice(0, 7)} — the build is stale; re-run \`pnpm maestro:build\` at HEAD.`, 1)
   }
 
-  // 4. CHANGES.md completeness (if present)
-  if (fs.existsSync(path.resolve(dir, 'CHANGES.md'))) {
-    const cl = spawn('node', [CL_SCRIPT, 'CHANGES.md'], { cwd: dir, stdio: 'inherit', env: { ...process.env, ...env } })
-    if ((cl.status ?? 1) !== 0) return block('CHANGES.md has unchecked items — every `- [ ]` client ask must be `- [x]` (or waived in ## Waivers) before publish.', 1)
+  // 4. CHANGES.md completeness — MANDATORY at publish (absence is not proof of completeness; for a
+  // client theme it means no asks were tracked). A truly no-asks build needs an explicit CHANGES.md
+  // with a ## Waivers note, never a missing file.
+  if (!fs.existsSync(path.resolve(dir, 'CHANGES.md'))) {
+    return block('CHANGES.md is required at publish — every client ask must be tracked (`- [ ]`/`- [x]`, or waived in ## Waivers). Create it before publishing.', 1)
   }
+  const cl = spawn('node', [CL_SCRIPT, 'CHANGES.md'], { cwd: dir, stdio: 'inherit', env: { ...process.env, ...env } })
+  if ((cl.status ?? 1) !== 0) return block('CHANGES.md has unchecked items — every `- [ ]` client ask must be `- [x]` (or waived in ## Waivers) before publish.', 1)
 
   // 5. gate freshness — full stack fresh+passing at HEAD (already includes Lens #18; not re-run here)
   const gv = spawn('node', [GATES_SCRIPT, '--verify', '--require-full', '--report-dir', 'gate-reports'], { cwd: dir, stdio: 'inherit', env: { ...process.env, ...env } })
@@ -128,6 +146,12 @@ function main() {
   if (process.env.THEME_PUBLISH_VERIFY_REMOTE === '1') {
     const v = verifyFlip({ lock: plan.lock, listThemes })
     if (!v.ok) die(1, v.reason)
+    // soft = the flip CLI exited 0 but we could NOT remotely confirm it (auth blip / rate-limit /
+    // network). The whole point of opt-in verify is proof — never print a confident success here.
+    if (v.soft) {
+      console.error(`theme-publish: WARN — the flip ran (CLI exit 0) but could NOT be remotely confirmed (${v.reason}). Confirm live status via \`pnpm maestro:status\` / the Shopify admin.`)
+      process.exit(3)
+    }
     console.log(`theme-publish: health check — ${v.reason}`)
   }
   console.log('theme-publish: ✓ published (live)')

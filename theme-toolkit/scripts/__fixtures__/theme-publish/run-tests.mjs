@@ -29,8 +29,10 @@ function repo(opts = {}) {
   if (opts.rawLock !== undefined) { if (opts.rawLock !== null) fs.writeFileSync(path.join(dir, '.boldteq-theme-lock.json'), opts.rawLock) }
   else if (opts.lock !== null) fs.writeFileSync(path.join(dir, '.boldteq-theme-lock.json'), `${JSON.stringify(opts.lock || newLock({ store: 's.myshopify.com', themeId: '111', themeName: 'X-dev', role: 'unpublished' }), null, 2)}\n`)
   fs.mkdirSync(path.join(dir, 'docs'), { recursive: true })
-  if (opts.ready === 'bad') fs.writeFileSync(path.join(dir, 'docs/publish-readiness.json'), '{not json')
-  else if (opts.ready !== undefined) fs.writeFileSync(path.join(dir, 'docs/publish-readiness.json'), JSON.stringify({ publishReady: opts.ready, stage: opts.ready ? 'ready' : 'gates', reason: opts.ready ? 'ok' : 'blocked' }))
+  const rp = path.join(dir, 'docs/publish-readiness.json')
+  if (opts.ready === 'bad') fs.writeFileSync(rp, '{not json')
+  else if (opts.rawReady !== undefined) fs.writeFileSync(rp, opts.rawReady) // raw string (non-object tests)
+  else if (opts.ready !== undefined) { const r = { publishReady: opts.ready, stage: opts.ready ? 'ready' : 'gates', reason: opts.ready ? 'ok' : 'blocked' }; if (opts.sha) r.sha = opts.sha; fs.writeFileSync(rp, JSON.stringify(r)) }
   if (opts.changes) fs.writeFileSync(path.join(dir, 'CHANGES.md'), '# Changes\n- [x] done\n')
   return dir
 }
@@ -52,7 +54,7 @@ console.log('(d) live-role lock: singleTheme false → BLOCK; true → allowed')
 { const liveUnsafe = newLock({ store: 's.myshopify.com', themeId: '111', role: 'main', singleTheme: false })
   const d = repo({ lock: liveUnsafe, ready: true }); const p = publishPlan({ dir: d, spawn: fakeSpawn() }); p.blocked && /LIVE theme/.test(p.reason) ? ok('live + !singleTheme blocked') : bad(`got ${p.reason}`); clean(d)
   const liveSingle = newLock({ store: 's.myshopify.com', themeId: '111', role: 'main', singleTheme: true })
-  const d2 = repo({ lock: liveSingle, ready: true }); const p2 = publishPlan({ dir: d2, spawn: fakeSpawn() }); p2.ok ? ok('live + singleTheme allowed through chain') : bad(`expected ok, got ${p2.reason}`); clean(d2) }
+  const d2 = repo({ lock: liveSingle, ready: true, changes: true }); const p2 = publishPlan({ dir: d2, spawn: fakeSpawn() }); p2.ok ? ok('live + singleTheme allowed through chain') : bad(`expected ok, got ${p2.reason}`); clean(d2) }
 
 console.log('(e) --store/--theme mismatch + forbidden flags → BLOCK')
 { const d = repo({ ready: true })
@@ -63,7 +65,18 @@ console.log('(e) --store/--theme mismatch + forbidden flags → BLOCK')
   if (allForbidden) ok('all 6 forbidden flags blocked'); clean(d) }
 
 console.log('(f) stale gate-verify → BLOCK')
-{ const d = repo({ ready: true }); const sp = fakeSpawn({ gatesStatus: 1 }); const p = publishPlan({ dir: d, spawn: sp }); p.blocked && /gate evidence is stale/.test(p.reason) ? ok('stale gates blocked') : bad(`got ${p.reason}`); clean(d) }
+{ const d = repo({ ready: true, changes: true }); const sp = fakeSpawn({ gatesStatus: 1 }); const p = publishPlan({ dir: d, spawn: sp }); p.blocked && /gate evidence is stale/.test(p.reason) ? ok('stale gates blocked') : bad(`got ${p.reason}`); clean(d) }
+
+console.log('(h) [adversarial #4] missing CHANGES.md → BLOCK (mandatory at publish)')
+{ const d = repo({ ready: true }); const p = publishPlan({ dir: d, spawn: fakeSpawn() }); p.blocked && /CHANGES\.md is required/.test(p.reason) ? ok('missing CHANGES.md blocked') : bad(`got ${p.reason}`); clean(d) }
+
+console.log('(i) [adversarial #2] non-object readiness (null / number) → clean BLOCK, not crash')
+{ const dn = repo({ rawReady: 'null', changes: true }); const pn = publishPlan({ dir: dn, spawn: fakeSpawn() }); pn.blocked && /must be a JSON object/.test(pn.reason) && /null/.test(pn.reason) ? ok('null readiness → clean block') : bad(`got ${pn.reason}`); clean(dn)
+  const di = repo({ rawReady: '123', changes: true }); const pi = publishPlan({ dir: di, spawn: fakeSpawn() }); pi.blocked && /must be a JSON object/.test(pi.reason) ? ok('numeric readiness → clean block') : bad(`got ${pi.reason}`); clean(di) }
+
+console.log('(j) [adversarial #1] publish-readiness sha must match HEAD')
+{ const dm = repo({ ready: true, changes: true, sha: 'aaaaaaa0000' }); const pm = publishPlan({ dir: dm, spawn: fakeSpawn(), gitHead: () => 'bbbbbbb1111' }); pm.blocked && /≠ HEAD/.test(pm.reason) ? ok('stale sha (≠ HEAD) blocked') : bad(`got ${pm.reason}`); clean(dm)
+  const dk = repo({ ready: true, changes: true, sha: 'aaaaaaa0000' }); const pk = publishPlan({ dir: dk, spawn: fakeSpawn(), gitHead: () => 'aaaaaaa0000' }); pk.ok ? ok('matching sha → through chain') : bad(`expected ok, got ${pk.reason}`); clean(dk) }
 
 console.log('(g) all-green → correct finalArgs + spawn called')
 { const d = repo({ ready: true, changes: true }); const sp = fakeSpawn(); const p = publishPlan({ dir: d, spawn: sp })

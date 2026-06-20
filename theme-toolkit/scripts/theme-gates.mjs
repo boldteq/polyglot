@@ -265,7 +265,11 @@ function verify(args) {
     console.error('verify: STALE — summary was produced from a dirty working tree')
     process.exit(1)
   }
-  const { dirty: nowDirty } = gitInfo(cwd, FRESHNESS_ALLOWLIST)
+  // publish-grade (--require-full): CHANGES.md must be part of the gated sha — drop it from the
+  // freshness allowlist so a post-gate edit to the ask-ledger forces a re-gate (else an item checked
+  // off AFTER the gates ran would pass verify while changing publish-acceptance — adversarial #5).
+  const allowlist = args.requireFull ? FRESHNESS_ALLOWLIST.filter(p => p !== 'CHANGES.md') : FRESHNESS_ALLOWLIST
+  const { dirty: nowDirty } = gitInfo(cwd, allowlist)
   if (nowDirty) {
     console.error('verify: STALE — working tree has non-allowlisted uncommitted changes')
     process.exit(1)
@@ -280,7 +284,7 @@ function verify(args) {
       console.error(`verify: STALE — summary sha ${summary.sha} not found in history`)
       process.exit(1)
     }
-    const offending = changed.filter(p => !matchesAllowlist(p))
+    const offending = changed.filter(p => !allowlist.some(pre => p === pre || p.startsWith(pre.endsWith('/') ? pre : `${pre}/`)))
     if (offending.length > 0) {
       console.error(`verify: STALE — ${offending.length} non-allowlisted file(s) changed since ${summary.sha.slice(0, 7)}:`)
       for (const p of offending.slice(0, 10)) console.error(`  ${p}`)
