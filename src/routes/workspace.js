@@ -27,6 +27,7 @@ const { platformAgentActivity, buildAgentActivity } = require('../lib/workspace/
 const gatesSpec = require('../lib/workspace/gatesSpec.json');
 const pipelineSpec = require('../lib/workspace/pipelineSpec.json');
 const { bus, startDiskWatcher } = require('../lib/workspace/diskWatcher');
+const { startGateHarvester } = require('../lib/gateFindings');
 const { startIndexer } = require('../lib/workspace/indexer');
 const actionRunner = require('../lib/workspace/actionRunner');
 
@@ -599,6 +600,11 @@ function startWatcher() {
   catch (err) { console.error('[workspace] startWatcher failed:', err.message); }
   try { startIndexer({ assembler: allAssembledBuilds, bus }); }
   catch (err) { console.error('[workspace] startIndexer failed:', err.message); }
+  // Feed Lens/gate defects into the self-improving brain (P0-1): on each gate-report change,
+  // harvest the build's defects → gate_defect training_signals → governor auto-promotes recurring
+  // ones into the owning agent's guardrails. Best-effort; never blocks the watcher.
+  try { startGateHarvester({ bus }); }
+  catch (err) { console.error('[workspace] startGateHarvester failed:', err.message); }
 }
 
 module.exports = { router, assembleBuild, allAssembledBuilds, listBuilds, bustCache, buildAgentActivity, dirFor, startWatcher };

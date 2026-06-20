@@ -57,7 +57,10 @@ function hasRollback(proposal) {
 function meetsEvidenceBar(signal) {
   if (!signal) return false
   if (signal.severity === 'p0' || STRONG_KINDS.has(signal.kind)) return true
-  if (signal.kind === 'antipattern' || signal.kind === 'failure_cluster') {
+  // gate_defect = a Lens/gate defect harvested from real builds (src/lib/gateFindings.js).
+  // Held to the SAME strong bar as an antipattern: recur ≥3× across ≥2 distinct builds before
+  // it auto-promotes into the owning agent's .md (still rollback-armed + eval-gated downstream).
+  if (signal.kind === 'antipattern' || signal.kind === 'failure_cluster' || signal.kind === 'gate_defect') {
     return (Number(signal.occurrences || 0) >= AUTO_POLICY.minOccurrences &&
             distinctProjects(signal) >= AUTO_POLICY.minProjects)
   }
