@@ -30,6 +30,7 @@ const SchedulesHub  = React.lazy(() => import('./pages/SchedulesHub'))
 const SystemHealth  = React.lazy(() => import('./pages/SystemHealth'))
 const Orchestration = React.lazy(() => import('./pages/Orchestration'))
 const Playground    = React.lazy(() => import('./pages/Playground'))
+const Build         = React.lazy(() => import('./pages/Build'))
 const OrgChart      = React.lazy(() => import('./pages/OrgChart'))
 const GoalCascadePage = React.lazy(() => import('./pages/GoalCascade'))
 const ProjectChat   = React.lazy(() => import('./pages/ProjectChat'))
@@ -108,6 +109,7 @@ export default function App() {
             <Route path="/agents" element={<AllAgents />} />
             <Route path="/orchestration" element={<Orchestration />} />
             <Route path="/playground" element={<Playground />} />
+            <Route path="/build" element={<Build />} />
             <Route path="/lens" element={<Navigate to="/workspace/lens" replace />} />
             <Route path="/shopify" element={<Shopify />} />
             <Route path="/shopify/:id" element={<StorePreview />} />

@@ -183,6 +183,20 @@ export const getWorkspaceClients = () =>
 export const getWorkspaceEscalations = () =>
   request<{ escalations: EscalationBuild[]; summary: { total: number } }>(`/workspace/escalations`)
 
+// One-button autonomous build (maestro:build) — see src/routes/build.js. POST kicks
+// off a hands-off build in a linked theme repo; watch via the SSE stream URL.
+export interface ActiveBuild { id: string; store: string | null; brief: string; previewUrl: string | null; startedAt: number }
+export type BuildStreamEvent =
+  | { type: 'start'; buildId: string; store: string | null; brief: string; previewUrl: string | null; reattach?: boolean }
+  | { type: 'chunk'; content: string }
+  | { type: 'done'; exitCode: number | null; publishReady?: boolean; stage?: string | null; reason?: string | null; durationMs?: number }
+  | { type: 'error'; error: string; code?: string }
+export const startBuild = (body: { repoPath: string; previewUrl?: string; brief?: string; renderMode?: 'dev' | 'push'; surfaces?: string[]; budgetMin?: number; buildId?: string }) =>
+  request<{ buildId: string; store: string | null; status: string }>(`/build/start`, { method: 'POST', body: JSON.stringify(body), timeoutMs: 20000 })
+export const getActiveBuilds = () => request<{ builds: ActiveBuild[] }>(`/build/active`)
+export const cancelBuild = (id: string) => request<{ ok: boolean }>(`/build/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: '{}' })
+export const buildStreamUrl = (id: string) => `/api/build/${encodeURIComponent(id)}/stream`
+
 // P1 — Build Detail sections
 export interface BuildAgentActivity { runs: number; costUsd: number; sinceDays: number; correlation: string; note: string; byAgent: { agentName: string; runs: number; costUsd: number }[] }
 export interface BuildDetail { build: AssembledBuild; artifacts: Record<string, boolean>; agents: BuildAgentActivity }
