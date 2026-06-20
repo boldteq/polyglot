@@ -59,7 +59,7 @@ ${round > 1 && findings?.length ? `The previous render FAILED Lens. Fix THESE fi
 Consult drape's design-spec for visual treatment and ink for honest copy (no fabricated stats/reviews, no fake urgency). Edit the Liquid/JSON in place. If you discover a decision that affects OTHER surfaces (e.g. "buttons are pill 14px/600 everywhere"), return it in decisions[] so it enters the ledger. Return ok=true when the surface is drafted.`
 
 const seePrompt = (surface, round) => `In the Shopify theme repo at ${repo}, render + SEE the "${surface}" surface (Maestro Loop round ${round}):
-1. Run \`pnpm theme:push\` (single linked theme) to deploy the current code.
+1. Do NOT run \`pnpm theme:push\` — the running \`pnpm theme:dev\` preview (precondition) already hot-reloads your edits to ${previewUrl}. A mid-build push trips theme-push's publish gate (theme-gates --verify --require-full can't be fresh mid-build) and, in single-theme mode, pushes unfinished drafts to the LIVE store. Just give the preview a moment to reload.
 2. Run \`THEME_PREVIEW_URL=${previewUrl} pnpm lens:surface ${surface}\` — this captures the rendered surface, has a vision judge score it against its rubric, and enforces (gate #18).
 3. Record the result to the carried mind: \`pnpm build-state record ${surface} ${'${PASS|WIP}'}\` (PASS if lens:surface exited 0, else WIP).
 Report the Lens verdict: pass (did lens:surface exit 0?), confidence (the judge's %), and findings[] (each: check, severity, fix_owner ∈ loom|drape|ink|porter, evidence). If it failed to run (no preview URL / CLI), return pass=false with a finding explaining the infra error.`
