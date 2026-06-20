@@ -30,6 +30,7 @@ function scaffold(omit = null) {
   if (omit !== 'bootstrap') fs.writeFileSync(path.join(repo, 'docs/design/design-system.json'), JSON.stringify({ typography: { fonts: { heading: 'Fraunces' } } }))
   if (omit !== 'theme-lock') fs.writeFileSync(path.join(repo, '.boldteq-theme-lock.json'), JSON.stringify({ version: 1, store: 'demo.myshopify.com', themeId: '123', role: 'unpublished', singleTheme: true }))
   if (omit !== 'build-state') fs.writeFileSync(path.join(repo, 'docs/build-state.json'), JSON.stringify({ surfaces: [{ surface: 'home', status: 'todo' }, { surface: 'pdp', status: 'todo' }] }))
+  if (omit !== 'changes-ledger') fs.writeFileSync(path.join(repo, 'CHANGES.md'), '# Changes\n- [x] done\n')
   return repo
 }
 // inject all-green external probes by default

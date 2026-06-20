@@ -150,6 +150,15 @@ export async function preflight(opts = {}) {
     add({ id: 'consultant', label: 'Consultant (agent)', ok: true, detail: 'driver=workflow — drafts run as agents' })
   }
 
+  // 8 — CHANGES.md acceptance ledger (SOFT: you can build without it, but theme:publish HARD-requires
+  // it — surface it now so the autonomous path doesn't converge then block at the flip).
+  {
+    const ok = exists(path.resolve(dir, 'CHANGES.md'))
+    add({ soft: true, id: 'changes-ledger', label: 'CHANGES.md ledger', ok,
+      detail: ok ? 'CHANGES.md present' : 'CHANGES.md missing — publish (theme:publish) will block without it',
+      fix: 'create CHANGES.md (one `- [ ]` per client ask; or a `## Waivers` note for a no-asks build)' })
+  }
+
   const ready = checks.every(c => c.ok || c.soft)
   return { ready, checks, renderMode, driver }
 }
