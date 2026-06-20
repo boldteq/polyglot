@@ -3406,6 +3406,9 @@ function insertErrorLog(opts = {}) {
         category, agent_id, request_id, route, method, status, duration_ms, user_agent,
         _fallbackReason: e.message,
       }) + '\n';
+      // Size-cap the fallback-of-the-fallback so it can't run away to hundreds of MB (it reached 291MB once).
+      // Rotate to .1 at 50MB (active ≤50MB + one .1 ≤50MB → bounded). Best-effort; never throws.
+      try { if (fs.existsSync(FALLBACK_LOG) && fs.statSync(FALLBACK_LOG).size > 50 * 1024 * 1024) fs.renameSync(FALLBACK_LOG, `${FALLBACK_LOG}.1`); } catch { /* rotation best-effort */ }
       fs.appendFileSync(FALLBACK_LOG, line);
     } catch { /* truly nothing else to do */ }
     console.error('[error_log] failed to persist:', e.message);

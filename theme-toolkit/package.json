@@ -38,6 +38,7 @@
     "check:schema": "node scripts/check-metafield-schema.mjs",
     "check:assets": "node scripts/check-asset-budget.mjs",
     "check:handoff": "node scripts/check-handoff-contract.mjs",
+    "aim:verify": "node scripts/check-handoff-contract.mjs",
     "store:preflight": "node scripts/porter-preflight.mjs",
     "store:apply": "node scripts/porter-apply.mjs",
     "store:verify": "node scripts/porter-verify.mjs",
