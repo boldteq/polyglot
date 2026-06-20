@@ -33,6 +33,7 @@ import {
   LOCK_FILE, readLock, lockShapeErrors, lockTargetsLiveUnsafely,
   isSingleThemeLock, isLiveRole, cliAvailable, listThemes, findTheme,
 } from './lib/shopify-theme-lock.mjs'
+import { postPublishSmoke } from './check-post-publish.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const CL_SCRIPT = path.join(HERE, 'check-changes-list.mjs')
@@ -125,7 +126,7 @@ export function verifyFlip({ lock, listThemes: list }) {
 }
 
 // ── CLI ──────────────────────────────────────────────────────────────────────────────────────────
-function main() {
+async function main() {
   const die = (code, msg) => { console.error(`theme-publish: ${code === 2 ? 'ENV-ERROR' : 'BLOCK'} — ${msg}`); process.exit(code) }
   const rawArgv = process.argv.slice(2)
   const dryRun = rawArgv.includes('--dry-run')
@@ -153,6 +154,19 @@ function main() {
       process.exit(3)
     }
     console.log(`theme-publish: health check — ${v.reason}`)
+  }
+
+  // T+0 storefront smoke (Step 17): the theme is live — does the storefront actually SERVE? Catches a
+  // live-but-broken go-live now, not at the lumen T+2h watch. Additive (post-flip), behind the same
+  // remote-verify opt-in; never changes the publish DECISION chain above.
+  if (process.env.THEME_PUBLISH_VERIFY_REMOTE === '1' && process.env.THEME_PUBLISH_SKIP_SMOKE !== '1') {
+    const storeUrl = plan.lock.store.startsWith('http') ? plan.lock.store : `https://${plan.lock.store}`
+    const sm = await postPublishSmoke({ storeUrl, fetch: globalThis.fetch })
+    for (const c of sm.checks) console.log(`  ${c.ok ? '✓' : c.critical ? '✗' : '⚠'} smoke ${c.name}: ${c.detail}`)
+    if (!sm.ok) {
+      console.error('theme-publish: WARN — the theme flipped LIVE but the storefront smoke FAILED (live-but-broken). Investigate / roll back (mantle keeps a pre-publish snapshot).')
+      process.exit(3)
+    }
   }
   console.log('theme-publish: ✓ published (live)')
   process.exit(0)
