@@ -44,6 +44,7 @@ export function makeRealSteps(opts = {}) {
     budgetMs = 0,   // unattended wall-clock budget (0 = off) — forwarded to the loop deps
     timeouts = {},  // per-subprocess timeouts — forwarded to the loop deps
     now,            // injectable clock (tests only); undefined → makeRealDeps uses Date.now
+    heal = opts.heal !== false,  // GAP 1: default-on heal-in-build — autofix whole-store Lens blockers then re-grade
   } = opts
   const run = (cmd, args, extraEnv) => spawn(cmd, args, { cwd: dir, encoding: 'utf-8', env: { ...env, ...extraEnv }, stdio: 'inherit' })
 
@@ -84,18 +85,35 @@ export function makeRealSteps(opts = {}) {
     // (Locked by __fixtures__/maestro-build case h.)
     runGates: () => {
       const pub = { DS_REQUIRE_SCOPE: '1', LENS_REQUIRE: '1', STRICT_CONVERSION: '1' }
-      run(process.execPath, [scriptPath('generate-design-system-css.mjs')])  // (a) fresh --ds-* cascade (best-effort)
-      run(process.execPath, [scriptPath('lens-capture.mjs')], pub)           // (b) whole-store eyes — capture …
-      run(process.execPath, [scriptPath('lens-judge.mjs')], pub)             //     … then judge every frame
-      const r = run(process.execPath, [scriptPath('theme-gates.mjs')], pub)  // (c) publish-grade gate stack
-      let pass = (r.status ?? 1) === 0
-      let blockers = 0
-      try {
-        const sum = JSON.parse(fs.readFileSync(path.resolve(dir, 'gate-reports', 'summary.json'), 'utf-8'))
-        pass = sum.pass === true
-        blockers = Object.values(sum.gates || {}).reduce((n, g) => n + ((g.blockers || []).length), 0)
-      } catch { /* fall back to exit code */ }
-      return { pass, blockers }
+      // one whole-store grade: fresh --ds-* cascade (a) → whole-store Lens capture+judge (b) → publish-grade
+      // gate stack (c). Returns {pass, blockers, lensBlockers} (lensBlockers = #18 visual-truth blockers).
+      const gradeOnce = () => {
+        run(process.execPath, [scriptPath('generate-design-system-css.mjs')])  // (a) fresh --ds-* cascade (best-effort)
+        run(process.execPath, [scriptPath('lens-capture.mjs')], pub)           // (b) whole-store eyes — capture …
+        run(process.execPath, [scriptPath('lens-judge.mjs')], pub)             //     … then judge every frame
+        const r = run(process.execPath, [scriptPath('theme-gates.mjs')], pub)  // (c) publish-grade gate stack
+        let pass = (r.status ?? 1) === 0, blockers = 0, lensBlockers = 0
+        try {
+          const sum = JSON.parse(fs.readFileSync(path.resolve(dir, 'gate-reports', 'summary.json'), 'utf-8'))
+          pass = sum.pass === true
+          blockers = Object.values(sum.gates || {}).reduce((n, g) => n + ((g.blockers || []).length), 0)
+          lensBlockers = (((sum.gates || {})['visual-truth'] || {}).blockers || []).length
+        } catch { /* fall back to exit code */ }
+        return { pass, blockers, lensBlockers }
+      }
+      let v = gradeOnce()
+      // GAP 1 — heal-in-build (default-on): if the verdict BLOCKs on Lens (#18) VISUAL findings, run
+      // lens-autofix (owner-routed: loom/drape/ink/conduit edit files, ≤3 rounds internally, porter→escalate)
+      // then RE-GRADE the whole store ONCE. This makes `maestro:build` CONVERGE the visual layer instead of
+      // just reporting it (the Lovable "build heals itself" behavior). Non-Lens blockers (theme-check /
+      // css-layout / honesty) are code/content, not visual — lens-autofix won't touch them; they escalate.
+      if (heal && !v.pass && v.lensBlockers > 0) {
+        console.log(`maestro:build — heal: ${v.lensBlockers} Lens blocker(s) → lens:autofix, then re-grade…`)
+        run(process.execPath, [scriptPath('lens-autofix.mjs')], pub)
+        v = gradeOnce()
+        v.healed = true
+      }
+      return v
     },
   }
 }
@@ -170,13 +188,14 @@ export async function maestroBuild({ steps, dir = process.cwd(), buildStateDir =
 
 // ── CLI ───────────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const o = { renderMode: 'dev', surfaces: null, maxRounds: undefined, autoPreview: false, budgetMs: 0, timeouts: {} }
+  const o = { renderMode: 'dev', surfaces: null, maxRounds: undefined, autoPreview: false, budgetMs: 0, timeouts: {}, heal: true }
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === '--render') o.renderMode = argv[++i]
     else if (a === '--surfaces') o.surfaces = (argv[++i] || '').split(',').map(s => s.trim()).filter(Boolean)
     else if (a === '--max-rounds') o.maxRounds = Number(argv[++i])
     else if (a === '--auto-preview') o.autoPreview = true
+    else if (a === '--no-heal') o.heal = false  // GAP 1: disable the default-on heal-in-build (report-only)
     else if (a === '--budget') o.budgetMs = Math.max(0, Number(argv[++i]) || 0) * 60_000 // minutes → ms (wall-clock breaker)
     else if (a === '--timeout') { const m = Math.max(0, Number(argv[++i]) || 0) * 60_000; if (m) o.timeouts = { draft: m, render: m, judge: m, record: m } } // minutes → per-step ms
     else if (a === '--help' || a === '-h') o.help = true
@@ -191,6 +210,7 @@ async function main() {
     console.log('  --auto-preview   start theme:dev for the run + tear it down after (no second terminal; render=dev only)')
     console.log('  --budget <min>   wall-clock budget for the whole loop — once elapsed, remaining surfaces escalate cleanly (unattended cap)')
     console.log('  --timeout <min>  per-subprocess timeout applied to draft/render/judge/record (a hung child is killed → that surface escalates)')
+    console.log('  --no-heal        report Lens blockers without auto-healing (default: heal whole-store Lens blockers via lens:autofix, then re-grade once)')
     process.exit(0)
   }
   if (!['dev', 'push'].includes(o.renderMode)) { console.error(`maestro:build: --render must be dev|push (got ${o.renderMode})`); process.exit(2) }
@@ -198,9 +218,9 @@ async function main() {
   const buildStateDir = process.env.BUILD_STATE_DIR || 'docs'
 
   const doBuild = async () => {
-    const steps = makeRealSteps({ dir, renderMode: o.renderMode, surfaces: o.surfaces, maxRounds: o.maxRounds, buildStateDir, budgetMs: o.budgetMs, timeouts: o.timeouts })
+    const steps = makeRealSteps({ dir, renderMode: o.renderMode, surfaces: o.surfaces, maxRounds: o.maxRounds, buildStateDir, budgetMs: o.budgetMs, timeouts: o.timeouts, heal: o.heal })
     const budgetNote = o.budgetMs ? `  ·  budget=${Math.round(o.budgetMs / 60000)}min` : ''
-    console.log(`maestro:build — hands-off build → publish-ready  ·  render=${o.renderMode}${o.autoPreview ? '  ·  auto-preview' : ''}${budgetNote}${o.surfaces ? `  ·  surfaces=${o.surfaces.join(',')}` : ''}`)
+    console.log(`maestro:build — hands-off build → publish-ready  ·  render=${o.renderMode}${o.autoPreview ? '  ·  auto-preview' : ''}${o.heal ? '  ·  heal-on' : '  ·  heal-off'}${budgetNote}${o.surfaces ? `  ·  surfaces=${o.surfaces.join(',')}` : ''}`)
     return maestroBuild({ steps, dir, buildStateDir, log: (m) => console.log(`maestro:build — ${m}`) })
   }
 
