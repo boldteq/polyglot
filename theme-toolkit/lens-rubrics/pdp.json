@@ -1,5 +1,6 @@
 { "surface": "pdp", "viewport_notes": "mobile: buy box reachable, sticky ATC a plus, variant/bundle chips don't overflow. desktop: gallery+buy-box side-by-side.",
   "checks": [
+    { "id": "css-layout", "rule": "no spacing collisions or overlapping elements; nothing wraps or overflows the viewport (flex rows, long text); typography cascade intact (no wrong font/size/weight bleeding into a section); if the surface renders dark, text stays readable", "severity_if_fail": "warning", "fix_owner": "loom" },
     { "id": "buy-box-above-fold", "rule": "product image + title + price + Add-to-Cart all visible above the fold in the rest frame (NOT obscured by any modal/banner)", "severity_if_fail": "blocker", "fix_owner": "loom" },
     { "id": "hierarchy", "rule": "price prominent; ATC the clear primary action; title is the H1", "severity_if_fail": "warning", "fix_owner": "drape" },
     { "id": "horizontal-overflow", "rule": "nothing past the right edge; variant/bundle selectors don't overflow", "severity_if_fail": "blocker", "fix_owner": "loom" },

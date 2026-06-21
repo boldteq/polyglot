@@ -103,6 +103,28 @@ const DEFINITIONS = [
     costEstimate: { lowUsd: 0.02, highUsd: 0.20 },
   },
   {
+    id: 'sys-build-schedules',
+    name: 'Post-publish build checkpoints (hourly)',
+    description: 'Run every DUE post-publish checkpoint (lumen 48h watch t+2h/24h/48h + orbit/catalyst results baseline/30d/90d) for published builds. Catch-up tick — an asleep non-24/7 Mac fires overdue checkpoints on the next run. Local, no token cost.',
+    cron: '0 * * * *',
+    agentName: 'lumen',
+    handler: 'buildSchedulesTick',
+    needsLlm: false,
+    cancellable: false,
+  },
+  {
+    id: 'sys-mira-results',
+    name: 'Mira results-loop promotion',
+    description: 'On a 30/90d CRO verdict, promote validated mechanics to gold-examples (closes the results learning loop). Event-driven.',
+    cron: null,
+    trigger: 'event:results.verdict_emitted',
+    agentName: 'mira',
+    handler: 'miraExtract',
+    needsLlm: true,
+    cancellable: true,
+    costEstimate: { lowUsd: 0.02, highUsd: 0.20 },
+  },
+  {
     id: 'sys-intel-reindex',
     name: 'Intelligence reindex (nightly)',
     description: 'Incrementally re-embed the memory brain into the vector store (Pillar 2 — keeps RAG fresh). Local Ollama, no token cost.',
@@ -294,6 +316,17 @@ function cancelInflight(id) {
 // ── Handlers ───────────────────────────────────────────────────────────────
 
 const HANDLERS = {
+  // Post-publish results loop — run every DUE build checkpoint (the workspace.js:477 fix).
+  // No-op when no build has due checkpoints, so it's safe to tick hourly.
+  async buildSchedulesTick() {
+    const buildSchedules = require('./buildSchedules');
+    const res = await buildSchedules.runDueBuildSchedules({ log: (m) => console.log(`[build-sched] ${m}`) });
+    // Close the learning loop: a results checkpoint (d30/d90) that produced a verdict → fire mira.
+    const verdicts = (res.ran || []).filter((r) => r.kind === 'results' && r.label !== 'baseline');
+    if (verdicts.length) { try { agentSync.events.emit('results.verdict_emitted', { count: verdicts.length }); } catch { /* SSE best-effort */ } }
+    return { output: `build-schedules: ran ${res.ran.length}, failed ${res.failed.length} (due ${res.due})`, metadata: res };
+  },
+
   async rosterRecompute() {
     const { org, experience } = requireDeps();
     const summary = experience.recomputeAllExperience(org);
@@ -1277,6 +1310,8 @@ function bootAll(deps = {}) {
   }
   agentSync.events.on('agent_run.recorded', onBuildSuccessEvent);
   agentSync.events.on('memory.changed', onMemoryChangedEvent);
+  // Results-loop: a 30/90d CRO verdict promotes validated mechanics via mira (closes the loop).
+  agentSync.events.on('results.verdict_emitted', () => runHandler('sys-mira-results', { async: true }).catch((err) => console.warn(`[systemSchedule] results.verdict_emitted: ${err.message}`)));
 
   // Log retention — 03:15 UTC nightly. Plain DB op, no LLM, no agent_runs stub.
   startLogRetentionJob();

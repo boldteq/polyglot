@@ -1,5 +1,6 @@
 { "surface": "search", "viewport_notes": "results grid like collection; empty-results state matters.",
   "checks": [
+    { "id": "css-layout", "rule": "no spacing collisions or overlapping elements; nothing wraps or overflows the viewport (flex rows, long text); typography cascade intact (no wrong font/size/weight bleeding into a section); if the surface renders dark, text stays readable", "severity_if_fail": "warning", "fix_owner": "loom" },
     { "id": "results-or-empty-state", "rule": "renders results OR an intentional branded zero-results state with a path forward — never a blank/broken shell", "severity_if_fail": "blocker", "fix_owner": "loom" },
     { "id": "horizontal-overflow", "rule": "no sideways scroll", "severity_if_fail": "blocker", "fix_owner": "loom" },
     { "id": "chrome-on-brand", "rule": "consent chrome not covering results", "severity_if_fail": "blocker", "fix_owner": "loom" },

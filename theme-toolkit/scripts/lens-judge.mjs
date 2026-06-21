@@ -66,6 +66,7 @@ function buildPrompt(frame, rubric, outPath) {
     `Read BOTH frames: rest = ${rest} ; scroll-end = ${end}`,
     rubric?.viewport_notes ? `Viewport notes: ${rubric.viewport_notes}` : '',
     `Score each rubric check with PIXEL evidence (cite what you SEE + where). Report ONLY what is actually visible — do not invent.`,
+    `Beyond the rubric, ALSO scan for CSS layout defects even when no rubric check names them — spacing collisions / overlapping elements, off-grid misalignment, wrapping failures (text or a flex row overflowing the viewport), typography-cascade breaks (a wrong font / size / weight bleeding into a section), and dark-mode contrast gaps if the surface renders dark. Report each as a finding (fix_owner usually loom) under the closest rubric check id, or "css-layout" if none fits.`,
     `Rubric:\n${checks || '- broken-state: nothing broken/placeholder/overflow.'}`,
     `verdict = FAIL if ANY blocker finding is present; else PASS. confidence = your certainty 0-100.`,
     `fix_owner routing (this OVERRIDES the rubric's default owner when the defect is clearly one of these): porter = STORE DATA (a store/brand NAME like a test placeholder, an EMPTY collection / "no products", unconfigured payment or trust icons, missing real product photography); ink = COPY text (typos, placeholder/[CLAIM] text, claims); drape = DESIGN system / brand direction (palette, type scale, premium-feel); loom = THEME CODE (layout, overflow, CSS, hierarchy, off-brand chrome). Otherwise use the rubric's owner for that check.`,

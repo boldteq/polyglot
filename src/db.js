@@ -151,6 +151,7 @@ function runMigrations(db) {
     { version: 31, name: 'eval_selftest_calibration', fn: evalSelftestMigration },
     { version: 32, name: 'shopify_client_projects', fn: shopifyClientProjectsMigration },
     { version: 33, name: 'workspace_build_index', fn: workspaceBuildIndexMigration },
+    { version: 34, name: 'build_schedules', fn: buildSchedulesMigration },
   ];
 
   for (const mig of migrations) {
@@ -449,6 +450,33 @@ function workspaceBuildIndexMigration(db) {
     CREATE INDEX IF NOT EXISTS idx_wbi_score    ON workspace_build_index(score);
   `);
   console.log('[migration v33] workspace_build_index (derived cache) created');
+}
+
+// ── Migration v34: build_schedules (post-publish results loop, 2026-06-21) ────
+// Per-build post-publish checkpoints (lumen 48h watch + orbit/catalyst 30/90d results),
+// keyed by due_at so a periodic checker fires them on the hourly/boot tick — survives a
+// non-24/7 Mac via the same runIfOverdue catch-up pattern as the brain ACT layer. Fixes
+// workspace.js:477 ("Build-level scheduling … is not wired into the schedule registry yet").
+function buildSchedulesMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS build_schedules (
+      id            TEXT PRIMARY KEY,           -- "<build_id>:<label>" → idempotent register
+      build_id      TEXT NOT NULL,
+      store         TEXT,
+      repo_dir      TEXT NOT NULL,
+      kind          TEXT NOT NULL,              -- 'watch' | 'results'
+      label         TEXT NOT NULL,              -- t+2h | t+24h | t+48h | baseline | d30 | d90
+      due_at        INTEGER NOT NULL,           -- epoch ms when this checkpoint is due
+      status        TEXT NOT NULL DEFAULT 'pending', -- pending | running | done | failed
+      published_at  INTEGER NOT NULL,
+      ran_at        INTEGER,
+      result_json   TEXT,
+      created_at    INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_build_schedules_due   ON build_schedules(status, due_at);
+    CREATE INDEX IF NOT EXISTS idx_build_schedules_build ON build_schedules(build_id);
+  `);
+  console.log('[migration v34] build_schedules table created');
 }
 
 // ── Migration v23: policy_audit (Pillar 5, 2026-06-14) ───────────────────────
@@ -2441,6 +2469,22 @@ function updateScheduleRunStatus(id, lastRunAt, lastRunStatus) {
   stmt('UPDATE schedules SET lastRunAt = ?, lastRunStatus = ? WHERE id = ?').run(lastRunAt, lastRunStatus, id);
 }
 
+// ── Build schedules (post-publish results loop) ──────────────────────────────
+function insertBuildSchedule(r) {
+  stmt(`INSERT OR IGNORE INTO build_schedules (id,build_id,store,repo_dir,kind,label,due_at,status,published_at,ran_at,result_json,created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(r.id, r.build_id, r.store || null, r.repo_dir, r.kind, r.label, r.due_at, r.status || 'pending', r.published_at, r.ran_at || null, r.result_json || null, r.created_at);
+}
+function dueBuildSchedules(now) {
+  return stmt(`SELECT * FROM build_schedules WHERE status = 'pending' AND due_at <= ? ORDER BY due_at ASC`).all(now);
+}
+function listBuildSchedules(buildId) {
+  return stmt(`SELECT * FROM build_schedules WHERE build_id = ? ORDER BY due_at ASC`).all(buildId);
+}
+function markBuildScheduleStatus(id, status, ranAt, resultJson) {
+  stmt(`UPDATE build_schedules SET status = ?, ran_at = ?, result_json = ? WHERE id = ?`).run(status, ranAt || null, resultJson || null, id);
+}
+
 function deleteScheduleById(id) {
   stmt('DELETE FROM schedules WHERE id = ?').run(id);
 }
@@ -4131,6 +4175,8 @@ module.exports = {
   loadOrchestrations, saveOrchestration, deleteOrchestration,
   // Schedules
   loadSchedules, saveSchedules, insertSchedule, updateScheduleFields, updateScheduleRunStatus, deleteScheduleById, getScheduleById,
+  // Build schedules (post-publish results loop)
+  insertBuildSchedule, dueBuildSchedules, listBuildSchedules, markBuildScheduleStatus,
   // System schedule overrides + run history
   loadSystemOverrides, getSystemOverride, upsertSystemOverride, getScheduleRunsFor,
   // Error Log
