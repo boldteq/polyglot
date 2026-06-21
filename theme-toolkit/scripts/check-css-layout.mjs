@@ -26,6 +26,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { writeReport } from './lib/report.mjs'
 
@@ -35,6 +36,7 @@ const BASE_REF = process.env.BASE_REF || 'base'
 const REUSE_MAP = process.env.REUSE_MAP || 'section-reuse-map.md'
 const REQUIRE_SCOPE = process.env.DS_REQUIRE_SCOPE === '1'
 const STRICT = process.env.DS_REQUIRE_SCOPE === '1' || process.env.CSS_LAYOUT_STRICT === '1'
+const RUNTIME = process.env.CSS_LAYOUT_RUNTIME === '1' // #5: opt-in runtime Playwright overflow pass
 
 const blockers = []
 const warnings = []
@@ -94,7 +96,59 @@ function enclosingRule(css, i) {
   return css.slice(open, close + 1)
 }
 
-function main() {
+// #5 — PURE: turn per-viewport runtime measurements into findings. The static scan catches overflow
+// in the BUILD's own CSS; this catches it where it actually renders (dynamic heights, injected widgets,
+// real fonts) — the deterministic complement to Lens. A page wider than its viewport = horizontal scroll.
+export function analyzeRuntimeLayout(samples, { tol = 2 } = {}) {
+  const findings = []
+  for (const s of samples || []) {
+    const vw = s.innerWidth || s.viewport?.width || 0
+    if (vw && s.scrollWidth && s.scrollWidth > vw + tol) {
+      findings.push({ id: 'runtime.viewport-overflow', page: `@${vw}px`, detail: `document scrollWidth ${s.scrollWidth}px > viewport ${vw}px → horizontal page scroll at ${vw}px. An element is wider than the screen — constrain it (max-width:100% / overflow guard).`, severityHint: 'block', evidence: (s.offenders || []).slice(0, 3).map(o => `${o.sel}:${o.width}px`).join(', ') })
+    }
+    for (const o of (s.offenders || []).slice(0, 5)) {
+      if (o.width > vw + tol) findings.push({ id: 'runtime.element-overflow', page: `@${vw}px`, detail: `${o.sel} renders ${o.width}px wide at a ${vw}px viewport — wider than the screen. Constrain to max-width:100%.`, severityHint: 'warn', evidence: o.sel })
+    }
+  }
+  return findings
+}
+
+// opt-in browser gather (dogfood/CI only). Throws on missing playwright/chromium → caller degrades to a warning.
+async function gatherRuntime(url) {
+  let chromium
+  try { ({ chromium } = await import('playwright')) } catch { throw new Error('playwright not installed (devDependency)') }
+  const browser = await chromium.launch({ headless: true })
+  const samples = []
+  try {
+    for (const vp of [{ width: 375, height: 800 }, { width: 1440, height: 1000 }]) {
+      const ctx = await browser.newContext({ viewport: vp })
+      const page = await ctx.newPage()
+      await page.goto(url, { waitUntil: 'load', timeout: 45000 })
+      const pw = process.env.THEME_STORE_PASSWORD || process.env.STOREFRONT_PASSWORD
+      if (/\/password\/?$/.test(new URL(page.url()).pathname) && pw) { const inp = page.locator('input[name="password"]').first(); await inp.fill(pw); await inp.press('Enter'); await page.waitForLoadState('load'); await page.goto(url, { waitUntil: 'load', timeout: 45000 }) }
+      await page.waitForTimeout(800)
+      const s = await page.evaluate(() => {
+        const innerWidth = window.innerWidth
+        const scrollWidth = document.documentElement.scrollWidth
+        const offenders = []
+        for (const el of document.querySelectorAll('body *')) {
+          const r = el.getBoundingClientRect()
+          if (r.width > innerWidth + 1 && r.height > 4) {
+            const cls = (typeof el.className === 'string' && el.className.trim()) ? `.${el.className.trim().split(/\s+/)[0]}` : ''
+            offenders.push({ sel: el.tagName.toLowerCase() + (el.id ? `#${el.id}` : '') + cls, width: Math.round(r.width) })
+          }
+          if (offenders.length > 20) break
+        }
+        return { innerWidth, scrollWidth, offenders }
+      })
+      samples.push({ viewport: vp, innerWidth: s.innerWidth, scrollWidth: s.scrollWidth, offenders: s.offenders })
+      await ctx.close()
+    }
+  } finally { await browser.close().catch(() => {}) }
+  return samples
+}
+
+async function main() {
   let targets = gitChanged()
   if (targets === null) { const rm = reuseMapTargets(); targets = rm }
   if (targets === null) {
@@ -161,7 +215,23 @@ function main() {
     }
   }
 
-  finish(null, { scanned: files.length, counts })
+  // #5 — opt-in runtime layout pass (CSS_LAYOUT_RUNTIME=1 + a URL). Degrades to a warning if the
+  // browser/URL is unavailable — never crashes the static gate.
+  if (RUNTIME) {
+    const url = process.env.CSS_LAYOUT_URL || process.env.THEME_PREVIEW_URL
+    if (!url) add(warnings, 'runtime.no-url', '.', 'CSS_LAYOUT_RUNTIME=1 but no CSS_LAYOUT_URL / THEME_PREVIEW_URL — runtime layout pass skipped')
+    else {
+      let samples = null
+      try { samples = await gatherRuntime(url) } catch (e) { add(warnings, 'runtime.unavailable', '.', `runtime layout pass skipped: ${e.message}`) }
+      if (samples) for (const fnd of analyzeRuntimeLayout(samples)) {
+        const isBlock = fnd.severityHint === 'block' && STRICT
+        ;(isBlock ? blockers : warnings).push({ id: fnd.id, page: fnd.page, detail: fnd.detail, evidence: fnd.evidence || '', severity: isBlock ? 'block' : (fnd.severityHint === 'block' ? 'warn' : fnd.severityHint) })
+      }
+    }
+  }
+
+  finish(null, { scanned: files.length, counts, runtime: RUNTIME })
 }
 
-try { main() } catch (err) { finish(`unexpected failure: ${err.message}`) }
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isMain) main().catch(err => finish(`unexpected failure: ${err.message}`))

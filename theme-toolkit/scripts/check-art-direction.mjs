@@ -17,6 +17,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { writeReport } from './lib/report.mjs'
 
@@ -67,6 +68,20 @@ const rendersImage = (src) => /<img\b|image_picker|image_tag|image_url|\{\{\s*[\
 // image_tag / image_url-with-widths (both emit srcset + sizes). Any one = responsive enough to pass.
 const isResponsive = (src) => /<picture\b/i.test(src) || /srcset\s*=/.test(src) || /\|\s*image_tag\b/i.test(src) || /\bwidths\s*:/i.test(src) || /<source\b[^>]*\bmedia\s*=/i.test(src)
 
+// #7 — responsive-coverage matrix. Declaring DISTINCT crops (mobile_aspect ≠ desktop_aspect) means true
+// ART-DIRECTION (different framing per breakpoint), which resolution-srcset/image_tag does NOT provide
+// (it rescales ONE crop). Genuine per-breakpoint crops require a <picture> with ≥1 <source media>.
+export function distinctCrops(ad) {
+  const hero = (ad && typeof ad === 'object' && ad.hero) ? ad.hero : ad
+  if (!hero || typeof hero !== 'object') return false
+  const m = hero.mobile_aspect ?? hero.mobile ?? hero.mobile_crop
+  const d = hero.desktop_aspect ?? hero.desktop ?? hero.desktop_crop
+  return !!(m && d && String(m) !== String(d))
+}
+export function hasArtDirectedSources(src) {
+  return /<picture\b/i.test(src) && [...src.matchAll(/<source\b[^>]*\bmedia\s*=/gi)].length >= 1
+}
+
 function main() {
   const dsAbs = path.resolve(cwd, DS)
   if (!fs.existsSync(dsAbs)) { add(warnings, 'art-direction.n-a-no-contract', DS, `no ${DS} — art-direction not declared; not applicable, skipping`); return finish(null) }
@@ -85,9 +100,14 @@ function main() {
     if (!rendersImage(src)) continue // a hero without an image is out of scope
     if (!isResponsive(src)) {
       add(blockers, 'art-direction.no-responsive-source', f, 'hero/banner renders an image but has NO responsive art-direction (<picture> with mobile+desktop <source>, a srcset, or Shopify image_tag / image_url widths) — the desktop image will crop to a blank/subject-less patch on mobile. Add a <picture> with a mobile source per imagery.art_direction.')
+    } else if (distinctCrops(ad) && !hasArtDirectedSources(src)) {
+      // #7 — responsive but NOT art-directed: distinct crops declared, yet only resolution-srcset rendered.
+      // Advisory (Lens #18 is authoritative); flags the resolution-vs-art-direction gap early.
+      warnings.push({ id: 'art-direction.crop-coverage', page: f, detail: `imagery.art_direction declares distinct mobile/desktop crops, but ${path.basename(f)} renders resolution-srcset only (image_tag/srcset rescales ONE crop). Use <picture> with a mobile + desktop <source media> for true per-breakpoint art-direction. Lens #18 verifies the render.`, evidence: '', severity: 'advise' })
     }
   }
   finish(null)
 }
 
-try { main() } catch (err) { finish(`unexpected failure: ${err.message}`) }
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isMain) { try { main() } catch (err) { finish(`unexpected failure: ${err.message}`) } }

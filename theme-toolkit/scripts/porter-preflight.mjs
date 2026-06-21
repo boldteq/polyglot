@@ -15,12 +15,14 @@
 //
 // Exit: 0 = access OK · 1 = (reserved) · 2 = env error (no token / unreachable / missing scope)
 
+import path from 'node:path'
 import { writeReport } from './lib/report.mjs'
 import {
   resolveStore, resolveToken, getGrantedScopes, probeStore, adminGraphql, isWeakDescription,
   REQUIRED_SCOPES, FORBIDDEN_SCOPES, AuthError,
 } from './lib/shopify-admin.mjs'
 import { readLock, LOCK_FILE } from './lib/shopify-theme-lock.mjs'
+import { scanImages } from './check-image-quality.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -107,7 +109,20 @@ try {
     }
   }
 
-  finish(null, { granted, classification: probe.classification, shop: probe.name, products: probe.products, productQuality })
+  // 4. Local image preflight (#34) — validate the images we're about to UPLOAD (weight/resolution/
+  // format) BEFORE porter-apply touches the store, so a cheap-looking, LCP-tanking image set is caught
+  // at the source. WARN by default; oversized → BLOCK at publish-grade (PORTER_REQUIRE_CONTENT=1).
+  let imageScan = null
+  if (process.env.PORTER_IMAGES_DIR) {
+    const r = scanImages(path.resolve(cwd, process.env.PORTER_IMAGES_DIR), { maxKB: Number(process.env.MAX_KB || '500'), minWidth: Number(process.env.MIN_WIDTH || '800') })
+    const strict = process.env.PORTER_REQUIRE_CONTENT === '1'
+    for (const f of r.findings) {
+      ;(f.severityHint === 'block' && strict ? blockers : warnings).push({ id: `store-preflight.${f.id}`, page: path.relative(cwd, f.page), detail: f.detail, evidence: '' })
+    }
+    imageScan = { dir: process.env.PORTER_IMAGES_DIR, scanned: r.scanned, findings: r.findings.length }
+  }
+
+  finish(null, { granted, classification: probe.classification, shop: probe.name, products: probe.products, productQuality, imageScan })
 } catch (err) {
   if (err instanceof AuthError) finish(`token rejected: ${err.message}`)
   finish(`store unreachable / API error: ${err.message}`)

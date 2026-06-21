@@ -40,6 +40,13 @@ const ALLOW_WAIVER = process.env.ALLOW_REUSE_WAIVER === '1'
 const ENFORCE = process.env.REUSE_MAP_ENFORCE === '1'
 
 const VALID_RUNGS = new Set(['REUSE', 'CONFIGURE', 'EXTEND', 'CUSTOM'])
+// #6 — the valid blueprint ids a LIBRARY-rung custom section may cite. null if the index is unreadable.
+function loadBlueprintIndex() {
+  try {
+    const j = JSON.parse(fs.readFileSync(new URL('../lib/blueprint-index.json', import.meta.url), 'utf-8'))
+    return new Set((j.blueprints || []).map(s => String(s).toLowerCase()))
+  } catch { return null }
+}
 const blockers = []
 const warnings = []
 const add = (list, id, detail, evidence = '') => list.push({ id, page: REUSE_MAP, detail, evidence })
@@ -156,6 +163,20 @@ if (scratch > 0) {
   if (blueprintNone < scratch) {
     add(blockers, 'reuse-map.scratch-no-justification', `scratch=${scratch} but only ${blueprintNone} \`blueprint: none (checked: ..., gap: ...)\` justification block(s)`)
   }
+}
+
+// ── #6: LIBRARY custom must CITE a real blueprint (the other half of the ladder discipline) ──
+// scratch cites `blueprint: none (...)`; library must cite the actual blueprint id it's built from
+// (`blueprint: <id>@vN`). Without this, a "library" custom is indistinguishable from un-justified
+// scratch — the reuse claim is unprovable. Cited ids are linted against lib/blueprint-index.json (warn
+// only — the index can lag a newly-authored blueprint; Sprint 3 #20 grows it; #22 does the schema match).
+if (library > 0) {
+  const cited = [...text.matchAll(/blueprint:\s*([a-z0-9][a-z0-9-]+)(?:@v?\d+)?/gi)].map(m => m[1].toLowerCase()).filter(n => n !== 'none')
+  if (cited.length < library) {
+    add(blockers, 'reuse-map.library-no-blueprint', `library=${library} but only ${cited.length} \`blueprint: <id>@vN\` citation(s) — each LIBRARY-rung section must cite the blueprint it's built from (not "none", which is for scratch).`)
+  }
+  const known = loadBlueprintIndex()
+  if (known) for (const id of cited) if (!known.has(id)) add(warnings, 'reuse-map.unknown-blueprint', `cited blueprint "${id}" is not in lib/blueprint-index.json — typo, or author it into custom-section-blueprint-library.md + the index first.`)
 }
 
 // ── custom count vs newly-added sections/*.liquid on disk ────────────────────

@@ -31,6 +31,7 @@ import { writeReport } from './lib/report.mjs'
 const t0 = Date.now()
 const cwd = process.cwd()
 const SCHEMA_FILE = process.env.SCHEMA_FILE || 'docs/metafield-schema.json'
+const COMPLETE = process.env.SCHEMA_REQUIRE_COMPLETE === '1' // #33: defined-but-unrendered → BLOCK
 
 // Canonical metafield type set — shopify.dev list-of-data-types (single + list. prefix).
 const SINGLE_TYPES = new Set([
@@ -90,6 +91,43 @@ function checkValidation(validation, type, where) {
   if (typeof validation.regex === 'string') checkRegex(validation.regex, where)
   if (validation.file_types != null && !type.includes('file_reference')) {
     add(warnings, 'schema.file-types-misplaced', where, `file_types set on non-file_reference type "${type}"`)
+  }
+}
+
+// #33 — metafield-value completeness. A field DEFINED in the schema but never REFERENCED in the theme
+// render layer is incomplete wiring: lattice modeled it, loom never bound it → a blank PDP slot (or
+// dead schema). Advisory by default; SCHEMA_REQUIRE_COMPLETE=1 → BLOCK. SKIPS when there's no theme
+// (sections/) to scan, so it never fires outside a real theme repo.
+function themeRenderText() {
+  let text = ''
+  for (const d of ['sections', 'snippets', 'templates', 'layout', 'blocks']) {
+    const abs = path.resolve(cwd, d)
+    let entries = []
+    try { entries = fs.readdirSync(abs, { withFileTypes: true }) } catch { continue }
+    for (const e of entries) {
+      if (!e.isFile() || !/\.(liquid|json)$/.test(e.name)) continue
+      try { text += `\n${fs.readFileSync(path.join(abs, e.name), 'utf-8')}` } catch { /* skip */ }
+    }
+  }
+  return text
+}
+function fieldReferenced(text, ns, key) {
+  if (text.includes(`${ns}.${key}`)) return true // dot access: product.metafields.ns.key
+  const hasNs = text.includes(`['${ns}']`) || text.includes(`["${ns}"]`)
+  const hasKey = text.includes(`['${key}']`) || text.includes(`["${key}"]`)
+  return hasNs && hasKey // bracket access: metafields['ns']['key']
+}
+function checkCompleteness(namespaces) {
+  if (!fs.existsSync(path.resolve(cwd, 'sections'))) return // no theme here — not applicable
+  const text = themeRenderText()
+  for (const [ns, fields] of Object.entries(namespaces)) {
+    if (!fields || typeof fields !== 'object') continue
+    for (const key of Object.keys(fields)) {
+      if (fieldReferenced(text, ns, key)) continue
+      const where = `${ns}.${key}`
+      if (COMPLETE) add(blockers, 'schema.unrendered-field', where, `metafield "${where}" is defined but never referenced in the theme (sections/snippets/templates) — loom must bind it or lattice should drop it; a defined-but-unrendered field is a blank PDP slot.`)
+      else add(warnings, 'schema.unrendered-field', where, `metafield "${where}" defined but not referenced in the theme render layer — bind it in a section or remove it (set SCHEMA_REQUIRE_COMPLETE=1 to enforce).`)
+    }
   }
 }
 
@@ -170,5 +208,7 @@ for (const def of Array.isArray(schema.metaobject_definitions) ? schema.metaobje
     add(warnings, 'schema.metaobject-storefront-unset', where, 'metaobject has no access.storefront — set PUBLIC_READ if the theme renders it')
   }
 }
+
+checkCompleteness(namespaces) // #33 — defined-but-unrendered fields
 
 finish(null)

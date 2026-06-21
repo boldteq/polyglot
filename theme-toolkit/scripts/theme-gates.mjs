@@ -190,6 +190,11 @@ const GATES = [
   // imagery.art_direction, hero/banner must render responsive sources (<picture>/srcset/image_tag).
   // WARN-ONLY (ART_DIRECTION_ENFORCE=1 to BLOCK after ≥2 stores); SKIPS when art_direction not declared.
   { name: 'art-direction', number: 24, kind: 'static', runner: 'node', script: 'check-art-direction.mjs' },
+  // Redirects (#25, #30) — redirect-map validation: self-redirects/loops/multi-hop chains/dead targets
+  // (beacon's SEO sign-off, made machine-checkable). Static + hermetic (validates the map rows); an
+  // opt-in live crawl (REDIRECTS_CRAWL=1) asserts ≤1 hop to 200. SKIPS when there's no redirect map
+  // (greenfield/refresh = not a migration). Covered by --static-only + --verify/--require-full.
+  { name: 'redirects', number: 25, kind: 'static', runner: 'node', script: 'check-redirects.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────

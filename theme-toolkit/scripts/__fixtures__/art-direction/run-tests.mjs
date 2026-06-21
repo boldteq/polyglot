@@ -42,5 +42,15 @@ console.log('check-art-direction — gate #24 (warn-first → BLOCK under ENFORC
 { const d = build({ contract: AD_CONTRACT, hero: SINGLE_IMG_HERO }); const r = run(d, E); r.code === 1 && r.blockerIds.has('art-direction.no-responsive-source') ? ok('single non-responsive img + ENFORCE → BLOCK') : bad(`single-img enforce: code ${r.code} blockers ${[...r.blockerIds]}`); fs.rmSync(d, { recursive: true, force: true }) }
 { const d = build({ contract: AD_CONTRACT, hero: SINGLE_IMG_HERO }); const r = run(d); r.code === 0 && r.ids.has('art-direction.no-responsive-source') && r.ids.has('art-direction.warn-only') ? ok('single non-responsive img, warn-only default → exit 0 + warning') : bad(`single-img warn-only: code ${r.code} ids ${[...r.ids]}`); fs.rmSync(d, { recursive: true, force: true }) }
 
+console.log('check-art-direction — #7 responsive-coverage matrix (distinct crops need <picture>)')
+{ // image_tag (resolution-only) + DISTINCT crops declared → crop-coverage WARN (not a blocker), exit 0 even under ENFORCE
+  const d = build({ contract: AD_CONTRACT, hero: IMAGETAG_HERO }); const r = run(d, E)
+  r.code === 0 && r.ids.has('art-direction.crop-coverage') && !r.blockerIds.has('art-direction.crop-coverage') ? ok('distinct crops + resolution-srcset → crop-coverage WARN') : bad(`crop-coverage: code ${r.code} ids ${[...r.ids]}`); fs.rmSync(d, { recursive: true, force: true })
+}
+{ // <picture> with <source media> + distinct crops → NO crop-coverage finding (genuine art-direction)
+  const d = build({ contract: AD_CONTRACT, hero: PICTURE_HERO }); const r = run(d, E)
+  !r.ids.has('art-direction.crop-coverage') ? ok('<picture> source media → no crop-coverage finding') : bad(`picture wrongly flagged: ids ${[...r.ids]}`); fs.rmSync(d, { recursive: true, force: true })
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

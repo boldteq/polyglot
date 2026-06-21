@@ -19,6 +19,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { writeReport } from './lib/report.mjs'
 
 const t0 = Date.now()
@@ -46,6 +47,43 @@ function nearestMiss(px, allowed, tol) { // returns the offending value if not w
   if (!allowed.size) return null
   for (const a of allowed) if (Math.abs(px - a) <= tol) return null
   return px
+}
+
+// #4 — page-level RHYTHM (whole-page cadence #19's per-section checks can't see). PURE so it's
+// hermetically testable on synthetic section data. Two checks across the page's CONTENT sections:
+//   rhythm.heading-not-monotonic — representative heading sizes must step DOWN (h1≥h2≥h3≥h4); a
+//     section rendering an h3 LARGER than the page's h2 inverts the hierarchy (a real type-ladder bug).
+//   rhythm.padding-cadence — a section whose vertical padding is a wild outlier (>2.2× or <½ the page
+//     median) breaks the inter-section cadence even if each value is individually on-scale. Advisory.
+export function analyzeRhythm(sections, { surface = '', tol = 0.6 } = {}) {
+  const findings = []
+  const secs = (sections || []).filter(s => s && !s.isChrome)
+  if (secs.length < 2) return findings
+  // (A) heading step-down monotonicity (median size per tag, in document order h1→h4)
+  const order = ['H1', 'H2', 'H3', 'H4']
+  const rep = {}
+  for (const tag of order) {
+    const sizes = secs.filter(s => s.headingTag === tag && s.headingPx).map(s => s.headingPx).sort((a, b) => a - b)
+    if (sizes.length) rep[tag] = sizes[Math.floor(sizes.length / 2)]
+  }
+  const present = order.filter(t => rep[t] != null)
+  for (let i = 1; i < present.length; i += 1) {
+    const hi = present[i - 1]
+    const lo = present[i]
+    if (rep[lo] > rep[hi] + tol) findings.push({ id: 'rhythm.heading-not-monotonic', page: surface, detail: `${lo} renders larger (${rep[lo]}px) than ${hi} (${rep[hi]}px) across the page — headings must step DOWN (h1≥h2≥h3≥h4). Fix the type-ladder mapping so the visual hierarchy matches the document order.`, severity: 'warn' })
+  }
+  // (B) vertical-padding cadence outliers
+  const vpads = secs.map(s => (s.padTop || 0) + (s.padBottom || 0)).filter(v => v > 0).sort((a, b) => a - b)
+  if (vpads.length >= 3) {
+    const med = vpads[Math.floor(vpads.length / 2)]
+    if (med > 0) {
+      for (const s of secs) {
+        const v = (s.padTop || 0) + (s.padBottom || 0)
+        if (v > 0 && (v > med * 2.2 || v < med / 2.2)) findings.push({ id: 'rhythm.padding-cadence', page: `${surface}/${s.id}`, detail: `section vertical padding ${v}px is ${v > med ? '>2.2× larger than' : '<½'} the page median (${med}px) — uneven inter-section cadence; bring it toward the page rhythm.`, severity: 'advise' })
+      }
+    }
+  }
+  return findings
 }
 
 async function main() {
@@ -181,6 +219,8 @@ async function main() {
     const schemes = secs.map(s => s.schemeClass)
     if ([...new Set(schemes)].length > contract.schemeCap) warnings.push({ id: 'cohesion.scheme-count', page: at, detail: `${[...new Set(schemes)].length} distinct content schemes on this page — cap ${contract.schemeCap}`, evidence: [...new Set(schemes)].slice(0, 6).join(', ') })
     if (!contract.adjacencySameAllowed) { for (let i = 1; i < schemes.length; i += 1) if (schemes[i] && schemes[i] === schemes[i - 1] && schemes[i] !== 'rgba(0, 0, 0, 0)') { warnings.push({ id: 'cohesion.scheme-adjacent-same', page: at, detail: `content sections ${secs[i - 1].id} + ${secs[i].id} render the SAME scheme back-to-back — they blur; alternate or add a divider`, evidence: schemes[i] }); break } }
+    // (8) page-rhythm (#4) — heading step-down monotonicity + vertical-padding cadence across the page.
+    for (const fnd of analyzeRhythm(secs, { surface: at, tol: FONT_TOL })) warnings.push({ id: fnd.id, page: fnd.page, detail: fnd.detail, evidence: '', severity: fnd.severity })
   }
 
   const requireScope = process.env.DS_REQUIRE_SCOPE === '1'
@@ -193,4 +233,5 @@ async function main() {
   process.exit(pass ? 0 : 1)
 }
 
-main().catch(e => die(2, `unexpected failure: ${e.message}`))
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isMain) main().catch(e => die(2, `unexpected failure: ${e.message}`))

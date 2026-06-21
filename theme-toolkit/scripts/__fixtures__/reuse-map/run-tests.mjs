@@ -83,6 +83,16 @@ console.log('check-reuse-map — gate #23 (ENFORCE=1 for BLOCK cases)');
   const d = tmp(); gitBase(d);
   expect('refresh-no-sections → SKIP/PASS', { code: 0, mustContain: 'n-a-no-new-sections' }, run(d, E)); fs.rmSync(d, { recursive: true, force: true });
 }
+{ // 8. #6 LIBRARY custom WITH a valid blueprint citation → PASS (non-git: count cross-check warns only)
+  const d = tmp();
+  writeMap(d, 'Counts: {reused: 8, configured: 1, extended: 0, custom: 1}\nCustom split: {library: 1, scratch: 0}\n\n| Zone | Section | Rung |\n|---|---|---|\n| promo | promo-countdown | CUSTOM |\n\npromo-countdown: blueprint: countdown@v1\n');
+  expect('library cites blueprint → PASS', { code: 0 }, run(d, E)); fs.rmSync(d, { recursive: true, force: true });
+}
+{ // 9. #6 LIBRARY custom with NO blueprint citation → BLOCK
+  const d = tmp();
+  writeMap(d, 'Counts: {reused: 8, configured: 1, extended: 0, custom: 1}\nCustom split: {library: 1, scratch: 0}\n\n| Zone | Section | Rung |\n|---|---|---|\n| promo | promo-band | CUSTOM |\n');
+  expect('library no blueprint → BLOCK', { code: 1, mustContain: 'library-no-blueprint' }, run(d, E)); fs.rmSync(d, { recursive: true, force: true });
+}
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
