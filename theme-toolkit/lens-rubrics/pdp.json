@@ -8,6 +8,8 @@
     { "id": "spacing-rhythm", "rule": "deliberate gaps; no cramped collisions, no desolate voids", "severity_if_fail": "warning", "fix_owner": "loom" },
     { "id": "broken-state", "rule": "no missing-image placeholders, no Liquid errors, no empty shells, no Lorem/[CLAIM] text, no copy typos in rendered text", "severity_if_fail": "blocker", "fix_owner": "loom" },
     { "id": "chrome-on-brand", "rule": "consent/announcement chrome on-brand AND not covering any buy-box control", "severity_if_fail": "blocker", "fix_owner": "loom" },
-    { "id": "premium-feel", "rule": "intentional premium per the niche scorecard, not a generic demo", "severity_if_fail": "warning", "fix_owner": "drape" }
+    { "id": "premium-feel", "rule": "intentional premium per the niche scorecard, not a generic demo", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "headline-integrity", "rule": "the product title (H1) and any section headline stay visually contiguous on EVERY viewport — no decorative rule/divider/dash/border-pseudo-element splits a headline phrase into disconnected pieces (watch the mobile breakpoint).", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "image-art-direction", "rule": "product gallery / lifestyle imagery keeps its subject at EVERY viewport — the mobile crop shows the product, never a blank/subject-less patch from a desktop image cropped by the mobile container.", "severity_if_fail": "blocker", "fix_owner": "loom" }
   ],
   "sources": ["theme-page-recipes.md#pdp", "design/ecom/niche-dna-packs/<niche>.json", "patterns/good/ecom-funnel-cro-playbook.md"] }

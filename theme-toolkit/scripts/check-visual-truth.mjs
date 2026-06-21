@@ -115,6 +115,27 @@ function main() {
     verdictsByFrame.set(`${v.surface}-${v.viewport}`, v)
   }
 
+  // ── Capture coverage: defends the silent-skip hole (a build that captured desktop but quietly
+  //    dropped mobile must not read as PASS — mobile is where hero/headline/art-direction defects hide).
+  //    (1) HARD, zero-false-positive: a captured frame with no vision verdict can't be proof.
+  //    (2) WARN-FIRST (doctrine: prove on ≥2 stores before BLOCK): a surface captured at desktop but
+  //        NOT at mobile is a likely silent skip — surfaced as a warning until proven, then flip to block. ──
+  if (verdicts.length) {
+    for (const f of frames) {
+      if (!verdictsByFrame.get(`${f.surface}-${f.viewport}`)) {
+        const msg = `${f.surface} ${f.viewport}: frame captured but NOT vision-judged — a frame with no eyes on it isn't proof`
+        if (REQUIRE) add(blockers, 'vt.coverage-unjudged', f.surface, msg, f.url || '')
+        else warnings.push({ id: 'vt.coverage-unjudged', page: f.surface, detail: msg, evidence: '' })
+      }
+    }
+  }
+  const hasVp = (s, re) => frames.some(f => f.surface === s && re.test(String(f.viewport)))
+  for (const s of [...new Set(frames.map(f => f.surface).filter(Boolean))]) {
+    if (hasVp(s, /desktop|1440/i) && !hasVp(s, /mobile|375/i)) {
+      warnings.push({ id: 'vt.coverage-no-mobile', page: s, detail: `${s}: captured at desktop but NOT mobile — mobile is where hero/headline/art-direction defects hide; capture 375 too (warn-only; flips to BLOCK once proven on ≥2 stores)`, evidence: '' })
+    }
+  }
+
   if (!verdicts.length) {
     if (REQUIRE) add(blockers, 'vt.judge-missing', 'judge', `no judge verdicts in ${path.relative(cwd, judgeDir)} — the vision judge (a vision subagent scoring each frame against its rubric) is MANDATORY before publish. Run Layer 2.`)
     else warnings.push({ id: 'vt.judge-not-done', page: 'judge', detail: 'no vision-judge verdicts yet — frames captured but unjudged (warns in dev; BLOCKS at publish-grade)', evidence: '' })

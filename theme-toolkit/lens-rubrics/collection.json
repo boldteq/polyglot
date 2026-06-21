@@ -6,6 +6,8 @@
     { "id": "horizontal-overflow", "rule": "no sideways scroll; cards don't overflow", "severity_if_fail": "blocker", "fix_owner": "loom" },
     { "id": "hierarchy", "rule": "collection title is intentional (not a default like 'Automated Collection'); cards show image+title+price legibly", "severity_if_fail": "warning", "fix_owner": "porter" },
     { "id": "chrome-on-brand", "rule": "filters/sort + consent chrome on-brand; not covering the grid", "severity_if_fail": "blocker", "fix_owner": "loom" },
-    { "id": "premium-feel", "rule": "intentional premium per the niche scorecard", "severity_if_fail": "warning", "fix_owner": "drape" }
+    { "id": "premium-feel", "rule": "intentional premium per the niche scorecard", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "headline-integrity", "rule": "the collection title and any banner headline stay visually contiguous on EVERY viewport — no decorative rule/divider/dash/border-pseudo-element splits a headline phrase into disconnected pieces (watch the mobile breakpoint).", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "image-art-direction", "rule": "the collection banner image keeps its subject at EVERY viewport — the mobile crop is meaningful, never a blank/subject-less patch from a desktop image cropped by the mobile container.", "severity_if_fail": "blocker", "fix_owner": "loom" }
   ],
   "sources": ["theme-page-recipes.md#collection", "store catalog (porter — collection must be populated)"] }

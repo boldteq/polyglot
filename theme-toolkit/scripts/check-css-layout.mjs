@@ -105,11 +105,12 @@ function main() {
   const seen = new Set()
   const files = []
   for (const f of targets) { const k = path.resolve(cwd, f).toLowerCase(); if (!seen.has(k) && fs.existsSync(path.resolve(cwd, f)) && /\.(liquid|css)$/.test(f)) { seen.add(k); files.push(f) } }
-  const counts = { overflow: 0, flexNoWrap: 0, textNowrap: 0, negMargin: 0 }
+  const counts = { overflow: 0, flexNoWrap: 0, textNowrap: 0, negMargin: 0, heroRule: 0 }
 
   for (const file of files) {
-    const css = cssOf(file, read(file))
-    if (!css.trim()) continue
+    const raw = read(file)
+    const css = cssOf(file, raw)
+    if (!css.trim() && !/<hr\b/i.test(raw)) continue
 
     // 1. viewport-overflow: width/min-width:100vw with no max-width + no box-sizing in the same rule (BLOCKER-eligible)
     for (const m of css.matchAll(/\b(?:min-)?width\s*:\s*100vw\b/gi)) {
@@ -135,6 +136,28 @@ function main() {
     // 4. large negative horizontal margin (advisory WARN — can push content past the viewport edge)
     for (const m of css.matchAll(/\bmargin(?:-(?:left|right|inline)[a-z-]*)?\s*:\s*[^;{}]*?-(\d{2,})px/gi)) {
       if (Number(m[1]) >= 40) { add(warnings, 'css.negative-margin', `${file}:${lineAt(css, m.index)}`, `large negative horizontal margin (-${m[1]}px) — can push content past the viewport edge → horizontal scroll. Verify it's clipped by an overflow:hidden parent.`, m[0]); counts.negMargin += 1 }
+    }
+    // 5. hero headline-integrity HINT (WARN-ONLY — Lens #18 is the authoritative blocker).
+    //    A decorative rule/divider near a hero headline that is full-width with no mobile guard can
+    //    render as a phantom horizontal rule splitting the headline on mobile (the gpt-test-1 M1
+    //    defect). Regex can't prove intent, so this only HINTS loom/onyx early; it never blocks.
+    //    See patterns/avoid/headline-decorative-rule-mobile-bleed.md + Lens rubric "headline-integrity".
+    const heroish = /hero|banner|headline|masthead|marquee/i.test(path.basename(file)) || /<h1\b/i.test(raw)
+    if (heroish) {
+      const mobileHide = /@media[^{]*max-width[^{]*\{[^}]*\bdisplay\s*:\s*none/i.test(css)
+      const fitWidth = /\bwidth\s*:\s*(?:fit-content|auto|max-content|min-content)/i.test(css)
+      for (const m of raw.matchAll(/<hr\b[^>]*>/gi)) {
+        if (mobileHide || fitWidth) continue
+        add(warnings, 'css.hero-rule-bleed', `${file}:${lineAt(raw, m.index)}`, `<hr> in a hero/headline section is full-width by default — on mobile it can render as a rule splitting the headline phrase. Constrain it (width:fit-content) or hide it @media(max-width). Lens #18 verifies the rendered result.`, m[0].slice(0, 40))
+        counts.heroRule += 1
+      }
+      for (const m of css.matchAll(/::(?:before|after)\b/gi)) {
+        const rule = enclosingRule(css, m.index)
+        if (/\bborder-(?:top|bottom)\s*:/i.test(rule) && /\bcontent\s*:/i.test(rule) && !/\bwidth\s*:\s*(?:fit-content|auto|max-content|min-content)/i.test(rule) && !mobileHide) {
+          add(warnings, 'css.hero-rule-bleed', `${file}:${lineAt(css, m.index)}`, `a ::before/::after border divider in a hero/headline section with no width constraint or mobile-hide — can become a full-width rule splitting the headline on mobile. Constrain width or hide @media(max-width). Lens #18 verifies the render.`, rule.trim().slice(0, 50))
+          counts.heroRule += 1
+        }
+      }
     }
   }
 

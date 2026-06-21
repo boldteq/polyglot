@@ -32,6 +32,7 @@ const cwd = process.cwd()
 const FILE = process.env.VISUAL_QUALITY_FILE || 'docs/visual-quality-review.json'
 const MIN_CONF = Number(process.env.VISUAL_MIN_CONFIDENCE || 80)
 const REQUIRE = process.env.DS_REQUIRE_SCOPE === '1' || process.env.VISUAL_REQUIRE === '1'
+const REPORT_DIR = process.env.REPORT_DIR || 'gate-reports'
 
 const AUDITS = ['brand_coherence', 'color_application', 'hierarchy_and_readability', 'spacing_and_layout', 'cro_surface_fitness', 'mobile_rendering', 'brand_conformance_to_system']
 
@@ -52,6 +53,17 @@ function finish(envError, evidence = {}) {
 }
 
 function main() {
+  // DEPENDENCY (publish-grade): onyx's self-attested visual-quality review is INVALID without
+  // independent vision verification — gate #18 (Lens visual-truth) MUST have run + passed first.
+  // This is the literal "no independent eyes between the agent's claim and the merchant's eyes" fix:
+  // a self-review can no longer count on its own. (Dev/warn mode skips this; only publish-grade gates.)
+  if (REQUIRE) {
+    const vtPath = path.resolve(cwd, REPORT_DIR, 'visual-truth.json')
+    let vt = null
+    try { vt = JSON.parse(fs.readFileSync(vtPath, 'utf-8')) } catch { /* missing/invalid → blocked just below */ }
+    if (!vt) add(blockers, 'vq.lens-missing', `no ${REPORT_DIR}/visual-truth.json — gate #18 (Lens visual-truth) must run + PASS before onyx's self-review counts (otherwise nothing independent looked at the render). Run Lens capture→judge→#18 first.`)
+    else if (vt.pass !== true) add(blockers, 'vq.lens-not-passed', `gate #18 (Lens visual-truth) did NOT pass (${(vt.blockers || []).length} blocker(s)) — onyx's self-review is invalid without independent vision verification. Fix the Lens findings, then re-review.`)
+  }
   const abs = path.resolve(cwd, FILE)
   if (!fs.existsSync(abs)) {
     if (REQUIRE) { add(blockers, 'vq.review-missing', `no ${FILE} — the visual-quality review (onyx renders staging + scores the 7 audits) is MANDATORY before publish. Run it and emit the artifact.`); finish(null, { present: false }) }

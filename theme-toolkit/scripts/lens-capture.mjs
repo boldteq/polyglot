@@ -64,6 +64,30 @@ async function gotoWithAuth(page, url, password) {
   }
 }
 
+// Dismiss a blocking consent/cookie overlay so the hero + below-overlay content becomes judgeable.
+// The overlay is ALREADY captured in the `rest` frame first (chrome-on-brand still fires on it); this
+// only unblocks the page beneath for the layout/headline/art-direction checks (a centered consent
+// modal otherwise occludes the hero, so the vision judge can't see it — gpt-test-1 2026-06-21).
+// Read-only (clicks an Accept control → sets a consent cookie + hides the banner) — safe in an
+// ephemeral capture context. Exact-label match + length cap keeps false-clicks ~nil. Returns true if it acted.
+async function dismissConsent(page) {
+  try {
+    const acted = await page.evaluate(() => {
+      const RX = /^(accept all|accept|i accept|accept cookies|agree|i agree|allow all|allow|got it|ok|okay|enable all|continue|confirm)$/i
+      const cands = [...document.querySelectorAll('button, a[role="button"], [role="button"], input[type="button"], input[type="submit"]')]
+      for (const el of cands) {
+        const label = (el.innerText || el.value || el.getAttribute('aria-label') || '').trim()
+        if (!label || label.length > 24 || !RX.test(label)) continue
+        const r = el.getBoundingClientRect()
+        if (r.width > 4 && r.height > 4 && el.offsetParent !== null) { el.click(); return true }
+      }
+      return false
+    })
+    if (acted) await page.waitForTimeout(500)
+    return acted
+  } catch { return false }
+}
+
 // Resolve the concrete URL for each requested surface against the live storefront.
 // PDP/collection resolve from the AUTHORITATIVE products.json/collections.json (a real,
 // published handle) — NOT by scraping the first `/products/` link, which can point at a
@@ -202,6 +226,15 @@ async function main() {
           const restMetrics = await domMetrics(page)
           const restPng = path.join(dir, `${tag}-rest.png`)
           await page.screenshot({ path: restPng }).catch(() => {})
+          // STATE 1b: dismiss a blocking consent overlay, then re-capture above-the-fold so the hero is
+          // judgeable (the overlay is already in `rest` → chrome-on-brand still catches it). Only when it acted.
+          let restClearPng = null
+          if (await dismissConsent(page)) {
+            await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {})
+            await page.waitForTimeout(400)
+            restClearPng = path.join(dir, `${tag}-rest-clear.png`)
+            await page.screenshot({ path: restClearPng }).catch(() => {})
+          }
           // STATE 2: scroll-to-end (lazy content + footer)
           await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)).catch(() => {})
           await page.waitForTimeout(900)
@@ -211,7 +244,7 @@ async function main() {
           const rel = (p) => path.relative(LENS_DIR, p)
           frames.push({
             surface, url, viewport: vp.name, theme, width: vp.width, height: vp.height,
-            frames: { rest: rel(restPng), scrollEnd: rel(endPng) },
+            frames: { rest: rel(restPng), scrollEnd: rel(endPng), ...(restClearPng ? { restClear: rel(restClearPng) } : {}) },
             nav, renderError, cls, overflowPx: restMetrics.overflowPx, brokenImages: restMetrics.brokenImgs,
             emptyShells: restMetrics.emptyShells, liquidError: restMetrics.liquidError,
             consoleErrors: [...consoleErrors].slice(0, 10), failedRequests: [...failedReq].slice(0, 8),

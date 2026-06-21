@@ -59,5 +59,14 @@ console.log('case (c) violations at publish-grade (DS_REQUIRE_SCOPE=1) → expec
   else fail(`expected css.viewport-overflow blocker (saw ${[...blk].join(', ')})`)
 }
 
+console.log('case (d) hero <hr> with no mobile guard → exit 0 + css.hero-rule-bleed WARNING (warn-only); guarded sibling does NOT warn')
+{
+  const { code, report } = runGate(path.join(HERE, 'hero-rule'))
+  if (code === 0) pass('exit 0 (warn-only hint, never blocks)'); else fail(`expected 0, got ${code}`)
+  const warns = (report?.warnings || []).filter(w => w.id === 'css.hero-rule-bleed')
+  if (warns.length === 1) pass('exactly 1 css.hero-rule-bleed (unguarded fires, fit-content sibling does not)'); else fail(`expected 1 hero-rule warn, saw ${warns.length}: ${warns.map(w => w.page).join(', ')}`)
+  if (!(report?.blockers || []).some(b => b.id === 'css.hero-rule-bleed')) pass('hero-rule never blocks'); else fail('hero-rule must never block')
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)
