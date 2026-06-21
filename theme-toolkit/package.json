@@ -45,6 +45,7 @@
     "keystone:clone": "node scripts/keystone-clone.mjs",
     "keystone:token": "node scripts/keystone-token.mjs",
     "lens:autofix": "node scripts/lens-autofix.mjs",
+    "lens:calibrate": "node scripts/lens-calibrate.mjs",
     "ds:css": "node scripts/generate-design-system-css.mjs",
     "overrides:check": "node scripts/check-client-overrides.mjs",
     "build-state": "node scripts/build-state.mjs",

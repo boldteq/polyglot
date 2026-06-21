@@ -15,6 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { verdictDrift } from './lib/lens-regressions.mjs';
 
 function parseArgs(argv) {
   const o = { dir: process.cwd(), resultsDir: null, label: process.env.WATCH_LABEL || 't+2h', url: process.env.STORE_URL || '' };
@@ -29,6 +30,14 @@ function parseArgs(argv) {
 }
 
 function readJson(p) { try { return JSON.parse(fs.readFileSync(p, 'utf-8')); } catch { return null; } }
+
+// Read the judged verdicts into a { key: {verdict, surface} } map (for the WS-F baseline diff).
+function readVerdictMap(dir) {
+  const jd = path.join(dir, 'gate-reports', 'lens', 'judge');
+  const map = {};
+  try { for (const fn of fs.readdirSync(jd)) { if (!fn.endsWith('.json')) continue; const v = readJson(path.join(jd, fn)); if (v) map[v.key || `${v.surface}-${v.viewport}`] = { verdict: v.verdict, surface: v.surface }; } } catch { /* none */ }
+  return map;
+}
 
 function writeNote(resultsDir, label, lines) {
   fs.mkdirSync(resultsDir, { recursive: true });
@@ -45,9 +54,18 @@ function main() {
     process.exit(0);
   }
 
+  // WS-F: snapshot the PRE-PUBLISH judged verdicts as a baseline BEFORE the re-capture wipes them
+  // (lens-capture clears gate-reports/lens). The committed judge verdicts are the pre-publish truth.
+  const baselinePath = path.join(resultsDir, 'lens-baseline.json');
+  if (!fs.existsSync(baselinePath)) {
+    const base = readVerdictMap(o.dir);
+    if (Object.keys(base).length) { fs.mkdirSync(resultsDir, { recursive: true }); fs.writeFileSync(baselinePath, `${JSON.stringify(base, null, 2)}\n`); }
+  }
+
   // Re-capture the live surfaces. lens-capture reads THEME_PREVIEW_URL; for a published store
   // that's the live URL. Best-effort: if capture tooling/browser isn't available, degrade.
-  const captureScript = path.resolve(path.dirname(new URL(import.meta.url).pathname), 'lens-capture.mjs');
+  const HERE = path.dirname(new URL(import.meta.url).pathname);
+  const captureScript = path.resolve(HERE, 'lens-capture.mjs');
   const env = { ...process.env, THEME_PREVIEW_URL: o.url };
   if (process.env.LENS_SURFACES) env.LENS_SURFACES = process.env.LENS_SURFACES;
   const cap = spawnSync(process.execPath, [captureScript], { cwd: o.dir, env, encoding: 'utf-8', timeout: 180_000 });
@@ -64,7 +82,19 @@ function main() {
     if (f.renderError) regressions.push({ surface: f.surface, viewport: f.viewport, kind: 'render-error', detail: f.renderError });
   }
   const captureFailed = cap.status !== 0 && frames.length === 0;
-  const severity = regressions.some(r => r.kind === 'render-error') ? 'P0'
+
+  // WS-F: re-judge the live re-capture (vision) + diff vs the pre-publish baseline. A surface that was
+  // PASS pre-publish but is now FAIL live = drift (an app injected CSS, a collection emptied, a pixel broke).
+  // Best-effort: needs claude (subscription); degrades silently if unavailable. WATCH_REJUDGE=0 disables.
+  if (!captureFailed && process.env.WATCH_REJUDGE !== '0') {
+    const hasClaude = !spawnSync(process.env.CLAUDE_BIN || 'claude', ['--version'], { encoding: 'utf-8' }).error;
+    if (hasClaude) {
+      spawnSync(process.execPath, [path.resolve(HERE, 'lens-judge.mjs')], { cwd: o.dir, env, encoding: 'utf-8', timeout: 600_000 });
+      for (const d of verdictDrift(readJson(baselinePath) || {}, readVerdictMap(o.dir))) regressions.push(d);
+    }
+  }
+
+  const severity = regressions.some(r => r.kind === 'render-error' || r.kind === 'verdict-drift') ? 'P0'
     : regressions.length ? 'P1' : 'none';
 
   const lines = [

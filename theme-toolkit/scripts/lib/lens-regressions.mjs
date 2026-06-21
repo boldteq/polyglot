@@ -34,6 +34,19 @@ export function applyRegressionRegistry(current, registry, nowISO) {
   return { escalations, registry: { version: 1, entries } }
 }
 
+// PURE (WS-F): post-publish verdict drift — a surface that was PASS pre-publish but is now FAIL on the
+// live store (an app injected CSS, a collection emptied, a pixel broke). baseline/current = { key: { verdict, surface } }.
+export function verdictDrift(baseline, current) {
+  const out = []
+  for (const [key, cur] of Object.entries(current || {})) {
+    const base = (baseline || {})[key]
+    if (base && base.verdict === 'PASS' && cur && cur.verdict === 'FAIL') {
+      out.push({ key, surface: cur.surface || base.surface || key, kind: 'verdict-drift', detail: 'was PASS pre-publish, now FAIL on the live store (drift)' })
+    }
+  }
+  return out
+}
+
 export function readRegistry(dir) {
   try { return JSON.parse(fs.readFileSync(path.join(dir, REGISTRY_FILE), 'utf-8')) } catch { return { version: 1, entries: {} } }
 }
