@@ -1,0 +1,6 @@
+{
+  "revenue": { "current_monthly": 18000, "target_monthly": 45000, "aov_current": 52, "aov_target": 68 },
+  "conversion": { "cvr_current_pct": 1.6, "cvr_target_pct": 2.8, "priority_surfaces": ["hero", "pdp", "cart"] },
+  "seo": { "target_keywords": ["magnesium sleep"], "organic_traffic_current": 2400, "organic_traffic_target": 8000 },
+  "performance": { "lcp_current_s": 4.1, "lcp_target_s": 2.5, "inp_target_ms": 200, "cls_target": 0.1 }
+}

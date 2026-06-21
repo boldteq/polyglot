@@ -27,16 +27,25 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { writeReport } from './lib/report.mjs'
+import { validate } from './lib/jsonschema.mjs'
+import { llmJudge } from './lib/llm-judge.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
 const REPORT_DIR = process.env.REPORT_DIR || 'gate-reports'
 const REQUIRE = process.env.DS_REQUIRE_SCOPE === '1' || process.env.DISCOVERY_REQUIRED === '1'
 const EXISTING_STORE = process.env.EXISTING_STORE === '1'
+const JUDGE = process.env.DISCOVERY_JUDGE === '1' // #13: opt-in LLM positioning-quality judge (off in tests)
 const GOALS_FILE = process.env.GOALS_FILE || 'docs/discovery/goals.json'
 const BRAND_FILE = process.env.BRAND_FILE || 'docs/design/brand-direction.md'
 const PREFLIGHT_FILE = 'docs/discovery/preflight-audit.md'
+const SCHEMA_FILE = fileURLToPath(new URL('../schemas/goals.schema.json', import.meta.url))
+
+// retained for the optional LLM judge pass (#13) — set by the static checks, read in main()
+let parsedGoals = null
+let brandText = null
 
 const blockers = []
 const warnings = []
@@ -65,6 +74,17 @@ function finish(envError, evidence = {}) {
 const isNum = v => typeof v === 'number' && Number.isFinite(v)
 const isNonEmptyArr = v => Array.isArray(v) && v.length > 0
 
+// #13 — schema validation pass. Loads the published contract + reports each violation as a stable
+// `discovery.schema:<path>` finding (REQUIRE-aware). Fail-open if the schema file itself is unreadable
+// (a toolkit-install problem must not block a real brief — the procedural checks still run).
+function checkSchema(goals) {
+  let schema
+  try { schema = JSON.parse(fs.readFileSync(SCHEMA_FILE, 'utf-8')) } catch { return }
+  for (const e of validate(goals, schema)) {
+    issue(`discovery.schema:${e.path}`, GOALS_FILE, `goals.json shape violates the contract — ${e.path}: ${e.message} (schemas/goals.schema.json).`)
+  }
+}
+
 // ── 1 + 2. goals.json ─────────────────────────────────────────────────────────
 function checkGoals() {
   const p = path.resolve(cwd, GOALS_FILE)
@@ -76,6 +96,12 @@ function checkGoals() {
   let goals
   try { goals = JSON.parse(fs.readFileSync(p, 'utf-8')) } catch (e) { issue('discovery.goals-invalid', GOALS_FILE, `invalid JSON: ${e.message}`); return }
   if (!goals || typeof goals !== 'object') { issue('discovery.goals-invalid', GOALS_FILE, 'goals.json is not an object'); return }
+  parsedGoals = goals
+
+  // #13 — validate the SHAPE against the published contract (schemas/goals.schema.json). Catches
+  // malformed types the procedural checks below don't (e.g. a numeric target captured as text). The
+  // schema is the authoring reference; these findings are dispatch-grade blocks, dev-grade warnings.
+  checkSchema(goals)
 
   // load-bearing areas present
   for (const area of ['revenue', 'conversion', 'seo', 'performance']) {
@@ -130,6 +156,7 @@ function checkBrandDirection() {
   }
   let text
   try { text = fs.readFileSync(p, 'utf-8') } catch (e) { issue('discovery.brand-unreadable', BRAND_FILE, `unreadable: ${e.message}`); return }
+  brandText = text
   const words = text.replace(/[#>*_`-]/g, ' ').split(/\s+/).filter(Boolean).length
   if (words < 60) {
     issue('discovery.brand-stub', BRAND_FILE, `brand-direction.md is a stub (${words} words) — needs real direction (voice, 2–3 references + what to take, palette/type intent, constraints), not a placeholder.`)
@@ -149,10 +176,25 @@ function checkPreflight() {
   }
 }
 
+// ── #13 LLM positioning-quality judge (opt-in: DISCOVERY_JUDGE=1) ──────────────
+// Static rules catch adjective-as-number; they can't tell "premium science-backed magnesium for
+// poor sleepers, vs Ritual on price + transparency" from "good supplements for everyone". This asks
+// the model. FAIL-OPEN: a null verdict (judge off / infra error) adds nothing. A "vague" verdict is a
+// dispatch-grade block (you don't design from a vague brief), a dev-grade warning.
+function judgePositioning() {
+  if (!JUDGE || !parsedGoals) return
+  const prompt = `You are a Shopify brand-strategy reviewer. Decide if this brief's POSITIONING is specific & actionable (clear ICP, pain, differentiation) or vague boilerplate. Reply with ONLY a JSON object: {"verdict":"specific"|"vague","reason":"<=18 words"}.\n\nGOALS.JSON:\n${JSON.stringify(parsedGoals).slice(0, 4000)}\n\nBRAND-DIRECTION.MD:\n${String(brandText || '(none)').slice(0, 4000)}`
+  const v = llmJudge({ prompt })
+  if (v && v.verdict === 'vague') {
+    issue('discovery.vague-positioning', BRAND_FILE, `LLM positioning judge: brief reads as vague/boilerplate — ${v.reason || 'no specific ICP / pain / differentiation'}. Tighten before design dispatch.`)
+  }
+}
+
 function main() {
   checkGoals()
   checkBrandDirection()
   checkPreflight()
+  judgePositioning()
   finish(null)
 }
 

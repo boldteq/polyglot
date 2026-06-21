@@ -1,0 +1,6 @@
+{
+  "revenue": [],
+  "conversion": { "cvr_current_pct": 1.6, "cvr_target_pct": 2.8, "priority_surfaces": ["hero", "pdp", "cart"] },
+  "seo": { "target_keywords": ["magnesium sleep"] },
+  "performance": { "lcp_target_s": 2.5 }
+}

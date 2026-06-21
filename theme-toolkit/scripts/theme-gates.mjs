@@ -33,7 +33,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync, spawn, execFileSync } from 'node:child_process'
-import { readJson, toolkitVersion, gitInfo } from './lib/report.mjs'
+import { readJson, toolkitVersion, gitInfo, countSeverities, staleReportsByTtl } from './lib/report.mjs'
 
 // Promisified gate spawn — buffers output, enforces a timeout. (P0 #14: parallel gate execution.)
 function runGateProc(runner, gateArgs, opts) {
@@ -62,6 +62,10 @@ async function pool(items, limit, fn) {
 function writeSummaryMd(dir, selected, results, summary) {
   const L = ['# Theme Gates — Summary', '']
   L.push(`**${summary.pass ? '✅ PASS' : '❌ BLOCK'}** · mode=${summary.mode} · ${selected.length} gate(s) · toolkit ${summary.toolkitVersion} · sha ${summary.sha ? summary.sha.slice(0, 7) : 'null'}${summary.dirty ? ' · dirty' : ''}`, '')
+  if (summary.severityCounts) {
+    const s = summary.severityCounts
+    L.push(`severity: **${s.block}** block · ${s.warn} warn · ${s.advise} advise`, '')
+  }
   const cls = (g) => { const r = results[g.name]; return r.waived || r.skipped ? 'skip' : r.pass ? 'pass' : 'block' }
   const blocked = selected.filter(g => cls(g) === 'block')
   const skipped = selected.filter(g => cls(g) === 'skip')
@@ -92,6 +96,10 @@ function writeSummaryMd(dir, selected, results, summary) {
 
 const SCRIPTS_DIR = path.dirname(fileURLToPath(import.meta.url))
 const FRESHNESS_ALLOWLIST = ['gate-reports', 'CHANGES.md', 'merchant-editability.md', 'docs']
+// #3 — URL-gate evidence reflects a LIVE render and drifts by wall-clock even at the same SHA, so it
+// expires on a TTL. Static gates are deterministic from the committed tree → no time-TTL (SHA is their
+// freshness). FRESHNESS_TTL_OFF=1 disables the check (dogfood / re-gate-then-verify edge).
+const URL_GATE_TTL_MS = 24 * 60 * 60 * 1000
 
 const GATES = [
   // Gate 0 — theme lock: every push targets the linked theme only, never live/another store
@@ -108,17 +116,17 @@ const GATES = [
   // reaching the gates on a broken base — where ~12 downstream gates "skip — scope unresolvable"
   // and the run reads as fine. Runs first so the failure is loud + at-the-door.
   { name: 'bootstrap', number: 0.5, kind: 'static', runner: 'node', script: 'check-bootstrap.mjs' },
-  { name: 'lighthouse', number: 1, kind: 'url', runner: 'node', script: 'gate-lighthouse.mjs' },
+  { name: 'lighthouse', number: 1, kind: 'url', runner: 'node', script: 'gate-lighthouse.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
   { name: 'theme-check', number: 2, kind: 'static', runner: 'node', script: 'gate-theme-check.mjs' },
   { name: 'editability', number: 3, kind: 'static', runner: 'bash', script: 'gate-editability-greps.sh' },
-  { name: 'axe', number: 5, kind: 'url', runner: 'node', script: 'gate-axe.mjs' },
-  { name: 'seo', number: 6, kind: 'url', runner: 'node', script: 'gate-seo.mjs' },
-  { name: 'conversion', number: 7, kind: 'url', runner: 'node', script: 'gate-conversion.mjs' },
+  { name: 'axe', number: 5, kind: 'url', runner: 'node', script: 'gate-axe.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
+  { name: 'seo', number: 6, kind: 'url', runner: 'node', script: 'gate-seo.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
+  { name: 'conversion', number: 7, kind: 'url', runner: 'node', script: 'gate-conversion.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
   // DGS — design cohesion (static; run in full + --static-only + covered by --verify/--require-full).
   { name: 'design-system', number: 8, kind: 'static', runner: 'node', script: 'check-design-system.mjs' },
   { name: 'consistency', number: 9, kind: 'static', runner: 'node', script: 'check-consistency.mjs' },
   // Verification Layer 3 — functional/interaction smoke (drives real flows, url-kind).
-  { name: 'functional', number: 10, kind: 'url', runner: 'node', script: 'gate-functional.mjs' },
+  { name: 'functional', number: 10, kind: 'url', runner: 'node', script: 'gate-functional.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
   // Prevention — dead-code/bloat anti-patterns (static; the rest of the library is gates above + the review board).
   { name: 'antipatterns', number: 11, kind: 'static', runner: 'node', script: 'check-antipatterns.mjs' },
   // Design QUALITY — per-niche taste fingerprint vs the DNA pack (static; calibration-gated so
@@ -152,7 +160,7 @@ const GATES = [
   // can ship h2=32 and section B h2=28 and both pass. This pulls COMPUTED styles per section on the
   // staging URL and BLOCKs cross-section drift (off-ladder type, off-scale padding, multi-H1) against
   // design-system.json. Content-only (chrome excluded). mantle gates publish.
-  { name: 'section-cohesion', number: 19, kind: 'url', runner: 'node', script: 'check-section-cohesion.mjs' },
+  { name: 'section-cohesion', number: 19, kind: 'url', runner: 'node', script: 'check-section-cohesion.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
   // Card-bindings (#20, LIBRARY) — proves a component-library card renders DGS-conformant + honest
   // + wired by instantiating it into a Dawn-style section (binding its ## Design-system bindings
   // roles to theme-native vars — the loom step) and running #8/#13/#14 against it. Catches a
@@ -314,18 +322,33 @@ function verify(args) {
   // consistent) can't see the incoherence. Stride dogfood 2026-06-19: 7 reports across 3 SHAs.
   const reportDirAbs = path.resolve(cwd, args.reportDir)
   const incoherent = []
+  const gateReports = []
   try {
     for (const f of fs.readdirSync(reportDirAbs)) {
       if (!f.endsWith('.json') || f === 'summary.json') continue
       let rep
       try { rep = readJson(path.join(reportDirAbs, f)) } catch { continue }
-      if (rep && typeof rep.sha === 'string' && rep.sha !== summary.sha) incoherent.push(`${f}@${rep.sha.slice(0, 7)}`)
+      if (!rep) continue
+      if (typeof rep.sha === 'string' && rep.sha !== summary.sha) incoherent.push(`${f}@${rep.sha.slice(0, 7)}`)
+      gateReports.push({ gate: rep.gate ?? f.replace(/\.json$/, ''), ts: rep.ts })
     }
   } catch { /* dir scan is best-effort; absence of reports is handled by per-gate verify */ }
   if (incoherent.length > 0) {
     console.error(`verify: INCOHERENT — ${incoherent.length} gate-report(s) at a sha ≠ summary ${summary.sha.slice(0, 7)} (piecemeal/mixed-SHA run): ${incoherent.slice(0, 8).join(', ')}`)
     console.error('  re-run the full orchestrator (`pnpm gates`) so all evidence is produced together at one sha')
     process.exit(1)
+  }
+  // #3 — per-gate freshness TTL: URL-gate evidence past its TTL is STALE even when the SHA matches
+  // (a lighthouse/axe result drifts with the live render). Static gates carry no TTL. FRESHNESS_TTL_OFF=1
+  // disables (the dogfood re-gate-then-verify edge, where ts is current anyway).
+  if (process.env.FRESHNESS_TTL_OFF !== '1') {
+    const ttlByGate = Object.fromEntries(GATES.filter(g => Number.isFinite(g.freshnessTtlMs)).map(g => [g.name, g.freshnessTtlMs]))
+    const stale = staleReportsByTtl(ttlByGate, gateReports, Date.now())
+    if (stale.length > 0) {
+      console.error(`verify: STALE — ${stale.length} URL-gate report(s) past freshness TTL (re-run the gates so the live-render evidence is current):`)
+      for (const s of stale.slice(0, 8)) console.error(`  ${s.gate} — ${Math.round(s.ageMs / 3_600_000)}h old (ttl ${Math.round(s.ttlMs / 3_600_000)}h)`)
+      process.exit(1)
+    }
   }
   if (args.requireFull) {
     if (summary.mode !== 'full') {
@@ -472,6 +495,11 @@ async function runGates(args) {
   )
 
   const { sha, dirty } = gitInfo(cwd, FRESHNESS_ALLOWLIST)
+  // #1 — roll every finding up into {block, warn, advise} totals across the run (feeds the FP-trend
+  // dashboard #2 + governance routing). Blockers carry severity 'block'; warnings 'warn' unless a gate
+  // opted one down to 'advise'.
+  const allFindings = []
+  for (const r of Object.values(results)) allFindings.push(...(r.blockers || []), ...(r.warnings || []))
   const summary = {
     toolkitVersion: toolkitVersion(),
     ts: new Date().toISOString(),
@@ -486,6 +514,7 @@ async function runGates(args) {
         { pass: r.pass, blockers: r.blockers, warnings: r.warnings, skipped: r.skipped, waived: r.waived, reason: r.reason },
       ]),
     ),
+    severityCounts: countSeverities(allFindings),
     pass: overallPass,
   }
   fs.writeFileSync(path.join(reportDirAbs, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`)

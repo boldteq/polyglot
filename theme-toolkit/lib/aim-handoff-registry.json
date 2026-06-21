@@ -1,8 +1,28 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "scope": "shopify-website",
   "title": "AIM v1 — Shopify Website Handoff Contract Registry",
   "note": "Single naming authority for agent-to-agent handoffs in the Shopify Website department. A contract's `requires[]` are the artifacts/upstream-contracts that MUST exist before the `to` agent may be dispatched (missing contract = no dispatch). `produces[]` are the artifacts the `from` agent emits on done. `gate` is the executable check that proves the contract. `aliases[]` are legacy names found in agent .md prose that resolve to this canonical event — do not introduce new variants. Human doctrine: ~/.claude/memory/patterns/good/aim-handoff-contract-registry.md. Consumed by check-handoff-contract.mjs.",
+  "enforcement": "all",
+  "enforcementNote": "#45 — EVERY handoff is dispatch-enforced: the orchestrator (atrium / Maestro session) MUST run `pnpm aim:verify <event>` and get exit 0 before dispatching the `to` agent(s). A contract may set `enforce:false` to opt a soft handoff out (none do today). #46/#47 (Sprint 4) add WIP-cap + availability refusal on top of this same pre-dispatch check.",
+  "signoffSchema": {
+    "_note": "#41 — a decision/recommendation contract attaches `signoff:{artifact}`; the artifact is JSON carrying confidence (0-100) + impact (rev/conv/dev/maint, 1-5). Validated by check-handoff-contract.mjs (checkSignoff) against THIS schema. Feeds Design Review Board (#39) + Red Team (#40) + escalation routing (#50).",
+    "type": "object",
+    "required": ["confidence", "impact"],
+    "properties": {
+      "confidence": { "type": "number", "minimum": 0, "maximum": 100 },
+      "impact": {
+        "type": "object",
+        "required": ["rev", "conv", "dev", "maint"],
+        "properties": {
+          "rev": { "type": "number", "minimum": 1, "maximum": 5 },
+          "conv": { "type": "number", "minimum": 1, "maximum": 5 },
+          "dev": { "type": "number", "minimum": 1, "maximum": 5 },
+          "maint": { "type": "number", "minimum": 1, "maximum": 5 }
+        }
+      }
+    }
+  },
   "contracts": [
     {
       "event": "intake_ready",
@@ -137,6 +157,7 @@
       "to": ["mantle"],
       "requires": ["qa_passed_ready"],
       "produces": ["docs/visual-quality-review.json"],
+      "signoff": { "artifact": "docs/visual-quality-review.json" },
       "gate": "visual-quality (#17) + visual-truth (#18, verify-ran)",
       "aliases": ["code_review_blocked"]
     },

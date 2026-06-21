@@ -64,14 +64,51 @@ export function gitInfo(cwd = process.cwd(), ignore = []) {
   }
 }
 
-function normalizeFindings(list) {
+// #1 — finding severity tier: 'block' (publish-stopping) · 'warn' (advisory) · 'advise' (soft/FYI).
+// ADDITIVE + backward-compatible by construction: severity is DERIVED from which array a finding sits
+// in — blockers are forced to 'block', warnings default to 'warn'. So nothing that blocks today stops
+// blocking; the tier only adds resolution. A gate opts a warning DOWN to 'advise' by setting
+// `severity:'advise'` on the finding (a warning can't opt UP to 'block' — that's what blockers[] is
+// for). The FP-trend dashboard (#2) + governance routing (#39/#40/#50) read severityCounts.
+const SEVERITIES = new Set(['block', 'warn', 'advise'])
+
+function normalizeFindings(list, defaultSeverity, forced = false) {
   if (!Array.isArray(list)) return []
+  const allowed = forced
+    ? new Set([defaultSeverity])
+    : (defaultSeverity === 'warn' ? new Set(['warn', 'advise']) : SEVERITIES)
   return list.map(f => ({
     id: String(f.id ?? 'unknown'),
     page: String(f.page ?? ''),
     detail: String(f.detail ?? ''),
     evidence: String(f.evidence ?? ''),
+    severity: allowed.has(f.severity) ? f.severity : defaultSeverity,
   }))
+}
+
+// Roll findings up into {block, warn, advise} counts. Pure — used in the per-gate report AND the
+// orchestrator summary rollup. A finding with no/unknown severity counts as 'warn' (the safe default).
+export function countSeverities(findings) {
+  const c = { block: 0, warn: 0, advise: 0 }
+  for (const f of findings || []) c[SEVERITIES.has(f?.severity) ? f.severity : 'warn'] += 1
+  return c
+}
+
+// #3 — per-gate freshness TTL. URL gates reflect a live render and go stale by WALL-CLOCK even at the
+// same git SHA (a lighthouse/axe score from days ago is not publish evidence). PURE: given a
+// {gateName → ttlMs} map and the per-gate reports [{gate, ts}], return the gates whose report age
+// exceeds their TTL. Gates with no TTL (static, deterministic from the tree) are never time-stale.
+export function staleReportsByTtl(ttlByGate, reports, nowMs) {
+  const stale = []
+  for (const r of reports || []) {
+    const ttl = ttlByGate?.[r.gate]
+    if (!Number.isFinite(ttl) || ttl <= 0) continue
+    const t = Date.parse(r.ts)
+    if (!Number.isFinite(t)) continue
+    const ageMs = nowMs - t
+    if (ageMs > ttl) stale.push({ gate: r.gate, ageMs, ttlMs: ttl })
+  }
+  return stale
 }
 
 // writeReport('editability', 3, { pass, blockers, warnings, evidence, url, duration_ms, cwd }, reportDir)
@@ -79,6 +116,8 @@ function normalizeFindings(list) {
 export function writeReport(gateName, gateNumber, data = {}, reportDir = process.env.REPORT_DIR || 'gate-reports') {
   const cwd = data.cwd ?? process.cwd()
   const { sha, dirty } = data.git ?? gitInfo(cwd)
+  const blockers = normalizeFindings(data.blockers, 'block', true)
+  const warnings = normalizeFindings(data.warnings, 'warn')
   const report = {
     gate: gateName,
     gateNumber,
@@ -88,8 +127,9 @@ export function writeReport(gateName, gateNumber, data = {}, reportDir = process
     dirty,
     url: data.url ?? null,
     pass: data.pass === true,
-    blockers: normalizeFindings(data.blockers),
-    warnings: normalizeFindings(data.warnings),
+    blockers,
+    warnings,
+    severityCounts: countSeverities([...blockers, ...warnings]),
     evidence: data.evidence ?? {},
     duration_ms: Number.isFinite(data.duration_ms) ? Math.max(0, Math.round(data.duration_ms)) : 0,
   }

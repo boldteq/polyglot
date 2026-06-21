@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "boldteq:shopify/goals.schema.json",
+  "schemaVersion": "1.0",
+  "title": "Boldteq Shopify Website — discovery goals.json contract (#13)",
+  "description": "The machine-readable brief every build anchors to (shopify-technical-goals-discovery.md §1). Top-level areas are REQUIRED as objects; the canonical lift-driving numeric fields accept a number OR null (null = unknown-at-discovery, never an adjective). Extra fields are allowed (additionalProperties is open) — niches add their own. This schema is the published TYPE contract agents author against + the validation pass that catches malformed shapes (e.g. a target captured as text). The QUALITY rules — empty priority_surfaces, missing cvr_target, adjective-as-target, stub brand-direction — are enforced procedurally by check-discovery.mjs, not here.",
+  "type": "object",
+  "required": ["revenue", "conversion", "seo", "performance"],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "niche": { "type": "string" },
+    "revenue": {
+      "type": "object",
+      "properties": {
+        "current_monthly": { "type": ["number", "null"] },
+        "baseline_monthly": { "type": ["number", "null"] },
+        "target_monthly": { "type": ["number", "null"] },
+        "aov_current": { "type": ["number", "null"] },
+        "aov_target": { "type": ["number", "null"] }
+      }
+    },
+    "conversion": {
+      "type": "object",
+      "properties": {
+        "cvr_current_pct": { "type": ["number", "null"] },
+        "cvr_target_pct": { "type": ["number", "null"] },
+        "priority_surfaces": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "seo": {
+      "type": "object",
+      "properties": {
+        "target_keywords": { "type": "array" }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "lcp_current_s": { "type": ["number", "null"] },
+        "lcp_target_s": { "type": ["number", "null"] },
+        "inp_target_ms": { "type": ["number", "null"] },
+        "cls_target": { "type": ["number", "null"] }
+      }
+    }
+  }
+}

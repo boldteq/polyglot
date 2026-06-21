@@ -16,6 +16,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { validate } from './lib/jsonschema.mjs'
 
 const REGISTRY = fileURLToPath(new URL('../lib/aim-handoff-registry.json', import.meta.url))
 
@@ -47,6 +48,33 @@ export function checkContract(registry, event, existsFn) {
   return { event, found: true, ready: requires.every(r => r.ok), from: c.from, to: c.to, requires }
 }
 
+// #45 — is this contract dispatch-enforced? Policy default is registry.enforcement === "all"; a
+// contract may opt out with enforce:false (none do today). Enforced + not-ready = orchestrator must
+// refuse the dispatch.
+export function isEnforced(registry, event) {
+  const c = (registry.contracts || []).find(x => x.event === event)
+  if (!c) return false
+  if (c.enforce === false) return false
+  if (c.enforce === true) return true
+  return registry.enforcement === 'all'
+}
+
+// #41 — PURE: validate a contract's sign-off artifact (confidence + impact) against registry.signoffSchema.
+// Contracts with no `signoff` block return required:false, ok:true (nothing to check). readFn(path) →
+// file contents string or null. A required-but-missing/invalid sign-off is ok:false so the caller
+// (dispatch gate) can refuse. Reuses the shared jsonschema validator.
+export function checkSignoff(registry, event, readFn) {
+  const c = (registry.contracts || []).find(x => x.event === event)
+  if (!c || !c.signoff || !c.signoff.artifact) return { required: false, ok: true, present: false, errors: [] }
+  const artifact = c.signoff.artifact
+  const raw = readFn(artifact)
+  if (raw == null) return { required: true, artifact, present: false, ok: false, errors: [{ path: artifact, message: 'sign-off artifact missing' }] }
+  let doc
+  try { doc = JSON.parse(raw) } catch (e) { return { required: true, artifact, present: true, ok: false, errors: [{ path: artifact, message: `invalid JSON: ${e.message}` }] } }
+  const errors = validate(doc, registry.signoffSchema || {})
+  return { required: true, artifact, present: true, ok: errors.length === 0, errors }
+}
+
 // ── CLI ───────────────────────────────────────────────────────────────────────────
 function main() {
   const argv = process.argv.slice(2)
@@ -60,12 +88,17 @@ function main() {
   if (!event) { console.error('usage: check-handoff-contract.mjs <event> | --list'); process.exit(2) }
   const dir = process.cwd()
   const existsFn = (p) => fs.existsSync(path.resolve(dir, p))
+  const readFn = (p) => { try { return fs.readFileSync(path.resolve(dir, p), 'utf-8') } catch { return null } }
   const r = checkContract(registry, event, existsFn)
   if (!r.found) { console.error(`check:handoff — unknown contract "${event}" (try --list)`); process.exit(2) }
-  console.log(`check:handoff — ${event} (${r.from} → ${Array.isArray(r.to) ? r.to.join(',') : r.to})`)
+  const so = checkSignoff(registry, event, readFn)
+  const enforced = isEnforced(registry, event)
+  console.log(`check:handoff — ${event} (${r.from} → ${Array.isArray(r.to) ? r.to.join(',') : r.to})${enforced ? ' [enforced]' : ''}`)
   for (const req of r.requires) console.log(`  ${req.ok ? '✓' : '✗'} ${req.id}${req.missing?.length ? ` — missing: ${req.missing.join(', ')}` : ''}${req.note ? ` (${req.note})` : ''}`)
-  console.log(r.ready ? `✓ READY to dispatch ${event}` : `✗ NOT READY — ${event} is missing inputs (no dispatch)`)
-  process.exit(r.ready ? 0 : 1)
+  if (so.required) console.log(`  ${so.ok ? '✓' : '✗'} sign-off ${so.artifact}${so.ok ? ' (confidence+impact ok)' : ` — ${so.errors.map(e => `${e.path}: ${e.message}`).join('; ')}`}`)
+  const ready = r.ready && so.ok
+  console.log(ready ? `✓ READY to dispatch ${event}` : `✗ NOT READY — ${event} (missing inputs / sign-off → no dispatch)`)
+  process.exit(ready ? 0 : 1)
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
