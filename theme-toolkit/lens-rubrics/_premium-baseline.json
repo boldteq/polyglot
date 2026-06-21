@@ -1,0 +1,31 @@
+{
+  "_doc": "Lens premium baseline (WS-B2, 2026-06-21). Distilled from ~/.claude/memory/patterns/good/ecom-brand-teardowns.md (decoder). lens-judge injects the niche's 2 reference brands' premium ATTRIBUTES as a CALIBRATION ANCHOR — 'this is what world-class looks like in this niche' — so the judge grades premium-feel against a real bar, NOT to force imitation. Keyed by LENS_NICHE substring; falls back to generic. Keep this small + curated; it is text-only (no images), so it never breaks the judge's independence guarantee.",
+  "generic": {
+    "attributes": [
+      "generous whitespace + a calm, uncrowded above-the-fold",
+      "ONE restrained accent color, not a rainbow of competing hues",
+      "real photography (lifestyle + product), never stock-looking or placeholder imagery",
+      "a single clear primary CTA per surface",
+      "one consistent type scale + one type personality",
+      "trust signals present but understated, not shouted"
+    ]
+  },
+  "niches": [
+    { "match": ["sleep", "supplement", "wellness", "vitamin", "nutrition"], "brands": [
+      { "name": "Ritual", "attributes": ["clinical-clean palette with lots of white", "transparency cues (ingredients, sourcing) surfaced early", "calm, restrained motion"] },
+      { "name": "Oura", "attributes": ["dark premium hero with a single focal product", "confident, minimal copy", "generous spacing, zero clutter"] }
+    ] },
+    { "match": ["beauty", "skincare", "cosmetic", "haircare", "makeup"], "brands": [
+      { "name": "Glossier", "attributes": ["soft editorial palette + airy whitespace", "UGC-style real photography", "one playful accent, restrained"] },
+      { "name": "Ceremonia", "attributes": ["warm earthy cohesive palette", "ingredient + ritual storytelling", "rounded friendly type with clear hierarchy"] }
+    ] },
+    { "match": ["apparel", "fashion", "clothing", "wear", "shoe", "footwear"], "brands": [
+      { "name": "Everlane", "attributes": ["stark editorial minimalism (B/W + one accent)", "full-bleed product photography", "radical-transparency trust cues"] },
+      { "name": "Allbirds", "attributes": ["natural muted palette", "lifestyle photography front-and-center", "calm, generous spacing"] }
+    ] },
+    { "match": ["food", "snack", "beverage", "coffee", "tea", "cpg"], "brands": [
+      { "name": "Magic Spoon", "attributes": ["bold playful palette held together by a strong grid", "hero product shot with appetite appeal", "punchy but legible type hierarchy"] },
+      { "name": "Olipop", "attributes": ["vibrant retro palette, disciplined", "clear benefit-led hero", "consistent rounded brand system"] }
+    ] }
+  ]
+}

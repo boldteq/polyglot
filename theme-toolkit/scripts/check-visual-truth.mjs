@@ -30,7 +30,12 @@ const t0 = Date.now()
 const cwd = process.cwd()
 const REPORT_DIR = process.env.REPORT_DIR || 'gate-reports'
 const LENS_DIR = path.resolve(cwd, REPORT_DIR, 'lens')
-const MIN_CONF = Number(process.env.VISUAL_TRUTH_MIN_CONFIDENCE || 80)
+const MIN_CONF_ENV = process.env.VISUAL_TRUTH_MIN_CONFIDENCE ? Number(process.env.VISUAL_TRUTH_MIN_CONFIDENCE) : null
+const MIN_CONF = MIN_CONF_ENV ?? 80 // representative value for the report; per-surface threshold via minConfFor (WS-B3)
+// Adaptive: high-stakes surfaces (hero/PDP/cart/collection) demand more judge certainty than secondary
+// ones — uncertainty on a money surface is a block; on /search or /account it warns. Explicit env overrides.
+const CRITICAL_SURFACES = new Set(['home', 'pdp', 'cart', 'collection'])
+const minConfFor = (surface) => MIN_CONF_ENV != null ? MIN_CONF_ENV : (CRITICAL_SURFACES.has(String(surface)) ? 90 : 75)
 const OVERFLOW_TOL = Number(process.env.LENS_OVERFLOW_TOLERANCE || 2)
 const REQUIRE = process.env.DS_REQUIRE_SCOPE === '1' || process.env.LENS_REQUIRE === '1'
 
@@ -57,7 +62,7 @@ function finish(envError, evidence = {}) {
 function writeHtml(manifest, verdictsByFrame) {
   const rows = (manifest.frames || []).map(f => {
     const id = `${f.surface}-${f.viewport}-${f.theme || 'light'}`
-    const v = verdictsByFrame.get(id) || verdictsByFrame.get(`${f.surface}-${f.viewport}`)
+    const v = verdictsByFrame.get(f.key) || verdictsByFrame.get(id) || verdictsByFrame.get(`${f.surface}-${f.viewport}`)
     const facts = [f.nav !== 'ok' && `nav:${f.nav}`, f.renderError && `render-error:${f.renderError}`, f.liquidError && `liquid:${f.liquidError}`, f.overflowPx > OVERFLOW_TOL && `overflow:${f.overflowPx}px`, f.brokenImages?.length && `${f.brokenImages.length} broken-img`, f.emptyShells?.length && `${f.emptyShells.length} empty-shell`, (f.cls ?? 0) > 0.1 && `CLS:${f.cls}`].filter(Boolean)
     const findings = (v?.findings || []).map(fd => `<li class="${fd.severity}"><b>${esc(fd.check)}</b> [${esc(fd.severity)}${fd.fix_owner ? ` → ${esc(fd.fix_owner)}` : ''}]: ${esc(fd.evidence)}</li>`).join('')
     const verdict = v ? `<span class="v ${v.verdict === 'PASS' ? 'pass' : 'fail'}">${esc(v.verdict)} ${esc(v.confidence)}%</span>` : '<span class="v none">no judge verdict</span>'
@@ -110,10 +115,12 @@ function main() {
   }
   const verdictsByFrame = new Map()
   for (const v of verdicts) {
+    if (v.key) verdictsByFrame.set(v.key, v) // primary: the frame key (surface-viewport[-state][-locale])
     const vpKey = String(v.viewport || '').includes('375') ? 'mobile' : String(v.viewport || '').includes('768') ? 'tablet' : String(v.viewport || '').includes('1440') ? 'desktop' : v.viewport
-    verdictsByFrame.set(`${v.surface}-${vpKey}`, v)
+    verdictsByFrame.set(`${v.surface}-${vpKey}`, v) // legacy fallback (dims-normalized)
     verdictsByFrame.set(`${v.surface}-${v.viewport}`, v)
   }
+  const verdictFor = (f) => verdictsByFrame.get(f.key) || verdictsByFrame.get(`${f.surface}-${f.viewport}`)
 
   // ── Capture coverage: defends the silent-skip hole (a build that captured desktop but quietly
   //    dropped mobile must not read as PASS — mobile is where hero/headline/art-direction defects hide).
@@ -122,8 +129,8 @@ function main() {
   //        NOT at mobile is a likely silent skip — surfaced as a warning until proven, then flip to block. ──
   if (verdicts.length) {
     for (const f of frames) {
-      if (!verdictsByFrame.get(`${f.surface}-${f.viewport}`)) {
-        const msg = `${f.surface} ${f.viewport}: frame captured but NOT vision-judged — a frame with no eyes on it isn't proof`
+      if (!verdictFor(f)) {
+        const msg = `${f.key || `${f.surface} ${f.viewport}`}: frame captured but NOT vision-judged — a frame with no eyes on it isn't proof`
         if (REQUIRE) add(blockers, 'vt.coverage-unjudged', f.surface, msg, f.url || '')
         else warnings.push({ id: 'vt.coverage-unjudged', page: f.surface, detail: msg, evidence: '' })
       }
@@ -145,7 +152,8 @@ function main() {
   for (const v of verdicts) {
     const at = `${v.surface} ${v.viewport}`
     if (v.verdict === 'FAIL') add(blockers, 'vt.frame-fail', v.surface, `${at}: vision judge verdict FAIL (confidence ${v.confidence}%)`, '')
-    if (Number(v.confidence) < MIN_CONF) add(blockers, 'vt.low-confidence', v.surface, `${at}: judge confidence ${v.confidence}% < ${MIN_CONF}% — uncertainty is a block; the page must be unambiguously right`, '')
+    const mc = minConfFor(v.surface)
+    if (Number(v.confidence) < mc) add(blockers, 'vt.low-confidence', v.surface, `${at}: judge confidence ${v.confidence}% < ${mc}% (${CRITICAL_SURFACES.has(String(v.surface)) ? 'critical' : 'secondary'} surface) — uncertainty is a block; the page must be unambiguously right`, '')
     for (const fd of (v.findings || [])) {
       allFindings.push({ ...fd, surface: v.surface, viewport: v.viewport })
       const detail = `${at}: ${fd.check} — ${fd.evidence}${fd.fix_owner ? ` (→ ${fd.fix_owner})` : ''}`

@@ -54,32 +54,48 @@ function loadRubric(surface) {
   try { return JSON.parse(fs.readFileSync(p, 'utf-8')) } catch { return null }
 }
 
+// Premium baseline (WS-B2): the niche's 2 reference brands' premium attributes, as a CALIBRATION ANCHOR
+// for premium-feel. Text-only (no images) → preserves the judge's independence guarantee. Computed once.
+function premiumBaseline(niche) {
+  try {
+    const j = JSON.parse(fs.readFileSync(path.join(RUBRICS_DIR, '_premium-baseline.json'), 'utf-8'))
+    const n = String(niche || '').toLowerCase()
+    const hit = (j.niches || []).find(e => (e.match || []).some(m => n.includes(m)))
+    if (hit && hit.brands) return hit.brands.map(b => `${b.name} — ${b.attributes.join('; ')}`).join('\n')
+    return (j.generic?.attributes || []).join('; ')
+  } catch { return '' }
+}
+const BASELINE = premiumBaseline(NICHE)
+
 function buildPrompt(frame, rubric, outPath) {
   const rest = path.join(LENS_DIR, frame.frames?.rest || '')
   const end = path.join(LENS_DIR, frame.frames?.scrollEnd || '')
   const clear = frame.frames?.restClear ? path.join(LENS_DIR, frame.frames.restClear) : ''
+  const extra = ['scroll25', 'scroll50', 'scroll75', 'hover'].filter(k => frame.frames?.[k]).map(k => `${k} = ${path.join(LENS_DIR, frame.frames[k])}`).join(' ; ')
   const dims = `${frame.width}x${frame.height}`
+  const fkey = frame.key || `${frame.surface}-${frame.viewport}`
   const checks = (rubric?.checks || []).map(c => `- ${c.id} [→ ${c.fix_owner}, ${c.severity_if_fail}]: ${c.rule}`).join('\n')
   // INDEPENDENCE: only the screenshot + rubric + brand/niche. No build artifacts.
   return [
     `You are Lens-Judge — an INDEPENDENT visual-truth reviewer for a ${NICHE} Shopify store ("${BRAND}"). You have NOT seen the build, the design spec, or any prior review. Judge ONLY what is rendered in the screenshots, like a first-time shopper.`,
-    `Surface: ${frame.surface} · Viewport: ${dims} (${frame.viewport})`,
-    `Read BOTH frames: rest = ${rest} ; scroll-end = ${end}`,
+    `Surface: ${frame.surface} · Viewport: ${dims} (${frame.viewport})${frame.state && frame.state !== 'base' ? ` · State: ${frame.state} (a specific page state — judge it as the shopper sees it)` : ''}${frame.locale && frame.locale !== 'default' ? ` · Locale: ${frame.locale} (check the localized text fits — no overflow/clipping/untranslated strings in this language)` : ''}`,
+    `Read the frames: rest = ${rest} ; scroll-end = ${end}${extra ? ` ; ${extra}` : ''}${extra ? '. The scroll-NN frames are mid-scroll evidence (catch lazy-load breakage); hover shows the primary CTA hover state.' : ''}`,
     clear ? `A consent/cookie overlay was present, so ALSO read rest-clear = ${clear} — it shows the above-the-fold page with that overlay DISMISSED. Judge the hero, headline-integrity, image-art-direction, hierarchy, layout, and text-over-image-contrast from rest-clear (the overlay hides them in 'rest'); judge the consent overlay itself (chrome-on-brand) from 'rest'.` : '',
     rubric?.viewport_notes ? `Viewport notes: ${rubric.viewport_notes}` : '',
     `Score each rubric check with PIXEL evidence (cite what you SEE + where). Report ONLY what is actually visible — do not invent.`,
     `Beyond the rubric, ALSO scan for CSS layout defects even when no rubric check names them — spacing collisions / overlapping elements, off-grid misalignment, wrapping failures (text or a flex row overflowing the viewport), typography-cascade breaks (a wrong font / size / weight bleeding into a section), and dark-mode contrast gaps if the surface renders dark. ALSO specifically: (1) headline-integrity — a decorative rule/divider/dash/border that splits a headline phrase into disconnected fragments at this viewport (esp. a desktop inline treatment becoming a full-width rule on mobile that bisects the headline) [blocker]; (2) image-art-direction — a hero/banner image whose mobile crop loses its subject (a blank/dark/subject-less patch) or lacks responsive art-direction [blocker]; (3) text-over-image-contrast — text over a photo / variable-luminance background with no scrim, washing out to low contrast [blocker]. Report each as a finding (fix_owner usually loom) under the closest rubric check id (headline-integrity / image-art-direction / text-over-image-contrast / css-layout) if none fits.`,
     `Rubric:\n${checks || '- broken-state: nothing broken/placeholder/overflow.'}`,
+    BASELINE ? `Premium baseline for this niche (calibrate the "premium-feel" check against these world-class references — judge whether THIS store reaches their bar; do NOT require imitation or penalize a different-but-equally-premium direction):\n${BASELINE}` : '',
     `verdict = FAIL if ANY blocker finding is present; else PASS. confidence = your certainty 0-100.`,
     `fix_owner routing (this OVERRIDES the rubric's default owner when the defect is clearly one of these): porter = STORE DATA (a store/brand NAME like a test placeholder, an EMPTY collection / "no products", unconfigured payment or trust icons, missing real product photography); ink = COPY text (typos, placeholder/[CLAIM] text, claims); drape = DESIGN system / brand direction (palette, type scale, premium-feel); loom = THEME CODE (layout, overflow, CSS, hierarchy, off-brand chrome). Otherwise use the rubric's owner for that check.`,
     `Write ONLY a JSON file to EXACTLY this path: ${outPath}`,
-    `JSON shape: {"surface":"${frame.surface}","viewport":"${dims}","verdict":"PASS"|"FAIL","confidence":0-100,"findings":[{"check":"<id>","severity":"blocker"|"warning","evidence":"<what you see + where>","fix_owner":"loom|drape|ink|porter|conduit"}],"passed_checks":["<id>"]}`,
+    `JSON shape: {"surface":"${frame.surface}","viewport":"${dims}","key":"${fkey}","verdict":"PASS"|"FAIL","confidence":0-100,"findings":[{"check":"<id>","severity":"blocker"|"warning","evidence":"<what you see + where>","fix_owner":"loom|drape|ink|porter|conduit"}],"passed_checks":["<id>"]}`,
     `Do not print anything else.`,
   ].filter(Boolean).join('\n\n')
 }
 
 function judgeFrame(frame, rubric) {
-  const outPath = path.join(JUDGE_DIR, `${frame.surface}-${frame.viewport}.json`)
+  const outPath = path.join(JUDGE_DIR, `${frame.key || `${frame.surface}-${frame.viewport}`}.json`)
   const prompt = buildPrompt(frame, rubric, outPath)
   return new Promise((resolve) => {
     const child = spawn(CLAUDE_BIN, ['-p', prompt, '--model', MODEL, '--no-session-persistence', '--output-format', 'json'], { cwd, stdio: ['ignore', 'ignore', 'pipe'] })

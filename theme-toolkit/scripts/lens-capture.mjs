@@ -22,6 +22,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -29,19 +30,63 @@ const REPORT_DIR = process.env.REPORT_DIR || 'gate-reports'
 const LENS_DIR = path.resolve(cwd, REPORT_DIR, 'lens')
 const DEP_HINT = 'npm ci --prefix toolkit && npx --prefix toolkit playwright install chromium'
 
+// 6 viewports (WS-A1). `device` = a Playwright device profile (real UA/touch/scale → iOS-Safari quirks)
+// applied when present; width/height always override so we pin the exact breakpoint. FAST depth uses the
+// 3 core widths; FULL adds 320 (small-mobile overflow), 414 (large-mobile), 1920 (wide-desktop).
 const VIEWPORTS = [
-  { name: 'mobile', width: 375, height: 812, isMobile: true, deviceScaleFactor: 2 },
-  { name: 'tablet', width: 768, height: 1024, isMobile: true, deviceScaleFactor: 2 },
-  { name: 'desktop', width: 1440, height: 900, isMobile: false, deviceScaleFactor: 1 },
+  { name: 'mobile-sm', width: 320, height: 568, isMobile: true, deviceScaleFactor: 2, device: 'iPhone SE', tier: 'full' },
+  { name: 'mobile', width: 375, height: 812, isMobile: true, deviceScaleFactor: 3, device: 'iPhone 13', tier: 'fast' },
+  { name: 'mobile-lg', width: 414, height: 896, isMobile: true, deviceScaleFactor: 2, device: 'iPhone 11', tier: 'full' },
+  { name: 'tablet', width: 768, height: 1024, isMobile: true, deviceScaleFactor: 2, device: 'iPad (gen 7)', tier: 'fast' },
+  { name: 'desktop', width: 1440, height: 900, isMobile: false, deviceScaleFactor: 1, tier: 'fast' },
+  { name: 'desktop-lg', width: 1920, height: 1080, isMobile: false, deviceScaleFactor: 1, tier: 'full' },
 ]
 // surface → path resolver key. PDP/collection auto-resolve from the storefront unless pinned.
 const DEFAULT_SURFACES = ['home', 'collection', 'pdp', 'cart', 'search', 'account']
+// LENS_DEPTH gates capture cost: fast (dev) = 3 core viewports + base frames; full (publish-grade) =
+// 6 viewports + mid-scroll + occluder-clear + content states + conditional per-locale (WS-A guardrail).
+const DEPTH = (process.env.LENS_DEPTH || (process.env.DS_REQUIRE_SCOPE === '1' || process.env.LENS_REQUIRE === '1' ? 'full' : 'fast')).toLowerCase()
+
+// ── PURE planning helpers (no browser/IO → hermetically testable; exported for the fixture) ──
+// The base frame KEY is backward-compatible: `surface-viewport` for the default state+locale (existing
+// judge verdicts/fixtures keep working); a non-base content state or non-default locale appends a suffix.
+export function frameKey({ surface, viewport, state = 'base', locale = 'default' }) {
+  return `${surface}-${viewport}${state && state !== 'base' ? `-${state}` : ''}${locale && locale !== 'default' ? `-${locale}` : ''}`
+}
+// Which image states to capture within ONE surface×viewport page visit. Mid-scroll/hover are EXTRA
+// images in the same frame-set (one judge verdict), NOT separate verdicts — keeps judge cost sane.
+export function frameStates(surface, depth) {
+  if (depth !== 'full') return ['rest', 'scrollEnd']
+  const long = ['home', 'pdp', 'collection'].includes(surface)
+  const states = ['rest']
+  if (long) states.push('scroll25', 'scroll50', 'scroll75')
+  states.push('scrollEnd')
+  if (['home', 'pdp'].includes(surface)) states.push('hover')
+  return states
+}
+// Content STATES that change the page (own frame-set → own verdict). Best-effort; skipped if setup fails.
+export function contentStates(surface, depth) {
+  if (depth !== 'full') return []
+  if (surface === 'cart') return ['populated']
+  return []
+}
+// The capture matrix: surface × viewport × locale × theme. Pure. (Image states handled within a visit.)
+export function planCaptures({ surfaces, viewports, locales = ['default'], themes = ['light'] }) {
+  const plan = []
+  for (const locale of locales) for (const vp of viewports) for (const theme of themes) for (const s of surfaces) {
+    plan.push({ surface: s.surface, url: s.url, viewport: vp.name, width: vp.width, height: vp.height, device: vp.device || null, theme, locale })
+  }
+  return plan
+}
+// Append ?locale=xx to a surface URL (PURE). Used only for non-default locales.
+export function addLocale(u, locale) { try { const x = new URL(u); x.searchParams.set('locale', locale); return x.toString() } catch { return u } }
 
 class EnvError extends Error {}
 const die = (code, msg) => { console.error(`lens-capture: ${code === 2 ? 'ENV-ERROR' : 'ERROR'} — ${msg}`); process.exit(code) }
 
 function parseArgs(argv) {
-  const out = { surfaces: [...DEFAULT_SURFACES], viewports: VIEWPORTS.map(v => v.name) }
+  // viewports null → main fills by DEPTH (fast = tier:'fast' three; full = all six)
+  const out = { surfaces: [...DEFAULT_SURFACES], viewports: null }
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === '--help' || a === '-h') { console.log('node lens-capture.mjs [--surfaces …] [--viewports …]'); process.exit(0) }
@@ -70,22 +115,54 @@ async function gotoWithAuth(page, url, password) {
 // modal otherwise occludes the hero, so the vision judge can't see it — gpt-test-1 2026-06-21).
 // Read-only (clicks an Accept control → sets a consent cookie + hides the banner) — safe in an
 // ephemeral capture context. Exact-label match + length cap keeps false-clicks ~nil. Returns true if it acted.
-async function dismissConsent(page) {
+async function dismissOccluders(page) {
   try {
     const acted = await page.evaluate(() => {
-      const RX = /^(accept all|accept|i accept|accept cookies|agree|i agree|allow all|allow|got it|ok|okay|enable all|continue|confirm)$/i
-      const cands = [...document.querySelectorAll('button, a[role="button"], [role="button"], input[type="button"], input[type="submit"]')]
+      const ACCEPT = /^(accept all|accept|i accept|accept cookies|agree|i agree|allow all|allow|got it|ok|okay|enable all|continue|confirm)$/i
+      const CLOSE = /^(close|dismiss|no thanks|no, thanks|maybe later|not now|×|✕|✖|x)$/i  // promo / exit-intent close glyphs + opt-outs
+      const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 4 && r.height > 4 && el.offsetParent !== null }
+      let did = false
+      const cands = [...document.querySelectorAll('button, a[role="button"], [role="button"], input[type="button"], input[type="submit"], [aria-label]')]
       for (const el of cands) {
         const label = (el.innerText || el.value || el.getAttribute('aria-label') || '').trim()
-        if (!label || label.length > 24 || !RX.test(label)) continue
-        const r = el.getBoundingClientRect()
-        if (r.width > 4 && r.height > 4 && el.offsetParent !== null) { el.click(); return true }
+        if (!label || label.length > 24) continue
+        const aria = (el.getAttribute('aria-label') || '')
+        if ((ACCEPT.test(label) || CLOSE.test(label) || /\b(close|dismiss)\b/i.test(aria)) && visible(el)) { el.click(); did = true }
       }
-      return false
+      return did
     })
     if (acted) await page.waitForTimeout(500)
     return acted
   } catch { return false }
+}
+
+// Conditional locale detection (WS-A3): return ['default'] for a single-language store, or
+// ['default', <secondary langs…>] when the storefront publishes >1 language (Shopify emits
+// <link rel="alternate" hreflang> per published locale). 'default' = primary (no ?locale, no key suffix).
+async function detectLocales(page) {
+  try {
+    const { primary, langs } = await page.evaluate(() => {
+      const primary = (document.documentElement.lang || '').split('-')[0].toLowerCase()
+      const langs = [...new Set([...document.querySelectorAll('link[rel="alternate"][hreflang]')]
+        .map(l => (l.getAttribute('hreflang') || '').split('-')[0].toLowerCase()).filter(h => h && h !== 'x-default'))]
+      return { primary, langs }
+    })
+    const secondary = langs.filter(l => l && l !== primary).slice(0, 3)
+    return secondary.length ? ['default', ...secondary] : ['default']
+  } catch { return ['default'] }
+}
+
+// Best-effort: add the first available variant of the resolved PDP to the cart (for the cart 'populated'
+// content state). Throws on failure so the caller skips that state without breaking the run.
+async function addToCart(page, surfaces) {
+  const pdp = (surfaces.find(s => s.surface === 'pdp') || {}).url
+  if (!pdp) throw new Error('no pdp to populate cart')
+  await page.goto(pdp, { waitUntil: 'load', timeout: 30_000 })
+  const vid = await page.evaluate(async () => {
+    try { const h = location.pathname.split('/products/')[1]?.split(/[?#]/)[0]; const r = await fetch(`/products/${h}.js`); const j = await r.json(); return (j.variants || []).find(v => v.available)?.id || j.variants?.[0]?.id || null } catch { return null }
+  })
+  if (!vid) throw new Error('no resolvable variant')
+  await page.evaluate(async (id) => { await fetch('/cart/add.js', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, quantity: 1 }) }) }, vid)
 }
 
 // Resolve the concrete URL for each requested surface against the live storefront.
@@ -160,11 +237,12 @@ async function main() {
   const previewUrl = process.env.THEME_PREVIEW_URL || null
   if (!previewUrl) die(2, 'THEME_PREVIEW_URL not set — Lens captures the staging/preview URL (mantle exposes it on the unpublished theme). For a client build: pass the preview link.')
   const password = process.env.THEME_STORE_PASSWORD || process.env.STOREFRONT_PASSWORD || null
-  const viewports = args.viewports.map(n => VIEWPORTS.find(v => v.name === n)).filter(Boolean)
+  const wantVpNames = args.viewports || VIEWPORTS.filter(v => DEPTH === 'full' || v.tier === 'fast').map(v => v.name)
+  const viewports = wantVpNames.map(n => VIEWPORTS.find(v => v.name === n)).filter(Boolean)
   if (!viewports.length) die(2, `no valid viewports (valid: ${VIEWPORTS.map(v => v.name).join(', ')})`)
 
-  let chromium
-  try { ({ chromium } = await import('playwright')) } catch { die(2, `missing dep: playwright — ${DEP_HINT}`) }
+  let chromium, devices
+  try { ({ chromium, devices } = await import('playwright')) } catch { die(2, `missing dep: playwright — ${DEP_HINT}`) }
 
   let browser
   try { browser = await chromium.launch({ headless: true }) }
@@ -175,82 +253,112 @@ async function main() {
   const origin = new URL(previewUrl).origin
   const frames = []
   const themes = process.env.LENS_DARK === '1' ? ['light', 'dark'] : ['light']
+  const rel = (p) => path.relative(LENS_DIR, p)
+
+  // One surface visit → a frame-SET: rest + (FULL: occluder-clear, mid-scroll 25/50/75 on long surfaces,
+  // hover on home/pdp) + scroll-end. The extra images are evidence in ONE verdict (keyed by frameKey),
+  // NOT separate judge calls — keeps judge cost = surfaces × viewports × locales × content-states.
+  async function captureVisit(page, { surface, url, vp, theme, locale, state = 'base' }) {
+    const dir = path.join(LENS_DIR, surface); fs.mkdirSync(dir, { recursive: true })
+    const gotoUrl = locale && locale !== 'default' ? addLocale(url, locale) : url
+    let nav = 'ok', renderError = null
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        await startCLS(page)
+        const resp = await page.goto(gotoUrl, { waitUntil: 'load', timeout: 45_000 })
+        const status = resp ? resp.status() : null
+        await page.waitForTimeout(1400) // settle hydration / lazy sections
+        const bodyText = await page.evaluate(() => (document.body.innerText || '').slice(0, 3000)).catch(() => '')
+        renderError = renderErrorIn(bodyText, status)
+        if (renderError && attempt === 1) { await page.waitForTimeout(1500); continue } // dev-server flake → retry once
+        nav = status && status >= 400 ? `http-${status}` : 'ok'
+        break
+      } catch (e) {
+        nav = `nav-failed: ${String(e.message).split('\n')[0].slice(0, 120)}`
+        if (attempt === 1) { await page.waitForTimeout(1200); continue }
+      }
+    }
+    const key = frameKey({ surface, viewport: vp.name, state, locale })
+    const tag = `${key}-${theme}`
+    const shot = async (label) => { const p = path.join(dir, `${tag}-${label}.png`); await page.screenshot({ path: p }).catch(() => {}); return rel(p) }
+    const imgStates = frameStates(surface, DEPTH)
+    const imgs = {}
+    const restMetrics = await domMetrics(page)
+    imgs.rest = await shot('rest')
+    // occluder-clear (consent/promo/exit-intent) AFTER rest so chrome-on-brand still fires on rest
+    if (await dismissOccluders(page)) { await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {}); await page.waitForTimeout(400); imgs.restClear = await shot('rest-clear') }
+    // mid-scroll evidence (FULL, long surfaces) — same verdict
+    for (const st of imgStates) {
+      const m = st.match(/^scroll(\d+)$/)
+      if (m) { const pct = Number(m[1]) / 100; await page.evaluate(p => window.scrollTo(0, document.documentElement.scrollHeight * p), pct).catch(() => {}); await page.waitForTimeout(500); imgs[st] = await shot(st) }
+    }
+    // hover the primary CTA (FULL, home/pdp)
+    if (imgStates.includes('hover')) {
+      await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {})
+      const hovered = await page.evaluate(() => { const b = document.querySelector('a.button, .button, button[name="add"], [data-hero] a, .banner a, .hero a'); if (b) { b.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return true } return false }).catch(() => false)
+      if (hovered) { await page.waitForTimeout(250); imgs.hover = await shot('hover') }
+    }
+    // scroll-end (lazy content + footer)
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)).catch(() => {})
+    await page.waitForTimeout(900)
+    imgs.scrollEnd = await shot('scrollend')
+    const cls = await readCLS(page).catch(() => null)
+    return {
+      surface, url: gotoUrl, key, state, locale, viewport: vp.name, theme, device: vp.device || null, width: vp.width, height: vp.height,
+      frames: imgs, nav, renderError, cls, overflowPx: restMetrics.overflowPx, brokenImages: restMetrics.brokenImgs,
+      emptyShells: restMetrics.emptyShells, liquidError: restMetrics.liquidError,
+    }
+  }
 
   try {
     // resolve surfaces once (uses a desktop page)
     const resCtx = await browser.newContext()
     const resPage = await resCtx.newPage()
-    await gotoWithAuth(resPage, previewUrl, password) // authenticate (sets the storefront_digest cookie on the context… but contexts are isolated, so re-auth per context below)
+    await gotoWithAuth(resPage, previewUrl, password) // authenticate (contexts are isolated, so re-auth per context below)
     const surfaces = await resolveSurfaceUrls(resPage, origin, password, args.surfaces)
+    if (DEPTH === 'full') { // error/edge surfaces (WS-A2) — own verdict, generic rubric fallback
+      surfaces.push({ surface: 'not-found', url: new URL('/lens-404-probe-zzqx', origin).toString() })
+      surfaces.push({ surface: 'search-empty', url: new URL('/search?q=zzqxnoresultsxyz', origin).toString() })
+    }
+    const locales = DEPTH === 'full' ? await detectLocales(resPage) : ['default'] // conditional (WS-A3)
     await resCtx.close()
     if (!surfaces.length) throw new EnvError('no surfaces resolved from the storefront')
 
-    for (const vp of viewports) {
-      for (const theme of themes) {
-        const ctx = await browser.newContext({
-          viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, deviceScaleFactor: vp.deviceScaleFactor,
-          colorScheme: theme === 'dark' ? 'dark' : 'light', hasTouch: vp.isMobile,
-        })
-        const page = await ctx.newPage()
-        const consoleErrors = []
-        page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 200)) })
-        page.on('pageerror', e => consoleErrors.push(`pageerror: ${String(e.message).slice(0, 200)}`))
-        const failedReq = []
-        page.on('requestfailed', r => failedReq.push(`${r.failure()?.errorText || 'failed'} ${r.url().slice(0, 120)}`))
-        // authenticate this isolated context once
-        try { await gotoWithAuth(page, previewUrl, password) } catch (e) { await ctx.close(); throw e }
+    for (const locale of locales) {
+      for (const vp of viewports) {
+        for (const theme of themes) {
+          const profile = (vp.device && devices && devices[vp.device]) ? devices[vp.device] : {} // real device UA/touch (WS-A1)
+          const ctx = await browser.newContext({
+            ...profile,
+            viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, deviceScaleFactor: vp.deviceScaleFactor,
+            colorScheme: theme === 'dark' ? 'dark' : 'light', hasTouch: vp.isMobile,
+          })
+          const page = await ctx.newPage()
+          const consoleErrors = []
+          page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 200)) })
+          page.on('pageerror', e => consoleErrors.push(`pageerror: ${String(e.message).slice(0, 200)}`))
+          const failedReq = []
+          page.on('requestfailed', r => failedReq.push(`${r.failure()?.errorText || 'failed'} ${r.url().slice(0, 120)}`))
+          try { await gotoWithAuth(page, previewUrl, password) } catch (e) { await ctx.close(); throw e }
 
-        for (const { surface, url } of surfaces) {
-          const dir = path.join(LENS_DIR, surface)
-          fs.mkdirSync(dir, { recursive: true })
-          consoleErrors.length = 0; failedReq.length = 0
-          let nav = 'ok', renderError = null
-          for (let attempt = 1; attempt <= 2; attempt += 1) {
-            try {
-              await startCLS(page)
-              const resp = await page.goto(url, { waitUntil: 'load', timeout: 45_000 })
-              const status = resp ? resp.status() : null
-              await page.waitForTimeout(1400) // settle hydration / lazy sections
-              const bodyText = await page.evaluate(() => (document.body.innerText || '').slice(0, 3000)).catch(() => '')
-              renderError = renderErrorIn(bodyText, status)
-              if (renderError && attempt === 1) { await page.waitForTimeout(1500); continue } // dev-server flake → retry once
-              nav = status && status >= 400 ? `http-${status}` : 'ok'
-              break
-            } catch (e) {
-              nav = `nav-failed: ${String(e.message).split('\n')[0].slice(0, 120)}`
-              if (attempt === 1) { await page.waitForTimeout(1200); continue }
+          for (const { surface, url } of surfaces) {
+            consoleErrors.length = 0; failedReq.length = 0
+            const f = await captureVisit(page, { surface, url, vp, theme, locale })
+            f.consoleErrors = [...consoleErrors].slice(0, 10); f.failedRequests = [...failedReq].slice(0, 8)
+            frames.push(f)
+            // content states that CHANGE the page (own verdict) — best-effort; never break the run
+            for (const st of contentStates(surface, DEPTH)) {
+              try {
+                consoleErrors.length = 0; failedReq.length = 0
+                if (st === 'populated' && surface === 'cart') await addToCart(page, surfaces)
+                const cf = await captureVisit(page, { surface, url, vp, theme, locale, state: st })
+                cf.consoleErrors = [...consoleErrors].slice(0, 10); cf.failedRequests = [...failedReq].slice(0, 8)
+                frames.push(cf)
+              } catch { /* content-state setup failed → skip */ }
             }
           }
-          const tag = `${vp.name}-${theme}`
-          // STATE 1: at-rest (above-the-fold)
-          const restMetrics = await domMetrics(page)
-          const restPng = path.join(dir, `${tag}-rest.png`)
-          await page.screenshot({ path: restPng }).catch(() => {})
-          // STATE 1b: dismiss a blocking consent overlay, then re-capture above-the-fold so the hero is
-          // judgeable (the overlay is already in `rest` → chrome-on-brand still catches it). Only when it acted.
-          let restClearPng = null
-          if (await dismissConsent(page)) {
-            await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {})
-            await page.waitForTimeout(400)
-            restClearPng = path.join(dir, `${tag}-rest-clear.png`)
-            await page.screenshot({ path: restClearPng }).catch(() => {})
-          }
-          // STATE 2: scroll-to-end (lazy content + footer)
-          await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)).catch(() => {})
-          await page.waitForTimeout(900)
-          const endPng = path.join(dir, `${tag}-scrollend.png`)
-          await page.screenshot({ path: endPng }).catch(() => {})
-          const cls = await readCLS(page).catch(() => null)
-          const rel = (p) => path.relative(LENS_DIR, p)
-          frames.push({
-            surface, url, viewport: vp.name, theme, width: vp.width, height: vp.height,
-            frames: { rest: rel(restPng), scrollEnd: rel(endPng), ...(restClearPng ? { restClear: rel(restClearPng) } : {}) },
-            nav, renderError, cls, overflowPx: restMetrics.overflowPx, brokenImages: restMetrics.brokenImgs,
-            emptyShells: restMetrics.emptyShells, liquidError: restMetrics.liquidError,
-            consoleErrors: [...consoleErrors].slice(0, 10), failedRequests: [...failedReq].slice(0, 8),
-          })
+          await ctx.close()
         }
-        await ctx.close()
       }
     }
   } catch (err) {
@@ -260,18 +368,21 @@ async function main() {
   await browser.close().catch(() => {})
 
   const manifest = {
-    tool: 'lens-capture', version: '1.0.0', previewUrl, origin,
+    tool: 'lens-capture', version: '1.1.0', previewUrl, origin, depth: DEPTH,
     capturedAt_ms: t0, duration_ms: Date.now() - t0,
-    viewports: viewports.map(v => v.name), themes, surfaceCount: new Set(frames.map(f => f.surface)).size,
-    frameCount: frames.length, frames,
+    viewports: viewports.map(v => v.name), themes, locales: [...new Set(frames.map(f => f.locale))],
+    surfaceCount: new Set(frames.map(f => f.surface)).size, frameCount: frames.length, frames,
   }
   const manifestPath = path.join(LENS_DIR, 'lens-manifest.json')
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-  console.log(`lens-capture: captured ${frames.length} frame-set(s) across ${manifest.surfaceCount} surface(s) × ${viewports.length} viewport(s) → ${path.relative(cwd, manifestPath)}`)
+  console.log(`lens-capture: ${frames.length} frame-set(s) · ${manifest.surfaceCount} surface(s) × ${viewports.length} viewport(s) × ${manifest.locales.length} locale(s) [depth=${DEPTH}] → ${path.relative(cwd, manifestPath)}`)
   // surface any hard render facts immediately (the judge will see these + the pixels)
   const hard = frames.filter(f => f.nav !== 'ok' || f.renderError || f.liquidError || f.overflowPx > 1 || f.brokenImages.length)
-  for (const f of hard) console.log(`  ⚠ ${f.surface} ${f.viewport}/${f.theme}: ${[f.nav !== 'ok' && f.nav, f.renderError && `render-error:"${f.renderError}"`, f.liquidError && `liquid:"${f.liquidError}"`, f.overflowPx > 1 && `overflow ${f.overflowPx}px`, f.brokenImages.length && `${f.brokenImages.length} broken img`].filter(Boolean).join(' · ')}`)
+  for (const f of hard) console.log(`  ⚠ ${f.key}/${f.theme}: ${[f.nav !== 'ok' && f.nav, f.renderError && `render-error:"${f.renderError}"`, f.liquidError && `liquid:"${f.liquidError}"`, f.overflowPx > 1 && `overflow ${f.overflowPx}px`, f.brokenImages.length && `${f.brokenImages.length} broken img`].filter(Boolean).join(' · ')}`)
   process.exit(0)
 }
 
-main().catch(err => die(2, `unexpected failure: ${err.message}`))
+// run as CLI only — importable for tests (planCaptures/frameStates/frameKey) without side effects
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  main().catch(err => die(2, `unexpected failure: ${err.message}`))
+}

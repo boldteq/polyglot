@@ -178,6 +178,10 @@ const GATES = [
   // no new sections (not applicable — never false-BLOCKs a refresh). Phase A warn-only by default;
   // REUSE_MAP_ENFORCE=1 flips to BLOCK after the ≥2-store dogfood. Covered by --static-only + --require-full.
   { name: 'reuse-map', number: 23, kind: 'static', runner: 'node', script: 'check-reuse-map.mjs' },
+  // Art-direction (#24, WS-C) — deterministic complement to Lens #18: when design-system.json declares
+  // imagery.art_direction, hero/banner must render responsive sources (<picture>/srcset/image_tag).
+  // WARN-ONLY (ART_DIRECTION_ENFORCE=1 to BLOCK after ≥2 stores); SKIPS when art_direction not declared.
+  { name: 'art-direction', number: 24, kind: 'static', runner: 'node', script: 'check-art-direction.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────

@@ -10,6 +10,9 @@
     { "id": "chrome-on-brand", "rule": "consent/announcement chrome on-brand AND not covering any buy-box control", "severity_if_fail": "blocker", "fix_owner": "loom" },
     { "id": "premium-feel", "rule": "intentional premium per the niche scorecard, not a generic demo", "severity_if_fail": "warning", "fix_owner": "drape" },
     { "id": "headline-integrity", "rule": "the product title (H1) and any section headline stay visually contiguous on EVERY viewport — no decorative rule/divider/dash/border-pseudo-element splits a headline phrase into disconnected pieces (watch the mobile breakpoint).", "severity_if_fail": "blocker", "fix_owner": "loom" },
-    { "id": "image-art-direction", "rule": "product gallery / lifestyle imagery keeps its subject at EVERY viewport — the mobile crop shows the product, never a blank/subject-less patch from a desktop image cropped by the mobile container.", "severity_if_fail": "blocker", "fix_owner": "loom" }
+    { "id": "image-art-direction", "rule": "product gallery / lifestyle imagery keeps its subject at EVERY viewport — the mobile crop shows the product, never a blank/subject-less patch from a desktop image cropped by the mobile container.", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "typography-hierarchy", "rule": "heading sizes descend h1 (title) > h2 > h3 at EVERY viewport — no inversion (a section h2 larger than the product title) and no flattening on mobile reflow.", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "decorative-element-integrity", "rule": "decorative elements (trust badges, dividers, accent shapes) are intentional, aligned, and present at every viewport — none missing, clipped, or misaligned.", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "a11y-focus-visible", "rule": "variant selectors + ATC show a visible focus state and a logical order; the ATC is reachable. Flag invisible focus or an ATC lost against the background.", "severity_if_fail": "warning", "fix_owner": "loom" }
   ],
   "sources": ["theme-page-recipes.md#pdp", "design/ecom/niche-dna-packs/<niche>.json", "patterns/good/ecom-funnel-cro-playbook.md"] }
