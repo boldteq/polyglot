@@ -11,6 +11,7 @@ before(async () => {
   const express = require('express');
   const { router } = require('./workspace.js');
   const app = express();
+  app.use(express.json()); // dispatch route reads req.body (prod mounts this globally)
   app.use('/api', router);
   await new Promise((resolve) => { server = app.listen(0, '127.0.0.1', resolve); });
   base = `http://127.0.0.1:${server.address().port}`;
@@ -38,6 +39,21 @@ function post(path) {
     });
     req.on('error', reject);
     req.end();
+  });
+}
+
+function postJson(path, obj) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(`${base}${path}`);
+    const payload = JSON.stringify(obj);
+    const req = http.request({ hostname: u.hostname, port: u.port, path: u.pathname, method: 'POST', agent: false,
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } }, (res) => {
+      let body = '';
+      res.on('data', (c) => { body += c; });
+      res.on('end', () => resolve({ status: res.statusCode, json: (() => { try { return JSON.parse(body); } catch { return null; } })() }));
+    });
+    req.on('error', reject);
+    req.end(payload);
   });
 }
 
@@ -172,6 +188,26 @@ test('Cockpit: env-gated action returns blocked (not spawned) when env missing',
   assert.equal(r.status, 202);
   assert.equal(r.json.status, 'blocked');       // never spawned
   assert.match(r.json.log, /missing env/i);
+});
+
+test('Dispatch: builds a roster agent prompt; rejects non-roster + bad input', async () => {
+  const list = await get('/api/workspace/builds');
+  if (!list.json.builds.length) return;
+  const id = list.json.builds[0].buildId;
+
+  const ok = await postJson(`/api/workspace/builds/${id}/dispatch`, { agent: 'loom', task: 'fix hero spacing' });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.json.agentName, 'loom');
+  assert.match(ok.json.threadId, /^wsd-/);
+  assert.match(ok.json.prompt, /theme repo is at/i);
+  assert.match(ok.json.prompt, /live store/i);
+  assert.match(ok.json.prompt, /local theme edits only/i);
+
+  const nonRoster = await postJson(`/api/workspace/builds/${id}/dispatch`, { agent: 'koda', task: 'x' });
+  assert.equal(nonRoster.status, 403);
+
+  const noTask = await postJson(`/api/workspace/builds/${id}/dispatch`, { agent: 'loom' });
+  assert.equal(noTask.status, 400);
 });
 
 test('Cockpit: design-system route returns present flag', async () => {

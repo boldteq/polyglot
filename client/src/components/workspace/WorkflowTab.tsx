@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Circle, Loader2, FileCheck2, FileX2, Play, Lock } from 'lucide-react'
+import { CheckCircle2, Circle, Loader2, FileCheck2, FileX2, Play, Lock, Bot } from 'lucide-react'
 import { Spinner } from '../Skeleton'
 import { formatAgentDisplay } from '../../lib/agentDisplay'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
+import { openDispatch } from '../../lib/dispatch'
 import { getWorkspaceBuildPipeline, getWorkspaceActions, type PipelineStep, type ActionDef } from '../../lib/api'
 
 // Pipeline step key → the safe action that advances/verifies it. Steps not here
@@ -68,7 +69,14 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged }: { buildId
                     <code className="truncate">{s.artifact}</code>
                   </div>
                 </div>
-                <div className="shrink-0">
+                <div className="shrink-0 flex items-center gap-1.5">
+                  {s.owner && (
+                    <button onClick={() => openDispatch({ buildId, agent: s.owner, task: `Step ${s.step} — ${s.title}: ` })}
+                      title={`Dispatch ${owner} for this step`}
+                      className="btn-ghost btn-sm flex items-center gap-1 text-[11px]">
+                      <Bot className="w-3 h-3" /> Send
+                    </button>
+                  )}
                   {action ? (
                     <button onClick={() => trigger(action)} disabled={runningId === action.id || !action.available}
                       title={action.available ? action.description : (action.unavailableReason || '')}

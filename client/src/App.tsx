@@ -8,6 +8,7 @@ import WorkspaceShell from './components/WorkspaceShell'
 import AiAssistant from './components/AiAssistant'
 import { ToastContainer } from './components/Toast'
 import { ConfirmHost } from './lib/confirm'
+import { DispatchHost } from './lib/dispatch'
 import CommandPalette from './components/CommandPalette'
 import { useApi } from './hooks/useApi'
 import { getProjects } from './lib/api'
@@ -158,6 +159,7 @@ export default function App() {
       <CommandPalette />
       <ToastContainer />
       <ConfirmHost />
+      <DispatchHost />
 
       {/* AI assistant */}
       {aiOpen && (

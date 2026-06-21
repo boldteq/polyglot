@@ -25,7 +25,7 @@ const { listActions } = require('../lib/workspace/actionRegistry');
 const { findBuildArtifacts } = require('../lib/workspace/findBuildArtifacts');
 const { deriveCurrentStep } = require('../lib/workspace/currentStep');
 const { computeBuildScore } = require('../lib/workspace/computeBuildScore');
-const { platformAgentActivity, buildAgentActivity } = require('../lib/workspace/projectFilter');
+const { platformAgentActivity, buildAgentActivity, rosterFor } = require('../lib/workspace/projectFilter');
 const gatesSpec = require('../lib/workspace/gatesSpec.json');
 const pipelineSpec = require('../lib/workspace/pipelineSpec.json');
 const { bus, startDiskWatcher } = require('../lib/workspace/diskWatcher');
@@ -516,6 +516,43 @@ router.get('/workspace/builds/:buildId/design-system', (req, res) => {
     res.json(parseDesignSystem(dir));
   } catch (err) {
     console.error('[workspace] /design-system failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/workspace/builds/:buildId/dispatch — build a context-prefixed prompt
+// to dispatch the owning agent against this build. Returns { agentName, prompt,
+// threadId } that the client drives through the existing /api/playground/run
+// pipeline (reattach-surviving). Server resolves the dir (never a client path)
+// and restricts the agent to the build's platform roster.
+router.post('/workspace/builds/:buildId/dispatch', (req, res) => {
+  try {
+    const dir = resolveBuildDir(req.params.buildId);
+    if (!dir) return res.status(404).json({ error: 'build not found' });
+    const { agent, task } = req.body || {};
+    if (!agent || typeof agent !== 'string') return res.status(400).json({ error: 'agent required' });
+    if (!task || typeof task !== 'string' || task.length > 4000) return res.status(400).json({ error: 'task required (≤4000 chars)' });
+
+    const platform = platformForDir(dir);
+    if (!rosterFor(platform).includes(agent)) {
+      return res.status(403).json({ error: `agent "${agent}" is not on the ${platform} roster` });
+    }
+
+    const client = buildClientLabel(dir);
+    const prompt = [
+      `You are working on the Shopify theme build for client "${client}".`,
+      `The theme repo is at: ${dir}`,
+      `Read/edit files there as needed (use absolute paths). Do NOT push, publish, or write to the live store — local theme edits only.`,
+      ``,
+      `Task:`,
+      task.trim(),
+    ].join('\n');
+
+    // Stable per-build thread so a reload can reattach to a running dispatch.
+    const threadId = `wsd-${req.params.buildId}`.slice(0, 64);
+    res.json({ agentName: agent, prompt, threadId });
+  } catch (err) {
+    console.error('[workspace] dispatch build failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

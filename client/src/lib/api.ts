@@ -252,6 +252,14 @@ export interface DesignSystemData { present: boolean; system: Record<string, unk
 export const getWorkspaceDesignSystem = (buildId: string) =>
   request<DesignSystemData>(`/workspace/builds/${encodeURIComponent(buildId)}/design-system`)
 
+// Agent dispatch (cockpit) — builds the context prompt; the drawer drives it
+// through the existing /api/playground/run pipeline (reattach-surviving).
+export interface DispatchPayload { agentName: string; prompt: string; threadId: string }
+export const buildWorkspaceDispatch = (buildId: string, agent: string, task: string) =>
+  request<DispatchPayload>(`/workspace/builds/${encodeURIComponent(buildId)}/dispatch`, {
+    method: 'POST', body: JSON.stringify({ agent, task }),
+  })
+
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
 export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }
 export interface ProjectPage { slug: string; title: string; status: string; preview_url: string | null; gates: Record<string, unknown>; updated_at: string | null }
@@ -2864,15 +2872,33 @@ export type LearningStreamEvent =
   | { type: 'candidate'; staged: number }
   | { type: 'reviewed'; id: string; status: string }
 
-export function subscribeLearningStream(onEvent: (e: LearningStreamEvent) => void): EventSource {
-  const es = new EventSource(`${BASE}/learning/inbox/stream`)
-  const parse = (ev: MessageEvent): Record<string, unknown> => {
-    try { return ev.data ? JSON.parse(ev.data) : {} } catch (e) { console.warn('[learning/stream parse]', e); return {} }
+// Shared singleton — Sidebar AND the cache-invalidation layer (cacheKeys.ts) both
+// subscribe. A fresh EventSource per caller opened TWO connections to the same
+// stream, and the browser's 6-per-host HTTP/1.1 cap means every wasted persistent
+// connection can stall an unrelated fetch (this is what hung the settings save).
+// One EventSource, fan-out to all listeners; closed when the last listener leaves.
+let _learnES: EventSource | null = null
+const _learnListeners = new Set<(e: LearningStreamEvent) => void>()
+
+export function subscribeLearningStream(onEvent: (e: LearningStreamEvent) => void): { close: () => void } {
+  _learnListeners.add(onEvent)
+  if (!_learnES) {
+    const es = new EventSource(`${BASE}/learning/inbox/stream`)
+    const parse = (ev: MessageEvent): Record<string, unknown> => {
+      try { return ev.data ? JSON.parse(ev.data) : {} } catch (e) { console.warn('[learning/stream parse]', e); return {} }
+    }
+    const emit = (e: LearningStreamEvent) => _learnListeners.forEach((fn) => fn(e))
+    es.addEventListener('ready', (ev: MessageEvent) => emit({ type: 'ready', pending: Number(parse(ev).pending ?? 0) }))
+    es.addEventListener('candidate', (ev: MessageEvent) => emit({ type: 'candidate', staged: Number(parse(ev).staged ?? 1) }))
+    es.addEventListener('reviewed', (ev: MessageEvent) => emit({ type: 'reviewed', id: String(parse(ev).id ?? ''), status: String(parse(ev).status ?? '') }))
+    _learnES = es
   }
-  es.addEventListener('ready', (ev: MessageEvent) => onEvent({ type: 'ready', pending: Number(parse(ev).pending ?? 0) }))
-  es.addEventListener('candidate', (ev: MessageEvent) => onEvent({ type: 'candidate', staged: Number(parse(ev).staged ?? 1) }))
-  es.addEventListener('reviewed', (ev: MessageEvent) => onEvent({ type: 'reviewed', id: String(parse(ev).id ?? ''), status: String(parse(ev).status ?? '') }))
-  return es
+  return {
+    close: () => {
+      _learnListeners.delete(onEvent)
+      if (_learnListeners.size === 0 && _learnES) { _learnES.close(); _learnES = null }
+    },
+  }
 }
 
 // ── Brain (Phase F: self-improving loop — Training Review + timeline) ─────────
