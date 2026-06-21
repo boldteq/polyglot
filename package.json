@@ -16,6 +16,7 @@
     "changes:check": "node scripts/check-changes-list.mjs",
     "audit:dead-pages": "node scripts/audit-dead-pages.mjs",
     "brain:run": "node scripts/brain-run.mjs",
+    "results:register": "node scripts/register-build-schedules.mjs",
     "test": "node --test --test-force-exit src/",
     "test:brain": "node scripts/brain-proof.mjs"
   },

@@ -426,6 +426,7 @@ app.listen(PORT, HOST, () => {
     { id: 'sys-brain-aggregate', hours: catchupHours },
     { id: 'sys-intel-eval', hours: WEEKLY_CATCHUP_HOURS }, // CALIBRATE the judge
     { id: 'sys-tutor', hours: WEEKLY_CATCHUP_HOURS },       // ACT — apply auto-approved patches (was never invoked)
+    { id: 'sys-build-schedules', hours: 1 },                // run DUE post-publish checkpoints (watch + results) — catch up an asleep Mac
   ];
   const runCatchups = (phase) => {
     for (const { id, hours } of BOOT_CATCHUP) {
