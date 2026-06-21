@@ -26,6 +26,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { diffOutcomes, persistedKeys, readOutcomes, appendOutcomes, findingKey } from './lib/lens-fix-outcomes.mjs'
 
 const cwd = process.cwd()
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -34,7 +35,10 @@ const LENS_DIR = path.resolve(cwd, REPORT_DIR, 'lens')
 const JUDGE_DIR = path.join(LENS_DIR, 'judge')
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
 const FIX_MODEL = process.env.LENS_FIX_MODEL || 'sonnet'
-const MAX_ROUNDS = Number(process.env.LENS_MAX_ROUNDS || 3)
+// Round cap by theme base (WS-E2): Dawn is custom-heavy → needs more rounds; Minimog is config-rich → fewer.
+function detectThemeBase() { try { const m = fs.readFileSync(path.join(cwd, 'CHANGES.md'), 'utf-8').match(/theme[_-]?base\s*[:=]\s*["']?([a-z]+)/i); if (m) return m[1].toLowerCase() } catch { /* default below */ } return 'minimog' }
+const THEME_BASE = detectThemeBase()
+const MAX_ROUNDS = Number(process.env.LENS_MAX_ROUNDS || (THEME_BASE === 'dawn' ? 5 : 3))
 const VIEWPORTS = process.env.LENS_VIEWPORTS || 'mobile,desktop'
 const CODE_OWNERS = new Set(['loom', 'drape', 'ink', 'conduit'])  // fix theme files
 const DATA_OWNERS = new Set(['porter'])                            // store data → escalate
@@ -118,6 +122,10 @@ async function main() {
 
   // null = all surfaces; LENS_SURFACES constrains the set (also limits re-captures to the affected subset)
   let affected = process.env.LENS_SURFACES ? process.env.LENS_SURFACES.split(',').map(s => s.trim()).filter(Boolean) : null
+  const outDir = process.env.LENS_OUTCOMES_DIR || cwd
+  const persisted = persistedKeys(readOutcomes(outDir)) // check::surface::vp already tried + failed → don't repeat
+  let prevFindings = []
+  console.log(`lens-autofix: theme base = ${THEME_BASE}, max ${MAX_ROUNDS} round(s)${persisted.size ? `, ${persisted.size} prior persisted finding(s) loaded` : ''}`)
   for (let round = 1; round <= MAX_ROUNDS; round += 1) {
     console.log(`\n── lens-autofix round ${round}/${MAX_ROUNDS} ──`)
     const capArgs = ['--viewports', VIEWPORTS, ...(affected ? ['--surfaces', affected.join(',')] : [])]
@@ -131,19 +139,29 @@ async function main() {
     if (enforce.code === 0) { console.log(`\nlens-autofix: ✅ CONVERGED in ${round} round(s) — Lens PASS.`); process.exit(0) }
 
     const findings = blockerFindings()
+    // fix-outcomes learning (WS-E1): classify last round's findings (resolved vs persisted), record them,
+    // and refuse to retry a fix that already FAILED — escalate those instead of looping the same edit.
+    const diff = diffOutcomes(prevFindings, findings)
+    appendOutcomes(outDir, round, diff, new Date().toISOString())
+    for (const o of diff) if (o.result === 'persisted') persisted.add(`${o.check}::${o.surface}::${o.viewport || ''}`)
+    prevFindings = findings
+
     const code = findings.filter(f => CODE_OWNERS.has(f.fix_owner))
     const data = findings.filter(f => !CODE_OWNERS.has(f.fix_owner)) // porter / store-data
+    const giveUp = code.filter(f => persisted.has(findingKey(f)))    // already tried + failed → don't repeat the same fix
+    const retryable = code.filter(f => !persisted.has(findingKey(f)))
     affected = [...new Set(findings.map(f => f.surface))]
     const porterOptIn = process.env.LENS_AUTOFIX_PORTER === '1'
+    if (giveUp.length) console.log(`  ↯ ${giveUp.length} finding(s) persisted after a prior fix → NOT retrying the same approach (escalating these).`)
 
-    // nothing actionable this round → escalate + stop (store mutations stay gated unless opted in)
-    if (!code.length && !(data.length && porterOptIn)) {
-      console.log(`lens-autofix: no auto-fixable findings left (${data.length} store-data → porter/human).`)
-      escalate(data.length ? data : findings, round); process.exit(1)
+    // nothing NEW to try this round → escalate + stop (give-ups + store-data, unless porter opted in)
+    if (!retryable.length && !(data.length && porterOptIn)) {
+      console.log(`lens-autofix: no NEW auto-fixable findings (${giveUp.length} persisted give-up, ${data.length} store-data → porter/human).`)
+      escalate([...giveUp, ...data].length ? [...giveUp, ...data] : findings, round); process.exit(1)
     }
     // theme-code owners → fix files (sequential — avoid concurrent edits to the same theme)
     const byOwner = {}
-    for (const f of code) (byOwner[f.fix_owner] = byOwner[f.fix_owner] || []).push(f)
+    for (const f of retryable) (byOwner[f.fix_owner] = byOwner[f.fix_owner] || []).push(f)
     for (const [owner, fs2] of Object.entries(byOwner)) {
       console.log(`  → ${owner}: fixing ${fs2.length} finding(s)…`)
       const r = await dispatchFix(owner, fs2)

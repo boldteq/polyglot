@@ -25,6 +25,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { writeReport } from './lib/report.mjs'
+import { applyRegressionRegistry, readRegistry, writeRegistry } from './lib/lens-regressions.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -155,7 +156,7 @@ function main() {
     const mc = minConfFor(v.surface)
     if (Number(v.confidence) < mc) add(blockers, 'vt.low-confidence', v.surface, `${at}: judge confidence ${v.confidence}% < ${mc}% (${CRITICAL_SURFACES.has(String(v.surface)) ? 'critical' : 'secondary'} surface) — uncertainty is a block; the page must be unambiguously right`, '')
     for (const fd of (v.findings || [])) {
-      allFindings.push({ ...fd, surface: v.surface, viewport: v.viewport })
+      allFindings.push({ ...fd, surface: v.surface, viewport: v.viewport, key: v.key })
       const detail = `${at}: ${fd.check} — ${fd.evidence}${fd.fix_owner ? ` (→ ${fd.fix_owner})` : ''}`
       if (fd.severity === 'blocker' || /broken|overflow|placeholder|missing|error|illegible|cut off|cut-off/i.test(`${fd.check} ${fd.evidence}`) && fd.severity === 'blocker') add(blockers, 'vt.blocker-finding', v.surface, detail, fd.check)
       else warnings.push({ id: 'vt.finding', page: v.surface, detail, evidence: fd.check })
@@ -171,6 +172,21 @@ function main() {
       // a systemic warning-level finding escalates to a blocker (it's not a one-off polish nit)
       if (!blockers.some(b => b.id === 'vt.blocker-finding' && b.evidence === check)) add(blockers, 'vt.inconsistent', 'store-wide', detail, check)
     }
+  }
+
+  // ── Regression registry (WS-D): a finding that was CLEARED then returns escalates one tier ("the same
+  //    bug shipped twice"). Active at publish-grade (or LENS_REGRESSIONS=1); per-store state file. ──
+  if (REQUIRE || process.env.LENS_REGRESSIONS === '1') {
+    const regDir = process.env.LENS_REGISTRY_DIR || cwd
+    const now = new Date().toISOString()
+    const cur = allFindings.map(f => ({ check: f.check, surface: f.surface, key: f.key }))
+    const { escalations, registry } = applyRegressionRegistry(cur, readRegistry(regDir), now)
+    for (const esc of escalations) {
+      const detail = `${esc.surface}: "${esc.check}" REGRESSED — cleared before, back again (×${esc.recurrences}). A fixed defect shipped twice; fix at the source + add a guard.`
+      if (REQUIRE) add(blockers, 'vt.regression', esc.surface, detail, esc.check)
+      else warnings.push({ id: 'vt.regression', page: esc.surface, detail, evidence: esc.check })
+    }
+    writeRegistry(regDir, registry)
   }
 
   writeHtml(manifest, verdictsByFrame)
