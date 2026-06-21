@@ -35,6 +35,9 @@ export const CacheKeys = {
   brainPatches: (status: string) => `brain/patches/${status}`,
   brainSignals: (status: string) => `brain/signals/${status}`,
   brainTimeline: 'brain/timeline',
+  // Decision Journal (v30). brain/ prefix → auto-invalidated by the brain SSE
+  // handler below on the route's `decision-resolved` memory event.
+  brainDecisions: 'brain/decisions/unresolved',
 } as const
 
 // Keys that reflect the agent registry — refetched on any agent mutation.

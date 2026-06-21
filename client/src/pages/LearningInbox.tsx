@@ -2,15 +2,16 @@ import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Inbox, Check, X, Pencil, Loader2, AlertCircle, RefreshCw,
-  Lightbulb, Bug, GitBranch, MessageSquareWarning, Sparkles, BookOpen,
+  Lightbulb, Bug, GitBranch, MessageSquareWarning, Sparkles,
   GraduationCap, Clock, ScanLine, ArrowRight, Keyboard, TrendingUp, Brain,
   Search, SearchX, User, Heart, AlertTriangle, CircleDot, TrendingDown,
+  Play, Plus, History,
   type LucideIcon,
 } from 'lucide-react'
 import {
-  getLearningInbox, approveCandidate, rejectCandidate, editCandidate, getLearningStatus, getLearningOverview,
-  bulkApproveCandidates, bulkRejectCandidates, getBrainOverview,
-  type LearningCandidate, type LearningType, type InboxCounts, type LearningDigestStatus,
+  getLearningInbox, approveCandidate, rejectCandidate, editCandidate, getLearningOverview,
+  bulkApproveCandidates, bulkRejectCandidates, getBrainOverview, runScheduleNow, submitFeedback,
+  type LearningCandidate, type LearningType, type InboxCounts,
   type LearningOverview, type LearningDigestRun, type LearningImprovement, type BrainOverview,
 } from '../lib/api'
 import { useCachedApi } from '../hooks/useCachedApi'
@@ -19,27 +20,28 @@ import { toast } from '../components/Toast'
 import DependencyBanner from '../components/DependencyBanner'
 import EmptyState from '../components/EmptyState'
 import { SkeletonCards } from '../components/Skeleton'
-import { TabNav } from '../components/PageShell'
+import { PageShell, TabNav } from '../components/PageShell'
 import BrainPanel from '../components/BrainPanel'
 
-type Tab = 'overview' | 'pending' | 'auto' | 'brain'
+type Tab = 'overview' | 'pending' | 'auto' | 'reviewed' | 'brain'
 interface InboxData { items: LearningCandidate[]; counts: InboxCounts }
 
 // Token-backed (flips light/dark). Mirrors LEARNING_TYPE_COLOR in lib/designTokens.ts.
-const TYPE_META: Record<LearningType, { label: string; Icon: LucideIcon; cls: string }> = {
-  lesson:        { label: 'Lesson',        Icon: Lightbulb,            cls: 'bg-blue/10 text-blue border-blue/25' },
-  bug:           { label: 'Bug',           Icon: Bug,                  cls: 'bg-red/10 text-red border-red/25' },
-  decision:      { label: 'Decision',      Icon: GitBranch,            cls: 'bg-purple/10 text-purple border-purple/25' },
-  feedback:      { label: 'Feedback',      Icon: MessageSquareWarning, cls: 'bg-amber/10 text-amber border-amber/25' },
-  golden:        { label: 'Golden',        Icon: Sparkles,             cls: 'bg-emerald/10 text-emerald border-emerald/25' },
+// `desc` is a one-line plain-language tooltip shown on the type badge.
+const TYPE_META: Record<LearningType, { label: string; Icon: LucideIcon; cls: string; desc: string }> = {
+  lesson:        { label: 'Lesson',        Icon: Lightbulb,            cls: 'bg-blue/10 text-blue border-blue/25',       desc: 'Something your team learned that should help next time' },
+  bug:           { label: 'Bug',           Icon: Bug,                  cls: 'bg-red/10 text-red border-red/25',          desc: 'A problem worth remembering so it isn’t repeated' },
+  decision:      { label: 'Decision',      Icon: GitBranch,            cls: 'bg-purple/10 text-purple border-purple/25', desc: 'A choice that was made, kept for the record' },
+  feedback:      { label: 'Feedback',      Icon: MessageSquareWarning, cls: 'bg-amber/10 text-amber border-amber/25',    desc: 'A correction from you — saved to feedback.md only when you approve' },
+  golden:        { label: 'Golden',        Icon: Sparkles,             cls: 'bg-emerald/10 text-emerald border-emerald/25', desc: 'An exemplary output worth reusing as a template' },
   // Continuity-brain types — each approve is a human sign-off (identity-lock).
-  identity:      { label: 'Identity',      Icon: User,                 cls: 'bg-cyan/10 text-cyan border-cyan/25' },
-  preference:    { label: 'Preference',    Icon: Heart,                cls: 'bg-rose/10 text-rose border-rose/25' },
-  contradiction: { label: 'Contradiction', Icon: AlertTriangle,        cls: 'bg-orange/10 text-orange border-orange/25' },
-  open_loop:     { label: 'Open Loop',     Icon: CircleDot,            cls: 'bg-indigo/10 text-indigo border-indigo/25' },
-  decay_review:  { label: 'Decay Review',  Icon: TrendingDown,         cls: 'bg-slate/10 text-slate border-slate/25' },
+  identity:      { label: 'Identity',      Icon: User,                 cls: 'bg-cyan/10 text-cyan border-cyan/25',       desc: 'A fact about who you are / how you work' },
+  preference:    { label: 'Preference',    Icon: Heart,                cls: 'bg-rose/10 text-rose border-rose/25',       desc: 'A way you prefer things done' },
+  contradiction: { label: 'Contradiction', Icon: AlertTriangle,        cls: 'bg-orange/10 text-orange border-orange/25', desc: 'A new fact that conflicts with an old one — approving replaces the old' },
+  open_loop:     { label: 'Open Loop',     Icon: CircleDot,            cls: 'bg-indigo/10 text-indigo border-indigo/25', desc: 'An unfinished thread to pick back up later' },
+  decay_review:  { label: 'Decay Review',  Icon: TrendingDown,         cls: 'bg-slate/10 text-slate border-slate/25',    desc: 'An old memory the system asks you to confirm is still true' },
   // Lens calibration (WS-G): approve = agree with the judge, reject = judge was wrong.
-  calibration:   { label: 'Calibration',   Icon: ScanLine,             cls: 'bg-teal/10 text-teal border-teal/25' },
+  calibration:   { label: 'Calibration',   Icon: ScanLine,             cls: 'bg-teal/10 text-teal border-teal/25',       desc: 'Teaching the quality judge: approve = it judged right, reject = it judged wrong' },
 }
 
 function relTime(iso: string): string {
@@ -52,21 +54,32 @@ function relTime(iso: string): string {
   return diff < 0 ? `in ${v}` : `${v} ago`
 }
 
-const isTab = (v: string | null): v is Tab => v === 'overview' || v === 'pending' || v === 'auto' || v === 'brain'
+const isTab = (v: string | null): v is Tab => v === 'overview' || v === 'pending' || v === 'auto' || v === 'reviewed' || v === 'brain'
 
 export default function LearningInbox() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   // Honour a ?tab= deep-link (e.g. the Playground "Open Learning" toast lands on
   // ?tab=pending). Falls back to the overview tab.
   const [tab, setTab] = useState<Tab>(() => {
     const t = searchParams.get('tab')
     return isTab(t) ? t : 'overview'
   })
+  // Keep tab in the URL so refresh / back / deep-link restore the active view.
+  const selectTab = useCallback((id: Tab) => {
+    setTab(id)
+    setSearchParams((prev) => { const p = new URLSearchParams(prev); p.set('tab', id); return p }, { replace: true })
+  }, [setSearchParams])
   const inboxStatus: string = tab === 'auto' ? 'auto' : 'pending'
   const { data, loading, refreshing, error, refetch, setData } =
     useCachedApi<InboxData>(CacheKeys.learningInbox(inboxStatus), () => getLearningInbox(inboxStatus))
-  const { data: digestStatus } = useCachedApi<LearningDigestStatus>(CacheKeys.learningStatus, getLearningStatus)
   const overview = useCachedApi<LearningOverview>(CacheKeys.learningOverview, getLearningOverview)
+  // Reviewed history (approved + rejected) — one merged cache entry, read-only audit trail.
+  const reviewed = useCachedApi<InboxData>(CacheKeys.learningInbox('reviewed'), async () => {
+    const [a, r] = await Promise.all([getLearningInbox('approved'), getLearningInbox('rejected')])
+    const items = [...a.items, ...r.items].sort((x, y) =>
+      String(y.reviewedAt || y.createdAt).localeCompare(String(x.reviewedAt || x.createdAt)))
+    return { items, counts: a.counts }
+  })
   // Brain overview is fetched at page level so the "Brain" tab badge shows the
   // proposed-patch count even when the tab isn't active. Cached + SSE-invalidated.
   const brain = useCachedApi<BrainOverview>(CacheKeys.brainOverview, getBrainOverview)
@@ -77,6 +90,24 @@ export default function LearningInbox() {
   const [bulkBusy, setBulkBusy] = useState(false)
   const [cursorId, setCursorId] = useState<string | null>(null)
   const [showHelp, setShowHelp] = useState(false)
+  const [digestBusy, setDigestBusy] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
+
+  // Trigger the nightly learning digest on demand (instead of waiting for 04:00).
+  // New candidates stream in over SSE; we also refetch so the list updates promptly.
+  const handleRunDigest = useCallback(async () => {
+    if (digestBusy) return
+    setDigestBusy(true)
+    try {
+      await runScheduleNow('sys-learning-digest')
+      toast('success', 'Digest started — new learnings will appear here shortly')
+      setTimeout(() => { refetch(); overview.refetch() }, 1500)
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to start the digest')
+    } finally {
+      setDigestBusy(false)
+    }
+  }, [digestBusy, refetch, overview])
 
   // Client-side triage filters (pending tab) — applied over the already-fetched
   // candidate list. No extra API calls; the bulk/keyboard/SSE layers all read the
@@ -264,27 +295,26 @@ export default function LearningInbox() {
   }, [reviewable, items, cursorId, editId, selected, showHelp, toggleSelect, handleApprove, handleReject, handleBulkApprove, handleBulkReject])
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-2">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
-            <Inbox className="w-4.5 h-4.5 text-accent" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Learning Inbox</h1>
-            <p className="text-[13px] text-text-secondary">Lessons your AI team found in your VS Code projects — approve to save them to memory.</p>
-            {digestStatus?.lastRunAt && (
-              <p className="text-[11px] text-text-muted mt-0.5">
-                Last digest {relTime(digestStatus.lastRunAt)}
-                {digestStatus.lastRunStatus && <> · <span className={digestStatus.lastRunStatus === 'success' ? 'text-emerald' : 'text-red'}>{digestStatus.lastRunStatus}</span></>}
-                {digestStatus.lastRunSummary && ` · ${digestStatus.lastRunSummary}`}
-                {digestStatus.nextRunAt && ` · next ${relTime(digestStatus.nextRunAt)}`}
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+    <PageShell
+      title="Learning Inbox"
+      subtitle="Lessons your AI team found in your VS Code projects — approve to save them to memory."
+      actions={
+        <>
+          <button
+            onClick={() => { selectTab('pending'); setShowFeedback(true) }}
+            className="btn-secondary btn-sm"
+            title="Log a correction — stages it for review (never writes feedback.md until you approve)"
+          >
+            <Plus className="w-3.5 h-3.5" /> Log correction
+          </button>
+          <button
+            onClick={handleRunDigest}
+            disabled={digestBusy}
+            className="btn-secondary btn-sm"
+            title="Run the learning digest now instead of waiting for tonight"
+          >
+            {digestBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Run digest
+          </button>
           <button
             onClick={() => setShowHelp(true)}
             className="btn-secondary btn-sm"
@@ -296,21 +326,12 @@ export default function LearningInbox() {
           <button onClick={refetch} className="btn-secondary btn-sm" title="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
           </button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
+      <div className="max-w-6xl">
       {/* Ollama/Claude offline → approving captures to memory will fail; say so. */}
       <DependencyBanner subsystem="memory" hint="Approving saves to the memory brain, which needs Ollama running." />
-
-      {/* Explainer */}
-      <div className="flex items-start gap-2 text-[12px] text-text-muted bg-surface-2/40 border border-border rounded-lg px-3 py-2 mb-4">
-        <BookOpen className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-        <span>
-          Each night, the <strong>Learning digest</strong> reviews the day's projects. High-confidence lessons save automatically;
-          everything else — and any <strong>feedback corrections</strong> — waits here for one click. Nothing reaches your
-          <code className="px-1">feedback.md</code> without your approval.
-        </span>
-      </div>
 
       {/* Tabs */}
       <TabNav
@@ -318,15 +339,32 @@ export default function LearningInbox() {
           { id: 'overview', label: 'Overview' },
           { id: 'pending', label: 'Pending review', count: counts.pending },
           { id: 'auto', label: 'Auto-captured', count: counts.auto },
+          { id: 'reviewed', label: 'Reviewed', count: counts.approved + counts.rejected },
           { id: 'brain', label: 'Brain', count: brain.data?.stats.patches.proposed ?? 0 },
         ]}
         active={tab}
-        onChange={(id) => setTab(id as Tab)}
+        onChange={(id) => selectTab(id as Tab)}
       />
+
+      {/* Per-tab one-liner so each view's purpose is clear at a glance. */}
+      {(tab === 'pending' || tab === 'auto' || tab === 'reviewed') && (
+        <p className="text-[12px] text-text-muted -mt-3 mb-4">
+          {tab === 'pending' && 'Learnings your AI team found, waiting for you to approve (save to memory) or reject.'}
+          {tab === 'auto' && 'High-confidence learnings saved automatically — no action needed. Shown here for transparency.'}
+          {tab === 'reviewed' && 'A history of what you’ve already approved or rejected — your audit trail.'}
+        </p>
+      )}
+
+      {tab === 'reviewed' && <ReviewedPanel data={reviewed.data} loading={reviewed.loading} error={reviewed.error} onRetry={reviewed.refetch} />}
 
       {tab === 'overview' && <OverviewPanel ov={overview.data} loading={overview.loading} error={overview.error} onRetry={overview.refetch} />}
 
       {tab === 'brain' && <BrainPanel ov={brain.data} loading={brain.loading} error={brain.error} onRetry={brain.refetch} />}
+
+      {/* Log-a-correction composer (pending tab) — stages a feedback candidate. */}
+      {tab === 'pending' && showFeedback && (
+        <FeedbackComposer onClose={() => setShowFeedback(false)} onStaged={refetch} />
+      )}
 
       {/* States: loading → error → empty → list (3 visually distinct) */}
       {(tab === 'pending' || tab === 'auto') && (loading ? (
@@ -465,7 +503,8 @@ export default function LearningInbox() {
       ))}
 
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
-    </div>
+      </div>
+    </PageShell>
   )
 }
 
@@ -653,7 +692,7 @@ const CandidateCard = memo(function CandidateCard({ c, readOnly, busy, editing, 
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md border ${meta.cls}`}>
+            <span title={meta.desc} className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md border ${meta.cls}`}>
               <Icon className="w-3 h-3" /> {meta.label}
             </span>
             <span className={`text-[10px] ${pct >= 80 ? 'text-emerald' : pct >= 50 ? 'text-text-muted' : 'text-text-muted/60'}`}>
@@ -734,7 +773,7 @@ function EditCard({ c, onCancel, onSaved }: { c: LearningCandidate; onCancel: ()
         </div>
       ))}
       <div className="flex items-center gap-2 pt-1">
-        <button onClick={save} disabled={saving}
+        <button onClick={save} disabled={saving || !title.trim()}
           className="btn-primary btn-sm">
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
         </button>
@@ -742,6 +781,113 @@ function EditCard({ c, onCancel, onSaved }: { c: LearningCandidate; onCancel: ()
           className="px-2.5 py-1 text-[11px] text-text-muted border border-border rounded-lg hover:bg-surface-2 transition-colors">
           Cancel
         </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Log-a-correction composer ────────────────────────────────────────────────
+// POSTs /feedback → stages a feedback candidate into Pending. Never writes
+// feedback.md (that's the human approve below). Mirrors the /feedback command.
+function FeedbackComposer({ onClose, onStaged }: { onClose: () => void; onStaged: () => void }) {
+  const [directive, setDirective] = useState('')
+  const [context, setContext] = useState('')
+  const [p0, setP0] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const submit = async () => {
+    if (!directive.trim() || saving) return
+    setSaving(true)
+    try {
+      await submitFeedback({ directive: directive.trim(), context: context.trim() || undefined, severity: p0 ? 'p0' : 'normal' })
+      toast('success', 'Staged for review — feedback.md is written only when you approve it')
+      onStaged()
+      onClose()
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to log correction')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="card p-4 mb-4 border-accent/30 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[13px] font-semibold text-text">
+          <MessageSquareWarning className="w-4 h-4 text-amber" /> Log a correction
+        </div>
+        <button onClick={onClose} aria-label="Close" className="p-1 rounded text-text-muted hover:text-text hover:bg-surface-2"><X className="w-4 h-4" /></button>
+      </div>
+      <p className="text-[11px] text-text-muted">Captured as a feedback candidate for review. Nothing reaches <code className="px-1">feedback.md</code> until you approve it below.</p>
+      <div>
+        <label className="text-[10px] text-text-muted">Correction (what should change)</label>
+        <textarea value={directive} onChange={(e) => setDirective(e.target.value)} rows={2} autoFocus
+          placeholder="e.g. Always rebuild the client and verify in the browser before reporting a UI fix done"
+          className="w-full text-[12px] bg-surface-2/50 border border-border rounded-lg px-2.5 py-1.5 text-text focus:outline-none focus:border-accent resize-y" />
+      </div>
+      <div>
+        <label className="text-[10px] text-text-muted">Context (optional)</label>
+        <textarea value={context} onChange={(e) => setContext(e.target.value)} rows={2}
+          placeholder="When / why this matters"
+          className="w-full text-[12px] bg-surface-2/50 border border-border rounded-lg px-2.5 py-1.5 text-text-secondary focus:outline-none focus:border-accent resize-y" />
+      </div>
+      <div className="flex items-center justify-between">
+        <label className="flex items-center gap-1.5 text-[11px] text-text-secondary cursor-pointer">
+          <input type="checkbox" checked={p0} onChange={(e) => setP0(e.target.checked)} className="accent-red w-3.5 h-3.5" />
+          Mark as P0 (high priority)
+        </label>
+        <div className="flex items-center gap-2">
+          <button onClick={onClose} disabled={saving} className="px-2.5 py-1 text-[11px] text-text-muted border border-border rounded-lg hover:bg-surface-2 transition-colors">Cancel</button>
+          <button onClick={submit} disabled={saving || !directive.trim()} className="btn-primary btn-sm">
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Stage for review
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Reviewed tab: read-only audit trail of approved + rejected learnings ──────
+interface ReviewedPanelProps { data: InboxData | null; loading: boolean; error: string | null; onRetry: () => void }
+
+function ReviewedPanel({ data, loading, error, onRetry }: ReviewedPanelProps) {
+  if (loading && !data) return <SkeletonCards count={3} />
+  if (error && !data) return (
+    <div className="flex flex-col items-center gap-3 py-16 text-center">
+      <AlertCircle className="w-8 h-8 text-red" />
+      <div className="text-sm text-text">Couldn't load reviewed history</div>
+      <div className="text-xs text-text-muted max-w-sm">{error}</div>
+      <button onClick={onRetry} className="btn-primary btn-sm mt-1">Retry</button>
+    </div>
+  )
+  const items = data?.items ?? []
+  if (items.length === 0) return (
+    <EmptyState icon={History} title="Nothing reviewed yet" description="Approved and rejected learnings appear here as an audit trail of what reached memory and what didn't." size="lg" />
+  )
+  return (
+    <div className="space-y-2.5">
+      {items.map((c) => <ReviewedCard key={c.id} c={c} />)}
+    </div>
+  )
+}
+
+function ReviewedCard({ c }: { c: LearningCandidate }) {
+  const meta = TYPE_META[c.type] ?? TYPE_META.lesson
+  const { Icon } = meta
+  const approved = c.status === 'approved'
+  return (
+    <div className="rounded-xl border border-border bg-surface p-3.5">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span title={meta.desc} className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md border ${meta.cls}`}>
+            <Icon className="w-3 h-3" /> {meta.label}
+          </span>
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md border ${approved ? 'bg-emerald/10 text-emerald border-emerald/25' : 'bg-red/10 text-red border-red/25'}`}>
+            {approved ? 'Approved' : 'Rejected'}
+          </span>
+          {c.source && <span className="text-[10px] text-text-muted truncate">· {c.source}</span>}
+          {c.reviewedAt && <span className="text-[10px] text-text-muted">· {relTime(c.reviewedAt)}</span>}
+        </div>
+        <div className="text-[13px] font-medium text-text">{c.title}</div>
+        {c.capturedRef && <div className="text-[10px] text-text-muted mt-0.5 truncate">saved as {c.capturedRef}</div>}
       </div>
     </div>
   )
@@ -761,24 +907,27 @@ function StatCard({ Icon, label, value, tone, sub, title }: { Icon: LucideIcon; 
   )
 }
 
-// "% improvement" — success rate of real (non-infra) agent runs, this 7d vs prior.
-// Honest: shows "building baseline" until there's a prior week to compare.
+// Success rate of real (non-infra) agent runs THIS week, plus the week-over-week
+// change in percentage points. The big number is the rate (e.g. "67% passed");
+// the sub-line carries the trend. Honest: "baseline forming" until ≥8 runs exist.
+// (Previously mislabeled "Improvement (7d)" with the raw rate as the value, which
+// read as a huge improvement — fixed for clarity.)
 function ImprovementCard({ imp }: { imp: LearningImprovement }) {
   let value = '—', sub = 'building baseline', tone = 'text-text-muted'
-  if (imp.deltaPct !== null) {
-    const up = imp.deltaPct >= 0
-    value = `${up ? '+' : ''}${imp.deltaPct}%`
-    sub = `${imp.prevWeekPct}% → ${imp.thisWeekPct}% success`
-    tone = up ? 'text-emerald' : 'text-red'
-  } else if (imp.thisWeekPct !== null) {
+  if (imp.thisWeekPct !== null) {
     value = `${imp.thisWeekPct}%`
-    sub = 'success this week · baseline forming'
     tone = 'text-text'
+    if (imp.deltaPct !== null) {
+      const up = imp.deltaPct >= 0
+      sub = `${up ? '+' : '−'}${Math.abs(imp.deltaPct)} pts vs last week (${imp.prevWeekPct}% → ${imp.thisWeekPct}%)`
+    } else {
+      sub = 'baseline forming · need ≥8 runs to compare'
+    }
   }
   return (
     <StatCard
-      Icon={TrendingUp} label="Improvement (7d)" value={value} tone={tone} sub={sub}
-      title="Success rate of your real (non-infrastructure) agent runs, this week vs the prior week. Builds a baseline over the first couple of weeks."
+      Icon={TrendingUp} label="Success rate (7d)" value={value} tone={tone} sub={sub}
+      title="Share of your real (non-infrastructure) agent runs that succeeded this week. The sub-line compares it to last week in percentage points (pts). A week-over-week comparison only shows once there are ≥8 runs across the two weeks."
     />
   )
 }
@@ -787,18 +936,18 @@ function ImprovementCard({ imp }: { imp: LearningImprovement }) {
 function SourceBar({ bySource, total }: { bySource: { autoSaved: number; reviewed: number; direct: number }; total: number }) {
   const t = Math.max(1, total)
   const seg = [
-    { k: 'Auto-saved', n: bySource.autoSaved, cls: 'bg-emerald/70' },
-    { k: 'Reviewed', n: bySource.reviewed, cls: 'bg-blue/70' },
-    { k: 'Direct', n: bySource.direct, cls: 'bg-purple/70' },
+    { k: 'Auto-saved', n: bySource.autoSaved, cls: 'bg-emerald/70', desc: 'Saved automatically from your work sessions (high-confidence — no review needed)' },
+    { k: 'Reviewed', n: bySource.reviewed, cls: 'bg-blue/70', desc: 'Approved by you here in the inbox' },
+    { k: 'Direct', n: bySource.direct, cls: 'bg-purple/70', desc: 'From slash-commands, agents, or older records without a tracked source' },
   ]
   return (
     <>
       <div className="flex h-2.5 rounded-full overflow-hidden bg-surface-2 mb-2">
-        {seg.map((s) => s.n > 0 && <div key={s.k} className={s.cls} style={{ width: `${(s.n / t) * 100}%` }} title={`${s.k}: ${s.n}`} />)}
+        {seg.map((s) => s.n > 0 && <div key={s.k} className={s.cls} style={{ width: `${(s.n / t) * 100}%` }} title={`${s.k}: ${s.n} — ${s.desc}`} />)}
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-muted">
         {seg.map((s) => (
-          <span key={s.k} className="flex items-center gap-1"><span className={`w-2 h-2 rounded-sm ${s.cls}`} /> {s.k} <span className="text-text-secondary font-medium">{s.n}</span></span>
+          <span key={s.k} title={s.desc} className="flex items-center gap-1 cursor-help"><span className={`w-2 h-2 rounded-sm ${s.cls}`} /> {s.k} <span className="text-text-secondary font-medium">{s.n}</span></span>
         ))}
       </div>
     </>
@@ -836,7 +985,7 @@ function RunBars({ runs }: { runs: LearningDigestRun[] }) {
         return (
           <div key={r.id} className="group relative flex-1 flex flex-col justify-end" style={{ minWidth: 6 }}>
             <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 whitespace-nowrap text-[10px] bg-surface border border-border rounded-md px-2 py-1 shadow-card">
-              {relTime(r.timestamp)} · {failed ? 'failed' : `${r.sessions} sess → ${r.captured} captured, ${r.staged} staged`}
+              {relTime(r.timestamp)} · {failed ? 'digest run failed' : `${r.sessions} sessions → ${r.captured} auto-learned, ${r.staged} staged for review`}
             </div>
             {failed ? (
               <div className="rounded-sm bg-red/60" style={{ height: 6 }} />
@@ -882,27 +1031,32 @@ function OverviewPanel({ ov, loading, error, onRetry }: OverviewPanelProps) {
       {/* Stat cards — the accurate headline numbers */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard Icon={GraduationCap} label="Lessons learned" value={ov.captured.total} tone="text-emerald"
-          sub={ov.captured.last7d > 0 ? `+${ov.captured.last7d} this week` : 'all-time captured'} />
+          sub={ov.captured.last7d > 0 ? `+${ov.captured.last7d} this week` : 'all-time captured'}
+          title="Total lessons, bugs, decisions and golden examples saved to memory so far." />
         <ImprovementCard imp={ov.improvement} />
-        <StatCard Icon={Inbox} label="Pending review" value={ov.counts.pending} tone={ov.counts.pending > 0 ? 'text-amber' : 'text-text'} />
-        <StatCard Icon={ScanLine} label="Sessions digested (7d)" value={ov.sessions.lastWeek} tone="text-text" sub={`${ov.deduped7d} duplicates skipped`} />
+        <StatCard Icon={Inbox} label="Pending review" value={ov.counts.pending} tone={ov.counts.pending > 0 ? 'text-amber' : 'text-text'}
+          title="Learnings waiting for you to approve or reject on the Pending review tab." />
+        <StatCard Icon={ScanLine} label="Sessions digested (7d)" value={ov.sessions.lastWeek} tone="text-text" sub={`${ov.deduped7d} duplicates skipped`}
+          title="VS Code work sessions the nightly digest analyzed this week. ‘Duplicates skipped’ = things already in memory, so they weren’t saved again." />
       </div>
 
       {/* Where lessons came from + knowledge growth */}
       <div className="grid lg:grid-cols-2 gap-3">
         <div className="card p-4">
-          <div className="flex items-center gap-1.5 text-[13px] font-medium text-text mb-3">
+          <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
             <Sparkles className="w-4 h-4 text-text-muted" /> Where lessons came from
           </div>
+          <p className="text-[11px] text-text-muted mb-3">How each saved lesson got into memory.</p>
           <SourceBar bySource={ov.bySource} total={ov.captured.total} />
           <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-3 pt-2 border-t border-border/50">
-            <Brain className="w-3.5 h-3.5" /> Memory brain: <span className="text-text-secondary font-medium">{ov.memory.patterns}</span> patterns · <span className="text-text-secondary font-medium">{ov.memory.feedbackDirectives}</span> directives
+            <Brain className="w-3.5 h-3.5" /> Memory brain: <span className="text-text-secondary font-medium cursor-help" title="Reusable workflow & anti-pattern playbooks stored in ~/.claude/memory/patterns.">{ov.memory.patterns}</span> patterns · <span className="text-text-secondary font-medium cursor-help" title="Personal rules you’ve approved into feedback.md (each starts with ★).">{ov.memory.feedbackDirectives}</span> directives
           </div>
         </div>
         <div className="card p-4">
-          <div className="flex items-center gap-1.5 text-[13px] font-medium text-text mb-3">
+          <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
             <TrendingUp className="w-4 h-4 text-text-muted" /> Knowledge growth (8 weeks)
           </div>
+          <p className="text-[11px] text-text-muted mb-3">New learnings saved each week — is the team learning faster?</p>
           <WeekBars weekly={ov.captured.weekly} />
           <div className="text-[10px] text-text-muted mt-2">captures per week</div>
         </div>
@@ -911,8 +1065,11 @@ function OverviewPanel({ ov, loading, error, onRetry }: OverviewPanelProps) {
       {/* Digest run history */}
       <div className="card p-4">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
-            <Clock className="w-4 h-4 text-text-muted" /> Nightly digest history
+          <div>
+            <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
+              <Clock className="w-4 h-4 text-text-muted" /> Nightly digest history
+            </div>
+            <p className="text-[11px] text-text-muted">The 4am scan that reads your work sessions and pulls out lessons.</p>
           </div>
           {s?.lastRunAt && (
             <div className="text-[11px] text-text-muted">
@@ -925,9 +1082,9 @@ function OverviewPanel({ ov, loading, error, onRetry }: OverviewPanelProps) {
           <>
             <RunBars runs={ov.runs} />
             <div className="flex items-center gap-4 mt-2 text-[10px] text-text-muted">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald/80" /> captured</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber/70" /> staged</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red/60" /> failed</span>
+              <span className="flex items-center gap-1 cursor-help" title="Auto-learned: high-confidence lessons saved without needing review."><span className="w-2 h-2 rounded-sm bg-emerald/80" /> auto-learned</span>
+              <span className="flex items-center gap-1 cursor-help" title="Staged: sent to Pending review, waiting for your OK."><span className="w-2 h-2 rounded-sm bg-amber/70" /> staged for review</span>
+              <span className="flex items-center gap-1 cursor-help" title="Failed: the digest run errored that night."><span className="w-2 h-2 rounded-sm bg-red/60" /> failed</span>
             </div>
           </>
         ) : (
@@ -937,9 +1094,10 @@ function OverviewPanel({ ov, loading, error, onRetry }: OverviewPanelProps) {
 
       {/* Recent learnings */}
       <div className="card p-4">
-        <div className="flex items-center gap-1.5 text-[13px] font-medium text-text mb-3">
+        <div className="flex items-center gap-1.5 text-[13px] font-medium text-text">
           <Sparkles className="w-4 h-4 text-text-muted" /> What your team has learned
         </div>
+        <p className="text-[11px] text-text-muted mb-3">The most recent items saved to memory.</p>
         {ov.recent.length > 0 ? (
           <div className="space-y-1.5">
             {ov.recent.map((r) => {
@@ -947,7 +1105,7 @@ function OverviewPanel({ ov, loading, error, onRetry }: OverviewPanelProps) {
               const { Icon } = meta
               return (
                 <div key={r.id} className="flex items-center gap-2.5 text-[12px] py-1 border-b border-border/50 last:border-0">
-                  <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md border shrink-0 ${meta.cls}`}>
+                  <span title={meta.desc} className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md border shrink-0 ${meta.cls}`}>
                     <Icon className="w-3 h-3" /> {meta.label}
                   </span>
                   <span className="flex-1 text-text-secondary truncate">{r.title}</span>
