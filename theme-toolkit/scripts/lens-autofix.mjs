@@ -26,7 +26,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { diffOutcomes, persistedKeys, readOutcomes, appendOutcomes, findingKey } from './lib/lens-fix-outcomes.mjs'
+import { persistedKeys, readOutcomes, appendOutcomes } from './lib/lens-fix-outcomes.mjs'
+import { runAutofixLoop } from './lib/lens-autofix-loop.mjs'
 
 const cwd = process.cwd()
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -133,58 +134,39 @@ async function main() {
   let affected = process.env.LENS_SURFACES ? process.env.LENS_SURFACES.split(',').map(s => s.trim()).filter(Boolean) : null
   const outDir = process.env.LENS_OUTCOMES_DIR || cwd
   const persisted = persistedKeys(readOutcomes(outDir)) // check::surface::vp already tried + failed → don't repeat
-  let prevFindings = []
+  const porterOptIn = process.env.LENS_AUTOFIX_PORTER === '1'
   console.log(`lens-autofix: theme base = ${THEME_BASE}, max ${MAX_ROUNDS} round(s)${persisted.size ? `, ${persisted.size} prior persisted finding(s) loaded` : ''}`)
-  for (let round = 1; round <= MAX_ROUNDS; round += 1) {
-    console.log(`\n── lens-autofix round ${round}/${MAX_ROUNDS} ──`)
-    const capArgs = ['--viewports', VIEWPORTS, ...(affected ? ['--surfaces', affected.join(',')] : [])]
+
+  // The LOOP CONTROL (find→fix→verify, ≤max rounds, no-retry-of-persisted, escalate) lives in
+  // lib/lens-autofix-loop.mjs — pure + proven by __fixtures__/autofix-loop. Here we inject the REAL
+  // effects: one round = capture → judge → enforce (+collect blockers); fix = dispatch the owner.
+  const runRound = (aff) => {
+    console.log('\n──')
+    const capArgs = ['--viewports', VIEWPORTS, ...(aff ? ['--surfaces', aff.join(',')] : [])]
     const cap = runNode('lens-capture.mjs', capArgs)
-    if (cap.code === 2) die(2, `capture failed: ${cap.out.trim().split('\n').pop()}`)
-    const judge = runNode('lens-judge.mjs', affected ? ['--surfaces', affected.join(',')] : [])
+    if (cap.code === 2) throw new Error(`capture failed: ${cap.out.trim().split('\n').pop()}`)
+    const judge = runNode('lens-judge.mjs', aff ? ['--surfaces', aff.join(',')] : [])
     console.log(judge.out.trim().split('\n').filter(l => /judging|✓|✗|PASS|FAIL/.test(l)).join('\n'))
     const enforce = runNode('check-visual-truth.mjs', [])
     console.log(enforce.out.trim().split('\n')[0])
-
-    if (enforce.code === 0) { console.log(`\nlens-autofix: ✅ CONVERGED in ${round} round(s) — Lens PASS.`); process.exit(0) }
-
-    const findings = blockerFindings()
-    // fix-outcomes learning (WS-E1): classify last round's findings (resolved vs persisted), record them,
-    // and refuse to retry a fix that already FAILED — escalate those instead of looping the same edit.
-    const diff = diffOutcomes(prevFindings, findings)
-    appendOutcomes(outDir, round, diff, new Date().toISOString())
-    for (const o of diff) if (o.result === 'persisted') persisted.add(`${o.check}::${o.surface}::${o.viewport || ''}`)
-    prevFindings = findings
-
-    const { code, data } = routeFindings(findings) // #10 — theme-code vs store-data (porter)
-    const giveUp = code.filter(f => persisted.has(findingKey(f)))    // already tried + failed → don't repeat the same fix
-    const retryable = code.filter(f => !persisted.has(findingKey(f)))
-    affected = [...new Set(findings.map(f => f.surface))]
-    const porterOptIn = process.env.LENS_AUTOFIX_PORTER === '1'
-    if (giveUp.length) console.log(`  ↯ ${giveUp.length} finding(s) persisted after a prior fix → NOT retrying the same approach (escalating these).`)
-
-    // nothing NEW to try this round → escalate + stop (give-ups + store-data, unless porter opted in)
-    if (!retryable.length && !(data.length && porterOptIn)) {
-      console.log(`lens-autofix: no NEW auto-fixable findings (${giveUp.length} persisted give-up, ${data.length} store-data → porter/human).`)
-      escalate([...giveUp, ...data].length ? [...giveUp, ...data] : findings, round); process.exit(1)
-    }
-    // theme-code owners → fix files (sequential — avoid concurrent edits to the same theme)
-    const byOwner = {}
-    for (const f of retryable) (byOwner[f.fix_owner] = byOwner[f.fix_owner] || []).push(f)
-    for (const [owner, fs2] of Object.entries(byOwner)) {
-      console.log(`  → ${owner}: fixing ${fs2.length} finding(s)…`)
-      const r = await dispatchFix(owner, fs2)
-      console.log(`    ${owner}: ${r.note}`)
-    }
-    // porter (store data) → opt-in triage: apply ONLY safe/idempotent AUTO items, NEVER invent a
-    // brand name / products; HUMAN items get a work-order (the last manual handoff, made actionable).
-    if (data.length && porterOptIn) {
-      console.log(`  → porter: triaging ${data.length} store-data finding(s) (LENS_AUTOFIX_PORTER=1)…`)
-      const r = await dispatchPorter(data); console.log(`    porter: ${r.note}`)
-    } else if (data.length) {
-      console.log(`  → porter: ${data.length} store-data finding(s) deferred (set LENS_AUTOFIX_PORTER=1 to auto-triage)`)
-    }
-    if (round === MAX_ROUNDS) { escalate(findings, round); console.log(`lens-autofix: ❌ not converged after ${MAX_ROUNDS} rounds.`); process.exit(1) }
+    return { enforcePass: enforce.code === 0, findings: enforce.code === 0 ? [] : blockerFindings() }
   }
+  const fix = async (owner, list) => { console.log(`  → ${owner}: fixing ${list.length} finding(s)…`); const r = await dispatchFix(owner, list); console.log(`    ${owner}: ${r.note}`) }
+  const fixPorter = async (data) => { console.log(`  → porter: triaging ${data.length} store-data finding(s) (LENS_AUTOFIX_PORTER=1)…`); const r = await dispatchPorter(data); console.log(`    porter: ${r.note}`) }
+  const recordOutcomes = (round, diff) => appendOutcomes(outDir, round, diff, new Date().toISOString())
+
+  let result
+  try {
+    result = await runAutofixLoop({ runRound, fix, fixPorter, recordOutcomes, log: (m) => console.log(`lens-autofix: ${m}`) },
+      { maxRounds: MAX_ROUNDS, codeOwners: CODE_OWNERS, porterOptIn, persisted, affected })
+  } catch (e) { die(2, e.message) }
+
+  if (result.converged) { console.log(`\nlens-autofix: ✅ CONVERGED in ${result.rounds} round(s) — Lens PASS.`); process.exit(0) }
+  const esc = result.escalation || {}
+  if (esc.data && esc.data.length && !porterOptIn) console.log(`  → porter: ${esc.data.length} store-data finding(s) deferred (set LENS_AUTOFIX_PORTER=1 to auto-triage)`)
+  escalate(esc.findings || [], result.rounds)
+  console.log(`lens-autofix: ❌ not converged after ${result.rounds} round(s).`)
+  process.exit(1)
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
