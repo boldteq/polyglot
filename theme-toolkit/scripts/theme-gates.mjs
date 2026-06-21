@@ -171,6 +171,13 @@ const GATES = [
   // scope): viewport-overflow `100vw` (blocker at publish-grade), no-wrap flex rows / white-space:nowrap /
   // large negative margins (advisory). Covered by --static-only + --verify/--require-full.
   { name: 'css-layout', number: 22, kind: 'static', runner: 'node', script: 'check-css-layout.mjs' },
+  // Section-reuse map (#23, static) — onyx Audit-7 / stitch self-check, now an authoritative manifest
+  // gate (was an orphan validator: existed but unwired → falsely signalled coverage). Enforces the
+  // reuse ladder: ≥70% REUSE+CONFIGURE share, Custom split reconciliation, scratch-custom needs a
+  // `blueprint: none (...)` justification, Counts custom == new sections/*.liquid since base. SKIPS when
+  // no new sections (not applicable — never false-BLOCKs a refresh). Phase A warn-only by default;
+  // REUSE_MAP_ENFORCE=1 flips to BLOCK after the ≥2-store dogfood. Covered by --static-only + --require-full.
+  { name: 'reuse-map', number: 23, kind: 'static', runner: 'node', script: 'check-reuse-map.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────

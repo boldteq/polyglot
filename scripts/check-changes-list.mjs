@@ -1,151 +1,155 @@
 #!/usr/bin/env node
-// Validate a CHANGES.md file against the schema defined in
+// Validate a CHANGES.md file against the schema in
 // ~/.claude/memory/patterns/good/changes-list-protocol.md
 //
-// Used as a deploy-gate by Mantle (Shopify) + Bolt (Stack A) + by reviewers
-// (Onyx / Sage) inside their completeness audit.
+// Used as a deploy-gate by Mantle (Shopify) + Bolt (Stack A) + reviewers (Onyx/Sage).
 //
-// Usage:
-//   node scripts/check-changes-list.mjs <path-to-CHANGES.md>
+// DUAL-MODE (2026-06-21): the protocol mandates YAML frontmatter + `## Items` with
+// `evidence:`/`acceptance:` sub-lines. But real autonomous builds write a PROSE header
+// (`# CHANGES — …` + `**Status:**`) with inline `_Files: …_` evidence — the strict parser
+// false-rejected 100% of them (verified on gpt-test-1), so the gate was silently bypassed.
+// Now: if YAML frontmatter is present → STRICT mode (unchanged). Else → PROSE mode: still
+// ENFORCE the substance (every checkbox item checked + each cites a real artifact + a
+// shippable status), without demanding the exact sub-line shape. Strict is preferred; prose
+// is accepted so the gate actually runs on real output instead of being skipped.
 //
-// Exit codes:
-//   0 → all items checked + evidence present + status review|shipped
-//   1 → unchecked items OR checked items without evidence
-//   2 → file missing OR schema malformed (no frontmatter / no items section)
+// Usage: node scripts/check-changes-list.mjs <path-to-CHANGES.md>
+// Exit:  0 → all items checked + evidence + status review|shipped · 1 → unchecked/no-evidence · 2 → file missing
 
 import fs from 'node:fs'
 import path from 'node:path'
 
 const args = process.argv.slice(2)
 if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
-  console.log(`Validate a CHANGES.md file.\n\nUsage:\n  node scripts/check-changes-list.mjs <path-to-CHANGES.md>\n\nExit codes:\n  0 — all clear (all items checked with evidence; status review or shipped)\n  1 — unchecked items or missing evidence\n  2 — schema error (missing file or malformed)\n`)
+  console.log(`Validate a CHANGES.md file (YAML-frontmatter STRICT mode or prose-header PROSE mode).\n\nUsage:\n  node scripts/check-changes-list.mjs <path-to-CHANGES.md>\n\nExit codes:\n  0 — all clear · 1 — unchecked items / missing evidence / in-progress · 2 — file missing\n`)
   process.exit(args.length === 0 ? 2 : 0)
 }
 
 const filePath = path.resolve(args[0])
-if (!fs.existsSync(filePath)) {
-  console.error(`❌ File not found: ${filePath}`)
-  process.exit(2)
-}
-
+if (!fs.existsSync(filePath)) { console.error(`❌ File not found: ${filePath}`); process.exit(2) }
 const raw = fs.readFileSync(filePath, 'utf-8')
 
-// Parse YAML frontmatter (handwritten, no deps — schema is fixed + small)
-function parseFrontmatter(text) {
+// An evidence/acceptance string must REFERENCE a real artifact (path/URL/SHA/gate-report/file
+// extension), not free prose. (Audit fix: presence-only let "acceptance: QA-passed" through.)
+function citesArtifact(s) {
+  return /https?:\/\//i.test(s) ||
+    /\b(?:gate-reports|docs|content|sections|snippets|assets|templates|config|scripts)\/[\w./-]+/i.test(s) ||
+    /\.(?:json|md|png|jpe?g|webp|mp4|pdf|csv|liquid)\b/i.test(s) ||
+    /\b[a-f0-9]{7,40}\b/.test(s) ||
+    /\b[\w-]+\/[\w./-]+/.test(s) ||
+    /\btheme[- ]check\b/i.test(s)
+}
+
+const VALID = ['in-progress', 'review', 'shipped', 'waived']
+
+// ── frontmatter / header parse ───────────────────────────────────────────────
+function parseYaml(text) {
   const m = text.match(/^---\n([\s\S]*?)\n---\n/)
-  if (!m) return { error: 'missing frontmatter block' }
-  const body = m[1]
+  if (!m) return null
   const out = {}
-  for (const line of body.split('\n')) {
-    const kv = line.match(/^(\w+):\s*(.+)$/)
-    if (kv) out[kv[1].trim()] = kv[2].trim()
-  }
+  for (const line of m[1].split('\n')) { const kv = line.match(/^(\w+):\s*(.+)$/); if (kv) out[kv[1].trim()] = kv[2].trim() }
   return { data: out, rest: text.slice(m[0].length) }
 }
+// PROSE fallback: derive project + status from `# CHANGES — …` / `**Project:**` / `**Status:**`.
+function parseProse(text) {
+  const title = (text.match(/^#\s+(.+)$/m) || [])[1] || (text.match(/\*\*Project:\*\*\s*(.+)$/m) || [])[1] || 'CHANGES'
+  const statusLine = (text.match(/\*\*Status:\*\*\s*(.+)$/m) || [])[1] || ''
+  let status = null
+  if (/shipped|deployed|live|published/i.test(statusLine)) status = 'shipped'
+  else if (/review|uat|staging/i.test(statusLine)) status = 'review'
+  else if (/waived/i.test(statusLine)) status = 'waived'
+  else if (/in.?progress|wip|building/i.test(statusLine)) status = 'in-progress'
+  return { data: { project: title.replace(/[*_`]/g, '').trim().slice(0, 80), client: '(prose)', status, _statusLine: statusLine }, rest: text, prose: true }
+}
 
-const fm = parseFrontmatter(raw)
-if (fm.error) {
-  console.error(`❌ Schema error: ${fm.error}`)
+const yaml = parseYaml(raw)
+const doc = yaml || parseProse(raw)
+const prose = !!doc.prose
+
+if (!prose) {
+  const required = ['client', 'project', 'requestedAt', 'requestedBy', 'status']
+  const missing = required.filter(k => !doc.data[k])
+  if (missing.length) { console.error(`❌ Schema error: missing frontmatter keys: ${missing.join(', ')}`); process.exit(2) }
+}
+if (!doc.data.status || !VALID.includes(doc.data.status)) {
+  console.error(`❌ Schema error: ${prose ? 'could not derive a status from `**Status:**`' : `status="${doc.data.status}"`} — must be one of [${VALID.join(', ')}]`)
   process.exit(2)
 }
 
-const required = ['client', 'project', 'requestedAt', 'requestedBy', 'status']
-const missing = required.filter(k => !fm.data[k])
-if (missing.length > 0) {
-  console.error(`❌ Schema error: missing frontmatter keys: ${missing.join(', ')}`)
-  process.exit(2)
+// ── item collection ──────────────────────────────────────────────────────────
+// STRICT: items under `## Items` with `evidence:`/`acceptance:` sub-lines.
+// PROSE: every checkbox item doc-wide; evidence = the item's block cites an artifact inline.
+let itemsBlock
+if (!prose) {
+  const headingIdx = doc.rest.search(/^##\s+Items\b/m)
+  if (headingIdx === -1) { console.error('❌ Schema error: no "## Items" section found'); process.exit(2) }
+  const afterItems = doc.rest.slice(headingIdx).split('\n').slice(1).join('\n')
+  const nh = afterItems.match(/^##\s+/m)
+  itemsBlock = nh ? afterItems.slice(0, nh.index) : afterItems
+} else {
+  itemsBlock = doc.rest // scan the whole doc for checkbox items
 }
 
-const validStatuses = ['in-progress', 'review', 'shipped', 'waived']
-if (!validStatuses.includes(fm.data.status)) {
-  console.error(`❌ Schema error: status="${fm.data.status}" not in [${validStatuses.join(', ')}]`)
-  process.exit(2)
-}
-
-// Locate ## Items section — content until next ## heading OR end of file.
-const headingIdx = fm.rest.search(/^##\s+Items\b/m)
-if (headingIdx === -1) {
-  console.error('❌ Schema error: no "## Items" section found')
-  process.exit(2)
-}
-const afterItems = fm.rest.slice(headingIdx).split('\n').slice(1).join('\n')
-const nextHeadingMatch = afterItems.match(/^##\s+/m)
-const itemsBlock = nextHeadingMatch ? afterItems.slice(0, nextHeadingMatch.index) : afterItems
-
-// Parse each item: `- [ ]` or `- [x]` followed by indented metadata lines.
-// We only need: checked-state + presence of an `evidence:` line below.
-const items = []
 const lines = itemsBlock.split('\n')
+const items = []
 let current = null
 for (const line of lines) {
-  const itemMatch = line.match(/^- \[([ xX])\]\s+(.+)/)
+  const itemMatch = line.match(/^\s*- \[([ xX])\]\s+(.+)/)
   if (itemMatch) {
     if (current) items.push(current)
-    current = {
-      checked: itemMatch[1].toLowerCase() === 'x',
-      title: itemMatch[2].trim(),
-      hasEvidence: false,
-      hasAssignee: false,
-      hasAcceptance: false,
-    }
+    current = { checked: itemMatch[1].toLowerCase() === 'x', title: itemMatch[2].trim(), block: itemMatch[2].trim(), hasEvidence: false, hasAssignee: false, hasAcceptance: false, evidence: '', acceptance: '' }
+    if (prose && citesArtifact(current.title)) current.hasEvidence = true // inline `_Files: …_`
     continue
   }
   if (current) {
-    const meta = line.match(/^\s+-?\s*(\w+):\s*(.*)$/)
-    if (meta) {
-      if (meta[1] === 'evidence' && meta[2].trim().length > 0) current.hasEvidence = true
-      if (meta[1] === 'assignee' && meta[2].trim().length > 0) current.hasAssignee = true
-      if (meta[1] === 'acceptance' && meta[2].trim().length > 0) current.hasAcceptance = true
+    current.block += '\n' + line
+    if (prose) { if (citesArtifact(line)) current.hasEvidence = true } // a Verification:/Files: line under the item
+    else {
+      const meta = line.match(/^\s+-?\s*(\w+):\s*(.*)$/)
+      if (meta) {
+        const val = meta[2].trim()
+        if (meta[1] === 'evidence' && val) { current.hasEvidence = true; current.evidence = val }
+        if (meta[1] === 'assignee' && val) current.hasAssignee = true
+        if (meta[1] === 'acceptance' && val) { current.hasAcceptance = true; current.acceptance = val }
+      }
     }
   }
 }
 if (current) items.push(current)
 
-if (items.length === 0) {
-  console.error('❌ Schema error: ## Items section has no items (`- [ ] N. ...` lines)')
-  process.exit(2)
-}
+if (items.length === 0) { console.error('❌ Schema error: no checkbox items (`- [ ] …`) found'); process.exit(2) }
 
 const unchecked = items.filter(i => !i.checked)
 const checkedNoEvidence = items.filter(i => i.checked && !i.hasEvidence)
-const missingAssignee = items.filter(i => !i.hasAssignee)
-const missingAcceptance = items.filter(i => !i.hasAcceptance)
-
 const total = items.length
 const done = items.filter(i => i.checked).length
 
-console.log(`\n📋 CHANGES.md — ${fm.data.project} (${fm.data.client})`)
-console.log(`   ${done}/${total} items checked. status=${fm.data.status}\n`)
+console.log(`\n📋 CHANGES.md — ${doc.data.project} (${doc.data.client})  [${prose ? 'PROSE' : 'STRICT'} mode]`)
+console.log(`   ${done}/${total} items checked. status=${doc.data.status}\n`)
 
 let failed = false
-
-if (unchecked.length > 0) {
-  console.error(`❌ ${unchecked.length} unchecked item${unchecked.length === 1 ? '' : 's'}:`)
-  for (const item of unchecked) console.error(`   - ${item.title}`)
-  failed = true
+if (unchecked.length) {
+  console.error(`❌ ${unchecked.length} unchecked item(s):`); for (const i of unchecked) console.error(`   - ${i.title.slice(0, 80)}`); failed = true
 }
-if (checkedNoEvidence.length > 0) {
-  console.error(`\n❌ ${checkedNoEvidence.length} checked item${checkedNoEvidence.length === 1 ? '' : 's'} missing \`evidence:\` line:`)
-  for (const item of checkedNoEvidence) console.error(`   - ${item.title}`)
-  failed = true
+if (checkedNoEvidence.length) {
+  console.error(`\n❌ ${checkedNoEvidence.length} checked item(s) with no artifact evidence (${prose ? 'inline path/URL/SHA/_Files:_/theme-check' : '`evidence:` line'} required):`)
+  for (const i of checkedNoEvidence) console.error(`   - ${i.title.slice(0, 80)}`); failed = true
 }
-if (missingAssignee.length > 0) {
-  console.warn(`\n⚠️  ${missingAssignee.length} item${missingAssignee.length === 1 ? '' : 's'} missing \`assignee:\` line (recommend fix at intake)`)
-}
-if (missingAcceptance.length > 0) {
-  console.warn(`⚠️  ${missingAcceptance.length} item${missingAcceptance.length === 1 ? '' : 's'} missing \`acceptance:\` line (recommend fix at intake)`)
-}
-
-if (failed) {
-  console.error('\n→ Refusing publish. Re-dispatch unchecked items + add evidence to checked items, then re-run.')
-  process.exit(1)
+if (!prose) {
+  // STRICT-only: separate acceptance: line + assignee:, each artifact-backed.
+  const checkedProseEvidence = items.filter(i => i.checked && i.hasEvidence && !citesArtifact(i.evidence))
+  const checkedNoAcceptance = items.filter(i => i.checked && !i.hasAcceptance)
+  const checkedProseAcceptance = items.filter(i => i.checked && i.hasAcceptance && !citesArtifact(i.acceptance))
+  const missingAssignee = items.filter(i => !i.hasAssignee)
+  for (const [list, msg] of [[checkedProseEvidence, 'prose `evidence:` (no artifact)'], [checkedNoAcceptance, 'missing `acceptance:`'], [checkedProseAcceptance, 'prose `acceptance:` (no artifact)']]) {
+    if (list.length) { console.error(`\n❌ ${list.length} checked item(s): ${msg}:`); for (const i of list) console.error(`   - ${i.title.slice(0, 70)}`); failed = true }
+  }
+  if (missingAssignee.length) console.warn(`\n⚠️  ${missingAssignee.length} item(s) missing \`assignee:\` (recommend fix at intake)`)
+} else {
+  console.warn('\nⓘ PROSE mode — enforced: every item checked + cites a real artifact + shippable status. (For full assignee/acceptance discipline, use YAML frontmatter + `## Items`.)')
 }
 
-// Status must be review (about-to-ship) or shipped to publish
-if (fm.data.status === 'in-progress') {
-  console.error('\n❌ status=in-progress. Intake agent must flip to status=review after specialists finish.')
-  process.exit(1)
-}
-
-console.log(`✅ All ${total} items checked with evidence. Safe to publish.\n`)
+if (failed) { console.error('\n→ Refusing publish. Check all items + cite real evidence, then re-run.'); process.exit(1) }
+if (doc.data.status === 'in-progress') { console.error('\n❌ status=in-progress — flip to review/shipped after specialists finish.'); process.exit(1) }
+console.log(`✅ All ${total} items checked with artifact evidence. Safe to publish.\n`)
 process.exit(0)
