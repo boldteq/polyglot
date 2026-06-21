@@ -35,15 +35,36 @@ const REUSE_MAP = process.env.REUSE_MAP || 'section-reuse-map.md'
 const BASE_REF = process.env.BASE_REF || 'base'
 const REUSE_TARGET = Number.parseFloat(process.env.REUSE_TARGET || '0.70')
 const ALLOW_WAIVER = process.env.ALLOW_REUSE_WAIVER === '1'
+// Phase A default = warn-only (surface findings, never block); REUSE_MAP_ENFORCE=1 = Phase B BLOCK.
+// Doctrine: register a new manifest gate warn-only, prove on ≥2 stores, then flip to block.
+const ENFORCE = process.env.REUSE_MAP_ENFORCE === '1'
 
 const VALID_RUNGS = new Set(['REUSE', 'CONFIGURE', 'EXTEND', 'CUSTOM'])
 const blockers = []
 const warnings = []
 const add = (list, id, detail, evidence = '') => list.push({ id, page: REUSE_MAP, detail, evidence })
 
+// New sections/*.liquid added since BASE_REF — drives BOTH the applicability skip (no new
+// sections → the reuse ladder has nothing to govern) AND the custom-count cross-check.
+// Returns [] (resolvable, none), [..] (the added files), or null (base ref unresolvable).
+function newSectionsSinceBase() {
+  try {
+    execFileSync('git', ['rev-parse', '--verify', `${BASE_REF}^{commit}`], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const out = execFileSync('git', ['diff', '--diff-filter=A', '--name-only', `${BASE_REF}..HEAD`, '--', 'sections/'], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] })
+    return out.split('\n').filter(l => l.endsWith('.liquid'))
+  } catch { return null }
+}
+
 function finish(envError) {
+  // Phase A (warn-only): downgrade every blocker to a warning so the gate surfaces findings
+  // but never blocks a build until it's proven on ≥2 stores (REUSE_MAP_ENFORCE=1 flips to block).
+  if (!ENFORCE && blockers.length) {
+    warnings.push(...blockers)
+    warnings.push({ id: 'reuse-map.warn-only', page: REUSE_MAP, detail: 'Phase A warn-only — set REUSE_MAP_ENFORCE=1 to BLOCK on the above', evidence: '' })
+    blockers.length = 0
+  }
   const pass = !envError && blockers.length === 0
-  writeReport('reuse-map', 11, {
+  writeReport('reuse-map', 23, {
     cwd, pass, blockers, warnings,
     evidence: { reuseMap: REUSE_MAP, baseRef: BASE_REF, reuseTarget: REUSE_TARGET, reason: envError || undefined },
     duration_ms: Date.now() - t0,
@@ -59,9 +80,20 @@ function finish(envError) {
 
 const mapAbs = path.resolve(cwd, REUSE_MAP)
 if (!fs.existsSync(mapAbs)) {
-  // onyx: missing map = AUTO-REJECT (a block, not an env error)
-  add(blockers, 'reuse-map.missing', `${REUSE_MAP} not found — onyx Audit 7 auto-rejects a build with no reuse map`)
-  finish(null)
+  // APPLICABILITY: a build that added NO custom sections has nothing for the reuse ladder to
+  // govern → SKIP (never a false-BLOCK on refreshes / micro-changes / legacy repos). Only a
+  // build that ADDED sections but shipped no map is a real onyx-Audit-7 miss.
+  const ns = newSectionsSinceBase()
+  if (ns === null) {
+    add(warnings, 'reuse-map.n-a-base-unresolved', `no ${REUSE_MAP} + base ref "${BASE_REF}" unresolvable — can't prove sections were added; not applicable, skipping`)
+    finish(null)
+  } else if (ns.length === 0) {
+    add(warnings, 'reuse-map.n-a-no-new-sections', `no ${REUSE_MAP} + 0 new sections/*.liquid since ${BASE_REF} — not applicable (no custom section work), skipping`)
+    finish(null)
+  } else {
+    add(blockers, 'reuse-map.missing', `${REUSE_MAP} not found but ${ns.length} new section(s) added since ${BASE_REF} — onyx Audit 7 auto-rejects a build that adds custom sections with no reuse map`)
+    finish(null)
+  }
 }
 const text = fs.readFileSync(mapAbs, 'utf-8')
 
@@ -127,14 +159,7 @@ if (scratch > 0) {
 }
 
 // ── custom count vs newly-added sections/*.liquid on disk ────────────────────
-let newSections = null
-try {
-  execFileSync('git', ['rev-parse', '--verify', `${BASE_REF}^{commit}`], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
-  const out = execFileSync('git', ['diff', '--diff-filter=A', '--name-only', `${BASE_REF}..HEAD`, '--', 'sections/'], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] })
-  newSections = out.split('\n').filter(l => l.endsWith('.liquid'))
-} catch {
-  newSections = null
-}
+const newSections = newSectionsSinceBase()
 if (countsMatch) {
   if (newSections === null) {
     add(warnings, 'reuse-map.base-ref-unresolved', `base ref "${BASE_REF}" unresolvable (or not committed yet) — custom-count vs disk cross-check skipped`)
