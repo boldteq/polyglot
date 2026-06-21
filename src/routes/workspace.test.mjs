@@ -210,6 +210,24 @@ test('Dispatch: builds a roster agent prompt; rejects non-roster + bad input', a
   assert.equal(noTask.status, 400);
 });
 
+test('Projects: list merges intake rows + unlinked builds; create works', async () => {
+  const list = await get('/api/workspace/projects');
+  assert.equal(list.status, 200);
+  assert.ok(Array.isArray(list.json.projects));
+  assert.ok(Array.isArray(list.json.unlinkedBuilds));
+
+  const created = await postJson('/api/workspace/projects', { name: 'WS Test Project', niche: 'test' });
+  assert.equal(created.status, 201);
+  assert.ok(typeof created.json.id === 'string');
+
+  const noName = await postJson('/api/workspace/projects', { niche: 'x' });
+  assert.equal(noName.status, 400);
+
+  // CLEAN UP: don't leave the test project in the real registry (no delete API
+  // yet — remove directly, mirroring the index round-trip test's hygiene).
+  try { require('../db.js').getDb().prepare('DELETE FROM client_projects WHERE id = ?').run(created.json.id); } catch { /* */ }
+});
+
 test('Cockpit: design-system route returns present flag', async () => {
   const list = await get('/api/workspace/builds');
   if (!list.json.builds.length) return;

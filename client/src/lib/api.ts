@@ -199,7 +199,8 @@ export const buildStreamUrl = (id: string) => `/api/build/${encodeURIComponent(i
 
 // P1 — Build Detail sections
 export interface BuildAgentActivity { runs: number; costUsd: number; sinceDays: number; correlation: string; note: string; byAgent: { agentName: string; runs: number; costUsd: number }[] }
-export interface BuildDetail { build: AssembledBuild; artifacts: Record<string, boolean>; agents: BuildAgentActivity }
+export interface LinkedProject { id: string; name: string; niche: string | null; domain: string | null; status: string; build_dir: string | null }
+export interface BuildDetail { build: AssembledBuild; artifacts: Record<string, boolean>; agents: BuildAgentActivity; project?: LinkedProject | null }
 export const getWorkspaceBuild = (buildId: string) =>
   request<BuildDetail>(`/workspace/builds/${encodeURIComponent(buildId)}`)
 
@@ -258,6 +259,21 @@ export interface DispatchPayload { agentName: string; prompt: string; threadId: 
 export const buildWorkspaceDispatch = (buildId: string, agent: string, task: string) =>
   request<DispatchPayload>(`/workspace/builds/${encodeURIComponent(buildId)}/dispatch`, {
     method: 'POST', body: JSON.stringify({ agent, task }),
+  })
+
+// Hybrid project registry (intake rows ↔ disk builds)
+export interface WorkspaceProject {
+  id: string; name: string; niche: string | null; domain: string | null; status: string
+  build_dir: string | null; created_at: string; updated_at: string | null
+  build: AssembledBuild | null
+}
+export const getWorkspaceProjects = () =>
+  request<{ projects: WorkspaceProject[]; unlinkedBuilds: AssembledBuild[] }>(`/workspace/projects`)
+export const createWorkspaceProject = (body: { name: string; niche?: string; domain?: string }) =>
+  request<{ id: string }>(`/workspace/projects`, { method: 'POST', body: JSON.stringify(body) })
+export const linkWorkspaceProject = (id: string, buildId: string | null) =>
+  request<{ ok: boolean; build_dir: string | null }>(`/workspace/projects/${encodeURIComponent(id)}/link`, {
+    method: 'POST', body: JSON.stringify({ buildId }),
   })
 
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────

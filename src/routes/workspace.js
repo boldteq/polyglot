@@ -336,6 +336,66 @@ router.get('/workspace/escalations', (_req, res) => {
   }
 });
 
+// ── P3: hybrid project registry (intake rows ↔ disk builds) ──────────────────
+// Normalize for matching an intake project to a discovered build.
+function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+// GET /api/workspace/projects — intake projects merged with their live build
+// (auto-linked by name/domain when not yet linked) + the discovered builds that
+// have no project row, so the UI can offer to link them.
+router.get('/workspace/projects', (_req, res) => {
+  try {
+    const builds = listBuilds();
+    const byDir = new Map(builds.map((b) => [b.dir, b]));
+    const projects = db.listClientProjects();
+    for (const p of projects) {
+      // auto-link: match an unlinked project to a build by client/domain/name
+      if (!p.build_dir) {
+        const key = norm(p.domain) || norm(p.name);
+        const match = builds.find((b) => norm(b.client) === key || norm(b.store).includes(key) || norm(b.dir).includes(key));
+        if (match && key) { db.linkProjectBuildDir(p.id, match.dir); p.build_dir = match.dir; }
+      }
+      p.build = p.build_dir ? (byDir.get(p.build_dir) || null) : null;
+    }
+    const linked = new Set(projects.map((p) => p.build_dir).filter(Boolean));
+    const unlinkedBuilds = builds.filter((b) => !linked.has(b.dir));
+    res.json({ projects, unlinkedBuilds });
+  } catch (err) {
+    console.error('[workspace] /projects failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/workspace/projects — create an intake project (panel "New Project").
+router.post('/workspace/projects', (req, res) => {
+  try {
+    const { name, niche, domain } = req.body || {};
+    if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'name required' });
+    const id = db.createClientProject({ name: name.trim(), niche: niche || null, domain: domain || null, intake: req.body || {} });
+    res.status(201).json({ id });
+  } catch (err) {
+    console.error('[workspace] create project failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/workspace/projects/:id/link — link a project to a discovered build.
+router.post('/workspace/projects/:id/link', (req, res) => {
+  try {
+    if (!db.getClientProject(req.params.id)) return res.status(404).json({ error: 'project not found' });
+    const { buildId } = req.body || {};
+    const dir = buildId ? dirFor(buildId) : null;
+    if (buildId && !dir) { allAssembledBuilds(); } // warm id→dir
+    const resolved = buildId ? dirFor(buildId) : null;
+    if (buildId && !resolved) return res.status(404).json({ error: 'build not found' });
+    db.linkProjectBuildDir(req.params.id, resolved); // null buildId unlinks
+    res.json({ ok: true, build_dir: resolved });
+  } catch (err) {
+    console.error('[workspace] link project failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── P1: Build Detail section helpers + routes ────────────────────────────────
 
 // Resolve a buildId (from the URL) to its dir. dirFor() works once builds have
@@ -404,6 +464,7 @@ router.get('/workspace/builds/:buildId', (req, res) => {
       build,
       artifacts: Object.fromEntries(Object.entries(art).map(([k, v]) => [k, v.exists])),
       agents: buildAgentActivity(build.platform, dir),
+      project: db.getProjectByBuildDir ? db.getProjectByBuildDir(dir) : null,
     });
   } catch (err) {
     console.error('[workspace] /builds/:buildId failed:', err.message);

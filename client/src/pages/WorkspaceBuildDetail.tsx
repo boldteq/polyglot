@@ -43,7 +43,7 @@ export default function WorkspaceBuildDetail() {
   return (
     <PageShell
       title={data ? data.build.client : 'Build'}
-      subtitle={data ? `${data.build.platform} · step ${data.build.step.current}/18` : 'Build detail'}
+      subtitle={data ? `${data.build.platform} · step ${data.build.step.current}/18${data.project ? ` · ${data.project.niche || 'project'}${data.project.domain ? ` · ${data.project.domain}` : ''}` : ''}` : 'Build detail'}
       actions={
         <div className="flex items-center gap-2">
           <button onClick={() => nav('/workspace/builds')} className="btn-ghost btn-sm flex items-center gap-1.5"><ArrowLeft className="w-4 h-4" />Back</button>

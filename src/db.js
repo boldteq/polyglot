@@ -153,6 +153,7 @@ function runMigrations(db) {
     { version: 33, name: 'workspace_build_index', fn: workspaceBuildIndexMigration },
     { version: 34, name: 'build_schedules', fn: buildSchedulesMigration },
     { version: 35, name: 'calibration_grades', fn: calibrationGradesMigration },
+    { version: 36, name: 'client_projects_build_dir', fn: clientProjectsBuildDirMigration },
   ];
 
   for (const mig of migrations) {
@@ -451,6 +452,17 @@ function workspaceBuildIndexMigration(db) {
     CREATE INDEX IF NOT EXISTS idx_wbi_score    ON workspace_build_index(score);
   `);
   console.log('[migration v33] workspace_build_index (derived cache) created');
+}
+
+// ── Migration v36: client_projects.build_dir (2026-06-22) ────────────────────
+// Links an intake project row to its on-disk build dir, so the Workspace panel
+// unifies project metadata (brand/niche/store) with live build state.
+function clientProjectsBuildDirMigration(db) {
+  const cols = db.prepare("PRAGMA table_info(client_projects)").all();
+  if (!cols.some((c) => c.name === 'build_dir')) {
+    db.exec('ALTER TABLE client_projects ADD COLUMN build_dir TEXT');
+  }
+  console.log('[migration v36] client_projects.build_dir added');
 }
 
 // ── Migration v34: build_schedules (post-publish results loop, 2026-06-21) ────
@@ -4140,7 +4152,14 @@ function createClientProject({ name, niche = null, domain = null, intake = {} })
   return id;
 }
 function listClientProjects() {
-  return getDb().prepare('SELECT id, name, niche, domain, status, created_at, updated_at FROM client_projects ORDER BY updated_at DESC').all();
+  return getDb().prepare('SELECT id, name, niche, domain, status, build_dir, created_at, updated_at FROM client_projects ORDER BY updated_at DESC').all();
+}
+// Link/unlink an intake project to its on-disk build dir (P3 hybrid model).
+function linkProjectBuildDir(id, buildDir) {
+  getDb().prepare('UPDATE client_projects SET build_dir = ?, updated_at = ? WHERE id = ?').run(buildDir || null, _now(), id);
+}
+function getProjectByBuildDir(buildDir) {
+  return getDb().prepare('SELECT id, name, niche, domain, status, build_dir, created_at, updated_at FROM client_projects WHERE build_dir = ?').get(buildDir) || null;
 }
 function getClientProject(id) {
   const row = getDb().prepare('SELECT * FROM client_projects WHERE id = ?').get(id);
@@ -4177,6 +4196,7 @@ module.exports = {
   getDb, close,
   // Shopify client projects (P1 intake + P5 preview)
   createClientProject, listClientProjects, getClientProject, seedProjectPages,
+  linkProjectBuildDir, getProjectByBuildDir,
   listProjectPages, updatePageStatus, createRevision, listRevisions,
   // Agent Runs
   loadAgentRuns, insertAgentRun, getRecentAgentRuns,

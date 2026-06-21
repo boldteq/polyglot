@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutGrid, Eye, Boxes, Users, AlertTriangle, TrendingUp } from 'lucide-react'
+import { LayoutGrid, Eye, Boxes, Users, AlertTriangle, TrendingUp, FolderKanban } from 'lucide-react'
 import ModeSwitcher from './ModeSwitcher'
 
 // The Workspace-mode shell — a sidebar SEPARATE from Polyglot's. Holds only
@@ -31,6 +31,9 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
           <NavSection label="Client Work" />
           <NavLink to="/workspace" end className={navLinkClass}>
             <LayoutGrid className="w-4 h-4" /> Mission Control
+          </NavLink>
+          <NavLink to="/workspace/projects" className={navLinkClass}>
+            <FolderKanban className="w-4 h-4" /> Projects
           </NavLink>
           <NavLink to="/workspace/builds" className={navLinkClass}>
             <Boxes className="w-4 h-4" /> Builds
