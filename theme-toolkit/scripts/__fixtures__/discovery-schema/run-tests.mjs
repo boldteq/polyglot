@@ -81,5 +81,19 @@ console.log('(e) clean repo + judge ON + specific stub → exit 0, no positionin
   !blockerIds(report).has('discovery.vague-positioning') ? pass('no vague-positioning on a specific verdict') : fail('specific verdict wrongly flagged')
 }
 
+console.log('(f) #16 brand-direction with NO structured references → brand-references-thin at dispatch')
+{
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'disc-thinref-'))
+  fs.mkdirSync(path.join(d, 'docs', 'discovery'), { recursive: true })
+  fs.mkdirSync(path.join(d, 'docs', 'design'), { recursive: true })
+  fs.copyFileSync(path.join(HERE, 'clean', 'docs', 'discovery', 'goals.json'), path.join(d, 'docs', 'discovery', 'goals.json'))
+  // ≥60 words of plain prose, no "reference", no "Brand — detail" / "Label:" structure → fails #16 only
+  fs.writeFileSync(path.join(d, 'docs', 'design', 'brand-direction.md'), 'Brand direction for a calm sleep supplement aimed at tired professionals who wake at three in the morning and want something gentle that actually works without grogginess the next day so they can feel rested and clear headed and ready to perform at their best every single morning of the working week ahead always\n')
+  const { code, report } = runGate(d, { DS_REQUIRE_SCOPE: '1' })
+  fs.rmSync(d, { recursive: true, force: true })
+  code === 1 ? pass('exit 1 (thin references block at dispatch)') : fail(`expected exit 1, got ${code}; blockers=${JSON.stringify([...blockerIds(report)])}`)
+  blockerIds(report).has('discovery.brand-references-thin') ? pass('discovery.brand-references-thin present') : fail(`missing brand-references-thin (saw ${[...blockerIds(report)].join(', ') || 'none'})`)
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

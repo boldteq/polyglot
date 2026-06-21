@@ -164,6 +164,15 @@ function checkBrandDirection() {
   if (/lorem ipsum|tbd|todo|placeholder|fill (this )?in/i.test(text)) {
     issue('discovery.brand-placeholder', BRAND_FILE, 'brand-direction.md contains placeholder text (lorem/TBD/TODO) — replace with real direction before design dispatch.')
   }
+  // #16 — reference-brand ratification floor: the brief must name reference brands WITH a specific
+  // "what to take", not bare adjectives — drape designs FROM these. Deterministic structural floor (the
+  // deeper "specific section · pattern · lift" quality is the LLM positioning judge's job, #13). issue()
+  // → dispatch block, dev warning.
+  const refsMentioned = /referenc/i.test(text)
+  const structuredRefs = [...text.matchAll(/[A-Z][A-Za-z0-9&.+'’ ]{1,30}\s*[—\-–:(]\s*\w/g)].length
+  if (!refsMentioned || structuredRefs < 2) {
+    issue('discovery.brand-references-thin', BRAND_FILE, `brand-direction.md needs ≥2 reference brands EACH with a specific "what to take" (e.g. "Ceremonia — editorial PDP rhythm; Everist — restrained palette") — generic references give drape nothing concrete to design from.`)
+  }
 }
 
 // ── 4. preflight-audit.md (existing stores only) ──────────────────────────────

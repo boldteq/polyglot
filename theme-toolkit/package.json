@@ -37,6 +37,7 @@
     "check:css-layout": "node scripts/check-css-layout.mjs",
     "check:redirects": "node scripts/check-redirects.mjs",
     "check:images": "node scripts/check-image-quality.mjs",
+    "check:copy": "node scripts/check-copy-quality.mjs",
     "check:schema": "node scripts/check-metafield-schema.mjs",
     "check:assets": "node scripts/check-asset-budget.mjs",
     "check:handoff": "node scripts/check-handoff-contract.mjs",

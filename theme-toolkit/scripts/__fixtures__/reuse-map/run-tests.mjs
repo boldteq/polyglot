@@ -93,6 +93,11 @@ console.log('check-reuse-map — gate #23 (ENFORCE=1 for BLOCK cases)');
   writeMap(d, 'Counts: {reused: 8, configured: 1, extended: 0, custom: 1}\nCustom split: {library: 1, scratch: 0}\n\n| Zone | Section | Rung |\n|---|---|---|\n| promo | promo-band | CUSTOM |\n');
   expect('library no blueprint → BLOCK', { code: 1, mustContain: 'library-no-blueprint' }, run(d, E)); fs.rmSync(d, { recursive: true, force: true });
 }
+{ // 10. #22 blueprint citation naming a section file that doesn't exist → warning (exit 0)
+  const d = tmp();
+  writeMap(d, 'Counts: {reused: 8, configured: 1, extended: 0, custom: 1}\nCustom split: {library: 1, scratch: 0}\n\n| Zone | Section | Rung |\n|---|---|---|\n| promo | ghost-section | CUSTOM |\n\nghost-section: blueprint: countdown@v1\n');
+  expect('blueprint ref off a missing section → warn', { code: 0, mustContain: 'blueprint-section-missing' }, run(d, E)); fs.rmSync(d, { recursive: true, force: true });
+}
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

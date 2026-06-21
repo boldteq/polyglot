@@ -179,6 +179,19 @@ if (library > 0) {
   if (known) for (const id of cited) if (!known.has(id)) add(warnings, 'reuse-map.unknown-blueprint', `cited blueprint "${id}" is not in lib/blueprint-index.json — typo, or author it into custom-section-blueprint-library.md + the index first.`)
 }
 
+// ── #22: each blueprint citation must attach to a REAL section (the cited section file exists on disk) ──
+// catches a citation drifting off its section (renamed/removed) — the ref-vs-build consistency the reuse
+// map claims. Deterministic + warn-only (a deeper blueprint↔schema match is the opt-in LLM check). Lines
+// look like `<section-name>: blueprint: <id>[@vN] (...)`.
+for (const m of text.matchAll(/^([a-z0-9][a-z0-9_-]+):\s*blueprint:\s*([a-z0-9-]+)/gim)) {
+  const section = m[1]
+  const id = m[2].toLowerCase()
+  if (id === 'none') continue
+  if (!fs.existsSync(path.resolve(cwd, 'sections', `${section}.liquid`))) {
+    add(warnings, 'reuse-map.blueprint-section-missing', `citation "${section}: blueprint: ${id}" names section "${section}" but sections/${section}.liquid does not exist — the blueprint ref drifted off its section (renamed/removed?).`)
+  }
+}
+
 // ── custom count vs newly-added sections/*.liquid on disk ────────────────────
 const newSections = newSectionsSinceBase()
 if (countsMatch) {

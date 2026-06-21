@@ -1,5 +1,5 @@
 {
-  "note": "#6/#20 — valid custom-section blueprint ids (the LIBRARY rung of the reuse ladder). A `library` custom section in section-reuse-map.md must cite one of these via `blueprint: <id>@vN`. Source of truth: ~/.claude/memory/stacks/shopify/themes/custom-section-blueprint-library.md. Sprint 3 #20 expands this list to 15+.",
+  "note": "#6/#20 — valid custom-section blueprint ids (the LIBRARY rung of the reuse ladder). A `library` custom section in section-reuse-map.md must cite one of these via `blueprint: <id>@vN`. Source of truth: ~/.claude/memory/stacks/shopify/themes/custom-section-blueprint-library.md. Sprint 3 #20 grew this from 8 to 16 (8 Dawn-gap-prioritized additions).",
   "blueprints": [
     "countdown",
     "lookbook",
@@ -8,6 +8,14 @@
     "testimonials",
     "logo-strip",
     "video-hero",
-    "scrolling-promotion"
+    "scrolling-promotion",
+    "hero-editorial",
+    "social-proof-grid",
+    "faq-accordion-v2",
+    "comparison-table",
+    "founder-letter",
+    "subscription-toggle",
+    "ingredient-cards",
+    "trust-badge-row"
   ]
 }

@@ -102,6 +102,14 @@ function readPack(niche) {
   try { return JSON.parse(fs.readFileSync(file, 'utf-8')) } catch (err) { throw new Error(`pack ${path.basename(file)} is invalid JSON: ${err.message}`) }
 }
 
+// #19 — the cross-niche premium BASELINE pack (PACKS_DIR/_baseline.json), the universal floor an
+// UN-TUNED niche falls back to under BASELINE_ENFORCE=1. null if absent/unreadable (then no fallback).
+function loadBaseline() {
+  const file = path.join(PACKS_DIR, '_baseline.json')
+  if (!fs.existsSync(file)) return null
+  try { return JSON.parse(fs.readFileSync(file, 'utf-8')) } catch { return null }
+}
+
 // Deep-merge parent (extends) then overlay (overlay wins). Arrays/scalars overwrite, objects merge.
 function deepMerge(base, overlay) {
   const out = { ...base }
@@ -235,28 +243,40 @@ function conceptPresent(concept, mapEntry, themeBase, hay) {
 // ── main ──────────────────────────────────────────────────────────────────────
 function main() {
   // 1. Pack resolves — design-spec declares `dna_pack` AND the pack file exists.
+  const BASELINE_ENFORCE = process.env.BASELINE_ENFORCE === '1'
   const niche = declaredPackNiche()
-  if (!niche) {
-    // No declared pack — measurable-quality scoring is impossible. Lenient unless publish-grade.
-    if (REQUIRE_SCOPE) { add(blockers, 'dq.pack-missing', DESIGN_SPEC, `no \`dna_pack:\` declared in ${DESIGN_SPEC} and DS_REQUIRE_SCOPE=1 — a publish-grade build must declare its niche DNA pack`) }
-    else warnings.push({ id: 'dq.pack-missing', page: DESIGN_SPEC, detail: `no \`dna_pack:\` declared in ${DESIGN_SPEC} — niche taste scoring skipped (declare a pack or set DS_REQUIRE_SCOPE for publish)`, evidence: '' })
-    finish(null, { niche: null })
-  }
-
-  let pack
-  try { pack = resolvePack(niche) } catch (err) { finish(err.message) }
-  if (!pack) {
-    // declared but file absent → measurable failure on check #1. Honor calibration? No pack to read
-    // calibration from — treat as enforced when publish-grade, else warn (can't score taste).
-    if (REQUIRE_SCOPE) add(blockers, 'dq.pack-missing', DESIGN_SPEC, `design-spec declares dna_pack "${niche}" but ${nicheToFile(niche)} not found in ${PACKS_DIR} — author the pack or fix the niche name`)
-    else warnings.push({ id: 'dq.pack-missing', page: DESIGN_SPEC, detail: `design-spec declares dna_pack "${niche}" but ${nicheToFile(niche)} not found in ${PACKS_DIR} — taste scoring skipped`, evidence: '' })
-    finish(null, { niche })
-  }
-
-  const calibration = pack._meta?.calibration || 'missing'
+  let pack = null
+  if (niche) { try { pack = resolvePack(niche) } catch (err) { finish(err.message) } }
+  const calibration = pack ? (pack._meta?.calibration || 'missing') : 'missing'
   enforce = FORCE_ENFORCE || calibration === 'tuned'
-  if (!enforce) {
-    warnings.push({ id: 'dq.pack-not-tuned', page: nicheToFile(niche), detail: `DNA pack "${pack.niche}" calibration="${calibration}" (not "tuned") — measurable failures demoted to warnings; pack is not evidence-backed yet (set _meta.calibration:"tuned" or DQ_FORCE_ENFORCE=1)`, evidence: '' })
+
+  // #19 — baseline floor: an UN-TUNED niche (untuned pack, or no pack at all) still meets a universal
+  // premium baseline when BASELINE_ENFORCE=1. Swap to the baseline pack scored AS tuned (reuses every
+  // check below); the per-build ## Waivers override (ALLOW_DQ_WAIVER) still applies. A tuned niche pack
+  // always takes precedence (this only fires when the niche's own pack isn't enforcing).
+  let baselineUsed = false
+  if (!enforce && BASELINE_ENFORCE) {
+    const baseline = loadBaseline()
+    if (baseline) {
+      pack = baseline
+      enforce = true
+      baselineUsed = true
+      warnings.push({ id: 'dq.baseline-fallback', page: niche ? nicheToFile(niche) : '(no-pack)', detail: `${niche ? `niche "${niche}" pack is untuned` : 'no dna_pack declared'} — enforcing the cross-niche premium BASELINE floor (BASELINE_ENFORCE=1). Tune the niche pack to replace it; override a specific floor via a CHANGES.md ## Waivers entry.`, evidence: '' })
+    }
+  }
+
+  // No pack to score against (and no baseline fallback taken) → original lenient/strict behavior.
+  if (!pack) {
+    const msg = niche
+      ? `design-spec declares dna_pack "${niche}" but ${nicheToFile(niche)} not found in ${PACKS_DIR} — author the pack or fix the niche name`
+      : `no \`dna_pack:\` declared in ${DESIGN_SPEC} — niche taste scoring skipped (declare a pack or set DS_REQUIRE_SCOPE for publish)`
+    if (REQUIRE_SCOPE) add(blockers, 'dq.pack-missing', DESIGN_SPEC, msg)
+    else warnings.push({ id: 'dq.pack-missing', page: DESIGN_SPEC, detail: msg, evidence: '' })
+    finish(null, { niche: niche || null })
+  }
+
+  if (!enforce && !baselineUsed) {
+    warnings.push({ id: 'dq.pack-not-tuned', page: nicheToFile(niche), detail: `DNA pack "${pack.niche}" calibration="${calibration}" (not "tuned") — measurable failures demoted to warnings; pack is not evidence-backed yet (set _meta.calibration:"tuned", BASELINE_ENFORCE=1 for the universal floor, or DQ_FORCE_ENFORCE=1)`, evidence: '' })
   }
 
   // ── resolve CSS scope (the build's custom/extended surface) ─────────────────

@@ -195,6 +195,10 @@ const GATES = [
   // opt-in live crawl (REDIRECTS_CRAWL=1) asserts ≤1 hop to 200. SKIPS when there's no redirect map
   // (greenfield/refresh = not a migration). Covered by --static-only + --verify/--require-full.
   { name: 'redirects', number: 25, kind: 'static', runner: 'node', script: 'check-redirects.mjs' },
+  // Copy-quality (#26, #23/#24/#25) — ink's DoD made machine-checkable: hero formula+citation,
+  // objection coverage, voice reference. Warn-first (COPY_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK); SKIPS
+  // when there are no content/briefs. Covered by --static-only + --verify/--require-full.
+  { name: 'copy-quality', number: 26, kind: 'static', runner: 'node', script: 'check-copy-quality.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
