@@ -1,5 +1,6 @@
 { "surface": "account", "viewport_notes": "login/account pages; form usability.",
   "checks": [
+    { "id": "css-layout", "rule": "no spacing collisions or overlapping elements; nothing wraps or overflows the viewport (flex rows, long text); typography cascade intact (no wrong font/size/weight bleeding into a section); if the surface renders dark, text stays readable", "severity_if_fail": "warning", "fix_owner": "loom" },
     { "id": "form-usable", "rule": "login/register form fields + submit are present, legible, ≥16px (no iOS zoom), tap-targets adequate", "severity_if_fail": "blocker", "fix_owner": "loom" },
     { "id": "horizontal-overflow", "rule": "no sideways scroll", "severity_if_fail": "blocker", "fix_owner": "loom" },
     { "id": "chrome-on-brand", "rule": "page + consent chrome on-brand", "severity_if_fail": "warning", "fix_owner": "loom" },
