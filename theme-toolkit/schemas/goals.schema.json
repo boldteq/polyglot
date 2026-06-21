@@ -41,6 +41,15 @@
         "inp_target_ms": { "type": ["number", "null"] },
         "cls_target": { "type": ["number", "null"] }
       }
+    },
+    "measurement": {
+      "type": "object",
+      "description": "#27 — analytics access provisioned for the 30/90 results loop. Each field: a property/id string when known, or true when access is confirmed. orbit needs all three to measure lift post-launch.",
+      "properties": {
+        "ga4": { "type": ["string", "boolean", "null"] },
+        "gsc": { "type": ["string", "boolean", "null"] },
+        "shopify_analytics": { "type": ["string", "boolean", "null"] }
+      }
     }
   }
 }

@@ -22,6 +22,14 @@ export const meta = {
 // build+Lens loop + the escalation consolidation, but it does NOT emit the publish-readiness verdict.
 // Route every PUBLISH-READY verdict through the CLI `pnpm maestro:build` (full gate stack + writeReadiness).
 // CLI = the publish path; WF = the in-session surface-loop driver.
+//
+// PARITY INVARIANT (#48): this Workflow re-implements the loop control of lib/maestro-loop.mjs
+// (runMaestroLoop) because the WF sandbox can't import the toolkit. It MUST stay behaviorally identical:
+//   • per surface: draft → render(implicit via theme:dev) → judge → PASS stops; FAIL after MAX → escalate;
+//     a draft error → status 'error'; never loop past MAX rounds.
+//   • return shape: { converged, escalated, allPass, surfaces:[{surface,status,rounds[,findings]}] }.
+// __fixtures__/maestro-parity pins that contract against runMaestroLoop. If that fixture changes, update
+// THIS loop to match (and vice-versa) — the two drivers must never diverge.
 
 const VERDICT_SCHEMA = {
   type: 'object', additionalProperties: false,

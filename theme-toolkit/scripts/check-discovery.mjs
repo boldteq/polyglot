@@ -129,6 +129,9 @@ function checkGoals() {
     warnings.push({ id: 'discovery.perf-default', page: GOALS_FILE, detail: 'performance.lcp_target_s not set — defaulting to <2.5s (lumen constant). Set explicitly if the client requires stricter.', evidence: '' })
   }
 
+  // #27 — measurement-access mandate
+  checkMeasurement(goals)
+
   // adjective-as-goal smell: any string value among the numeric target fields = the §5 anti-pattern.
   const numericKeys = /(_pct|_s|_ms|_monthly|_target|_current|aov_|lcp_|inp_|cls_|lighthouse_)/
   const adjectives = []
@@ -144,6 +147,21 @@ function checkGoals() {
   if (adjectives.length) {
     issue('discovery.goal-as-adjective', GOALS_FILE, `numeric goal field(s) hold non-numeric text (the "faster/more sales" anti-pattern): ${adjectives.slice(0, 4).join(', ')}. Capture baseline→target numbers.`)
   }
+}
+
+// ── #27 measurement-access mandate ────────────────────────────────────────────
+// The 30/90 results loop (orbit measures real CVR/AOV → catalyst SCALE/PIVOT/KILL) can't run without
+// GA4 + GSC + Shopify-analytics access. Declare it in goals.measurement so the loop has data day 1.
+// Each field: a property/id string, or true (access confirmed). issue() → dispatch block, dev warning.
+function checkMeasurement(goals) {
+  const m = goals?.measurement
+  const ok = (v) => v === true || (typeof v === 'string' && v.trim().length > 0)
+  if (!m || typeof m !== 'object') {
+    issue('discovery.measurement-missing', GOALS_FILE, `no goals.measurement — declare GA4 + GSC + Shopify-analytics access (the 30/90 results loop can't measure lift without it). e.g. {"ga4":"G-XXXX","gsc":true,"shopify_analytics":true}`)
+    return
+  }
+  const missing = ['ga4', 'gsc', 'shopify_analytics'].filter(k => !ok(m[k]))
+  if (missing.length) issue('discovery.measurement-incomplete', GOALS_FILE, `goals.measurement missing access for: ${missing.join(', ')} — orbit's 30/90 results loop needs all three provisioned before publish.`)
 }
 
 // ── 3. brand-direction.md ─────────────────────────────────────────────────────

@@ -28,5 +28,6 @@
     "lighthouse_perf_target": 90,
     "measured_on": "mobile (primary) + desktop"
   },
-  "accessibility": { "target": "WCAG 2.1 AA", "axe_critical_allowed": 0 }
+  "accessibility": { "target": "WCAG 2.1 AA", "axe_critical_allowed": 0 },
+  "measurement": { "ga4": "G-MERIDIAN1", "gsc": true, "shopify_analytics": true }
 }

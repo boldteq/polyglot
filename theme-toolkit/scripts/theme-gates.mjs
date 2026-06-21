@@ -207,6 +207,10 @@ const GATES = [
   // other locale (no untranslated fallbacks). Warn-first (LOCALE_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK);
   // SKIPS a monolingual store (<2 locale files).
   { name: 'locale-completeness', number: 28, kind: 'static', runner: 'node', script: 'check-locale-completeness.mjs' },
+  // Email-triggers (#29, #35) — every declared lifecycle email (welcome/cart-abandon/post-purchase/…)
+  // must have its trigger wired, or it never sends. Warn-first (EMAIL_ENFORCE=1 / DS_REQUIRE_SCOPE →
+  // BLOCK); SKIPS when there's no docs/email/lifecycle.json (not an email build).
+  { name: 'email-triggers', number: 29, kind: 'static', runner: 'node', script: 'check-email-triggers.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────

@@ -95,5 +95,20 @@ console.log('(f) #16 brand-direction with NO structured references → brand-ref
   blockerIds(report).has('discovery.brand-references-thin') ? pass('discovery.brand-references-thin present') : fail(`missing brand-references-thin (saw ${[...blockerIds(report)].join(', ') || 'none'})`)
 }
 
+console.log('(g) #27 goals.json without measurement → measurement-missing at dispatch')
+{
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'disc-nomeas-'))
+  fs.mkdirSync(path.join(d, 'docs', 'discovery'), { recursive: true })
+  fs.mkdirSync(path.join(d, 'docs', 'design'), { recursive: true })
+  const goals = JSON.parse(fs.readFileSync(path.join(HERE, 'clean', 'docs', 'discovery', 'goals.json'), 'utf-8'))
+  delete goals.measurement
+  fs.writeFileSync(path.join(d, 'docs', 'discovery', 'goals.json'), JSON.stringify(goals))
+  fs.copyFileSync(path.join(HERE, 'clean', 'docs', 'design', 'brand-direction.md'), path.join(d, 'docs', 'design', 'brand-direction.md'))
+  const { code, report } = runGate(d, { DS_REQUIRE_SCOPE: '1' })
+  fs.rmSync(d, { recursive: true, force: true })
+  code === 1 ? pass('exit 1 (no measurement blocks at dispatch)') : fail(`expected exit 1, got ${code}`)
+  blockerIds(report).has('discovery.measurement-missing') ? pass('discovery.measurement-missing present') : fail(`missing (saw ${[...blockerIds(report)].join(', ') || 'none'})`)
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

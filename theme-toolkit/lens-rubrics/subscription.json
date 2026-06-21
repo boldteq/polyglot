@@ -1,0 +1,16 @@
+{ "surface": "subscription", "viewport_notes": "the subscription PDP / buy box (one-time vs subscribe-and-save) + the customer manage-subscription view. Judge clarity + honesty of the offer, and that managing it isn't a trap.",
+  "checks": [
+    { "id": "broken-state", "rule": "no missing image, no Liquid/render errors, no Lorem/[CLAIM] text, no broken price", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "plan-selector-clear", "rule": "one-time vs subscribe choice is visible + unambiguous; the selected plan is obvious and the price reflects it", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "price-delta-honest", "rule": "the subscribe price/discount shown is the REAL app-driven delta — not a fabricated 'save X%' with no actual reduction (honesty)", "severity_if_fail": "blocker", "fix_owner": "conduit" },
+    { "id": "frequency-terms", "rule": "delivery frequency + billing cadence + cancel/skip terms are stated near the selector — no hidden commitment", "severity_if_fail": "warning", "fix_owner": "ink" },
+    { "id": "atc-reflects-plan", "rule": "Add-to-Cart / Subscribe binds the SELECTED plan (not the wrong selling_plan) — the cart shows the chosen cadence", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "manage-not-a-trap", "rule": "(manage view) skip / swap / pause / cancel are reachable and not dark-patterned (no buried cancel)", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "css-layout", "rule": "no overflow/overlap; the plan selector + terms don't collide; typography cascade intact", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "premium-feel", "rule": "the subscription block is designed + on-brand, not the raw subscription-app default widget", "severity_if_fail": "warning", "fix_owner": "drape" }
+  ],
+  "mobile_overlay": [
+    { "id": "tap-target", "rule": "plan radios + frequency selector + subscribe button are ≥44px and not crammed", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "sticky-atc", "rule": "the subscribe/ATC stays reachable on mobile as the shopper scrolls the terms", "severity_if_fail": "warning", "fix_owner": "loom" }
+  ],
+  "sources": ["theme-page-recipes.md#pdp", "patterns/good/shopify-conversion-gate-checklist.md", "blueprint: subscription-toggle@v1"] }
