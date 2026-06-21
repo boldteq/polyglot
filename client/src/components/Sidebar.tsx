@@ -7,6 +7,7 @@ import {
   Settings,
   Sparkles,
   FlaskConical,
+  Hammer,
   Sun,
   Moon,
   Monitor,
@@ -299,6 +300,9 @@ export default function Sidebar({ projects }: SidebarProps) {
         </NavLink>
         <NavLink to="/playground" className={navLinkClass}>
           <FlaskConical className="w-4 h-4" /> Playground
+        </NavLink>
+        <NavLink to="/build" className={navLinkClass}>
+          <Hammer className="w-4 h-4" /> Build
         </NavLink>
         <NavLink to="/orchestration" className={navLinkClass}>
           <Sparkles className="w-4 h-4" /> Orchestration
