@@ -73,12 +73,15 @@ export default function Observability() {
 
   return (
     <div className="flex flex-col">
-      <div className="pb-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Activity className="w-4 h-4 text-accent" />
-          <p className="text-xs text-text-muted">Real cost · Policy audit · Judge scores · Delegations</p>
+      <div className="pb-3 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <Activity className="w-4 h-4 text-accent mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-text">Observability</p>
+            <p className="text-xs text-text-muted">What your AI agents cost, what they're doing, and how well they perform — refreshed on demand.</p>
+          </div>
         </div>
-        <button onClick={load} disabled={loading} className="btn-secondary btn-sm">
+        <button onClick={load} disabled={loading} className="btn-secondary btn-sm shrink-0">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
           Refresh
         </button>
@@ -87,12 +90,13 @@ export default function Observability() {
       <div className="space-y-6 pb-10">
         {/* Spend — real token cost (Pillar 1) */}
         <section>
-          <SectionHead icon={<DollarSign className="w-4 h-4 text-emerald" />} title="Token spend (real)" />
+          <SectionHead icon={<DollarSign className="w-4 h-4 text-emerald" />} title="Token spend" />
+          <p className="text-[11px] text-text-muted -mt-2 mb-3">What your agents cost in AI tokens. “Real” = measured from recorded runs; estimates fill in the rest.</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Stat label="Real cost" value={`$${realCost.toFixed(4)}`} accent="text-emerald" />
-            <Stat label="Total (incl. est.)" value={`$${totalCost.toFixed(4)}`} />
-            <Stat label="Real calls" value={`${spend.realCalls ?? 0} / ${spend.calls}`} />
-            <Stat label="Tokens" value={(spend.tokens ?? 0).toLocaleString()} />
+            <Stat label="Real cost" value={`$${realCost.toFixed(4)}`} accent="text-emerald" title="Actual dollars spent, measured from runs where token usage was recorded." />
+            <Stat label="Total (incl. est.)" value={`$${totalCost.toFixed(4)}`} title="Real cost plus an estimate for runs where exact token usage wasn’t captured." />
+            <Stat label="Measured runs" value={`${spend.realCalls ?? 0} / ${spend.calls}`} title="How many of all AI calls had their exact token usage recorded (measured / total)." />
+            <Stat label="Tokens" value={(spend.tokens ?? 0).toLocaleString()} title="Total tokens (words/word-pieces) sent to and from the AI across recorded runs." />
           </div>
           {spend.calls === 0 && (
             <p className="text-[11px] text-text-muted mt-2">No LLM calls recorded yet — real cost appears once agents run through the recorded paths (schedules / orchestration).</p>
@@ -102,6 +106,7 @@ export default function Observability() {
         {/* Policy audit — recent blocks (Pillar 5) */}
         <section>
           <SectionHead icon={<ShieldAlert className="w-4 h-4 text-red" />} title="Recent policy blocks" count={recentBlocks.length} />
+          <p className="text-[11px] text-text-muted -mt-2 mb-3">Times the safety gate stopped an agent before it ran a risky task. Hover a code for the reason. Empty is good — nothing was blocked.</p>
           {recentBlocks.length === 0 ? (
             <EmptyCard text="No dispatch has been blocked — the gate is allowing everything so far." />
           ) : (
@@ -134,15 +139,16 @@ export default function Observability() {
 
         {/* Eval scores — independent judge (Pillar 3) */}
         <section>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-1">
             <Gauge className="w-4 h-4 text-blue" />
-            <h2 className="text-sm font-bold text-text-muted">Independent judge scores</h2>
+            <h2 className="text-sm font-bold text-text-muted">Agent quality scores</h2>
             <span className="text-xs text-text-muted">({recentEvalScores.length})</span>
-            <button onClick={runEval} disabled={runningEval} className="btn-primary btn-sm ml-auto">
+            <button onClick={runEval} disabled={runningEval} className="btn-primary btn-sm ml-auto" title="Run the grading self-test now instead of waiting for the weekly check.">
               {runningEval ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              Run eval self-test
+              Run quality check
             </button>
           </div>
+          <p className="text-[11px] text-text-muted mb-3">An independent AI judge grades agent outputs from 0 to 1 (higher is better). Green ≥ 0.7, amber ≥ 0.4, red below.</p>
           {evalError && (
             <p className="text-xs text-red mb-3 flex items-center gap-1.5">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -150,7 +156,7 @@ export default function Observability() {
             </p>
           )}
           {recentEvalScores.length === 0 ? (
-            <EmptyCard text="No judge scores yet — run the eval self-test (or wait for the weekly cron); scores ingest into the Witness loop." />
+            <EmptyCard text="No quality scores yet — click ‘Run quality check’ above (or wait for the weekly run)." />
           ) : (
             <div className="space-y-2">
               {recentEvalScores.map((e) => (
@@ -171,6 +177,7 @@ export default function Observability() {
         {/* Delegations — who delegated to whom (Pillar 1) */}
         <section>
           <SectionHead icon={<GitBranch className="w-4 h-4 text-purple" />} title="Recent delegations" count={recentDelegations.length} />
+          <p className="text-[11px] text-text-muted -mt-2 mb-3">Which agent handed work to which — built from orchestration runs (run → agent).</p>
           {recentDelegations.length === 0 ? (
             <EmptyCard text="No delegations recorded yet — orchestration runs populate the graph (run → agent)." />
           ) : (
@@ -189,7 +196,7 @@ export default function Observability() {
         </section>
 
         <p className="text-[10px] text-text-muted text-center pt-4">
-          Pillar 1 · 3 · 5 — real token cost, the LLM-judge, and the dispatch policy gate. Data refreshes on demand.
+          A live view of agent cost, output quality, and the safety gate. Refreshes on demand.
         </p>
       </div>
     </div>
@@ -206,11 +213,11 @@ function SectionHead({ icon, title, count }: { icon: ReactNode; title: string; c
   )
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function Stat({ label, value, accent, title }: { label: string; value: string; accent?: string; title?: string }) {
   return (
-    <div className="card p-4">
+    <div className="card p-4" title={title}>
       <div className={`text-xl font-bold tabular-nums ${accent || ''}`}>{value}</div>
-      <div className="text-[10px] text-text-muted mt-0.5">{label}</div>
+      <div className={`text-[10px] text-text-muted mt-0.5 ${title ? 'cursor-help' : ''}`}>{label}</div>
     </div>
   )
 }
