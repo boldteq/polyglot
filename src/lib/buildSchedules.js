@@ -112,10 +112,13 @@ function spawnScript(name, repoDir, env = {}, args = []) {
 
 // Production handlers — spawn the toolkit scripts in the build repo. Live runs need a
 // published store URL (watch) + analytics creds (orbit), proven at the dogfood; tests
-// inject mocks. The store's live URL is derived from row.store.
+// inject mocks. The watch targets the live published storefront (https://<store>), but a
+// WATCH_STORE_URL override is honored for a custom domain or a password-protected dev/test
+// store where the .myshopify.com URL isn't directly capturable (dogfood finding 2026-06-21).
 const defaultHandlers = {
   async watch(row) {
-    const storeUrl = row.store ? `https://${String(row.store).replace(/^https?:\/\//, '')}` : '';
+    const override = process.env.WATCH_STORE_URL || '';
+    const storeUrl = override || (row.store ? `https://${String(row.store).replace(/^https?:\/\//, '')}` : '');
     return spawnScript('lumen-watch-sweep.mjs', row.repo_dir, { STORE_URL: storeUrl, WATCH_LABEL: row.label });
   },
   async results(row) {
