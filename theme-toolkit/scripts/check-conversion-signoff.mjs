@@ -16,6 +16,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { writeReport } from './lib/report.mjs'
 
 const t0 = Date.now()
@@ -26,6 +27,48 @@ const REQUIRE = process.env.DS_REQUIRE_SCOPE === '1' || process.env.CRO_REQUIRE 
 const blockers = []
 const warnings = []
 const add = (id, detail, evidence = '') => blockers.push({ id, page: FILE, detail, evidence })
+// #26 mechanic-binding: warn-first (block only at publish-grade) — a spec'd-but-unbound mechanic is a
+// CRO leak, but the static marker scan is heuristic, so don't hard-block in dev.
+const bindIssue = (id, detail, evidence = '') => (REQUIRE ? blockers : warnings).push({ id, page: FILE, detail, evidence })
+
+// #26 — a CRO mechanic the sign-off declares must RENDER: a recognizable marker in the theme source.
+// Markers are deliberately broad (catch the pattern, not one app). An unknown mechanic is skipped (can't
+// prove a negative). PURE + exported for the fixture.
+const MECHANIC_MARKERS = {
+  'free-ship-bar': /free[\s-]?ship|shipping[\s-]?(bar|goal|progress|threshold)|cart[\s-_]?goal/i,
+  'sticky-atc': /sticky[\s-]?(atc|add[\s-]?to[\s-]?cart|buy|product|bar)|product[\s-_]?sticky|js-sticky-atc/i,
+  'subscription-toggle': /subscription|subscribe|selling_plan|recharge|seal[\s_]?subscription|skio/i,
+  'quantity-tier-pricing': /tier[\s-]?pric|volume[\s-]?(price|discount)|quantity[\s-]?(break|discount)|qty[\s-]?(break|discount)/i,
+  'upsell': /upsell|cross[\s-]?sell|frequently[\s-]?bought|you[\s-]?may[\s-]?also|recommend/i,
+  'comparison-table': /comparison|vs[\s-]?them|us[\s-]?vs|compare[\s-]?table|comparison[\s-]?table/i,
+  'bundle': /bundle|build[\s-]?(your|a)[\s-]?(box|bundle)|build-your/i,
+  'countdown': /countdown|count[\s-]?down|timer/i,
+  'reviews': /review|judge\.?me|loox|yotpo|stamped|okendo|rating/i,
+  'trust-badge-row': /trust[\s-]?badge|guarantee|secure[\s-]?checkout|money[\s-]?back|cert/i,
+}
+export function mechanicBindingGaps(mechanics, themeText) {
+  const hay = String(themeText || '')
+  const gaps = []
+  for (const m of mechanics || []) {
+    const re = MECHANIC_MARKERS[String(m).trim().toLowerCase()]
+    if (!re) continue // unknown mechanic → can't verify, skip (don't false-flag)
+    if (!re.test(hay)) gaps.push(m)
+  }
+  return gaps
+}
+function themeCorpus() {
+  let t = ''
+  for (const d of ['sections', 'snippets', 'templates', 'assets']) {
+    const abs = path.resolve(cwd, d)
+    let entries = []
+    try { entries = fs.readdirSync(abs, { withFileTypes: true }) } catch { continue }
+    for (const e of entries) {
+      if (!e.isFile() || !/\.(liquid|json|js)$/.test(e.name)) continue
+      try { t += `\n${fs.readFileSync(path.join(abs, e.name), 'utf-8')}` } catch { /* skip */ }
+    }
+  }
+  return t
+}
 
 function finish(envError, evidence = {}) {
   const pass = !envError && blockers.length === 0
@@ -76,7 +119,16 @@ function main() {
     else if (brands < 1) add('cro.no-decoder', `0 decoder brands cited even in sparse mode — cite at least the brands the benchmark was derived from`)
   }
 
-  finish(null, { present: true, niche: j.niche, lift_target: j.lift_target, benchmark, sparse, surfaces: (j.surfaces || []).length, decoderBrands: brands })
+  // 5. #26 mechanic-binding — each declared mechanic must render a marker in the theme (CRO leak guard).
+  let mechanicGaps = []
+  if (Array.isArray(j.mechanics) && j.mechanics.length) {
+    mechanicGaps = mechanicBindingGaps(j.mechanics, themeCorpus())
+    for (const m of mechanicGaps) bindIssue('cro.mechanic-unbound', `mechanic "${m}" is signed off but no render marker found in the theme (sections/snippets/templates/assets) — it's spec'd but not built. Wire it, or remove it from the sign-off.`, m)
+  }
+
+  finish(null, { present: true, niche: j.niche, lift_target: j.lift_target, benchmark, sparse, surfaces: (j.surfaces || []).length, decoderBrands: brands, mechanics: Array.isArray(j.mechanics) ? j.mechanics.length : 0, mechanicGaps })
 }
 
-try { main() } catch (e) { finish(`unexpected failure: ${e.message}`) }
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try { main() } catch (e) { finish(`unexpected failure: ${e.message}`) }
+}

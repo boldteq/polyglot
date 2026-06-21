@@ -42,6 +42,17 @@ export function classify(finding) {
   return null
 }
 
+// #50 — route an escalation question by stakes: 'yash' = decide NOW (irreversible / identity / legal /
+// money — can't launch around it); 'reschedule' = can launch with a documented placeholder and revisit
+// post-launch (a real asset that's missing but not launch-blocking). Owner-fixable findings never reach
+// here — they're the auto-iterate backlog. PURE + exported so the routing matrix is hermetically tested.
+export function routeQuestion(q) {
+  const w = String(q.whitelist_hit || '')
+  if (w === 'irreversible-money' || w === 'legal-tos' || w === 'brand-identity') return 'yash'
+  if (w === 'real-asset-missing') return 'reschedule'
+  return 'yash'
+}
+
 const askText = (f, c) => {
   const where = f.surface ? `[${f.surface}] ` : ''
   return `${where}${f.check || 'finding'}: ${f.evidence || 'needs a real decision/asset'}`
@@ -88,8 +99,16 @@ export function buildEscalation({ report = null, autofix = null, workorder = nul
       evidence: 'gate-reports/lens/porter-workorder.md' })
   }
 
+  // #50 — severity routing matrix: each question → yash (decide now) | reschedule (placeholder + revisit);
+  // the backlog is the third route (auto-iterate, the loop owns it).
+  for (const q of questions) q.route = routeQuestion(q)
+  const routing = {
+    yash: questions.filter(q => q.route === 'yash').length,
+    reschedule: questions.filter(q => q.route === 'reschedule').length,
+    auto: backlog.length,
+  }
   const blocked = questions.length > 0 || escalatedSurfaces.length > 0 || (readiness ? readiness.publishReady === false : false)
-  return { blocked, escalatedSurfaces, questions, backlog, stage: readiness?.stage || null, reason: readiness?.reason || null }
+  return { blocked, escalatedSurfaces, questions, backlog, routing, stage: readiness?.stage || null, reason: readiness?.reason || null }
 }
 
 export function renderMarkdown(result, ts = 'pending') {
@@ -97,9 +116,11 @@ export function renderMarkdown(result, ts = 'pending') {
   if (result.stage) L.push(`**Stopped at:** ${result.stage}${result.reason ? ` — ${result.reason}` : ''}`, '')
   if (result.escalatedSurfaces.length) L.push(`**Escalated surfaces (did not converge):** ${result.escalatedSurfaces.join(', ')}`, '')
   if (result.questions.length) {
+    const r = result.routing || {}
     L.push(`## Questions for you (${result.questions.length}) — batched; each has a recommended default`, '')
+    L.push(`**Routing (#50):** ${r.yash || 0} decide-now · ${r.reschedule || 0} can-reschedule (launch w/ placeholder) · ${r.auto || 0} auto-iterate backlog`, '')
     for (const q of result.questions) {
-      L.push(`### ${q.id} · ${q.category} · _whitelist: ${q.whitelist_hit}_${q.surface ? ` · ${q.surface}` : ''}`)
+      L.push(`### ${q.id} · ${q.category} · _whitelist: ${q.whitelist_hit}_ · **route: ${q.route || 'yash'}**${q.surface ? ` · ${q.surface}` : ''}`)
       L.push(`- **Ask:** ${q.ask}`)
       L.push(`- **Recommended default:** ${q.recommended_default}`)
       L.push('')

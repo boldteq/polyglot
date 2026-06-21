@@ -8,7 +8,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { buildEscalation, classify, consolidateEscalation } from '../../maestro-escalate.mjs'
+import { buildEscalation, classify, consolidateEscalation, routeQuestion } from '../../maestro-escalate.mjs'
 
 let failures = 0
 const pass = (m) => console.log(`  PASS  ${m}`)
@@ -86,6 +86,25 @@ console.log('case f — classify: brand-name text is a question, a generic loom 
   eq(classify({ fix_owner: 'loom', check: 'overflow', evidence: 'hero overflows' }), null, 'loom render finding → null (owner-fixable)')
   eq(classify({ fix_owner: 'loom', check: 'placeholder', evidence: 'store name reads GPT TEST 1.0' })?.whitelist, 'brand-identity', 'brand/store-name text → brand-identity')
   eq(classify({ fix_owner: 'porter', check: 'x', evidence: 'y' })?.whitelist, 'real-asset-missing', 'porter owner → real-asset-missing')
+}
+
+// ── case g: #50 severity routing ──
+console.log('case g — routeQuestion + routing matrix (yash now vs reschedule vs auto backlog)')
+{
+  eq(routeQuestion({ whitelist_hit: 'irreversible-money' }), 'yash', 'money → yash (decide now)')
+  eq(routeQuestion({ whitelist_hit: 'legal-tos' }), 'yash', 'legal → yash')
+  eq(routeQuestion({ whitelist_hit: 'brand-identity' }), 'yash', 'brand-identity → yash')
+  eq(routeQuestion({ whitelist_hit: 'real-asset-missing' }), 'reschedule', 'real-asset-missing → reschedule')
+  // buildEscalation surfaces routing + per-question route
+  const r = buildEscalation({
+    autofix: { unresolved: [
+      { fix_owner: 'porter', check: 'empty collection', evidence: 'no products', surface: 'collection' },
+      { fix_owner: 'loom', check: 'overflow', evidence: 'hero overflows', surface: 'home' },
+    ] },
+  })
+  eq(r.routing.reschedule >= 1, true, 'porter empty-collection routes to reschedule')
+  eq(r.routing.auto, 1, 'loom overflow stays in the auto-iterate backlog')
+  eq(r.questions.every(q => q.route), true, 'every question carries a route')
 }
 
 console.log(failures === 0 ? '\n✓ MAESTRO-ESCALATE — ALL ASSERTIONS PASS' : `\n✗ ${failures} ASSERTION(S) FAILED`)

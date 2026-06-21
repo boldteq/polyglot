@@ -14,11 +14,33 @@
 // Exit: 0 = pass · 1 = block (violations) · 2 = env error (missing dep / no URL /
 //       password wall / mandatory page unreachable)
 
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { writeReport } from './lib/report.mjs'
 import { resolvePages, EnvError, MANDATORY_PAGES } from './lib/pages.mjs'
 
 const started = Date.now()
 const reportDir = process.env.REPORT_DIR || 'gate-reports'
+
+// #37 — a11y state matrix: axe's default scan only sees the page at rest. The real defects hide in
+// OPEN interactive surfaces (cart drawer, mobile nav, search modal) — focus traps, unlabeled close
+// buttons, off-screen tab order. STATE_MATRIX is pure (the states + their open selectors) so it's
+// testable; the actual open+rescan runs in the browser behind AXE_STATE_MATRIX=1 (opt-in: it adds runtime).
+export const STATE_MATRIX = [
+  { name: 'cart-drawer', open: ['[data-cart-drawer-toggle]', '#cart-icon-bubble', '.cart-icon', 'a[href="/cart"]', '[aria-controls*="cart" i]'], settleMs: 600 },
+  { name: 'mobile-nav', open: ['button[aria-label*="menu" i]', '.header__menu-toggle', '[data-mobile-nav-toggle]', 'summary[aria-haspopup]'], settleMs: 500 },
+  { name: 'search-modal', open: ['button[aria-label*="search" i]', '[data-search-toggle]', '.search-modal__toggle', 'a[href="/search"]'], settleMs: 500 },
+]
+
+async function openState(page, state) {
+  for (const sel of state.open) {
+    try {
+      const el = page.locator(sel).first()
+      if ((await el.count()) && (await el.isVisible())) { await el.click({ timeout: 2000 }); await page.waitForTimeout(state.settleMs); return true }
+    } catch { /* try the next selector */ }
+  }
+  return false
+}
 
 const VIEWPORTS = [
   { name: 'mobile', width: 375, height: 812 },
@@ -186,6 +208,24 @@ async function main() {
         }
         audited.push({ page: target.id, viewport: vp.name, url: target.url, violations: results.violations.length, incomplete: results.incomplete.length })
         console.log(`${results.violations.length} violation(s)`)
+        // #37 — state-matrix: open each interactive surface + re-scan (opt-in)
+        if (process.env.AXE_STATE_MATRIX === '1') {
+          for (const st of STATE_MATRIX) {
+            const opened = await openState(page, st).catch(() => false)
+            if (!opened) continue
+            let r2
+            try { r2 = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze() } catch { r2 = null }
+            if (r2) {
+              for (const v of r2.violations) {
+                ruleTotals[v.id] = (ruleTotals[v.id] || 0) + v.nodes.length
+                blockers.push({ id: `axe.${v.id}`, page: `${target.id}@${vp.name}[${st.name}]`, detail: `${v.impact ?? 'unknown'} — ${v.description} (state: ${st.name} open)`, evidence: `${v.nodes.length} node(s); first: ${v.nodes[0]?.target?.join(' ') ?? '(no selector)'}` })
+              }
+              audited.push({ page: `${target.id}[${st.name}]`, viewport: vp.name, url: target.url, violations: r2.violations.length, incomplete: r2.incomplete.length })
+            }
+            await page.goto(target.url, { waitUntil: 'load', timeout: 45_000 }).catch(() => {}) // reset for the next state
+            await page.waitForTimeout(400)
+          }
+        }
       }
       await context.close()
     }
@@ -209,9 +249,11 @@ async function main() {
   })
 }
 
-main().catch(err => {
-  const reason = err instanceof EnvError ? err.message : `script error: ${err.message}`
-  console.error(`ENV-ERROR: ${reason}`)
-  if (!(err instanceof EnvError)) console.error(err.stack)
-  finish(2, { pass: false, url: process.env.THEME_PREVIEW_URL ?? null, evidence: { skipped: 'env', reason } })
-})
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(err => {
+    const reason = err instanceof EnvError ? err.message : `script error: ${err.message}`
+    console.error(`ENV-ERROR: ${reason}`)
+    if (!(err instanceof EnvError)) console.error(err.stack)
+    finish(2, { pass: false, url: process.env.THEME_PREVIEW_URL ?? null, evidence: { skipped: 'env', reason } })
+  })
+}

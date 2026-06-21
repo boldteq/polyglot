@@ -199,6 +199,14 @@ const GATES = [
   // objection coverage, voice reference. Warn-first (COPY_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK); SKIPS
   // when there are no content/briefs. Covered by --static-only + --verify/--require-full.
   { name: 'copy-quality', number: 26, kind: 'static', runner: 'node', script: 'check-copy-quality.mjs' },
+  // App-conflicts (#27, #55) — flags conflict groups (popup wars, duplicate review/subscription/cart
+  // apps, competing page builders) with ≥2 members in the theme source. Warn-first
+  // (APP_CONFLICTS_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK); SKIPS when there's no theme.
+  { name: 'app-conflicts', number: 27, kind: 'static', runner: 'node', script: 'check-app-conflicts.mjs' },
+  // Locale-completeness (#28, #51) — every key in the default storefront locale must exist in every
+  // other locale (no untranslated fallbacks). Warn-first (LOCALE_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK);
+  // SKIPS a monolingual store (<2 locale files).
+  { name: 'locale-completeness', number: 28, kind: 'static', runner: 'node', script: 'check-locale-completeness.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
