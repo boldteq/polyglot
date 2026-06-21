@@ -211,6 +211,10 @@ const GATES = [
   // must have its trigger wired, or it never sends. Warn-first (EMAIL_ENFORCE=1 / DS_REQUIRE_SCOPE →
   // BLOCK); SKIPS when there's no docs/email/lifecycle.json (not an email build).
   { name: 'email-triggers', number: 29, kind: 'static', runner: 'node', script: 'check-email-triggers.mjs' },
+  // Image-quality (#34) — was an ORPHAN validator (tested but unwired → false coverage). Per-slot
+  // resolution/aspect/weight at upload (an oversized hero is the #1 LCP killer). Warn-first
+  // (IMAGE_QUALITY_STRICT=1 / PORTER_REQUIRE_CONTENT=1 → BLOCK); SKIPS when there's no images dir.
+  { name: 'image-quality', number: 34, kind: 'static', runner: 'node', script: 'check-image-quality.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
