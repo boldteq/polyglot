@@ -101,6 +101,7 @@ export const LEARNING_TYPE_COLOR: Record<string, BadgeColor> = {
   contradiction: badge('orange'),
   open_loop: badge('indigo'),
   decay_review: badge('slate'),
+  calibration: badge('teal'),
 }
 
 // ── Log severity / source / category → color (Logs.tsx) ──────────────────────

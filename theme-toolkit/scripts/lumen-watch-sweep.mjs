@@ -91,6 +91,9 @@ function main() {
     if (hasClaude) {
       spawnSync(process.execPath, [path.resolve(HERE, 'lens-judge.mjs')], { cwd: o.dir, env, encoding: 'utf-8', timeout: 600_000 });
       for (const d of verdictDrift(readJson(baselinePath) || {}, readVerdictMap(o.dir))) regressions.push(d);
+      // WS-G: grow the central Lens calibration corpus from the SETTLED live verdicts — once, at t+48h
+      // (not every sweep, to keep the corpus clean). Best-effort; never breaks the watch.
+      if (o.label === 't+48h') { try { spawnSync(process.execPath, [path.resolve(HERE, 'lens-calibrate.mjs'), '--collect', o.dir], { cwd: o.dir, stdio: 'ignore' }); } catch { /* non-critical */ } }
     }
   }
 

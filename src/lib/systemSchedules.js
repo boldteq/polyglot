@@ -197,6 +197,16 @@ const DEFINITIONS = [
     needsLlm: false,
     cancellable: true,
   },
+  {
+    id: 'sys-lens-calibrate',
+    name: 'Lens calibration (weekly)',
+    description: 'Sample the Lens calibration corpus → calibration items in the Learning Inbox for Yash to grade (approve=agree / reject=judge-was-wrong), and turn last week’s grades into per-check rubric SUGGESTIONS (open-loop candidates). Suggestions only — never auto-edits a rubric. Local, no token cost.',
+    cron: '0 23 * * 0',
+    agentName: 'mira',
+    handler: 'lensCalibrateSample',
+    needsLlm: false,
+    cancellable: true,
+  },
 ];
 
 const DEFAULT_ENABLED = true;
@@ -854,7 +864,73 @@ const HANDLERS = {
       metadata: { agedUnresolved: aged.length, surfaced, accuracy },
     };
   },
+
+  // Lens calibration (WS-G): sample the corpus → inbox items for Yash to grade; apply last week's grades
+  // → per-check rubric suggestions (open-loop candidates). Suggestions only — never auto-edits a rubric.
+  async lensCalibrateSample(def, ctx) {
+    const path = require('path'); const fs = require('fs'); const os = require('os');
+    const memDir = path.join(os.homedir(), '.claude', 'memory');
+    const out = [];
+    // 1) SAMPLE: write a fresh calibration-queue.json from the central corpus (no-ops if corpus empty)
+    const s = await runToolkitScript('lens-calibrate.mjs', ['--sample', '20'], { ctx, env: { LENS_CALIBRATE_OUT: memDir }, timeoutMs: 3 * 60 * 1000, label: 'lens-calibrate' });
+    out.push(`sample: ${s.output}`.slice(0, 120));
+    // 2) INSERT calibration candidates into the Learning Inbox (dedup-safe weekly title)
+    let inserted = 0;
+    try {
+      const q = JSON.parse(fs.readFileSync(path.join(memDir, 'calibration-queue.json'), 'utf-8'));
+      const week = new Date().toISOString().slice(0, 10);
+      for (const row of (q.queue || [])) {
+        const r = db.insertLearningCandidate({
+          type: 'calibration',
+          title: `Lens calibration · ${week} · ${row.surface || ''} ${row.check} (judge: ${row.verdict})`.slice(0, 200),
+          payload: { frameKey: row.key, check: row.check, surface: row.surface, lensVerdict: row.verdict, confidence: row.confidence, hint: 'Approve if you AGREE with the judge; Reject if the judge was WRONG.' },
+          source: 'lens-calibration', confidence: Number(row.confidence) || 0, status: 'pending',
+        });
+        if (r.inserted) inserted += 1;
+      }
+    } catch (e) { out.push(`inbox: ${e.message}`.slice(0, 80)); }
+    out.push(`inbox:+${inserted}`);
+    // 3) APPLY: last week's grades → per-check suggestions, surfaced as open-loop candidates (ratify-then-edit)
+    let suggestions = 0;
+    try {
+      const since = new Date(Date.now() - 8 * 86400_000).toISOString();
+      const grades = db.listCalibrationGrades({ since });
+      if (grades.length) {
+        const { pathToFileURL } = require('url');
+        const mod = await import(pathToFileURL(path.join(__dirname, '..', '..', 'theme-toolkit', 'scripts', 'lens-calibrate.mjs')).href);
+        for (const sg of (mod.computeCalibration(grades).suggestions || [])) {
+          const r = db.insertLearningCandidate({
+            type: 'open_loop',
+            title: `Calibration: review rubric rule for "${sg.check}" (${Math.round(sg.disagreeRate * 100)}% disagree, ${sg.graded} graded)`.slice(0, 200),
+            payload: { title: `Review/clarify the Lens rubric rule for "${sg.check}"`, detail: sg.detail, owner: 'yash' },
+            source: 'lens-calibration', confidence: sg.disagreeRate, status: 'pending',
+          });
+          if (r.inserted) suggestions += 1;
+        }
+      }
+    } catch (e) { out.push(`apply: ${e.message}`.slice(0, 80)); }
+    out.push(`apply:${suggestions}`);
+    return { output: out.join(' · '), metadata: { inserted, suggestions } };
+  },
 };
+
+// Spawn a theme-toolkit script as a child process (parallel to runIntelScript). Returns { code, output }.
+function runToolkitScript(scriptName, args, { ctx, cwd, env = {}, timeoutMs = 10 * 60 * 1000, label = 'toolkit' } = {}) {
+  const { spawn } = require('child_process');
+  const path = require('path');
+  const script = path.join(__dirname, '..', '..', 'theme-toolkit', 'scripts', scriptName);
+  return new Promise((resolve) => {
+    let out = '', err = '', done = false;
+    const proc = spawn(process.execPath, [script, ...args], { cwd: cwd || process.cwd(), env: { ...process.env, ...env } });
+    try { ctx?.registerProc?.(proc); } catch { /* best-effort */ }
+    const timer = setTimeout(() => { try { proc.kill('SIGTERM'); } catch {} setTimeout(() => { try { proc.kill('SIGKILL'); } catch {} }, 3000); }, timeoutMs);
+    proc.stdout.on('data', (d) => { out += d.toString(); });
+    proc.stderr.on('data', (d) => { err += d.toString(); });
+    const finish = (code) => { if (done) return; done = true; clearTimeout(timer); resolve({ code, output: (out.trim().split('\n').slice(-2).join(' | ')) || err.trim().slice(0, 160) || `exit ${code}` }); };
+    proc.on('close', finish);
+    proc.on('error', (e) => { if (done) return; done = true; clearTimeout(timer); resolve({ code: -1, output: `spawn failed — ${e.message}` }); });
+  });
+}
 
 // Spawn an ESM intelligence script as a child process, capture a short output
 // tail, kill on timeout. Returns { output, metadata } like any handler.
@@ -1386,6 +1462,7 @@ module.exports = {
   isEnabled,
   getAllForApi,
   getDefinitions,
+  handlerNames: () => Object.keys(HANDLERS), // for the handler-drift test (every def.handler must exist)
   findDefinition,
   computeNextRunAt,
   getInflight,

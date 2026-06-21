@@ -152,6 +152,7 @@ function runMigrations(db) {
     { version: 32, name: 'shopify_client_projects', fn: shopifyClientProjectsMigration },
     { version: 33, name: 'workspace_build_index', fn: workspaceBuildIndexMigration },
     { version: 34, name: 'build_schedules', fn: buildSchedulesMigration },
+    { version: 35, name: 'calibration_grades', fn: calibrationGradesMigration },
   ];
 
   for (const mig of migrations) {
@@ -477,6 +478,27 @@ function buildSchedulesMigration(db) {
     CREATE INDEX IF NOT EXISTS idx_build_schedules_build ON build_schedules(build_id);
   `);
   console.log('[migration v34] build_schedules table created');
+}
+
+// ── Migration v35: calibration_grades (Lens WS-G) — Yash's agree/disagree on judge verdicts ──
+// The human-in-the-loop calibration signal: each graded calibration inbox item records whether the
+// Lens judge's verdict matched what Yash sees. Feeds the weekly per-check disagreement → suggestions.
+function calibrationGradesMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS calibration_grades (
+      id          TEXT PRIMARY KEY,
+      frameKey    TEXT,
+      check_id    TEXT NOT NULL,              -- the rubric check ('check' is a SQL keyword → check_id)
+      surface     TEXT,
+      lensVerdict TEXT,                       -- PASS | FAIL (what the judge said)
+      grade       TEXT NOT NULL,              -- 'agree' | 'disagree' (Yash vs the judge)
+      candidateId TEXT,                       -- the learning_inbox candidate this grade came from
+      gradedAt    TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_calibration_grades_check ON calibration_grades(check_id, gradedAt DESC);
+    CREATE INDEX IF NOT EXISTS idx_calibration_grades_at    ON calibration_grades(gradedAt DESC);
+  `);
+  console.log('[migration v35] calibration_grades table created');
 }
 
 // ── Migration v23: policy_audit (Pillar 5, 2026-06-14) ───────────────────────
@@ -2366,6 +2388,23 @@ function updateLearningPayload(id, { title, payload } = {}) {
   return { changed: info.changes };
 }
 
+// ── Lens calibration grades (WS-G) ──────────────────────────────────────────
+function insertCalibrationGrade(g) {
+  const id = g.id || `calg-${Date.now()}-${require('crypto').randomUUID().slice(0, 8)}`;
+  stmt(`INSERT OR IGNORE INTO calibration_grades (id, frameKey, check_id, surface, lensVerdict, grade, candidateId, gradedAt)
+    VALUES (?,?,?,?,?,?,?,?)`)
+    .run(id, g.frameKey || null, g.check || g.check_id || '', g.surface || null, g.lensVerdict || null, g.grade, g.candidateId || null, g.gradedAt || new Date().toISOString());
+  return { id };
+}
+// Returns grades (newest first). `since` = ISO string lower bound. Maps check_id → check so the
+// toolkit's pure computeCalibration() (which reads g.check) consumes these rows directly.
+function listCalibrationGrades({ since } = {}) {
+  const rows = since
+    ? stmt(`SELECT * FROM calibration_grades WHERE gradedAt >= ? ORDER BY gradedAt DESC`).all(since)
+    : stmt(`SELECT * FROM calibration_grades ORDER BY gradedAt DESC`).all();
+  return rows.map(r => ({ ...r, check: r.check_id }));
+}
+
 function getInboxCounts() {
   const rows = stmt(`SELECT status, COUNT(*) AS n FROM learning_inbox GROUP BY status`).all();
   const out = { pending: 0, approved: 0, rejected: 0, auto: 0 };
@@ -4146,6 +4185,7 @@ module.exports = {
   insertVscodeSession, getSessionWatermark, getPendingVscodeSessions, getDigestedSessionStats, getRealRunStats, markVscodeSessionsDigested, getAgentRunsBySession,
   insertLearningCandidate, listLearningInbox, getLearningCandidate,
   updateLearningStatus, updateLearningPayload, getInboxCounts, pruneLearningInbox,
+  insertCalibrationGrade, listCalibrationGrades,
   // Run observability (Pillar 1)
   logCost, getSpend, getCostLogs,
   replaceWorkspaceIndex, getWorkspaceIndex, workspaceIndexAgeMs,

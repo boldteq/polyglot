@@ -444,6 +444,11 @@ async function approveOne(id) {
     try {
       db.logSelfImprovement({ kind: 'hygiene', summary: `decay review acknowledged: ${cand.title}`, data: cand.payload || {} });
     } catch { /* logging is best-effort; the status flip below is the real record */ }
+  } else if (cand.type === 'calibration') {
+    // Lens calibration (WS-G): approve = Yash AGREES with the judge's verdict on this frame/check.
+    const p = cand.payload || {};
+    db.insertCalibrationGrade({ frameKey: p.frameKey || p.key, check: p.check, surface: p.surface, lensVerdict: p.lensVerdict || p.verdict, grade: 'agree', candidateId: id });
+    capturedRef = id;
   } else {
     return { id, ok: false, status: 400, error: `Unsupported candidate type: ${cand.type}` };
   }
@@ -463,8 +468,16 @@ async function approveOne(id) {
   return { id, ok: true, capturedRef, skipped };
 }
 
-// Shared reject path for one candidate. Pure status flip, no capture.
+// Shared reject path for one candidate. Pure status flip, no capture — EXCEPT calibration items,
+// where a reject means "the Lens judge was WRONG" → record the disagree grade before discarding (WS-G).
 function rejectOne(id) {
+  try {
+    const cand = db.getLearningCandidate(id);
+    if (cand && cand.type === 'calibration' && cand.status === 'pending') {
+      const p = cand.payload || {};
+      db.insertCalibrationGrade({ frameKey: p.frameKey || p.key, check: p.check, surface: p.surface, lensVerdict: p.lensVerdict || p.verdict, grade: 'disagree', candidateId: id });
+    }
+  } catch (e) { console.error('[learning-reject] calibration grade failed:', e.message); }
   const upd = db.updateLearningStatus(id, { status: 'rejected' });
   if (!upd.changed) return { id, ok: false, status: 409, error: 'Not found or already reviewed' };
   try { inboxEvents.emit('reviewed', { id, status: 'rejected' }); } catch { /* ignore */ }

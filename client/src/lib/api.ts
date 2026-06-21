@@ -2735,6 +2735,8 @@ export type LearningType =
   | 'lesson' | 'bug' | 'decision' | 'feedback' | 'golden'
   // Continuity-brain candidate types (each approve = a human sign-off / identity-lock):
   | 'identity' | 'preference' | 'contradiction' | 'open_loop' | 'decay_review'
+  // Lens calibration (WS-G): approve = agree with the judge's verdict, reject = judge was wrong
+  | 'calibration'
 export type LearningStatus = 'pending' | 'approved' | 'rejected' | 'auto'
 
 export interface LearningCandidate {

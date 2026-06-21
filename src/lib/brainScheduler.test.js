@@ -78,6 +78,23 @@ test('every definition has an id + a string handler', () => {
   }
 });
 
+// Handler-drift guard: every definition's handler string MUST have an implemented function
+// (the runtime only catches this when the schedule actually fires — this catches it at test time).
+test('every definition handler is implemented in HANDLERS', () => {
+  const names = new Set(sched.handlerNames());
+  for (const d of sched.getDefinitions()) {
+    assert.ok(names.has(d.handler), `${d.id}: handler "${d.handler}" is not implemented in HANDLERS`);
+  }
+});
+
+test('sys-lens-calibrate is registered (weekly, lensCalibrateSample, no LLM)', () => {
+  const cal = defById('sys-lens-calibrate');
+  assert.ok(cal, 'sys-lens-calibrate is registered');
+  assert.equal(cal.handler, 'lensCalibrateSample', 'handler name correct');
+  assert.equal(cal.needsLlm, false, 'local, no token cost');
+  assert.match(cal.cron, /^\d+\s+\d+\s+\*\s+\*\s+\d$/, 'a weekly (day-of-week) cron');
+});
+
 test.after(() => {
   try { require('../db').getDb().close(); } catch { /* not opened / already closed */ }
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* best-effort */ }

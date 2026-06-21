@@ -38,6 +38,8 @@ const TYPE_META: Record<LearningType, { label: string; Icon: LucideIcon; cls: st
   contradiction: { label: 'Contradiction', Icon: AlertTriangle,        cls: 'bg-orange/10 text-orange border-orange/25' },
   open_loop:     { label: 'Open Loop',     Icon: CircleDot,            cls: 'bg-indigo/10 text-indigo border-indigo/25' },
   decay_review:  { label: 'Decay Review',  Icon: TrendingDown,         cls: 'bg-slate/10 text-slate border-slate/25' },
+  // Lens calibration (WS-G): approve = agree with the judge, reject = judge was wrong.
+  calibration:   { label: 'Calibration',   Icon: ScanLine,             cls: 'bg-teal/10 text-teal border-teal/25' },
 }
 
 function relTime(iso: string): string {
