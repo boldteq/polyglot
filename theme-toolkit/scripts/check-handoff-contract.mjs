@@ -59,6 +59,14 @@ export function isEnforced(registry, event) {
   return registry.enforcement === 'all'
 }
 
+// #46 — PURE: is the squad at/over its WIP cap? inflight = current in-flight dispatch count (orchestrator-
+// tracked), cap from registry.wipCap (default 3). At/over cap → refuse the new dispatch (queue it).
+export function wipExceeded(inflight, cap) {
+  const n = Number(inflight)
+  const c = Number.isFinite(Number(cap)) ? Number(cap) : 3
+  return Number.isFinite(n) && n >= c
+}
+
 // #41 — PURE: validate a contract's sign-off artifact (confidence + impact) against registry.signoffSchema.
 // Contracts with no `signoff` block return required:false, ok:true (nothing to check). readFn(path) →
 // file contents string or null. A required-but-missing/invalid sign-off is ok:false so the caller
@@ -96,8 +104,13 @@ function main() {
   console.log(`check:handoff — ${event} (${r.from} → ${Array.isArray(r.to) ? r.to.join(',') : r.to})${enforced ? ' [enforced]' : ''}`)
   for (const req of r.requires) console.log(`  ${req.ok ? '✓' : '✗'} ${req.id}${req.missing?.length ? ` — missing: ${req.missing.join(', ')}` : ''}${req.note ? ` (${req.note})` : ''}`)
   if (so.required) console.log(`  ${so.ok ? '✓' : '✗'} sign-off ${so.artifact}${so.ok ? ' (confidence+impact ok)' : ` — ${so.errors.map(e => `${e.path}: ${e.message}`).join('; ')}`}`)
-  const ready = r.ready && so.ok
-  console.log(ready ? `✓ READY to dispatch ${event}` : `✗ NOT READY — ${event} (missing inputs / sign-off → no dispatch)`)
+  // #46/#47 — coordination guards on the SAME pre-dispatch check (orchestrator passes the live counts via env)
+  const wipBlocked = process.env.WIP_INFLIGHT != null && wipExceeded(process.env.WIP_INFLIGHT, registry.wipCap)
+  const busyBlocked = process.env.SPECIALIST_BUSY === '1'
+  if (wipBlocked) console.log(`  ✗ WIP ${process.env.WIP_INFLIGHT} ≥ cap ${registry.wipCap ?? 3} (#46) — queue, don't dispatch`)
+  if (busyBlocked) console.log(`  ✗ specialist unavailable (#47, SPECIALIST_BUSY=1) — queue, don't dispatch`)
+  const ready = r.ready && so.ok && !wipBlocked && !busyBlocked
+  console.log(ready ? `✓ READY to dispatch ${event}` : `✗ NOT READY — ${event} (missing inputs / sign-off / WIP / availability → no dispatch)`)
   process.exit(ready ? 0 : 1)
 }
 

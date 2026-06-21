@@ -8,7 +8,7 @@
 //     point at a path the producing contract actually produces).
 // Run (Node 20): node scripts/__fixtures__/handoff-confidence/run-tests.mjs · Exit 0 = all pass.
 
-import { loadRegistry, checkSignoff, isEnforced } from '../../check-handoff-contract.mjs'
+import { loadRegistry, checkSignoff, isEnforced, wipExceeded } from '../../check-handoff-contract.mjs'
 import { validate } from '../../lib/jsonschema.mjs'
 
 let failures = 0
@@ -67,6 +67,21 @@ eq(checkSignoff(reg, 'intake_ready', () => null).ok, true, 'no signoff → ok (n
 
 console.log('signoffSchema — directly validates the documented shape')
 eq(validate({ confidence: 50, impact: { rev: 1, conv: 1, dev: 1, maint: 1 } }, reg.signoffSchema), [], 'minimal valid signoff has no errors')
+
+console.log('#39/#40 — governance contracts (board + red-team)')
+for (const ev of ['design_review_board', 'red_team']) {
+  reg.contracts.some(c => c.event === ev) ? pass(`contract "${ev}" present`) : fail(`missing contract "${ev}"`)
+  eq(isEnforced(reg, ev), true, `${ev} enforced`)
+  eq(checkSignoff(reg, ev, () => VALID).ok, true, `${ev} signoff validates with confidence+impact`)
+  eq(checkSignoff(reg, ev, () => null).ok, false, `${ev} missing signoff → not ok`)
+}
+
+console.log('#46 — wipExceeded (WIP cap)')
+eq(reg.wipCap, 3, 'registry wipCap = 3')
+eq(wipExceeded(3, 3), true, 'inflight == cap → exceeded')
+eq(wipExceeded(4, 3), true, 'inflight > cap → exceeded')
+eq(wipExceeded(2, 3), false, 'inflight < cap → ok')
+eq(wipExceeded(0, undefined), false, '0 inflight, default cap → ok')
 
 console.log(failures === 0 ? '\n✓ HANDOFF-CONFIDENCE — ALL ASSERTIONS PASS' : `\n✗ ${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

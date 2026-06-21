@@ -4,7 +4,9 @@
   "title": "AIM v1 — Shopify Website Handoff Contract Registry",
   "note": "Single naming authority for agent-to-agent handoffs in the Shopify Website department. A contract's `requires[]` are the artifacts/upstream-contracts that MUST exist before the `to` agent may be dispatched (missing contract = no dispatch). `produces[]` are the artifacts the `from` agent emits on done. `gate` is the executable check that proves the contract. `aliases[]` are legacy names found in agent .md prose that resolve to this canonical event — do not introduce new variants. Human doctrine: ~/.claude/memory/patterns/good/aim-handoff-contract-registry.md. Consumed by check-handoff-contract.mjs.",
   "enforcement": "all",
-  "enforcementNote": "#45 — EVERY handoff is dispatch-enforced: the orchestrator (atrium / Maestro session) MUST run `pnpm aim:verify <event>` and get exit 0 before dispatching the `to` agent(s). A contract may set `enforce:false` to opt a soft handoff out (none do today). #46/#47 (Sprint 4) add WIP-cap + availability refusal on top of this same pre-dispatch check.",
+  "enforcementNote": "#45 — EVERY handoff is dispatch-enforced: the orchestrator (atrium / Maestro session) MUST run `pnpm aim:verify <event>` and get exit 0 before dispatching the `to` agent(s). A contract may set `enforce:false` to opt a soft handoff out (none do today). #46/#47 add WIP-cap + availability refusal on top of this same pre-dispatch check.",
+  "wipCap": 3,
+  "wipNote": "#46 — max concurrent in-flight dispatches per squad (atrium WIP cap). check-handoff-contract refuses dispatch when WIP_INFLIGHT ≥ wipCap. #47 — SPECIALIST_BUSY=1 refuses dispatch to an unavailable specialist (queue instead).",
   "signoffSchema": {
     "_note": "#41 — a decision/recommendation contract attaches `signoff:{artifact}`; the artifact is JSON carrying confidence (0-100) + impact (rev/conv/dev/maint, 1-5). Validated by check-handoff-contract.mjs (checkSignoff) against THIS schema. Feeds Design Review Board (#39) + Red Team (#40) + escalation routing (#50).",
     "type": "object",
@@ -160,6 +162,26 @@
       "signoff": { "artifact": "docs/visual-quality-review.json" },
       "gate": "visual-quality (#17) + visual-truth (#18, verify-ran)",
       "aliases": ["code_review_blocked"]
+    },
+    {
+      "event": "design_review_board",
+      "from": "onyx",
+      "to": ["atrium"],
+      "requires": ["design_spec_ready"],
+      "produces": ["docs/review/design-review-board.json"],
+      "signoff": { "artifact": "docs/review/design-review-board.json" },
+      "gate": "check-handoff-contract (#39 — board verdict per page + confidence/impact; any <70 confidence returns the page)",
+      "aliases": []
+    },
+    {
+      "event": "red_team",
+      "from": "vex",
+      "to": ["atrium"],
+      "requires": ["code_review_approved"],
+      "produces": ["docs/review/red-team.json"],
+      "signoff": { "artifact": "docs/review/red-team.json" },
+      "gate": "check-handoff-contract (#40 — adversarial attacks dispatched + resolved, with confidence/impact)",
+      "aliases": []
     },
     {
       "event": "publish_readiness_ready",

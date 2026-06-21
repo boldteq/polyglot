@@ -36,6 +36,8 @@
 //
 // No external deps — global fetch (Node 20), lib/pages.mjs authFetch for every request.
 
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { writeReport } from './lib/report.mjs'
 import { resolvePages, authFetch, EnvError, MANDATORY_PAGES, OPTIONAL_PAGES } from './lib/pages.mjs'
 
@@ -222,6 +224,16 @@ function isOrgType(t) {
 
 const LAZY_RE = /\sloading\s*=\s*["']?lazy/i
 
+// #29 — expected JSON-LD per page-type (warning-level: recommended for rich results, not all themes
+// emit every type). PURE + exported for the fixture. `types` = all @type strings found on the page.
+export function schemaGapsFor(pageId, types) {
+  const has = (re) => (types || []).some(t => re.test(String(t)))
+  const gaps = []
+  if (pageId === 'article' && !has(/^(Article|BlogPosting|NewsArticle)$/)) gaps.push('Article/BlogPosting')
+  if ((pageId === 'pdp' || pageId === 'collection') && !has(/^BreadcrumbList$/)) gaps.push('BreadcrumbList')
+  return gaps
+}
+
 // ── fetch wrapper (always lib/pages.mjs authFetch — never bare fetch) ──────
 async function fetchPage(url) {
   const res = await authFetch(url, {
@@ -285,6 +297,7 @@ function analyzePage({ id, path: pagePath }, rawHtml, headers, { blockers, warni
   let productBlocks = 0
   let orgPresent = false
   let badBlocks = 0
+  const allTypes = []
   for (const [i, src] of jsonldBlocks.entries()) {
     let parsed
     try {
@@ -300,8 +313,13 @@ function analyzePage({ id, path: pagePath }, rawHtml, headers, { blockers, warni
       continue
     }
     const types = rootNodes(parsed).flatMap(typesOf)
+    allTypes.push(...types)
     if (types.some(isProductType)) productBlocks += 1
     if (types.some(isOrgType)) orgPresent = true
+  }
+  // #29 — recommended structured-data per page-type (Article on articles, BreadcrumbList on pdp/collection)
+  for (const g of schemaGapsFor(id, allTypes)) {
+    warnings.push({ id: 'seo.jsonld-page-type', page: id, detail: `${id} page is missing recommended ${g} JSON-LD (rich-result eligibility)`, evidence: '' })
   }
   ev.jsonld = jsonldBlocks.length
   ev.jsonld_bad = badBlocks
@@ -612,12 +630,14 @@ async function main() {
   finish(pass ? 0 : 1, { pass, blockers, warnings, evidence: { checkedPages, skippedPages, canonicalForms, site } })
 }
 
-main().catch(err => {
-  if (err instanceof EnvError || err?.isEnvError === true) {
-    console.error(`ENV-ERROR: ${err.message}`)
-    finish(2, { pass: false, evidence: { skipped: 'env', reason: err.message } })
-  }
-  console.error(`ENV-ERROR: unexpected failure: ${err.message}`)
-  console.error(err.stack)
-  finish(2, { pass: false, evidence: { skipped: 'env', reason: `unexpected: ${err.message}` } })
-})
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(err => {
+    if (err instanceof EnvError || err?.isEnvError === true) {
+      console.error(`ENV-ERROR: ${err.message}`)
+      finish(2, { pass: false, evidence: { skipped: 'env', reason: err.message } })
+    }
+    console.error(`ENV-ERROR: unexpected failure: ${err.message}`)
+    console.error(err.stack)
+    finish(2, { pass: false, evidence: { skipped: 'env', reason: `unexpected: ${err.message}` } })
+  })
+}
