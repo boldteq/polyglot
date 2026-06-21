@@ -55,6 +55,7 @@
     "lens:autofix": "node scripts/lens-autofix.mjs",
     "lens:calibrate": "node scripts/lens-calibrate.mjs",
     "ds:css": "node scripts/generate-design-system-css.mjs",
+    "ds:cascade": "node scripts/check-ds-cascade.mjs",
     "overrides:check": "node scripts/check-client-overrides.mjs",
     "build-state": "node scripts/build-state.mjs",
     "maestro:dryrun": "node scripts/maestro-dryrun.mjs",

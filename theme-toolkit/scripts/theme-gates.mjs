@@ -211,6 +211,11 @@ const GATES = [
   // must have its trigger wired, or it never sends. Warn-first (EMAIL_ENFORCE=1 / DS_REQUIRE_SCOPE →
   // BLOCK); SKIPS when there's no docs/email/lifecycle.json (not an email build).
   { name: 'email-triggers', number: 29, kind: 'static', runner: 'node', script: 'check-email-triggers.mjs' },
+  // DS-cascade (#30, #2) — a brand-change must CASCADE: assets/design-system.css must be regenerated
+  // (its stamped ds-hash matches design-system.json) so editing the brand once propagates everywhere.
+  // BLOCKS a stale/missing cascade at publish-grade (DS_CASCADE_ENFORCE=1 / DS_REQUIRE_SCOPE); warns on
+  // sections hardcoding literals that won't cascade. SKIPS when there's no design-system.json.
+  { name: 'ds-cascade', number: 30, kind: 'static', runner: 'node', script: 'check-ds-cascade.mjs' },
   // Image-quality (#34) — was an ORPHAN validator (tested but unwired → false coverage). Per-slot
   // resolution/aspect/weight at upload (an oversized hero is the #1 LCP killer). Warn-first
   // (IMAGE_QUALITY_STRICT=1 / PORTER_REQUIRE_CONTENT=1 → BLOCK); SKIPS when there's no images dir.
