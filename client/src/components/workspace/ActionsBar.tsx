@@ -1,65 +1,70 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Play, FlaskConical, Loader2, CheckCircle2, XCircle } from 'lucide-react'
-import { confirmDialog } from '../../lib/confirm'
-import { toast } from '../Toast'
-import { rerunWorkspaceGates, getWorkspaceAction, type ActionRun } from '../../lib/api'
+import { Play, FlaskConical, Loader2, CheckCircle2, XCircle, ChevronDown, Zap } from 'lucide-react'
+import { getWorkspaceActions, type ActionDef } from '../../lib/api'
+import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 
-// P4 — bounded mutating actions for a build. The ONLY mutation is "re-run static
-// gates" (writes only to gate-reports/), confirm-gated. "Open in Playground" is
-// pure navigation. Polls the action to completion and toasts the verdict.
+// Cockpit action bar — registry-driven. A primary "Run gates" button + an
+// "Actions" dropdown for the rest of the allowlisted safe actions. Every action
+// is confirm-gated, runs in the background, polls to completion, toasts the
+// verdict, and calls onChanged() so the build detail refreshes (score/gates).
 export default function ActionsBar({ buildId, onChanged }: { buildId: string; onChanged?: () => void }) {
   const nav = useNavigate()
-  const [run, setRun] = useState<ActionRun | null>(null)
-  const poll = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [actions, setActions] = useState<ActionDef[]>([])
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const { run, trigger } = useWorkspaceAction(buildId, onChanged)
 
-  useEffect(() => () => { if (poll.current) clearInterval(poll.current) }, [])
+  useEffect(() => {
+    getWorkspaceActions()
+      .then((r) => setActions(r.actions))
+      .catch((e) => console.error('[workspace] actions registry fetch failed:', e instanceof Error ? e.message : e))
+  }, [])
 
-  const startPolling = (runId: string) => {
-    if (poll.current) clearInterval(poll.current)
-    poll.current = setInterval(async () => {
-      try {
-        const r = await getWorkspaceAction(runId)
-        setRun(r)
-        if (r.status !== 'running') {
-          if (poll.current) clearInterval(poll.current)
-          if (r.status === 'done') toast('success', 'Gates re-ran — all passing')
-          else if (r.status === 'failed') toast('warn', `Gates re-ran — exit ${r.exitCode} (a gate blocked; see Gates tab)`)
-          else toast('error', `Gate run ${r.status}`)
-          onChanged?.() // refresh build detail (score/gates moved)
-        }
-      } catch { if (poll.current) clearInterval(poll.current) }
-    }, 1500)
-  }
-
-  const onRerun = async () => {
-    const ok = await confirmDialog({
-      title: 'Re-run static gates?',
-      message: 'Runs the static gate suite against this build and overwrites its gate-reports/. Does NOT touch theme code or the store. Takes ~10–30s.',
-      confirmLabel: 'Re-run gates',
-    })
-    if (!ok) return
-    try {
-      const r = await rerunWorkspaceGates(buildId)
-      setRun(r)
-      toast('warn', 'Gate re-run started…')
-      startPolling(r.runId)
-    } catch (e) {
-      toast('error', e instanceof Error ? e.message : 'Failed to start gate run')
-    }
-  }
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDoc = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [menuOpen])
 
   const running = run?.status === 'running'
   const Icon = running ? Loader2 : run?.status === 'done' ? CheckCircle2 : run?.status === 'failed' ? XCircle : Play
+  const gates = actions.find((a) => a.id === 'gates:static')
+  const rest = actions.filter((a) => a.id !== 'gates:static')
 
   return (
     <div className="flex items-center gap-2">
-      <button onClick={onRerun} disabled={running}
-        className="btn-ghost btn-sm flex items-center gap-1.5 disabled:opacity-50"
-        title="Re-run static gates (writes only to gate-reports/)">
-        <Icon className={`w-4 h-4 ${running ? 'animate-spin' : run?.status === 'done' ? 'text-green' : run?.status === 'failed' ? 'text-red' : ''}`} />
-        {running ? 'Running…' : 'Re-run gates'}
-      </button>
+      {gates && (
+        <button onClick={() => trigger(gates)} disabled={running}
+          className="btn-ghost btn-sm flex items-center gap-1.5 disabled:opacity-50" title={gates.description}>
+          <Icon className={`w-4 h-4 ${running ? 'animate-spin' : run?.status === 'done' ? 'text-green' : run?.status === 'failed' ? 'text-red' : ''}`} />
+          {running ? 'Running…' : 'Run gates'}
+        </button>
+      )}
+
+      {rest.length > 0 && (
+        <div className="relative" ref={menuRef}>
+          <button onClick={() => setMenuOpen((v) => !v)} className="btn-ghost btn-sm flex items-center gap-1.5" title="Run a safe action">
+            <Zap className="w-4 h-4" /> Actions <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-72 bg-surface border border-border rounded-xl shadow-lg py-1 z-[60]">
+              {rest.map((a) => (
+                <button key={a.id} onClick={() => { setMenuOpen(false); trigger(a) }} disabled={!a.available}
+                  className="w-full text-left px-3 py-2 hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{a.label}</span>
+                    <span className="text-[9px] uppercase tracking-wide text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">{a.tier}</span>
+                  </div>
+                  <div className="text-[11px] text-text-muted leading-snug">{a.available ? a.description : a.unavailableReason}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <button onClick={() => nav('/playground')} className="btn-ghost btn-sm flex items-center gap-1.5" title="Open Playground">
         <FlaskConical className="w-4 h-4" /> Playground
       </button>

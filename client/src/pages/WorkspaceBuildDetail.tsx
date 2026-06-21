@@ -6,7 +6,8 @@ import ScoreGauge from '../components/workspace/ScoreGauge'
 import StepIndicator from '../components/workspace/StepIndicator'
 import VerdictPill from '../components/workspace/VerdictPill'
 import BuildOverviewTab from '../components/workspace/BuildOverviewTab'
-import PipelineTab from '../components/workspace/PipelineTab'
+import WorkflowTab from '../components/workspace/WorkflowTab'
+import DesignSystemTab from '../components/workspace/DesignSystemTab'
 import GatesTab from '../components/workspace/GatesTab'
 import LensTab from '../components/workspace/LensTab'
 import ChangesTab from '../components/workspace/ChangesTab'
@@ -19,7 +20,8 @@ import { useBuild } from '../hooks/useBuild'
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'pipeline', label: 'Pipeline' },
+  { id: 'workflow', label: 'Workflow' },
+  { id: 'design', label: 'Design' },
   { id: 'gates', label: 'Gates' },
   { id: 'lens', label: 'Lens' },
   { id: 'changes', label: 'CHANGES' },
@@ -89,7 +91,8 @@ export default function WorkspaceBuildDetail() {
 
           {/* tab body */}
           {tab === 'overview' && <BuildOverviewTab detail={data} />}
-          {tab === 'pipeline' && buildId && <PipelineTab buildId={buildId} reloadKey={reloadKey} />}
+          {tab === 'workflow' && buildId && <WorkflowTab buildId={buildId} reloadKey={reloadKey} onChanged={reload} />}
+          {tab === 'design' && buildId && <DesignSystemTab buildId={buildId} reloadKey={reloadKey} />}
           {tab === 'gates' && buildId && <GatesTab buildId={buildId} reloadKey={reloadKey} />}
           {tab === 'lens' && <LensTab dir={data.build.dir} reloadKey={reloadKey} />}
           {tab === 'changes' && buildId && <ChangesTab buildId={buildId} reloadKey={reloadKey} />}

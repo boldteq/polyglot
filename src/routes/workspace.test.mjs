@@ -142,6 +142,47 @@ test('P4 action: unknown runId 404s', async () => {
   assert.equal(r.status, 404);
 });
 
+test('Cockpit: action registry lists safe actions + env availability', async () => {
+  const { status, json } = await get('/api/workspace/actions/registry');
+  assert.equal(status, 200);
+  assert.ok(Array.isArray(json.actions) && json.actions.length >= 5);
+  for (const a of json.actions) {
+    assert.equal(a.tier, 'safe');               // P1 is safe-only
+    assert.equal(typeof a.available, 'boolean');
+    assert.ok(a.confirm && a.confirm.title);
+  }
+  // store:preflight requires env → unavailable here (no token in test env)
+  const pre = json.actions.find((a) => a.id === 'store:preflight');
+  assert.ok(pre && pre.available === false && pre.unavailableReason);
+});
+
+test('Cockpit: generic action with unknown id → 403 (allowlist guard)', async () => {
+  const list = await get('/api/workspace/builds');
+  if (!list.json.builds.length) return;
+  const id = list.json.builds[0].buildId;
+  const r = await post(`/api/workspace/builds/${id}/actions/evil:hack`);
+  assert.equal(r.status, 403);
+});
+
+test('Cockpit: env-gated action returns blocked (not spawned) when env missing', async () => {
+  const list = await get('/api/workspace/builds');
+  if (!list.json.builds.length) return;
+  const id = list.json.builds[0].buildId;
+  const r = await post(`/api/workspace/builds/${id}/actions/store:preflight`);
+  assert.equal(r.status, 202);
+  assert.equal(r.json.status, 'blocked');       // never spawned
+  assert.match(r.json.log, /missing env/i);
+});
+
+test('Cockpit: design-system route returns present flag', async () => {
+  const list = await get('/api/workspace/builds');
+  if (!list.json.builds.length) return;
+  const id = list.json.builds[0].buildId;
+  const r = await get(`/api/workspace/builds/${id}/design-system`);
+  assert.equal(r.status, 200);
+  assert.equal(typeof r.json.present, 'boolean');
+});
+
 test('P3 index: replace + read round-trips, prunes vanished builds', async () => {
   const db = require('../db.js');
   if (!db.replaceWorkspaceIndex) return; // older db w/o migration

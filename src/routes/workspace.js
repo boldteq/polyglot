@@ -20,6 +20,8 @@ const { readGateReports } = require('../lib/workspace/readGateReports');
 const { parseChangesMd } = require('../lib/workspace/parseChangesMd');
 const { parseBaselineMd } = require('../lib/workspace/parseBaselineMd');
 const { readBuildFiles } = require('../lib/workspace/readBuildFiles');
+const { parseDesignSystem } = require('../lib/workspace/parseDesignSystem');
+const { listActions } = require('../lib/workspace/actionRegistry');
 const { findBuildArtifacts } = require('../lib/workspace/findBuildArtifacts');
 const { deriveCurrentStep } = require('../lib/workspace/currentStep');
 const { computeBuildScore } = require('../lib/workspace/computeBuildScore');
@@ -506,12 +508,29 @@ router.get('/workspace/builds/:buildId/files', (req, res) => {
   }
 });
 
-// ── P4: bounded actions (mutating — UI confirm-gates before POST) ────────────
+// GET /api/workspace/builds/:buildId/design-system — visual design-system viewer.
+router.get('/workspace/builds/:buildId/design-system', (req, res) => {
+  try {
+    const dir = resolveBuildDir(req.params.buildId);
+    if (!dir) return res.status(404).json({ error: 'build not found' });
+    res.json(parseDesignSystem(dir));
+  } catch (err) {
+    console.error('[workspace] /design-system failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-// POST /api/workspace/builds/:buildId/actions/rerun-gates — re-run STATIC gates
-// against the build (writes only to <build>/gate-reports/). Resolves the dir from
-// the known buildId (never a client path). The watcher + indexer pick up the new
-// reports automatically; this returns a runId to poll.
+// ── Cockpit actions (allowlisted, confirm-gated — see actionRegistry.js) ──────
+
+// GET /api/workspace/actions/registry — the available safe actions (+ whether
+// each entry's required env is satisfied). MUST be registered BEFORE the
+// `/actions/:runId` param route below or `registry` matches as a runId.
+router.get('/workspace/actions/registry', (_req, res) => {
+  res.json({ actions: listActions() });
+});
+
+// POST /api/workspace/builds/:buildId/actions/rerun-gates — back-compat alias for
+// the shipped ActionsBar. Equivalent to the generic route with actionId=gates:static.
 router.post('/workspace/builds/:buildId/actions/rerun-gates', (req, res) => {
   try {
     const dir = resolveBuildDir(req.params.buildId);
@@ -520,6 +539,23 @@ router.post('/workspace/builds/:buildId/actions/rerun-gates', (req, res) => {
     res.status(202).json(rec);
   } catch (err) {
     console.error('[workspace] rerun-gates failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/workspace/builds/:buildId/actions/:actionId — generic allowlisted
+// runner. The actionId MUST be a registry entry (unknown → 403). Resolves dir
+// from the known buildId (never a client path). Registered AFTER rerun-gates so
+// that literal wins; any other id flows here.
+router.post('/workspace/builds/:buildId/actions/:actionId', (req, res) => {
+  try {
+    const dir = resolveBuildDir(req.params.buildId);
+    if (!dir) return res.status(404).json({ error: 'build not found' });
+    const rec = actionRunner.runAction({ buildId: req.params.buildId, dir, actionId: req.params.actionId });
+    res.status(202).json(rec);
+  } catch (err) {
+    if (err.code === 'UNKNOWN_ACTION') return res.status(403).json({ error: err.message });
+    console.error('[workspace] action failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

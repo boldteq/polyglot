@@ -233,14 +233,24 @@ export interface FilesData { buildDir: string; topFiles: { name: string; path: s
 export const getWorkspaceBuildFiles = (buildId: string) =>
   request<FilesData>(`/workspace/builds/${encodeURIComponent(buildId)}/files`)
 
-// P4 — bounded actions (mutating; UI must confirm before calling)
-export interface ActionRun { runId: string; buildId: string; dir: string; action: string; status: 'running' | 'done' | 'failed' | 'error' | 'cancelled'; startedMs: number; endedMs: number | null; exitCode: number | null; log: string }
+// Cockpit actions (allowlisted, confirm-gated; UI must confirm before calling)
+export interface ActionRun { runId: string; buildId: string; dir: string; action: string; status: 'running' | 'done' | 'failed' | 'error' | 'cancelled' | 'blocked'; startedMs: number; endedMs: number | null; exitCode: number | null; log: string }
+export interface ActionDef { id: string; label: string; tier: string; description: string; confirm: { title: string; message: string; confirmLabel?: string }; requiresEnv: string[]; available: boolean; unavailableReason: string | null }
+export const getWorkspaceActions = () =>
+  request<{ actions: ActionDef[] }>(`/workspace/actions/registry`)
+export const runWorkspaceAction = (buildId: string, actionId: string) =>
+  request<ActionRun>(`/workspace/builds/${encodeURIComponent(buildId)}/actions/${encodeURIComponent(actionId)}`, { method: 'POST' })
 export const rerunWorkspaceGates = (buildId: string) =>
   request<ActionRun>(`/workspace/builds/${encodeURIComponent(buildId)}/actions/rerun-gates`, { method: 'POST' })
 export const getWorkspaceAction = (runId: string) =>
   request<ActionRun>(`/workspace/actions/${encodeURIComponent(runId)}`)
 export const cancelWorkspaceAction = (runId: string) =>
   request<{ cancelled: boolean }>(`/workspace/actions/${encodeURIComponent(runId)}/cancel`, { method: 'POST' })
+
+// Visual design-system viewer
+export interface DesignSystemData { present: boolean; system: Record<string, unknown> | null }
+export const getWorkspaceDesignSystem = (buildId: string) =>
+  request<DesignSystemData>(`/workspace/builds/${encodeURIComponent(buildId)}/design-system`)
 
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
 export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }
@@ -2843,6 +2853,12 @@ export const bulkRejectCandidates = (ids: string[]) =>
 export const editCandidate = (id: string, body: { title?: string; payload?: Record<string, string> }) =>
   request<{ ok: boolean; candidate: LearningCandidate }>(`/learning/inbox/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
 
+// Log a correction → stages a feedback candidate into Pending review. NEVER writes
+// feedback.md (that happens only on a human approve of the staged candidate).
+export const submitFeedback = (body: { directive: string; context?: string; severity?: 'normal' | 'p0' }) =>
+  request<{ ok: boolean; feedbackEventId: string; candidateId: string | null; staged: boolean; note: string }>(
+    '/feedback', { method: 'POST', body: JSON.stringify(body) })
+
 export type LearningStreamEvent =
   | { type: 'ready'; pending: number }
   | { type: 'candidate'; staged: number }
@@ -2960,6 +2976,34 @@ export const applyBrainPatch = (id: string) =>
   request<{ ok: boolean; id: string; alreadyApplied: boolean }>(`/brain/patches/${id}/apply`, { method: 'POST', timeoutMs: 20000 })
 export const rejectBrainPatch = (id: string) =>
   request<{ ok: boolean; id: string }>(`/brain/patches/${id}/reject`, { method: 'POST' })
+
+// ── Decision Journal (v30) — the consequence half of the loop ─────────────────
+// Aged decisions still awaiting a real-world outcome + the rolling accuracy of the
+// ones already resolved. Resolving one records whether the decision turned out right.
+export interface BrainDecision {
+  id: string
+  ts: string
+  project: string | null
+  summary: string | null
+  detail: string | null
+  confidence: number | null
+  outcome: string
+}
+export interface DecisionAccuracy { resolved: number; accuracy: number | null }
+export const getUnresolvedDecisions = (opts: { daysOld?: number; project?: string; sinceDays?: number; limit?: number } = {}) => {
+  const qs = new URLSearchParams()
+  if (opts.daysOld != null) qs.set('daysOld', String(opts.daysOld))
+  if (opts.project) qs.set('project', opts.project)
+  if (opts.sinceDays != null) qs.set('sinceDays', String(opts.sinceDays))
+  if (opts.limit != null) qs.set('limit', String(opts.limit))
+  const q = qs.toString()
+  return request<{ items: BrainDecision[]; accuracy: DecisionAccuracy }>(`/brain/decisions/unresolved${q ? `?${q}` : ''}`)
+}
+export const resolveDecision = (id: string, body: { outcome: 'confirmed' | 'wrong'; correctnessScore?: number; note?: string }) =>
+  request<{ ok: boolean; id: string; outcome: string; correctnessScore: number }>(`/brain/decisions/${id}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
 
 export interface BrainMemoryEvent {
   type: 'memory'

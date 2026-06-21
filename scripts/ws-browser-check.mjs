@@ -20,7 +20,9 @@ page.on('pageerror', (e) => pageErrors.push(`[${page.url().replace(BASE, '')}] $
 
 async function shot(routePath, name, waitText) {
   consoleErrors.length = 0; // scope errors to this view
-  await page.goto(BASE + routePath, { waitUntil: 'networkidle', timeout: 20000 }).catch(() => {});
+  // domcontentloaded, NOT networkidle — build-detail keeps an SSE stream open so
+  // the network never idles (per memory). Settle with a short timeout instead.
+  await page.goto(BASE + routePath, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
   if (waitText) {
     try { await page.getByText(waitText, { exact: false }).first().waitFor({ timeout: 8000 }); }
     catch { /* note via empty-check below */ }
@@ -48,7 +50,7 @@ results.push(await shot('/workspace/results', '05-results-page'));
 const builds = await (await fetch(BASE + '/api/workspace/builds')).json();
 const bid = (builds.builds.find((b) => b.client === 'gpt test 1') || builds.builds[0])?.buildId;
 console.log(`\n--- build detail tabs (buildId=${bid}) ---`);
-const TABS = ['overview', 'pipeline', 'gates', 'lens', 'changes', 'agents', 'schedules', 'results', 'files'];
+const TABS = ['overview', 'workflow', 'design', 'gates', 'lens', 'changes', 'agents', 'schedules', 'results', 'files'];
 for (const t of TABS) {
   results.push(await shot(`/workspace/builds/${bid}?tab=${t}`, `tab-${t}`));
 }
