@@ -1,0 +1,8 @@
+{ "surface": "order-confirmation", "viewport_notes": "the thank-you / order-status page (needs a real order to capture — usually supplied manually). The post-purchase moment: reassurance + next steps.",
+  "checks": [
+    { "id": "broken-state", "rule": "no missing logo/images, no Liquid/render errors, no placeholder text", "severity_if_fail": "blocker", "fix_owner": "porter" },
+    { "id": "order-summary-clear", "rule": "what was bought + total + confirmation number are legible and unambiguous", "severity_if_fail": "warning", "fix_owner": "porter" },
+    { "id": "next-steps", "rule": "clear next-steps (shipping/tracking expectation, account, or a continue-shopping CTA) — not a dead end", "severity_if_fail": "warning", "fix_owner": "porter" },
+    { "id": "brand-continuity", "rule": "reads as the SAME brand as the store (logo, color, voice), not a generic Shopify confirmation", "severity_if_fail": "warning", "fix_owner": "porter" }
+  ],
+  "sources": ["patterns/good/shopify-conversion-gate-checklist.md#post-purchase"] }

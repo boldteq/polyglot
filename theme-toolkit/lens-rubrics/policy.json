@@ -1,0 +1,8 @@
+{ "surface": "policy", "viewport_notes": "a policy / legal / info page (refund, shipping, privacy, terms, about). Plain but readable + real content.",
+  "checks": [
+    { "id": "broken-state", "rule": "no Liquid/render errors, no empty shell, no Lorem/placeholder/[CLAIM] text — real policy content is present", "severity_if_fail": "blocker", "fix_owner": "porter" },
+    { "id": "real-content", "rule": "the page has substantive policy copy, not a one-line stub or default boilerplate left unedited", "severity_if_fail": "warning", "fix_owner": "porter" },
+    { "id": "readable-measure", "rule": "comfortable line length + clear headings/sections; not edge-to-edge unbroken text", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "css-layout", "rule": "no overflow/overlap; consistent chrome; hierarchy intact (H1 page title)", "severity_if_fail": "warning", "fix_owner": "loom" }
+  ],
+  "sources": ["theme-page-recipes.md#page"] }

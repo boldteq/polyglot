@@ -1,0 +1,8 @@
+{ "surface": "search-empty", "viewport_notes": "search results with NO matches. The trap: a dead-end 'no results' with no way forward. It must HELP.",
+  "checks": [
+    { "id": "broken-state", "rule": "no Liquid/render errors, no broken layout — the empty state renders cleanly", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "helpful-empty-state", "rule": "the no-results state offers a path forward — a clear message + search box + suggestions / popular products / browse-collections link — NOT a blank dead end", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "search-box-present", "rule": "the search input is present + prefilled with the query so the shopper can refine without retyping", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "css-layout", "rule": "no overflow/overlap; spacing intentional (no desolate void)", "severity_if_fail": "warning", "fix_owner": "loom" }
+  ],
+  "sources": ["theme-page-recipes.md#search", "patterns/good/shopify-conversion-gate-checklist.md"] }

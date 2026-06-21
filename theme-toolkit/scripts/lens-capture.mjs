@@ -198,6 +198,37 @@ async function resolveSurfaceUrls(page, origin, password, want) {
   return want.map(s => ({ surface: s, url: map[s] || null })).filter(x => x.url)
 }
 
+// #8 — resolve secondary surfaces (blog/article/policy/gift-card) for the FULL-depth sweep. Best-effort:
+// every probe is guarded so a missing surface is simply omitted (its rubric still ships); a 404 capture
+// would flag a broken one. Navigates `page` (the resolver page) — callers use fresh contexts after.
+async function resolveSecondarySurfaces(page, origin) {
+  const out = []
+  const u = (p) => new URL(p, origin).toString()
+  // blog listing + first article
+  try {
+    const blogHref = await page.evaluate(() => { const a = document.querySelector('a[href*="/blogs/"]'); return a ? a.getAttribute('href') : null })
+    const m = (blogHref || '/blogs/news').match(/\/blogs\/[^/?#]+/)
+    const blogPath = m ? m[0] : '/blogs/news'
+    out.push({ surface: 'blog', url: u(blogPath) })
+    try {
+      await page.goto(u(blogPath), { waitUntil: 'load', timeout: 30_000 })
+      const art = await page.evaluate(() => { const a = [...document.querySelectorAll('a[href*="/blogs/"]')].find(x => /\/blogs\/[^/?#]+\/[^/?#]+/.test(x.getAttribute('href') || '')); return a ? a.getAttribute('href') : null })
+      if (art) out.push({ surface: 'article', url: u(art.split(/[?#]/)[0]) })
+    } catch { /* no article */ }
+  } catch { /* no blog */ }
+  // a policy / info page (footer link, else the Shopify standard refund-policy path)
+  try {
+    const polHref = await page.evaluate(() => { const a = [...document.querySelectorAll('a[href*="/policies/"], a[href*="/pages/"]')].find(x => /policy|terms|privacy|refund|shipping/i.test(x.href)); return a ? a.getAttribute('href') : null })
+    out.push({ surface: 'policy', url: u((polHref || '/policies/refund-policy').split(/[?#]/)[0]) })
+  } catch { out.push({ surface: 'policy', url: u('/policies/refund-policy') }) }
+  // gift-card product (only if published)
+  try {
+    const ok = await page.evaluate(async (o) => { try { const r = await fetch(`${o}/products/gift-card.js`); return r.ok } catch { return false } }, origin)
+    if (ok) out.push({ surface: 'gift-card', url: u('/products/gift-card') })
+  } catch { /* no gift card */ }
+  return out
+}
+
 // Storefront error pages (CLI 502, theme 404, render failure) render HTTP-200-ish bodies the
 // Liquid-error scan misses — detect them explicitly so the DETERMINISTIC layer flags a broken
 // surface, not just the vision judge (Meridian dogfood: desktop PDP 502 + mobile PDP 404 slipped
@@ -316,9 +347,10 @@ async function main() {
     const resPage = await resCtx.newPage()
     await gotoWithAuth(resPage, previewUrl, password) // authenticate (contexts are isolated, so re-auth per context below)
     const surfaces = await resolveSurfaceUrls(resPage, origin, password, args.surfaces)
-    if (DEPTH === 'full') { // error/edge surfaces (WS-A2) — own verdict, generic rubric fallback
+    if (DEPTH === 'full') { // error/edge + secondary surfaces (WS-A2 / #8) — own verdict per surface
       surfaces.push({ surface: 'not-found', url: new URL('/lens-404-probe-zzqx', origin).toString() })
       surfaces.push({ surface: 'search-empty', url: new URL('/search?q=zzqxnoresultsxyz', origin).toString() })
+      surfaces.push(...await resolveSecondarySurfaces(resPage, origin)) // blog/article/policy/gift-card (#8)
     }
     const locales = DEPTH === 'full' ? await detectLocales(resPage) : ['default'] // conditional (WS-A3)
     await resCtx.close()

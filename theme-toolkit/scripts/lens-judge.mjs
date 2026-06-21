@@ -22,6 +22,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
@@ -30,6 +31,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPORT_DIR = process.env.REPORT_DIR || 'gate-reports'
 const LENS_DIR = path.resolve(cwd, REPORT_DIR, 'lens')
 const JUDGE_DIR = path.join(LENS_DIR, 'judge')
+const JUDGE_CACHE = path.join(LENS_DIR, 'judge-cache') // #9: content-addressed verdict cache
+const NO_CACHE = process.env.LENS_NO_CACHE === '1'
+const MAX_FRESH = Number(process.env.LENS_MAX_FRAMES || 0) // #9: cap fresh judge calls per run (0 = unlimited)
 const RUBRICS_DIR = process.env.LENS_RUBRICS || path.resolve(HERE, '..', 'lens-rubrics')
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
 const MODEL = process.env.LENS_JUDGE_MODEL || 'sonnet'
@@ -94,9 +98,22 @@ function buildPrompt(frame, rubric, outPath) {
   ].filter(Boolean).join('\n\n')
 }
 
+// #12 — mobile rubric overlay: mobile-only defects (tap-target size, thumb-reach, sticky-ATC) score
+// ONLY on mobile-viewport frames. PURE: base checks + rubric.mobile_overlay when the frame is mobile.
+export function effectiveChecks(rubric, frame) {
+  const base = rubric?.checks || []
+  const vp = String(frame?.viewport || '')
+  const lead = parseInt(vp, 10) // a dims string like "375x812" → 375; a name like "mobile" → NaN
+  const w = Number(frame?.width) || (Number.isFinite(lead) ? lead : 0)
+  const isMobile = /mobile/i.test(vp) || (w > 0 && w <= 600)
+  if (isMobile && Array.isArray(rubric?.mobile_overlay) && rubric.mobile_overlay.length) return [...base, ...rubric.mobile_overlay]
+  return base
+}
+
 function judgeFrame(frame, rubric) {
+  const eff = rubric ? { ...rubric, checks: effectiveChecks(rubric, frame) } : rubric
   const outPath = path.join(JUDGE_DIR, `${frame.key || `${frame.surface}-${frame.viewport}`}.json`)
-  const prompt = buildPrompt(frame, rubric, outPath)
+  const prompt = buildPrompt(frame, eff, outPath)
   return new Promise((resolve) => {
     const child = spawn(CLAUDE_BIN, ['-p', prompt, '--model', MODEL, '--no-session-persistence', '--output-format', 'json'], { cwd, stdio: ['ignore', 'ignore', 'pipe'] })
     let err = ''
@@ -108,6 +125,35 @@ function judgeFrame(frame, rubric) {
       catch { resolve({ frame, ok: false, reason: `no/invalid verdict at ${path.basename(outPath)}${err ? ` — ${err.slice(0, 120)}` : ''}` }) }
     })
   })
+}
+
+// #9 — hash the judge INPUTS for a frame (image bytes + rubric + niche/brand/model): anything that
+// changes the verdict changes the hash, so a re-run after a CSS-only edit re-judges ONLY changed frames
+// and reuses the rest. Identical inputs ⟹ identical verdict, so the cache is correctness-preserving.
+function frameHash(frame, rubric) {
+  const h = crypto.createHash('sha256')
+  h.update(JSON.stringify(rubric || {}))
+  h.update(`${NICHE}|${BRAND}|${MODEL}`)
+  const imgs = frame.frames || {}
+  for (const k of Object.keys(imgs).sort()) {
+    try { h.update(k); h.update(fs.readFileSync(path.join(LENS_DIR, imgs[k]))) } catch { h.update(`missing:${k}`) }
+  }
+  return h.digest('hex')
+}
+
+// PURE: partition judge items into {fresh, cached, skipped} given each item's cache-hit + a fresh budget.
+// items: [{frame, rubric, hash, cached}]. maxFresh 0 = unlimited. skipped = over-budget fresh frames
+// (NOT silent — the caller logs them, and #18's coverage-unjudged catches the gap at publish-grade).
+export function planJudge(items, { maxFresh = 0 } = {}) {
+  const fresh = []
+  const cached = []
+  const skipped = []
+  for (const it of items || []) {
+    if (it.cached) { cached.push(it); continue }
+    if (maxFresh && fresh.length >= maxFresh) { skipped.push(it); continue }
+    fresh.push(it)
+  }
+  return { fresh, cached, skipped }
 }
 
 async function pool(items, n, worker) {
@@ -133,18 +179,51 @@ async function main() {
   if (!frames.length) die(2, 'no frames to judge')
 
   fs.mkdirSync(JUDGE_DIR, { recursive: true })
-  console.log(`lens-judge: judging ${frames.length} frame(s) via headless ${CLAUDE_BIN} (${MODEL}), concurrency ${a.concurrency} …`)
+  if (!NO_CACHE) fs.mkdirSync(JUDGE_CACHE, { recursive: true })
   const rubricCache = {}
-  const results = await pool(frames, a.concurrency, (f) => judgeFrame(f, rubricCache[f.surface] ?? (rubricCache[f.surface] = loadRubric(f.surface))))
+  const outFor = (f) => path.join(JUDGE_DIR, `${f.key || `${f.surface}-${f.viewport}`}.json`)
+  // #9 — hash every frame, mark cache hits, then plan: fresh (judge now) · cached (reuse) · skipped (over budget)
+  const items = frames.map(f => {
+    const rubric = rubricCache[f.surface] ?? (rubricCache[f.surface] = loadRubric(f.surface))
+    const hash = NO_CACHE ? null : frameHash(f, rubric)
+    const cached = !!(hash && fs.existsSync(path.join(JUDGE_CACHE, `${hash}.json`)))
+    return { frame: f, rubric, hash, cached }
+  })
+  const { fresh, cached, skipped } = planJudge(items, { maxFresh: MAX_FRESH })
+  console.log(`lens-judge: ${frames.length} frame(s) — ${fresh.length} to judge · ${cached.length} cached · ${skipped.length} over-budget · headless ${CLAUDE_BIN} (${MODEL}), concurrency ${a.concurrency}`)
 
-  let pass = 0, fail = 0, failed = 0
+  let pass = 0, fail = 0, failed = 0, served = 0
+  const tally = (v) => { if (v.verdict === 'FAIL') fail += 1; else pass += 1 }
+
+  // serve cached verdicts (rewrite identity fields to the current frame; cache unreadable → judge fresh)
+  const stillFresh = []
+  for (const it of cached) {
+    try {
+      const v = JSON.parse(fs.readFileSync(path.join(JUDGE_CACHE, `${it.hash}.json`), 'utf-8'))
+      v.surface = it.frame.surface; v.viewport = `${it.frame.width}x${it.frame.height}`; v.key = it.frame.key || `${it.frame.surface}-${it.frame.viewport}`
+      fs.writeFileSync(outFor(it.frame), `${JSON.stringify(v, null, 2)}\n`)
+      served += 1; tally(v)
+      console.log(`  ◦ ${it.frame.surface}/${it.frame.viewport}: ${v.verdict} ${v.confidence}% (cached)`)
+    } catch { stillFresh.push(it) }
+  }
+  // budget-skipped: NOT silent — gate #18 coverage-unjudged catches the gap at publish-grade
+  for (const it of skipped) console.log(`  ⤬ ${it.frame.surface}/${it.frame.viewport}: SKIPPED (LENS_MAX_FRAMES=${MAX_FRESH}) — reads as coverage-unjudged at publish-grade`)
+
+  const toJudge = [...fresh, ...stillFresh]
+  const results = await pool(toJudge, a.concurrency, async (it) => {
+    const r = await judgeFrame(it.frame, it.rubric)
+    if (r.ok && it.hash && !NO_CACHE) { try { fs.writeFileSync(path.join(JUDGE_CACHE, `${it.hash}.json`), `${JSON.stringify(r.verdict, null, 2)}\n`) } catch { /* cache write best-effort */ } }
+    return r
+  })
   for (const r of results) {
     if (!r.ok) { failed += 1; console.log(`  ✗ ${r.frame.surface}/${r.frame.viewport}: ${r.reason}`); continue }
-    const v = r.verdict; (v.verdict === 'FAIL' ? fail++ : pass++)
-    console.log(`  ${v.verdict === 'FAIL' ? '✗' : '✓'} ${r.frame.surface}/${r.frame.viewport}: ${v.verdict} ${v.confidence}% · ${(v.findings || []).length} finding(s)`)
+    tally(r.verdict)
+    console.log(`  ${r.verdict.verdict === 'FAIL' ? '✗' : '✓'} ${r.frame.surface}/${r.frame.viewport}: ${r.verdict.verdict} ${r.verdict.confidence}% · ${(r.verdict.findings || []).length} finding(s)`)
   }
-  console.log(`lens-judge: ${pass} PASS · ${fail} FAIL · ${failed} unjudged → ${path.relative(cwd, JUDGE_DIR)}/`)
+  console.log(`lens-judge: ${pass} PASS · ${fail} FAIL · ${served} cached · ${failed} unjudged${skipped.length ? ` · ${skipped.length} budget-skipped` : ''} → ${path.relative(cwd, JUDGE_DIR)}/`)
   process.exit(failed > 0 ? 1 : 0)
 }
 
-main().catch(e => die(2, `unexpected failure: ${e.message}`))
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(e => die(2, `unexpected failure: ${e.message}`))
+}

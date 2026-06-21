@@ -35,7 +35,7 @@ const MIN_CONF_ENV = process.env.VISUAL_TRUTH_MIN_CONFIDENCE ? Number(process.en
 const MIN_CONF = MIN_CONF_ENV ?? 80 // representative value for the report; per-surface threshold via minConfFor (WS-B3)
 // Adaptive: high-stakes surfaces (hero/PDP/cart/collection) demand more judge certainty than secondary
 // ones — uncertainty on a money surface is a block; on /search or /account it warns. Explicit env overrides.
-const CRITICAL_SURFACES = new Set(['home', 'pdp', 'cart', 'collection'])
+const CRITICAL_SURFACES = new Set(['home', 'pdp', 'cart', 'collection', 'checkout', 'order-confirmation', 'gift-card'])
 const minConfFor = (surface) => MIN_CONF_ENV != null ? MIN_CONF_ENV : (CRITICAL_SURFACES.has(String(surface)) ? 90 : 75)
 const OVERFLOW_TOL = Number(process.env.LENS_OVERFLOW_TOLERANCE || 2)
 const REQUIRE = process.env.DS_REQUIRE_SCOPE === '1' || process.env.LENS_REQUIRE === '1'

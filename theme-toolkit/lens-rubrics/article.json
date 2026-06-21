@@ -1,0 +1,10 @@
+{ "surface": "article", "viewport_notes": "article detail: readable measure (~60–80ch), clear H1, body imagery in-flow, a CTA/related at the end.",
+  "checks": [
+    { "id": "css-layout", "rule": "no spacing collisions/overlap; nothing overflows the viewport; typography cascade intact", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "broken-state", "rule": "no missing-image placeholders, no Liquid errors, no Lorem/[CLAIM] text, no copy typos in rendered text", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "readable-measure", "rule": "body text line length is comfortable (~60–80 characters) — not edge-to-edge full-width on desktop", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "hierarchy", "rule": "article title is the H1; in-article headings descend h2>h3; meta (date/author) is secondary", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "image-handling", "rule": "in-body images sit in flow without overflow and keep their subject on mobile", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "end-cta", "rule": "the article ends with a path forward (related posts, newsletter, or a product CTA) — not a dead end", "severity_if_fail": "warning", "fix_owner": "drape" }
+  ],
+  "sources": ["theme-page-recipes.md#article", "patterns/good/copy-messaging-frameworks.md"] }

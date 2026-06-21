@@ -15,4 +15,9 @@
     { "id": "decorative-element-integrity", "rule": "decorative elements (trust badges, dividers, accent shapes) are intentional, aligned, and present at every viewport — none missing, clipped, or misaligned.", "severity_if_fail": "warning", "fix_owner": "loom" },
     { "id": "a11y-focus-visible", "rule": "variant selectors + ATC show a visible focus state and a logical order; the ATC is reachable. Flag invisible focus or an ATC lost against the background.", "severity_if_fail": "warning", "fix_owner": "loom" }
   ],
+  "mobile_overlay": [
+    { "id": "sticky-atc", "rule": "on mobile the Add-to-Cart stays reachable as the shopper scrolls (sticky bar or repeated CTA) — not stranded above a long PDP", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "tap-target", "rule": "variant chips, quantity, and ATC are ≥44px and not crammed together — comfortably tappable with a thumb", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "thumb-reach", "rule": "the primary ATC sits within comfortable thumb reach (lower two-thirds) in the rest frame, not only at the very top", "severity_if_fail": "warning", "fix_owner": "drape" }
+  ],
   "sources": ["theme-page-recipes.md#pdp", "design/ecom/niche-dna-packs/<niche>.json", "patterns/good/ecom-funnel-cro-playbook.md"] }

@@ -43,6 +43,15 @@ const VIEWPORTS = process.env.LENS_VIEWPORTS || 'mobile,desktop'
 const CODE_OWNERS = new Set(['loom', 'drape', 'ink', 'conduit'])  // fix theme files
 const DATA_OWNERS = new Set(['porter'])                            // store data → escalate
 
+// #10 — PURE: split findings into theme-CODE (file edits) vs store-DATA (porter). Exported so the
+// routing is hermetically testable; the LLM dispatch (dispatchFix / dispatchPorter) acts on each bucket.
+export function routeFindings(findings, codeOwners = CODE_OWNERS) {
+  const code = []
+  const data = []
+  for (const f of findings || []) (codeOwners.has(f.fix_owner) ? code : data).push(f)
+  return { code, data }
+}
+
 const die = (code, msg) => { console.error(`lens-autofix: ${code === 2 ? 'ENV-ERROR' : 'ERROR'} — ${msg}`); process.exit(code) }
 const script = (n) => path.join(HERE, n)
 
@@ -146,8 +155,7 @@ async function main() {
     for (const o of diff) if (o.result === 'persisted') persisted.add(`${o.check}::${o.surface}::${o.viewport || ''}`)
     prevFindings = findings
 
-    const code = findings.filter(f => CODE_OWNERS.has(f.fix_owner))
-    const data = findings.filter(f => !CODE_OWNERS.has(f.fix_owner)) // porter / store-data
+    const { code, data } = routeFindings(findings) // #10 — theme-code vs store-data (porter)
     const giveUp = code.filter(f => persisted.has(findingKey(f)))    // already tried + failed → don't repeat the same fix
     const retryable = code.filter(f => !persisted.has(findingKey(f)))
     affected = [...new Set(findings.map(f => f.surface))]
@@ -179,4 +187,6 @@ async function main() {
   }
 }
 
-main().catch(e => die(2, `unexpected failure: ${e.message}`))
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(e => die(2, `unexpected failure: ${e.message}`))
+}

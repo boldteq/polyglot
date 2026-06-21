@@ -1,0 +1,8 @@
+{ "surface": "not-found", "viewport_notes": "the 404 page. It IS an error page by design — but it must be BRANDED + offer a recovery path, never a raw template.",
+  "checks": [
+    { "id": "broken-state", "rule": "no Liquid/render errors, no missing images, no Lorem/[CLAIM] text — the 404 itself renders cleanly", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "branded-404", "rule": "the 404 is on-brand (logo, colors, type, voice) — not a bare 'page not found' on a white page", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "recovery-path", "rule": "a way back exists — search box, primary nav, or links to home/collections — so the shopper isn't dead-ended", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "css-layout", "rule": "no overflow/overlap; the chrome (header/footer) renders normally around the 404 body", "severity_if_fail": "warning", "fix_owner": "loom" }
+  ],
+  "sources": ["theme-page-recipes.md#404"] }

@@ -1,0 +1,12 @@
+{ "surface": "checkout", "viewport_notes": "Shopify-hosted; theme controls logo/colors/banner via checkout branding + (Plus) extensions. Judge brand continuity + trust + clarity, not theme code.",
+  "checks": [
+    { "id": "broken-state", "rule": "no missing-logo, no broken/placeholder images, no Liquid/render errors, no Lorem/[CLAIM] text", "severity_if_fail": "blocker", "fix_owner": "porter" },
+    { "id": "brand-continuity", "rule": "checkout logo + accent color + type match the storefront — it reads as the SAME brand, not a generic Shopify default", "severity_if_fail": "warning", "fix_owner": "porter" },
+    { "id": "trust-signals", "rule": "secure-checkout cue + recognizable payment icons are visible; nothing looks unfinished or untrustworthy at the money step", "severity_if_fail": "blocker", "fix_owner": "porter" },
+    { "id": "cost-clarity", "rule": "subtotal / shipping / taxes are legible and not hidden; no surprise-cost ambiguity in the order summary", "severity_if_fail": "warning", "fix_owner": "porter" },
+    { "id": "express-checkout", "rule": "express options (Shop Pay / wallets) render correctly when present — not clipped or broken", "severity_if_fail": "warning", "fix_owner": "conduit" }
+  ],
+  "mobile_overlay": [
+    { "id": "tap-target", "rule": "form fields + the continue button are ≥44px tall and not crowded; the keyboard doesn't obscure the active field's submit", "severity_if_fail": "warning", "fix_owner": "porter" }
+  ],
+  "sources": ["patterns/good/shopify-conversion-gate-checklist.md#checkout", "Baymard checkout research"] }

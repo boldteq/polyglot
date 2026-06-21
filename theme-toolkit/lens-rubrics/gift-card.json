@@ -1,0 +1,12 @@
+{ "surface": "gift-card", "viewport_notes": "the gift-card product page. A real buy box (denomination + ATC), on-brand, not the raw default.",
+  "checks": [
+    { "id": "broken-state", "rule": "no missing image, no Liquid errors, no Lorem/[CLAIM] text", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "buy-box", "rule": "denomination/amount selector + Add-to-Cart are present and usable above the fold", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "hierarchy", "rule": "title is the H1; price/amount prominent; ATC the clear primary action", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "premium-feel", "rule": "the gift-card page is designed (on-brand imagery/voice), not the bare Shopify default", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "css-layout", "rule": "no overflow/overlap; spacing intentional", "severity_if_fail": "warning", "fix_owner": "loom" }
+  ],
+  "mobile_overlay": [
+    { "id": "sticky-atc", "rule": "Add-to-Cart stays reachable on mobile (sticky or above-fold) — not buried below long copy", "severity_if_fail": "warning", "fix_owner": "loom" }
+  ],
+  "sources": ["theme-page-recipes.md#pdp"] }

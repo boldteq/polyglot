@@ -1,0 +1,10 @@
+{ "surface": "blog", "viewport_notes": "blog listing: post cards in a consistent grid; featured images present; mobile single-column.",
+  "checks": [
+    { "id": "css-layout", "rule": "no spacing collisions/overlap; nothing wraps or overflows the viewport; typography cascade intact", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "broken-state", "rule": "no missing-image placeholders, no Liquid errors, no empty shells, no Lorem/[CLAIM] text, no draft/0-post void", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "card-consistency", "rule": "post cards share one layout — image ratio, title size, excerpt length, meta all consistent (no jagged grid)", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "hierarchy", "rule": "blog title is the H1; post titles are clearly the primary tap target on each card", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "image-art-direction", "rule": "featured images keep their subject at every viewport (no blank/subject-less mobile crop)", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "premium-feel", "rule": "intentional editorial design per the niche scorecard, not a default Dawn blog list", "severity_if_fail": "warning", "fix_owner": "drape" }
+  ],
+  "sources": ["theme-page-recipes.md#blog", "design/ecom/niche-dna-packs/<niche>.json"] }
