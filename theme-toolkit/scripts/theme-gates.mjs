@@ -224,6 +224,10 @@ const GATES = [
   // confidence <70 / partial board → fail). Verifies the board-verdict artifact; warn-first (BLOCKS at
   // publish-grade DS_REQUIRE_SCOPE/DRB_REQUIRE). Makes "the board ran" machine-checkable, not prose.
   { name: 'design-review-board', number: 31, kind: 'static', runner: 'node', script: 'check-design-review-board.mjs' },
+  // Gate 32 — red-team: mechanizes governance-OS §6. A dedicated adversary (independent of the builder)
+  // attacks along 4 axes BEFORE the board; every finding must be resolved or accepted-with-rationale;
+  // an unanswered attack blocks. Verifies the red-team artifact; warn-first (BLOCKS at publish-grade).
+  { name: 'red-team', number: 32, kind: 'static', runner: 'node', script: 'check-red-team.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
