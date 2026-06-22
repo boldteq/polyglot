@@ -39,7 +39,7 @@ export default function BuildDrawer({ buildId, repoDir, store, onClose }: { proj
     getActiveBuilds().then((d) => {
       if (!alive) return
       if (d.builds.some((b) => b.id === runId)) attach(runId)
-    }).catch(() => {})
+    }).catch(err => console.error('[build-drawer] active-builds reattach check failed:', err instanceof Error ? err.message : err))
     return () => { alive = false; if (esRef.current) esRef.current.close() }
   }, [runId, attach])
 

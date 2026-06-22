@@ -20,7 +20,7 @@ export default function LensTab({ buildId, dir, reloadKey, onChanged }: { buildI
   const rerunning = run?.status === 'running'
 
   useEffect(() => {
-    getWorkspaceActions().then((r) => setLensAction(r.actions.find((a) => a.id === 'lens:run') || null)).catch(() => {})
+    getWorkspaceActions().then((r) => setLensAction(r.actions.find((a) => a.id === 'lens:run') || null)).catch(err => console.error('[lens-tab] workspace-actions fetch failed:', err instanceof Error ? err.message : err))
   }, [])
 
   useEffect(() => {
