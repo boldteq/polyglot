@@ -227,6 +227,10 @@ export const addWorkspaceChangeWaiver = (buildId: string, text: string) =>
 
 export const getWorkspaceBuildAgents = (buildId: string) =>
   request<BuildAgentActivity>(`/workspace/builds/${encodeURIComponent(buildId)}/agents`)
+// Real per-build activity: the dispatches run from the cockpit against this build.
+export interface DispatchTurn { role: string; status: string | null; timestamp: string | null; duration: number | null; content: string }
+export const getWorkspaceBuildDispatches = (buildId: string) =>
+  request<{ present: boolean; agent: string | null; turns: DispatchTurn[] }>(`/workspace/builds/${encodeURIComponent(buildId)}/dispatches`)
 
 export interface ScheduleRow { id?: string; name?: string; [k: string]: unknown }
 export const getWorkspaceBuildSchedules = (buildId: string) =>

@@ -602,6 +602,29 @@ router.get('/workspace/builds/:buildId/agents', (req, res) => {
   }
 });
 
+// GET /api/workspace/builds/:buildId/dispatches — REAL per-build agent activity:
+// the dispatches run FROM the cockpit against this build (stable `wsd-<buildId>`
+// playground thread). Unlike /agents (platform-level), this is genuinely scoped
+// to this build because the cockpit creates the thread with the buildId. Empty
+// until the first dispatch. Proven path: getPlaygroundThread('wsd-<id>').
+router.get('/workspace/builds/:buildId/dispatches', (req, res) => {
+  try {
+    if (!resolveBuildDir(req.params.buildId)) return res.status(404).json({ error: 'build not found' });
+    const thread = db.getPlaygroundThread(`wsd-${req.params.buildId}`.slice(0, 64));
+    if (!thread) return res.json({ present: false, turns: [] });
+    const turns = (thread.messages || []).map((m) => ({
+      role: m.role, status: m.status || null, timestamp: m.timestamp || null,
+      duration: m.duration || null,
+      // strip the cockpit prompt preamble from the user turn for a clean "task" view
+      content: m.role === 'user' ? String(m.content || '').replace(/^[\s\S]*?\nTask:\n/, '').trim() || m.content : m.content,
+    }));
+    res.json({ present: turns.length > 0, agent: thread.agentName || null, turns });
+  } catch (err) {
+    console.error('[workspace] /dispatches failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/workspace/builds/:buildId/schedules — schedules tagged to this build.
 // No build-tag convention exists on schedules yet, so this is honestly empty
 // (loadSchedules has no per-build scoping). Returns a note so the UI is honest.
