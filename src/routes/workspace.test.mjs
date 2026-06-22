@@ -385,6 +385,29 @@ test('Sprint1: PATCH status validates enum + transitions', async () => {
   }
 });
 
+test('Sprint3: file route reads content + blocks path traversal', async () => {
+  const list = await get('/api/workspace/projects');
+  const withBuild = list.json.projects.find((p) => p.build_dir);
+  if (!withBuild) return;
+  // path traversal → 403
+  const evil = await get(`/api/workspace/projects/${withBuild.id}/file?path=${encodeURIComponent('../../../etc/passwd')}`);
+  assert.equal(evil.status, 403);
+  // missing path → 400
+  const noPath = await get(`/api/workspace/projects/${withBuild.id}/file`);
+  assert.equal(noPath.status, 400);
+});
+
+test('Sprint3: diff route returns repo + files shape', async () => {
+  const list = await get('/api/workspace/projects');
+  const withBuild = list.json.projects.find((p) => p.build_dir);
+  if (!withBuild) return;
+  const r = await get(`/api/workspace/projects/${withBuild.id}/diff`);
+  assert.equal(r.status, 200);
+  assert.equal(typeof r.json.isRepo, 'boolean');
+  assert.ok(Array.isArray(r.json.files));
+  assert.equal(typeof r.json.diff, 'string');
+});
+
 test('Sprint1: project schedules route returns present flag', async () => {
   const list = await get('/api/workspace/projects');
   const withBuild = list.json.projects.find((p) => p.build_dir);

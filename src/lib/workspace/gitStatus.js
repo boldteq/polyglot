@@ -55,4 +55,38 @@ function readThemeLock(dir) {
   } catch { return null; }
 }
 
-module.exports = { readGitStatus, readThemeLock };
+// Read one file's content for the in-panel viewer. STRICT path containment: the
+// resolved path must be inside `dir` (no traversal). Text-only, size-capped.
+const MAX_FILE = 512 * 1024; // 512KB
+function readRepoFile(dir, relPath) {
+  const abs = path.resolve(dir, relPath || '');
+  if (abs !== dir && !abs.startsWith(dir + path.sep)) return { ok: false, error: 'path escapes repo' };
+  let st;
+  try { st = fs.statSync(abs); } catch { return { ok: false, error: 'not found' }; }
+  if (!st.isFile()) return { ok: false, error: 'not a file' };
+  if (st.size > MAX_FILE) return { ok: false, error: 'file too large', size: st.size };
+  let buf;
+  try { buf = fs.readFileSync(abs); } catch (e) { return { ok: false, error: e.message }; }
+  if (buf.slice(0, 8000).includes(0)) return { ok: false, error: 'binary file', size: st.size };
+  return { ok: true, path: relPath, content: buf.toString('utf-8'), size: st.size, ext: path.extname(abs).slice(1) };
+}
+
+// Read-only git diff of the working tree (uncommitted changes). Returns a capped
+// unified diff + a per-file name-status summary. Same safety as readGitStatus.
+const MAX_DIFF = 200 * 1024;
+function gitDiff(dir) {
+  try {
+    if (git(dir, ['rev-parse', '--is-inside-work-tree']) !== 'true') return { isRepo: false, files: [], diff: '' };
+    const nameStatus = safe(() => git(dir, ['diff', '--name-status'])) || '';
+    const files = nameStatus.split('\n').filter(Boolean).map((l) => {
+      const [status, ...rest] = l.split('\t');
+      return { status, path: rest.join('\t') };
+    });
+    let diff = safe(() => execFileSync('git', ['diff'], { cwd: dir, timeout: 2500, maxBuffer: MAX_DIFF * 2 }).toString()) || '';
+    let truncated = false;
+    if (diff.length > MAX_DIFF) { diff = diff.slice(0, MAX_DIFF); truncated = true; }
+    return { isRepo: true, files, diff, truncated };
+  } catch { return { isRepo: false, files: [], diff: '' }; }
+}
+
+module.exports = { readGitStatus, readThemeLock, readRepoFile, gitDiff };

@@ -336,6 +336,14 @@ export const getWorkspaceProjectSchedules = (id: string) =>
 // Sprint 2 reuses the existing build API (startBuild / getActiveBuilds / cancelBuild
 // / buildStreamUrl, defined above) — the panel just wires it to a project.
 
+// Sprint 3 — in-panel file viewing + git diff (read-only, path-contained)
+export interface RepoFile { ok: boolean; path?: string; content?: string; size?: number; ext?: string; error?: string }
+export const getWorkspaceProjectFile = (id: string, path: string) =>
+  request<RepoFile>(`/workspace/projects/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`)
+export interface RepoDiff { isRepo: boolean; files: { status: string; path: string }[]; diff: string; truncated?: boolean }
+export const getWorkspaceProjectDiff = (id: string) =>
+  request<RepoDiff>(`/workspace/projects/${encodeURIComponent(id)}/diff`)
+
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
 export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }
 export interface ProjectPage { slug: string; title: string; status: string; preview_url: string | null; gates: Record<string, unknown>; updated_at: string | null }

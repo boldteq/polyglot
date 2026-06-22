@@ -34,7 +34,7 @@ const { startGateHarvester } = require('../lib/gateFindings');
 const { startIndexer } = require('../lib/workspace/indexer');
 const actionRunner = require('../lib/workspace/actionRunner');
 const { syncProjectsFromDisk } = require('../lib/workspace/projectSync');
-const { readGitStatus, readThemeLock } = require('../lib/workspace/gitStatus');
+const { readGitStatus, readThemeLock, readRepoFile, gitDiff } = require('../lib/workspace/gitStatus');
 const { buildProjectActivity } = require('../lib/workspace/projectActivity');
 
 const router = Router();
@@ -492,6 +492,37 @@ router.get('/workspace/projects/:id/schedules', (req, res) => {
     res.json({ present: rows.length > 0, schedules: rows });
   } catch (err) {
     console.error('[workspace] /projects/:id/schedules failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/workspace/projects/:id/file?path=<rel> — view ONE file's content in the
+// panel (read-only, path-contained to the repo, text-only, size-capped).
+router.get('/workspace/projects/:id/file', (req, res) => {
+  try {
+    const project = db.getClientProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'project not found' });
+    if (!project.build_dir || !fs.existsSync(project.build_dir)) return res.status(404).json({ error: 'no repo linked' });
+    const rel = typeof req.query.path === 'string' ? req.query.path : '';
+    if (!rel) return res.status(400).json({ error: 'path required' });
+    const r = readRepoFile(project.build_dir, rel);
+    if (!r.ok) return res.status(r.error === 'path escapes repo' ? 403 : 404).json(r);
+    res.json(r);
+  } catch (err) {
+    console.error('[workspace] /projects/:id/file failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/workspace/projects/:id/diff — read-only git diff of the working tree.
+router.get('/workspace/projects/:id/diff', (req, res) => {
+  try {
+    const project = db.getClientProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'project not found' });
+    if (!project.build_dir || !fs.existsSync(project.build_dir)) return res.json({ isRepo: false, files: [], diff: '' });
+    res.json(gitDiff(project.build_dir));
+  } catch (err) {
+    console.error('[workspace] /projects/:id/diff failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
