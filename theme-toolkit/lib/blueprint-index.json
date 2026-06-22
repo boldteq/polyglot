@@ -1,5 +1,5 @@
 {
-  "note": "#6/#20/#52 — valid custom-section blueprint ids (the LIBRARY rung of the reuse ladder). A `library` custom section in section-reuse-map.md must cite one of these via `blueprint: <id>@vN`. Source of truth: ~/.claude/memory/stacks/shopify/themes/custom-section-blueprint-library.md. 8 base → 16 (#20 Dawn-gap) → 20 (#52 B2B/wholesale).",
+  "note": "#6/#20/#52/CRO — valid custom-section blueprint ids (the LIBRARY rung of the reuse ladder). A `library` custom section in section-reuse-map.md must cite one of these via `blueprint: <id>@vN`. Source of truth: ~/.claude/memory/stacks/shopify/themes/custom-section-blueprint-library.md. 8 base → 16 (#20 Dawn-gap) → 20 (#52 B2B/wholesale) → 26 (CRO cart/PDP pack, 2026-06-22). CRO pack cross-indexed in ~/.claude/memory/design/ecom/component-library-premium/INDEX-CRO.md.",
   "blueprints": [
     "countdown",
     "lookbook",
@@ -20,6 +20,12 @@
     "quantity-tier-pricing",
     "bulk-order-table",
     "request-a-quote",
-    "spec-table"
+    "spec-table",
+    "free-shipping-bar",
+    "sticky-atc",
+    "quantity-breaks",
+    "cart-upsell",
+    "value-stack-offer",
+    "announcement-bar"
   ]
 }
