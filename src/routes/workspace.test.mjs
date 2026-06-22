@@ -295,6 +295,17 @@ test('Phase C: lens:run is registered + env-gated unavailable (chain action)', a
   assert.match(lens.unavailableReason || '', /THEME_PREVIEW_URL/);
 });
 
+test('Per-build dispatches route returns present flag + turns shape', async () => {
+  const list = await get('/api/workspace/builds');
+  if (!list.json.builds.length) return;
+  const id = list.json.builds[0].buildId;
+  const r = await get(`/api/workspace/builds/${id}/dispatches`);
+  assert.equal(r.status, 200);
+  assert.equal(typeof r.json.present, 'boolean');
+  assert.ok(Array.isArray(r.json.turns));
+  for (const t of r.json.turns) { assert.ok('role' in t && 'content' in t); }
+});
+
 test('Phase B: docs route lists artifacts + guards traversal', async () => {
   const list = await get('/api/workspace/builds');
   if (!list.json.builds.length) return;
