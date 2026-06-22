@@ -248,6 +248,12 @@ export default function Playground() {
   const startTimeRef = useRef<number>(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Time-to-first-byte watchdog: guards ONLY the gap until the fetch resolves /
+  // the first byte arrives. If the playground POST is queued behind the browser's
+  // 6-per-host connection cap it never reaches the server and yields zero bytes —
+  // this fires fast (~22s) so the run self-heals via one transparent retry instead
+  // of stalling the full 180s idle window.
+  const ttfbTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const agentPickerRef = useRef<HTMLDivElement>(null)
   const sessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const templateRef = useRef<HTMLDivElement>(null)
@@ -716,7 +722,12 @@ export default function Playground() {
     setElapsedMs(0)
     setShowRating(false)
     startTimeRef.current = Date.now()
-    abortRef.current = new AbortController()
+    // Stable idempotency key for THIS logical send. Reused across the transparent
+    // retry below so a (rare) attempt that did reach the server replays its cached
+    // result instead of spawning a second generation; same historyId ⇒ same
+    // history row + same chat bubbles regardless of how many attempts ran.
+    const idempotencyKey = `${historyId}:${Date.now().toString(36)}`
+    let retried = false
 
     // Client-side idle watchdog. Server sends heartbeat comments every ~8s, so this
     // 180s timer only fires if the stream is TRULY dead (server crash, network drop,
@@ -736,51 +747,38 @@ export default function Playground() {
     }
     resetIdleTimer()
 
-    try {
-      const body: Record<string, unknown> = {
-        agentName: agentToUse || undefined,
-        prompt: testPrompt,
-        timeoutMs: settings.timeoutMs,
-        historyId,                                   // B4: shared id ⇒ no dup rows
-        threadId: threadIdForRun,                    // always threaded (single-system chat)
-        model: settings.fastMode ? 'fast' : undefined, // Fast toggle → faster model
-      }
-      if (settings.customInstructions.trim()) {
-        body.customInstructions = settings.customInstructions.trim()
-      }
-      if (attachmentsRef.current.length) {
-        body.files = attachmentsRef.current.map(a => ({ name: a.name, content: a.content, encoding: a.encoding }))
-        setAttachments([]) // consumed by this run
-      }
+    // One network+stream attempt. Returns a structured outcome and NEVER commits
+    // chat bubbles / persists — the caller commits exactly once on the FINAL
+    // outcome, so a transparent retry can't double-render or double-persist.
+    // A "zero-byte-failure" means the POST never produced a byte (the browser
+    // queued it past the 6-connection cap and it never reached the server) — the
+    // only case we silently retry, since no generation was created server-side.
+    type AttemptOutcome =
+      | { kind: 'completed'; terminalState: RunState; fullOutput: string; hadError: boolean }
+      | { kind: 'zero-byte-failure' }
+      | { kind: 'aborted-by-user'; partial: string }
+      | { kind: 'failed'; error: unknown; isIdleTimeout: boolean }
 
-      const response = await fetch('/api/playground/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: abortRef.current.signal,
-      })
+    const TTFB_MS = 22_000
 
-      if (!response.ok) {
-        // Distinct UX for rate limiting — surface Retry-After if upstream provided one.
-        if (response.status === 429) {
-          const retryAfter = response.headers.get('Retry-After')
-          const hint = retryAfter ? ` Retry in ${retryAfter}s.` : ' Wait a moment.'
-          toast('error', `Rate limit hit on /playground/run.${hint}`)
-          throw new Error(`429 Too Many Requests — ${hint.trim()}`)
+    const attempt = async (): Promise<AttemptOutcome> => {
+      // Fresh controller + per-attempt accumulators so a retry starts clean.
+      abortRef.current = new AbortController()
+      setRunState('running')
+      let firstByte = false
+      resetIdleTimer()
+      // TTFB watchdog: only guards the gap until fetch() resolves. If the POST is
+      // queued behind the connection cap, fetch() never resolves → abort fast so
+      // we retry, instead of hanging the full 180s idle window with no bytes.
+      if (ttfbTimerRef.current) clearTimeout(ttfbTimerRef.current)
+      ttfbTimerRef.current = setTimeout(() => {
+        if (!firstByte) {
+          try { abortRef.current?.abort(new DOMException('No first byte', 'TtfbError')) }
+          catch { abortRef.current?.abort() }
         }
-        if (response.status === 415) {
-          throw new Error('Server rejected request: Content-Type must be application/json (transport bug).')
-        }
-        const errText = await response.text().catch(() => `HTTP ${response.status}`)
-        const isClient = response.status >= 400 && response.status < 500
-        throw new Error(isClient
-          ? `Bad request (${response.status}): ${errText.slice(0, 200)}`
-          : `Server error (${response.status}). Try again.`)
-      }
-      if (!response.body) throw new Error('No response body')
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
+      }, TTFB_MS)
+      const clearTtfb = () => { if (ttfbTimerRef.current) { clearTimeout(ttfbTimerRef.current); ttfbTimerRef.current = null } }
+
       let fullOutput = ''
       let hadError = false
       // Terminal outcome captured from the SSE stream (default to 'error' so a
@@ -788,169 +786,261 @@ export default function Playground() {
       // silent success — D4). Resolved threadId comes back on start/done.
       let terminalState: RunState = 'error'
 
-      // rAF-based flush: batches rapid SSE chunks into single React state updates
-      const flushOutput = () => { setOutput(outputAccRef.current); flushPendingRef.current = false }
+      try {
+        const body: Record<string, unknown> = {
+          agentName: agentToUse || undefined,
+          prompt: testPrompt,
+          timeoutMs: settings.timeoutMs,
+          historyId,                                   // B4: shared id ⇒ no dup rows
+          threadId: threadIdForRun,                    // always threaded (single-system chat)
+          idempotencyKey,                              // stable across retry ⇒ no double-spawn
+          model: settings.fastMode ? 'fast' : undefined, // Fast toggle → faster model
+        }
+        if (settings.customInstructions.trim()) {
+          body.customInstructions = settings.customInstructions.trim()
+        }
+        if (attachmentsRef.current.length) {
+          body.files = attachmentsRef.current.map(a => ({ name: a.name, content: a.content, encoding: a.encoding }))
+          setAttachments([]) // consumed by this run
+        }
 
-      const processLine = (line: string) => {
-        const trimmed = line.trim()
-        // Ignore SSE heartbeat comments (start with ':') — they're present only to
-        // keep the connection alive. Bytes consumed already reset the idle timer.
-        if (!trimmed.startsWith('data: ')) return
-        try {
-          const event = JSON.parse(trimmed.slice(6))
-          if (event.type === 'start') {
-            if (event.threadId) resolvedThreadId = event.threadId
-            resetIdleTimer()
-          } else if (event.type === 'chunk') {
-            fullOutput += event.content
-            outputAccRef.current = fullOutput
-            if (!flushPendingRef.current) {
-              flushPendingRef.current = true
-              rafIdRef.current = requestAnimationFrame(flushOutput)
-            }
-            // Warn once when output gets very large
-            if (fullOutput.length > 400_000 && !hasWarnedLongOutputRef.current) {
-              hasWarnedLongOutputRef.current = true
-              toast('error', 'Output is very large (>400KB) and may not be fully saved between sessions.')
-            }
-          } else if (event.type === 'activity') {
-            const elapsed = Date.now() - startTimeRef.current
-            setActivityLog(prev => [...prev.slice(-49), { message: event.message, time: elapsed }])
-          } else if (event.type === 'warning') {
-            const elapsed = Date.now() - startTimeRef.current
-            const scope = event.scope ? `[${event.scope}] ` : ''
-            setActivityLog(prev => [...prev.slice(-49), { message: `Warning: ${scope}${event.message}`, time: elapsed }])
-          } else if (event.type === 'stalled') {
-            const elapsed = Date.now() - startTimeRef.current
-            const secs = Math.round((event.idleMs || 0) / 1000)
-            setActivityLog(prev => [...prev.slice(-49), { message: `Stream stalled: no output for ${secs}s (server will terminate soon)`, time: elapsed }])
-          } else if (event.type === 'done') {
-            reachedTerminal = true // an actual terminal EVENT (not just a closed socket)
-            fullOutput = event.output || fullOutput
-            setOutput(fullOutput)
-            if (event.threadId) resolvedThreadId = event.threadId
-            terminalState = fullOutput.trim() ? 'success' : 'empty'
-          } else if (event.type === 'error') {
-            reachedTerminal = true
-            // Build a structured error block. Show error line, then code/cause/tip
-            // /stderrTail as labeled rows so the operator can self-diagnose.
-            const lines: string[] = [`Error: ${event.error || 'Unknown error'}`]
-            if (event.code) lines.push(`Code: ${event.code}`)
-            if (event.cause) lines.push(`Cause: ${event.cause}`)
-            if (event.tip) lines.push(`Tip: ${event.tip}`)
-            if (Array.isArray(event.candidates) && event.candidates.length > 0) {
-              lines.push(`Valid agent names: ${event.candidates.slice(0, 10).join(', ')}${event.candidates.length > 10 ? ', …' : ''}`)
-            }
-            if (event.stderrTail) {
-              lines.push('--- stderr (last 500 chars) ---')
-              lines.push(event.stderrTail)
-            }
-            const block = lines.join('\n')
-            fullOutput = fullOutput ? `${fullOutput}\n\n---\n${block}` : block
-            setOutput(fullOutput)
-            hadError = true
-            // D3: timeouts get a distinct state from generic errors.
-            terminalState = (event.code === 'wall_timeout' || event.code === 'idle_timeout') ? 'timeout' : 'error'
-            // CTA toast for spawn / binary-missing — link operator to /setup.
-            if (event.code === 'claude_binary_missing' || (event.code && event.code.startsWith('spawn_'))) {
-              toast('error', 'Claude CLI problem. Open /setup → Run Self-Test for diagnostics.')
-            }
+        const response = await fetch('/api/playground/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: abortRef.current.signal,
+        })
+        // The request reached the server and responded — the connection is alive,
+        // so this is no longer a starvation case (even if the status is an error).
+        firstByte = true
+        clearTtfb()
+
+        if (!response.ok) {
+          // Distinct UX for rate limiting — surface Retry-After if upstream provided one.
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('Retry-After')
+            const hint = retryAfter ? ` Retry in ${retryAfter}s.` : ' Wait a moment.'
+            toast('error', `Rate limit hit on /playground/run.${hint}`)
+            throw new Error(`429 Too Many Requests — ${hint.trim()}`)
           }
-        } catch (err) {
-          const elapsed = Date.now() - startTimeRef.current
-          setActivityLog(prev => [...prev.slice(-49), { message: 'Warning: dropped malformed server event', time: elapsed }])
+          if (response.status === 415) {
+            throw new Error('Server rejected request: Content-Type must be application/json (transport bug).')
+          }
+          const errText = await response.text().catch(() => `HTTP ${response.status}`)
+          const isClient = response.status >= 400 && response.status < 500
+          throw new Error(isClient
+            ? `Bad request (${response.status}): ${errText.slice(0, 200)}`
+            : `Server error (${response.status}). Try again.`)
         }
-      }
+        if (!response.body) throw new Error('No response body')
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        resetIdleTimer()
-        buffer += decoder.decode(value, { stream: true })
-        // Guard against non-delimited giant chunks (memory protection)
-        if (buffer.length > 1_000_000) {
-          abortRef.current?.abort()
-          toast('error', 'Server sent an unexpectedly large response — stream aborted.')
-          break
+        // rAF-based flush: batches rapid SSE chunks into single React state updates
+        const flushOutput = () => { setOutput(outputAccRef.current); flushPendingRef.current = false }
+
+        const processLine = (line: string) => {
+          const trimmed = line.trim()
+          // Ignore SSE heartbeat comments (start with ':') — they're present only to
+          // keep the connection alive. Bytes consumed already reset the idle timer.
+          if (!trimmed.startsWith('data: ')) return
+          try {
+            const event = JSON.parse(trimmed.slice(6))
+            if (event.type === 'start') {
+              if (event.threadId) resolvedThreadId = event.threadId
+              resetIdleTimer()
+            } else if (event.type === 'chunk') {
+              fullOutput += event.content
+              outputAccRef.current = fullOutput
+              if (!flushPendingRef.current) {
+                flushPendingRef.current = true
+                rafIdRef.current = requestAnimationFrame(flushOutput)
+              }
+              // Warn once when output gets very large
+              if (fullOutput.length > 400_000 && !hasWarnedLongOutputRef.current) {
+                hasWarnedLongOutputRef.current = true
+                toast('error', 'Output is very large (>400KB) and may not be fully saved between sessions.')
+              }
+            } else if (event.type === 'activity') {
+              const elapsed = Date.now() - startTimeRef.current
+              setActivityLog(prev => [...prev.slice(-49), { message: event.message, time: elapsed }])
+            } else if (event.type === 'warning') {
+              const elapsed = Date.now() - startTimeRef.current
+              const scope = event.scope ? `[${event.scope}] ` : ''
+              setActivityLog(prev => [...prev.slice(-49), { message: `Warning: ${scope}${event.message}`, time: elapsed }])
+            } else if (event.type === 'stalled') {
+              const elapsed = Date.now() - startTimeRef.current
+              const secs = Math.round((event.idleMs || 0) / 1000)
+              setActivityLog(prev => [...prev.slice(-49), { message: `Stream stalled: no output for ${secs}s (server will terminate soon)`, time: elapsed }])
+            } else if (event.type === 'done') {
+              reachedTerminal = true // an actual terminal EVENT (not just a closed socket)
+              fullOutput = event.output || fullOutput
+              setOutput(fullOutput)
+              if (event.threadId) resolvedThreadId = event.threadId
+              terminalState = fullOutput.trim() ? 'success' : 'empty'
+            } else if (event.type === 'error') {
+              reachedTerminal = true
+              // Build a structured error block. Show error line, then code/cause/tip
+              // /stderrTail as labeled rows so the operator can self-diagnose.
+              const lines: string[] = [`Error: ${event.error || 'Unknown error'}`]
+              if (event.code) lines.push(`Code: ${event.code}`)
+              if (event.cause) lines.push(`Cause: ${event.cause}`)
+              if (event.tip) lines.push(`Tip: ${event.tip}`)
+              if (Array.isArray(event.candidates) && event.candidates.length > 0) {
+                lines.push(`Valid agent names: ${event.candidates.slice(0, 10).join(', ')}${event.candidates.length > 10 ? ', …' : ''}`)
+              }
+              if (event.stderrTail) {
+                lines.push('--- stderr (last 500 chars) ---')
+                lines.push(event.stderrTail)
+              }
+              const block = lines.join('\n')
+              fullOutput = fullOutput ? `${fullOutput}\n\n---\n${block}` : block
+              setOutput(fullOutput)
+              hadError = true
+              // D3: timeouts get a distinct state from generic errors.
+              terminalState = (event.code === 'wall_timeout' || event.code === 'idle_timeout') ? 'timeout' : 'error'
+              // CTA toast for spawn / binary-missing — link operator to /setup.
+              if (event.code === 'claude_binary_missing' || (event.code && event.code.startsWith('spawn_'))) {
+                toast('error', 'Claude CLI problem. Open /setup → Run Self-Test for diagnostics.')
+              }
+            }
+          } catch (err) {
+            const elapsed = Date.now() - startTimeRef.current
+            setActivityLog(prev => [...prev.slice(-49), { message: 'Warning: dropped malformed server event', time: elapsed }])
+          }
         }
-        const parts = buffer.split('\n')
-        buffer = parts.pop() ?? ''
-        for (const line of parts) processLine(line)
-      }
 
-      // Flush remaining buffer
-      if (buffer.trim()) {
-        for (const line of buffer.split('\n')) processLine(line)
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          resetIdleTimer()
+          buffer += decoder.decode(value, { stream: true })
+          // Guard against non-delimited giant chunks (memory protection)
+          if (buffer.length > 1_000_000) {
+            abortRef.current?.abort()
+            toast('error', 'Server sent an unexpectedly large response — stream aborted.')
+            break
+          }
+          const parts = buffer.split('\n')
+          buffer = parts.pop() ?? ''
+          for (const line of parts) processLine(line)
+        }
+
+        // Flush remaining buffer
+        if (buffer.trim()) {
+          for (const line of buffer.split('\n')) processLine(line)
+        }
+        // NOTE: reachedTerminal is set only when an actual done/error EVENT was
+        // received (in processLine) — NOT merely because the socket closed. A
+        // navigation/refresh closes the socket WITHOUT a terminal event, leaving
+        // the reattach marker intact so the reloaded page reconnects.
+        return { kind: 'completed', terminalState, fullOutput, hadError }
+      } catch (err: unknown) {
+        const abortReason = abortRef.current?.signal.reason as { name?: string } | undefined
+        const isAbort = err instanceof Error && err.name === 'AbortError'
+        const isTtfb = isAbort && abortReason?.name === 'TtfbError'
+        const isIdleTimeout = isAbort
+          && (abortReason?.name === 'TimeoutError' || (err as Error & { cause?: { name?: string } }).cause?.name === 'TimeoutError')
+        // Zero-byte: the fetch never resolved (queued/starved → TTFB abort) or a
+        // network-level failure before any response. Retryable — no server run exists.
+        if (!firstByte && (isTtfb || !isAbort)) return { kind: 'zero-byte-failure' }
+        if (isIdleTimeout) return { kind: 'failed', error: err, isIdleTimeout: true }
+        if (isAbort) return { kind: 'aborted-by-user', partial: outputAccRef.current }
+        return { kind: 'failed', error: err, isIdleTimeout: false }
+      } finally {
+        clearTtfb()
+        if (idleTimerRef.current) { clearTimeout(idleTimerRef.current); idleTimerRef.current = null }
+        abortRef.current = null
       }
-      // NOTE: reachedTerminal is set only when an actual done/error EVENT was
-      // received (in processLine) — NOT merely because the socket closed. A
-      // navigation/refresh closes the socket WITHOUT a terminal event, leaving
-      // the reattach marker intact so the reloaded page reconnects.
+    }
+
+    try {
+      // ── Run, with ONE transparent retry on a pure zero-byte failure ──────────
+      let outcome = await attempt()
+      if (outcome.kind === 'zero-byte-failure' && !retried && !unloadingRef.current) {
+        retried = true
+        // Nothing was committed yet — reset the per-attempt output accumulators so
+        // the retry renders cleanly, then try once more on a fresh connection.
+        outputAccRef.current = ''
+        setOutput('')
+        outcome = await attempt()
+      }
 
       const duration = Date.now() - startTimeRef.current
       const agentDisplay = resolvedAgent?.name || agentToUse || 'No Agent'
-      // Ensure final output state is synced (flush any pending rAF)
-      setOutput(outputAccRef.current)
-      // D4: map the captured terminal state to status; a stream that ended with
-      // no terminal event stays 'error' so the UI never shows a fake success.
       const statusMap: Record<RunState, PlaygroundRunStatus> = {
         idle: 'success', running: 'success', success: 'success',
         empty: 'error', error: 'error', timeout: 'timeout', cancelled: 'cancelled',
       }
-      if (terminalState === 'error' && !hadError && !fullOutput.trim()) {
-        // Stream closed cleanly but emitted no done/error — surface it.
-        setOutput(prev => prev || 'Error: stream ended without a result.')
-      }
-      setRunState(terminalState)
-      // Active thread stays in sync if the server created/continued one.
-      if (resolvedThreadId && resolvedThreadId !== activeThreadIdRef.current) {
-        activeThreadIdRef.current = resolvedThreadId
-        setActiveThreadId(resolvedThreadId)
-      }
-      const finalTurnOutput = outputAccRef.current
-      // The displayed assistant text (includes any error block appended above).
-      const committedAssistant = fullOutput || finalTurnOutput
-      const finalStatus = statusMap[terminalState]
-      const newItem: TestResult = {
-        id: historyId,                                 // shared id ⇒ dedupe
-        agent: agentToUse || '',
-        agentName: agentDisplay,
-        prompt: testPrompt,
-        output: finalTurnOutput,
-        duration,
-        status: finalStatus,
-        timestamp: new Date(),
-        threadId: resolvedThreadId,
-      }
-      persistResult(newItem)
-      // Commit the turn into the chat bubble list (render source of truth).
-      setMessages(prev => [
-        ...prev,
-        { id: `${historyId}-u`, role: 'user', content: testPrompt, status: 'success' },
-        { id: `${historyId}-a`, role: 'assistant', content: committedAssistant || '(no output)', status: finalStatus },
-      ])
-      setLiveUserMsg('')
-      if (resolvedThreadId) {
-        currentTurnRef.current = ''
-        refreshThreads()
-        setTimeout(() => promptRef.current?.focus(), 50)
-      }
 
-    } catch (err: unknown) {
-      const duration = Date.now() - startTimeRef.current
-      const abortReason = abortRef.current?.signal.reason as { name?: string } | undefined
-      const isIdleTimeout = err instanceof Error && err.name === 'AbortError'
-        && (abortReason?.name === 'TimeoutError' || (err as Error & { cause?: { name?: string } }).cause?.name === 'TimeoutError')
-
-      const agentDisplay = resolvedAgent?.name || agentToUse || 'No Agent'
-      let bubbleStatus: PlaygroundRunStatus = 'error'
-      let bubbleText = ''
-      if (isIdleTimeout) {
-        reachedTerminal = true // client gave up; the server idle-timeout has killed it
-        const msg = `No bytes received for ${Math.round(CLIENT_IDLE_MS / 1000)}s — stream aborted. This usually means a dev proxy is buffering the live stream. Reload, or open the app on http://localhost:3847 (the built server streams directly).`
+      if (outcome.kind === 'completed') {
+        // Ensure final output state is synced (flush any pending rAF)
+        setOutput(outputAccRef.current)
+        if (outcome.terminalState === 'error' && !outcome.hadError && !outcome.fullOutput.trim()) {
+          // Stream closed cleanly but emitted no done/error — surface it.
+          setOutput(prev => prev || 'Error: stream ended without a result.')
+        }
+        setRunState(outcome.terminalState)
+        // Active thread stays in sync if the server created/continued one.
+        if (resolvedThreadId && resolvedThreadId !== activeThreadIdRef.current) {
+          activeThreadIdRef.current = resolvedThreadId
+          setActiveThreadId(resolvedThreadId)
+        }
+        const finalTurnOutput = outputAccRef.current
+        const committedAssistant = outcome.fullOutput || finalTurnOutput
+        const finalStatus = statusMap[outcome.terminalState]
+        persistResult({
+          id: historyId,                                 // shared id ⇒ dedupe
+          agent: agentToUse || '',
+          agentName: agentDisplay,
+          prompt: testPrompt,
+          output: finalTurnOutput,
+          duration,
+          status: finalStatus,
+          timestamp: new Date(),
+          threadId: resolvedThreadId,
+        })
+        // Commit the turn into the chat bubble list (render source of truth).
+        setMessages(prev => [
+          ...prev,
+          { id: `${historyId}-u`, role: 'user', content: testPrompt, status: 'success' },
+          { id: `${historyId}-a`, role: 'assistant', content: committedAssistant || '(no output)', status: finalStatus },
+        ])
+        setLiveUserMsg('')
+        if (resolvedThreadId) {
+          currentTurnRef.current = ''
+          refreshThreads()
+          setTimeout(() => promptRef.current?.focus(), 50)
+        }
+      } else if (outcome.kind === 'aborted-by-user') {
+        setOutput(prev => prev ? prev + '\n\n---\n*Test cancelled by user*' : 'Test cancelled.')
+        setRunState('cancelled')
+        const bubbleText = (outcome.partial ? `${outcome.partial}\n\n---\n` : '') + '*Cancelled by user*'
+        setMessages(prev => [
+          ...prev,
+          { id: `${historyId}-u`, role: 'user', content: testPrompt, status: 'success' },
+          { id: `${historyId}-a`, role: 'assistant', content: bubbleText, status: 'cancelled' },
+        ])
+        setLiveUserMsg('')
+        // cancelRun() already cleared the reattach marker; leave reachedTerminal as-is.
+      } else {
+        // 'failed' OR an exhausted 'zero-byte-failure' (retry didn't help).
+        reachedTerminal = true
+        let msg: string
+        let status: PlaygroundRunStatus
+        if (outcome.kind === 'zero-byte-failure') {
+          msg = 'Could not reach the server after an automatic retry — the live connection may be saturated. Reload the page, or open the app on http://localhost:3847 (the built server streams directly).'
+          status = 'timeout'
+        } else if (outcome.isIdleTimeout) {
+          msg = `No bytes received for ${Math.round(CLIENT_IDLE_MS / 1000)}s — stream aborted. This usually means a dev proxy is buffering the live stream. Reload, or open the app on http://localhost:3847 (the built server streams directly).`
+          status = 'timeout'
+        } else {
+          msg = outcome.error instanceof Error ? outcome.error.message : String(outcome.error)
+          status = 'error'
+        }
         setOutput(prev => prev ? `${prev}\n\n---\nError: ${msg}` : `Error: ${msg}`)
-        setRunState('timeout')
-        bubbleStatus = 'timeout'; bubbleText = `Error: ${msg}`
+        setRunState(status)
         persistResult({
           id: historyId,
           agent: agentToUse || '',
@@ -958,51 +1048,31 @@ export default function Playground() {
           prompt: testPrompt,
           output: `Error: ${msg}`,
           duration,
-          status: 'timeout',
+          status,
           timestamp: new Date(),
           threadId: resolvedThreadId,
         })
-      } else if (err instanceof Error && err.name === 'AbortError') {
-        setOutput(prev => prev ? prev + '\n\n---\n*Test cancelled by user*' : 'Test cancelled.')
-        setRunState('cancelled')
-        bubbleStatus = 'cancelled'; bubbleText = (outputAccRef.current ? `${outputAccRef.current}\n\n---\n` : '') + '*Cancelled by user*'
-      } else {
-        reachedTerminal = true // a genuine network/parse failure — not a navigation
-        const errMsg = err instanceof Error ? err.message : String(err)
-        setOutput(`Error: ${errMsg}`)
-        setRunState('error')
-        bubbleStatus = 'error'; bubbleText = `Error: ${errMsg}`
-        persistResult({
-          id: historyId,
-          agent: agentToUse || '',
-          agentName: agentDisplay,
-          prompt: testPrompt,
-          output: `Error: ${errMsg}`,
-          duration,
-          status: 'error',
-          timestamp: new Date(),
-          threadId: resolvedThreadId,
-        })
+        setMessages(prev => [
+          ...prev,
+          { id: `${historyId}-u`, role: 'user', content: testPrompt, status: 'success' },
+          { id: `${historyId}-a`, role: 'assistant', content: `Error: ${msg}`, status },
+        ])
+        setLiveUserMsg('')
       }
-      // Commit the failed/cancelled turn as bubbles too (chat reflects reality).
-      setMessages(prev => [
-        ...prev,
-        { id: `${historyId}-u`, role: 'user', content: testPrompt, status: 'success' },
-        { id: `${historyId}-a`, role: 'assistant', content: bubbleText, status: bubbleStatus },
-      ])
-      setLiveUserMsg('')
     } finally {
       if (idleTimerRef.current) {
         clearTimeout(idleTimerRef.current)
         idleTimerRef.current = null
+      }
+      if (ttfbTimerRef.current) {
+        clearTimeout(ttfbTimerRef.current)
+        ttfbTimerRef.current = null
       }
       setRunning(false)
       abortRef.current = null
       // Clear the reattach marker ONLY if the run actually finished here. If the
       // stream was aborted by a page refresh/navigation, the run keeps generating
       // server-side — leave the marker so the reloaded page re-attaches to it.
-      // Clear the reattach marker only on a REAL terminal AND when we're not
-      // unloading. A refresh/navigate leaves it so the reloaded page reconnects.
       if (reachedTerminal && !unloadingRef.current) {
         activeRunIdRef.current = null
         try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* ignore */ }
