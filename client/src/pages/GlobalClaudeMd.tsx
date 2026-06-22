@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Save, RotateCcw } from 'lucide-react'
+import { Save, RotateCcw, FileText } from 'lucide-react'
 import { getGlobalClaudeMd, updateGlobalClaudeMd } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { useUnsavedGuard } from '../hooks/useUnsavedGuard'
 import { toast } from '../components/Toast'
+import { ErrorState } from '../components/ErrorState'
 
 export default function GlobalClaudeMd() {
-  const { data, loading, error: loadError } = useApi(getGlobalClaudeMd, [], CacheKeys.globalClaudeMd)
+  const { data, loading, error: loadError, refetch } = useApi(getGlobalClaudeMd, [], CacheKeys.globalClaudeMd)
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -43,11 +44,7 @@ export default function GlobalClaudeMd() {
   if (loading) return <PageLoader />
 
   if (loadError) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-red">{loadError}</p>
-      </div>
-    )
+    return <ErrorState message={loadError} onRetry={refetch} />
   }
 
   return (
@@ -76,6 +73,15 @@ export default function GlobalClaudeMd() {
           </button>
         </div>
       </div>
+
+      {content.trim() === '' && (
+        <div className="mb-3 flex items-start gap-2 rounded-lg border border-dashed border-border bg-surface-2 px-3 py-2">
+          <FileText className="w-4 h-4 text-text-muted shrink-0 mt-0.5" />
+          <p className="text-xs text-text-muted">
+            No global instructions yet. Anything you write here applies to Claude across every project.
+          </p>
+        </div>
+      )}
 
       <div className="flex-1 min-h-0">
         <textarea

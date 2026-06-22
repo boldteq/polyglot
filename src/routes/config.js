@@ -84,13 +84,32 @@ router.put('/global/settings', rateLimit('write'), (req, res) => {
   if (serialized.length > 256 * 1024) {
     return res.status(400).json({ error: 'settings payload too large (>256KB)' });
   }
-  const unknown = Object.keys(settings).filter(k => !ALLOWED_SETTINGS_KEYS.has(k));
-  if (unknown.length > 0) {
-    return res.status(400).json({ error: `Unknown settings key(s): ${unknown.join(', ')}` });
+  // Merge — NOT replace. The settings.json is owned by the Claude Code CLI and
+  // legitimately contains keys outside our whitelist (e.g. enabledPlugins,
+  // extraKnownMarketplaces). A reject-unknown replace bricked every save once the
+  // real file held any such key, because the UI round-trips the whole object.
+  // So: preserve the existing file, apply ONLY whitelisted keys from the payload,
+  // and ignore (never write) non-whitelisted NEW keys. This keeps the write path a
+  // privilege boundary (C4 — the UI still can't inject arbitrary keys) without
+  // corrupting a real config.
+  let existing = {};
+  try {
+    const cur = readFileSafe(path.join(CLAUDE_DIR, 'settings.json'));
+    if (cur) existing = JSON.parse(cur);
+  } catch { existing = {}; }
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) existing = {};
+
+  const next = { ...existing };
+  const ignored = [];
+  for (const [k, v] of Object.entries(settings)) {
+    if (ALLOWED_SETTINGS_KEYS.has(k)) next[k] = v;        // settable by the UI → apply
+    else if (!(k in existing)) ignored.push(k);           // new + non-whitelisted → drop
+    // non-whitelisted key already in the file → left untouched (preserved)
   }
   try {
-    atomicWriteJson(path.join(CLAUDE_DIR, 'settings.json'), settings);
-    res.json({ success: true });
+    ensureDir(CLAUDE_DIR);
+    atomicWriteJson(path.join(CLAUDE_DIR, 'settings.json'), next);
+    res.json({ success: true, ignored });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save settings' });
   }
