@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from 'react'
-import { Handshake, Send, Copy, Check, Square, ShieldCheck, MessageSquareText, History } from 'lucide-react'
+import { useState, useRef, useCallback, useMemo } from 'react'
+import { Handshake, Send, Copy, Check, Square, ShieldCheck, MessageSquareText, History, AlertTriangle } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { toast } from '../components/Toast'
@@ -41,6 +41,16 @@ function buildPrompt(chat: string, situation: typeof SITUATIONS[number]): string
 
 const RECENTS_KEY = 'sales.recents.v1'
 interface RecentDraft { id: string; chat: string; situation: SituationId; reply: string; ts: number }
+
+// Sway's hard rule made actionable: flag fabrication / fake-urgency / unsubstantiated
+// claims in the drafted reply so they're caught before the message is ever sent.
+const HONESTY_FLAGS: { re: RegExp; why: string }[] = [
+  { re: /\bguarantee(d|s)?\b/i, why: '“guarantee” — Sway never promises guaranteed results.' },
+  { re: /\b100%\b|\bevery (client|customer|time)\b/i, why: 'absolute claim (100% / every) — avoid unprovable absolutes.' },
+  { re: /\b#1\b|\bnumber one\b|\bbest (in|on) the\b/i, why: 'unsubstantiated superlative — only claim what is proven.' },
+  { re: /limited time|act now|only \d+ (spots?|left)|expires? (today|soon)|don'?t miss/i, why: 'fake urgency — avoid manufactured scarcity.' },
+  { re: /\brisk[- ]?free\b/i, why: '“risk-free” — describe the actual guarantee/terms instead.' },
+]
 
 export default function Sales() {
   const { data: agents } = useApi(getUnifiedAgents, [], CacheKeys.unifiedAgents)
@@ -116,6 +126,8 @@ export default function Sales() {
     try { await navigator.clipboard.writeText(reply); setCopied(true); setTimeout(() => setCopied(false), 1500) }
     catch { toast('error', 'Copy failed') }
   }, [reply])
+
+  const flags = useMemo(() => (reply && !streaming ? HONESTY_FLAGS.filter(f => f.re.test(reply)).map(f => f.why) : []), [reply, streaming])
 
   return (
     <PageShell
@@ -201,6 +213,12 @@ export default function Sales() {
             </div>
           ) : (
             <EmptyState card icon={Handshake} title="No reply yet" description="Paste a client chat, pick the situation, and Sway drafts the next high-converting message." />
+          )}
+          {flags.length > 0 && (
+            <div className="rounded-lg border border-amber/30 bg-amber/5 p-2.5 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-amber"><AlertTriangle className="w-3.5 h-3.5" /> Honesty check — review before sending</div>
+              {flags.map((f, i) => <div key={i} className="text-xs text-text-secondary pl-5">{f}</div>)}
+            </div>
           )}
         </div>
       </div>
