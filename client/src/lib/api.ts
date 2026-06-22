@@ -324,6 +324,16 @@ export const getWorkspaceProjectActivity = (id: string, opts: { limit?: number; 
 export const syncWorkspaceProjects = () =>
   request<{ projects: WorkspaceProject[]; unlinkedBuilds: AssembledBuild[]; adopted: number }>(`/workspace/projects/sync`, { method: 'POST' })
 
+// Sprint 1 — governance + monitoring
+export const PROJECT_STATUSES = ['intake', 'building', 'preview', 'published', 'archived'] as const
+export type ProjectStatus = typeof PROJECT_STATUSES[number]
+export const setWorkspaceProjectStatus = (id: string, status: ProjectStatus) =>
+  request<{ ok: boolean; project: WorkspaceProject }>(`/workspace/projects/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) })
+
+export interface BuildSchedule { id: string; kind: 'watch' | 'results'; label: string; dueAt: number; status: 'pending' | 'running' | 'done' | 'failed'; ranAt: number | null; publishedAt: number; result: Record<string, unknown> | null }
+export const getWorkspaceProjectSchedules = (id: string) =>
+  request<{ present: boolean; schedules: BuildSchedule[] }>(`/workspace/projects/${encodeURIComponent(id)}/schedules`)
+
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
 export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }
 export interface ProjectPage { slug: string; title: string; status: string; preview_url: string | null; gates: Record<string, unknown>; updated_at: string | null }

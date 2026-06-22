@@ -4173,6 +4173,13 @@ function archiveClientProject(id) {
   const r = getDb().prepare("UPDATE client_projects SET status='archived', updated_at=? WHERE id=?").run(_now(), id);
   return r.changes > 0;
 }
+// Lifecycle status transition (panel governance). Validated against the enum.
+const PROJECT_STATUSES = ['intake', 'building', 'preview', 'published', 'archived'];
+function setClientProjectStatus(id, status) {
+  if (!PROJECT_STATUSES.includes(status)) return false;
+  const r = getDb().prepare('UPDATE client_projects SET status=?, updated_at=? WHERE id=?').run(status, _now(), id);
+  return r.changes > 0;
+}
 function deleteClientProject(id) {
   const r = getDb().prepare('DELETE FROM client_projects WHERE id=?').run(id);
   return r.changes > 0;
@@ -4219,7 +4226,7 @@ module.exports = {
   getDb, close,
   // Shopify client projects (P1 intake + P5 preview)
   createClientProject, listClientProjects, getClientProject, seedProjectPages,
-  updateClientProject, archiveClientProject, deleteClientProject,
+  updateClientProject, archiveClientProject, deleteClientProject, setClientProjectStatus, PROJECT_STATUSES,
   linkProjectBuildDir, getProjectByBuildDir,
   listProjectPages, updatePageStatus, createRevision, listRevisions,
   // Agent Runs

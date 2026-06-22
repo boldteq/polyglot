@@ -1,11 +1,13 @@
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Bot, GitBranch, ExternalLink, Link2 } from 'lucide-react'
+import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check } from 'lucide-react'
 import ScoreGauge from './ScoreGauge'
 import StepIndicator from './StepIndicator'
 import VerdictPill from './VerdictPill'
 import ActionsBar from './ActionsBar'
 import { openDispatch } from '../../lib/dispatch'
-import type { ProjectDetail, RepoData } from '../../lib/api'
+import { toast } from '../Toast'
+import { setWorkspaceProjectStatus, PROJECT_STATUSES, type ProjectDetail, type RepoData, type ProjectStatus } from '../../lib/api'
 
 const STATUS_TONE: Record<string, string> = {
   intake: 'text-text-muted bg-text-muted/10', building: 'text-accent bg-accent/10',
@@ -15,6 +17,40 @@ const vscodeLink = (abs: string) => `vscode://file${abs}`
 
 // The always-visible project hero: identity + score + step + the elevated REPO
 // connection line + primary actions. Replaces the old build-detail header card.
+function StatusChanger({ id, status, onChanged }: { id: string; status: string; onChanged: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const pick = async (s: ProjectStatus) => {
+    setOpen(false); if (s === status) return
+    setBusy(true)
+    try { await setWorkspaceProjectStatus(id, s); toast('success', `Status → ${s}`); onChanged() }
+    catch (e) { toast('error', e instanceof Error ? e.message : 'Status change failed') } finally { setBusy(false) }
+  }
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((v) => !v)} disabled={busy}
+        className={`text-[10px] px-2 py-0.5 rounded-full capitalize flex items-center gap-1 ${STATUS_TONE[status] || STATUS_TONE.intake}`}>
+        {status} <ChevronDown className="w-3 h-3" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 w-36 bg-surface border border-border rounded-lg shadow-lg py-1 z-[60]">
+          {PROJECT_STATUSES.map((s) => (
+            <button key={s} onClick={() => pick(s)} className="w-full flex items-center justify-between px-3 py-1.5 text-[12px] capitalize hover:bg-surface-2 text-left">
+              {s} {s === status && <Check className="w-3.5 h-3.5 text-accent" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProjectHeader({ detail, repo, onReload }: { detail: ProjectDetail; repo: RepoData | null; onReload: () => void }) {
   const nav = useNavigate()
   const { project, build, buildId } = detail
@@ -29,7 +65,7 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <h1 className="text-[22px] font-bold tracking-tight capitalize">{project.name}</h1>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full capitalize ${STATUS_TONE[project.status] || STATUS_TONE.intake}`}>{project.status}</span>
+          <StatusChanger id={project.id} status={project.status} onChanged={onReload} />
           {build && <VerdictPill verdict={build.lensVerdict} blockers={build.gates.blockersOpen} />}
         </div>
         <div className="text-[13px] text-text-muted mb-2">

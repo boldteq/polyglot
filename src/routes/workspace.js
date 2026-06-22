@@ -381,9 +381,11 @@ router.post('/workspace/projects', (req, res) => {
 router.patch('/workspace/projects/:id', (req, res) => {
   try {
     if (!db.getClientProject(req.params.id)) return res.status(404).json({ error: 'project not found' });
-    const { name, niche, domain, intake } = req.body || {};
+    const { name, niche, domain, intake, status } = req.body || {};
     if (name !== undefined && (typeof name !== 'string' || !name.trim())) return res.status(400).json({ error: 'name must be non-empty' });
+    if (status !== undefined && !db.PROJECT_STATUSES.includes(status)) return res.status(400).json({ error: `status must be one of ${db.PROJECT_STATUSES.join('|')}` });
     db.updateClientProject(req.params.id, { name: name?.trim(), niche, domain, intake });
+    if (status !== undefined) db.setClientProjectStatus(req.params.id, status);
     res.json({ ok: true, project: db.getClientProject(req.params.id) });
   } catch (err) {
     console.error('[workspace] patch project failed:', err.message);
@@ -470,6 +472,26 @@ router.get('/workspace/projects/:id/activity', (req, res) => {
     res.json(buildProjectActivity({ build, dir: project.build_dir, buildId: build.buildId, limit, since }));
   } catch (err) {
     console.error('[workspace] /projects/:id/activity failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/workspace/projects/:id/schedules — post-publish monitoring checkpoints
+// (lumen 48h watch + orbit/catalyst 30/90d results) from the build_schedules table.
+// Was previously hardcoded-empty; now actually queries the registered schedules.
+router.get('/workspace/projects/:id/schedules', (req, res) => {
+  try {
+    const project = db.getClientProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'project not found' });
+    if (!project.build_dir || !fs.existsSync(project.build_dir)) return res.json({ present: false, schedules: [] });
+    const build = assembleBuild(project.build_dir);
+    const rows = (db.listBuildSchedules ? db.listBuildSchedules(build.buildId) : []).map((r) => {
+      let result = null; try { result = r.result_json ? JSON.parse(r.result_json) : null; } catch { /* */ }
+      return { id: r.id, kind: r.kind, label: r.label, dueAt: r.due_at, status: r.status, ranAt: r.ran_at, publishedAt: r.published_at, result };
+    });
+    res.json({ present: rows.length > 0, schedules: rows });
+  } catch (err) {
+    console.error('[workspace] /projects/:id/schedules failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

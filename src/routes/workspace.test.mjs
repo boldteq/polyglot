@@ -42,11 +42,11 @@ function post(path) {
   });
 }
 
-function postJson(path, obj) {
+function bodyReq(method, path, obj) {
   return new Promise((resolve, reject) => {
     const u = new URL(`${base}${path}`);
     const payload = JSON.stringify(obj);
-    const req = http.request({ hostname: u.hostname, port: u.port, path: u.pathname, method: 'POST', agent: false,
+    const req = http.request({ hostname: u.hostname, port: u.port, path: u.pathname, method, agent: false,
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } }, (res) => {
       let body = '';
       res.on('data', (c) => { body += c; });
@@ -56,6 +56,8 @@ function postJson(path, obj) {
     req.end(payload);
   });
 }
+function postJson(path, obj) { return bodyReq('POST', path, obj); }
+function patchJson(path, obj) { return bodyReq('PATCH', path, obj); }
 
 test('GET /workspace/builds returns scored builds + summary', async () => {
   const { status, json } = await get('/api/workspace/builds');
@@ -361,10 +363,36 @@ test('GET /projects/:id/activity returns sorted bounded events', async () => {
 });
 
 test('project routes 404 (not 500) on unknown id', async () => {
-  for (const suffix of ['', '/repo', '/activity']) {
+  for (const suffix of ['', '/repo', '/activity', '/schedules']) {
     const r = await get(`/api/workspace/projects/nope-xyz-123${suffix}`);
     assert.equal(r.status, 404);
   }
+});
+
+test('Sprint1: PATCH status validates enum + transitions', async () => {
+  const created = await postJson('/api/workspace/projects', { name: 'WSTEST status' });
+  if (!created.json?.id) return;
+  const id = created.json.id;
+  try {
+    const bad = await patchJson(`/api/workspace/projects/${id}`, { status: 'bogus' });
+    assert.equal(bad.status, 400);
+    const ok = await patchJson(`/api/workspace/projects/${id}`, { status: 'building' });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.json.project.status, 'building');
+  } finally {
+    const db = require('../db.js');
+    db.deleteClientProject?.(id);
+  }
+});
+
+test('Sprint1: project schedules route returns present flag', async () => {
+  const list = await get('/api/workspace/projects');
+  const withBuild = list.json.projects.find((p) => p.build_dir);
+  if (!withBuild) return;
+  const r = await get(`/api/workspace/projects/${withBuild.id}/schedules`);
+  assert.equal(r.status, 200);
+  assert.equal(typeof r.json.present, 'boolean');
+  assert.ok(Array.isArray(r.json.schedules));
 });
 
 test('Per-build dispatches route returns present flag + turns shape', async () => {

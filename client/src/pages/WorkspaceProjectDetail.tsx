@@ -8,6 +8,8 @@ import { FolderKanban } from 'lucide-react'
 import ProjectHeader from '../components/workspace/ProjectHeader'
 import ProjectAnchorNav from '../components/workspace/ProjectAnchorNav'
 import ActivityTimeline from '../components/workspace/ActivityTimeline'
+import BriefPanel from '../components/workspace/BriefPanel'
+import MonitoringPanel from '../components/workspace/MonitoringPanel'
 import RepoPanel from '../components/workspace/RepoPanel'
 import WorkflowTab from '../components/workspace/WorkflowTab'
 import GatesTab from '../components/workspace/GatesTab'
@@ -20,6 +22,7 @@ import { getWorkspaceProject, getWorkspaceProjectRepo, type ProjectDetail, type 
 
 const SECTIONS = [
   { id: 'activity', label: 'Activity' },
+  { id: 'brief', label: 'Brief' },
   { id: 'repo', label: 'Repo & files' },
   { id: 'workflow', label: 'Workflow' },
   { id: 'gates', label: 'Gates' },
@@ -27,6 +30,7 @@ const SECTIONS = [
   { id: 'changes', label: 'Changes' },
   { id: 'docs', label: 'Docs' },
   { id: 'design', label: 'Design' },
+  { id: 'monitoring', label: 'Monitoring' },
 ]
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -93,6 +97,7 @@ export default function WorkspaceProjectDetail() {
               <aside className="w-44 shrink-0 hidden lg:block"><ProjectAnchorNav sections={SECTIONS} /></aside>
               <div className="flex-1 min-w-0 space-y-10">
                 <Section id="activity" title="Activity"><ActivityTimeline projectId={id!} reloadKey={reloadKey} /></Section>
+                <Section id="brief" title="Brief"><BriefPanel detail={detail} /></Section>
                 <Section id="repo" title="Repo & files"><RepoPanel projectId={id!} reloadKey={reloadKey} /></Section>
                 <Section id="workflow" title="Workflow"><WorkflowTab buildId={buildId} reloadKey={reloadKey} onChanged={reloadAll} /></Section>
                 <Section id="gates" title="Gates"><GatesTab buildId={buildId} reloadKey={reloadKey} /></Section>
@@ -100,6 +105,7 @@ export default function WorkspaceProjectDetail() {
                 <Section id="changes" title="Changes"><ChangesTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 <Section id="docs" title="Docs"><DocsTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 <Section id="design" title="Design"><DesignSystemTab buildId={buildId} reloadKey={reloadKey} /></Section>
+                <Section id="monitoring" title="Monitoring"><MonitoringPanel projectId={id!} reloadKey={reloadKey} /></Section>
               </div>
             </div>
           ) : null}
