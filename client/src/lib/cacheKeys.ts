@@ -17,6 +17,7 @@ export const CacheKeys = {
   categories: 'categories',
   templates: 'templates',
   config: 'config',
+  appConfig: 'app-config',
   globalSettings: 'global/settings',
   globalClaudeMd: 'global/claude-md',
   orgChart: 'org-chart',

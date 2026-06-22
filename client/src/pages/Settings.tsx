@@ -1,12 +1,31 @@
-import { useState, useEffect } from 'react'
-import { Trash2, Save, FolderOpen, Info, FolderSearch } from 'lucide-react'
-import { getConfig, updateProjectDirs, getGlobalSettings, updateGlobalSettings } from '../lib/api'
+import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { Trash2, Save, FolderOpen, Info, FolderSearch, Sun, Moon, Monitor, Palette, Activity } from 'lucide-react'
+import { getConfig, updateProjectDirs, getGlobalSettings, updateGlobalSettings, getAppConfig } from '../lib/api'
 import { useApi } from '../hooks/useApi'
+import { useTheme } from '../contexts/ThemeContext'
 import { CacheKeys } from '../lib/cacheKeys'
 import DirectoryPicker from '../components/DirectoryPicker'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
 import { Skeleton } from '../components/Skeleton'
+
+// Fallback only when the models table is empty/unreachable. Mirrors
+// scripts/seed-app-config.mjs canonical IDs so the Model dropdown is never empty.
+const FALLBACK_MODELS = [
+  { id: 'claude-opus-4-7', display_name: 'Opus 4.7' },
+  { id: 'claude-sonnet-4-6', display_name: 'Sonnet 4.6' },
+  { id: 'claude-haiku-4-5-20251001', display_name: 'Haiku 4.5' },
+] as const
+
+const THEME_OPTS = [
+  { value: 'light' as const, label: 'Light', icon: Sun },
+  { value: 'dark' as const, label: 'Dark', icon: Moon },
+  { value: 'system' as const, label: 'System', icon: Monitor },
+]
+
+// App version — injected at build time from package.json (vite `define`).
+declare const __APP_VERSION__: string
 
 interface Props {
   onSave: () => void
@@ -14,10 +33,23 @@ interface Props {
 
 export default function SettingsPage({ onSave }: Props) {
   const { data: config, loading } = useApi(getConfig, [], CacheKeys.config)
+  // One-shot fetch (NOT useAppConfig) — the SSE-subscribing hook would open a 6th
+  // persistent EventSource and saturate the browser's 6-connection-per-host pool,
+  // hanging the settings save. The model list doesn't need live updates here.
+  const { data: appConfig } = useApi(getAppConfig, [], CacheKeys.appConfig)
+  const models = appConfig?.models ?? []
+  const { theme, setTheme } = useTheme()
   const [dirs, setDirs] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+
+  // Canonical model list from the live models table; falls back to seeded IDs
+  // only when the table is empty/unreachable so the dropdown is never blank.
+  const modelOptions = useMemo(() => {
+    const src = models.filter(m => m.enabled).map(m => ({ id: m.id, label: `${m.id} (${m.display_name})` }))
+    return src.length > 0 ? src : FALLBACK_MODELS.map(m => ({ id: m.id, label: `${m.id} (${m.display_name})` }))
+  }, [models])
 
   const { data: settingsRaw, loading: settingsLoading } = useApi(getGlobalSettings, [], CacheKeys.globalSettings)
   const [settingsData, setSettingsData] = useState<Record<string, unknown>>({})
@@ -35,17 +67,34 @@ export default function SettingsPage({ onSave }: Props) {
   }, [settingsRaw])
 
   const handleSaveSettings = async () => {
+    // Phase 1 — JSON parse. The ONLY step that can be a syntax error.
+    let parsed: unknown
     try {
-      const parsed = JSON.parse(settingsPermissionsText)
-      setSettingsPermissionsError('')
-      setSavingSettings(true)
+      parsed = JSON.parse(settingsPermissionsText)
+    } catch {
+      setSettingsPermissionsError('Invalid JSON — fix before saving')
+      toast('error', 'Permissions: invalid JSON')
+      return
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      setSettingsPermissionsError('Permissions must be a JSON object')
+      toast('error', 'Permissions must be a JSON object')
+      return
+    }
+    setSettingsPermissionsError('')
+
+    // Phase 2 — API write. Surface the REAL server message (e.g. a 400
+    // "Unknown settings key(s): …") instead of mislabeling it "Invalid JSON".
+    setSavingSettings(true)
+    try {
       const merged = { ...settingsData, permissions: parsed }
       await updateGlobalSettings(merged)
       setSettingsDirty(false)
       toast('success', 'Claude settings saved')
-    } catch {
-      setSettingsPermissionsError('Invalid JSON — fix before saving')
-      return
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save Claude settings'
+      setSettingsPermissionsError(msg)
+      toast('error', msg)
     } finally {
       setSavingSettings(false)
     }
@@ -194,7 +243,7 @@ export default function SettingsPage({ onSave }: Props) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-semibold">Claude Settings</h2>
-            <p className="text-xs text-text-muted mt-0.5">~/.claude/settings.json — model, effort, permissions</p>
+            <p className="text-xs text-text-muted mt-0.5">~/.claude/settings.json — model &amp; permissions</p>
           </div>
           {settingsDirty && (
             <button
@@ -219,34 +268,23 @@ export default function SettingsPage({ onSave }: Props) {
                 <p className="text-sm font-medium">Model</p>
                 <p className="text-xs text-text-muted">Default Claude model for all sessions</p>
               </div>
-              <select
-                value={(settingsData.model as string) || 'sonnet'}
-                onChange={e => { setSettingsData(s => ({ ...s, model: e.target.value })); setSettingsDirty(true) }}
-                className="input w-auto"
-              >
-                <option value="claude-sonnet-4-6">claude-sonnet-4-6 (Sonnet)</option>
-                <option value="claude-opus-4-6">claude-opus-4-6 (Opus)</option>
-                <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (Haiku)</option>
-                <option value="sonnet">sonnet</option>
-                <option value="opus">opus</option>
-                <option value="haiku">haiku</option>
-              </select>
-            </div>
-            {/* Effort Level */}
-            <div className="flex items-center justify-between py-2 border-b border-border">
-              <div>
-                <p className="text-sm font-medium">Effort Level</p>
-                <p className="text-xs text-text-muted">Controls how much reasoning Claude applies</p>
-              </div>
-              <select
-                value={(settingsData.effortLevel as string) || 'high'}
-                onChange={e => { setSettingsData(s => ({ ...s, effortLevel: e.target.value })); setSettingsDirty(true) }}
-                className="input w-auto"
-              >
-                <option value="low">low</option>
-                <option value="medium">medium</option>
-                <option value="high">high</option>
-              </select>
+              {(() => {
+                const current = (settingsData.model as string) || ''
+                // Surface a persisted value not in the table (e.g. a bare alias)
+                // so saving never silently rewrites the user's chosen model.
+                const showCurrentExtra = current && !modelOptions.some(o => o.id === current)
+                return (
+                  <select
+                    value={current}
+                    onChange={e => { setSettingsData(s => ({ ...s, model: e.target.value })); setSettingsDirty(true) }}
+                    className="input w-auto"
+                  >
+                    {!current && <option value="" disabled>Select a model…</option>}
+                    {showCurrentExtra && <option value={current}>{current} (current)</option>}
+                    {modelOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  </select>
+                )
+              })()}
             </div>
             {/* Permissions */}
             <div className="py-2">
@@ -266,6 +304,60 @@ export default function SettingsPage({ onSave }: Props) {
             </div>
           </div>
         )}
+        </div>
+      </div>
+
+      {/* Two-column: Appearance (theme) · About */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        {/* ── Appearance (client-only theme; no backend) ── */}
+        <div className="card p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Palette className="w-4 h-4 text-text-muted" />
+            <h2 className="text-base font-semibold">Appearance</h2>
+          </div>
+          <p className="text-xs text-text-muted mb-4">
+            Theme is saved in this browser — it doesn’t affect Claude or other devices.
+          </p>
+          <div role="radiogroup" aria-label="Theme" className="inline-flex gap-1 bg-surface-2 rounded-lg p-1">
+            {THEME_OPTS.map(({ value, label, icon: Icon }) => {
+              const active = theme === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setTheme(value)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    active ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── About ── */}
+        <div className="card p-5">
+          <h2 className="text-base font-semibold mb-3">About</h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between py-2 border-b border-border">
+              <span className="text-sm text-text-secondary">Polyglot version</span>
+              <span className="text-sm font-mono">{__APP_VERSION__}</span>
+            </div>
+            <Link
+              to="/system"
+              className="flex items-center justify-between py-2 group"
+            >
+              <span className="text-sm text-text-secondary group-hover:text-text">Live system health &amp; diagnostics</span>
+              <span className="flex items-center gap-1 text-xs text-accent">
+                <Activity className="w-3.5 h-3.5" /> Open
+              </span>
+            </Link>
+          </div>
         </div>
       </div>
 
