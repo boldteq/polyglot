@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Clock, Plus, Trash2, Play, Pause, AlertCircle, CheckCircle, XCircle,
   Pencil, PlayCircle, Loader2, Cpu, History, StopCircle, MinusCircle,
-  CalendarClock, Zap,
+  CalendarClock, Zap, Search,
 } from 'lucide-react'
 import {
   getGlobalAgents,
@@ -78,6 +78,8 @@ export default function SchedulesPage() {
   const [pendingRun, setPendingRun] = useState<Schedule | null>(null)
   const [confirmStarting, setConfirmStarting] = useState(false)
   const [, setTick] = useState(0)
+  const [query, setQuery] = useState('')
+  const [kindFilter, setKindFilter] = useState<'all' | 'system' | 'user'>('all')
 
   // Fetch agents once.
   useEffect(() => {
@@ -219,6 +221,16 @@ export default function SchedulesPage() {
     return { total, active, system, running }
   }, [schedules])
 
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return schedules.filter(s => {
+      if (kindFilter === 'system' && s.kind !== 'system') return false
+      if (kindFilter === 'user' && s.kind === 'system') return false
+      if (!q) return true
+      return `${s.name} ${s.agentName} ${s.prompt || ''}`.toLowerCase().includes(q)
+    })
+  }, [schedules, query, kindFilter])
+
   if (loading || agentsLoading) return (
     <div className="p-8 flex items-center justify-center h-64">
       <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -276,9 +288,36 @@ export default function SchedulesPage() {
         />
       )}
 
+      {/* Filter bar */}
+      {schedules.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-3.5 h-3.5 text-text-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search schedules by name, agent, or prompt…"
+              aria-label="Search schedules"
+              className="input pl-8"
+            />
+          </div>
+          <div className="segmented shrink-0">
+            {(['all', 'system', 'user'] as const).map(k => (
+              <button key={k} onClick={() => setKindFilter(k)} aria-pressed={kindFilter === k} className={`segmented-btn capitalize ${kindFilter === k ? 'segmented-btn-active' : ''}`}>{k}</button>
+            ))}
+          </div>
+          {(query || kindFilter !== 'all') && (
+            <span className="text-[11px] text-text-muted shrink-0">{shown.length} of {schedules.length}</span>
+          )}
+        </div>
+      )}
+
       {/* Schedule rows */}
       <div className="space-y-3">
-        {schedules.map(s => {
+        {shown.length === 0 && schedules.length > 0 && (
+          <div className="card p-8 text-center text-sm text-text-muted">No schedules match your filter.</div>
+        )}
+        {shown.map(s => {
           const busy = busyIds.has(s.id)
           const isSystem = s.kind === 'system'
           const isRunning = s.lastRunStatus === 'running'
