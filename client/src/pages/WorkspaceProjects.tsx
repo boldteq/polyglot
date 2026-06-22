@@ -72,7 +72,7 @@ export default function WorkspaceProjects() {
     return { shown, summary }
   }, [projects, q, filter, attentionOf])
 
-  const openProject = (p: WorkspaceProject) => nav(p.build ? `/workspace/builds/${p.build.buildId}` : `/workspace`)
+  const openProject = (p: WorkspaceProject) => nav(`/workspace/p/${p.id}`)
 
   return (
     <PageShell

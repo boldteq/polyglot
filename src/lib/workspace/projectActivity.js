@@ -67,12 +67,14 @@ function buildProjectActivity({ build, dir, buildId, limit = 50, since = null } 
     }
   } catch { /* */ }
 
-  // 6) roster cost logs (platform-scoped; last 14d so the query stays cheap)
+  // 6) roster cost logs (platform-scoped; last 14d). Skip $0 rows — they're
+  // health/eval noise and drown the meaningful events (dispatches/gates/scores).
   try {
     const sinceCost = new Date(Date.now() - 14 * 86400000).toISOString();
     for (const agent of rosterFor('shopify')) {
       for (const row of db.getCostLogs({ agentName: agent, since: sinceCost, limit: 50 })) {
-        push(row.ts, 'cost', agent, `${agent} · $${Number(row.costUsd || 0).toFixed(2)} · ${row.model || 'model'}`, { detail: `${row.totalTokens || 0} tok`, link: row.runId });
+        if (Number(row.costUsd) < 0.005) continue; // rounds to $0.00 — health/eval noise
+        push(row.ts, 'cost', agent, `${agent} · $${Number(row.costUsd).toFixed(2)} · ${row.model || 'model'}`, { detail: `${row.totalTokens || 0} tok`, link: row.runId });
       }
     }
   } catch { /* */ }
