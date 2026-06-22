@@ -75,6 +75,7 @@ export default function Sales() {
   const clearRecents = useCallback(() => { setRecents([]); try { localStorage.removeItem(RECENTS_KEY) } catch { /* noop */ } }, [])
 
   const stop = useCallback(() => { abortRef.current?.abort(); setStreaming(false) }, [])
+  const clearComposer = useCallback(() => { setChat(''); setReply(''); setCopied(false) }, [])
 
   const draft = useCallback(async () => {
     if (!chat.trim()) { toast('error', 'Paste the client chat first'); return }
@@ -174,21 +175,26 @@ export default function Sales() {
           <textarea
             value={chat}
             onChange={e => setChat(e.target.value)}
+            onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !streaming) { e.preventDefault(); draft() } }}
             placeholder="Paste the client chat here — the whole thread, most recent message last…"
             className="w-full h-56 px-3 py-2 text-sm rounded-xl border border-border bg-surface-2/40 resize-y focus:outline-none focus:ring-2 focus:ring-accent/40"
           />
 
           <div className="flex items-center gap-2">
             {!streaming ? (
-              <button onClick={draft} className="btn-primary btn-sm flex items-center gap-1.5">
+              <button onClick={draft} className="btn-primary btn-sm flex items-center gap-1.5" title="Draft (⌘/Ctrl + Enter)">
                 <Send className="w-3.5 h-3.5" /> Draft reply with Sway
+                <kbd className="ml-1 text-[9px] font-mono opacity-70">⌘↵</kbd>
               </button>
             ) : (
               <button onClick={stop} className="btn-secondary btn-sm flex items-center gap-1.5">
                 <Square className="w-3.5 h-3.5" /> Stop
               </button>
             )}
-            <span className="text-xs text-text-muted">{chat.length.toLocaleString()} chars</span>
+            {(chat || reply) && !streaming && (
+              <button onClick={clearComposer} className="btn-ghost btn-sm text-text-muted">Clear</button>
+            )}
+            <span className="ml-auto text-xs text-text-muted">{chat.length.toLocaleString()} chars</span>
           </div>
         </div>
 
