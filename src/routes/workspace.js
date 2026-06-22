@@ -691,14 +691,14 @@ router.post('/workspace/builds/:buildId/changes/waiver', (req, res) => {
   }
 });
 
-// GET /api/workspace/builds/:buildId/agents — platform-level agent activity.
-// (Per-build attribution isn't tracked yet — see projectFilter.js header.)
+// GET /api/workspace/builds/:buildId/agents — build-scoped agent activity when
+// cockpit dispatches have been stamped (cost_logs.buildId), else platform-level.
 router.get('/workspace/builds/:buildId/agents', (req, res) => {
   try {
     const dir = resolveBuildDir(req.params.buildId);
     if (!dir) return res.status(404).json({ error: 'build not found' });
     const platform = platformForDir(dir);
-    res.json(buildAgentActivity(platform, dir));
+    res.json(buildAgentActivity(platform, dir, 7, req.params.buildId));
   } catch (err) {
     console.error('[workspace] /agents failed:', err.message);
     res.status(500).json({ error: err.message });

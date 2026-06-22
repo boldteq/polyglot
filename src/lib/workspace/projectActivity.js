@@ -67,14 +67,17 @@ function buildProjectActivity({ build, dir, buildId, limit = 50, since = null } 
     }
   } catch { /* */ }
 
-  // 6) roster cost logs (platform-scoped; last 14d). Skip $0 rows — they're
-  // health/eval noise and drown the meaningful events (dispatches/gates/scores).
+  // 6) cost logs — now genuinely PER-BUILD (cost_logs.buildId, stamped from the
+  // wsd-<buildId> dispatch thread). Was platform-roster noise before; this is the
+  // real spend on THIS build's dispatches. Skip $0 health/eval rows.
+  let totalCostUsd = 0, costRuns = 0;
   try {
-    const sinceCost = new Date(Date.now() - 14 * 86400000).toISOString();
-    for (const agent of rosterFor('shopify')) {
-      for (const row of db.getCostLogs({ agentName: agent, since: sinceCost, limit: 50 })) {
-        if (Number(row.costUsd) < 0.005) continue; // rounds to $0.00 — health/eval noise
-        push(row.ts, 'cost', agent, `${agent} · $${Number(row.costUsd).toFixed(2)} · ${row.model || 'model'}`, { detail: `${row.totalTokens || 0} tok`, link: row.runId });
+    if (buildId) {
+      for (const row of db.getCostLogs({ buildId, limit: 200 })) {
+        const c = Number(row.costUsd) || 0;
+        if (c < 0.005) continue;
+        totalCostUsd += c; costRuns += 1;
+        push(row.ts, 'cost', row.agentName || 'agent', `${row.agentName || 'agent'} · $${c.toFixed(2)} · ${row.model || 'model'}`, { detail: `${row.totalTokens || 0} tok`, link: row.runId });
       }
     }
   } catch { /* */ }
@@ -84,7 +87,13 @@ function buildProjectActivity({ build, dir, buildId, limit = 50, since = null } 
   if (since) { const s = new Date(since).getTime(); merged = merged.filter((e) => new Date(e.ts).getTime() >= s); }
   merged.sort((a, b) => new Date(b.ts) - new Date(a.ts));
   const capped = merged.slice(0, Math.min(Number(limit) || 50, 200));
-  return { events: capped, nextSince: capped.length ? capped[capped.length - 1].ts : null, total: capped.length };
+  return {
+    events: capped,
+    nextSince: capped.length ? capped[capped.length - 1].ts : null,
+    total: capped.length,
+    // per-build spend summary (genuinely this build's dispatches, not platform noise)
+    spend: { totalCostUsd: Math.round(totalCostUsd * 10000) / 10000, runs: costRuns },
+  };
 }
 
 module.exports = { buildProjectActivity };

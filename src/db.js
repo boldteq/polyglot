@@ -154,6 +154,7 @@ function runMigrations(db) {
     { version: 34, name: 'build_schedules', fn: buildSchedulesMigration },
     { version: 35, name: 'calibration_grades', fn: calibrationGradesMigration },
     { version: 36, name: 'client_projects_build_dir', fn: clientProjectsBuildDirMigration },
+    { version: 37, name: 'cost_logs_build_id', fn: costLogsBuildIdMigration },
   ];
 
   for (const mig of migrations) {
@@ -3609,12 +3610,23 @@ function costFromTokens(model, inTok, outTok) {
 }
 
 // One row per LLM call. estimated=false => REAL tokens from the CLI usage envelope.
-function logCost({ runId, agentName, model, inputTokens = 0, outputTokens = 0, costUsd, estimated = true, source } = {}) {
+// Migration v37: per-build cost attribution. cost_logs had no build key (the
+// runId/historyId/thread id spaces are disjoint in practice), so per-build spend
+// was unrecoverable. We now stamp buildId at log time (derived from the run's
+// wsd-<buildId> thread). Forward-looking; old rows stay null.
+function costLogsBuildIdMigration(db) {
+  const has = db.prepare("PRAGMA table_info(cost_logs)").all().some((c) => c.name === 'buildId');
+  if (!has) db.exec("ALTER TABLE cost_logs ADD COLUMN buildId TEXT");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_cost_logs_build ON cost_logs(buildId, ts DESC)");
+  console.log('[migration v37] cost_logs.buildId added');
+}
+
+function logCost({ runId, agentName, model, inputTokens = 0, outputTokens = 0, costUsd, estimated = true, source, buildId } = {}) {
   const total = Number(inputTokens || 0) + Number(outputTokens || 0);
   const cost = costUsd != null ? Number(costUsd) : costFromTokens(model, inputTokens, outputTokens);
-  stmt('INSERT INTO cost_logs (runId,agentName,ts,model,inputTokens,outputTokens,totalTokens,costUsd,estimated,source) VALUES (?,?,?,?,?,?,?,?,?,?)')
+  stmt('INSERT INTO cost_logs (runId,agentName,ts,model,inputTokens,outputTokens,totalTokens,costUsd,estimated,source,buildId) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
     .run(runId || null, agentName || null, new Date().toISOString(), model || null,
-         Number(inputTokens || 0), Number(outputTokens || 0), total, cost, estimated ? 1 : 0, source || null);
+         Number(inputTokens || 0), Number(outputTokens || 0), total, cost, estimated ? 1 : 0, source || null, buildId || null);
   return { total, cost, estimated: !!estimated };
 }
 
@@ -3633,10 +3645,11 @@ function getSpend({ since, agentName } = {}) {
     FROM cost_logs${where}`).get(...args);
 }
 
-function getCostLogs({ runId, agentName, since, limit = 200 } = {}) {
+function getCostLogs({ runId, agentName, since, buildId, limit = 200 } = {}) {
   const conds = [], args = [];
   if (runId)     { conds.push('runId = ?'); args.push(runId); }
   if (agentName) { conds.push('agentName = ?'); args.push(agentName); }
+  if (buildId)   { conds.push('buildId = ?'); args.push(buildId); }
   if (since)     { conds.push('ts >= ?'); args.push(since); }
   const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
   return stmt(`SELECT * FROM cost_logs${where} ORDER BY ts DESC LIMIT ?`).all(...args, Math.min(Number(limit) || 200, 2000));

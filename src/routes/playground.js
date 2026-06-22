@@ -138,6 +138,8 @@ function logAgentRun(entry) {
         costUsd: entry.usage.costUsd,
         estimated: false,
         source: run.source,
+        // per-build attribution: workspace dispatches use a wsd-<buildId> thread
+        buildId: (run.threadId && run.threadId.startsWith('wsd-')) ? run.threadId.slice(4) : null,
       });
     } catch (err) { console.error('[logAgentRun] real cost log failed:', err.message); }
   }

@@ -4,7 +4,7 @@ import { Spinner } from '../Skeleton'
 import EmptyState from '../EmptyState'
 import { relTime } from '../../lib/relTime'
 import { useWorkspaceStream } from '../../hooks/useWorkspaceStream'
-import { getWorkspaceProjectActivity, type ActivityEvent } from '../../lib/api'
+import { getWorkspaceProjectActivity, type ActivityEvent, type ActivitySpend } from '../../lib/api'
 
 const KIND: Record<string, { icon: typeof Bot; cls: string; label: string }> = {
   dispatch: { icon: Bot, cls: 'text-accent', label: 'dispatch' },
@@ -20,6 +20,7 @@ const KIND: Record<string, { icon: typeof Bot; cls: string; label: string }> = {
 // build moves — the user's "see live project history in one panel".
 export default function ActivityTimeline({ projectId, reloadKey }: { projectId: string; reloadKey?: number }) {
   const [events, setEvents] = useState<ActivityEvent[]>([])
+  const [spend, setSpend] = useState<ActivitySpend | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<Record<number, boolean>>({})
@@ -27,7 +28,7 @@ export default function ActivityTimeline({ projectId, reloadKey }: { projectId: 
 
   const load = useCallback(() => {
     getWorkspaceProjectActivity(projectId, { limit: 60 })
-      .then((d) => setEvents(d.events))
+      .then((d) => { setEvents(d.events); setSpend(d.spend ?? null) })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load activity'))
       .finally(() => setLoading(false))
   }, [projectId])
@@ -45,6 +46,13 @@ export default function ActivityTimeline({ projectId, reloadKey }: { projectId: 
   if (!events.length) return <EmptyState icon={Activity} title="No activity yet" description="Dispatches, gate runs, and score changes for this project will appear here, newest first." />
 
   return (
+    <div className="space-y-2">
+      {spend && spend.runs > 0 && (
+        <div className="flex items-center gap-2 text-[12px] text-text-muted px-1">
+          <DollarSign className="w-3.5 h-3.5 text-green" />
+          <span><span className="font-semibold text-text">${spend.totalCostUsd.toFixed(2)}</span> spent on this build · {spend.runs} dispatch run{spend.runs === 1 ? '' : 's'}</span>
+        </div>
+      )}
     <ol className="card divide-y divide-border">
       {events.map((e, i) => {
         const k = KIND[e.kind] || KIND.action
@@ -68,5 +76,6 @@ export default function ActivityTimeline({ projectId, reloadKey }: { projectId: 
         )
       })}
     </ol>
+    </div>
   )
 }
