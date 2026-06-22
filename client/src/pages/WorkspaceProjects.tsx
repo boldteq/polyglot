@@ -9,8 +9,6 @@ import { confirmDialog } from '../lib/confirm'
 import ScoreGauge from '../components/workspace/ScoreGauge'
 import { getWorkspaceProjects, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, type WorkspaceProject, type AssembledBuild } from '../lib/api'
 
-function gradeFor(s: number) { return s >= 90 ? 'A' : s >= 80 ? 'B' : s >= 70 ? 'C' : 'BLOCK-RISK' }
-
 // Hybrid project registry: intake projects (brand/niche/store) merged with their
 // live build state, + the discovered builds not yet linked to a project.
 export default function WorkspaceProjects() {
