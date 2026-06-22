@@ -18,6 +18,7 @@ const lens = require('./lens');
 const { buildIdFor, dirFor, registerDirs } = require('../lib/workspace/buildId');
 const { readGateReports } = require('../lib/workspace/readGateReports');
 const { parseChangesMd } = require('../lib/workspace/parseChangesMd');
+const { toggleItem, addItem, addWaiver } = require('../lib/workspace/writeChangesMd');
 const { parseBaselineMd } = require('../lib/workspace/parseBaselineMd');
 const { readBuildFiles } = require('../lib/workspace/readBuildFiles');
 const { parseDesignSystem } = require('../lib/workspace/parseDesignSystem');
@@ -379,6 +380,33 @@ router.post('/workspace/projects', (req, res) => {
   }
 });
 
+// PATCH /api/workspace/projects/:id — edit project metadata (name/niche/domain/intake).
+router.patch('/workspace/projects/:id', (req, res) => {
+  try {
+    if (!db.getClientProject(req.params.id)) return res.status(404).json({ error: 'project not found' });
+    const { name, niche, domain, intake } = req.body || {};
+    if (name !== undefined && (typeof name !== 'string' || !name.trim())) return res.status(400).json({ error: 'name must be non-empty' });
+    db.updateClientProject(req.params.id, { name: name?.trim(), niche, domain, intake });
+    res.json({ ok: true, project: db.getClientProject(req.params.id) });
+  } catch (err) {
+    console.error('[workspace] patch project failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/workspace/projects/:id[?hard=1] — archive (default) or hard-delete.
+router.delete('/workspace/projects/:id', (req, res) => {
+  try {
+    if (!db.getClientProject(req.params.id)) return res.status(404).json({ error: 'project not found' });
+    const hard = String(req.query.hard || '') === '1';
+    const ok = hard ? db.deleteClientProject(req.params.id) : db.archiveClientProject(req.params.id);
+    res.json({ ok, mode: hard ? 'deleted' : 'archived' });
+  } catch (err) {
+    console.error('[workspace] delete project failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/workspace/projects/:id/link — link a project to a discovered build.
 router.post('/workspace/projects/:id/link', (req, res) => {
   try {
@@ -508,6 +536,58 @@ router.get('/workspace/builds/:buildId/changes', (req, res) => {
   }
 });
 
+// Helper: resolve the CHANGES.md path for a known build, 404 if no build / no file.
+function changesPathFor(buildId) {
+  const dir = resolveBuildDir(buildId);
+  if (!dir) return { err: 404 };
+  const p = path.join(dir, 'CHANGES.md');
+  if (!fs.existsSync(p)) return { err: 404 };
+  return { p };
+}
+
+// POST …/changes/toggle {index, checked} — flip one acceptance item.
+router.post('/workspace/builds/:buildId/changes/toggle', (req, res) => {
+  try {
+    const { p, err } = changesPathFor(req.params.buildId);
+    if (err) return res.status(err).json({ error: 'build or CHANGES.md not found' });
+    const { index, checked } = req.body || {};
+    if (!Number.isInteger(index) || index < 0) return res.status(400).json({ error: 'index (int ≥0) required' });
+    if (typeof checked !== 'boolean') return res.status(400).json({ error: 'checked (bool) required' });
+    res.json(toggleItem(p, index, checked));
+  } catch (err) {
+    console.error('[workspace] changes/toggle failed:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// POST …/changes/item {text} — append a new unchecked acceptance item.
+router.post('/workspace/builds/:buildId/changes/item', (req, res) => {
+  try {
+    const { p, err } = changesPathFor(req.params.buildId);
+    if (err) return res.status(err).json({ error: 'build or CHANGES.md not found' });
+    const { text } = req.body || {};
+    if (!text || typeof text !== 'string' || text.length > 1000) return res.status(400).json({ error: 'text (≤1000 chars) required' });
+    res.json(addItem(p, text));
+  } catch (err) {
+    console.error('[workspace] changes/item failed:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// POST …/changes/waiver {text} — add a waiver (bypasses a gate; confirm-gated in UI).
+router.post('/workspace/builds/:buildId/changes/waiver', (req, res) => {
+  try {
+    const { p, err } = changesPathFor(req.params.buildId);
+    if (err) return res.status(err).json({ error: 'build or CHANGES.md not found' });
+    const { text } = req.body || {};
+    if (!text || typeof text !== 'string' || text.length > 1000) return res.status(400).json({ error: 'text (≤1000 chars) required' });
+    res.json(addWaiver(p, text));
+  } catch (err) {
+    console.error('[workspace] changes/waiver failed:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // GET /api/workspace/builds/:buildId/agents — platform-level agent activity.
 // (Per-build attribution isn't tracked yet — see projectFilter.js header.)
 router.get('/workspace/builds/:buildId/agents', (req, res) => {
@@ -553,6 +633,51 @@ router.get('/workspace/builds/:buildId/results', (req, res) => {
     res.json(parseBaselineMd(path.join(dir, 'docs', 'results', 'baseline.md')));
   } catch (err) {
     console.error('[workspace] /results failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/workspace/builds/:buildId/docs[?file=relpath] — agent-produced docs.
+// Lists docs/**/*.{md,json} (the build's discovery/design/content/schema/results
+// artifacts). With ?file=, returns that one file's text (path-guarded to docs/).
+// Read-only: to CHANGE an artifact, dispatch its owning agent (the architectural
+// boundary). Tolerant of absence — empty list when docs/ has nothing.
+router.get('/workspace/builds/:buildId/docs', (req, res) => {
+  try {
+    const dir = resolveBuildDir(req.params.buildId);
+    if (!dir) return res.status(404).json({ error: 'build not found' });
+    const docsRoot = path.join(dir, 'docs');
+
+    // single-file read (path-traversal guarded to docs/)
+    if (typeof req.query.file === 'string' && req.query.file) {
+      const abs = path.resolve(docsRoot, req.query.file);
+      if (!(abs === docsRoot || abs.startsWith(docsRoot + path.sep)) || !/\.(md|json|txt)$/i.test(abs)) {
+        return res.status(403).json({ error: 'forbidden path' });
+      }
+      if (!fs.existsSync(abs)) return res.status(404).json({ error: 'doc not found' });
+      return res.json({ file: req.query.file, content: fs.readFileSync(abs, 'utf-8') });
+    }
+
+    // listing — walk docs/ ≤2 deep for .md/.json/.txt
+    const out = [];
+    const walk = (base, rel, depth) => {
+      if (depth > 2) return;
+      let entries; try { entries = fs.readdirSync(base, { withFileTypes: true }); } catch { return; }
+      for (const e of entries) {
+        if (e.name.startsWith('.')) continue;
+        const childRel = rel ? `${rel}/${e.name}` : e.name;
+        if (e.isDirectory()) walk(path.join(base, e.name), childRel, depth + 1);
+        else if (/\.(md|json|txt)$/i.test(e.name)) {
+          let size = 0; try { size = fs.statSync(path.join(base, e.name)).size; } catch { /* */ }
+          out.push({ file: childRel, name: e.name, kind: e.name.split('.').pop().toLowerCase(), size });
+        }
+      }
+    };
+    if (fs.existsSync(docsRoot)) walk(docsRoot, '', 0);
+    out.sort((a, b) => a.file.localeCompare(b.file));
+    res.json({ present: out.length > 0, docs: out });
+  } catch (err) {
+    console.error('[workspace] /docs failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

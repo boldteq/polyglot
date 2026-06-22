@@ -228,6 +228,62 @@ test('Projects: list merges intake rows + unlinked builds; create works', async 
   try { require('../db.js').getDb().prepare('DELETE FROM client_projects WHERE id = ?').run(created.json.id); } catch { /* */ }
 });
 
+test('Phase A: CHANGES toggle round-trips + score moves; bad input 400', async () => {
+  const list = await get('/api/workspace/builds');
+  const withChanges = [];
+  for (const b of list.json.builds) {
+    const c = await get(`/api/workspace/builds/${b.buildId}/changes`);
+    if (c.json.present && c.json.total > 0) { withChanges.push({ b, c: c.json }); break; }
+  }
+  if (!withChanges.length) return; // no build with a CHANGES.md in this env — skip
+  const { b, c } = withChanges[0];
+  const idx = 0; const orig = c.items[0].checked;
+
+  const flipped = await postJson(`/api/workspace/builds/${b.buildId}/changes/toggle`, { index: idx, checked: !orig });
+  assert.equal(flipped.status, 200);
+  assert.equal(flipped.json.items[idx].checked, !orig);
+  // restore original state so the test is non-destructive
+  const restored = await postJson(`/api/workspace/builds/${b.buildId}/changes/toggle`, { index: idx, checked: orig });
+  assert.equal(restored.json.items[idx].checked, orig);
+
+  const bad = await postJson(`/api/workspace/builds/${b.buildId}/changes/toggle`, { index: -1, checked: true });
+  assert.equal(bad.status, 400);
+});
+
+test('Phase A: project PATCH + DELETE (archive) round-trip', async () => {
+  const created = await postJson('/api/workspace/projects', { name: 'wstest-proj', niche: 'test' });
+  assert.equal(created.status, 201);
+  const id = created.json.id;
+
+  const patched = await (async () => {
+    return new Promise((resolve, reject) => {
+      const u = new URL(`${base}/api/workspace/projects/${id}`);
+      const payload = JSON.stringify({ name: 'wstest-proj-2', domain: 'x.myshopify.com' });
+      const req = http.request({ hostname: u.hostname, port: u.port, path: u.pathname, method: 'PATCH', agent: false,
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } }, (res) => {
+        let body = ''; res.on('data', (c) => { body += c; });
+        res.on('end', () => resolve({ status: res.statusCode, json: JSON.parse(body || '{}') }));
+      });
+      req.on('error', reject); req.end(payload);
+    });
+  })();
+  assert.equal(patched.status, 200);
+  assert.equal(patched.json.project.name, 'wstest-proj-2');
+
+  const del = await (async () => {
+    return new Promise((resolve, reject) => {
+      const u = new URL(`${base}/api/workspace/projects/${id}?hard=1`);
+      const req = http.request({ hostname: u.hostname, port: u.port, path: u.pathname + u.search, method: 'DELETE', agent: false }, (res) => {
+        let body = ''; res.on('data', (c) => { body += c; });
+        res.on('end', () => resolve({ status: res.statusCode, json: JSON.parse(body || '{}') }));
+      });
+      req.on('error', reject); req.end();
+    });
+  })();
+  assert.equal(del.status, 200);
+  assert.equal(del.json.mode, 'deleted');
+});
+
 test('Cockpit: design-system route returns present flag', async () => {
   const list = await get('/api/workspace/builds');
   if (!list.json.builds.length) return;

@@ -4151,8 +4151,31 @@ function createClientProject({ name, niche = null, domain = null, intake = {} })
     .run(id, name, niche, domain, 'intake', JSON.stringify(intake || {}), ts, ts);
   return id;
 }
-function listClientProjects() {
-  return getDb().prepare('SELECT id, name, niche, domain, status, build_dir, created_at, updated_at FROM client_projects ORDER BY updated_at DESC').all();
+function listClientProjects({ includeArchived = false } = {}) {
+  const where = includeArchived ? '' : "WHERE status != 'archived'";
+  return getDb().prepare(`SELECT id, name, niche, domain, status, build_dir, created_at, updated_at FROM client_projects ${where} ORDER BY updated_at DESC`).all();
+}
+// Edit project metadata (name/niche/domain) + merge intake fields. Only provided
+// keys change; intake is shallow-merged so partial edits don't wipe prior fields.
+function updateClientProject(id, { name, niche, domain, intake } = {}) {
+  const cur = getDb().prepare('SELECT * FROM client_projects WHERE id = ?').get(id);
+  if (!cur) return false;
+  let intakeJson = cur.intake_json || '{}';
+  if (intake && typeof intake === 'object') {
+    let prev = {}; try { prev = JSON.parse(cur.intake_json || '{}'); } catch { prev = {}; }
+    intakeJson = JSON.stringify({ ...prev, ...intake });
+  }
+  getDb().prepare('UPDATE client_projects SET name=?, niche=?, domain=?, intake_json=?, updated_at=? WHERE id=?')
+    .run(name ?? cur.name, niche !== undefined ? niche : cur.niche, domain !== undefined ? domain : cur.domain, intakeJson, _now(), id);
+  return true;
+}
+function archiveClientProject(id) {
+  const r = getDb().prepare("UPDATE client_projects SET status='archived', updated_at=? WHERE id=?").run(_now(), id);
+  return r.changes > 0;
+}
+function deleteClientProject(id) {
+  const r = getDb().prepare('DELETE FROM client_projects WHERE id=?').run(id);
+  return r.changes > 0;
 }
 // Link/unlink an intake project to its on-disk build dir (P3 hybrid model).
 function linkProjectBuildDir(id, buildDir) {
@@ -4196,6 +4219,7 @@ module.exports = {
   getDb, close,
   // Shopify client projects (P1 intake + P5 preview)
   createClientProject, listClientProjects, getClientProject, seedProjectPages,
+  updateClientProject, archiveClientProject, deleteClientProject,
   linkProjectBuildDir, getProjectByBuildDir,
   listProjectPages, updatePageStatus, createRevision, listRevisions,
   // Agent Runs

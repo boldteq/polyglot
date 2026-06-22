@@ -217,6 +217,13 @@ export const getWorkspaceBuildGates = (buildId: string) =>
 export interface ChangesData { present: boolean; total: number; checked: number; rate: number; waivers: string[]; items: { checked: boolean; text: string }[] }
 export const getWorkspaceBuildChanges = (buildId: string) =>
   request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes`)
+// Editable CHANGES.md (Phase A) — each returns the re-parsed ChangesData.
+export const toggleWorkspaceChange = (buildId: string, index: number, checked: boolean) =>
+  request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes/toggle`, { method: 'POST', body: JSON.stringify({ index, checked }) })
+export const addWorkspaceChangeItem = (buildId: string, text: string) =>
+  request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes/item`, { method: 'POST', body: JSON.stringify({ text }) })
+export const addWorkspaceChangeWaiver = (buildId: string, text: string) =>
+  request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes/waiver`, { method: 'POST', body: JSON.stringify({ text }) })
 
 export const getWorkspaceBuildAgents = (buildId: string) =>
   request<BuildAgentActivity>(`/workspace/builds/${encodeURIComponent(buildId)}/agents`)
@@ -231,6 +238,13 @@ export const getWorkspaceBuildResults = (buildId: string) =>
 
 export interface FileNode { name: string; path: string; dir?: boolean }
 export interface FilesData { buildDir: string; topFiles: { name: string; path: string }[]; tree: { name: string; path: string; children: FileNode[] }[] }
+// Produced-artifact docs (Phase B) — read-only viewers (copy.md, schema, goals…)
+export interface DocEntry { file: string; name: string; kind: string; size: number }
+export const getWorkspaceBuildDocs = (buildId: string) =>
+  request<{ present: boolean; docs: DocEntry[] }>(`/workspace/builds/${encodeURIComponent(buildId)}/docs`)
+export const getWorkspaceBuildDoc = (buildId: string, file: string) =>
+  request<{ file: string; content: string }>(`/workspace/builds/${encodeURIComponent(buildId)}/docs?file=${encodeURIComponent(file)}`)
+
 export const getWorkspaceBuildFiles = (buildId: string) =>
   request<FilesData>(`/workspace/builds/${encodeURIComponent(buildId)}/files`)
 
@@ -275,6 +289,10 @@ export const linkWorkspaceProject = (id: string, buildId: string | null) =>
   request<{ ok: boolean; build_dir: string | null }>(`/workspace/projects/${encodeURIComponent(id)}/link`, {
     method: 'POST', body: JSON.stringify({ buildId }),
   })
+export const updateWorkspaceProject = (id: string, body: { name?: string; niche?: string | null; domain?: string | null }) =>
+  request<{ ok: boolean; project: WorkspaceProject }>(`/workspace/projects/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) })
+export const deleteWorkspaceProject = (id: string, hard = false) =>
+  request<{ ok: boolean; mode: string }>(`/workspace/projects/${encodeURIComponent(id)}${hard ? '?hard=1' : ''}`, { method: 'DELETE' })
 
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
 export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }

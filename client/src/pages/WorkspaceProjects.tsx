@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, AlertTriangle, Plus, Link2, ChevronRight, X } from 'lucide-react'
+import { FolderKanban, RefreshCw, AlertTriangle, Plus, Link2, ChevronRight, X, Pencil, Archive } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { Spinner } from '../components/Skeleton'
 import { toast } from '../components/Toast'
+import { confirmDialog } from '../lib/confirm'
 import ScoreGauge from '../components/workspace/ScoreGauge'
-import { getWorkspaceProjects, createWorkspaceProject, linkWorkspaceProject, type WorkspaceProject, type AssembledBuild } from '../lib/api'
+import { getWorkspaceProjects, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, type WorkspaceProject, type AssembledBuild } from '../lib/api'
 
 function gradeFor(s: number) { return s >= 90 ? 'A' : s >= 80 ? 'B' : s >= 70 ? 'C' : 'BLOCK-RISK' }
 
@@ -20,6 +21,7 @@ export default function WorkspaceProjects() {
   const [error, setError] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [linkFor, setLinkFor] = useState<WorkspaceProject | null>(null)
+  const [editFor, setEditFor] = useState<WorkspaceProject | null>(null)
 
   const load = useCallback(() => {
     setLoading(true); setError(null)
@@ -29,6 +31,13 @@ export default function WorkspaceProjects() {
       .finally(() => setLoading(false))
   }, [])
   useEffect(() => { load() }, [load])
+
+  const archive = useCallback(async (p: WorkspaceProject) => {
+    const ok = await confirmDialog({ title: `Archive ${p.name}?`, message: 'It will be hidden from the list. The linked build on disk is untouched.', confirmLabel: 'Archive' })
+    if (!ok) return
+    try { await deleteWorkspaceProject(p.id); toast('success', 'Project archived'); load() }
+    catch (e) { toast('error', e instanceof Error ? e.message : 'Archive failed') }
+  }, [load])
 
   return (
     <PageShell
@@ -63,11 +72,15 @@ export default function WorkspaceProjects() {
                       </div>
                       <div className="text-[12px] text-text-muted truncate">{p.domain || '—'}{p.build ? ` · step ${p.build.step.current}/18 · score ${p.build.score}` : ' · not linked to a build'}</div>
                     </div>
-                    {p.build ? (
-                      <button onClick={() => nav(`/workspace/builds/${p.build!.buildId}`)} className="btn-ghost btn-sm flex items-center gap-1">Open <ChevronRight className="w-4 h-4" /></button>
-                    ) : (
-                      <button onClick={() => setLinkFor(p)} className="btn-ghost btn-sm flex items-center gap-1 text-[12px]"><Link2 className="w-3.5 h-3.5" /> Link build</button>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => setEditFor(p)} title="Edit project" className="btn-ghost btn-sm p-1.5"><Pencil className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => archive(p)} title="Archive project" className="btn-ghost btn-sm p-1.5 text-text-muted hover:text-red"><Archive className="w-3.5 h-3.5" /></button>
+                      {p.build ? (
+                        <button onClick={() => nav(`/workspace/builds/${p.build!.buildId}`)} className="btn-ghost btn-sm flex items-center gap-1">Open <ChevronRight className="w-4 h-4" /></button>
+                      ) : (
+                        <button onClick={() => setLinkFor(p)} className="btn-ghost btn-sm flex items-center gap-1 text-[12px]"><Link2 className="w-3.5 h-3.5" /> Link build</button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -97,6 +110,7 @@ export default function WorkspaceProjects() {
 
       {showNew && <NewProjectModal onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); load() }} />}
       {linkFor && <LinkBuildModal project={linkFor} builds={unlinked} onClose={() => setLinkFor(null)} onLinked={() => { setLinkFor(null); load() }} />}
+      {editFor && <EditProjectModal project={editFor} onClose={() => setEditFor(null)} onSaved={() => { setEditFor(null); load() }} />}
     </PageShell>
   )
 }
@@ -132,6 +146,27 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
         <div><label className="text-[12px] text-text-muted">Niche</label><input value={niche} onChange={(e) => setNiche(e.target.value)} className="input w-full" placeholder="skincare" /></div>
         <div><label className="text-[12px] text-text-muted">Store domain</label><input value={domain} onChange={(e) => setDomain(e.target.value)} className="input w-full" placeholder="acme.myshopify.com" /></div>
         <button onClick={save} disabled={saving} className="btn-primary btn-sm w-full disabled:opacity-50">{saving ? 'Creating…' : 'Create project'}</button>
+      </div>
+    </Modal>
+  )
+}
+
+function EditProjectModal({ project, onClose, onSaved }: { project: WorkspaceProject; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(project.name); const [niche, setNiche] = useState(project.niche || ''); const [domain, setDomain] = useState(project.domain || '')
+  const [saving, setSaving] = useState(false)
+  const save = async () => {
+    if (!name.trim()) { toast('warn', 'Name is required'); return }
+    setSaving(true)
+    try { await updateWorkspaceProject(project.id, { name: name.trim(), niche: niche.trim() || null, domain: domain.trim() || null }); toast('success', 'Project updated'); onSaved() }
+    catch (e) { toast('error', e instanceof Error ? e.message : 'Update failed') } finally { setSaving(false) }
+  }
+  return (
+    <Modal title="Edit project" onClose={onClose}>
+      <div className="space-y-3">
+        <div><label className="text-[12px] text-text-muted">Brand / name *</label><input value={name} onChange={(e) => setName(e.target.value)} className="input w-full" autoFocus /></div>
+        <div><label className="text-[12px] text-text-muted">Niche</label><input value={niche} onChange={(e) => setNiche(e.target.value)} className="input w-full" /></div>
+        <div><label className="text-[12px] text-text-muted">Store domain</label><input value={domain} onChange={(e) => setDomain(e.target.value)} className="input w-full" /></div>
+        <button onClick={save} disabled={saving} className="btn-primary btn-sm w-full disabled:opacity-50">{saving ? 'Saving…' : 'Save changes'}</button>
       </div>
     </Modal>
   )
