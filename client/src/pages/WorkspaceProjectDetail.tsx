@@ -11,6 +11,7 @@ import ActivityTimeline from '../components/workspace/ActivityTimeline'
 import BriefPanel from '../components/workspace/BriefPanel'
 import MonitoringPanel from '../components/workspace/MonitoringPanel'
 import RepoPanel from '../components/workspace/RepoPanel'
+import PreviewPanel from '../components/workspace/PreviewPanel'
 import WorkflowTab from '../components/workspace/WorkflowTab'
 import GatesTab from '../components/workspace/GatesTab'
 import LensTab from '../components/workspace/LensTab'
@@ -24,6 +25,7 @@ const SECTIONS = [
   { id: 'activity', label: 'Activity' },
   { id: 'brief', label: 'Brief' },
   { id: 'repo', label: 'Repo & files' },
+  { id: 'preview', label: 'Preview' },
   { id: 'workflow', label: 'Workflow' },
   { id: 'gates', label: 'Gates' },
   { id: 'lens', label: 'Lens' },
@@ -99,6 +101,7 @@ export default function WorkspaceProjectDetail() {
                 <Section id="activity" title="Activity"><ActivityTimeline projectId={id!} reloadKey={reloadKey} /></Section>
                 <Section id="brief" title="Brief"><BriefPanel detail={detail} /></Section>
                 <Section id="repo" title="Repo & files"><RepoPanel projectId={id!} reloadKey={reloadKey} /></Section>
+                <Section id="preview" title="Preview">{dir && <PreviewPanel dir={dir} repo={repo} />}</Section>
                 <Section id="workflow" title="Workflow"><WorkflowTab buildId={buildId} reloadKey={reloadKey} onChanged={reloadAll} /></Section>
                 <Section id="gates" title="Gates"><GatesTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 <Section id="lens" title="Lens">{dir && <LensTab buildId={buildId} dir={dir} reloadKey={reloadKey} onChanged={reloadAll} />}</Section>
