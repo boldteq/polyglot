@@ -70,5 +70,31 @@ console.log('(c) NO dna_pack declared + BASELINE_ENFORCE=1 → baseline floor st
   fs.rmSync(packs, { recursive: true, force: true }); fs.rmSync(theme, { recursive: true, force: true })
 }
 
+console.log('(d) pack self-validation — a schema-invalid pack (bad heading_style enum) → dq.pack-schema-invalid warning')
+{
+  const packs = fs.mkdtempSync(path.join(os.tmpdir(), 'dqb-packs-'))
+  // a minimal _schema.json that enforces the heading_style enum (the exact defect the pet DRAFT had)
+  fs.writeFileSync(path.join(packs, '_schema.json'), JSON.stringify({
+    type: 'object',
+    properties: { type_scale: { type: 'object', properties: { heading_style: { enum: ['sans', 'serif', 'serif-display', 'mixed'] } } } },
+  }))
+  // a niche pack with an INVALID heading_style (not in the enum) — like "friendly-humanist-sans"
+  fs.writeFileSync(path.join(packs, 'badpack.json'), JSON.stringify({
+    $schema_version: '1.0', niche: 'BadPack', reference_brands: ['A', 'B', 'C'],
+    type_scale: { ratio: 1.25, ratio_tolerance: 0.08, max_sizes_per_page: 6, heading_style: 'friendly-humanist-sans' },
+    spacing_rhythm: { section_rhythm_px: [56, 96], rhythm_tolerance_px: 16, density: 'comfortable' },
+    canonical_components: { required_min: 1, list: ['hero'] },
+    hero_treatment: { archetype: 'x', carousel_allowed: false },
+    color_roles: { scheme_count_max: 4 }, imagery: { product_ratio: '1:1', hero_ratio: '16:9' }, human_review: ['ok?'],
+  }))
+  const theme = fs.mkdtempSync(path.join(os.tmpdir(), 'dqb-theme-'))
+  fs.mkdirSync(path.join(theme, 'docs', 'design'), { recursive: true })
+  fs.writeFileSync(path.join(theme, 'docs', 'design', 'design-spec.md'), '# spec\ndna_pack: BadPack\ntheme_base: dawn\n')
+  const { rep } = run(theme, packs)
+  const inv = (rep?.warnings || []).filter(w => w.id === 'dq.pack-schema-invalid')
+  inv.length >= 1 && inv.some(w => /heading_style/.test(w.detail)) ? pass('schema-invalid pack flagged (heading_style enum)') : fail(`no dq.pack-schema-invalid for the bad enum: ${[...ids(rep)]}`)
+  fs.rmSync(packs, { recursive: true, force: true }); fs.rmSync(theme, { recursive: true, force: true })
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

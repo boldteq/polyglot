@@ -47,6 +47,7 @@ import path from 'node:path'
 import os from 'node:os'
 import { execFileSync } from 'node:child_process'
 import { writeReport } from './lib/report.mjs'
+import { validate } from './lib/jsonschema.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -108,6 +109,18 @@ function loadBaseline() {
   const file = path.join(PACKS_DIR, '_baseline.json')
   if (!fs.existsSync(file)) return null
   try { return JSON.parse(fs.readFileSync(file, 'utf-8')) } catch { return null }
+}
+
+// PACK SELF-VALIDATION — validate a loaded niche pack against its own _schema.json (PACKS_DIR/_schema.json).
+// A pack that violates the schema (a bad enum like heading_style:"friendly-humanist-sans", a wrong type)
+// silently ships and makes the scoring below unreliable — the 2026-06-22 pet DRAFT had exactly that and
+// nothing caught it. Returns [{path,message}] (empty if the schema is absent/unreadable → no regression).
+function validatePackShape(pack) {
+  const schemaFile = path.join(PACKS_DIR, '_schema.json')
+  if (!fs.existsSync(schemaFile)) return []
+  let schema
+  try { schema = JSON.parse(fs.readFileSync(schemaFile, 'utf-8')) } catch { return [] }
+  try { return validate(pack, schema) } catch { return [] }
 }
 
 // Deep-merge parent (extends) then overlay (overlay wins). Arrays/scalars overwrite, objects merge.
@@ -249,6 +262,15 @@ function main() {
   if (niche) { try { pack = resolvePack(niche) } catch (err) { finish(err.message) } }
   const calibration = pack ? (pack._meta?.calibration || 'missing') : 'missing'
   enforce = FORCE_ENFORCE || calibration === 'tuned'
+
+  // Pack self-validation (2026-06-22) — surface every _schema.json violation so a malformed pack is
+  // caught at the first build that uses it (the pet-draft defect class). Always a warning: it flags the
+  // PACK author, never hard-blocks a theme build on a pack-authoring nit. Schema absent → no-op.
+  if (pack) {
+    for (const e of validatePackShape(pack)) {
+      warnings.push({ id: 'dq.pack-schema-invalid', page: niche ? nicheToFile(niche) : 'pack', detail: `niche pack violates _schema.json — ${e.path}: ${e.message}. Fix the pack (scoring may be unreliable until then).`, evidence: '' })
+    }
+  }
 
   // #19 — baseline floor: an UN-TUNED niche (untuned pack, or no pack at all) still meets a universal
   // premium baseline when BASELINE_ENFORCE=1. Swap to the baseline pack scored AS tuned (reuses every
