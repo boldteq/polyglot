@@ -220,6 +220,10 @@ const GATES = [
   // resolution/aspect/weight at upload (an oversized hero is the #1 LCP killer). Warn-first
   // (IMAGE_QUALITY_STRICT=1 / PORTER_REQUIRE_CONTENT=1 → BLOCK); SKIPS when there's no images dir.
   { name: 'image-quality', number: 34, kind: 'static', runner: 'node', script: 'check-image-quality.mjs' },
+  // Gate 31 — design-review-board: mechanizes the governance-OS §5 8-role sign-off (any block / any
+  // confidence <70 / partial board → fail). Verifies the board-verdict artifact; warn-first (BLOCKS at
+  // publish-grade DS_REQUIRE_SCOPE/DRB_REQUIRE). Makes "the board ran" machine-checkable, not prose.
+  { name: 'design-review-board', number: 31, kind: 'static', runner: 'node', script: 'check-design-review-board.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
