@@ -92,14 +92,25 @@ async function domChecks(page, vpWidth) {
 async function addToCartFlow(page, origin, password) {
   // before count
   const before = await page.evaluate(async () => { try { return (await (await fetch('/cart.js')).json()).item_count } catch { return null } })
-  const form = page.locator('form[action*="/cart/add"]').first()
-  if (await form.count() === 0) return { ok: false, reason: 'no add-to-cart form (form[action*="/cart/add"]) on PDP' }
+  const SUBMIT_SEL = 'button[type="submit"], button[name="add"], [data-add-to-cart], input[type="submit"]'
+  const forms = page.locator('form[action*="/cart/add"]')
+  const formCount = await forms.count()
+  if (formCount === 0) return { ok: false, reason: 'no add-to-cart form (form[action*="/cart/add"]) on PDP' }
+  // Select the FIRST cart/add form that actually carries a submit control. Shop Pay installments
+  // (<shopify-payment-terms>) renders its OWN submit-less form[action*="/cart/add"] that frequently
+  // precedes the real product form — blindly taking .first() would false-BLOCK a working store.
+  let form = null
+  for (let i = 0; i < formCount; i += 1) {
+    const f = forms.nth(i)
+    if (await f.locator(SUBMIT_SEL).count() > 0) { form = f; break }
+  }
+  if (!form) return { ok: false, reason: 'add-to-cart form present but no submit control found' }
   // pick a variant if a <select>/radio inside the form is unselected
   try {
     const sel = form.locator('select[name="id"], select[name*="option"]').first()
     if (await sel.count() > 0) { const v = await sel.locator('option').nth(0).getAttribute('value'); if (v) await sel.selectOption(v).catch(() => {}) }
   } catch { /* best-effort variant pick */ }
-  const submit = form.locator('button[type="submit"], button[name="add"], [data-add-to-cart], input[type="submit"]').first()
+  const submit = form.locator(SUBMIT_SEL).first()
   if (await submit.count() === 0) return { ok: false, reason: 'add-to-cart form present but no submit control found' }
   try { await submit.scrollIntoViewIfNeeded(); await submit.click({ timeout: 8000 }) }
   catch (e) { return { ok: false, reason: `add-to-cart click failed: ${e.message.split('\n')[0]}` } }
