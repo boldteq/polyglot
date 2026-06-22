@@ -126,6 +126,14 @@ function publicRec(rec) {
 
 function getRun(id) { return publicRec(runs.get(id)); }
 
+// All runs for a build (newest first) — feeds the project activity timeline.
+function listRuns({ buildId } = {}) {
+  return [...runs.values()]
+    .filter((r) => !buildId || r.buildId === buildId)
+    .sort((a, b) => b.startedMs - a.startedMs)
+    .map(publicRec);
+}
+
 // Cancel a running action (best-effort SIGTERM).
 function cancelRun(id) {
   const rec = runs.get(id);
@@ -133,4 +141,4 @@ function cancelRun(id) {
   return false;
 }
 
-module.exports = { runAction, runStaticGates, getRun, cancelRun };
+module.exports = { runAction, runStaticGates, getRun, cancelRun, listRuns };

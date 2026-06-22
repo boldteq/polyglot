@@ -33,6 +33,9 @@ const { bus, startDiskWatcher } = require('../lib/workspace/diskWatcher');
 const { startGateHarvester } = require('../lib/gateFindings');
 const { startIndexer } = require('../lib/workspace/indexer');
 const actionRunner = require('../lib/workspace/actionRunner');
+const { syncProjectsFromDisk } = require('../lib/workspace/projectSync');
+const { readGitStatus, readThemeLock } = require('../lib/workspace/gitStatus');
+const { buildProjectActivity } = require('../lib/workspace/projectActivity');
 
 const router = Router();
 
@@ -346,25 +349,19 @@ function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''
 // have no project row, so the UI can offer to link them.
 router.get('/workspace/projects', (_req, res) => {
   try {
-    const builds = listBuilds();
-    const byDir = new Map(builds.map((b) => [b.dir, b]));
-    const projects = db.listClientProjects();
-    for (const p of projects) {
-      // auto-link: match an unlinked project to a build by client/domain/name
-      if (!p.build_dir) {
-        const key = norm(p.domain) || norm(p.name);
-        const match = builds.find((b) => norm(b.client) === key || norm(b.store).includes(key) || norm(b.dir).includes(key));
-        if (match && key) { db.linkProjectBuildDir(p.id, match.dir); p.build_dir = match.dir; }
-      }
-      p.build = p.build_dir ? (byDir.get(p.build_dir) || null) : null;
-    }
-    const linked = new Set(projects.map((p) => p.build_dir).filter(Boolean));
-    const unlinkedBuilds = builds.filter((b) => !linked.has(b.dir));
-    res.json({ projects, unlinkedBuilds });
+    // auto-link existing projects + auto-adopt discovered builds → one unified list.
+    res.json(syncProjectsFromDisk(listBuilds));
   } catch (err) {
     console.error('[workspace] /projects failed:', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// POST /api/workspace/projects/sync — explicit rescan/adopt (idempotent). Must be
+// registered BEFORE '/workspace/projects/:id' so 'sync' isn't matched as an :id.
+router.post('/workspace/projects/sync', (_req, res) => {
+  try { res.json(syncProjectsFromDisk(listBuilds)); }
+  catch (err) { console.error('[workspace] /projects/sync failed:', err.message); res.status(500).json({ error: err.message }); }
 });
 
 // POST /api/workspace/projects — create an intake project (panel "New Project").
@@ -420,6 +417,59 @@ router.post('/workspace/projects/:id/link', (req, res) => {
     res.json({ ok: true, build_dir: resolved });
   } catch (err) {
     console.error('[workspace] link project failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/workspace/projects/:id — project row merged with its live build (via
+// build_dir). Null-safe for intake-only projects (no build yet).
+router.get('/workspace/projects/:id', (req, res) => {
+  try {
+    const project = db.getClientProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'project not found' });
+    let build = null, buildId = null, artifacts = {};
+    if (project.build_dir && fs.existsSync(project.build_dir)) {
+      build = assembleBuild(project.build_dir);
+      buildId = build.buildId;
+      registerDirs([project.build_dir]);
+      const art = findBuildArtifacts(project.build_dir);
+      artifacts = Object.fromEntries(Object.entries(art).map(([k, v]) => [k, v.exists]));
+    }
+    res.json({ project, build, buildId, artifacts, hasBuild: !!build });
+  } catch (err) {
+    console.error('[workspace] /projects/:id failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/workspace/projects/:id/repo — repo connection: path + read-only git
+// state + theme-lock + shallow file tree. Dir is server-resolved (never a param).
+router.get('/workspace/projects/:id/repo', (req, res) => {
+  try {
+    const project = db.getClientProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'project not found' });
+    const dir = project.build_dir;
+    if (!dir || !fs.existsSync(dir)) return res.json({ connected: false, build_dir: dir || null });
+    res.json({ connected: true, build_dir: dir, git: readGitStatus(dir), themeLock: readThemeLock(dir), files: readBuildFiles(dir) });
+  } catch (err) {
+    console.error('[workspace] /projects/:id/repo failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/workspace/projects/:id/activity?limit&since — unified history timeline.
+router.get('/workspace/projects/:id/activity', (req, res) => {
+  try {
+    const project = db.getClientProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'project not found' });
+    if (!project.build_dir || !fs.existsSync(project.build_dir)) return res.json({ events: [], nextSince: null, total: 0 });
+    const build = assembleBuild(project.build_dir);
+    registerDirs([project.build_dir]);
+    const limit = Number(req.query.limit) || 50;
+    const since = typeof req.query.since === 'string' ? req.query.since : null;
+    res.json(buildProjectActivity({ build, dir: project.build_dir, buildId: build.buildId, limit, since }));
+  } catch (err) {
+    console.error('[workspace] /projects/:id/activity failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

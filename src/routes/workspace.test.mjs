@@ -295,6 +295,78 @@ test('Phase C: lens:run is registered + env-gated unavailable (chain action)', a
   assert.match(lens.unavailableReason || '', /THEME_PREVIEW_URL/);
 });
 
+// ── Redesign P1 — project-centric routes ─────────────────────────────────────
+test('projects/sync is idempotent + auto-adopts (unlinkedBuilds empties)', async () => {
+  const first = await post('/api/workspace/projects/sync');
+  assert.equal(first.status, 200);
+  assert.ok(Array.isArray(first.json.projects));
+  assert.equal(first.json.unlinkedBuilds.length, 0, 'every build should own a project after adopt');
+  // every project with a build_dir is unique (no dupes)
+  const dirs = first.json.projects.map((p) => p.build_dir).filter(Boolean);
+  assert.equal(dirs.length, new Set(dirs).size, 'no duplicate build_dir across projects');
+  // 2nd sync adopts nothing new
+  const second = await post('/api/workspace/projects/sync');
+  assert.equal(second.json.adopted, 0);
+  assert.equal(second.json.projects.length, first.json.projects.length);
+});
+
+test('GET /projects/:id merges build (or hasBuild:false for intake-only)', async () => {
+  const list = await get('/api/workspace/projects');
+  const withBuild = list.json.projects.find((p) => p.build_dir);
+  if (withBuild) {
+    const d = await get(`/api/workspace/projects/${withBuild.id}`);
+    assert.equal(d.status, 200);
+    assert.equal(d.json.hasBuild, true);
+    assert.ok(d.json.build && typeof d.json.build.score === 'number');
+    assert.equal(typeof d.json.buildId, 'string');
+  }
+  // intake-only: create a project with no build_dir
+  const created = await postJson('/api/workspace/projects', { name: 'WSTEST intake only', niche: 'x' });
+  if (created.json && created.json.id) {
+    const d = await get(`/api/workspace/projects/${created.json.id}`);
+    assert.equal(d.json.hasBuild, false);
+    assert.equal(d.json.build, null);
+    const db = require('../db.js');
+    db.deleteClientProject?.(created.json.id); // cleanup
+  }
+});
+
+test('GET /projects/:id/repo returns git + theme-lock + tree (or connected:false)', async () => {
+  const list = await get('/api/workspace/projects');
+  const withBuild = list.json.projects.find((p) => p.build_dir);
+  if (!withBuild) return;
+  const r = await get(`/api/workspace/projects/${withBuild.id}/repo`);
+  assert.equal(r.status, 200);
+  assert.equal(r.json.connected, true);
+  assert.ok(r.json.git && typeof r.json.git.isRepo === 'boolean');
+  if (r.json.git.isRepo) assert.equal(typeof r.json.git.branch, 'string');
+  assert.ok(Array.isArray(r.json.files.tree));
+});
+
+test('GET /projects/:id/activity returns sorted bounded events', async () => {
+  const list = await get('/api/workspace/projects');
+  const withBuild = list.json.projects.find((p) => p.build_dir);
+  if (!withBuild) return;
+  const a = await get(`/api/workspace/projects/${withBuild.id}/activity?limit=5`);
+  assert.equal(a.status, 200);
+  assert.ok(Array.isArray(a.json.events) && a.json.events.length <= 5);
+  for (const e of a.json.events) assert.ok(e.ts && e.kind && e.actor && e.summary);
+  // sorted desc
+  for (let i = 1; i < a.json.events.length; i += 1) {
+    assert.ok(new Date(a.json.events[i - 1].ts) >= new Date(a.json.events[i].ts));
+  }
+  // future since → empty
+  const future = await get(`/api/workspace/projects/${withBuild.id}/activity?since=${encodeURIComponent('2999-01-01T00:00:00Z')}`);
+  assert.equal(future.json.events.length, 0);
+});
+
+test('project routes 404 (not 500) on unknown id', async () => {
+  for (const suffix of ['', '/repo', '/activity']) {
+    const r = await get(`/api/workspace/projects/nope-xyz-123${suffix}`);
+    assert.equal(r.status, 404);
+  }
+});
+
 test('Per-build dispatches route returns present flag + turns shape', async () => {
   const list = await get('/api/workspace/builds');
   if (!list.json.builds.length) return;

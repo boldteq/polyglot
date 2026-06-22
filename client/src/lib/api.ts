@@ -298,6 +298,32 @@ export const updateWorkspaceProject = (id: string, body: { name?: string; niche?
 export const deleteWorkspaceProject = (id: string, hard = false) =>
   request<{ ok: boolean; mode: string }>(`/workspace/projects/${encodeURIComponent(id)}${hard ? '?hard=1' : ''}`, { method: 'DELETE' })
 
+// Redesign P1 — project-centric: detail, repo connection, unified activity, sync.
+export interface ProjectDetail {
+  project: WorkspaceProject & { intake?: Record<string, unknown> }
+  build: AssembledBuild | null; buildId: string | null
+  artifacts: Record<string, boolean>; hasBuild: boolean
+}
+export const getWorkspaceProject = (id: string) =>
+  request<ProjectDetail>(`/workspace/projects/${encodeURIComponent(id)}`)
+
+export interface GitState { isRepo: boolean; branch?: string; dirty?: number; clean?: boolean; ahead?: number | null; behind?: number | null; lastCommit?: { hash: string; subject: string; ts: string } | null }
+export interface RepoData {
+  connected: boolean; build_dir: string | null
+  git?: GitState; themeLock?: { store: string | null; themeName: string | null; themeId: string | null } | null
+  files?: FilesData
+}
+export const getWorkspaceProjectRepo = (id: string) =>
+  request<RepoData>(`/workspace/projects/${encodeURIComponent(id)}/repo`)
+
+export interface ActivityEvent { ts: string; kind: 'dispatch' | 'action' | 'gate' | 'score' | 'cost' | 'changes'; actor: string; summary: string; detail?: string; link?: string }
+export const getWorkspaceProjectActivity = (id: string, opts: { limit?: number; since?: string } = {}) =>
+  request<{ events: ActivityEvent[]; nextSince: string | null; total: number }>(
+    `/workspace/projects/${encodeURIComponent(id)}/activity?limit=${opts.limit ?? 50}${opts.since ? `&since=${encodeURIComponent(opts.since)}` : ''}`)
+
+export const syncWorkspaceProjects = () =>
+  request<{ projects: WorkspaceProject[]; unlinkedBuilds: AssembledBuild[]; adopted: number }>(`/workspace/projects/sync`, { method: 'POST' })
+
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
 export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }
 export interface ProjectPage { slug: string; title: string; status: string; preview_url: string | null; gates: Record<string, unknown>; updated_at: string | null }
