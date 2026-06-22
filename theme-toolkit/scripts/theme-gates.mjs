@@ -583,6 +583,13 @@ async function runGates(args) {
 }
 
 // ── main ──────────────────────────────────────────────────────────────────
+// --list-json prints the manifest as machine-readable JSON (number/name/kind/runner/script) — the
+// single source of truth for tooling that must reason about the gate stack (the stack-coherence
+// meta-test, the workspace dashboard). Additive; never read GATES[] by parsing this file's text.
+if (process.argv.includes('--list-json')) {
+  console.log(JSON.stringify(GATES.map(g => ({ number: g.number, name: g.name, kind: g.kind, runner: g.runner, script: g.script })), null, 2))
+  process.exit(0)
+}
 // --list prints the live gate manifest (number · name · kind · script). Ground any gap-audit
 // in THIS, not from memory — agent audits go stale fast (atrium's 2026-06-19 audit claimed gates
 // missing that already shipped). One command = the current source of truth.
