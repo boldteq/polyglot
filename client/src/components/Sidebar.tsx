@@ -166,19 +166,19 @@ export default function Sidebar({ projects }: SidebarProps) {
 
   // Live unresolved error badge via SSE (fallback poll on disconnect)
   useEffect(() => {
-    getErrorLogCount().then(r => setUnresolvedErrors(r.unresolved)).catch(() => {})
+    getErrorLogCount().then(r => setUnresolvedErrors(r.unresolved)).catch(err => console.error('[sidebar] error-count fetch failed:', err instanceof Error ? err.message : err))
     const es = subscribeLogStream((ev) => {
       if (ev.type === 'ready') setUnresolvedErrors(ev.unresolved)
       else if (ev.type === 'new_error' && ev.entry.resolved === 0) setUnresolvedErrors(n => n + 1)
       else if (ev.type === 'resolved') setUnresolvedErrors(n => Math.max(0, n - 1))
-      else if (ev.type === 'cleared') getErrorLogCount().then(r => setUnresolvedErrors(r.unresolved)).catch(() => {})
+      else if (ev.type === 'cleared') getErrorLogCount().then(r => setUnresolvedErrors(r.unresolved)).catch(err => console.error('[sidebar] error-count refetch failed:', err instanceof Error ? err.message : err))
     })
     return () => es.close()
   }, [])
 
   // Live pending-learning badge via SSE (fallback poll on disconnect)
   useEffect(() => {
-    getLearningInboxCounts().then(r => setPendingLearning(r.pending)).catch(() => {})
+    getLearningInboxCounts().then(r => setPendingLearning(r.pending)).catch(err => console.error('[sidebar] learning-count fetch failed:', err instanceof Error ? err.message : err))
     const es = subscribeLearningStream((ev) => {
       if (ev.type === 'ready') setPendingLearning(ev.pending)
       else if (ev.type === 'candidate') setPendingLearning(n => n + (ev.staged || 1))
@@ -191,7 +191,7 @@ export default function Sidebar({ projects }: SidebarProps) {
   // (e.g. Ollama/Claude offline) app-wide so it's not silently invisible.
   useEffect(() => {
     let alive = true
-    const poll = () => getSystemStatus().then(s => { if (alive) setSystemState(s.overall) }).catch(() => {})
+    const poll = () => getSystemStatus().then(s => { if (alive) setSystemState(s.overall) }).catch(err => console.error('[sidebar] system-status poll failed:', err instanceof Error ? err.message : err))
     poll()
     const id = setInterval(poll, 60000)
     return () => { alive = false; clearInterval(id) }
