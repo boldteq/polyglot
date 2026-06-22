@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Handshake, Send, Copy, Check, Square, ShieldCheck, MessageSquareText } from 'lucide-react'
+import { Handshake, Send, Copy, Check, Square, ShieldCheck, MessageSquareText, History } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { toast } from '../components/Toast'
@@ -39,6 +39,9 @@ function buildPrompt(chat: string, situation: typeof SITUATIONS[number]): string
   ].join('\n')
 }
 
+const RECENTS_KEY = 'sales.recents.v1'
+interface RecentDraft { id: string; chat: string; situation: SituationId; reply: string; ts: number }
+
 export default function Sales() {
   const { data: agents } = useApi(getUnifiedAgents, [], CacheKeys.unifiedAgents)
   const sway = (agents || []).find(a => a.filename === 'sway.md' || /sway/i.test(a.name || ''))
@@ -50,6 +53,16 @@ export default function Sales() {
   const [streaming, setStreaming] = useState(false)
   const [copied, setCopied] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const [recents, setRecents] = useState<RecentDraft[]>(() => {
+    try { return JSON.parse(localStorage.getItem(RECENTS_KEY) || '[]') as RecentDraft[] } catch { return [] }
+  })
+  const saveRecent = useCallback((d: RecentDraft) => setRecents(prev => {
+    const next = [d, ...prev].slice(0, 8)
+    try { localStorage.setItem(RECENTS_KEY, JSON.stringify(next)) } catch { /* quota */ }
+    return next
+  }), [])
+  const loadRecent = useCallback((d: RecentDraft) => { setChat(d.chat); setSituation(d.situation); setReply(d.reply); setCopied(false) }, [])
+  const clearRecents = useCallback(() => { setRecents([]); try { localStorage.removeItem(RECENTS_KEY) } catch { /* noop */ } }, [])
 
   const stop = useCallback(() => { abortRef.current?.abort(); setStreaming(false) }, [])
 
@@ -72,6 +85,7 @@ export default function Sales() {
       const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
+      let full = ''
       for (;;) {
         const { value, done } = await reader.read()
         if (done) break
@@ -83,19 +97,20 @@ export default function Sales() {
           if (!t.startsWith('data: ')) continue
           try {
             const ev = JSON.parse(t.slice(6)) as { type: string; content?: string; output?: string; error?: string }
-            if (ev.type === 'chunk' && ev.content) setReply(r => r + ev.content)
-            else if (ev.type === 'done') { if (ev.output) setReply(ev.output); }
+            if (ev.type === 'chunk' && ev.content) { full += ev.content; setReply(r => r + ev.content) }
+            else if (ev.type === 'done') { if (ev.output) { full = ev.output; setReply(ev.output) } }
             else if (ev.type === 'error') throw new Error(ev.error || 'Sway run errored')
           } catch (e) { if (e instanceof Error && /run errored|Sway/.test(e.message)) throw e }
         }
       }
+      if (full.trim()) saveRecent({ id: Date.now().toString(36), chat, situation, reply: full, ts: Date.now() })
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') { /* user stopped */ }
       else toast('error', err instanceof Error ? err.message : 'Dispatch failed')
     } finally {
       setStreaming(false); abortRef.current = null
     }
-  }, [chat, situation])
+  }, [chat, situation, saveRecent])
 
   const copyReply = useCallback(async () => {
     try { await navigator.clipboard.writeText(reply); setCopied(true); setTimeout(() => setCopied(false), 1500) }
@@ -189,6 +204,31 @@ export default function Sales() {
           )}
         </div>
       </div>
+
+      {/* Recent drafts — persisted locally, click to reload into the composer */}
+      {recents.length > 0 && (
+        <div className="card p-4 mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm font-semibold"><History className="w-4 h-4 text-accent" /> Recent drafts</div>
+            <button onClick={clearRecents} className="btn-ghost btn-sm text-text-muted">Clear</button>
+          </div>
+          <div className="space-y-1.5">
+            {recents.map(d => (
+              <button
+                key={d.id}
+                onClick={() => loadRecent(d)}
+                className="w-full text-left rounded-lg border border-border-subtle bg-surface-2/30 px-3 py-2 hover:border-accent/30 hover:bg-surface-2/60 transition-colors"
+              >
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="font-medium text-text">{SITUATIONS.find(s => s.id === d.situation)?.label ?? d.situation}</span>
+                  <span className="text-text-muted">· {new Date(d.ts).toLocaleString()}</span>
+                </div>
+                <div className="text-xs text-text-muted truncate mt-0.5">{d.reply.slice(0, 120)}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Capabilities — the 7 sales situations Sway is trained + scored on */}
       <div className="card p-4 mt-4">
