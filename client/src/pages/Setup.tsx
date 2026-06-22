@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
+import { writeToClipboard } from '../lib/clipboard'
 import { toast } from '../components/Toast'
 import { getConfig } from '../lib/api'
 import { PageShell } from '../components/PageShell'
@@ -116,8 +117,10 @@ function StatusCard({
 
 function CodeBlock({ code, lang = 'bash' }: { code: string; lang?: string }) {
   const [copied, setCopied] = useState(false)
-  const copy = () => {
-    navigator.clipboard.writeText(code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
+  const copy = async () => {
+    if (!(await writeToClipboard(code))) return
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
   return (
     <div className="relative group">

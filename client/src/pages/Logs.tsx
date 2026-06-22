@@ -33,6 +33,7 @@ import {
 import { toast } from '../components/Toast'
 import { PageShell } from '../components/PageShell'
 import { confirmDialog } from '../lib/confirm'
+import { writeToClipboard } from '../lib/clipboard'
 
 // ── Source metadata ──────────────────────────────────────────────────────────
 
@@ -260,17 +261,15 @@ export default function LogsPage() {
     }
   }
 
-  const handleCopy = (entry: ErrorLogEntry) => {
-    navigator.clipboard.writeText(buildClaudeBlock(entry))
-    toast('success', 'Copied — paste into Claude')
+  const handleCopy = async (entry: ErrorLogEntry) => {
+    if (await writeToClipboard(buildClaudeBlock(entry))) toast('success', 'Copied — paste into Claude')
   }
 
-  const handleCopyAll = () => {
+  const handleCopyAll = async () => {
     const unres = filtered.filter(e => e.resolved === 0)
     if (!unres.length) { toast('error', 'No unresolved errors'); return }
     const block = unres.map((e, i) => `--- Error ${i + 1} of ${unres.length} ---\n${buildClaudeBlock(e)}`).join('\n\n')
-    navigator.clipboard.writeText(block)
-    toast('success', `Copied ${unres.length} error${unres.length !== 1 ? 's' : ''} for Claude`)
+    if (await writeToClipboard(block)) toast('success', `Copied ${unres.length} error${unres.length !== 1 ? 's' : ''} for Claude`)
   }
 
   const handleClear = async (all: boolean) => {

@@ -11,6 +11,7 @@ import {
   getActiveAiRun, cancelAiRun } from '../lib/api'
 import { toast } from './Toast'
 import { confirmDialog } from '../lib/confirm'
+import { writeToClipboard } from '../lib/clipboard'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface Props {
@@ -829,8 +830,8 @@ export default function AiAssistant({ open, onClose }: Props) {
 
   // ─── Copy ─────────────────────────────────────────────────────────────
 
-  const copyText = (text: string, idx: number) => {
-    navigator.clipboard.writeText(text)
+  const copyText = async (text: string, idx: number) => {
+    if (!(await writeToClipboard(text))) return
     setCopiedIdx(idx)
     setTimeout(() => setCopiedIdx(null), 2000)
   }

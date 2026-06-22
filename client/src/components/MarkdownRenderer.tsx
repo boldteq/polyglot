@@ -4,11 +4,12 @@ import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { Copy, Check, Terminal } from 'lucide-react'
+import { writeToClipboard } from '../lib/clipboard'
 
 function CopyButton({ text, size = 'sm' }: { text: string; size?: 'sm' | 'md' }) {
   const [copied, setCopied] = useState(false)
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text)
+  const handleCopy = async () => {
+    if (!(await writeToClipboard(text))) return
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

@@ -28,6 +28,7 @@ import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHisto
 import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate, OrchestrationRun, OrchestrationStep } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
+import { writeToClipboard } from '../lib/clipboard'
 import { formatAgentDisplay } from '../lib/agentDisplay'
 import type { UnifiedAgent } from '../types'
 import { toast } from '../components/Toast'
@@ -830,8 +831,8 @@ export default function Orchestration() {
 
   const finalOutput = runLog.find(l => l.type === 'complete')?.finalOutput || ''
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => toast('success', 'Copied'))
+  const copyToClipboard = async (text: string) => {
+    if (await writeToClipboard(text)) toast('success', 'Copied')
   }
 
   const showNodeEdit = !!selectedNode && !showRunPanel
