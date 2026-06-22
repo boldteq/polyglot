@@ -270,6 +270,31 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
   const send = (data) => { runRegistry.broadcast(run, data); return true; };
   const sendComment = (text) => { runRegistry.broadcastComment(run, text); return true; };
 
+  // ── FIRST BYTE IMMEDIATELY ──────────────────────────────────────────────
+  // Emit `start` + begin the heartbeat the instant the socket is established,
+  // BEFORE any cold agent-file / thread-DB / binary-resolution / spawn work. On a
+  // cold first run that work is slow, and until the first byte flows the browser's
+  // idle-watchdog can abort with "No bytes received for 180s". This guarantees the
+  // client sees a byte within ~1s regardless of cold-start. `start` is idempotent
+  // client-side (only sets ids + resets the idle timer); the error paths below
+  // still emit their own terminal `error` event after this.
+  const cfgWallTimeout = configService.getConfig('time.playground_wall_timeout_ms');
+  const cfgIdleTimeout = configService.getConfig('time.playground_idle_timeout_ms');
+  const cfgHeartbeat = configService.getConfig('time.playground_heartbeat_ms');
+  const defaultWall = typeof cfgWallTimeout === 'number' ? cfgWallTimeout : 120000;
+  const timeout = Math.max(5000, Math.min(timeoutMs ?? defaultWall, 600000));
+  const IDLE_MS = Number(process.env.PLAYGROUND_IDLE_MS) || (typeof cfgIdleTimeout === 'number' ? cfgIdleTimeout : 90000);
+  const HEARTBEAT_MS = Number(process.env.PLAYGROUND_HEARTBEAT_MS) || (typeof cfgHeartbeat === 'number' ? cfgHeartbeat : 15000);
+
+  const playgroundStartTime = Date.now();
+  send({ type: 'start', agent: agentName || 'custom', historyId, threadId: threadId || null, reqId });
+
+  // Heartbeat now too — so even if spawn() takes >HEARTBEAT_MS the stream never
+  // idles. The pre-spawn early-return error paths below clear it explicitly
+  // (they bypass finish(), which is the normal place this is cleared).
+  const heartbeatTimer = setInterval(() => sendComment('hb ' + Date.now()), HEARTBEAT_MS);
+  if (typeof heartbeatTimer.unref === 'function') heartbeatTimer.unref();
+
   let instructions = '';
   if (agentName) {
     const config = loadConfig();
@@ -279,6 +304,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       send({ type: 'error', error: 'Invalid agent name' });
       logAgentRun({ agentName: 'invalid', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'invalid_agent_name', metadata: { reqId } });
       persistPlaygroundRow({ historyId, agentName, prompt: userPrompt, output: '', duration: 0, status: 'error', error: 'invalid_agent_name', reqId, threadId });
+      clearInterval(heartbeatTimer);
       runRegistry.markDone(run);
       return;
     }
@@ -298,6 +324,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
       });
       logAgentRun({ agentName: agentName || 'custom', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'agent_not_found', metadata: { reqId, tried: lookup.tried } });
       persistPlaygroundRow({ historyId, agentName, prompt: userPrompt, output: '', duration: 0, status: 'error', error: 'agent_not_found', reqId, threadId });
+      clearInterval(heartbeatTimer);
       runRegistry.markDone(run);
       return;
     }
@@ -390,15 +417,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     fullPrompt = userPrompt;
   }
 
-  // Resolve timeouts + binary path from app_config (with env override fallback)
-  const cfgWallTimeout = configService.getConfig('time.playground_wall_timeout_ms');
-  const cfgIdleTimeout = configService.getConfig('time.playground_idle_timeout_ms');
-  const cfgHeartbeat = configService.getConfig('time.playground_heartbeat_ms');
-  const defaultWall = typeof cfgWallTimeout === 'number' ? cfgWallTimeout : 120000;
-  const timeout = Math.max(5000, Math.min(timeoutMs ?? defaultWall, 600000));
-  const IDLE_MS = Number(process.env.PLAYGROUND_IDLE_MS) || (typeof cfgIdleTimeout === 'number' ? cfgIdleTimeout : 90000);
-  const HEARTBEAT_MS = Number(process.env.PLAYGROUND_HEARTBEAT_MS) || (typeof cfgHeartbeat === 'number' ? cfgHeartbeat : 15000);
-
+  // (timeouts/heartbeat config resolved up top, before the early `start` byte)
   const claudePath = claudeBinary.getClaudePath();
   if (!claudePath) {
     const pre = claudeBinary.runPreflight();
@@ -412,6 +431,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     });
     logAgentRun({ agentName: agentName || 'custom', prompt: userPrompt, output: '', source: req.body.source || 'playground', duration: 0, status: 'error', error: 'claude_binary_missing', metadata: { reqId } });
     persistPlaygroundRow({ historyId, agentName, prompt: userPrompt, output: '', duration: 0, status: 'error', error: 'claude_binary_missing', reqId, threadId });
+    clearInterval(heartbeatTimer);
     runRegistry.markDone(run);
     return;
   }
@@ -512,8 +532,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
   }, 5000);
   if (typeof idleTimer.unref === 'function') idleTimer.unref();
 
-  const heartbeatTimer = setInterval(() => sendComment('hb ' + Date.now()), HEARTBEAT_MS);
-  if (typeof heartbeatTimer.unref === 'function') heartbeatTimer.unref();
+  // (heartbeatTimer started up top, before the early `start` byte)
 
   const finish = () => {
     if (ended) return;
@@ -528,8 +547,7 @@ router.post('/playground/run', rateLimit('heavy'), (req, res) => {
     runRegistry.markDone(run);
   };
 
-  const playgroundStartTime = Date.now();
-  send({ type: 'start', agent: agentName || 'custom', historyId, threadId: threadId || null, reqId });
+  // (`start` already emitted up top, before the cold agent/thread/binary/spawn work)
 
   // Parse one newline-delimited stream-json event. Forwards text deltas as
   // `chunk` (live typing) and tool-use as `activity`. Never throws — a malformed

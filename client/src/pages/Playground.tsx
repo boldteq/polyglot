@@ -448,17 +448,37 @@ export default function Playground() {
     return () => el.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Settings panel: close on Escape or click outside.
+  // Settings panel: close on Escape or click outside; move focus in on open and
+  // restore it to the trigger on close (modal-drawer a11y).
   useEffect(() => {
     if (!showSettings) return
+    const trigger = document.activeElement as HTMLElement | null
+    const focusTimer = setTimeout(() => {
+      settingsRef.current?.querySelector<HTMLElement>('input, textarea, select, button')?.focus()
+    }, 60)
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowSettings(false) }
     const onDown = (e: MouseEvent) => {
       if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false)
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onDown)
-    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onDown) }
+    return () => {
+      clearTimeout(focusTimer)
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onDown)
+      trigger?.focus?.()  // restore focus to whatever opened the drawer
+    }
   }, [showSettings])
+
+  // Row-actions (⋮) menu: Escape closes it + move focus to the first item on open
+  // so it's fully keyboard-operable.
+  useEffect(() => {
+    if (!rowMenu) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setRowMenu(null) }
+    document.addEventListener('keydown', onKey)
+    const t = setTimeout(() => document.querySelector<HTMLElement>('[role="menu"] [role="menuitem"]')?.focus(), 40)
+    return () => { document.removeEventListener('keydown', onKey); clearTimeout(t) }
+  }, [rowMenu])
 
   // ─── Click outside agent picker ───────────────────────────────────────
 
@@ -543,7 +563,11 @@ export default function Playground() {
     getPlaygroundThread(id).then(thread => {
       activeThreadIdRef.current = thread.id
       setActiveThreadId(thread.id)
-      if (thread.agentName) setSelectedAgent(thread.agentName)
+      // Only adopt the thread's agent if it still exists — a deleted agent would
+      // leave a phantom selection where the header shows a name with no agent.
+      if (thread.agentName && allAgents.some(a => a.filename === thread.agentName || a.name === thread.agentName)) {
+        setSelectedAgent(thread.agentName)
+      }
       // Bubbles come straight from the structured thread messages (no parsing).
       setMessages((thread.messages || []).map(m => ({
         id: m.id || genId(),
@@ -554,13 +578,19 @@ export default function Playground() {
       setLiveUserMsg('')
       setTranscriptPrefix('')
       currentTurnRef.current = ''
+      // Reset transient per-run UI so a prior run's state can't bleed into the
+      // opened conversation (activity feed + any open rating form).
+      setActivityLog([])
+      setShowRating(false)
+      setRatingIssue('')
+      setRatingCorrection('')
       // `output` mirrors the latest answer so copy/export/fullscreen keep working.
       const lastAgent = [...(thread.messages || [])].reverse().find(m => m.role === 'assistant')
       setOutput(lastAgent?.content || '')
       setRunState(thread.messages?.some(m => m.role === 'assistant' && m.status !== 'success') ? 'error' : 'success')
       atBottomRef.current = true   // open a thread scrolled to its latest turn
     }).catch(err => apiError('Open thread', err))
-  }, [running])
+  }, [running, allAgents])
 
   // Optimistic, race-safe delete: remove from the list instantly, mark the id so
   // any in-flight refresh can't bring it back, then sync the server. On failure,
@@ -1087,7 +1117,11 @@ export default function Playground() {
         try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ }
         openThread(threadId)
       }
-    }).catch(() => { try { localStorage.removeItem(ACTIVE_RUN_KEY) } catch { /* */ } })
+    }).catch((err) => {
+      // A NETWORK/API failure here is transient — KEEP the marker so a later
+      // reload can retry the reconnect (only a definitive "not active" clears it).
+      console.warn('[playground] active-run check failed; will retry on next load:', err?.message || err)
+    })
   }, [reattachRun, openThread])
 
   // ─── Actions ──────────────────────────────────────────────────────────
@@ -1201,7 +1235,7 @@ export default function Playground() {
   // Fullscreen output overlay
   if (fullscreenOutput) {
     return (
-      <div className="fixed inset-0 z-50 bg-bg flex flex-col">
+      <div className="fixed inset-0 z-50 bg-bg flex flex-col chat-fade-in">
         <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-surface shrink-0">
           <p className="text-sm font-medium text-text flex items-center gap-2">
             <Terminal className="w-4 h-4 text-accent" />
@@ -1274,8 +1308,8 @@ export default function Playground() {
             <div
               role="menu"
               aria-label="Conversation actions"
-              className="fixed z-[81] w-44 bg-surface border border-border rounded-xl shadow-pop py-1 text-text"
-              style={{ top: Math.min(rowMenu.y + 4, window.innerHeight - 170), left: Math.max(8, rowMenu.x - 176) }}
+              className="fixed z-[81] w-44 bg-surface border border-border rounded-xl shadow-pop py-1 text-text chat-fade-in"
+              style={{ top: Math.min(rowMenu.y + 4, window.innerHeight - 170), left: Math.max(8, Math.min(rowMenu.x - 176, window.innerWidth - 184)) }}
             >
               <button role="menuitem" className={itemCls} onClick={() => { close(); openThread(t.id); setRailOpen(false) }}>
                 <MessageSquare className="w-4 h-4 text-text-muted" /> Open
@@ -1337,7 +1371,7 @@ export default function Playground() {
         {railOpen && (
           <div className="fixed inset-0 z-30 bg-bg/60 md:hidden" onClick={() => setRailOpen(false)} />
         )}
-        <div role="complementary" aria-label="History and conversation threads" className={`${railOpen ? 'flex absolute z-40 inset-y-0 left-0 shadow-pop' : 'hidden'} md:flex md:static md:z-auto md:shadow-none w-[280px] min-w-[280px] border-r border-border bg-surface flex-col shrink-0`}>
+        <div role="complementary" aria-label="History and conversation threads" className={`fixed z-40 inset-y-0 left-0 flex flex-col w-[280px] min-w-[280px] border-r border-border bg-surface shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 md:transition-none md:shadow-none ${railOpen ? 'translate-x-0 shadow-pop' : '-translate-x-full md:translate-x-0'}`}>
           {/* Rail header — title + New chat */}
           <div className="p-4 border-b border-border shrink-0">
             <div className="flex items-center justify-between mb-3">
@@ -1378,7 +1412,7 @@ export default function Playground() {
                   ) : (
                     <>
                       <Terminal className="w-4 h-4 text-text-muted shrink-0" />
-                      <span className="text-text-muted text-[13px]">Raw prompt</span>
+                      <span className="text-text-secondary text-[13px]">Raw prompt</span>
                     </>
                   )}
                 </span>
@@ -1386,7 +1420,7 @@ export default function Playground() {
               </button>
 
               {showAgentPicker && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-pop z-50 max-h-[350px] flex flex-col overflow-hidden">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-pop z-50 max-h-[350px] flex flex-col overflow-hidden chat-fade-in">
                   <div className="p-2 border-b border-border shrink-0">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
@@ -1480,7 +1514,7 @@ export default function Playground() {
           {/* Conversations list header — single system, no tabs. */}
           <div className="px-3 py-2 flex items-center justify-between gap-2 shrink-0">
             <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted shrink-0">
-              <MessageSquare className="w-3 h-3" /> Chats {threads.length > 0 && <span className="text-text-muted/70">({threads.length})</span>}
+              <MessageSquare className="w-3 h-3" /> Chats {threads.length > 0 && <span className="text-text-muted">({threads.length})</span>}
             </span>
             <div className="flex items-center gap-1.5">
               {threads.length > 1 && (
@@ -1522,7 +1556,7 @@ export default function Playground() {
               <div className="flex flex-col items-center text-center py-8 px-3">
                 <MessageSquare className="w-6 h-6 text-text-muted/50 mb-2" />
                 <p className="text-[11px] text-text-muted">No chats yet.</p>
-                <p className="text-[10px] text-text-muted/70 mt-0.5">Type a message below to start your first conversation.</p>
+                <p className="text-[10px] text-text-muted mt-0.5">Type a message below to start your first conversation.</p>
               </div>
             ) : filteredThreads.length === 0 ? (
                 <p className="text-[11px] text-text-muted text-center py-4 px-2">No conversations match “{threadFilter}”.</p>
@@ -1533,62 +1567,62 @@ export default function Playground() {
                     return (
                     <div
                       key={t.id}
-                      onClick={() => { if (!renaming) { openThread(t.id); setRailOpen(false) } }}
-                      role="button"
-                      tabIndex={renaming ? -1 : 0}
-                      onKeyDown={(e) => { if (!renaming && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openThread(t.id); setRailOpen(false) } }}
-                      className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors ${renaming ? '' : 'cursor-pointer'} ${activeThreadId === t.id ? 'bg-accent/10 ring-1 ring-accent/20' : rowMenu?.id === t.id ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
+                      className={`group flex items-center gap-1 pr-1 rounded-lg transition-colors ${activeThreadId === t.id ? 'bg-accent/10 ring-1 ring-accent/30' : rowMenu?.id === t.id ? 'bg-surface-2' : 'hover:bg-surface-2'}`}
                     >
-                      <MessageSquare className="w-3.5 h-3.5 text-accent shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        {renaming ? (
+                      {renaming ? (
+                        <>
+                          <MessageSquare className="w-3.5 h-3.5 text-accent shrink-0 ml-3" />
                           <input
                             autoFocus
                             value={renameValue}
                             onChange={e => setRenameValue(e.target.value)}
-                            onClick={e => e.stopPropagation()}
                             onKeyDown={e => {
-                              e.stopPropagation()
                               if (e.key === 'Enter') { e.preventDefault(); commitRename(t.id) }
                               else if (e.key === 'Escape') { e.preventDefault(); cancelRename() }
                             }}
                             onBlur={() => commitRename(t.id)}
                             maxLength={200}
                             aria-label="Rename conversation"
-                            className="input bg-surface-2 px-1.5 py-0.5 text-[11px] w-full"
+                            className="input bg-surface-2 px-1.5 py-0.5 text-[11px] flex-1 min-w-0 my-2"
                           />
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-[11px] font-medium truncate flex-1 text-text">{t.title || 'Untitled'}</p>
-                              <span className="text-[9px] text-text-muted shrink-0">{formatTime(new Date(t.updatedAt))}</span>
-                            </div>
-                            <p className="text-[10px] text-text-muted truncate">{t.agentName || 'No agent'} · {t.messageCount ?? 0} message{(t.messageCount ?? 0) === 1 ? '' : 's'}</p>
-                          </>
-                        )}
-                      </div>
-                      {renaming ? (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); commitRename(t.id) }}
-                          className="p-1.5 rounded-lg text-accent hover:bg-accent/10 transition-all shrink-0"
-                          title="Save name" aria-label="Save name"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                        </button>
+                          <button
+                            onClick={() => commitRename(t.id)}
+                            className="p-1.5 rounded-lg text-accent hover:bg-accent/10 transition-all shrink-0"
+                            title="Save name" aria-label="Save name"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                        </>
                       ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            const r = e.currentTarget.getBoundingClientRect()
-                            setRowMenu({ id: t.id, kind: 'thread', x: r.right, y: r.bottom })
-                          }}
-                          className={`p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-all shrink-0 ${rowMenu?.id === t.id ? 'opacity-100 bg-surface-2' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
-                          title="Conversation actions"
-                          aria-label={`Actions for ${t.title || 'Untitled'}`}
-                          aria-haspopup="menu"
-                        >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
+                        <>
+                          {/* Open-area is its own button so it's not a nested interactive
+                              inside an interactive row (a11y: no role=button wrapper). */}
+                          <button
+                            onClick={() => { openThread(t.id); setRailOpen(false) }}
+                            className="flex items-center gap-2 min-w-0 flex-1 pl-3 pr-1 py-2.5 text-left rounded-lg"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 text-accent shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-[11px] font-medium truncate flex-1 text-text">{t.title || 'Untitled'}</p>
+                                <span className="text-[9px] text-text-muted shrink-0">{formatTime(new Date(t.updatedAt))}</span>
+                              </div>
+                              <p className="text-[10px] text-text-muted truncate">{t.agentName || 'No agent'} · {t.messageCount ?? 0} message{(t.messageCount ?? 0) === 1 ? '' : 's'}</p>
+                            </div>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              const r = e.currentTarget.getBoundingClientRect()
+                              setRowMenu({ id: t.id, kind: 'thread', x: r.right, y: r.bottom })
+                            }}
+                            className={`p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-all shrink-0 ${rowMenu?.id === t.id ? 'opacity-100 bg-surface-2' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
+                            title="Conversation actions"
+                            aria-label={`Actions for ${t.title || 'Untitled'}`}
+                            aria-haspopup="menu"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                        </>
                       )}
                     </div>
                   )})}
@@ -1630,11 +1664,11 @@ export default function Playground() {
                     {currentAgent?.name || 'Raw prompt'}
                   </h3>
                   {currentAgent?.model && (
-                    <span className="text-[9px] font-mono uppercase tracking-wide text-text-muted bg-surface-2 border border-border rounded px-1.5 py-0.5 shrink-0">{currentAgent.model}</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wide text-text-muted bg-surface-2 border border-border rounded px-1.5 py-0.5 shrink-0">{currentAgent.model}</span>
                   )}
                   {/* Auth chip — refined pill with a status dot so it reads as a badge. */}
                   {preflight?.auth?.source === 'subscription' && (
-                    <span className="flex items-center gap-1.5 bg-green-muted text-green rounded-full pl-1.5 pr-2 py-0.5 text-[10px] font-medium shrink-0" title="Every run uses your Claude Code subscription session — never the metered API.">
+                    <span className="flex items-center gap-1.5 bg-green-muted text-text-secondary rounded-full pl-1.5 pr-2 py-0.5 text-[10px] font-medium shrink-0" title="Every run uses your Claude Code subscription session — never the metered API.">
                       <span className="w-1.5 h-1.5 rounded-full bg-green shrink-0" /> Subscription
                     </span>
                   )}
@@ -1701,7 +1735,18 @@ export default function Playground() {
               >
                 <Settings2 className="w-4 h-4" />
               </button>
-              <button onClick={clearAll} title="Clear chat" aria-label="Clear chat" className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
+              <button
+                onClick={() => {
+                  // Nothing to lose on a pristine view → clear silently; otherwise confirm.
+                  if (messages.length === 0 && !output && !liveUserMsg && !prompt.trim()) { clearAll(); return }
+                  setPendingDelete({
+                    title: 'Clear this chat?',
+                    message: 'The current conversation will be cleared from view. Saved chats in the sidebar are not affected.',
+                    confirmLabel: 'Clear',
+                    onConfirm: clearAll,
+                  })
+                }}
+                title="Clear chat" aria-label="Clear chat" className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -1733,7 +1778,7 @@ export default function Playground() {
                         <button
                           key={ex}
                           onClick={() => { setPrompt(ex); promptRef.current?.focus() }}
-                          className="text-left text-xs px-3 py-2 rounded-lg bg-surface-2 border border-border text-text-secondary hover:text-text hover:border-accent/30 transition-colors"
+                          className="text-left text-xs px-4 py-2.5 rounded-lg bg-surface-2 border border-border text-text-secondary hover:text-text hover:border-accent/30 hover:shadow-soft hover:-translate-y-px transition-all"
                         >
                           {ex}
                         </button>
@@ -1748,9 +1793,9 @@ export default function Playground() {
                   const isUser = m.role === 'user'
                   const isLastAssistant = !isUser && i === renderedMessages.length - 1
                   return (
-                    <div key={m.id || `msg-${i}`} className={`flex gap-3 ${isUser ? 'justify-end' : ''}`}>
+                    <div key={m.id || `msg-${i}`} className={`flex gap-3 chat-fade-in ${isUser ? 'justify-end' : ''}`}>
                       {!isUser && (
-                        <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center shrink-0 mt-0.5">
                           {currentAgent ? (
                             <AgentIcon name={currentAgent.name} uid={`bubble-${currentAgent.name}`} size={18} global={currentAgent.scope === 'global'} />
                           ) : (
@@ -1758,13 +1803,16 @@ export default function Playground() {
                           )}
                         </div>
                       )}
-                      <div className={`min-w-0 max-w-[85%] sm:max-w-[78%] ${isUser ? '' : 'lg:max-w-[760px]'} rounded-2xl px-4 py-2.5 ${
+                      <div
+                        aria-live={!isUser && isLastAssistant && running ? 'polite' : undefined}
+                        aria-atomic="false"
+                        className={`min-w-0 max-w-[85%] sm:max-w-[78%] ${isUser ? '' : 'lg:max-w-[760px]'} rounded-2xl px-4 py-3 ${
                         isUser
-                          ? 'bg-accent text-white rounded-br-md'
-                          : 'bg-surface-2 border border-border rounded-bl-md'
+                          ? 'bg-accent text-white rounded-br-md shadow-soft'
+                          : 'bg-surface-2 border border-border rounded-bl-md shadow-soft'
                       }`}>
                         {isUser ? (
-                          <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                          <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{m.content}</p>
                         ) : settings.outputMode === 'raw' ? (
                           <pre className="text-sm text-text whitespace-pre-wrap leading-relaxed font-mono break-words">
                             {m.content}
@@ -1789,15 +1837,15 @@ export default function Playground() {
                 {/* Typing row — running with no output yet */}
                 {running && !output && (
                   <div className="flex gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center shrink-0 mt-0.5">
                       {currentAgent ? (
                         <AgentIcon name={currentAgent.name} uid={`typing-${currentAgent.name}`} size={18} global={currentAgent.scope === 'global'} />
                       ) : (
                         <Bot className="w-4 h-4 text-accent" />
                       )}
                     </div>
-                    <div className="max-w-[75%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-surface-2 border border-border">
-                      <p className="text-sm text-text-secondary flex items-center gap-1.5">
+                    <div className="max-w-[75%] rounded-2xl rounded-bl-md px-4 py-3 bg-surface-2 border border-border shadow-soft">
+                      <p className="text-sm text-text-secondary flex items-center gap-1.5" aria-live="polite">
                         {/* Animated typing dots so the wait reads as "actively working". */}
                         <span className="inline-flex gap-0.5" aria-hidden>
                           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce [animation-delay:-0.3s]" />
@@ -1820,7 +1868,7 @@ export default function Playground() {
 
                 {/* Rating bar — below the last assistant bubble when done */}
                 {output && !running && (
-                  <div className="flex justify-start pl-10">
+                  <div className="flex justify-start pl-10 chat-fade-in">
                     <div className="max-w-[75%] w-full">
                       {!showRating ? (
                         <div className="flex items-center gap-3">
@@ -1914,7 +1962,24 @@ export default function Playground() {
 
           {/* ── Zone C: Bottom composer ───────────────────────────────── */}
           <div className="px-6 py-4 border-t border-border bg-surface shrink-0">
-            <div className="bg-surface-2 border border-border rounded-xl px-3 py-2 flex items-end gap-2 focus-within:border-accent/50 transition-colors">
+            <div className="bg-surface-2 border border-border rounded-xl px-3 py-2 flex flex-col gap-2 focus-within:border-accent/50 transition-colors">
+              {/* Attachment chips — inside the composer, above the input row, so the
+                  input never feels bottom-heavy. */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {attachments.map(a => (
+                    <span key={a.name} className="flex items-center gap-1 text-[11px] bg-surface border border-border rounded-lg pl-2 pr-1 py-1 text-text-secondary">
+                      <FileText className="w-3 h-3 text-text-muted" />
+                      <span className="max-w-[160px] truncate">{a.name}</span>
+                      <span className="text-text-muted">{a.size > 1024 ? `${Math.round(a.size / 1024)}KB` : `${a.size}B`}</span>
+                      <button onClick={() => removeAttachment(a.name)} className="p-1 rounded hover:bg-surface-2 text-text-muted hover:text-red" title="Remove" aria-label={`Remove ${a.name}`}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-end gap-2 w-full">
               {/* Left: attachments + templates */}
               <div className="flex items-center gap-1 pb-1 shrink-0">
                 <button
@@ -1944,7 +2009,7 @@ export default function Playground() {
 
                   {/* Save template form */}
                   {showSaveTemplate && (
-                    <div className="absolute left-0 bottom-full mb-2 w-56 bg-surface border border-border rounded-xl shadow-pop z-30 p-3 space-y-2">
+                    <div className="absolute left-0 bottom-full mb-2 w-56 bg-surface border border-border rounded-xl shadow-pop z-30 p-3 space-y-2 chat-fade-in">
                       <p className="text-[11px] font-medium text-text">Save as template</p>
                       <input
                         value={templateName}
@@ -1963,7 +2028,7 @@ export default function Playground() {
 
                   {/* Templates dropdown */}
                   {showTemplates && (
-                    <div className="absolute left-0 bottom-full mb-2 w-64 bg-surface border border-border rounded-xl shadow-pop z-30 max-h-[250px] overflow-y-auto">
+                    <div className="absolute left-0 bottom-full mb-2 w-64 bg-surface border border-border rounded-xl shadow-pop z-30 max-h-[250px] overflow-y-auto chat-fade-in">
                       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
                         <span className="text-[11px] font-medium text-text">Templates ({templates.length})</span>
                         {prompt.trim() && (
@@ -2035,11 +2100,11 @@ export default function Playground() {
                   className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-40 ${
                     settings.fastMode
                       ? 'bg-accent text-white border-accent'
-                      : 'text-text-muted border-border hover:text-text hover:bg-surface'
+                      : 'text-text-secondary border-border hover:text-text hover:bg-surface'
                   }`}
                 >
                   <Zap className={`w-3.5 h-3.5 ${settings.fastMode ? 'fill-current' : ''}`} />
-                  Fast
+                  <span className="hidden sm:inline">Fast</span>
                 </button>
                 {running ? (
                   <button
@@ -2056,29 +2121,15 @@ export default function Playground() {
                     disabled={!prompt.trim() || (preflight ? !preflight.okToRun : false)}
                     title={preflight && !preflight.okToRun ? 'Agent runs are not ready — see the banner above' : `${activeThreadId ? 'Send' : 'Run'}  ·  ⏎`}
                     aria-label={activeThreadId ? 'Send message' : 'Run agent'}
-                    className="p-2 rounded-lg bg-accent text-white hover:bg-accent-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 rounded-lg bg-accent text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     <Send className="w-5 h-5" />
                   </button>
                 )}
               </div>
+              </div>
             </div>
 
-            {/* Attachment chips */}
-            {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {attachments.map(a => (
-                  <span key={a.name} className="flex items-center gap-1 text-[11px] bg-surface-2 border border-border rounded-lg pl-2 pr-1 py-1 text-text-secondary">
-                    <FileText className="w-3 h-3 text-text-muted" />
-                    <span className="max-w-[160px] truncate">{a.name}</span>
-                    <span className="text-text-muted">{a.size > 1024 ? `${Math.round(a.size / 1024)}KB` : `${a.size}B`}</span>
-                    <button onClick={() => removeAttachment(a.name)} className="p-1 rounded hover:bg-surface text-text-muted hover:text-red" title="Remove" aria-label={`Remove ${a.name}`}>
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={onPickFiles} />
 
             {/* Minimal meta — deliberately does NOT echo the Fast toggle (the pill
@@ -2133,6 +2184,7 @@ export default function Playground() {
                 <select
                   value={settings.timeoutMs}
                   onChange={e => setSettings(s => ({ ...s, timeoutMs: Number(e.target.value) }))}
+                  aria-label="Run timeout"
                   className="input bg-surface-2 py-2.5 text-xs"
                 >
                   {PLAYGROUND_TIMEOUT_OPTIONS.map(o => (
@@ -2145,6 +2197,7 @@ export default function Playground() {
                 <select
                   value={settings.outputMode}
                   onChange={e => setSettings(s => ({ ...s, outputMode: e.target.value as 'markdown' | 'raw' }))}
+                  aria-label="Output format"
                   className="input bg-surface-2 py-2.5 text-xs"
                 >
                   <option value="markdown">Markdown (rendered)</option>
@@ -2154,7 +2207,7 @@ export default function Playground() {
               <div>
                 <label className="text-[11px] font-medium text-text-muted block mb-1.5">
                   Custom instructions override
-                  <span className="font-normal text-text-muted/70 ml-1">(replaces agent system prompt)</span>
+                  <span className="font-normal text-text-muted ml-1">(replaces agent system prompt)</span>
                 </label>
                 <textarea
                   value={settings.customInstructions}

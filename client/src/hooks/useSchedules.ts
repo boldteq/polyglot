@@ -15,10 +15,10 @@ import {
   getSchedules,
   getSystemSchedules,
   getInflightSchedules,
-  subscribeSchedules,
   type Schedule,
   type ScheduleStreamEvent,
 } from '../lib/api'
+import { onScheduleEvent } from '../lib/sseBus'
 
 function mergeAndSort(user: Schedule[], sys: Schedule[]): Schedule[] {
   // System schedules first (always-on infra) — alphabetical within each group.

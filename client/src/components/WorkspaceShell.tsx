@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutGrid, Eye, Boxes, Users, AlertTriangle, TrendingUp, FolderKanban } from 'lucide-react'
+import { FolderKanban } from 'lucide-react'
 import ModeSwitcher from './ModeSwitcher'
 
 // The Workspace-mode shell — a sidebar SEPARATE from Polyglot's. Holds only
@@ -30,31 +30,13 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
         <nav className="flex-1 overflow-y-auto py-2 space-y-0.5">
           <NavSection label="Client Work" />
           <NavLink to="/workspace" end className={navLinkClass}>
-            <LayoutGrid className="w-4 h-4" /> Mission Control
-          </NavLink>
-          <NavLink to="/workspace/projects" className={navLinkClass}>
             <FolderKanban className="w-4 h-4" /> Projects
-          </NavLink>
-          <NavLink to="/workspace/builds" className={navLinkClass}>
-            <Boxes className="w-4 h-4" /> Builds
-          </NavLink>
-          <NavLink to="/workspace/clients" className={navLinkClass}>
-            <Users className="w-4 h-4" /> Clients
-          </NavLink>
-          <NavLink to="/workspace/escalations" className={navLinkClass}>
-            <AlertTriangle className="w-4 h-4" /> Escalations
-          </NavLink>
-          <NavLink to="/workspace/results" className={navLinkClass}>
-            <TrendingUp className="w-4 h-4" /> Results
-          </NavLink>
-          <NavLink to="/workspace/lens" className={navLinkClass}>
-            <Eye className="w-4 h-4" /> Lens
           </NavLink>
         </nav>
 
         <div className="px-4 py-3 border-t border-border-subtle">
           <p className="text-[10px] text-text-muted leading-snug">
-            Read-only view of client builds. Building happens in VS Code.
+            Manage client projects. Theme code lives in VS Code; dispatch agents to edit it.
           </p>
         </div>
       </aside>

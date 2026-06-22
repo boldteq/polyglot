@@ -1336,49 +1336,63 @@ export interface ScheduleStreamEvent {
   runId?: string
   ts?: number
 }
-export function subscribeSchedules(onEvent: (e: ScheduleStreamEvent) => void): EventSource {
+// Single multiplexed EventSource over /org-chart/stream that serves BOTH org-chart
+// events and schedule:* events. Schedules used to open a SECOND EventSource to the
+// same endpoint — a wasted persistent connection against the browser's 6-per-host
+// HTTP/1.1 cap, which could queue the Playground run's streaming POST ("No bytes
+// received for 180s"). sseBus.ts owns ONE of these for the whole app; the schedule
+// consumers ride it via onScheduleEvent() instead of opening their own.
+export function subscribeOrgChartStream(handlers: {
+  onOrgChart?: (e: OrgChartStreamEvent) => void
+  onSchedule?: (e: ScheduleStreamEvent) => void
+}): EventSource {
   const es = new EventSource(ORG_CHART_STREAM_URL)
-  const handle = (type: ScheduleStreamEventType) => (ev: MessageEvent) => {
-    try {
-      const data = ev.data ? JSON.parse(ev.data) : {}
-      onEvent({ type, ...data })
-    } catch {
-      onEvent({ type, id: '', kind: 'user' })
+  const onOrg = handlers.onOrgChart
+  if (onOrg) {
+    const handle = (type: OrgChartStreamEventType) => (ev: MessageEvent) => {
+      try {
+        const data = ev.data ? JSON.parse(ev.data) : {}
+        onOrg({ type, agentId: data.agentId, taskId: data.id })
+      } catch (e) {
+        clientLogger.warn(e instanceof Error ? e : 'sse parse failed', {
+          category: 'sse', meta: { stream: 'org-chart', type },
+        })
+        onOrg({ type })
+      }
     }
+    es.addEventListener('ready', handle('ready'))
+    es.addEventListener('agent:upsert', handle('agent:upsert'))
+    es.addEventListener('agent:remove', handle('agent:remove'))
+    es.addEventListener('taxonomy:update', handle('taxonomy:update'))
+    es.addEventListener('task:created',   handle('task:created'))
+    es.addEventListener('task:started',   handle('task:started'))
+    es.addEventListener('task:completed', handle('task:completed'))
+    es.addEventListener('task:failed',    handle('task:failed'))
+    es.addEventListener('task:cancelled', handle('task:cancelled'))
   }
-  es.addEventListener('schedule:start',     handle('schedule:start'))
-  es.addEventListener('schedule:complete',  handle('schedule:complete'))
-  es.addEventListener('schedule:error',     handle('schedule:error'))
-  es.addEventListener('schedule:cancelled', handle('schedule:cancelled'))
-  es.addEventListener('schedule:upsert',    handle('schedule:upsert'))
+  const onSched = handlers.onSchedule
+  if (onSched) {
+    const handleS = (type: ScheduleStreamEventType) => (ev: MessageEvent) => {
+      try {
+        const data = ev.data ? JSON.parse(ev.data) : {}
+        onSched({ type, ...data })
+      } catch {
+        onSched({ type, id: '', kind: 'user' })
+      }
+    }
+    es.addEventListener('schedule:start',     handleS('schedule:start'))
+    es.addEventListener('schedule:complete',  handleS('schedule:complete'))
+    es.addEventListener('schedule:error',     handleS('schedule:error'))
+    es.addEventListener('schedule:cancelled', handleS('schedule:cancelled'))
+    es.addEventListener('schedule:upsert',    handleS('schedule:upsert'))
+  }
+  // Note: a closed EventSource on nav/server-restart is normal — EventSource
+  // auto-reconnects, so we intentionally do NOT log it as an error (Bug 5b noise).
   return es
 }
 
 export function subscribeOrgChart(onEvent: (e: OrgChartStreamEvent) => void): EventSource {
-  const es = new EventSource(ORG_CHART_STREAM_URL)
-  const handle = (type: OrgChartStreamEventType) => (ev: MessageEvent) => {
-    try {
-      const data = ev.data ? JSON.parse(ev.data) : {}
-      onEvent({ type, agentId: data.agentId, taskId: data.id })
-    } catch (e) {
-      clientLogger.warn(e instanceof Error ? e : 'sse parse failed', {
-        category: 'sse', meta: { stream: 'org-chart', type },
-      })
-      onEvent({ type })
-    }
-  }
-  es.addEventListener('ready', handle('ready'))
-  es.addEventListener('agent:upsert', handle('agent:upsert'))
-  es.addEventListener('agent:remove', handle('agent:remove'))
-  es.addEventListener('taxonomy:update', handle('taxonomy:update'))
-  es.addEventListener('task:created',   handle('task:created'))
-  es.addEventListener('task:started',   handle('task:started'))
-  es.addEventListener('task:completed', handle('task:completed'))
-  es.addEventListener('task:failed',    handle('task:failed'))
-  es.addEventListener('task:cancelled', handle('task:cancelled'))
-  // Note: a closed EventSource on nav/server-restart is normal — EventSource
-  // auto-reconnects, so we intentionally do NOT log it as an error (Bug 5b noise).
-  return es
+  return subscribeOrgChartStream({ onOrgChart: onEvent })
 }
 
 // ── Taxonomy: dynamic squads + tags ──────────────────────────────────────────
@@ -3108,20 +3122,38 @@ export type BrainStreamEvent =
   | BrainMemoryEvent
   | { type: 'patch'; id: string; status: string }
 
-export function subscribeBrainStream(onEvent: (e: BrainStreamEvent) => void): EventSource {
-  const es = new EventSource(`${BASE}/brain/stream`)
-  const parse = (ev: MessageEvent): Record<string, unknown> => {
-    try { return ev.data ? JSON.parse(ev.data) : {} } catch (e) { console.warn('[brain/stream parse]', e); return {} }
+// Shared singleton — same rationale as subscribeLearningStream above: a fresh
+// EventSource per caller burns one of the browser's 6-per-host HTTP/1.1 slots and
+// can stall an unrelated fetch (e.g. the Playground run's streaming POST → "No
+// bytes received for 180s"). One EventSource, fan-out to all listeners, closed
+// when the last listener leaves.
+let _brainES: EventSource | null = null
+const _brainListeners = new Set<(e: BrainStreamEvent) => void>()
+
+export function subscribeBrainStream(onEvent: (e: BrainStreamEvent) => void): { close: () => void } {
+  _brainListeners.add(onEvent)
+  if (!_brainES) {
+    const es = new EventSource(`${BASE}/brain/stream`)
+    const parse = (ev: MessageEvent): Record<string, unknown> => {
+      try { return ev.data ? JSON.parse(ev.data) : {} } catch (e) { console.warn('[brain/stream parse]', e); return {} }
+    }
+    const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined)
+    const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined)
+    const emit = (e: BrainStreamEvent) => _brainListeners.forEach((fn) => fn(e))
+    es.addEventListener('ready', (ev: MessageEvent) => emit({ type: 'ready', proposed: Number(parse(ev).proposed ?? 0) }))
+    es.addEventListener('memory', (ev: MessageEvent) => {
+      const p = parse(ev)
+      emit({ type: 'memory', kind: String(p.kind ?? ''), embedded: num(p.embedded), drained: num(p.drained), generatedAt: str(p.generatedAt), decayFlaggedRefs: num(p.decayFlaggedRefs) })
+    })
+    es.addEventListener('patch', (ev: MessageEvent) => emit({ type: 'patch', id: String(parse(ev).id ?? ''), status: String(parse(ev).status ?? '') }))
+    _brainES = es
   }
-  const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined)
-  const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined)
-  es.addEventListener('ready', (ev: MessageEvent) => onEvent({ type: 'ready', proposed: Number(parse(ev).proposed ?? 0) }))
-  es.addEventListener('memory', (ev: MessageEvent) => {
-    const p = parse(ev)
-    onEvent({ type: 'memory', kind: String(p.kind ?? ''), embedded: num(p.embedded), drained: num(p.drained), generatedAt: str(p.generatedAt), decayFlaggedRefs: num(p.decayFlaggedRefs) })
-  })
-  es.addEventListener('patch', (ev: MessageEvent) => onEvent({ type: 'patch', id: String(parse(ev).id ?? ''), status: String(parse(ev).status ?? '') }))
-  return es
+  return {
+    close: () => {
+      _brainListeners.delete(onEvent)
+      if (_brainListeners.size === 0 && _brainES) { _brainES.close(); _brainES = null }
+    },
+  }
 }
 
 // ── Observability / Hardening (Pillars 1·3·5·6) ──────────────────────────────

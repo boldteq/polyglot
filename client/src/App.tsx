@@ -44,13 +44,8 @@ const Documentation = React.lazy(() => import('./pages/Documentation'))
 const MemoryHistory = React.lazy(() => import('./pages/MemoryHistory'))
 const LearningInbox = React.lazy(() => import('./pages/LearningInbox'))
 const Lens = React.lazy(() => import('./pages/Lens'))
-const Workspace = React.lazy(() => import('./pages/Workspace'))
-const WorkspaceBuilds = React.lazy(() => import('./pages/WorkspaceBuilds'))
-const WorkspaceClients = React.lazy(() => import('./pages/WorkspaceClients'))
 const WorkspaceBuildDetail = React.lazy(() => import('./pages/WorkspaceBuildDetail'))
 const WorkspaceProjects = React.lazy(() => import('./pages/WorkspaceProjects'))
-const WorkspaceEscalations = React.lazy(() => import('./pages/WorkspaceEscalations'))
-const WorkspaceResults = React.lazy(() => import('./pages/WorkspaceResults'))
 const Shopify = React.lazy(() => import('./pages/Shopify'))
 const StorePreview = React.lazy(() => import('./pages/StorePreview'))
 
@@ -84,14 +79,10 @@ export default function App() {
             <RouteErrorBoundary>
             <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<Workspace />} />
-              <Route path="/projects" element={<WorkspaceProjects />} />
-              <Route path="/builds" element={<WorkspaceBuilds />} />
+              <Route path="/" element={<WorkspaceProjects />} />
               <Route path="/builds/:buildId" element={<WorkspaceBuildDetail />} />
-              <Route path="/clients" element={<WorkspaceClients />} />
-              <Route path="/escalations" element={<WorkspaceEscalations />} />
-              <Route path="/results" element={<WorkspaceResults />} />
               <Route path="/lens" element={<Lens />} />
+              <Route path="/projects" element={<Navigate to="/workspace" replace />} />
               <Route path="*" element={<Navigate to="/workspace" replace />} />
             </Routes>
             </Suspense>

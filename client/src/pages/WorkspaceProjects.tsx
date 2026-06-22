@@ -1,30 +1,44 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, AlertTriangle, Plus, Link2, ChevronRight, X, Pencil, Archive } from 'lucide-react'
+import { FolderKanban, RefreshCw, AlertTriangle, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { Spinner } from '../components/Skeleton'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
+import { relTime } from '../lib/relTime'
 import ScoreGauge from '../components/workspace/ScoreGauge'
-import { getWorkspaceProjects, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, type WorkspaceProject, type AssembledBuild } from '../lib/api'
+import StepIndicator from '../components/workspace/StepIndicator'
+import { getWorkspaceProjects, getWorkspaceEscalations, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, type WorkspaceProject, type AssembledBuild } from '../lib/api'
 
-// Hybrid project registry: intake projects (brand/niche/store) merged with their
-// live build state, + the discovered builds not yet linked to a project.
+type Filter = 'all' | 'attention' | 'passing'
+const STATUS_TONE: Record<string, string> = {
+  intake: 'text-text-muted bg-text-muted/10', building: 'text-accent bg-accent/10',
+  preview: 'text-amber bg-amber/10', published: 'text-green bg-green/10', archived: 'text-text-muted bg-text-muted/10',
+}
+
+// Projects home — the one center of gravity. Every discovered build is auto-adopted
+// into this unified list (no "unlinked builds" split). Attention surfaces inline.
 export default function WorkspaceProjects() {
   const nav = useNavigate()
   const [projects, setProjects] = useState<WorkspaceProject[]>([])
   const [unlinked, setUnlinked] = useState<AssembledBuild[]>([])
+  const [reasons, setReasons] = useState<Record<string, string[]>>({}) // buildId → escalation reasons
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [linkFor, setLinkFor] = useState<WorkspaceProject | null>(null)
   const [editFor, setEditFor] = useState<WorkspaceProject | null>(null)
+  const [q, setQ] = useState('')
+  const [filter, setFilter] = useState<Filter>('all')
 
   const load = useCallback(() => {
     setLoading(true); setError(null)
-    getWorkspaceProjects()
-      .then((d) => { setProjects(d.projects); setUnlinked(d.unlinkedBuilds) })
+    Promise.all([getWorkspaceProjects(), getWorkspaceEscalations().catch(() => ({ escalations: [] as { buildId: string; reasons: string[] }[] }))])
+      .then(([d, esc]) => {
+        setProjects(d.projects); setUnlinked(d.unlinkedBuilds)
+        setReasons(Object.fromEntries(esc.escalations.map((e) => [e.buildId, e.reasons])))
+      })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load projects'))
       .finally(() => setLoading(false))
   }, [])
@@ -37,10 +51,33 @@ export default function WorkspaceProjects() {
     catch (e) { toast('error', e instanceof Error ? e.message : 'Archive failed') }
   }, [load])
 
+  const attentionOf = useCallback((p: WorkspaceProject) => (p.build ? reasons[p.build.buildId] || [] : []), [reasons])
+
+  // summary + filtered/searched list
+  const { shown, summary } = useMemo(() => {
+    const withScore = projects.filter((p) => p.build)
+    const summary = {
+      total: projects.length,
+      attention: projects.filter((p) => attentionOf(p).length).length,
+      avg: withScore.length ? Math.round(withScore.reduce((s, p) => s + (p.build!.score || 0), 0) / withScore.length) : 0,
+      passing: withScore.filter((p) => p.build!.lensVerdict === 'pass').length,
+    }
+    const ql = q.trim().toLowerCase()
+    const shown = projects.filter((p) => {
+      if (ql && !(`${p.name} ${p.niche || ''} ${p.domain || ''}`.toLowerCase().includes(ql))) return false
+      if (filter === 'attention') return attentionOf(p).length > 0
+      if (filter === 'passing') return p.build?.lensVerdict === 'pass'
+      return true
+    })
+    return { shown, summary }
+  }, [projects, q, filter, attentionOf])
+
+  const openProject = (p: WorkspaceProject) => nav(p.build ? `/workspace/builds/${p.build.buildId}` : `/workspace`)
+
   return (
     <PageShell
       title="Projects"
-      subtitle="Client projects (brand · niche · store) merged with their live build"
+      subtitle="Your client projects — brand · niche · store, with live build state"
       actions={
         <div className="flex items-center gap-2">
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm flex items-center gap-1.5"><Plus className="w-4 h-4" />New project</button>
@@ -51,58 +88,64 @@ export default function WorkspaceProjects() {
       {loading ? <Spinner /> : error ? (
         <div className="card p-6 text-red flex items-center gap-2"><AlertTriangle className="w-5 h-5" />{error}
           <button onClick={load} className="underline ml-2">Retry</button></div>
-      ) : projects.length === 0 && unlinked.length === 0 ? (
-        <EmptyState icon={FolderKanban} title="No projects yet" description="Create a project to capture intake, or builds appear here once discovered." action={{ label: 'New project', onClick: () => setShowNew(true) }} />
+      ) : projects.length === 0 ? (
+        <EmptyState icon={FolderKanban} title="No projects yet" description="Create a project to capture intake — or theme folders are auto-detected and appear here." action={{ label: 'New project', onClick: () => setShowNew(true) }} />
       ) : (
-        <div className="space-y-6">
-          {/* intake projects */}
-          {projects.length > 0 && (
-            <section>
-              <h3 className="font-semibold text-[15px] mb-2">Projects</h3>
-              <div className="card divide-y divide-border">
-                {projects.map((p) => (
-                  <div key={p.id} className="flex items-center gap-4 px-4 py-3">
-                    {p.build ? <ScoreGauge score={p.build.score} grade={p.build.grade} size={40} showGrade={false} /> : <div className="w-10 h-10 rounded-full border-2 border-border" />}
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium capitalize truncate flex items-center gap-2">
-                        {p.name}
-                        {p.niche && <span className="text-[10px] uppercase tracking-wide text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">{p.niche}</span>}
-                      </div>
-                      <div className="text-[12px] text-text-muted truncate">{p.domain || '—'}{p.build ? ` · step ${p.build.step.current}/18 · score ${p.build.score}` : ' · not linked to a build'}</div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => setEditFor(p)} title="Edit project" className="btn-ghost btn-sm p-1.5"><Pencil className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => archive(p)} title="Archive project" className="btn-ghost btn-sm p-1.5 text-text-muted hover:text-red"><Archive className="w-3.5 h-3.5" /></button>
-                      {p.build ? (
-                        <button onClick={() => nav(`/workspace/builds/${p.build!.buildId}`)} className="btn-ghost btn-sm flex items-center gap-1">Open <ChevronRight className="w-4 h-4" /></button>
-                      ) : (
-                        <button onClick={() => setLinkFor(p)} className="btn-ghost btn-sm flex items-center gap-1 text-[12px]"><Link2 className="w-3.5 h-3.5" /> Link build</button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+        <div className="space-y-4">
+          {/* summary strip */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[13px] px-1">
+            <span><b>{summary.total}</b> <span className="text-text-muted">projects</span></span>
+            <span className={summary.attention ? 'text-red' : ''}><b>{summary.attention}</b> <span className={summary.attention ? '' : 'text-text-muted'}>need attention</span></span>
+            <span><b>{summary.avg}</b> <span className="text-text-muted">avg score</span></span>
+            <span><b>{summary.passing}</b> <span className="text-text-muted">passing</span></span>
+          </div>
 
-          {/* discovered builds with no project */}
-          {unlinked.length > 0 && (
-            <section>
-              <h3 className="font-semibold text-[15px] mb-2">Discovered builds <span className="text-text-muted font-normal text-[12px]">· not linked to a project</span></h3>
-              <div className="card divide-y divide-border">
-                {unlinked.map((b) => (
-                  <button key={b.buildId} onClick={() => nav(`/workspace/builds/${b.buildId}`)} className="w-full flex items-center gap-4 px-4 py-3 hover:bg-text-muted/5 text-left transition-colors">
-                    <ScoreGauge score={b.score} grade={b.grade} size={36} showGrade={false} />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium capitalize truncate">{b.client}</div>
-                      <div className="text-[12px] text-text-muted truncate">{b.store || b.dir}</div>
+          {/* search + filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-xs">
+              <Search className="w-4 h-4 text-text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search projects…" className="input w-full pl-8 text-[13px]" />
+            </div>
+            <div className="segmented">
+              {(['all', 'attention', 'passing'] as Filter[]).map((f) => (
+                <button key={f} onClick={() => setFilter(f)} className={`segmented-btn capitalize ${filter === f ? 'segmented-btn-active' : ''}`}>{f}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* unified project list */}
+          <div className="card divide-y divide-border">
+            {shown.map((p) => {
+              const att = attentionOf(p)
+              return (
+                <div key={p.id} role="button" tabIndex={0} onClick={() => openProject(p)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') openProject(p) }}
+                  className="group flex items-center gap-4 px-4 py-3 hover:bg-text-muted/5 cursor-pointer transition-colors">
+                  {p.build ? <ScoreGauge score={p.build.score} grade={p.build.grade} size={40} showGrade={false} /> : <div className="w-10 h-10 rounded-full border-2 border-border shrink-0" />}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium capitalize truncate flex items-center gap-2">
+                      {p.name}
+                      {p.niche && <span className="text-[10px] uppercase tracking-wide text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">{p.niche}</span>}
+                      {p.build_dir ? <LinkIcon className="w-3 h-3 text-green shrink-0" /> : <Unlink className="w-3 h-3 text-text-muted shrink-0" />}
+                      {att.length > 0 && <span className="text-[10px] bg-red/10 text-red px-1.5 py-0.5 rounded normal-case truncate max-w-[240px]">{att[0]}</span>}
                     </div>
-                    <ChevronRight className="w-4 h-4 text-text-muted" />
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
+                    <div className="text-[12px] text-text-muted truncate">{p.domain || (p.build?.store) || '—'}{p.build ? ` · step ${p.build.step.current}/18 · score ${p.build.score}` : ' · intake only'}</div>
+                  </div>
+                  {p.build && <div className="w-28 hidden md:block"><StepIndicator current={p.build.step.current} total={p.build.step.total} showLabel={false} /></div>}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full capitalize shrink-0 ${STATUS_TONE[p.status] || STATUS_TONE.intake}`}>{p.status}</span>
+                  <span className="text-[11px] text-text-muted shrink-0 w-16 text-right hidden lg:block">{relTime(p.build?.capturedAt ?? p.updated_at)}</span>
+                  {/* hover actions */}
+                  <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => setEditFor(p)} title="Edit" className="btn-ghost btn-sm p-1.5"><Pencil className="w-3.5 h-3.5" /></button>
+                    {!p.build_dir && <button onClick={() => setLinkFor(p)} title="Link a build folder" className="btn-ghost btn-sm p-1.5"><Link2 className="w-3.5 h-3.5" /></button>}
+                    <button onClick={() => archive(p)} title="Archive" className="btn-ghost btn-sm p-1.5 text-text-muted hover:text-red"><Archive className="w-3.5 h-3.5" /></button>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
+                </div>
+              )
+            })}
+            {shown.length === 0 && <div className="px-4 py-8 text-center text-[13px] text-text-muted">No projects match.</div>}
+          </div>
         </div>
       )}
 
