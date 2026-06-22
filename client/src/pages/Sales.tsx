@@ -42,6 +42,15 @@ function buildPrompt(chat: string, situation: typeof SITUATIONS[number]): string
 const RECENTS_KEY = 'sales.recents.v1'
 interface RecentDraft { id: string; chat: string; situation: SituationId; reply: string; ts: number }
 
+// One-click starters so the empty composer isn't a blank page — each seeds a
+// realistic client message + the matching situation.
+const EXAMPLES: { label: string; situation: SituationId; text: string }[] = [
+  { label: 'Price pushback', situation: 'objection_price', text: 'Client: Honestly your quote is way more than the other agency we spoke to.' },
+  { label: 'Cold inquiry', situation: 'discovery_qualification', text: "Client: Hi — we need a new Shopify store but aren't sure where to start. What do you offer?" },
+  { label: 'Cheaper competitor', situation: 'competitive_defense', text: "Client: We're also looking at a $500 freelancer. Why should we pay more?" },
+  { label: 'Ready to start', situation: 'close', text: 'Client: This looks great — what are the next steps to get going?' },
+]
+
 // Sway's hard rule made actionable: flag fabrication / fake-urgency / unsubstantiated
 // claims in the drafted reply so they're caught before the message is ever sent.
 const HONESTY_FLAGS: { re: RegExp; why: string }[] = [
@@ -179,6 +188,21 @@ export default function Sales() {
             placeholder="Paste the client chat here — the whole thread, most recent message last…"
             className="w-full h-56 px-3 py-2 text-sm rounded-xl border border-border bg-surface-2/40 resize-y focus:outline-none focus:ring-2 focus:ring-accent/40"
           />
+
+          {!chat && !streaming && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-text-muted">Try an example:</span>
+              {EXAMPLES.map((ex, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setChat(ex.text); setSituation(ex.situation) }}
+                  className="px-2 py-0.5 text-xs rounded-md border border-border-subtle bg-surface-2/40 text-text-secondary hover:border-accent/30 hover:text-text transition-colors"
+                >
+                  {ex.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             {!streaming ? (
