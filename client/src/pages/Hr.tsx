@@ -48,6 +48,7 @@ import {
   type ConsolidationReport,
 } from '../lib/api'
 import { onOrgChartEvent } from '../lib/sseBus'
+import { confirmDialog } from '../lib/confirm'
 import { useApi } from '../hooks/useApi'
 import { useDrift } from '../hooks/useDrift'
 import { CacheKeys } from '../lib/cacheKeys'
@@ -263,6 +264,11 @@ function RegistryTab({
   }, [squadPickerFor])
 
   const handleRecompute = async () => {
+    if (!(await confirmDialog({
+      title: 'Recompute all agent experience?',
+      message: "Recalculates every agent's level, years-of-experience and experience points from their full run history. Idempotent + safe, but it rewrites all experience metrics and can take a few seconds.",
+      confirmLabel: 'Recompute',
+    }))) return
     setRecomputing(true)
     try {
       const res = await recomputeExperience()
