@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Save, ArrowLeft, RotateCcw, ShieldCheck, Info, Eye, Code, Globe } from 'lucide-react'
+import { confirmDialog } from '../lib/confirm'
 import { getProjectRule, updateProjectRule, getGlobalRule, updateGlobalRule } from '../lib/api'
 import { toast } from '../components/Toast'
 import RichMarkdownEditor from '../components/RichMarkdownEditor'
@@ -116,8 +117,8 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
       <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface shrink-0">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => {
-              if (dirty && !confirm('You have unsaved changes. Leave anyway?')) return
+            onClick={async () => {
+              if (dirty && !(await confirmDialog({ title: 'Discard unsaved changes?', message: 'You have unsaved changes that will be lost if you leave.', danger: true, confirmLabel: 'Leave' }))) return
               navigate(isGlobal ? '/rules' : `/projects/${projectId}`)
             }}
             className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"

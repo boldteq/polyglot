@@ -4,6 +4,7 @@ import {
   Save, ArrowLeft, RotateCcw, AlertCircle, Code, Eye,
   Bot, Cpu, Wrench, FileText, Tag, LayoutTemplate, GraduationCap, FolderOpen,
 } from 'lucide-react'
+import { confirmDialog } from '../lib/confirm'
 import {
   getGlobalAgent,
   updateGlobalAgent,
@@ -257,8 +258,8 @@ export default function AgentEditor({ scope }: Props) {
       <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface shrink-0">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => {
-              if (dirty && !confirm('You have unsaved changes. Leave anyway?')) return
+            onClick={async () => {
+              if (dirty && !(await confirmDialog({ title: 'Discard unsaved changes?', message: 'You have unsaved changes that will be lost if you leave.', danger: true, confirmLabel: 'Leave' }))) return
               navigate(backPath)
             }}
             className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
