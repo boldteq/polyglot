@@ -524,3 +524,43 @@ test('S6: /publish on an unknown project → 404', async () => {
   const r = await postJson('/api/workspace/projects/nonexistent-id/publish', { mode: 'preflight' });
   assert.equal(r.status, 404);
 });
+
+// ── S7: post-publish monitoring read-path. Register checkpoints for a real linked
+// build's buildId (the same call the publish flip makes on exit 0), assert the
+// schedules route + MonitoringPanel data are populated, then clean up the rows.
+test('S7: /projects/:id/schedules surfaces the 6 post-publish checkpoints', async () => {
+  const projects = await get('/api/workspace/projects');
+  const fs = require('node:fs');
+  const target = (projects.json.projects || []).find((p) => p.build_dir && fs.existsSync(p.build_dir));
+  if (!target) return; // no linked project on disk in this env — skip
+  const detail = await get(`/api/workspace/projects/${target.id}`);
+  const buildId = detail.json.buildId;
+  if (!buildId) return;
+
+  const db = require('../db.js');
+  const { registerBuildSchedules } = require('../lib/buildSchedules.js');
+  // ids present BEFORE — never delete a pre-existing (legit) checkpoint on cleanup.
+  const before = await get(`/api/workspace/projects/${target.id}/schedules`);
+  const beforeIds = new Set((before.json.schedules || []).map((s) => s.id));
+  try {
+    registerBuildSchedules(buildId, { publishedAt: Date.now(), repoDir: target.build_dir, store: 'test.myshopify.com' });
+    const after = await get(`/api/workspace/projects/${target.id}/schedules`);
+    assert.equal(after.status, 200);
+    assert.equal(after.json.present, true);
+    const labels = (after.json.schedules || []).map((s) => s.label).sort();
+    for (const l of ['baseline', 'd30', 'd90', 't+24h', 't+2h', 't+48h']) {
+      assert.ok(labels.includes(l), `checkpoint ${l} present`);
+    }
+    assert.equal(after.json.schedules.filter((s) => s.kind === 'watch').length >= 3, true);
+    assert.equal(after.json.schedules.filter((s) => s.kind === 'results').length >= 3, true);
+  } finally {
+    // CLEAN UP: delete only the ids we actually inserted (not pre-existing ones).
+    try {
+      const conn = db.getDb();
+      for (const label of ['t+2h', 't+24h', 't+48h', 'baseline', 'd30', 'd90']) {
+        const id = `${buildId}:${label}`;
+        if (!beforeIds.has(id)) conn.prepare('DELETE FROM build_schedules WHERE id = ?').run(id);
+      }
+    } catch { /* */ }
+  }
+});

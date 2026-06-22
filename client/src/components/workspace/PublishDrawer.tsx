@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { X, Loader2, Rocket, CheckCircle2, AlertTriangle, ShieldAlert, ExternalLink } from 'lucide-react'
+import { X, Loader2, Rocket, CheckCircle2, AlertTriangle, ShieldAlert, ExternalLink, Clock } from 'lucide-react'
 import { toast } from '../Toast'
 import { workspacePublish, getWorkspaceAction, type PublishRun, type ActionRun } from '../../lib/api'
 
@@ -118,6 +118,7 @@ export default function PublishDrawer({ projectId, store, themeName, onClose, on
           {phase === 'published' && (
             <div className="space-y-3">
               <div className="card p-3 text-green text-[13px] flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /><div><b>Published.</b> The theme is now live on {store}.</div></div>
+              <div className="flex items-start gap-2 text-[12px] text-text-muted px-1"><Clock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-accent" /><span>Monitoring scheduled — 48h watch + 30/90d results. Track it in the <b>Monitoring</b> section.</span></div>
               <a href={storeUrl} target="_blank" rel="noreferrer" className="btn-ghost btn-sm flex items-center gap-1.5 self-start w-fit"><ExternalLink className="w-4 h-4" /> Open storefront</a>
             </div>
           )}

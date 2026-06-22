@@ -6,7 +6,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { registerBuildSchedules, runDueBuildSchedules } = require('./buildSchedules');
+const { registerBuildSchedules, runDueBuildSchedules, onPublishFlipComplete } = require('./buildSchedules');
 
 // In-memory mock of the db build_schedules CRUD (honors INSERT OR IGNORE by id).
 function mockDb() {
@@ -77,4 +77,55 @@ test('done checkpoints never re-run', async () => {
   await runDueBuildSchedules({ now: T0 + 3 * HOUR, database: d, handlers });
   await runDueBuildSchedules({ now: T0 + 3 * HOUR, database: d, handlers });
   assert.equal(n, 1, 'a done checkpoint must not re-run');
+});
+
+// ── S7: publish-flip → post-publish loop decision (exit-0-only) ──
+function flipDeps() {
+  const calls = [];
+  return {
+    calls,
+    register: (bid, opts) => { calls.push(['register', bid, opts.store, opts.repoDir]); return registerBuildSchedules(bid, { ...opts, database: mockDb() }); },
+    setStatus: (pid, s) => calls.push(['setStatus', pid, s]),
+    now: () => T0,
+    log: () => {},
+  };
+}
+const CTX = { buildId: 'pub1', repoDir: '/tmp/pub1', store: 's.myshopify.com', projectId: 'proj1' };
+
+test('onPublishFlipComplete: clean live flip (exit 0) registers 6 + flips status to published', () => {
+  const d = flipDeps();
+  const out = onPublishFlipComplete({ exitCode: 0, status: 'done' }, CTX, { register: d.register, setStatus: d.setStatus, now: d.now, log: d.log });
+  assert.equal(out.registered, true);
+  assert.equal(out.ids.length, 6);
+  assert.equal(out.statusSet, true);
+  assert.deepEqual(d.calls, [['register', 'pub1', 's.myshopify.com', '/tmp/pub1'], ['setStatus', 'proj1', 'published']]);
+});
+
+test('onPublishFlipComplete: blocked/degraded/error flips (exit 1/2/3) register nothing, flip no status', () => {
+  for (const code of [1, 2, 3]) {
+    const d = flipDeps();
+    const out = onPublishFlipComplete({ exitCode: code, status: 'failed' }, CTX, { register: d.register, setStatus: d.setStatus, log: d.log });
+    assert.equal(out.registered, false, `exit ${code} must not register`);
+    assert.equal(out.statusSet, false, `exit ${code} must not flip status`);
+    assert.equal(d.calls.length, 0, `exit ${code} must make no calls`);
+  }
+});
+
+test('onPublishFlipComplete: null rec is a no-op (never throws)', () => {
+  const d = flipDeps();
+  const out = onPublishFlipComplete(null, CTX, { register: d.register, setStatus: d.setStatus, log: d.log });
+  assert.equal(out.registered, false);
+  assert.equal(d.calls.length, 0);
+});
+
+test('onPublishFlipComplete: a throwing register never crashes + never flips status after', () => {
+  const calls = [];
+  const out = onPublishFlipComplete({ exitCode: 0, status: 'done' }, CTX, {
+    register: () => { throw new Error('db down'); },
+    setStatus: (pid, s) => calls.push(['setStatus', pid, s]),
+    log: () => {},
+  });
+  assert.equal(out.registered, false, 'registration failed → not registered');
+  // status flip still attempted (independent of registration) — the build IS live
+  assert.deepEqual(calls, [['setStatus', 'proj1', 'published']]);
 });

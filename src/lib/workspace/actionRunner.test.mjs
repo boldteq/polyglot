@@ -51,3 +51,27 @@ test('the publish actions are deploy-tier (so the generic route rejects them)', 
   // preflight is a pure dry-run — NOT store-confirm gated (it can never flip)
   assert.notEqual(getAction('publish:preflight').requiresStoreConfirm, true);
 });
+
+// ── S7: onComplete fires once at the terminal state (the publish→monitor hook) ──
+test('runAction onComplete fires once with the terminal record', async () => {
+  // build-state:show is a safe, read-only action that completes fast (exits 1 in a
+  // bare dir: "no build-state.json"). Either way it reaches a terminal state → fires.
+  const done = await new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('onComplete never fired')), 20000);
+    let count = 0, last = null;
+    actionRunner.runAction({ buildId: 'b', dir, actionId: 'build-state:show', onComplete: (rec) => { count += 1; last = { ...rec, _count: count }; clearTimeout(t); resolve(last); } });
+  });
+  assert.equal(done._count, 1, 'fired exactly once');
+  assert.ok(['done', 'failed', 'error'].includes(done.status), `terminal status, got ${done.status}`);
+  assert.equal(typeof done.runId, 'string');
+  assert.notEqual(done.exitCode, null, 'exitCode is set at terminal state');
+});
+
+test('runAction onComplete is NOT called on the env-blocked (no-spawn) path', async () => {
+  // store:preflight requires env that the test env lacks → blocked, never spawns.
+  let called = false;
+  const rec = actionRunner.runAction({ buildId: 'b', dir, actionId: 'store:preflight', onComplete: () => { called = true; } });
+  assert.equal(rec.status, 'blocked');
+  await new Promise((r) => setTimeout(r, 150)); // give any stray async a chance
+  assert.equal(called, false, 'a blocked action never spawned, so onComplete must not fire');
+});

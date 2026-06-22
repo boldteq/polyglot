@@ -36,6 +36,7 @@ const actionRunner = require('../lib/workspace/actionRunner');
 const { syncProjectsFromDisk } = require('../lib/workspace/projectSync');
 const { readGitStatus, readThemeLock, readRepoFile, gitDiff } = require('../lib/workspace/gitStatus');
 const { buildProjectActivity } = require('../lib/workspace/projectActivity');
+const { onPublishFlipComplete } = require('../lib/buildSchedules');
 
 const router = Router();
 
@@ -944,7 +945,18 @@ router.post('/workspace/projects/:id/publish', (req, res) => {
       if (!confirm || String(confirm) !== String(store)) {
         return res.status(400).json({ error: 'confirm must equal the exact store domain to publish', store, code: 'CONFIRM_REQUIRED' });
       }
-      const rec = actionRunner.runAction({ buildId: assembleBuild(dir).buildId, dir, actionId: 'publish:flip', confirmStore: confirm });
+      const buildId = assembleBuild(dir).buildId;
+      // On a CLEAN live flip (exit 0) the publish is real → start the post-publish
+      // loop: register the 48h watch + 30/90d results checkpoints and flip the
+      // project's governance status to 'published'. Idempotent (safe on re-publish);
+      // degraded/blocked flips (exit 1/2/3) register nothing. Bookkeeping errors are
+      // swallowed inside the helper so they never mask a successful flip.
+      const rec = actionRunner.runAction({
+        buildId, dir, actionId: 'publish:flip', confirmStore: confirm,
+        onComplete: (done) => onPublishFlipComplete(done,
+          { buildId, repoDir: dir, store, projectId: project.id },
+          { setStatus: db.setClientProjectStatus, log: (m) => console.log(`[workspace] publish ${buildId}: ${m}`) }),
+      });
       return res.status(202).json({ ...rec, store, themeName: lock.themeName, themeId: lock.themeId });
     }
     return res.status(400).json({ error: "mode must be 'preflight' or 'flip'" });

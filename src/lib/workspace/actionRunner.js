@@ -37,26 +37,37 @@ function resolveScriptName(name) {
 }
 function resolveScript(entry) { return resolveScriptName(entry.script); }
 
+// Fire an optional completion callback exactly once with the terminal public
+// record. Server-side only (never client-supplied); a throwing callback is
+// swallowed so post-completion bookkeeping can never crash the runner.
+function fireComplete(rec) {
+  if (rec._onComplete && !rec._completeFired) {
+    rec._completeFired = true;
+    try { rec._onComplete(publicRec(rec)); } catch (err) { rec.log.push(`[onComplete error] ${err.message}`); }
+  }
+}
+
 // Run a sequence of toolkit scripts one at a time, appending to rec.log. Stops
 // (status='failed') on the first non-zero exit; status='done' only if all pass.
 function runChain(rec, steps, dir, i) {
   if (i >= steps.length) {
     if (rec.status === 'running') { rec.status = 'done'; rec.exitCode = 0; rec.endedMs = Date.now(); delete rec._proc; }
+    fireComplete(rec);
     return;
   }
   let scriptAbs;
   try { scriptAbs = resolveScriptName(steps[i].script); }
-  catch (err) { rec.status = 'failed'; rec.endedMs = Date.now(); rec.log.push(`[chain error] ${err.message}`); delete rec._proc; return; }
+  catch (err) { rec.status = 'failed'; rec.endedMs = Date.now(); rec.log.push(`[chain error] ${err.message}`); delete rec._proc; fireComplete(rec); return; }
   rec.log.push(`\n— step ${i + 1}/${steps.length}: ${steps[i].script} —\n`);
   const proc = spawn(process.execPath, [scriptAbs, ...(steps[i].args || [])], { cwd: dir, env: { ...process.env } });
   rec._proc = proc;
   const push = (c) => { rec.log.push(String(c)); if (rec.log.length > 400) rec.log.splice(0, rec.log.length - 400); };
   proc.stdout.on('data', push);
   proc.stderr.on('data', push);
-  proc.on('error', (err) => { rec.status = 'error'; rec.endedMs = Date.now(); push(`[spawn error] ${err.message}`); delete rec._proc; });
+  proc.on('error', (err) => { rec.status = 'error'; rec.endedMs = Date.now(); push(`[spawn error] ${err.message}`); delete rec._proc; fireComplete(rec); });
   proc.on('close', (code) => {
     if (rec.status === 'cancelled') { delete rec._proc; return; } // user cancelled — don't advance
-    if (code !== 0) { rec.status = 'failed'; rec.exitCode = code; rec.endedMs = Date.now(); delete rec._proc; return; }
+    if (code !== 0) { rec.status = 'failed'; rec.exitCode = code; rec.endedMs = Date.now(); delete rec._proc; fireComplete(rec); return; }
     runChain(rec, steps, dir, i + 1); // next step
   });
 }
@@ -70,7 +81,7 @@ function runChain(rec, steps, dir, i) {
 // spawn unless confirmStore === the locked store. This is the server-side
 // type-to-confirm — defense-in-depth on top of the publish script's own gates.
 // It throws BEFORE any spawn, so an unconfirmed flip never touches the store.
-function runAction({ buildId, dir, actionId, confirmStore } = {}) {
+function runAction({ buildId, dir, actionId, confirmStore, onComplete } = {}) {
   if (!dir || !fs.existsSync(dir)) throw new Error('build dir not found');
   const entry = getAction(actionId);
   if (!entry) { const e = new Error(`unknown action: ${actionId}`); e.code = 'UNKNOWN_ACTION'; throw e; }
@@ -96,6 +107,7 @@ function runAction({ buildId, dir, actionId, confirmStore } = {}) {
 
   const id = newRunId();
   const rec = { runId: id, buildId, dir, action: entry.id, status: 'running', startedMs: Date.now(), endedMs: null, exitCode: null, log: [] };
+  if (typeof onComplete === 'function') rec._onComplete = onComplete; // fired once at terminal state
   runs.set(id, rec);
 
   // CHAIN entries (e.g. Lens = capture → judge → enforce): run scripts in
@@ -118,12 +130,13 @@ function runAction({ buildId, dir, actionId, confirmStore } = {}) {
   };
   proc.stdout.on('data', push);
   proc.stderr.on('data', push);
-  proc.on('error', (err) => { rec.status = 'error'; rec.endedMs = Date.now(); push(`[spawn error] ${err.message}`); });
+  proc.on('error', (err) => { rec.status = 'error'; rec.endedMs = Date.now(); push(`[spawn error] ${err.message}`); delete rec._proc; fireComplete(rec); });
   proc.on('close', (code) => {
     rec.status = code === 0 ? 'done' : 'failed';
     rec.exitCode = code;
     rec.endedMs = Date.now();
     delete rec._proc;
+    fireComplete(rec);
   });
 
   return publicRec(rec);

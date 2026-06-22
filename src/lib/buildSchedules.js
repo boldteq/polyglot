@@ -88,6 +88,38 @@ async function runDueBuildSchedules({ now = Date.now(), database = db, handlers 
 
 function safeJson(v) { try { return JSON.stringify(v || {}); } catch { return '{}'; } }
 
+// Decide what to do when a `publish:flip` action run completes. The publish script
+// (shopify-theme-publish.mjs) exit codes are: 0 = published LIVE (smoke ok) · 1 =
+// blocked (never flipped) · 2 = env/setup error (never flipped) · 3 = live-but-
+// degraded (flip ran but verify/smoke failed → operator investigates / rolls back).
+// We start the post-publish loop ONLY on a clean live flip (exit 0): a degraded
+// publish (3) is an investigate-or-rollback state, and a clean re-publish re-runs
+// this with idempotent registration. Pure + injectable so the rule is testable
+// without spawning a real flip or touching a live store.
+//   rec   — the terminal action run record ({ exitCode, status, ... }).
+//   ctx   — { buildId, repoDir, store, projectId, publishedAt }.
+//   deps  — { register, setStatus, now, log } (register/setStatus injected for tests).
+// Returns { registered: bool, ids: string[], statusSet: bool }.
+function onPublishFlipComplete(rec, ctx = {}, deps = {}) {
+  const { register = registerBuildSchedules, setStatus = null, now = Date.now, log = () => {} } = deps;
+  const out = { registered: false, ids: [], statusSet: false };
+  if (!rec || rec.exitCode !== 0) {
+    log(`publish flip exit=${rec ? rec.exitCode : 'n/a'} → not a clean live flip; no monitoring registered`);
+    return out;
+  }
+  const { buildId, repoDir, store = null, projectId = null, publishedAt } = ctx;
+  try {
+    out.ids = register(buildId, { publishedAt: publishedAt || now(), repoDir, store });
+    out.registered = out.ids.length > 0;
+    log(`publish flip exit=0 → registered ${out.ids.length} post-publish checkpoints for ${buildId}`);
+  } catch (err) { log(`post-publish registration failed: ${err.message}`); }
+  if (typeof setStatus === 'function' && projectId) {
+    try { setStatus(projectId, 'published'); out.statusSet = true; }
+    catch (err) { log(`post-publish status flip failed: ${err.message}`); }
+  }
+  return out;
+}
+
 // Resolve a toolkit script: prefer the repo's VENDORED copy (what runs in a client repo),
 // fall back to Polyglot's master. Mirrors buildRuns.resolveMaestro.
 function resolveScript(repoDir, name) {
@@ -130,4 +162,4 @@ const defaultHandlers = {
   },
 };
 
-module.exports = { registerBuildSchedules, runDueBuildSchedules, resolveScript, CHECKPOINTS, defaultHandlers };
+module.exports = { registerBuildSchedules, runDueBuildSchedules, onPublishFlipComplete, resolveScript, CHECKPOINTS, defaultHandlers };
