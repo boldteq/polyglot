@@ -50,6 +50,7 @@ const WorkspaceProjects = React.lazy(() => import('./pages/WorkspaceProjects'))
 const WorkspaceProjectDetail = React.lazy(() => import('./pages/WorkspaceProjectDetail'))
 const Shopify = React.lazy(() => import('./pages/Shopify'))
 const StorePreview = React.lazy(() => import('./pages/StorePreview'))
+const Sales = React.lazy(() => import('./pages/Sales'))
 
 // Minimal page-level spinner shown while lazy chunk loads
 function PageLoader() {
@@ -105,6 +106,7 @@ export default function App() {
             <Route path="/agents" element={<AllAgents />} />
             <Route path="/orchestration" element={<Orchestration />} />
             <Route path="/playground" element={<Playground />} />
+            <Route path="/sales" element={<Sales />} />
             <Route path="/build" element={<Build />} />
             <Route path="/lens" element={<Navigate to="/workspace/lens" replace />} />
             <Route path="/shopify" element={<Shopify />} />
