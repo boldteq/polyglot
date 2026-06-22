@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Circle, Loader2, FileCheck2, FileX2, Play, Lock, Bot } from 'lucide-react'
+import { CheckCircle2, Circle, Loader2, FileCheck2, FileX2, Play, Lock, Bot, Rocket } from 'lucide-react'
 import { Spinner } from '../Skeleton'
 import { formatAgentDisplay } from '../../lib/agentDisplay'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 import { openDispatch } from '../../lib/dispatch'
+import { openPublish } from '../../lib/publish'
 import { getWorkspaceBuildPipeline, getWorkspaceActions, type PipelineStep, type ActionDef } from '../../lib/api'
+
+interface PublishCtx { projectId: string; store: string | null; themeName?: string | null }
 
 // Pipeline step key → the safe action that advances/verifies it. Steps not here
 // have no panel action yet (build work = agent dispatch in P2; deploy = P4).
@@ -21,7 +24,7 @@ const DEPLOY_STEPS = new Set(['staging', 'uat-publish'])
 
 // The 18-step lifecycle made OPERATIONAL: status + owner + artifact + the safe
 // action that applies to each step (confirm-gated via the shared hook).
-export default function WorkflowTab({ buildId, reloadKey, onChanged }: { buildId: string; reloadKey?: number; onChanged?: () => void }) {
+export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: { buildId: string; reloadKey?: number; onChanged?: () => void; publish?: PublishCtx }) {
   const [steps, setSteps] = useState<PipelineStep[]>([])
   const [current, setCurrent] = useState(0)
   const [actions, setActions] = useState<ActionDef[]>([])
@@ -46,7 +49,7 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged }: { buildId
 
   return (
     <div className="space-y-2">
-      <p className="text-[12px] text-text-muted px-1">The 18-step Shopify Website lifecycle. Run the safe action for a step inline; deploy steps unlock in a later phase.</p>
+      <p className="text-[12px] text-text-muted px-1">The 18-step Shopify Website lifecycle. Run the safe action for a step inline; deploy steps publish to the live store (preflight-gated + store-name confirmed).</p>
       <div className="card p-2">
         <div className="px-3 py-2 text-[13px] text-text-muted">Step {current}/18</div>
         <ol className="relative">
@@ -84,9 +87,15 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged }: { buildId
                       {runningId === action.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                       {action.label}
                     </button>
+                  ) : isDeploy && publish?.store ? (
+                    <button onClick={() => openPublish({ projectId: publish.projectId, store: publish.store!, themeName: publish.themeName, onPublished: onChanged })}
+                      title="Publish the locked theme to the live store (preflight-gated + store-name confirmed)"
+                      className="btn-ghost btn-sm flex items-center gap-1 text-[11px] text-accent">
+                      <Rocket className="w-3 h-3" /> Publish
+                    </button>
                   ) : isDeploy ? (
-                    <span className="flex items-center gap-1 text-[10px] text-text-muted bg-text-muted/10 px-2 py-1 rounded" title="Live deploy — unlocks in a later, separately-gated phase">
-                      <Lock className="w-3 h-3" /> P4
+                    <span className="flex items-center gap-1 text-[10px] text-text-muted bg-text-muted/10 px-2 py-1 rounded" title="Live deploy — link a theme (store + theme id) to enable publishing">
+                      <Lock className="w-3 h-3" /> No theme lock
                     </span>
                   ) : null}
                 </div>

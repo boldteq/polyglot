@@ -17,7 +17,10 @@ export default function ActionsBar({ buildId, onChanged }: { buildId: string; on
 
   useEffect(() => {
     getWorkspaceActions()
-      .then((r) => setActions(r.actions))
+      // SAFE actions only. Deploy-tier actions (publish) NEVER appear in this
+      // casual dropdown — they run only via the gated PublishDrawer flow, and the
+      // generic action route 403s them server-side regardless.
+      .then((r) => setActions(r.actions.filter((a) => a.tier === 'safe')))
       .catch((e) => console.error('[workspace] actions registry fetch failed:', e instanceof Error ? e.message : e))
   }, [])
 

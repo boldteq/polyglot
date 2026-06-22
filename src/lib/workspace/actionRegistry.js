@@ -3,12 +3,19 @@
 // The ALLOWLIST of management actions the Workspace cockpit may run against a
 // build. THIS registry IS the security boundary: the action runner can only
 // spawn an entry that appears here, with the FIXED `args` defined here — never a
-// command or argument from the client. P1 = `tier:'safe'` only (read-only OR
-// writes only to <build>/gate-reports/ — never theme code, never the store).
+// command or argument from the client. Most entries are `tier:'safe'` (read-only
+// OR writes only to <build>/gate-reports/ — never theme code, never the store).
 //
 // Each script must live in theme-toolkit/scripts/ (the runner enforces dir
-// containment too). Deploy/store/expensive tiers are reserved for a later,
-// separately-gated phase (P4) and are intentionally absent here.
+// containment too).
+//
+// `tier:'deploy'` (S6, 2026-06-22): the publish flow. NEVER reachable from the
+// casual /actions/:actionId route (that route 403s any non-safe tier) — only via
+// the dedicated /workspace/projects/:id/publish route. `publish:preflight` is a
+// pure dry-run (full gate chain, prints the flip command, never flips).
+// `publish:flip` carries `requiresStoreConfirm` → the runner refuses to spawn it
+// unless the caller passes confirmStore === the build's theme-lock store (server
+// -side type-to-confirm, defense-in-depth on top of the script's own 7 gates).
 
 const path = require('path');
 
@@ -82,6 +89,19 @@ const ACTIONS = [
     script: 'build-state.mjs', args: ['show'],
     description: 'Renders the maestro build-state (surface-by-surface verdicts). Read-only.',
     confirm: { title: 'Show build state?', message: 'Prints the current build-state. Read-only — changes nothing.', confirmLabel: 'Show' },
+  },
+  // ── deploy tier — publish flow (only via /workspace/projects/:id/publish) ──
+  {
+    id: 'publish:preflight', label: 'Publish preflight (dry-run)', tier: 'deploy',
+    script: 'shopify-theme-publish.mjs', args: ['--dry-run'],
+    description: 'Runs the full publish gate chain WITHOUT flipping (dry-run): lock match, no forbidden flags, publish-readiness, CHANGES complete, gates fresh+full+passing (incl. Lens #18), and prints the exact flip command. Never mutates the store.',
+    confirm: { title: 'Run publish preflight?', message: 'Runs the full publish gate chain in DRY-RUN mode — verifies every precondition and prints the flip command, but does NOT publish. Safe to run anytime.', confirmLabel: 'Run preflight' },
+  },
+  {
+    id: 'publish:flip', label: 'Publish to live store', tier: 'deploy', requiresStoreConfirm: true,
+    script: 'shopify-theme-publish.mjs', args: [],
+    description: 'Flips the locked theme to LIVE on the locked store — AFTER the same gate chain passes. MUTATES the live storefront. The runner refuses to spawn this without a matching store-name confirmation.',
+    confirm: { title: 'Publish to the LIVE store?', message: 'This flips the locked theme to LIVE — visitors see it immediately. The publish gate chain must pass first, and you must type the exact store domain to confirm.', confirmLabel: 'Publish live' },
   },
 ];
 

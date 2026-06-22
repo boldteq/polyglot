@@ -9,7 +9,7 @@ interface Verdict { exitCode: number; publishReady: boolean; stage: string | nul
 // Runs an autonomous Maestro build (DEV mode — build/verify/auto-heal + preview,
 // NEVER pushes to the live theme) and streams it. Reuses the /api/build engine:
 // the run survives refresh/navigation (buildRuns registry) and reattaches on open.
-export default function BuildDrawer({ projectId, buildId, repoDir, store, onClose }: { projectId: string; buildId: string; repoDir: string; store?: string | null; onClose: () => void }) {
+export default function BuildDrawer({ buildId, repoDir, store, onClose }: { projectId?: string; buildId: string; repoDir: string; store?: string | null; onClose: () => void }) {
   const [phase, setPhase] = useState<Phase>('confirm')
   const [output, setOutput] = useState('')
   const [verdict, setVerdict] = useState<Verdict | null>(null)

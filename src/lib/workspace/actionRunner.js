@@ -17,6 +17,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { getAction, TOOLKIT_DIR } = require('./actionRegistry');
+const { readThemeLock } = require('./gitStatus');
 
 // runId → { buildId, dir, action, status, startedMs, endedMs, exitCode, log[] }
 const runs = new Map();
@@ -63,10 +64,26 @@ function runChain(rec, steps, dir, i) {
 // Start an allowlisted action. `actionId` MUST be a registry id; `dir` MUST be a
 // validated build dir. Returns the public run record (or a synthetic blocked
 // record when required env is missing — never spawns in that case).
-function runAction({ buildId, dir, actionId }) {
+//
+// `confirmStore` is REQUIRED for entries flagged `requiresStoreConfirm` (the
+// live publish flip): the runner reads the build's theme-lock and refuses to
+// spawn unless confirmStore === the locked store. This is the server-side
+// type-to-confirm — defense-in-depth on top of the publish script's own gates.
+// It throws BEFORE any spawn, so an unconfirmed flip never touches the store.
+function runAction({ buildId, dir, actionId, confirmStore } = {}) {
   if (!dir || !fs.existsSync(dir)) throw new Error('build dir not found');
   const entry = getAction(actionId);
   if (!entry) { const e = new Error(`unknown action: ${actionId}`); e.code = 'UNKNOWN_ACTION'; throw e; }
+
+  // store-confirm gate (live publish flip) — must match the locked store EXACTLY.
+  if (entry.requiresStoreConfirm) {
+    const lock = readThemeLock(dir);
+    const store = lock && lock.store;
+    if (!store) { const e = new Error('cannot publish: this build has no theme-lock store'); e.code = 'NO_LOCK_STORE'; throw e; }
+    if (!confirmStore || String(confirmStore) !== String(store)) {
+      const e = new Error('store confirmation required: type the exact store domain to publish'); e.code = 'CONFIRM_REQUIRED'; throw e;
+    }
+  }
 
   // env gate — block (don't spawn) with a clear reason if a required var is unset
   const missing = (entry.requiresEnv || []).filter((k) => !process.env[k]);

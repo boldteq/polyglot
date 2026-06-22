@@ -10,6 +10,7 @@ import { ToastContainer } from './components/Toast'
 import { ConfirmHost } from './lib/confirm'
 import { DispatchHost } from './lib/dispatch'
 import { BuildHost } from './lib/build'
+import { PublishHost } from './lib/publish'
 import CommandPalette from './components/CommandPalette'
 import { useApi } from './hooks/useApi'
 import { getProjects } from './lib/api'
@@ -155,6 +156,7 @@ export default function App() {
       <ConfirmHost />
       <DispatchHost />
       <BuildHost />
+      <PublishHost />
 
       {/* AI assistant */}
       {aiOpen && (

@@ -160,15 +160,19 @@ test('P4 action: unknown runId 404s', async () => {
   assert.equal(r.status, 404);
 });
 
-test('Cockpit: action registry lists safe actions + env availability', async () => {
+test('Cockpit: action registry lists actions + env availability', async () => {
   const { status, json } = await get('/api/workspace/actions/registry');
   assert.equal(status, 200);
   assert.ok(Array.isArray(json.actions) && json.actions.length >= 5);
   for (const a of json.actions) {
-    assert.equal(a.tier, 'safe');               // P1 is safe-only
+    assert.ok(['safe', 'deploy'].includes(a.tier), `unexpected tier ${a.tier}`);
     assert.equal(typeof a.available, 'boolean');
     assert.ok(a.confirm && a.confirm.title);
   }
+  assert.ok(json.actions.some((a) => a.tier === 'safe'), 'has safe actions');
+  // S6: deploy-tier publish actions are present (the UI filters them out of the
+  // casual dropdown; the generic action route 403s them — tested separately).
+  assert.ok(json.actions.some((a) => a.id === 'publish:flip' && a.tier === 'deploy'));
   // store:preflight requires env → unavailable here (no token in test env)
   const pre = json.actions.find((a) => a.id === 'store:preflight');
   assert.ok(pre && pre.available === false && pre.unavailableReason);
@@ -474,4 +478,49 @@ test('P3 index: replace + read round-trips, prunes vanished builds', async () =>
       for (const id of ['wstest-a', 'wstest-b']) conn.prepare('DELETE FROM workspace_build_index WHERE buildId = ?').run(id);
     } catch { /* */ }
   }
+});
+
+// ── S6: publish guard rails. We assert the GUARD paths only (reject / 400) —
+// these all return BEFORE any spawn, so no real store is ever touched. The happy
+// preflight (dry-run, blocks) is browser-verified, never run as an automated flip.
+
+test('S6: generic action route REJECTS a deploy-tier action (403)', async () => {
+  const list = await get('/api/workspace/builds');
+  if (!list.json.builds.length) return;
+  const id = list.json.builds[0].buildId;
+  const r = await postJson(`/api/workspace/builds/${id}/actions/publish:flip`, {});
+  assert.equal(r.status, 403, 'deploy-tier publish:flip must never run from the casual route');
+  assert.equal(r.json.tier, 'deploy');
+  // preflight is deploy too — also rejected from this route
+  const r2 = await postJson(`/api/workspace/builds/${id}/actions/publish:preflight`, {});
+  assert.equal(r2.status, 403);
+});
+
+test('S6: /publish flip WITHOUT a matching confirm → 400, never spawns', async () => {
+  const projects = await get('/api/workspace/projects');
+  const withLock = (projects.json.projects || []).find((p) => p.build_dir);
+  if (!withLock) return; // no linked project in this env — skip
+  // resolve which project actually has a theme-lock store (publish precondition)
+  const fs = require('node:fs'); const path = require('node:path');
+  const target = (projects.json.projects || []).find((p) => {
+    try { return p.build_dir && fs.existsSync(path.join(p.build_dir, '.boldteq-theme-lock.json')); } catch { return false; }
+  });
+  if (!target) return; // no lock-bearing build on disk — skip
+  // missing confirm
+  const a = await postJson(`/api/workspace/projects/${target.id}/publish`, { mode: 'flip' });
+  assert.equal(a.status, 400);
+  assert.equal(a.json.code, 'CONFIRM_REQUIRED');
+  assert.ok(a.json.store, 'returns the store so the UI can show what to type');
+  // wrong confirm
+  const b = await postJson(`/api/workspace/projects/${target.id}/publish`, { mode: 'flip', confirm: 'not-the-store.myshopify.com' });
+  assert.equal(b.status, 400);
+  assert.equal(b.json.code, 'CONFIRM_REQUIRED');
+  // bad mode
+  const c = await postJson(`/api/workspace/projects/${target.id}/publish`, { mode: 'nonsense' });
+  assert.equal(c.status, 400);
+});
+
+test('S6: /publish on an unknown project → 404', async () => {
+  const r = await postJson('/api/workspace/projects/nonexistent-id/publish', { mode: 'preflight' });
+  assert.equal(r.status, 404);
 });

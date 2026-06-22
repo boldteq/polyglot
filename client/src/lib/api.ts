@@ -266,6 +266,13 @@ export const getWorkspaceAction = (runId: string) =>
 export const cancelWorkspaceAction = (runId: string) =>
   request<{ cancelled: boolean }>(`/workspace/actions/${encodeURIComponent(runId)}/cancel`, { method: 'POST' })
 
+// S6 publish flow — the ONLY path to the deploy-tier publish actions.
+// preflight = dry-run (full gate chain, never flips). flip = live publish, needs
+// `confirm` === the exact store domain (server re-checks before any spawn).
+export interface PublishRun extends ActionRun { store: string; themeName: string | null; themeId: string | null }
+export const workspacePublish = (projectId: string, body: { mode: 'preflight' | 'flip'; confirm?: string }) =>
+  request<PublishRun>(`/workspace/projects/${encodeURIComponent(projectId)}/publish`, { method: 'POST', body: JSON.stringify(body) })
+
 // Visual design-system viewer
 export interface DesignSystemData { present: boolean; system: Record<string, unknown> | null }
 export const getWorkspaceDesignSystem = (buildId: string) =>

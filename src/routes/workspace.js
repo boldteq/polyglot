@@ -22,7 +22,7 @@ const { toggleItem, addItem, addWaiver } = require('../lib/workspace/writeChange
 const { parseBaselineMd } = require('../lib/workspace/parseBaselineMd');
 const { readBuildFiles } = require('../lib/workspace/readBuildFiles');
 const { parseDesignSystem } = require('../lib/workspace/parseDesignSystem');
-const { listActions } = require('../lib/workspace/actionRegistry');
+const { listActions, getAction } = require('../lib/workspace/actionRegistry');
 const { findBuildArtifacts } = require('../lib/workspace/findBuildArtifacts');
 const { deriveCurrentStep } = require('../lib/workspace/currentStep');
 const { computeBuildScore } = require('../lib/workspace/computeBuildScore');
@@ -893,18 +893,64 @@ router.post('/workspace/builds/:buildId/actions/rerun-gates', (req, res) => {
 });
 
 // POST /api/workspace/builds/:buildId/actions/:actionId — generic allowlisted
-// runner. The actionId MUST be a registry entry (unknown → 403). Resolves dir
-// from the known buildId (never a client path). Registered AFTER rerun-gates so
-// that literal wins; any other id flows here.
+// runner for SAFE actions only. The actionId MUST be a registry entry (unknown
+// → 403); any non-`safe` tier (e.g. deploy/publish) is REJECTED here (403) and
+// can only run via the dedicated /workspace/projects/:id/publish flow. Resolves
+// dir from the known buildId (never a client path).
 router.post('/workspace/builds/:buildId/actions/:actionId', (req, res) => {
   try {
     const dir = resolveBuildDir(req.params.buildId);
     if (!dir) return res.status(404).json({ error: 'build not found' });
+    const entry = getAction(req.params.actionId);
+    if (!entry) return res.status(403).json({ error: `unknown action: ${req.params.actionId}` });
+    if (entry.tier !== 'safe') {
+      return res.status(403).json({ error: `action '${entry.id}' (tier: ${entry.tier}) cannot run from this route — use the publish flow`, tier: entry.tier });
+    }
     const rec = actionRunner.runAction({ buildId: req.params.buildId, dir, actionId: req.params.actionId });
     res.status(202).json(rec);
   } catch (err) {
     if (err.code === 'UNKNOWN_ACTION') return res.status(403).json({ error: err.message });
     console.error('[workspace] action failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/workspace/projects/:id/publish — the ONLY path to the deploy-tier
+// publish actions. Body: { mode: 'preflight' | 'flip', confirm? }.
+//   • preflight → runs publish:preflight (--dry-run): full gate chain, NEVER
+//     flips. No confirmation needed (it can't mutate the store).
+//   • flip → requires `confirm` to equal the build's theme-lock store EXACTLY;
+//     the runner re-checks the same store-confirm before spawning. Mismatch or
+//     missing → 400, and the flip is never spawned.
+// Dir + store are ALWAYS server-resolved from build_dir / theme-lock — never a
+// request param. Returns the action run record; poll GET /workspace/actions/:runId.
+router.post('/workspace/projects/:id/publish', (req, res) => {
+  try {
+    const project = db.getClientProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'project not found' });
+    const dir = project.build_dir;
+    if (!dir || !fs.existsSync(dir)) return res.status(409).json({ error: 'project has no linked build dir' });
+    const lock = readThemeLock(dir);
+    const store = lock && lock.store;
+    if (!store) return res.status(409).json({ error: 'this build has no theme-lock store — cannot publish' });
+
+    const mode = req.body && req.body.mode;
+    if (mode === 'preflight') {
+      const rec = actionRunner.runAction({ buildId: assembleBuild(dir).buildId, dir, actionId: 'publish:preflight' });
+      return res.status(202).json({ ...rec, store, themeName: lock.themeName, themeId: lock.themeId });
+    }
+    if (mode === 'flip') {
+      const confirm = req.body && req.body.confirm;
+      if (!confirm || String(confirm) !== String(store)) {
+        return res.status(400).json({ error: 'confirm must equal the exact store domain to publish', store, code: 'CONFIRM_REQUIRED' });
+      }
+      const rec = actionRunner.runAction({ buildId: assembleBuild(dir).buildId, dir, actionId: 'publish:flip', confirmStore: confirm });
+      return res.status(202).json({ ...rec, store, themeName: lock.themeName, themeId: lock.themeId });
+    }
+    return res.status(400).json({ error: "mode must be 'preflight' or 'flip'" });
+  } catch (err) {
+    if (err.code === 'CONFIRM_REQUIRED' || err.code === 'NO_LOCK_STORE') return res.status(400).json({ error: err.message });
+    console.error('[workspace] /projects/:id/publish failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
