@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  GraduationCap, ArrowLeft, Plus, Trash2, ChefHat, Clock, X, Edit2,
+  GraduationCap, ArrowLeft, Plus, Trash2, ChefHat, Clock, X, Edit2, Search,
 } from 'lucide-react'
 import { getTraining, addTraining, deleteTraining, bakeTraining, updateTraining } from '../lib/api'
 import { useApi } from '../hooks/useApi'
@@ -26,9 +26,14 @@ export default function TrainingView() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editIssue, setEditIssue] = useState('')
   const [editCorrection, setEditCorrection] = useState('')
+  const [query, setQuery] = useState('')
 
   const active = (corrections || []).filter(c => c.status === 'active')
   const archived = (corrections || []).filter(c => c.status !== 'active')
+  const q = query.trim().toLowerCase()
+  const matches = (c: TrainingCorrection) => !q || c.issue.toLowerCase().includes(q) || c.correction.toLowerCase().includes(q)
+  const activeShown = active.filter(matches)
+  const archivedShown = archived.filter(matches)
 
   const handleAdd = async () => {
     if (!issue.trim() || !correction.trim()) return
@@ -58,7 +63,19 @@ export default function TrainingView() {
   }
 
   const handleBake = async () => {
-    if (!(await confirmDialog({ title: 'Bake corrections into the agent?', message: `Permanently merge ${active.length} correction(s) into the agent's system prompt. This cannot be undone.`, danger: true, confirmLabel: 'Bake in' }))) return
+    if (!(await confirmDialog({
+      title: 'Bake corrections into the agent?',
+      message: (
+        <div>
+          <p>Permanently merge these {active.length} correction(s) into the agent's system prompt — this cannot be undone:</p>
+          <ul className="mt-2 space-y-1 max-h-48 overflow-y-auto pr-1">
+            {active.map(c => <li key={c.id} className="text-sm text-text-secondary">• {c.issue}</li>)}
+          </ul>
+        </div>
+      ),
+      danger: true,
+      confirmLabel: 'Bake in',
+    }))) return
     setBaking(true)
     try {
       const result = await bakeTraining(name!)
@@ -194,6 +211,24 @@ export default function TrainingView() {
         </div>
       )}
 
+      {/* Search */}
+      {(active.length > 0 || archived.length > 0) && (
+        <div className="relative mb-4">
+          <Search className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search corrections…"
+            className="input pl-9"
+          />
+          {q && (
+            <span className="text-xs text-text-muted absolute right-3 top-1/2 -translate-y-1/2">
+              {activeShown.length + archivedShown.length} match{activeShown.length + archivedShown.length !== 1 ? 'es' : ''}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Active corrections */}
       {active.length === 0 && !adding ? (
         <div className="card p-12 text-center">
@@ -203,9 +238,11 @@ export default function TrainingView() {
             Run the agent in Playground, rate the output, and corrections will appear here
           </p>
         </div>
+      ) : activeShown.length === 0 ? (
+        <div className="card p-8 text-center text-sm text-text-muted">No active corrections match &ldquo;{query}&rdquo;.</div>
       ) : (
         <div className="space-y-3">
-          {active.map(c => (
+          {activeShown.map(c => (
             <div key={c.id} className="group card card-hover p-4 hover:border-accent/30">
               {editingId === c.id ? (
                 <div className="space-y-3">
@@ -268,13 +305,13 @@ export default function TrainingView() {
       )}
 
       {/* Archived corrections */}
-      {archived.length > 0 && (
+      {archivedShown.length > 0 && (
         <div className="mt-8">
           <h2 className="text-sm font-semibold text-text-secondary mb-3">
-            Archived ({archived.length})
+            Archived ({archivedShown.length}{q ? ` of ${archived.length}` : ''})
           </h2>
           <div className="space-y-2 opacity-60">
-            {archived.map(c => (
+            {archivedShown.map(c => (
               <div key={c.id} className="card p-3">
                 <p className="text-xs text-text-muted">Issue: {c.issue}</p>
                 <p className="text-xs text-text-secondary">Correction: {c.correction}</p>
