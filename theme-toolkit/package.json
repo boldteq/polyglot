@@ -35,6 +35,7 @@
     "check:consistency": "node scripts/check-consistency.mjs",
     "check:antipatterns": "node scripts/check-antipatterns.mjs",
     "check:css-layout": "node scripts/check-css-layout.mjs",
+    "check:mobile": "node scripts/check-mobile-layout.mjs",
     "check:redirects": "node scripts/check-redirects.mjs",
     "check:images": "node scripts/check-image-quality.mjs",
     "check:copy": "node scripts/check-copy-quality.mjs",

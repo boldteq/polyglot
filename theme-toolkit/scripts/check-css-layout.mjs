@@ -120,7 +120,8 @@ async function gatherRuntime(url) {
   const browser = await chromium.launch({ headless: true })
   const samples = []
   try {
-    for (const vp of [{ width: 375, height: 800 }, { width: 1440, height: 1000 }]) {
+    // #35 — include 320px (iPhone SE / compact Android): the small-mobile overflow edge most builds never test.
+    for (const vp of [{ width: 320, height: 800 }, { width: 375, height: 800 }, { width: 1440, height: 1000 }]) {
       const ctx = await browser.newContext({ viewport: vp })
       const page = await ctx.newPage()
       await page.goto(url, { waitUntil: 'load', timeout: 45000 })

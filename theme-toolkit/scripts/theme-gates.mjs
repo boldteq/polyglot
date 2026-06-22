@@ -228,6 +228,12 @@ const GATES = [
   // attacks along 4 axes BEFORE the board; every finding must be resolved or accepted-with-rationale;
   // an unanswered attack blocks. Verifies the red-team artifact; warn-first (BLOCKS at publish-grade).
   { name: 'red-team', number: 32, kind: 'static', runner: 'node', script: 'check-red-team.mjs' },
+  // Gate 35 — mobile-layout: the DETERMINISTIC enforcer of the mobile-first protocol (viewport meta,
+  // font/tap-target floors, hover-only affordances, 100vw overflow guards, sticky mobile ATC) on the
+  // build's custom surface — the hermetic complement to Lens's visual mobile judgment. Warn-first
+  // (MOBILE_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK on viewport-meta + sub-12px font); SKIPS when no custom
+  // surface. Covered by --static-only + --verify/--require-full.
+  { name: 'mobile-layout', number: 35, kind: 'static', runner: 'node', script: 'check-mobile-layout.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────
