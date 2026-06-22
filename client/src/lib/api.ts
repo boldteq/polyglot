@@ -333,6 +333,8 @@ export const setWorkspaceProjectStatus = (id: string, status: ProjectStatus) =>
 export interface BuildSchedule { id: string; kind: 'watch' | 'results'; label: string; dueAt: number; status: 'pending' | 'running' | 'done' | 'failed'; ranAt: number | null; publishedAt: number; result: Record<string, unknown> | null }
 export const getWorkspaceProjectSchedules = (id: string) =>
   request<{ present: boolean; schedules: BuildSchedule[] }>(`/workspace/projects/${encodeURIComponent(id)}/schedules`)
+// Sprint 2 reuses the existing build API (startBuild / getActiveBuilds / cancelBuild
+// / buildStreamUrl, defined above) — the panel just wires it to a project.
 
 // ── Shopify client projects (P1 intake + P5 per-page preview) ─────────────────
 export interface ClientProject { id: string; name: string; niche: string | null; domain: string | null; status: string; created_at: string; updated_at: string }

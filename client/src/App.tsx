@@ -9,6 +9,7 @@ import AiAssistant from './components/AiAssistant'
 import { ToastContainer } from './components/Toast'
 import { ConfirmHost } from './lib/confirm'
 import { DispatchHost } from './lib/dispatch'
+import { BuildHost } from './lib/build'
 import CommandPalette from './components/CommandPalette'
 import { useApi } from './hooks/useApi'
 import { getProjects } from './lib/api'
@@ -153,6 +154,7 @@ export default function App() {
       <ToastContainer />
       <ConfirmHost />
       <DispatchHost />
+      <BuildHost />
 
       {/* AI assistant */}
       {aiOpen && (

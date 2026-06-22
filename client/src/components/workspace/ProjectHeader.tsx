@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check } from 'lucide-react'
+import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check, Hammer } from 'lucide-react'
 import ScoreGauge from './ScoreGauge'
 import StepIndicator from './StepIndicator'
 import VerdictPill from './VerdictPill'
 import ActionsBar from './ActionsBar'
 import { openDispatch } from '../../lib/dispatch'
+import { openBuild } from '../../lib/build'
 import { toast } from '../Toast'
 import { setWorkspaceProjectStatus, PROJECT_STATUSES, type ProjectDetail, type RepoData, type ProjectStatus } from '../../lib/api'
 
@@ -97,6 +98,10 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
       {/* actions */}
       <div className="flex items-center gap-2 shrink-0">
         {buildId && <ActionsBar buildId={buildId} onChanged={onReload} />}
+        {buildId && build && repo?.connected && (
+          <button onClick={() => openBuild({ projectId: project.id, buildId, repoDir: repo!.build_dir!, store: repo?.themeLock?.store })}
+            className="btn-ghost btn-sm flex items-center gap-1.5"><Hammer className="w-4 h-4" /> Build</button>
+        )}
         {buildId && <button onClick={() => openDispatch({ buildId, agent: 'atrium', task: '' })} className="btn-ghost btn-sm flex items-center gap-1.5"><Bot className="w-4 h-4" /> Dispatch</button>}
         {build && <button onClick={() => nav(`/workspace/lens?dir=${encodeURIComponent(build.dir)}`)} className="btn-primary btn-sm flex items-center gap-1.5"><Eye className="w-4 h-4" /> Lens</button>}
         {!build && <button onClick={() => nav('/workspace')} className="btn-ghost btn-sm flex items-center gap-1.5"><Link2 className="w-4 h-4" /> Link a build</button>}
