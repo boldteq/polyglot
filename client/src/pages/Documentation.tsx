@@ -4,6 +4,7 @@ import {
   BookOpen, Copy, Check, ChevronRight, Hash, Terminal,
   Info, Lightbulb, AlertTriangle, ArrowRight, Search, X,
 } from 'lucide-react'
+import { writeToClipboard } from '../lib/clipboard'
 
 interface DocMeta {
   slug: string
@@ -248,8 +249,8 @@ function InlineText({ text }: { text: string }) {
 function CodeBlock({ lang, text }: { lang: string; text: string }) {
   const [copied, setCopied] = useState(false)
 
-  const copy = () => {
-    navigator.clipboard.writeText(text)
+  const copy = async () => {
+    if (!(await writeToClipboard(text))) return
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

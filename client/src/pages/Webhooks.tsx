@@ -5,6 +5,7 @@ import { ErrorState } from '../components/ErrorState'
 import EmptyState from '../components/EmptyState'
 import ConfirmDialog from '../components/ConfirmDialog'
 import type { Webhook } from '../lib/api'
+import { writeToClipboard } from '../lib/clipboard'
 import type { Agent } from '../types'
 import { resource } from '../lib/cacheCore'
 
@@ -80,8 +81,8 @@ export default function WebhooksPage() {
     } catch (err) { apiError('Get webhook secret', err) }
   }
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text)
+  const copyToClipboard = async (text: string, label: string) => {
+    if (!(await writeToClipboard(text))) return
     setCopied(label)
     setTimeout(() => setCopied(''), 2000)
   }
