@@ -64,6 +64,8 @@ interface StatItem {
   value: string | number
   icon?: LucideIcon
   color?: string
+  /** Optional plain-language explanation shown as a hover tooltip on the card. */
+  hint?: string
 }
 
 interface StatRowProps {
@@ -76,8 +78,8 @@ export function StatRow({ stats }: StatRowProps) {
       {stats.map((s) => {
         const Icon = s.icon
         return (
-          <div key={s.label} className="card p-5">
-            <div className="flex items-center gap-2 text-text-muted mb-2.5">
+          <div key={s.label} className="card p-5" title={s.hint}>
+            <div className={`flex items-center gap-2 text-text-muted mb-2.5 ${s.hint ? 'cursor-help' : ''}`}>
               {Icon && <Icon className="w-4 h-4" />}
               <span className="text-[13px] font-medium">{s.label}</span>
             </div>

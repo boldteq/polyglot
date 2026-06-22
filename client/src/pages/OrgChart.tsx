@@ -16,6 +16,7 @@ import {
   useReactFlow,
   getNodesBounds,
   getViewportForBounds,
+  Panel,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 // html-to-image is export-only — lazy-loaded inside the PNG export handler (C18)
@@ -123,6 +124,27 @@ const MODEL_BADGES: Record<string, { label: string; bg: string; text: string; bo
   opus: { label: 'Opus', bg: 'rgba(168,85,247,0.15)', text: '#c084fc', border: 'rgba(168,85,247,0.3)' },
   sonnet: { label: 'Sonnet', bg: 'rgba(96,165,250,0.15)', text: '#60a5fa', border: 'rgba(96,165,250,0.3)' },
   haiku: { label: 'Haiku', bg: 'rgba(52,211,153,0.15)', text: '#34d399', border: 'rgba(52,211,153,0.3)' },
+}
+
+// Plain-language meaning of each model tier — shared by the model pills (tooltip)
+// and the canvas legend so they never drift.
+const MODEL_TIER_DESC: Record<string, string> = {
+  opus: 'deepest reasoning, highest cost',
+  sonnet: 'fast default',
+  haiku: 'cheap, back-office',
+}
+function modelTierTitle(model?: string | null): string {
+  const key = (model || '').toLowerCase()
+  const b = MODEL_BADGES[key]
+  return b ? `AI model tier · ${b.label}: ${MODEL_TIER_DESC[key] ?? ''}` : 'AI model tier'
+}
+
+// Live-load dot meaning — shared by LoadDot (the dots) and the canvas legend so a
+// colour change updates both. Mirrors the former inline ternaries in LoadDot.
+const LOAD_META: Record<'free' | 'busy' | 'overloaded', { label: string; color: string; ring: string }> = {
+  free: { label: 'free', color: '#10b981', ring: 'rgba(16,185,129,0.25)' },
+  busy: { label: 'busy', color: '#f59e0b', ring: 'rgba(245,158,11,0.25)' },
+  overloaded: { label: 'overloaded', color: '#ef4444', ring: 'rgba(239,68,68,0.4)' },
 }
 
 function extractEmoji(name: string): { emoji: string; cleanName: string } {
@@ -303,8 +325,7 @@ function LoadDot({ status, active, max, successRate, lastDispatchAt }: {
   lastDispatchAt?: string | null
 }) {
   const s = status || 'free'
-  const color = s === 'free' ? '#10b981' : s === 'busy' ? '#f59e0b' : '#ef4444'
-  const ring = s === 'free' ? 'rgba(16,185,129,0.25)' : s === 'busy' ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.4)'
+  const { color, ring } = LOAD_META[s]
   const pulse = s === 'overloaded'
   const tooltip = [
     `${s.toUpperCase()}`,
@@ -333,6 +354,57 @@ function formatRelative(iso: string): string {
   if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`
   if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`
   return `${Math.floor(ms / 86_400_000)}d ago`
+}
+
+// Persistent, collapsible key for the canvas — decodes the load dots, the model
+// pills and the dashed (dotted-line) rows so the chart reads at a glance instead
+// of one-hover-at-a-time. Pure overlay; reuses LOAD_META + MODEL_BADGES so the
+// swatches always match what's drawn on the cards.
+function CanvasLegend() {
+  const [open, setOpen] = useState(true)
+  return (
+    <div className="bg-surface border border-border rounded-xl shadow-card text-[11px] overflow-hidden w-[208px]">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 text-text-muted hover:bg-surface-2 transition-colors"
+        aria-expanded={open}
+        title={open ? 'Collapse legend' : 'Expand legend'}
+      >
+        <span className="font-semibold">Legend</span>
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? '' : '-rotate-90'}`} />
+      </button>
+      {open && (
+        <div className="px-3 pb-2.5 pt-2 space-y-2.5 border-t border-border-subtle">
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-text-muted mb-1">Live load</div>
+            <div className="flex flex-col gap-1">
+              {(['free', 'busy', 'overloaded'] as const).map((k) => (
+                <span key={k} className="flex items-center gap-1.5 text-text-secondary">
+                  <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: LOAD_META[k].color, boxShadow: `0 0 0 2px ${LOAD_META[k].ring}` }} />
+                  {LOAD_META[k].label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-text-muted mb-1">Model tier</div>
+            <div className="flex flex-col gap-1">
+              {(['opus', 'sonnet', 'haiku'] as const).map((k) => (
+                <span key={k} className="flex items-center gap-1.5 text-text-secondary">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0" style={{ backgroundColor: MODEL_BADGES[k].bg, color: MODEL_BADGES[k].text, border: `1px solid ${MODEL_BADGES[k].border}` }}>{MODEL_BADGES[k].label}</span>
+                  {MODEL_TIER_DESC[k]}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-start gap-1.5 text-text-secondary pt-0.5 border-t border-border-subtle">
+            <span className="inline-block w-5 border-t border-dashed border-text-muted mt-2 shrink-0 opacity-70" />
+            <span className="pt-1">dashed / faded row = dotted-line report (secondary, cross-team)</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 
@@ -939,7 +1011,8 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
               />
               {badge && (
                 <span
-                  className="text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0"
+                  className="text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0 cursor-help"
+                  title={modelTierTitle(data.model)}
                   style={{ backgroundColor: badge.bg, color: badge.text, border: `1px solid ${badge.border}` }}
                 >
                   {badge.label}
@@ -1335,7 +1408,8 @@ function renderMemberRow(
             />
             {badge && (
               <span
-                className="text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 whitespace-nowrap border"
+                className="text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 whitespace-nowrap border cursor-help"
+                title={modelTierTitle(member.model)}
                 style={{
                   backgroundColor: badge.bg,
                   color: badge.text,
@@ -2368,7 +2442,8 @@ function AgentIdentityCard({ node }: { node: OrgChartNode }) {
         </div>
         {/* MODEL */}
         <div
-          className="rounded-lg px-2 py-2 text-center border"
+          className="rounded-lg px-2 py-2 text-center border cursor-help"
+          title={modelTierTitle(node.model)}
           style={{
             backgroundColor: model?.bg || 'rgba(107,114,128,0.08)',
             borderColor: model?.border || 'rgba(107,114,128,0.25)',
@@ -3159,6 +3234,7 @@ function TreeViewInner({
         className="bg-bg"
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="!bg-bg" />
+        <Panel position="top-left"><CanvasLegend /></Panel>
         <Controls
           showInteractive={false}
           className="!bg-surface !border-border !rounded-xl !shadow-card [&>button]:!bg-surface [&>button]:!border-border [&>button]:!text-text-muted [&>button:hover]:!bg-surface-2"

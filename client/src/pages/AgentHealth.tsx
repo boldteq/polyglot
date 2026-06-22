@@ -173,12 +173,13 @@ export default function AgentHealth() {
     if (cursorIdx >= agents.length) setCursorIdx(agents.length - 1)
   }, [agents.length, cursorIdx])
 
-  function SortHeader({ k, label }: { k: SortKey; label: string }) {
+  function SortHeader({ k, label, hint }: { k: SortKey; label: string; hint?: string }) {
     const active = sortBy === k
     return (
       <button
         type="button"
         onClick={() => toggleSort(k)}
+        title={hint}
         className={`flex items-center gap-1 ml-auto text-[11px] font-semibold rounded px-1 -mx-1 transition-colors active:ring-1 active:ring-accent/40 ${active ? 'text-accent' : 'text-text-muted hover:text-text'}`}
       >
         {label}
@@ -205,30 +206,31 @@ export default function AgentHealth() {
         </div>
       </div>
 
-      {/* Fleet summary cards */}
+      {/* Fleet summary cards — labels carry plain-language tooltips so the health
+          tiers explain their thresholds (sourced from config, not hardcoded). */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="card p-4">
-          <div className="text-[10px] text-text-muted mb-1">Total Agents</div>
+          <div className="text-[10px] text-text-muted mb-1 cursor-help" title="Every agent in the roster.">Total Agents</div>
           <div className="text-2xl font-bold">{fleet.total}</div>
         </div>
         <div className="bg-surface rounded-xl border border-green/20 p-4">
-          <div className="text-[10px] text-green mb-1 flex items-center gap-1">
+          <div className="text-[10px] text-green mb-1 flex items-center gap-1 cursor-help" title={`Success rate ≥ ${thresholds.healthy}% of runs.`}>
             <CheckCircle className="w-3 h-3" /> Healthy
           </div>
           <div className="text-2xl font-bold text-green">{fleet.healthy}</div>
         </div>
         <div className="bg-surface rounded-xl border border-amber/20 p-4">
-          <div className="text-[10px] text-amber mb-1">Degraded</div>
+          <div className="text-[10px] text-amber mb-1 cursor-help" title={`Success rate ${thresholds.degraded}–${thresholds.healthy - 1}% of runs.`}>Degraded</div>
           <div className="text-2xl font-bold text-amber">{fleet.degraded}</div>
         </div>
         <div className="bg-surface rounded-xl border border-red/20 p-4">
-          <div className="text-[10px] text-red mb-1 flex items-center gap-1">
+          <div className="text-[10px] text-red mb-1 flex items-center gap-1 cursor-help" title={`Success rate below ${thresholds.degraded}% of runs.`}>
             <XCircle className="w-3 h-3" /> Critical
           </div>
           <div className="text-2xl font-bold text-red">{fleet.critical}</div>
         </div>
         <div className="card p-4">
-          <div className="text-[10px] text-text-muted mb-1 flex items-center gap-1">
+          <div className="text-[10px] text-text-muted mb-1 flex items-center gap-1 cursor-help" title="Estimated AI-token cost across all agents' recorded runs.">
             <DollarSign className="w-3 h-3" /> Fleet Cost
           </div>
           <div className="text-2xl font-bold">{formatCost(fleet.totalCost)}</div>
@@ -241,7 +243,8 @@ export default function AgentHealth() {
           <div>
             <div className="text-sm font-semibold text-green">{savings.savings}% API Cost Savings via Model Routing</div>
             <div className="text-xs text-text-muted mt-0.5">
-              Routed cost: {formatCost(savings.routedCost)} vs. all-Opus: {formatCost(savings.allOpusCost)} — across {savings.totalRuns.toLocaleString()} runs
+              Routed cost: {formatCost(savings.routedCost)} vs.{' '}
+              <span className="cursor-help underline decoration-dotted" title="What every run would have cost if it had used the most expensive model (Opus) instead of being routed to a cheaper one where suitable.">all-Opus</span>: {formatCost(savings.allOpusCost)} — across {savings.totalRuns.toLocaleString()} runs
             </div>
           </div>
           <Zap className="w-8 h-8 text-green/30" />
@@ -290,13 +293,13 @@ export default function AgentHealth() {
           <table className="w-full text-sm border-collapse">
             <thead className="sticky top-0 bg-surface z-10">
               <tr className="border-b border-border text-text-muted">
-                <th className="text-left font-semibold text-[11px] px-3 py-2.5 w-32">Health</th>
+                <th className="text-left font-semibold text-[11px] px-3 py-2.5 w-32 cursor-help" title={`Health tier from success rate: ≥${thresholds.healthy}% Healthy · ≥${thresholds.degraded}% Degraded · below Critical.`}>Health</th>
                 <th className="text-left font-semibold text-[11px] px-3 py-2.5">Agent</th>
-                <th className="px-3 py-2.5"><SortHeader k="success" label="Success %" /></th>
-                <th className="px-3 py-2.5"><SortHeader k="runs" label="Runs" /></th>
-                <th className="px-3 py-2.5"><SortHeader k="duration" label="Avg time" /></th>
-                <th className="px-3 py-2.5"><SortHeader k="cost" label="Cost" /></th>
-                <th className="px-3 py-2.5"><SortHeader k="tokens" label="Tokens" /></th>
+                <th className="px-3 py-2.5"><SortHeader k="success" label="Success %" hint={`Share of this agent's runs that finished successfully. ≥${thresholds.healthy}% Healthy · ≥${thresholds.degraded}% Degraded · below Critical.`} /></th>
+                <th className="px-3 py-2.5"><SortHeader k="runs" label="Runs" hint="Number of recorded runs." /></th>
+                <th className="px-3 py-2.5"><SortHeader k="duration" label="Avg time" hint="Average wall-clock time per run." /></th>
+                <th className="px-3 py-2.5"><SortHeader k="cost" label="Cost" hint="Estimated AI-token cost for this agent." /></th>
+                <th className="px-3 py-2.5"><SortHeader k="tokens" label="Tokens" hint="Total AI tokens (in + out) across this agent's runs." /></th>
                 <th className="px-3 py-2.5 w-12"></th>
               </tr>
             </thead>

@@ -115,6 +115,9 @@ export default function Dashboard({ projects }: Props) {
   const { config } = useAppConfig()
   const healthy = config.health.threshold_healthy
   const degraded = config.health.threshold_degraded
+  // One plain-language threshold string, reused by the Success-rate KPI tooltip
+  // and the Today "Success" cell so they never disagree with the actual config.
+  const healthHint = `≥${healthy}% healthy · ≥${degraded}% degraded · below unhealthy`
   const runsLimit = config.api_limits.runs_dashboard
   const recentRunsCap = config.ui_caps.recent_runs
   const topAgentsCap = config.ui_caps.top_agents
@@ -237,10 +240,10 @@ export default function Dashboard({ projects }: Props) {
       {/* KPI stat cards — PagePilot-style lead row */}
       <div className="mb-6">
         <StatRow stats={[
-          { label: 'Active Agents', value: registryCounts?.active ?? Object.keys(summary).length, icon: Bot },
-          { label: 'Runs Today', value: todayRuns.length, icon: Activity },
-          { label: 'Success Rate', value: `${successRate}%`, icon: TrendingUp },
-          { label: 'Cost Saved', value: savings ? `$${Math.round(savings.savings)}` : '$0', icon: DollarSign },
+          { label: 'Active Agents', value: registryCounts?.active ?? Object.keys(summary).length, icon: Bot, hint: 'Agents currently active in the roster (excludes probation and retired).' },
+          { label: 'Runs Today', value: todayRuns.length, icon: Activity, hint: 'Agent runs recorded in the last 24 hours.' },
+          { label: 'Success Rate', value: `${successRate}%`, icon: TrendingUp, hint: `Share of today's runs that finished successfully. ${healthHint}.` },
+          { label: 'Cost Saved', value: savings ? `$${Math.round(savings.savings)}` : '$0', icon: DollarSign, hint: 'Estimated $ saved by routing agents to cheaper models instead of running everything on the most expensive one (Opus).' },
         ]} />
       </div>
 
@@ -271,6 +274,7 @@ export default function Dashboard({ projects }: Props) {
           {(registryCounts?.pip ?? 0) > 0 && (
             <Link
               to="/hr"
+              title="PIP = Performance Improvement Plan — agents flagged for a low success rate and queued for review/training."
               className={`pill px-3 py-1.5 text-xs hover:opacity-80 transition-opacity ${statusPill('error')}`}
             >
               <TrendingDown className="w-3.5 h-3.5" />
@@ -320,7 +324,7 @@ export default function Dashboard({ projects }: Props) {
             </div>
             <div>
               <div className={`text-2xl font-bold ${healthColor(successRate, healthy, degraded)}`}>{successRate}%</div>
-              <div className="text-[10px] text-text-muted">Success</div>
+              <div className="text-[10px] text-text-muted cursor-help" title={`Today's run success rate. ${healthHint}.`}>Success</div>
             </div>
             <div>
               <div className="text-2xl font-bold">{activeSchedules}</div>
@@ -387,7 +391,7 @@ export default function Dashboard({ projects }: Props) {
                   <div className="text-xl font-bold">${savings.routedCost.toFixed(4)}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] text-text-muted mb-0.5">vs. all-Opus</div>
+                  <div className="text-[10px] text-text-muted mb-0.5">vs. <span className="cursor-help underline decoration-dotted" title="What this would have cost if every run used the most expensive model (Opus) instead of being routed to a cheaper one where suitable.">all-Opus</span></div>
                   <div className="text-sm text-text-muted line-through">${savings.allOpusCost.toFixed(4)}</div>
                 </div>
               </div>
