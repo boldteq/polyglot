@@ -300,7 +300,11 @@ export default function LogsPage() {
   }
 
   const handleResolveAll = async () => {
-    if (!confirm('Mark all visible unresolved as resolved?')) return
+    if (!(await confirmDialog({
+      title: 'Resolve all visible errors?',
+      message: 'Marks every unresolved error matching the current filters as resolved.',
+      confirmLabel: 'Resolve all',
+    }))) return
     try {
       const res = await resolveAllErrorLog({
         category: categoryFilter !== 'all' ? categoryFilter : undefined,
