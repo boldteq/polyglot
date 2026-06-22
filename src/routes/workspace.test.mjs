@@ -284,6 +284,30 @@ test('Phase A: project PATCH + DELETE (archive) round-trip', async () => {
   assert.equal(del.json.mode, 'deleted');
 });
 
+test('Phase C: lens:run is registered + env-gated unavailable (chain action)', async () => {
+  const { status, json } = await get('/api/workspace/actions/registry');
+  assert.equal(status, 200);
+  const lens = json.actions.find((a) => a.id === 'lens:run');
+  assert.ok(lens, 'lens:run should be registered');
+  assert.equal(lens.tier, 'safe');
+  // no THEME_PREVIEW_URL in test env → unavailable, never spawns
+  assert.equal(lens.available, false);
+  assert.match(lens.unavailableReason || '', /THEME_PREVIEW_URL/);
+});
+
+test('Phase B: docs route lists artifacts + guards traversal', async () => {
+  const list = await get('/api/workspace/builds');
+  if (!list.json.builds.length) return;
+  const id = list.json.builds[0].buildId;
+  const docs = await get(`/api/workspace/builds/${id}/docs`);
+  assert.equal(docs.status, 200);
+  assert.equal(typeof docs.json.present, 'boolean');
+  assert.ok(Array.isArray(docs.json.docs));
+  // path traversal must be blocked
+  const eviled = await get(`/api/workspace/builds/${id}/docs?file=..%2F..%2FCHANGES.md`);
+  assert.equal(eviled.status, 403);
+});
+
 test('Cockpit: design-system route returns present flag', async () => {
   const list = await get('/api/workspace/builds');
   if (!list.json.builds.length) return;

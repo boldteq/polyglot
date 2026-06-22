@@ -50,7 +50,7 @@ results.push(await shot('/workspace/results', '05-results-page'));
 const builds = await (await fetch(BASE + '/api/workspace/builds')).json();
 const bid = (builds.builds.find((b) => b.client === 'gpt test 1') || builds.builds[0])?.buildId;
 console.log(`\n--- build detail tabs (buildId=${bid}) ---`);
-const TABS = ['overview', 'workflow', 'design', 'gates', 'lens', 'changes', 'agents', 'schedules', 'results', 'files'];
+const TABS = ['overview', 'workflow', 'design', 'gates', 'lens', 'changes', 'docs', 'agents', 'schedules', 'results', 'files'];
 for (const t of TABS) {
   results.push(await shot(`/workspace/builds/${bid}?tab=${t}`, `tab-${t}`));
 }

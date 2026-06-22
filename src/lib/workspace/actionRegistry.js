@@ -60,6 +60,17 @@ const ACTIONS = [
     confirm: { title: 'Check honesty?', message: 'Audits copy claims and writes a report to gate-reports/. Read-only on theme code.', confirmLabel: 'Run check' },
   },
   {
+    id: 'lens:run', label: 'Run Lens', tier: 'safe',
+    chain: [
+      { script: 'lens-capture.mjs', args: [] },
+      { script: 'lens-judge.mjs', args: [] },
+      { script: 'check-visual-truth.mjs', args: [] },
+    ],
+    requiresEnv: ['THEME_PREVIEW_URL'],
+    description: 'Captures the theme, judges it (vision), and enforces gate #18 visual-truth. Writes only to gate-reports/lens/. Needs a running preview URL.',
+    confirm: { title: 'Run Lens?', message: 'Captures → judges → enforces visual-truth against the preview URL. Writes only to gate-reports/lens/. Does NOT touch theme code or the store. Takes ~1–3 min.', confirmLabel: 'Run Lens' },
+  },
+  {
     id: 'store:preflight', label: 'Store preflight', tier: 'safe',
     script: 'porter-preflight.mjs', args: [],
     requiresEnv: ['SHOPIFY_STORE_DOMAIN', 'SHOPIFY_ADMIN_API_TOKEN'],

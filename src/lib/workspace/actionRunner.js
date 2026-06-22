@@ -24,15 +24,40 @@ let seq = 0;
 
 function newRunId() { seq += 1; return `wsact-${seq}-${process.pid}`; }
 
-// Resolve + harden a registry entry's script path: must exist AND be inside the
-// toolkit scripts dir (defense in depth beyond the allowlist).
-function resolveScript(entry) {
-  const abs = path.resolve(TOOLKIT_DIR, entry.script);
-  if (abs !== path.join(TOOLKIT_DIR, entry.script) && !abs.startsWith(TOOLKIT_DIR + path.sep)) {
+// Resolve + harden a script name to an absolute path: must exist AND be inside
+// the toolkit scripts dir (defense in depth beyond the allowlist).
+function resolveScriptName(name) {
+  const abs = path.resolve(TOOLKIT_DIR, name);
+  if (abs !== path.join(TOOLKIT_DIR, name) && !abs.startsWith(TOOLKIT_DIR + path.sep)) {
     throw new Error('action script escapes toolkit dir');
   }
-  if (!fs.existsSync(abs)) throw new Error(`action script not found: ${entry.script}`);
+  if (!fs.existsSync(abs)) throw new Error(`action script not found: ${name}`);
   return abs;
+}
+function resolveScript(entry) { return resolveScriptName(entry.script); }
+
+// Run a sequence of toolkit scripts one at a time, appending to rec.log. Stops
+// (status='failed') on the first non-zero exit; status='done' only if all pass.
+function runChain(rec, steps, dir, i) {
+  if (i >= steps.length) {
+    if (rec.status === 'running') { rec.status = 'done'; rec.exitCode = 0; rec.endedMs = Date.now(); delete rec._proc; }
+    return;
+  }
+  let scriptAbs;
+  try { scriptAbs = resolveScriptName(steps[i].script); }
+  catch (err) { rec.status = 'failed'; rec.endedMs = Date.now(); rec.log.push(`[chain error] ${err.message}`); delete rec._proc; return; }
+  rec.log.push(`\n— step ${i + 1}/${steps.length}: ${steps[i].script} —\n`);
+  const proc = spawn(process.execPath, [scriptAbs, ...(steps[i].args || [])], { cwd: dir, env: { ...process.env } });
+  rec._proc = proc;
+  const push = (c) => { rec.log.push(String(c)); if (rec.log.length > 400) rec.log.splice(0, rec.log.length - 400); };
+  proc.stdout.on('data', push);
+  proc.stderr.on('data', push);
+  proc.on('error', (err) => { rec.status = 'error'; rec.endedMs = Date.now(); push(`[spawn error] ${err.message}`); delete rec._proc; });
+  proc.on('close', (code) => {
+    if (rec.status === 'cancelled') { delete rec._proc; return; } // user cancelled — don't advance
+    if (code !== 0) { rec.status = 'failed'; rec.exitCode = code; rec.endedMs = Date.now(); delete rec._proc; return; }
+    runChain(rec, steps, dir, i + 1); // next step
+  });
 }
 
 // Start an allowlisted action. `actionId` MUST be a registry id; `dir` MUST be a
@@ -52,11 +77,19 @@ function runAction({ buildId, dir, actionId }) {
     return publicRec(rec);
   }
 
-  const scriptAbs = resolveScript(entry);
   const id = newRunId();
   const rec = { runId: id, buildId, dir, action: entry.id, status: 'running', startedMs: Date.now(), endedMs: null, exitCode: null, log: [] };
   runs.set(id, rec);
 
+  // CHAIN entries (e.g. Lens = capture → judge → enforce): run scripts in
+  // sequence, one proc at a time. Each script is still resolved from the registry
+  // + dir-contained (same allowlist guarantees). Stops on the first non-zero exit.
+  if (Array.isArray(entry.chain) && entry.chain.length) {
+    runChain(rec, entry.chain, dir, 0);
+    return publicRec(rec);
+  }
+
+  const scriptAbs = resolveScript(entry);
   // FIXED argv — node <script> <fixed args from registry>, CWD = the build dir.
   // No shell, no interpolation, no client-supplied args.
   const proc = spawn(process.execPath, [scriptAbs, ...entry.args], { cwd: dir, env: { ...process.env } });

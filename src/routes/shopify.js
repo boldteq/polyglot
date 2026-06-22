@@ -3,6 +3,11 @@
 // Shopify client-project API — P1 (upfront intake wizard, captured ONCE so brand/direction questions
 // are never re-asked) + P5 (per-page preview + revision requests). The intake row is the durable
 // record atrium dispatches the 18-step pipeline from; project_pages drives the StorePreview page.
+//
+// DEPRECATED (2026-06-21) for the cockpit: project intake/lifecycle is now owned by the Workspace
+// routes (`GET/POST/PATCH/DELETE /api/workspace/projects`) — same `client_projects` table. Prefer
+// those for new UI. This route stays mounted for the legacy /shopify pages + pages/revisions
+// (which Workspace doesn't use). Don't add new intake features here; extend the Workspace routes.
 
 const { Router } = require('express');
 const db = require('../db');

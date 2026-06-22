@@ -14,6 +14,7 @@ import ChangesTab from '../components/workspace/ChangesTab'
 import AgentsTab from '../components/workspace/AgentsTab'
 import SchedulesTab from '../components/workspace/SchedulesTab'
 import ResultsTab from '../components/workspace/ResultsTab'
+import DocsTab from '../components/workspace/DocsTab'
 import FilesTab from '../components/workspace/FilesTab'
 import ActionsBar from '../components/workspace/ActionsBar'
 import { useBuild } from '../hooks/useBuild'
@@ -25,6 +26,7 @@ const TABS = [
   { id: 'gates', label: 'Gates' },
   { id: 'lens', label: 'Lens' },
   { id: 'changes', label: 'CHANGES' },
+  { id: 'docs', label: 'Docs' },
   { id: 'agents', label: 'Agents' },
   { id: 'schedules', label: 'Schedules' },
   { id: 'results', label: 'Results' },
@@ -94,8 +96,9 @@ export default function WorkspaceBuildDetail() {
           {tab === 'workflow' && buildId && <WorkflowTab buildId={buildId} reloadKey={reloadKey} onChanged={reload} />}
           {tab === 'design' && buildId && <DesignSystemTab buildId={buildId} reloadKey={reloadKey} />}
           {tab === 'gates' && buildId && <GatesTab buildId={buildId} reloadKey={reloadKey} />}
-          {tab === 'lens' && <LensTab dir={data.build.dir} reloadKey={reloadKey} />}
+          {tab === 'lens' && buildId && <LensTab buildId={buildId} dir={data.build.dir} reloadKey={reloadKey} onChanged={reload} />}
           {tab === 'changes' && buildId && <ChangesTab buildId={buildId} reloadKey={reloadKey} />}
+          {tab === 'docs' && buildId && <DocsTab buildId={buildId} reloadKey={reloadKey} />}
           {tab === 'agents' && buildId && <AgentsTab buildId={buildId} reloadKey={reloadKey} />}
           {tab === 'schedules' && buildId && <SchedulesTab buildId={buildId} reloadKey={reloadKey} />}
           {tab === 'results' && buildId && <ResultsTab buildId={buildId} reloadKey={reloadKey} />}

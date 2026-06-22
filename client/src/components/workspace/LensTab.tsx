@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'react'
-import { Eye, ExternalLink, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Eye, ExternalLink, CheckCircle2, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Spinner } from '../Skeleton'
 import EmptyState from '../EmptyState'
-import { getLensLatest, type LensLatest } from '../../lib/api'
+import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
+import { getLensLatest, getWorkspaceActions, type LensLatest, type ActionDef } from '../../lib/api'
 
 // Lens visual-truth for THIS build's dir. Reuses the existing /lens/latest?dir=
 // API. Shows the gate-#18 verdict + blockers + frame thumbnails; deep-links to
-// the full Lens page for the complete viewer.
-export default function LensTab({ dir, reloadKey }: { dir: string; reloadKey?: number }) {
+// the full Lens page; and (Phase C) a "Re-run Lens" action (capture→judge→enforce,
+// env-gated on a preview URL).
+export default function LensTab({ buildId, dir, reloadKey, onChanged }: { buildId: string; dir: string; reloadKey?: number; onChanged?: () => void }) {
   const nav = useNavigate()
   const [data, setData] = useState<LensLatest | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lensAction, setLensAction] = useState<ActionDef | null>(null)
+  const { run, trigger } = useWorkspaceAction(buildId, onChanged)
+  const rerunning = run?.status === 'running'
+
+  useEffect(() => {
+    getWorkspaceActions().then((r) => setLensAction(r.actions.find((a) => a.id === 'lens:run') || null)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -24,10 +33,24 @@ export default function LensTab({ dir, reloadKey }: { dir: string; reloadKey?: n
     return () => { alive = false }
   }, [dir, reloadKey])
 
+  const ReRunButton = lensAction ? (
+    <button onClick={() => trigger(lensAction)} disabled={rerunning || !lensAction.available}
+      title={lensAction.available ? lensAction.description : (lensAction.unavailableReason || '')}
+      className="btn-ghost btn-sm flex items-center gap-1.5 disabled:opacity-50">
+      {rerunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+      {rerunning ? 'Running…' : 'Re-run Lens'}
+    </button>
+  ) : null
+
   if (loading) return <Spinner />
   if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
   if (!data?.present) {
-    return <EmptyState icon={Eye} title="No Lens run for this build" description={data?.message || 'Run pnpm lens:capture && lens:judge && lens:enforce against this build.'} />
+    return (
+      <div className="space-y-3">
+        <EmptyState icon={Eye} title="No Lens run for this build" description={data?.message || 'Capture → judge → enforce visual-truth. Needs a running preview URL.'} />
+        {ReRunButton && <div className="flex justify-center">{ReRunButton}</div>}
+      </div>
+    )
   }
 
   const pass = data.gate18?.pass
@@ -41,9 +64,12 @@ export default function LensTab({ dir, reloadKey }: { dir: string; reloadKey?: n
             <div className="text-[12px] text-text-muted">{data.summary.frames} frames · {data.summary.fail} FAIL · {data.summary.pass} PASS{data.gate18 ? ` · ${data.gate18.blockers.length} blockers` : ''}</div>
           </div>
         </div>
-        <button onClick={() => nav(`/workspace/lens?dir=${encodeURIComponent(dir)}`)} className="btn-ghost btn-sm flex items-center gap-1.5">
-          <ExternalLink className="w-4 h-4" /> Full Lens view
-        </button>
+        <div className="flex items-center gap-2">
+          {ReRunButton}
+          <button onClick={() => nav(`/workspace/lens?dir=${encodeURIComponent(dir)}`)} className="btn-ghost btn-sm flex items-center gap-1.5">
+            <ExternalLink className="w-4 h-4" /> Full Lens view
+          </button>
+        </div>
       </div>
 
       {data.gate18 && data.gate18.blockers.length > 0 && (
