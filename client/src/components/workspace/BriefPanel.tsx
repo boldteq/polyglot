@@ -17,7 +17,11 @@ export default function BriefPanel({ detail, onReload }: { detail: ProjectDetail
   const { project } = detail
   const [editing, setEditing] = useState(false)
   const intake = (project.intake || {}) as Record<string, unknown>
-  const entries = Object.entries(intake).filter(([, v]) => v != null && v !== '' && typeof v !== 'object')
+  // intake_json often carries name/niche/domain (from create + auto-adopt) — but
+  // those are already shown as the top-level meta rows below, so skip them here to
+  // avoid duplicate "name"/"Niche"/"Domain" rows.
+  const META_DUP = new Set(['name', 'niche', 'domain'])
+  const entries = Object.entries(intake).filter(([k, v]) => v != null && v !== '' && typeof v !== 'object' && !META_DUP.has(k))
   const meta = [
     ['Brand / name', project.name],
     ['Niche', project.niche],
