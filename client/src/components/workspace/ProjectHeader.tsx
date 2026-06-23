@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check, Hammer, Rocket, Wand2, MoreHorizontal, ShieldCheck, Loader2, type LucideIcon } from 'lucide-react'
 import ScoreGauge from './ScoreGauge'
-import StepIndicator from './StepIndicator'
+import PhaseJourney from './PhaseJourney'
 import VerdictPill from './VerdictPill'
 import { InfoIcon } from '../Tooltip'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
@@ -156,7 +156,7 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
 
         {build ? (
           <>
-            <div className="max-w-md"><StepIndicator current={build.step.current} total={build.step.total} /></div>
+            <PhaseJourney current={build.step.current} total={build.step.total} />
             <div className="flex flex-wrap items-center gap-4 mt-2 text-[13px]">
               <span><b>{build.gates.passed}/{build.gates.total}</b> <span className="text-text-muted">gates</span></span>
               <span className="flex items-center gap-1"><b>{build.gates.blockersOpen}</b> <span className="text-text-muted">blockers</span>
