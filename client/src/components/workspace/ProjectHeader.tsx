@@ -1,15 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check, Hammer, Rocket, Wand2 } from 'lucide-react'
+import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check, Hammer, Rocket, Wand2, MoreHorizontal, ShieldCheck, Loader2, type LucideIcon } from 'lucide-react'
 import ScoreGauge from './ScoreGauge'
 import StepIndicator from './StepIndicator'
 import VerdictPill from './VerdictPill'
-import ActionsBar from './ActionsBar'
+import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 import { openDispatch } from '../../lib/dispatch'
 import { openBuild } from '../../lib/build'
 import { openPublish } from '../../lib/publish'
 import { toast } from '../Toast'
-import { setWorkspaceProjectStatus, PROJECT_STATUSES, type ProjectDetail, type RepoData, type ProjectStatus } from '../../lib/api'
+import { setWorkspaceProjectStatus, getWorkspaceActions, PROJECT_STATUSES, type ProjectDetail, type RepoData, type ProjectStatus, type ActionDef } from '../../lib/api'
 
 const STATUS_TONE: Record<string, string> = {
   intake: 'text-text-muted bg-text-muted/10', building: 'text-accent bg-accent/10',
@@ -17,8 +17,6 @@ const STATUS_TONE: Record<string, string> = {
 }
 const vscodeLink = (abs: string) => `vscode://file${abs}`
 
-// The always-visible project hero: identity + score + step + the elevated REPO
-// connection line + primary actions. Replaces the old build-detail header card.
 function StatusChanger({ id, status, onChanged }: { id: string; status: string; onChanged: () => void }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -53,10 +51,86 @@ function StatusChanger({ id, status, onChanged }: { id: string; status: string; 
   )
 }
 
+type MenuItem = { label: string; icon: LucideIcon; onClick: () => void; disabled?: boolean; hint?: string }
+
+// The "⋯ More" overflow — every action that isn't the one primary CTA. Two groups:
+// the main flows + the safe-action "checks" (granular gate/lens/discovery runners,
+// formerly the always-visible ActionsBar dropdown). Click-outside to close.
+function OverflowMenu({ groups }: { groups: { label?: string; items: MenuItem[] }[] }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const visible = groups.filter((g) => g.items.length)
+  if (!visible.length) return null
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((v) => !v)} title="More actions" aria-label="More actions"
+        className="btn-ghost btn-sm flex items-center gap-1"><MoreHorizontal className="w-4 h-4" /></button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 w-60 bg-surface border border-border rounded-xl shadow-lg py-1 z-[60] max-h-[70vh] overflow-y-auto">
+          {visible.map((g, gi) => (
+            <div key={gi} className={gi > 0 ? 'border-t border-border-subtle mt-1 pt-1' : ''}>
+              {g.label && <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-text-muted">{g.label}</div>}
+              {g.items.map((it) => (
+                <button key={it.label} onClick={() => { setOpen(false); it.onClick() }} disabled={it.disabled} title={it.hint}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-surface-2 text-left disabled:opacity-40 disabled:cursor-not-allowed">
+                  <it.icon className="w-3.5 h-3.5 text-text-muted shrink-0" /> {it.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProjectHeader({ detail, repo, onReload }: { detail: ProjectDetail; repo: RepoData | null; onReload: () => void }) {
   const nav = useNavigate()
   const { project, build, buildId } = detail
   const git = repo?.git
+  const { run, trigger } = useWorkspaceAction(buildId || '', onReload)
+  const [safeActions, setSafeActions] = useState<ActionDef[]>([])
+  useEffect(() => {
+    if (!buildId) return
+    getWorkspaceActions().then((r) => setSafeActions(r.actions.filter((a) => a.tier === 'safe'))).catch(() => setSafeActions([]))
+  }, [buildId])
+
+  const studioHref = `/workspace/p/${project.id}/studio`
+  const lensHref = build ? `/workspace/lens?dir=${encodeURIComponent(build.dir)}` : ''
+  const storeUrl = repo?.themeLock?.store ? `https://${repo.themeLock.store}` : null
+  const canPublish = !!(build && repo?.connected && repo?.themeLock?.store)
+  const doPublish = () => openPublish({ projectId: project.id, store: repo!.themeLock!.store!, themeName: repo?.themeLock?.themeName, onPublished: onReload })
+  const gatesGreen = !!(build && build.gates.total > 0 && build.gates.passed === build.gates.total && build.gates.blockersOpen === 0)
+  const running = run?.status === 'running'
+
+  // ── the ONE smart context CTA ──
+  let primary: { key: string; label: string; icon: LucideIcon; onClick: () => void }
+  if (!build) primary = { key: 'link', label: 'Link a build', icon: Link2, onClick: () => nav('/workspace') }
+  else if (project.status === 'published' && storeUrl) primary = { key: 'view', label: 'View live', icon: ExternalLink, onClick: () => window.open(storeUrl, '_blank') }
+  else if (canPublish && gatesGreen) primary = { key: 'publish', label: 'Publish', icon: Rocket, onClick: doPublish }
+  else if (build.gates.blockersOpen > 0 || build.lensVerdict === 'block') primary = { key: 'studio', label: 'Fix in Studio', icon: Wand2, onClick: () => nav(studioHref) }
+  else primary = { key: 'studio', label: 'Open Studio', icon: Wand2, onClick: () => nav(studioHref) }
+
+  // ── everything else, behind ⋯ ──
+  const gatesAction = safeActions.find((a) => a.id === 'gates:static')
+  const flows: MenuItem[] = [
+    build && primary.key !== 'studio' ? { label: 'Open Studio', icon: Wand2, onClick: () => nav(studioHref) } : null,
+    buildId ? { label: 'Dispatch agent', icon: Bot, onClick: () => openDispatch({ buildId, agent: 'atrium', task: '' }) } : null,
+    gatesAction ? { label: running ? 'Running gates…' : 'Run gates', icon: running ? Loader2 : ShieldCheck, onClick: () => trigger(gatesAction), disabled: running || !gatesAction.available } : null,
+    build ? { label: 'Open Lens', icon: Eye, onClick: () => nav(lensHref) } : null,
+    buildId && build && repo?.connected ? { label: 'Run Maestro build', icon: Hammer, onClick: () => openBuild({ projectId: project.id, buildId, repoDir: repo!.build_dir!, store: repo?.themeLock?.store }) } : null,
+    canPublish && primary.key !== 'publish' ? { label: 'Publish', icon: Rocket, onClick: doPublish } : null,
+    repo?.connected && repo.build_dir ? { label: 'Open in VS Code', icon: ExternalLink, onClick: () => { window.location.href = vscodeLink(repo.build_dir!) } } : null,
+  ].filter(Boolean) as MenuItem[]
+  // granular checks (the former ActionsBar dropdown) — preserved, behind ⋯
+  const checks: MenuItem[] = safeActions
+    .filter((a) => a.id !== 'gates:static' && a.id !== 'gate:rerun')
+    .map((a) => ({ label: a.label, icon: ShieldCheck, onClick: () => trigger(a), disabled: !a.available, hint: a.available ? a.description : (a.unavailableReason || undefined) }))
 
   return (
     <div className="card p-5 flex items-start gap-5 flex-wrap">
@@ -85,32 +159,21 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
           </>
         ) : null}
 
-        {/* repo connection line */}
         {repo?.connected ? (
           <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-border-subtle text-[12px]">
             <code className="text-text-muted truncate max-w-[280px]">{repo.build_dir}</code>
             {git?.isRepo && <span className="pill bg-surface-2 text-text-secondary flex items-center gap-1"><GitBranch className="w-3 h-3" />{git.branch}</span>}
             {git?.isRepo && <span className={`pill ${git.clean ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'}`}>{git.clean ? 'clean' : `${git.dirty}●`}</span>}
-            <a href={vscodeLink(repo.build_dir!)} className="btn-ghost btn-sm flex items-center gap-1 text-[11px]"><ExternalLink className="w-3 h-3" /> VS Code</a>
           </div>
         ) : null}
       </div>
 
-      {/* actions */}
+      {/* actions — one smart CTA + overflow */}
       <div className="flex items-center gap-2 shrink-0">
-        {buildId && <ActionsBar buildId={buildId} onChanged={onReload} />}
-        {buildId && build && repo?.connected && (
-          <button onClick={() => openBuild({ projectId: project.id, buildId, repoDir: repo!.build_dir!, store: repo?.themeLock?.store })}
-            className="btn-ghost btn-sm flex items-center gap-1.5"><Hammer className="w-4 h-4" /> Build</button>
-        )}
-        {buildId && build && <button onClick={() => nav(`/workspace/p/${project.id}/studio`)} className="btn-ghost btn-sm flex items-center gap-1.5" title="Describe a change and see it — preview + edit together"><Wand2 className="w-4 h-4" /> Studio</button>}
-        {buildId && <button onClick={() => openDispatch({ buildId, agent: 'atrium', task: '' })} className="btn-ghost btn-sm flex items-center gap-1.5"><Bot className="w-4 h-4" /> Dispatch</button>}
-        {build && <button onClick={() => nav(`/workspace/lens?dir=${encodeURIComponent(build.dir)}`)} className="btn-ghost btn-sm flex items-center gap-1.5"><Eye className="w-4 h-4" /> Lens</button>}
-        {build && repo?.connected && repo?.themeLock?.store && (
-          <button onClick={() => openPublish({ projectId: project.id, store: repo!.themeLock!.store!, themeName: repo?.themeLock?.themeName, onPublished: onReload })}
-            className="btn-primary btn-sm flex items-center gap-1.5"><Rocket className="w-4 h-4" /> Publish</button>
-        )}
-        {!build && <button onClick={() => nav('/workspace')} className="btn-ghost btn-sm flex items-center gap-1.5"><Link2 className="w-4 h-4" /> Link a build</button>}
+        <button onClick={primary.onClick} className="btn-primary btn-sm flex items-center gap-1.5">
+          <primary.icon className="w-4 h-4" /> {primary.label}
+        </button>
+        <OverflowMenu groups={[{ items: flows }, { label: 'Checks', items: checks }]} />
       </div>
     </div>
   )
