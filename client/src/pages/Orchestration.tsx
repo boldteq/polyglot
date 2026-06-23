@@ -1764,6 +1764,11 @@ export default function Orchestration() {
                 <p className="text-[11px] font-semibold text-text-muted mb-2">Tips</p>
                 <ul className="space-y-1 text-xs text-text-muted">
                   <li>Press <kbd className="px-1.5 py-0.5 rounded bg-surface-2 border border-border text-[10px] font-mono">Backspace</kbd> to delete selected nodes</li>
+                  <li>
+                    <kbd className="px-1.5 py-0.5 rounded bg-surface-2 border border-border text-[10px] font-mono">⌘S</kbd> save ·{' '}
+                    <kbd className="px-1.5 py-0.5 rounded bg-surface-2 border border-border text-[10px] font-mono">⌘↵</kbd> run ·{' '}
+                    <kbd className="px-1.5 py-0.5 rounded bg-surface-2 border border-border text-[10px] font-mono">Esc</kbd> close panels
+                  </li>
                   <li>Connect one node to many for fan-out, many to one for fan-in</li>
                   <li>Save orchestrations to re-run with different tasks</li>
                   <li>Run history persists so you can review past results</li>
