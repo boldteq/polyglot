@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Bot, Zap, ShieldCheck, TrendingUp, DollarSign, FileEdit, Activity } from 'lucide-react'
+import { Bot, Zap, ShieldCheck, TrendingUp, DollarSign, FileEdit, Activity, ChevronDown, ChevronRight } from 'lucide-react'
 import { Spinner } from '../Skeleton'
 import EmptyState from '../EmptyState'
 import { relTime } from '../../lib/relTime'
@@ -21,6 +21,7 @@ const KIND: Record<string, { icon: typeof Bot; cls: string; label: string }> = {
 export default function ActivityTimeline({ projectId, reloadKey }: { projectId: string; reloadKey?: number }) {
   const [events, setEvents] = useState<ActivityEvent[]>([])
   const [spend, setSpend] = useState<ActivitySpend | null>(null)
+  const [spendOpen, setSpendOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<Record<number, boolean>>({})
@@ -48,9 +49,26 @@ export default function ActivityTimeline({ projectId, reloadKey }: { projectId: 
   return (
     <div className="space-y-2">
       {spend && spend.runs > 0 && (
-        <div className="flex items-center gap-2 text-[12px] text-text-muted px-1">
-          <DollarSign className="w-3.5 h-3.5 text-green" />
-          <span><span className="font-semibold text-text">${spend.totalCostUsd.toFixed(2)}</span> spent on this build · {spend.runs} dispatch run{spend.runs === 1 ? '' : 's'}</span>
+        <div className="px-1">
+          <button onClick={() => setSpendOpen((v) => !v)}
+            className="flex items-center gap-2 text-[12px] text-text-muted hover:text-text"
+            disabled={!spend.byAgent || !spend.byAgent.length}>
+            <DollarSign className="w-3.5 h-3.5 text-green" />
+            <span><span className="font-semibold text-text">${spend.totalCostUsd.toFixed(2)}</span> spent on this build · {spend.runs} dispatch run{spend.runs === 1 ? '' : 's'}</span>
+            {spend.byAgent && spend.byAgent.length > 0 && (spendOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />)}
+          </button>
+          {spendOpen && spend.byAgent && (
+            <div className="mt-1.5 ml-5 card divide-y divide-border">
+              {spend.byAgent.map((a) => (
+                <div key={a.agent} className="flex items-center gap-3 px-3 py-1.5 text-[12px]">
+                  <span className="font-medium flex-1 truncate">{a.agent}</span>
+                  <span className="text-text-muted">{a.runs} run{a.runs === 1 ? '' : 's'}</span>
+                  <span className="text-text-muted">{(a.tokens / 1000).toFixed(1)}k tok</span>
+                  <span className="font-semibold w-16 text-right">${a.costUsd.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     <ol className="card divide-y divide-border">

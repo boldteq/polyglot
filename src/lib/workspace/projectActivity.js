@@ -71,16 +71,24 @@ function buildProjectActivity({ build, dir, buildId, limit = 50, since = null } 
   // wsd-<buildId> dispatch thread). Was platform-roster noise before; this is the
   // real spend on THIS build's dispatches. Skip $0 health/eval rows.
   let totalCostUsd = 0, costRuns = 0;
+  const byAgentMap = new Map(); // agent → { agent, runs, costUsd, tokens }
   try {
     if (buildId) {
       for (const row of db.getCostLogs({ buildId, limit: 200 })) {
         const c = Number(row.costUsd) || 0;
         if (c < 0.005) continue;
         totalCostUsd += c; costRuns += 1;
-        push(row.ts, 'cost', row.agentName || 'agent', `${row.agentName || 'agent'} · $${c.toFixed(2)} · ${row.model || 'model'}`, { detail: `${row.totalTokens || 0} tok`, link: row.runId });
+        const a = row.agentName || 'agent';
+        const cur = byAgentMap.get(a) || { agent: a, runs: 0, costUsd: 0, tokens: 0 };
+        cur.runs += 1; cur.costUsd += c; cur.tokens += Number(row.totalTokens) || 0;
+        byAgentMap.set(a, cur);
+        push(row.ts, 'cost', a, `${a} · $${c.toFixed(2)} · ${row.model || 'model'}`, { detail: `${row.totalTokens || 0} tok`, link: row.runId });
       }
     }
   } catch { /* */ }
+  const byAgent = [...byAgentMap.values()]
+    .map((x) => ({ ...x, costUsd: Math.round(x.costUsd * 10000) / 10000 }))
+    .sort((a, b) => b.costUsd - a.costUsd);
 
   // merge: filter ≥ since, sort desc, cap
   let merged = events;
@@ -92,7 +100,7 @@ function buildProjectActivity({ build, dir, buildId, limit = 50, since = null } 
     nextSince: capped.length ? capped[capped.length - 1].ts : null,
     total: capped.length,
     // per-build spend summary (genuinely this build's dispatches, not platform noise)
-    spend: { totalCostUsd: Math.round(totalCostUsd * 10000) / 10000, runs: costRuns },
+    spend: { totalCostUsd: Math.round(totalCostUsd * 10000) / 10000, runs: costRuns, byAgent },
   };
 }
 

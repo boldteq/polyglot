@@ -326,7 +326,8 @@ export const getWorkspaceProjectRepo = (id: string) =>
   request<RepoData>(`/workspace/projects/${encodeURIComponent(id)}/repo`)
 
 export interface ActivityEvent { ts: string; kind: 'dispatch' | 'action' | 'gate' | 'score' | 'cost' | 'changes'; actor: string; summary: string; detail?: string; link?: string }
-export interface ActivitySpend { totalCostUsd: number; runs: number }
+export interface ActivityAgentSpend { agent: string; runs: number; costUsd: number; tokens: number }
+export interface ActivitySpend { totalCostUsd: number; runs: number; byAgent?: ActivityAgentSpend[] }
 export const getWorkspaceProjectActivity = (id: string, opts: { limit?: number; since?: string } = {}) =>
   request<{ events: ActivityEvent[]; nextSince: string | null; total: number; spend?: ActivitySpend }>(
     `/workspace/projects/${encodeURIComponent(id)}/activity?limit=${opts.limit ?? 50}${opts.since ? `&since=${encodeURIComponent(opts.since)}` : ''}`)
