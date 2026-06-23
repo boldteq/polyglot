@@ -43,6 +43,21 @@ test('publish:flip throws NO_LOCK_STORE on a build with no theme-lock', () => {
   } finally { fs.rmSync(bare, { recursive: true, force: true }); }
 });
 
+test('runAction rejects extraArgs on an action NOT flagged allowsExtraArgs', () => {
+  assert.throws(
+    () => actionRunner.runAction({ buildId: 'b', dir, actionId: 'build-state:show', extraArgs: ['--gate', 'x'] }),
+    (e) => e.code === 'NO_EXTRA_ARGS',
+  );
+});
+
+test('runAction rejects non-string extraArgs even on a flagged action', () => {
+  assert.throws(
+    // gate:rerun allowsExtraArgs, but extraArgs must be plain strings
+    () => actionRunner.runAction({ buildId: 'b', dir, actionId: 'gate:rerun', extraArgs: ['--gate', 123] }),
+    (e) => e.code === 'BAD_EXTRA_ARGS',
+  );
+});
+
 test('the publish actions are deploy-tier (so the generic route rejects them)', () => {
   const { getAction } = require('./actionRegistry.js');
   assert.equal(getAction('publish:preflight').tier, 'deploy');

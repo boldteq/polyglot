@@ -90,6 +90,15 @@ const ACTIONS = [
     description: 'Renders the maestro build-state (surface-by-surface verdicts). Read-only.',
     confirm: { title: 'Show build state?', message: 'Prints the current build-state. Read-only — changes nothing.', confirmLabel: 'Show' },
   },
+  {
+    // Re-run ONE gate. Base args empty; the gate-rerun route appends a
+    // server-validated `--gate <name>` (validated against gatesSpec) via extraArgs.
+    // Writes only to gate-reports/. allowsExtraArgs gates the validated append.
+    id: 'gate:rerun', label: 'Re-run gate', tier: 'safe', allowsExtraArgs: true,
+    script: 'theme-gates.mjs', args: [],
+    description: 'Re-runs a single named gate and refreshes its gate-reports/ entry. Writes only to gate-reports/.',
+    confirm: { title: 'Re-run this gate?', message: 'Re-runs just this gate and overwrites its gate-reports/ entry. Does not touch theme code or the store.', confirmLabel: 'Re-run' },
+  },
   // ── deploy tier — publish flow (only via /workspace/projects/:id/publish) ──
   {
     id: 'publish:preflight', label: 'Publish preflight (dry-run)', tier: 'deploy',

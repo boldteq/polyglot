@@ -528,6 +528,15 @@ test('S6: /publish on an unknown project → 404', async () => {
 // ── S7: post-publish monitoring read-path. Register checkpoints for a real linked
 // build's buildId (the same call the publish flip makes on exit 0), assert the
 // schedules route + MonitoringPanel data are populated, then clean up the rows.
+test('single-gate rerun: unknown gate name → 400 (allowlist guard, never spawns)', async () => {
+  const list = await get('/api/workspace/builds');
+  if (!list.json.builds.length) return;
+  const id = list.json.builds[0].buildId;
+  const r = await postJson(`/api/workspace/builds/${id}/gates/evil--not-a-gate/rerun`, {});
+  assert.equal(r.status, 400);
+  assert.ok(/unknown gate/.test(r.json.error));
+});
+
 test('S7: /projects/:id/schedules surfaces the 6 post-publish checkpoints', async () => {
   const projects = await get('/api/workspace/projects');
   const fs = require('node:fs');

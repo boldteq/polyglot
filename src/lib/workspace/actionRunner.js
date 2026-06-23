@@ -81,10 +81,24 @@ function runChain(rec, steps, dir, i) {
 // spawn unless confirmStore === the locked store. This is the server-side
 // type-to-confirm — defense-in-depth on top of the publish script's own gates.
 // It throws BEFORE any spawn, so an unconfirmed flip never touches the store.
-function runAction({ buildId, dir, actionId, confirmStore, onComplete } = {}) {
+// `extraArgs` (optional) appends to the entry's fixed args — used ONLY for
+// registry entries flagged `allowsExtraArgs` (e.g. gate:rerun → `--gate <name>`).
+// The CALLER must server-validate every element against a fixed allowlist before
+// passing it (the gate-rerun route validates the gate name against gatesSpec).
+// We additionally require every element to be a plain string and reject it for
+// any entry not flagged — so the allowlist boundary holds: no client free-text
+// ever reaches argv.
+function runAction({ buildId, dir, actionId, confirmStore, onComplete, extraArgs } = {}) {
   if (!dir || !fs.existsSync(dir)) throw new Error('build dir not found');
   const entry = getAction(actionId);
   if (!entry) { const e = new Error(`unknown action: ${actionId}`); e.code = 'UNKNOWN_ACTION'; throw e; }
+
+  let extra = [];
+  if (extraArgs != null) {
+    if (!entry.allowsExtraArgs) { const e = new Error(`action ${actionId} does not accept extra args`); e.code = 'NO_EXTRA_ARGS'; throw e; }
+    if (!Array.isArray(extraArgs) || !extraArgs.every((a) => typeof a === 'string')) { const e = new Error('extraArgs must be an array of strings'); e.code = 'BAD_EXTRA_ARGS'; throw e; }
+    extra = extraArgs;
+  }
 
   // store-confirm gate (live publish flip) — must match the locked store EXACTLY.
   if (entry.requiresStoreConfirm) {
@@ -119,9 +133,9 @@ function runAction({ buildId, dir, actionId, confirmStore, onComplete } = {}) {
   }
 
   const scriptAbs = resolveScript(entry);
-  // FIXED argv — node <script> <fixed args from registry>, CWD = the build dir.
-  // No shell, no interpolation, no client-supplied args.
-  const proc = spawn(process.execPath, [scriptAbs, ...entry.args], { cwd: dir, env: { ...process.env } });
+  // FIXED argv — node <script> <fixed args from registry> [server-validated extra].
+  // No shell, no interpolation, no client free-text (extra is allowlist-validated).
+  const proc = spawn(process.execPath, [scriptAbs, ...entry.args, ...extra], { cwd: dir, env: { ...process.env } });
   rec._proc = proc;
 
   const push = (chunk) => {

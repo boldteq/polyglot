@@ -628,6 +628,28 @@ router.get('/workspace/builds/:buildId/gates', (req, res) => {
   }
 });
 
+// Canonical gate-name allowlist (from gatesSpec) — the ONLY names that may reach
+// `theme-gates.mjs --gate <name>`. Server-side; never trusts the client's string.
+const GATE_NAMES = new Set(gatesSpec.gates.map((g) => g.name));
+
+// POST /api/workspace/builds/:buildId/gates/:gateName/rerun — re-run ONE gate.
+// gateName is validated against the canonical allowlist before it's appended as a
+// fixed `--gate <name>` arg (runAction only accepts extraArgs on the flagged
+// gate:rerun entry, and only as plain strings). Writes only to gate-reports/.
+router.post('/workspace/builds/:buildId/gates/:gateName/rerun', (req, res) => {
+  try {
+    const dir = resolveBuildDir(req.params.buildId);
+    if (!dir) return res.status(404).json({ error: 'build not found' });
+    const gateName = req.params.gateName;
+    if (!GATE_NAMES.has(gateName)) return res.status(400).json({ error: `unknown gate: ${gateName}` });
+    const rec = actionRunner.runAction({ buildId: req.params.buildId, dir, actionId: 'gate:rerun', extraArgs: ['--gate', gateName] });
+    res.status(202).json({ ...rec, gate: gateName });
+  } catch (err) {
+    console.error('[workspace] gate rerun failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/workspace/builds/:buildId/changes — parsed CHANGES.md checklist.
 router.get('/workspace/builds/:buildId/changes', (req, res) => {
   try {

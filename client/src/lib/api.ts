@@ -261,6 +261,8 @@ export const runWorkspaceAction = (buildId: string, actionId: string) =>
   request<ActionRun>(`/workspace/builds/${encodeURIComponent(buildId)}/actions/${encodeURIComponent(actionId)}`, { method: 'POST' })
 export const rerunWorkspaceGates = (buildId: string) =>
   request<ActionRun>(`/workspace/builds/${encodeURIComponent(buildId)}/actions/rerun-gates`, { method: 'POST' })
+export const rerunWorkspaceGate = (buildId: string, gateName: string) =>
+  request<ActionRun & { gate: string }>(`/workspace/builds/${encodeURIComponent(buildId)}/gates/${encodeURIComponent(gateName)}/rerun`, { method: 'POST' })
 export const getWorkspaceAction = (runId: string) =>
   request<ActionRun>(`/workspace/actions/${encodeURIComponent(runId)}`)
 export const cancelWorkspaceAction = (runId: string) =>
