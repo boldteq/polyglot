@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink } from 'lucide-react'
+import { FolderKanban, RefreshCw, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink, CheckSquare, Square } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
@@ -10,7 +10,7 @@ import { confirmDialog } from '../lib/confirm'
 import { relTime } from '../lib/relTime'
 import ScoreGauge from '../components/workspace/ScoreGauge'
 import StepIndicator from '../components/workspace/StepIndicator'
-import { getWorkspaceProjects, getWorkspaceEscalations, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, type WorkspaceProject, type AssembledBuild } from '../lib/api'
+import { getWorkspaceProjects, getWorkspaceEscalations, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
 
 type Filter = 'all' | 'attention' | 'passing'
 const STATUS_TONE: Record<string, string> = {
@@ -32,6 +32,8 @@ export default function WorkspaceProjects() {
   const [editFor, setEditFor] = useState<WorkspaceProject | null>(null)
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true); setError(null)
@@ -53,6 +55,29 @@ export default function WorkspaceProjects() {
   }, [load])
 
   const attentionOf = useCallback((p: WorkspaceProject) => (p.build ? reasons[p.build.buildId] || [] : []), [reasons])
+
+  const toggleSel = useCallback((id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n }), [])
+  const clearSel = useCallback(() => setSelected(new Set()), [])
+
+  const bulkStatus = useCallback(async (status: ProjectStatus) => {
+    const ids = [...selected]; if (!ids.length) return
+    setBulkBusy(true)
+    const res = await Promise.allSettled(ids.map((id) => setWorkspaceProjectStatus(id, status)))
+    const ok = res.filter((r) => r.status === 'fulfilled').length
+    toast(ok === ids.length ? 'success' : 'warn', `${ok}/${ids.length} → ${status}`)
+    setBulkBusy(false); clearSel(); load()
+  }, [selected, clearSel, load])
+
+  const bulkArchive = useCallback(async () => {
+    const ids = [...selected]; if (!ids.length) return
+    const ok = await confirmDialog({ title: `Archive ${ids.length} project${ids.length === 1 ? '' : 's'}?`, message: 'They will be hidden from the list. Linked builds on disk are untouched.', confirmLabel: 'Archive' })
+    if (!ok) return
+    setBulkBusy(true)
+    const res = await Promise.allSettled(ids.map((id) => deleteWorkspaceProject(id)))
+    const done = res.filter((r) => r.status === 'fulfilled').length
+    toast(done === ids.length ? 'success' : 'warn', `${done}/${ids.length} archived`)
+    setBulkBusy(false); clearSel(); load()
+  }, [selected, clearSel, load])
 
   // summary + filtered/searched list
   const { shown, summary } = useMemo(() => {
@@ -113,6 +138,23 @@ export default function WorkspaceProjects() {
             </div>
           </div>
 
+          {/* bulk action bar — appears when ≥1 selected */}
+          {selected.size > 0 && (
+            <div className="flex items-center gap-3 flex-wrap card px-3 py-2 bg-accent/5 border-accent/30">
+              <span className="text-[13px] font-medium">{selected.size} selected</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] text-text-muted">Set status</span>
+                <select disabled={bulkBusy} defaultValue="" onChange={(e) => { if (e.target.value) { bulkStatus(e.target.value as ProjectStatus); e.target.value = '' } }}
+                  className="input text-[12px] py-1" aria-label="Set status for selected">
+                  <option value="" disabled>choose…</option>
+                  {PROJECT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <button onClick={bulkArchive} disabled={bulkBusy} className="btn-ghost btn-sm flex items-center gap-1.5 text-red text-[12px] disabled:opacity-50"><Archive className="w-3.5 h-3.5" /> Archive</button>
+              <button onClick={clearSel} disabled={bulkBusy} className="btn-ghost btn-sm text-[12px] ml-auto">Clear</button>
+            </div>
+          )}
+
           {/* unified project list */}
           <div className="card divide-y divide-border">
             {shown.map((p) => {
@@ -120,7 +162,11 @@ export default function WorkspaceProjects() {
               return (
                 <div key={p.id} role="button" tabIndex={0} onClick={() => openProject(p)}
                   onKeyDown={(e) => { if (e.key === 'Enter') openProject(p) }}
-                  className="group flex items-center gap-4 px-4 py-3 hover:bg-text-muted/5 cursor-pointer transition-colors">
+                  className={`group flex items-center gap-4 px-4 py-3 hover:bg-text-muted/5 cursor-pointer transition-colors ${selected.has(p.id) ? 'bg-accent/5' : ''}`}>
+                  <button onClick={(e) => { e.stopPropagation(); toggleSel(p.id) }} aria-label={selected.has(p.id) ? 'Deselect' : 'Select'}
+                    className={`shrink-0 ${selected.has(p.id) ? 'text-accent' : 'text-text-muted/40 hover:text-text-muted opacity-0 group-hover:opacity-100'} ${selected.size > 0 ? 'opacity-100' : ''}`}>
+                    {selected.has(p.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                  </button>
                   {p.build ? <ScoreGauge score={p.build.score} grade={p.build.grade} size={40} showGrade={false} /> : <div className="w-10 h-10 rounded-full border-2 border-border shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <div className="font-medium capitalize truncate flex items-center gap-2">
