@@ -7,6 +7,7 @@ import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 import { openDispatch } from '../../lib/dispatch'
 import { openPublish } from '../../lib/publish'
 import { fetchWorkspaceActions } from '../../hooks/useWorkspaceActions'
+import { stepDescription } from '../../lib/workspacePhases'
 import { getWorkspaceBuildPipeline, type PipelineStep, type ActionDef } from '../../lib/api'
 
 interface PublishCtx { projectId: string; store: string | null; themeName?: string | null }
@@ -94,7 +95,8 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
                     <button onClick={() => copyStepLink(s.key)} title="Copy a link to this step"
                       className="text-text-muted/40 hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity"><Link2 className="w-3 h-3" /></button>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-0.5">
+                  {stepDescription(s.key) && <p className="text-[12px] text-text-muted mt-0.5 leading-snug">{stepDescription(s.key)}</p>}
+                  <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-1">
                     {s.artifactExists ? <FileCheck2 className="w-3 h-3 text-green" /> : <FileX2 className="w-3 h-3" />}
                     <code className="truncate">{s.artifact}</code>
                   </div>
