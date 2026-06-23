@@ -4,8 +4,7 @@ import { Spinner } from '../Skeleton'
 import EmptyState from '../EmptyState'
 import FileViewer from './FileViewer'
 import { getWorkspaceProjectRepo, getWorkspaceProjectDiff, type RepoData, type FileNode, type RepoDiff } from '../../lib/api'
-
-const vscodeLink = (abs: string) => `vscode://file${abs}`
+import { vscodeLink } from '../../lib/vscode'
 const DIFF_STAT: Record<string, string> = { M: 'text-amber', A: 'text-green', D: 'text-red', R: 'text-accent' }
 
 function FileRow({ name, path, isDir, onOpen }: { name: string; path: string; isDir?: boolean; onOpen: (abs: string) => void }) {

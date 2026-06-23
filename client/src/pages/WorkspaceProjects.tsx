@@ -8,15 +8,12 @@ import { Spinner } from '../components/Skeleton'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
 import { relTime } from '../lib/relTime'
+import { PROJECT_STATUS_TONE } from '../lib/projectStatus'
 import ScoreGauge from '../components/workspace/ScoreGauge'
 import StepIndicator from '../components/workspace/StepIndicator'
 import { getWorkspaceProjects, getWorkspaceEscalations, ackWorkspaceEscalation, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
 
 type Filter = 'all' | 'attention' | 'passing'
-const STATUS_TONE: Record<string, string> = {
-  intake: 'text-text-muted bg-text-muted/10', building: 'text-accent bg-accent/10',
-  preview: 'text-amber bg-amber/10', published: 'text-green bg-green/10', archived: 'text-text-muted bg-text-muted/10',
-}
 
 // Projects home — the one center of gravity. Every discovered build is auto-adopted
 // into this unified list (no "unlinked builds" split). Attention surfaces inline.
@@ -206,7 +203,7 @@ export default function WorkspaceProjects() {
                     <div className="text-[12px] text-text-muted truncate">{p.domain || (p.build?.store) || '—'}{p.build ? ` · step ${p.build.step.current}/18 · score ${p.build.score}` : ' · intake only'}</div>
                   </div>
                   {p.build && <div className="w-28 hidden md:block"><StepIndicator current={p.build.step.current} total={p.build.step.total} showLabel={false} /></div>}
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full capitalize shrink-0 ${STATUS_TONE[p.status] || STATUS_TONE.intake}`}>{p.status}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full capitalize shrink-0 ${PROJECT_STATUS_TONE[p.status] || PROJECT_STATUS_TONE.intake}`}>{p.status}</span>
                   <span className="text-[11px] text-text-muted shrink-0 w-16 text-right hidden lg:block">{relTime(p.build?.capturedAt ?? p.updated_at)}</span>
                   {/* hover actions */}
                   <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>

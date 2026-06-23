@@ -7,17 +7,14 @@ import VerdictPill from './VerdictPill'
 import { InfoIcon } from '../Tooltip'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 import { fetchWorkspaceActions } from '../../hooks/useWorkspaceActions'
+import { vscodeLink } from '../../lib/vscode'
+import { PROJECT_STATUS_TONE } from '../../lib/projectStatus'
 import { openDispatch } from '../../lib/dispatch'
 import { openBuild } from '../../lib/build'
 import { openPublish } from '../../lib/publish'
 import { toast } from '../Toast'
 import { setWorkspaceProjectStatus, PROJECT_STATUSES, type ProjectDetail, type RepoData, type ProjectStatus, type ActionDef } from '../../lib/api'
 
-const STATUS_TONE: Record<string, string> = {
-  intake: 'text-text-muted bg-text-muted/10', building: 'text-accent bg-accent/10',
-  preview: 'text-amber bg-amber/10', published: 'text-green bg-green/10', archived: 'text-text-muted bg-text-muted/10',
-}
-const vscodeLink = (abs: string) => `vscode://file${abs}`
 
 function StatusChanger({ id, status, onChanged }: { id: string; status: string; onChanged: () => void }) {
   const [open, setOpen] = useState(false)
@@ -37,7 +34,7 @@ function StatusChanger({ id, status, onChanged }: { id: string; status: string; 
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen((v) => !v)} disabled={busy}
-        className={`text-[10px] px-2 py-0.5 rounded-full capitalize flex items-center gap-1 ${STATUS_TONE[status] || STATUS_TONE.intake}`}>
+        className={`text-[10px] px-2 py-0.5 rounded-full capitalize flex items-center gap-1 ${PROJECT_STATUS_TONE[status] || PROJECT_STATUS_TONE.intake}`}>
         {status} <ChevronDown className="w-3 h-3" />
       </button>
       {open && (
