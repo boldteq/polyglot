@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Circle, Loader2, FileCheck2, FileX2, Play, Lock, Bot, Rocket } from 'lucide-react'
+import { CheckCircle2, Circle, Loader2, FileCheck2, FileX2, Play, Lock, Bot, Rocket, Link2 } from 'lucide-react'
 import { Spinner } from '../Skeleton'
+import { toast } from '../Toast'
 import { formatAgentDisplay } from '../../lib/agentDisplay'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 import { openDispatch } from '../../lib/dispatch'
@@ -30,6 +31,7 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
   const [actions, setActions] = useState<ActionDef[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [highlight, setHighlight] = useState<string | null>(null) // step key from the URL hash
   const { run, trigger } = useWorkspaceAction(buildId, onChanged)
 
   useEffect(() => {
@@ -41,6 +43,28 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [buildId, reloadKey])
+
+  // deep-link to a step: on load (after steps render) scroll #wf-step-<key> into
+  // view + briefly highlight it. The single-scroll page lazy-renders, so native
+  // hash scroll misses — do it manually once the rows exist.
+  useEffect(() => {
+    if (!steps.length) return
+    const m = (typeof window !== 'undefined' ? window.location.hash : '').match(/^#wf-step-(.+)$/)
+    if (!m) return
+    const key = decodeURIComponent(m[1])
+    if (!steps.some((s) => s.key === key)) return
+    const el = document.getElementById(`wf-step-${key}`)
+    if (!el) return
+    el.scrollIntoView({ block: 'center' })
+    setHighlight(key)
+    const t = setTimeout(() => setHighlight(null), 2200)
+    return () => clearTimeout(t)
+  }, [steps])
+
+  const copyStepLink = (key: string) => {
+    const url = `${window.location.origin}${window.location.pathname}#wf-step-${encodeURIComponent(key)}`
+    navigator.clipboard?.writeText(url).then(() => toast('success', 'Step link copied')).catch(() => toast('warn', url))
+  }
 
   if (loading) return <Spinner />
   if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
@@ -60,12 +84,14 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
             const action = STEP_ACTION[s.key] ? actions.find((a) => a.id === STEP_ACTION[s.key]) : null
             const isDeploy = DEPLOY_STEPS.has(s.key)
             return (
-              <li key={s.step} className="flex items-start gap-3 px-3 py-2 hover:bg-text-muted/5 rounded-lg">
+              <li key={s.step} id={`wf-step-${s.key}`} className={`group flex items-start gap-3 px-3 py-2 rounded-lg scroll-mt-24 transition-colors ${highlight === s.key ? 'bg-accent/10 ring-1 ring-accent/40' : 'hover:bg-text-muted/5'}`}>
                 <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${color} ${s.status === 'current' ? 'animate-spin' : ''}`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-[13px] font-medium ${s.status === 'pending' ? 'text-text-muted' : ''}`}>{s.step}. {s.title}</span>
                     <span className="text-[10px] text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">@{owner}</span>
+                    <button onClick={() => copyStepLink(s.key)} title="Copy a link to this step"
+                      className="text-text-muted/40 hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity"><Link2 className="w-3 h-3" /></button>
                   </div>
                   <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-0.5">
                     {s.artifactExists ? <FileCheck2 className="w-3 h-3 text-green" /> : <FileX2 className="w-3 h-3" />}
