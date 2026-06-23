@@ -36,7 +36,7 @@ function StatusChanger({ id, status, onChanged }: { id: string; status: string; 
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen((v) => !v)} disabled={busy}
-        className={`text-[10px] px-2 py-0.5 rounded-full capitalize flex items-center gap-1 ${PROJECT_STATUS_TONE[status] || PROJECT_STATUS_TONE.intake}`}>
+        className={`text-[11px] font-medium px-2 py-0.5 rounded-full capitalize flex items-center gap-1 ${PROJECT_STATUS_TONE[status] || PROJECT_STATUS_TONE.intake}`}>
         {status} <ChevronDown className="w-3 h-3" />
       </button>
       {open && (

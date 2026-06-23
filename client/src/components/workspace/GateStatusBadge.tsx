@@ -12,5 +12,5 @@ const STYLE: Record<GateStatus, string> = {
 const LABEL: Record<GateStatus, string> = { pass: 'PASS', fail: 'FAIL', warn: 'WARN', missing: 'no report' }
 
 export default function GateStatusBadge({ status }: { status: GateStatus }) {
-  return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${STYLE[status]}`}>{LABEL[status]}</span>
+  return <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${STYLE[status]}`}>{LABEL[status]}</span>
 }

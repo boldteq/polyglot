@@ -91,7 +91,7 @@ export default function LensTab({ buildId, dir, reloadKey, onChanged }: { buildI
             <div key={i} className="card overflow-hidden">
               <div className="flex items-center justify-between px-3 pt-2 pb-1">
                 <span className="text-[12px] font-medium capitalize">{f.surface} · {f.viewport}</span>
-                {f.verdict && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${f.verdict.verdict === 'FAIL' ? 'bg-red' : 'bg-green'}`}>{f.verdict.verdict}</span>}
+                {f.verdict && <span className={`text-[11px] font-bold px-2 py-0.5 rounded text-white ${f.verdict.verdict === 'FAIL' ? 'bg-red' : 'bg-green'}`}>{f.verdict.verdict}</span>}
               </div>
               {f.rest && <img src={f.rest} alt={`${f.surface} ${f.viewport}`} loading="lazy" className="w-full border-t border-border bg-black/5" />}
             </div>

@@ -101,7 +101,7 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-[13px] font-medium ${s.status === 'pending' ? 'text-text-muted' : ''}`}>{s.step}. {s.title}</span>
-            <span className="text-[10px] text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">@{owner}</span>
+            <span className="text-[11px] text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">@{owner}</span>
             <button onClick={() => copyStepLink(s.key)} title="Copy a link to this step"
               className="text-text-muted/40 hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity"><Link2 className="w-3 h-3" /></button>
           </div>
@@ -133,7 +133,7 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
               <Rocket className="w-3 h-3" /> Publish
             </button>
           ) : isDeploy ? (
-            <span className="flex items-center gap-1 text-[10px] text-text-muted bg-text-muted/10 px-2 py-1 rounded" title="Live deploy — link a theme (store + theme id) to enable publishing">
+            <span className="flex items-center gap-1 text-[11px] text-text-muted bg-text-muted/10 px-2 py-1 rounded" title="Live deploy — link a theme (store + theme id) to enable publishing">
               <Lock className="w-3 h-3" /> No theme lock
             </span>
           ) : null}
