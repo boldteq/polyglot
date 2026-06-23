@@ -1,18 +1,13 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink, CheckSquare, Square, BellOff, AlertTriangle } from 'lucide-react'
+import { FolderKanban, RefreshCw, Plus, X, Archive, Search } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
-import { Spinner } from '../components/Skeleton'
-import { Tooltip } from '../components/Tooltip'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
-import { relTime } from '../lib/relTime'
-import { PROJECT_STATUS_TONE } from '../lib/projectStatus'
-import { phaseForStep } from '../lib/workspacePhases'
-import ScoreGauge from '../components/workspace/ScoreGauge'
-import { getWorkspaceProjects, getWorkspaceEscalations, ackWorkspaceEscalation, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
+import ProjectCard from '../components/workspace/ProjectCard'
+import { getWorkspaceProjects, getWorkspaceEscalations, ackWorkspaceEscalation, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, getLensLatest, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
 
 type Filter = 'all' | 'attention' | 'passing'
 
@@ -35,6 +30,7 @@ export default function WorkspaceProjects() {
   const [sort, setSort] = useState<'recent' | 'score' | 'name'>('recent')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [thumbs, setThumbs] = useState<Record<string, string | null>>({})
 
   const load = useCallback(() => {
     setLoading(true); setError(null)
@@ -48,6 +44,24 @@ export default function WorkspaceProjects() {
       .finally(() => setLoading(false))
   }, [])
   useEffect(() => { load() }, [load])
+
+  // Lovable-style preview thumbnails: pull the latest Lens desktop/home frame per
+  // build in parallel (best-effort; cards fall back to a gradient when absent).
+  useEffect(() => {
+    const withDir = projects.filter((p) => p.build?.dir)
+    if (!withDir.length) return
+    let alive = true
+    Promise.allSettled(withDir.map((p) => getLensLatest(p.build!.dir).then((l) => {
+      const f = l.present ? (l.frames.find((x) => x.viewport === 'desktop' && x.surface === 'home') ?? l.frames.find((x) => x.viewport === 'desktop') ?? l.frames[0]) : null
+      return [p.id, f?.rest ?? null] as const
+    }))).then((res) => {
+      if (!alive) return
+      const map: Record<string, string | null> = {}
+      for (const r of res) if (r.status === 'fulfilled') { map[r.value[0]] = r.value[1] }
+      setThumbs(map)
+    })
+    return () => { alive = false }
+  }, [projects])
 
   const archive = useCallback(async (p: WorkspaceProject) => {
     const ok = await confirmDialog({ title: `Archive ${p.name}?`, message: 'It will be hidden from the list. The linked build on disk is untouched.', confirmLabel: 'Archive' })
@@ -128,7 +142,20 @@ export default function WorkspaceProjects() {
         </div>
       }
     >
-      {loading ? <Spinner /> : error ? (
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="card overflow-hidden">
+              <div className="h-36 bg-surface-2 animate-pulse" />
+              <div className="p-4 space-y-3">
+                <div className="h-4 w-2/3 bg-surface-2 rounded animate-pulse" />
+                <div className="h-3 w-1/2 bg-surface-2 rounded animate-pulse" />
+                <div className="h-9 w-full bg-surface-2 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : error ? (
         <ErrorState message={error} onRetry={load} />
       ) : projects.length === 0 ? (
         <EmptyState icon={FolderKanban} title="No projects yet" description="Create a project to capture intake — or theme folders are auto-detected and appear here." action={{ label: 'New project', onClick: () => setShowNew(true) }} />
@@ -181,51 +208,20 @@ export default function WorkspaceProjects() {
             </div>
           )}
 
-          {/* unified project list */}
-          <div className="card divide-y divide-border">
-            {shown.map((p) => {
-              const att = attentionOf(p)
-              const blockerM = att.map((r) => r.match(/(\d+)\s*open blocker/i)).find(Boolean)
-              const attLabel = blockerM ? `${blockerM[1]} blocker${blockerM[1] === '1' ? '' : 's'}` : 'attention'
-              const sub = p.build
-                ? [p.domain || p.build.store, `step ${p.build.step.current}/18`, phaseForStep(p.build.step.current).label].filter(Boolean).join(' · ')
-                : [p.domain, 'intake only'].filter(Boolean).join(' · ')
-              return (
-                <div key={p.id} role="button" tabIndex={0} onClick={() => openProject(p)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') openProject(p) }}
-                  className={`group flex items-center gap-4 px-4 py-3 hover:bg-text-muted/5 cursor-pointer transition-colors ${selected.has(p.id) ? 'bg-accent/5' : ''}`}>
-                  <button onClick={(e) => { e.stopPropagation(); toggleSel(p.id) }} aria-label={selected.has(p.id) ? 'Deselect' : 'Select'}
-                    className={`shrink-0 ${selected.has(p.id) ? 'text-accent' : 'text-text-muted/40 hover:text-text-muted opacity-0 group-hover:opacity-100'} ${selected.size > 0 ? 'opacity-100' : ''}`}>
-                    {selected.has(p.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                  </button>
-                  {p.build ? <ScoreGauge score={p.build.score} grade={p.build.grade} size={40} showGrade={false} /> : <div className="w-10 h-10 rounded-full border-2 border-border shrink-0" />}
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium capitalize truncate flex items-center gap-2">
-                      {p.name}
-                      {p.niche && <span className="text-[10px] uppercase tracking-wide text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">{p.niche}</span>}
-                      {p.build_dir ? <LinkIcon className="w-3 h-3 text-green shrink-0" /> : <Unlink className="w-3 h-3 text-text-muted shrink-0" />}
-                      {att.length > 0 && (
-                        <Tooltip label={att.join(' · ')}>
-                          <span className="pill bg-red/10 text-red normal-case shrink-0"><AlertTriangle className="w-3 h-3" />{attLabel}</span>
-                        </Tooltip>
-                      )}
-                    </div>
-                    <div className="text-[12px] text-text-muted truncate">{sub}</div>
-                  </div>
-                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full capitalize shrink-0 ${PROJECT_STATUS_TONE[p.status] || PROJECT_STATUS_TONE.intake}`}>{p.status}</span>
-                  <span className="text-[11px] text-text-muted shrink-0 w-16 text-right hidden lg:block">{relTime(p.build?.capturedAt ?? p.updated_at)}</span>
-                  {/* hover actions */}
-                  <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => setEditFor(p)} title="Edit" className="btn-ghost btn-sm p-1.5"><Pencil className="w-3.5 h-3.5" /></button>
-                    {att.length > 0 && <button onClick={() => acknowledge(p)} title="Acknowledge escalation (clears until reasons change)" className="btn-ghost btn-sm p-1.5 text-text-muted hover:text-amber"><BellOff className="w-3.5 h-3.5" /></button>}
-                    {!p.build_dir && <button onClick={() => setLinkFor(p)} title="Link a build folder" className="btn-ghost btn-sm p-1.5"><Link2 className="w-3.5 h-3.5" /></button>}
-                    <button onClick={() => archive(p)} title="Archive" className="btn-ghost btn-sm p-1.5 text-text-muted hover:text-red"><Archive className="w-3.5 h-3.5" /></button>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted/40 group-hover:text-text-muted shrink-0 transition-colors" />
-                </div>
-              )
-            })}
-            {shown.length === 0 && <div className="px-4 py-8 text-center text-[13px] text-text-muted">No projects match.</div>}
+          {/* project card grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button onClick={() => setShowNew(true)}
+              className="card card-hover border-dashed flex flex-col items-center justify-center gap-2 text-text-muted hover:text-accent hover:border-accent/40 min-h-[260px] transition-colors">
+              <Plus className="w-7 h-7" />
+              <span className="text-[13px] font-medium">New project</span>
+            </button>
+            {shown.map((p) => (
+              <ProjectCard key={p.id} project={p} thumb={thumbs[p.id] ?? null} attention={attentionOf(p)}
+                selected={selected.has(p.id)} anySelected={selected.size > 0}
+                onOpen={() => openProject(p)} onToggleSel={() => toggleSel(p.id)}
+                onEdit={() => setEditFor(p)} onArchive={() => archive(p)} onLink={() => setLinkFor(p)} onAck={() => acknowledge(p)} />
+            ))}
+            {shown.length === 0 && <div className="col-span-full px-4 py-8 text-center text-[13px] text-text-muted">No projects match your filters.</div>}
           </div>
         </div>
       )}
