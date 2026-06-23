@@ -9,6 +9,7 @@ import {
 import type { ConversationSummary, Conversation, ConversationMessage } from '../lib/api'
 import type { Agent } from '../types'
 import { MarkdownRenderer } from '../components/MarkdownRenderer'
+import { Spinner } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
@@ -163,7 +164,7 @@ export default function ProjectChat() {
     }
   }
 
-  if (loading) return <div className="p-8 text-text-muted">Loading conversations...</div>
+  if (loading) return <Spinner />
 
   return (
     <div className="flex h-screen">

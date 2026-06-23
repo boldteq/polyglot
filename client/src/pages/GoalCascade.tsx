@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Target, Plus, Trash2, Edit3, Check, X, ChevronDown, ChevronRight, Flag, AlertCircle, CheckCircle, Pause } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
+import { Spinner } from '../components/Skeleton'
 import { confirmDialog } from '../lib/confirm'
 import {
   getGoals, updateMission, createProjectGoal, deleteProjectGoal,
@@ -131,7 +132,7 @@ export default function GoalCascadePage() {
     missionDraft.trim() !== (goals.mission ?? '').trim() ||
     missionDescDraft.trim() !== (goals.missionDescription ?? '').trim()
 
-  if (loading) return <div className="p-8 text-text-muted">Loading goals...</div>
+  if (loading) return <Spinner />
 
   return (
     <PageShell title="Goal Cascade" subtitle="Company mission flows down to project goals, then to agent objectives">

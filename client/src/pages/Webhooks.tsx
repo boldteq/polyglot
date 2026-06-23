@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Globe, Plus, Trash2, Copy, Eye, EyeOff, AlertCircle, Check } from 'lucide-react'
 import { getWebhooks, getWebhookSecret, createWebhook, deleteWebhook, getGlobalAgents, apiError } from '../lib/api'
 import { ErrorState } from '../components/ErrorState'
+import { Spinner } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import ConfirmDialog from '../components/ConfirmDialog'
 import type { Webhook } from '../lib/api'
@@ -89,7 +90,7 @@ export default function WebhooksPage() {
 
   const getTriggerUrl = (id: string) => `${window.location.origin}/api/webhooks/trigger/${id}`
 
-  if (loading) return <div className="p-8 text-text-muted">Loading webhooks...</div>
+  if (loading) return <Spinner />
   if (loadError) return <ErrorState message={loadError} onRetry={load} />
 
   return (
