@@ -4,8 +4,8 @@ import { toast } from '../components/Toast'
 import { runWorkspaceAction, getWorkspaceAction, type ActionRun, type ActionDef } from '../lib/api'
 
 // Shared cockpit-action runner: confirm → POST → poll (1.5s) → toast verdict →
-// onChanged(). Used by both ActionsBar and WorkflowTab so the safe-action flow
-// lives in ONE place. Returns the live run + a `run(actionDef)` trigger.
+// onChanged(). Used by WorkflowTab + ProjectHeader's "⋯" overflow so the
+// safe-action flow lives in ONE place. Returns the live run + a `run(actionDef)` trigger.
 export function useWorkspaceAction(buildId: string, onChanged?: () => void) {
   const [run, setRun] = useState<ActionRun | null>(null)
   const poll = useRef<ReturnType<typeof setInterval> | null>(null)

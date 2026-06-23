@@ -45,7 +45,7 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
   }, [buildId, reloadKey])
 
   // deep-link to a step: on load (after steps render) scroll #wf-step-<key> into
-  // view + briefly highlight it. The single-scroll page lazy-renders, so native
+  // view + briefly highlight it. The Build tab lazy-renders this list, so native
   // hash scroll misses — do it manually once the rows exist.
   useEffect(() => {
     if (!steps.length) return

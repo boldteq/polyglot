@@ -55,8 +55,8 @@ function StatusChanger({ id, status, onChanged }: { id: string; status: string; 
 type MenuItem = { label: string; icon: LucideIcon; onClick: () => void; disabled?: boolean; hint?: string }
 
 // The "⋯ More" overflow — every action that isn't the one primary CTA. Two groups:
-// the main flows + the safe-action "checks" (granular gate/lens/discovery runners,
-// formerly the always-visible ActionsBar dropdown). Click-outside to close.
+// the main flows + the safe-action "checks" (granular gate/lens/discovery runners
+// whose only home is here, after the C4 dedupe). Click-outside to close.
 function OverflowMenu({ groups }: { groups: { label?: string; items: MenuItem[] }[] }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
