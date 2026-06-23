@@ -76,6 +76,7 @@ export default function DirectoryPicker({ open, onClose, onSelect, existingDirs 
           </div>
           <button
             onClick={onClose}
+            aria-label="Close directory picker"
             className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
           >
             <X className="w-5 h-5" />

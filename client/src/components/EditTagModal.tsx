@@ -75,7 +75,7 @@ export default function EditTagModal({
               {category} / <span className="text-text">{tag}</span>
             </p>
           </div>
-          <button onClick={onClose} disabled={busy} className="p-1 rounded hover:bg-surface-2 text-text-muted disabled:opacity-50">
+          <button onClick={onClose} disabled={busy} aria-label="Close" className="p-1 rounded hover:bg-surface-2 text-text-muted disabled:opacity-50">
             <X className="w-4 h-4" />
           </button>
         </div>

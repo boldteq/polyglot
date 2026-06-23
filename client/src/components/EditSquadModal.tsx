@@ -85,7 +85,7 @@ export default function EditSquadModal({ open, squad, onClose, onSaved }: EditSq
               <span>{label || squad.id}</span>
             </span>
           </div>
-          <button onClick={onClose} disabled={busy} className="p-1 rounded hover:bg-surface-2 text-text-muted disabled:opacity-50">
+          <button onClick={onClose} disabled={busy} aria-label="Close" className="p-1 rounded hover:bg-surface-2 text-text-muted disabled:opacity-50">
             <X className="w-4 h-4" />
           </button>
         </div>
