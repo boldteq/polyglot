@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, RotateCw, Loader2 } from 'lucide-react'
 import { Spinner } from '../Skeleton'
 import { toast } from '../Toast'
 import GateStatusBadge from './GateStatusBadge'
+import { InfoIcon } from '../Tooltip'
 import { getWorkspaceBuildGates, rerunWorkspaceGate, getWorkspaceAction, type GateDetail } from '../../lib/api'
 
 // All canonical gates × status × first-3 findings (rest behind an expander).
@@ -56,11 +57,13 @@ export default function GatesTab({ buildId, reloadKey }: { buildId: string; relo
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-4 text-[13px] text-text-muted">
+      <div className="flex items-center gap-4 text-[13px] text-text-muted">
         <span><b className="text-green">{data.passed}</b> pass</span>
         <span><b className="text-red">{data.failed}</b> fail</span>
         <span><b>{data.missing}</b> no report</span>
-        <span className="ml-auto">{data.total} gates</span>
+        <span className="ml-auto flex items-center gap-1">{data.total} gates
+          <InfoIcon label="Automated quality checks (theme-check, accessibility, SEO, design-system, honesty, Lens visual-truth…). All must pass before a theme can publish." />
+        </span>
       </div>
       <div className="card divide-y divide-border">
         {data.gates.map((g) => {
