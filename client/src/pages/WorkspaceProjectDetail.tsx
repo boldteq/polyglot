@@ -28,6 +28,14 @@ function Section({ title, open = false, info, children }: { title: string; open?
   return <Collapsible bare title={title} defaultOpen={open} right={info ? <InfoIcon label={info} /> : undefined}>{children}</Collapsible>
 }
 
+// Keep-alive tab panel: a tab's content mounts on FIRST visit (lazy) and then
+// STAYS mounted (CSS-hidden when inactive) — so switching back is instant and any
+// expanded Collapsible / scroll / fetched data is preserved instead of re-fetched.
+function TabPanel({ id, active, visited, children }: { id: string; active: string; visited: Set<string>; children: React.ReactNode }) {
+  if (!visited.has(id)) return null
+  return <div role="tabpanel" hidden={active !== id}>{children}</div>
+}
+
 // Project detail — Lovable-style: a slim hero + ~4 tabs instead of an 11-section
 // single scroll. Overview is the 90% landing; the heavier operational / quality /
 // spec views live one click away; Monitoring appears only once published.
@@ -47,6 +55,8 @@ export default function WorkspaceProjectDetail() {
     if (typeof window !== 'undefined' && window.location.hash.startsWith('#wf-step-')) return 'build'
     return 'overview'
   })
+  // tabs that have been opened at least once → kept mounted (lazy + keep-alive)
+  const [visited, setVisited] = useState<Set<string>>(() => new Set([tab]))
 
   const load = useCallback(() => {
     if (!id) return
@@ -78,6 +88,8 @@ export default function WorkspaceProjectDetail() {
   ]
   const activeTab = tabs.some((t) => t.id === tab) ? tab : 'overview'
   const changeTab = (next: string) => { setTab(next); setSearchParams((p) => { p.set('tab', next); return p }, { replace: true }) }
+  // mark the active tab visited so it mounts + stays alive
+  useEffect(() => { setVisited((v) => (v.has(activeTab) ? v : new Set(v).add(activeTab))) }, [activeTab])
 
   return (
     <PageShell
@@ -102,39 +114,39 @@ export default function WorkspaceProjectDetail() {
             <div>
               <TabNav tabs={tabs} active={activeTab} onChange={changeTab} />
 
-              {activeTab === 'overview' && (
+              <TabPanel id="overview" active={activeTab} visited={visited}>
                 <div className="space-y-6">
                   <Section title="Activity" open><ActivityTimeline projectId={id!} reloadKey={reloadKey} /></Section>
                   <Section title="Brief"><BriefPanel detail={detail} onReload={reloadAll} /></Section>
                 </div>
-              )}
+              </TabPanel>
 
-              {activeTab === 'build' && (
+              <TabPanel id="build" active={activeTab} visited={visited}>
                 <div className="space-y-6">
                   <Section title="Workflow" open><WorkflowTab buildId={buildId} reloadKey={reloadKey} onChanged={reloadAll} publish={{ projectId: id!, store: repo?.themeLock?.store ?? null, themeName: repo?.themeLock?.themeName }} /></Section>
                   <Section title="Repo & files"><RepoPanel projectId={id!} reloadKey={reloadKey} /></Section>
                   <Section title="Preview">{dir && <PreviewPanel dir={dir} repo={repo} reloadKey={reloadKey} />}</Section>
                 </div>
-              )}
+              </TabPanel>
 
-              {activeTab === 'quality' && (
+              <TabPanel id="quality" active={activeTab} visited={visited}>
                 <div className="space-y-6">
                   <Section title="Gates" open><GatesTab buildId={buildId} reloadKey={reloadKey} /></Section>
                   <Section title="Lens" info="The visual-truth gate (#18): captures the rendered theme and judges it with vision — catching layout, contrast and occlusion bugs the static gates miss.">{dir && <LensTab buildId={buildId} dir={dir} reloadKey={reloadKey} onChanged={reloadAll} />}</Section>
                   <Section title="Changes"><ChangesTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 </div>
-              )}
+              </TabPanel>
 
-              {activeTab === 'specs' && (
+              <TabPanel id="specs" active={activeTab} visited={visited}>
                 <div className="space-y-6">
                   <Section title="Docs" open><DocsTab buildId={buildId} reloadKey={reloadKey} /></Section>
                   <Section title="Design" info="The locked design-system contract — colors, type scale, spacing, buttons, brand voice. Theme sections bind to these tokens; the design-system gate enforces it."><DesignSystemTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 </div>
-              )}
+              </TabPanel>
 
-              {activeTab === 'monitoring' && (
+              <TabPanel id="monitoring" active={activeTab} visited={visited}>
                 <Section title="Monitoring" open><MonitoringPanel projectId={id!} reloadKey={reloadKey} /></Section>
-              )}
+              </TabPanel>
             </div>
           ) : null}
         </div>
