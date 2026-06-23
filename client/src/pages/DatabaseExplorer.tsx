@@ -247,6 +247,7 @@ export default function DatabaseExplorer() {
             <button
               onClick={handleQuery}
               disabled={queryLoading || !sql.trim()}
+              title="Run query (⌘/Ctrl + Enter)"
               className="btn-primary btn-md self-start shrink-0"
             >
               {queryLoading ? (
@@ -255,6 +256,7 @@ export default function DatabaseExplorer() {
                 <Play className="w-3 h-3" />
               )}
               Run
+              <kbd className="ml-1 text-[9px] font-mono opacity-70">⌘↵</kbd>
             </button>
           </div>
 
