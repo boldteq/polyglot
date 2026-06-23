@@ -262,6 +262,7 @@ export default function AgentEditor({ scope }: Props) {
               if (dirty && !(await confirmDialog({ title: 'Discard unsaved changes?', message: 'You have unsaved changes that will be lost if you leave.', danger: true, confirmLabel: 'Leave' }))) return
               navigate(backPath)
             }}
+            aria-label="Go back"
             className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />

@@ -121,6 +121,7 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
               if (dirty && !(await confirmDialog({ title: 'Discard unsaved changes?', message: 'You have unsaved changes that will be lost if you leave.', danger: true, confirmLabel: 'Leave' }))) return
               navigate(isGlobal ? '/rules' : `/projects/${projectId}`)
             }}
+            aria-label="Go back"
             className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
