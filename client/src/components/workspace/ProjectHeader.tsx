@@ -9,11 +9,13 @@ import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 import { fetchWorkspaceActions } from '../../hooks/useWorkspaceActions'
 import { vscodeLink } from '../../lib/vscode'
 import { PROJECT_STATUS_TONE } from '../../lib/projectStatus'
+import { phaseForStep } from '../../lib/workspacePhases'
+import { formatAgentDisplay } from '../../lib/agentDisplay'
 import { openDispatch } from '../../lib/dispatch'
 import { openBuild } from '../../lib/build'
 import { openPublish } from '../../lib/publish'
 import { toast } from '../Toast'
-import { setWorkspaceProjectStatus, PROJECT_STATUSES, type ProjectDetail, type RepoData, type ProjectStatus, type ActionDef } from '../../lib/api'
+import { setWorkspaceProjectStatus, getWorkspaceBuildPipeline, PROJECT_STATUSES, type ProjectDetail, type RepoData, type ProjectStatus, type ActionDef, type PipelineStep } from '../../lib/api'
 
 
 function StatusChanger({ id, status, onChanged }: { id: string; status: string; onChanged: () => void }) {
@@ -94,10 +96,18 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
   const git = repo?.git
   const { run, trigger } = useWorkspaceAction(buildId || '', onReload)
   const [safeActions, setSafeActions] = useState<ActionDef[]>([])
+  const [steps, setSteps] = useState<PipelineStep[]>([])
   useEffect(() => {
     if (!buildId) return
     fetchWorkspaceActions().then((actions) => setSafeActions(actions.filter((a) => a.tier === 'safe'))).catch(() => setSafeActions([]))
+    getWorkspaceBuildPipeline(buildId).then((p) => setSteps(p.steps)).catch(() => setSteps([]))
   }, [buildId])
+
+  // "where am I + what's next": the current pipeline step (or first pending) →
+  // a plain "Next: <step> — <owner>" line, and the current phase to tie blockers to.
+  const nextStep = steps.find((s) => s.status === 'current') || steps.find((s) => s.status === 'pending') || null
+  const nextOwner = nextStep?.owner ? (formatAgentDisplay({ name: nextStep.owner, id: nextStep.owner }).realName || nextStep.owner) : ''
+  const currentPhaseLabel = build ? phaseForStep(build.step.current || 1).label : ''
 
   const studioHref = `/workspace/p/${project.id}/studio`
   const lensHref = build ? `/workspace/lens?dir=${encodeURIComponent(build.dir)}` : ''
@@ -159,11 +169,20 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
             <PhaseJourney current={build.step.current} total={build.step.total} />
             <div className="flex flex-wrap items-center gap-4 mt-2 text-[13px]">
               <span><b>{build.gates.passed}/{build.gates.total}</b> <span className="text-text-muted">gates</span></span>
-              <span className="flex items-center gap-1"><b>{build.gates.blockersOpen}</b> <span className="text-text-muted">blockers</span>
+              <span className="flex items-center gap-1">
+                <b className={build.gates.blockersOpen > 0 ? 'text-red' : ''}>{build.gates.blockersOpen}</b>
+                <span className="text-text-muted">{build.gates.blockersOpen === 1 ? 'blocker' : 'blockers'}{build.gates.blockersOpen > 0 && currentPhaseLabel ? ` in ${currentPhaseLabel}` : ''}</span>
                 <InfoIcon label="A blocker is a gate failure or open issue that stops publishing. Clear all blockers to publish." />
               </span>
               {build.changes.present && <span><b>{build.changes.rate}%</b> <span className="text-text-muted">changes</span></span>}
             </div>
+            {nextStep && project.status !== 'published' && (
+              <div className="flex items-center gap-1.5 mt-2 text-[12px]">
+                <span className="text-text-muted">Next:</span>
+                <span className="font-medium truncate">{nextStep.step}. {nextStep.title}</span>
+                {nextOwner && <span className="text-[11px] text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded shrink-0">@{nextOwner}</span>}
+              </div>
+            )}
           </>
         ) : null}
 
