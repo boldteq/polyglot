@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { Spinner } from '../Skeleton'
 import EmptyState from '../EmptyState'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
-import { getLensLatest, getWorkspaceActions, type LensLatest, type ActionDef } from '../../lib/api'
+import { fetchWorkspaceActions } from '../../hooks/useWorkspaceActions'
+import { getLensLatest, type LensLatest, type ActionDef } from '../../lib/api'
 
 // Lens visual-truth for THIS build's dir. Reuses the existing /lens/latest?dir=
 // API. Shows the gate-#18 verdict + blockers + frame thumbnails; deep-links to
@@ -20,7 +21,7 @@ export default function LensTab({ buildId, dir, reloadKey, onChanged }: { buildI
   const rerunning = run?.status === 'running'
 
   useEffect(() => {
-    getWorkspaceActions().then((r) => setLensAction(r.actions.find((a) => a.id === 'lens:run') || null)).catch(err => console.error('[lens-tab] workspace-actions fetch failed:', err instanceof Error ? err.message : err))
+    fetchWorkspaceActions().then((actions) => setLensAction(actions.find((a) => a.id === 'lens:run') || null)).catch(err => console.error('[lens-tab] workspace-actions fetch failed:', err instanceof Error ? err.message : err))
   }, [])
 
   useEffect(() => {

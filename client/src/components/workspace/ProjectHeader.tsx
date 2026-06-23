@@ -6,11 +6,12 @@ import StepIndicator from './StepIndicator'
 import VerdictPill from './VerdictPill'
 import { InfoIcon } from '../Tooltip'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
+import { fetchWorkspaceActions } from '../../hooks/useWorkspaceActions'
 import { openDispatch } from '../../lib/dispatch'
 import { openBuild } from '../../lib/build'
 import { openPublish } from '../../lib/publish'
 import { toast } from '../Toast'
-import { setWorkspaceProjectStatus, getWorkspaceActions, PROJECT_STATUSES, type ProjectDetail, type RepoData, type ProjectStatus, type ActionDef } from '../../lib/api'
+import { setWorkspaceProjectStatus, PROJECT_STATUSES, type ProjectDetail, type RepoData, type ProjectStatus, type ActionDef } from '../../lib/api'
 
 const STATUS_TONE: Record<string, string> = {
   intake: 'text-text-muted bg-text-muted/10', building: 'text-accent bg-accent/10',
@@ -98,7 +99,7 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
   const [safeActions, setSafeActions] = useState<ActionDef[]>([])
   useEffect(() => {
     if (!buildId) return
-    getWorkspaceActions().then((r) => setSafeActions(r.actions.filter((a) => a.tier === 'safe'))).catch(() => setSafeActions([]))
+    fetchWorkspaceActions().then((actions) => setSafeActions(actions.filter((a) => a.tier === 'safe'))).catch(() => setSafeActions([]))
   }, [buildId])
 
   const studioHref = `/workspace/p/${project.id}/studio`

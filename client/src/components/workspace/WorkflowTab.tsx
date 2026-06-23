@@ -6,7 +6,8 @@ import { formatAgentDisplay } from '../../lib/agentDisplay'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 import { openDispatch } from '../../lib/dispatch'
 import { openPublish } from '../../lib/publish'
-import { getWorkspaceBuildPipeline, getWorkspaceActions, type PipelineStep, type ActionDef } from '../../lib/api'
+import { fetchWorkspaceActions } from '../../hooks/useWorkspaceActions'
+import { getWorkspaceBuildPipeline, type PipelineStep, type ActionDef } from '../../lib/api'
 
 interface PublishCtx { projectId: string; store: string | null; themeName?: string | null }
 
@@ -37,8 +38,8 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
   useEffect(() => {
     let alive = true
     setLoading(true); setError(null)
-    Promise.all([getWorkspaceBuildPipeline(buildId), getWorkspaceActions()])
-      .then(([p, a]) => { if (alive) { setSteps(p.steps); setCurrent(p.current); setActions(a.actions) } })
+    Promise.all([getWorkspaceBuildPipeline(buildId), fetchWorkspaceActions()])
+      .then(([p, actions]) => { if (alive) { setSteps(p.steps); setCurrent(p.current); setActions(actions) } })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Failed to load workflow') })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }

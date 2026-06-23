@@ -7,7 +7,8 @@ import EmptyState from '../components/EmptyState'
 import DispatchComposer from '../components/workspace/DispatchComposer'
 import PreviewPanel from '../components/workspace/PreviewPanel'
 import { useWorkspaceAction } from '../hooks/useWorkspaceAction'
-import { getWorkspaceProject, getWorkspaceProjectRepo, getWorkspaceActions, type ProjectDetail, type RepoData, type ActionDef } from '../lib/api'
+import { fetchWorkspaceActions } from '../hooks/useWorkspaceActions'
+import { getWorkspaceProject, getWorkspaceProjectRepo, type ProjectDetail, type RepoData, type ActionDef } from '../lib/api'
 
 // Studio — the "Lovable-like" view: describe a change on the LEFT (an agent edits
 // the theme files, streamed live) and SEE it on the RIGHT (Lens-captured preview
@@ -39,7 +40,7 @@ export default function WorkspaceStudio() {
   useEffect(() => { setLoading(true); load() }, [load])
 
   useEffect(() => {
-    getWorkspaceActions().then((r) => setLensAction(r.actions.find((a) => a.id === 'lens:run') || null)).catch(() => setLensAction(null))
+    fetchWorkspaceActions().then((actions) => setLensAction(actions.find((a) => a.id === 'lens:run') || null)).catch(() => setLensAction(null))
   }, [])
 
   const buildId = detail?.buildId || ''

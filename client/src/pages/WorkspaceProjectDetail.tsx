@@ -61,11 +61,10 @@ export default function WorkspaceProjectDetail() {
   const load = useCallback(() => {
     if (!id) return
     setError(null)
-    getWorkspaceProject(id)
-      .then((d) => {
-        setDetail(d)
-        if (d.hasBuild) getWorkspaceProjectRepo(id).then(setRepo).catch(() => setRepo(null))
-      })
+    // fetch project + repo in PARALLEL (was a waterfall). Repo for an intake
+    // project just returns {connected:false}; we only surface it when hasBuild.
+    Promise.all([getWorkspaceProject(id), getWorkspaceProjectRepo(id).catch(() => null)])
+      .then(([d, r]) => { setDetail(d); setRepo(d.hasBuild ? r : null) })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load project'))
       .finally(() => setLoading(false))
   }, [id])
