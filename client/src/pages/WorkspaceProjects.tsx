@@ -1,16 +1,17 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink, CheckSquare, Square, BellOff } from 'lucide-react'
+import { FolderKanban, RefreshCw, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink, CheckSquare, Square, BellOff, AlertTriangle } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
 import { Spinner } from '../components/Skeleton'
+import { Tooltip } from '../components/Tooltip'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
 import { relTime } from '../lib/relTime'
 import { PROJECT_STATUS_TONE } from '../lib/projectStatus'
+import { phaseForStep } from '../lib/workspacePhases'
 import ScoreGauge from '../components/workspace/ScoreGauge'
-import StepIndicator from '../components/workspace/StepIndicator'
 import { getWorkspaceProjects, getWorkspaceEscalations, ackWorkspaceEscalation, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
 
 type Filter = 'all' | 'attention' | 'passing'
@@ -152,11 +153,11 @@ export default function WorkspaceProjects() {
                 <button key={f} onClick={() => setFilter(f)} className={`segmented-btn capitalize ${filter === f ? 'segmented-btn-active' : ''}`}>{f}</button>
               ))}
             </div>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input text-[12px] py-1.5" aria-label="Filter by status">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-auto shrink-0 text-[12px] py-1.5 capitalize" aria-label="Filter by status">
               <option value="all">All statuses</option>
               {PROJECT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'score' | 'name')} className="input text-[12px] py-1.5" aria-label="Sort projects">
+            <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'score' | 'name')} className="input w-auto shrink-0 text-[12px] py-1.5" aria-label="Sort projects">
               <option value="recent">Recent</option>
               <option value="score">Score</option>
               <option value="name">Name A–Z</option>
@@ -184,6 +185,11 @@ export default function WorkspaceProjects() {
           <div className="card divide-y divide-border">
             {shown.map((p) => {
               const att = attentionOf(p)
+              const blockerM = att.map((r) => r.match(/(\d+)\s*open blocker/i)).find(Boolean)
+              const attLabel = blockerM ? `${blockerM[1]} blocker${blockerM[1] === '1' ? '' : 's'}` : 'attention'
+              const sub = p.build
+                ? [p.domain || p.build.store, `step ${p.build.step.current}/18`, phaseForStep(p.build.step.current).label].filter(Boolean).join(' · ')
+                : [p.domain, 'intake only'].filter(Boolean).join(' · ')
               return (
                 <div key={p.id} role="button" tabIndex={0} onClick={() => openProject(p)}
                   onKeyDown={(e) => { if (e.key === 'Enter') openProject(p) }}
@@ -198,12 +204,15 @@ export default function WorkspaceProjects() {
                       {p.name}
                       {p.niche && <span className="text-[10px] uppercase tracking-wide text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">{p.niche}</span>}
                       {p.build_dir ? <LinkIcon className="w-3 h-3 text-green shrink-0" /> : <Unlink className="w-3 h-3 text-text-muted shrink-0" />}
-                      {att.length > 0 && <span className="text-[10px] bg-red/10 text-red px-1.5 py-0.5 rounded normal-case truncate max-w-[240px]">{att[0]}</span>}
+                      {att.length > 0 && (
+                        <Tooltip label={att.join(' · ')}>
+                          <span className="pill bg-red/10 text-red normal-case shrink-0"><AlertTriangle className="w-3 h-3" />{attLabel}</span>
+                        </Tooltip>
+                      )}
                     </div>
-                    <div className="text-[12px] text-text-muted truncate">{p.domain || (p.build?.store) || '—'}{p.build ? ` · step ${p.build.step.current}/18 · score ${p.build.score}` : ' · intake only'}</div>
+                    <div className="text-[12px] text-text-muted truncate">{sub}</div>
                   </div>
-                  {p.build && <div className="w-28 hidden md:block"><StepIndicator current={p.build.step.current} total={p.build.step.total} showLabel={false} /></div>}
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full capitalize shrink-0 ${PROJECT_STATUS_TONE[p.status] || PROJECT_STATUS_TONE.intake}`}>{p.status}</span>
+                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full capitalize shrink-0 ${PROJECT_STATUS_TONE[p.status] || PROJECT_STATUS_TONE.intake}`}>{p.status}</span>
                   <span className="text-[11px] text-text-muted shrink-0 w-16 text-right hidden lg:block">{relTime(p.build?.capturedAt ?? p.updated_at)}</span>
                   {/* hover actions */}
                   <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
@@ -212,7 +221,7 @@ export default function WorkspaceProjects() {
                     {!p.build_dir && <button onClick={() => setLinkFor(p)} title="Link a build folder" className="btn-ghost btn-sm p-1.5"><Link2 className="w-3.5 h-3.5" /></button>}
                     <button onClick={() => archive(p)} title="Archive" className="btn-ghost btn-sm p-1.5 text-text-muted hover:text-red"><Archive className="w-3.5 h-3.5" /></button>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted/40 group-hover:text-text-muted shrink-0 transition-colors" />
                 </div>
               )
             })}
