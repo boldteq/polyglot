@@ -497,6 +497,20 @@ router.get('/workspace/projects/:id/schedules', (req, res) => {
   }
 });
 
+// GET /api/workspace/projects/:id/results — orbit's 30/90d results (baseline.md)
+// parsed into meta + tables. Honest-empty until a results checkpoint runs.
+router.get('/workspace/projects/:id/results', (req, res) => {
+  try {
+    const project = db.getClientProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'project not found' });
+    if (!project.build_dir || !fs.existsSync(project.build_dir)) return res.json({ present: false, meta: {}, tables: [] });
+    res.json(parseBaselineMd(path.join(project.build_dir, 'docs', 'results', 'baseline.md')));
+  } catch (err) {
+    console.error('[workspace] /projects/:id/results failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/workspace/projects/:id/file?path=<rel> — view ONE file's content in the
 // panel (read-only, path-contained to the repo, text-only, size-capped).
 router.get('/workspace/projects/:id/file', (req, res) => {
