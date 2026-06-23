@@ -10,7 +10,7 @@ const VP_ICON: Record<string, typeof Monitor> = { desktop: Monitor, tablet: Tabl
 // Preview the actual storefront — the "see the live project" gap. Surfaces the
 // Shopify theme-preview URL (store + preview_theme_id from the theme-lock) and the
 // latest Lens captured frames as a visual snapshot gallery.
-export default function PreviewPanel({ dir, repo }: { dir: string; repo: RepoData | null }) {
+export default function PreviewPanel({ dir, repo, reloadKey }: { dir: string; repo: RepoData | null; reloadKey?: number }) {
   const [lens, setLens] = useState<LensLatest | null>(null)
   const [loading, setLoading] = useState(true)
   const lock = repo?.themeLock
@@ -20,7 +20,8 @@ export default function PreviewPanel({ dir, repo }: { dir: string; repo: RepoDat
   const load = useCallback(() => {
     getLensLatest(dir).then(setLens).catch(() => setLens(null)).finally(() => setLoading(false))
   }, [dir])
-  useEffect(() => { setLoading(true); load() }, [load])
+  // reloadKey bumps on workspace SSE (e.g. a Lens run) → refetch the latest frames
+  useEffect(() => { setLoading(true); load() }, [load, reloadKey])
 
   if (loading) return <Spinner />
 

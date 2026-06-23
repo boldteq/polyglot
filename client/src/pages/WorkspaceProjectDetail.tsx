@@ -101,7 +101,7 @@ export default function WorkspaceProjectDetail() {
                 <Section id="activity" title="Activity"><ActivityTimeline projectId={id!} reloadKey={reloadKey} /></Section>
                 <Section id="brief" title="Brief"><BriefPanel detail={detail} onReload={reloadAll} /></Section>
                 <Section id="repo" title="Repo & files"><RepoPanel projectId={id!} reloadKey={reloadKey} /></Section>
-                <Section id="preview" title="Preview">{dir && <PreviewPanel dir={dir} repo={repo} />}</Section>
+                <Section id="preview" title="Preview">{dir && <PreviewPanel dir={dir} repo={repo} reloadKey={reloadKey} />}</Section>
                 <Section id="workflow" title="Workflow"><WorkflowTab buildId={buildId} reloadKey={reloadKey} onChanged={reloadAll} publish={{ projectId: id!, store: repo?.themeLock?.store ?? null, themeName: repo?.themeLock?.themeName }} /></Section>
                 <Section id="gates" title="Gates"><GatesTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 <Section id="lens" title="Lens">{dir && <LensTab buildId={buildId} dir={dir} reloadKey={reloadKey} onChanged={reloadAll} />}</Section>
