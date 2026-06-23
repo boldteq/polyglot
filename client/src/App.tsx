@@ -48,6 +48,7 @@ const LearningInbox = React.lazy(() => import('./pages/LearningInbox'))
 const Lens = React.lazy(() => import('./pages/Lens'))
 const WorkspaceProjects = React.lazy(() => import('./pages/WorkspaceProjects'))
 const WorkspaceProjectDetail = React.lazy(() => import('./pages/WorkspaceProjectDetail'))
+const WorkspaceStudio = React.lazy(() => import('./pages/WorkspaceStudio'))
 const Shopify = React.lazy(() => import('./pages/Shopify'))
 const StorePreview = React.lazy(() => import('./pages/StorePreview'))
 const Sales = React.lazy(() => import('./pages/Sales'))
@@ -101,6 +102,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<WorkspaceProjects />} />
               <Route path="/p/:id" element={<WorkspaceProjectDetail />} />
+              <Route path="/p/:id/studio" element={<WorkspaceStudio />} />
               <Route path="/lens" element={<Lens />} />
               <Route path="/projects" element={<Navigate to="/workspace" replace />} />
               <Route path="*" element={<Navigate to="/workspace" replace />} />

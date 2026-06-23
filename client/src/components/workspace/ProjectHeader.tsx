@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check, Hammer, Rocket } from 'lucide-react'
+import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check, Hammer, Rocket, Wand2 } from 'lucide-react'
 import ScoreGauge from './ScoreGauge'
 import StepIndicator from './StepIndicator'
 import VerdictPill from './VerdictPill'
@@ -103,6 +103,7 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
           <button onClick={() => openBuild({ projectId: project.id, buildId, repoDir: repo!.build_dir!, store: repo?.themeLock?.store })}
             className="btn-ghost btn-sm flex items-center gap-1.5"><Hammer className="w-4 h-4" /> Build</button>
         )}
+        {buildId && build && <button onClick={() => nav(`/workspace/p/${project.id}/studio`)} className="btn-ghost btn-sm flex items-center gap-1.5" title="Describe a change and see it — preview + edit together"><Wand2 className="w-4 h-4" /> Studio</button>}
         {buildId && <button onClick={() => openDispatch({ buildId, agent: 'atrium', task: '' })} className="btn-ghost btn-sm flex items-center gap-1.5"><Bot className="w-4 h-4" /> Dispatch</button>}
         {build && <button onClick={() => nav(`/workspace/lens?dir=${encodeURIComponent(build.dir)}`)} className="btn-ghost btn-sm flex items-center gap-1.5"><Eye className="w-4 h-4" /> Lens</button>}
         {build && repo?.connected && repo?.themeLock?.store && (
