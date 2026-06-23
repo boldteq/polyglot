@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, MessageSquarePlus, ExternalLink, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, MessageSquarePlus, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
+import { ErrorState } from '../components/ErrorState'
 import { Spinner } from '../components/Skeleton'
 import { getShopifyProject, requestPageRevision, type ProjectPage, type ProjectRevision, type ClientProject } from '../lib/api'
 import { toast } from '../components/Toast'
@@ -42,7 +43,7 @@ export default function StorePreview() {
       actions={<button onClick={() => nav('/shopify')} className="btn-ghost btn-sm flex items-center gap-1.5"><ArrowLeft className="w-4 h-4" />All stores</button>}
     >
       {error ? (
-        <div className="card p-6 text-red flex items-center gap-2"><AlertTriangle className="w-5 h-5" />{error}<button onClick={load} className="underline ml-2">Retry</button></div>
+        <ErrorState message={error} onRetry={load} />
       ) : !data ? (
         <Spinner />
       ) : (
