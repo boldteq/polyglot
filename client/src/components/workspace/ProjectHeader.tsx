@@ -127,9 +127,15 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
     canPublish && primary.key !== 'publish' ? { label: 'Publish', icon: Rocket, onClick: doPublish } : null,
     repo?.connected && repo.build_dir ? { label: 'Open in VS Code', icon: ExternalLink, onClick: () => { window.location.href = vscodeLink(repo.build_dir!) } } : null,
   ].filter(Boolean) as MenuItem[]
-  // granular checks (the former ActionsBar dropdown) — preserved, behind ⋯
+  // granular checks behind ⋯. We drop the ones that have a CONTEXTUAL home so each
+  // action lives in exactly one place (Auto-Fix #4 dedupe): gates:static = the
+  // header "Run gates" flow; gate:rerun = GatesTab per-row; lens:run = LensTab
+  // "Re-run Lens"; the 5 step-bound checks (discovery/reuse-map/design-system/
+  // consistency/store-preflight) = their Workflow pipeline steps. What's left here
+  // (gates:verify, check:honesty, build-state:show) has no other home.
+  const CONTEXTUAL = new Set(['gates:static', 'gate:rerun', 'lens:run', 'check:discovery', 'check:reuse-map', 'check:design-system', 'check:consistency', 'store:preflight'])
   const checks: MenuItem[] = safeActions
-    .filter((a) => a.id !== 'gates:static' && a.id !== 'gate:rerun')
+    .filter((a) => !CONTEXTUAL.has(a.id))
     .map((a) => ({ label: a.label, icon: ShieldCheck, onClick: () => trigger(a), disabled: !a.available, hint: a.available ? a.description : (a.unavailableReason || undefined) }))
 
   return (
