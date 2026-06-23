@@ -32,6 +32,8 @@ export default function WorkspaceProjects() {
   const [editFor, setEditFor] = useState<WorkspaceProject | null>(null)
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [sort, setSort] = useState<'recent' | 'score' | 'name'>('recent')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
 
@@ -91,12 +93,20 @@ export default function WorkspaceProjects() {
     const ql = q.trim().toLowerCase()
     const shown = projects.filter((p) => {
       if (ql && !(`${p.name} ${p.niche || ''} ${p.domain || ''}`.toLowerCase().includes(ql))) return false
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false
       if (filter === 'attention') return attentionOf(p).length > 0
       if (filter === 'passing') return p.build?.lensVerdict === 'pass'
       return true
+    }).sort((a, b) => {
+      if (sort === 'score') return (b.build?.score ?? -1) - (a.build?.score ?? -1)
+      if (sort === 'name') return a.name.localeCompare(b.name)
+      // recent: by build capture or project update, newest first
+      const ta = new Date(a.build?.capturedAt ?? a.updated_at ?? a.created_at).getTime()
+      const tb = new Date(b.build?.capturedAt ?? b.updated_at ?? b.created_at).getTime()
+      return tb - ta
     })
     return { shown, summary }
-  }, [projects, q, filter, attentionOf])
+  }, [projects, q, filter, statusFilter, sort, attentionOf])
 
   const openProject = (p: WorkspaceProject) => nav(`/workspace/p/${p.id}`)
 
@@ -136,6 +146,15 @@ export default function WorkspaceProjects() {
                 <button key={f} onClick={() => setFilter(f)} className={`segmented-btn capitalize ${filter === f ? 'segmented-btn-active' : ''}`}>{f}</button>
               ))}
             </div>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input text-[12px] py-1.5" aria-label="Filter by status">
+              <option value="all">All statuses</option>
+              {PROJECT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'score' | 'name')} className="input text-[12px] py-1.5" aria-label="Sort projects">
+              <option value="recent">Recent</option>
+              <option value="score">Score</option>
+              <option value="name">Name A–Z</option>
+            </select>
           </div>
 
           {/* bulk action bar — appears when ≥1 selected */}
