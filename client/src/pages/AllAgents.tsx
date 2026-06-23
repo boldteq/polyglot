@@ -218,7 +218,7 @@ export default function AllAgents() {
           >
             <Network className="w-3 h-3" /> Open Org Chart
           </button>
-          <button onClick={() => setDriftDismissed(true)} className="text-amber/60 hover:text-amber transition-colors shrink-0">
+          <button onClick={() => setDriftDismissed(true)} aria-label="Dismiss drift warning" className="text-amber/60 hover:text-amber transition-colors shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -399,7 +399,7 @@ export default function AllAgents() {
         <div className="bg-surface border border-accent/20 rounded-xl p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold">New Agent</span>
-            <button onClick={() => { setCreating(false); setNewName('') }} className="text-text-muted hover:text-text"><X className="w-4 h-4" /></button>
+            <button onClick={() => { setCreating(false); setNewName('') }} aria-label="Close" className="text-text-muted hover:text-text"><X className="w-4 h-4" /></button>
           </div>
           <div className="flex gap-2">
             <input
@@ -431,7 +431,7 @@ export default function AllAgents() {
         <div className="bg-surface border border-accent/20 rounded-xl p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold">{actionType === 'copy' ? 'Copy' : 'Move'} "{actionAgent.name}"</span>
-            <button onClick={() => { setActionAgent(null); setActionType(null) }} className="text-text-muted hover:text-text"><X className="w-4 h-4" /></button>
+            <button onClick={() => { setActionAgent(null); setActionType(null) }} aria-label="Close" className="text-text-muted hover:text-text"><X className="w-4 h-4" /></button>
           </div>
           <div className="flex gap-2">
             <select value={actionTarget} onChange={(e) => setActionTarget(e.target.value)} className="input flex-1">
