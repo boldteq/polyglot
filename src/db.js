@@ -155,6 +155,7 @@ function runMigrations(db) {
     { version: 35, name: 'calibration_grades', fn: calibrationGradesMigration },
     { version: 36, name: 'client_projects_build_dir', fn: clientProjectsBuildDirMigration },
     { version: 37, name: 'cost_logs_build_id', fn: costLogsBuildIdMigration },
+    { version: 38, name: 'escalation_acks', fn: escalationAcksMigration },
   ];
 
   for (const mig of migrations) {
@@ -3621,6 +3622,38 @@ function costLogsBuildIdMigration(db) {
   console.log('[migration v37] cost_logs.buildId added');
 }
 
+// ── Migration v38: escalation_acks ────────────────────────────────────────────
+// "Acknowledge" a build's escalation so its red attention badge clears. Keyed by
+// build_id; we also store a `sig` (signature of the acked reasons) so that if the
+// reasons CHANGE later, the ack no longer applies and the build re-surfaces.
+function escalationAcksMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS escalation_acks (
+      build_id  TEXT PRIMARY KEY,
+      sig       TEXT NOT NULL,   -- sorted reasons joined; ack applies only while it matches
+      acked_at  TEXT NOT NULL
+    );
+  `);
+  console.log('[migration v38] escalation_acks created');
+}
+
+// Acknowledge an escalation: store the build_id + the signature of its current
+// reasons. Idempotent (REPLACE) — re-acking after reasons change updates the sig.
+function ackEscalation(buildId, sig) {
+  stmt('INSERT OR REPLACE INTO escalation_acks (build_id, sig, acked_at) VALUES (?,?,?)').run(buildId, sig, _now());
+  return true;
+}
+// One build's ack ({ build_id, sig, acked_at }) or null.
+function getEscalationAck(buildId) {
+  return stmt('SELECT * FROM escalation_acks WHERE build_id = ?').get(buildId) || null;
+}
+// All acks as a Map build_id → sig (for the escalations list join).
+function getEscalationAckMap() {
+  const m = new Map();
+  for (const r of stmt('SELECT build_id, sig FROM escalation_acks').all()) m.set(r.build_id, r.sig);
+  return m;
+}
+
 function logCost({ runId, agentName, model, inputTokens = 0, outputTokens = 0, costUsd, estimated = true, source, buildId } = {}) {
   const total = Number(inputTokens || 0) + Number(outputTokens || 0);
   const cost = costUsd != null ? Number(costUsd) : costFromTokens(model, inputTokens, outputTokens);
@@ -4281,6 +4314,7 @@ module.exports = {
   loadSchedules, saveSchedules, insertSchedule, updateScheduleFields, updateScheduleRunStatus, deleteScheduleById, getScheduleById,
   // Build schedules (post-publish results loop)
   insertBuildSchedule, dueBuildSchedules, listBuildSchedules, markBuildScheduleStatus,
+  ackEscalation, getEscalationAck, getEscalationAckMap,
   // System schedule overrides + run history
   loadSystemOverrides, getSystemOverride, upsertSystemOverride, getScheduleRunsFor,
   // Error Log

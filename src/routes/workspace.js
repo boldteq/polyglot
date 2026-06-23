@@ -319,24 +319,55 @@ router.get('/workspace/clients', (_req, res) => {
 // goals/results pending) is "incomplete", not "failing" — we don't escalate
 // that as noise. Escalate on: gate FAIL, Lens BLOCK, open blockers, OR a score
 // below the bar that the pending-artifact gap alone does NOT explain.
+// The escalation reasons for one assembled build (empty = no problem). Shared by
+// the list endpoint + the ack endpoint so both compute the SAME signature.
+function escalationReasons(b) {
+  const reasons = [];
+  if (b.gates.blockersOpen > 0) reasons.push(`${b.gates.blockersOpen} open blocker(s)`);
+  if (b.lensVerdict === 'block') reasons.push('Lens BLOCK');
+  if (b.gates.total > 0 && b.gates.passed < b.gates.total) reasons.push(`${b.gates.total - b.gates.passed} gate(s) not passing`);
+  if (b.score < 70 && b.maxRealistic - b.score > 15) reasons.push(`score ${b.score} — ${b.maxRealistic - b.score}pts below this build's reachable max`);
+  return reasons;
+}
+// Stable signature of a reason set — the ack applies only while it matches, so a
+// build whose problems CHANGE re-surfaces (a stale ack can't hide a new failure).
+function reasonsSig(reasons) { return reasons.slice().sort().join('|'); }
+
+// GET /api/workspace/escalations — builds with a GENUINE problem. Each carries
+// `acknowledged` (an ack exists AND still matches the current reasons).
 router.get('/workspace/escalations', (_req, res) => {
   try {
-    const builds = listBuilds();
-    const escalations = builds
+    const ackMap = db.getEscalationAckMap ? db.getEscalationAckMap() : new Map();
+    const escalations = listBuilds()
       .map((b) => {
-        const reasons = [];
-        if (b.gates.blockersOpen > 0) reasons.push(`${b.gates.blockersOpen} open blocker(s)`);
-        if (b.lensVerdict === 'block') reasons.push('Lens BLOCK');
-        if (b.gates.total > 0 && b.gates.passed < b.gates.total) reasons.push(`${b.gates.total - b.gates.passed} gate(s) not passing`);
-        // score below the bar beyond what pending artifacts explain → real shortfall
-        if (b.score < 70 && b.maxRealistic - b.score > 15) reasons.push(`score ${b.score} — ${b.maxRealistic - b.score}pts below this build's reachable max`);
-        return reasons.length ? { ...b, reasons } : null;
+        const reasons = escalationReasons(b);
+        if (!reasons.length) return null;
+        const acknowledged = ackMap.get(b.buildId) === reasonsSig(reasons);
+        return { ...b, reasons, acknowledged };
       })
       .filter(Boolean)
       .sort((a, b) => a.score - b.score);
-    res.json({ escalations, summary: { total: escalations.length } });
+    res.json({ escalations, summary: { total: escalations.length, unacked: escalations.filter((e) => !e.acknowledged).length } });
   } catch (err) {
     console.error('[workspace] /escalations failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/workspace/projects/:id/escalation/ack — acknowledge this project's
+// build escalation (clears its attention badge until its reasons change).
+router.post('/workspace/projects/:id/escalation/ack', (req, res) => {
+  try {
+    const project = db.getClientProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'project not found' });
+    if (!project.build_dir || !fs.existsSync(project.build_dir)) return res.status(409).json({ error: 'project has no linked build' });
+    const build = assembleBuild(project.build_dir);
+    const reasons = escalationReasons(build);
+    if (!reasons.length) return res.json({ ok: true, acknowledged: false, note: 'no active escalation' });
+    db.ackEscalation(build.buildId, reasonsSig(reasons));
+    res.json({ ok: true, acknowledged: true, buildId: build.buildId });
+  } catch (err) {
+    console.error('[workspace] escalation ack failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

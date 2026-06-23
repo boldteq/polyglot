@@ -528,6 +528,15 @@ test('S6: /publish on an unknown project → 404', async () => {
 // ── S7: post-publish monitoring read-path. Register checkpoints for a real linked
 // build's buildId (the same call the publish flip makes on exit 0), assert the
 // schedules route + MonitoringPanel data are populated, then clean up the rows.
+test('escalation ack: unknown project → 404; the escalations list carries acknowledged + unacked', async () => {
+  const bad = await postJson('/api/workspace/projects/nonexistent-xyz/escalation/ack', {});
+  assert.equal(bad.status, 404);
+  const esc = await get('/api/workspace/escalations');
+  assert.equal(esc.status, 200);
+  assert.equal(typeof esc.json.summary.unacked, 'number');
+  for (const e of esc.json.escalations) assert.equal(typeof e.acknowledged, 'boolean');
+});
+
 test('single-gate rerun: unknown gate name → 400 (allowlist guard, never spawns)', async () => {
   const list = await get('/api/workspace/builds');
   if (!list.json.builds.length) return;

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink, CheckSquare, Square } from 'lucide-react'
+import { FolderKanban, RefreshCw, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink, CheckSquare, Square, BellOff } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
@@ -10,7 +10,7 @@ import { confirmDialog } from '../lib/confirm'
 import { relTime } from '../lib/relTime'
 import ScoreGauge from '../components/workspace/ScoreGauge'
 import StepIndicator from '../components/workspace/StepIndicator'
-import { getWorkspaceProjects, getWorkspaceEscalations, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
+import { getWorkspaceProjects, getWorkspaceEscalations, ackWorkspaceEscalation, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
 
 type Filter = 'all' | 'attention' | 'passing'
 const STATUS_TONE: Record<string, string> = {
@@ -25,6 +25,7 @@ export default function WorkspaceProjects() {
   const [projects, setProjects] = useState<WorkspaceProject[]>([])
   const [unlinked, setUnlinked] = useState<AssembledBuild[]>([])
   const [reasons, setReasons] = useState<Record<string, string[]>>({}) // buildId → escalation reasons
+  const [acked, setAcked] = useState<Set<string>>(new Set()) // buildIds whose escalation is acknowledged
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
@@ -39,10 +40,11 @@ export default function WorkspaceProjects() {
 
   const load = useCallback(() => {
     setLoading(true); setError(null)
-    Promise.all([getWorkspaceProjects(), getWorkspaceEscalations().catch(() => ({ escalations: [] as { buildId: string; reasons: string[] }[] }))])
+    Promise.all([getWorkspaceProjects(), getWorkspaceEscalations().catch(() => ({ escalations: [] as { buildId: string; reasons: string[]; acknowledged?: boolean }[] }))])
       .then(([d, esc]) => {
         setProjects(d.projects); setUnlinked(d.unlinkedBuilds)
         setReasons(Object.fromEntries(esc.escalations.map((e) => [e.buildId, e.reasons])))
+        setAcked(new Set(esc.escalations.filter((e) => e.acknowledged).map((e) => e.buildId)))
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load projects'))
       .finally(() => setLoading(false))
@@ -56,7 +58,14 @@ export default function WorkspaceProjects() {
     catch (e) { toast('error', e instanceof Error ? e.message : 'Archive failed') }
   }, [load])
 
-  const attentionOf = useCallback((p: WorkspaceProject) => (p.build ? reasons[p.build.buildId] || [] : []), [reasons])
+  // attention = has reasons AND not acknowledged (an ack clears the badge/count
+  // until the build's reasons change, at which point the server drops the ack).
+  const attentionOf = useCallback((p: WorkspaceProject) => (p.build && !acked.has(p.build.buildId) ? reasons[p.build.buildId] || [] : []), [reasons, acked])
+
+  const acknowledge = useCallback(async (p: WorkspaceProject) => {
+    try { await ackWorkspaceEscalation(p.id); toast('success', 'Escalation acknowledged'); load() }
+    catch (e) { toast('error', e instanceof Error ? e.message : 'Acknowledge failed') }
+  }, [load])
 
   const toggleSel = useCallback((id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n }), [])
   const clearSel = useCallback(() => setSelected(new Set()), [])
@@ -202,6 +211,7 @@ export default function WorkspaceProjects() {
                   {/* hover actions */}
                   <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                     <button onClick={() => setEditFor(p)} title="Edit" className="btn-ghost btn-sm p-1.5"><Pencil className="w-3.5 h-3.5" /></button>
+                    {att.length > 0 && <button onClick={() => acknowledge(p)} title="Acknowledge escalation (clears until reasons change)" className="btn-ghost btn-sm p-1.5 text-text-muted hover:text-amber"><BellOff className="w-3.5 h-3.5" /></button>}
                     {!p.build_dir && <button onClick={() => setLinkFor(p)} title="Link a build folder" className="btn-ghost btn-sm p-1.5"><Link2 className="w-3.5 h-3.5" /></button>}
                     <button onClick={() => archive(p)} title="Archive" className="btn-ghost btn-sm p-1.5 text-text-muted hover:text-red"><Archive className="w-3.5 h-3.5" /></button>
                   </div>

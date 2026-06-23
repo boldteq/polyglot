@@ -175,13 +175,15 @@ export interface AssembledBuild {
   step: { current: number; reached: number; total: number }
   score: number; grade: string; scoreBreakdown: ScoreLine[]; pending: string[]; maxRealistic: number
 }
-export interface EscalationBuild extends AssembledBuild { reasons: string[] }
+export interface EscalationBuild extends AssembledBuild { reasons: string[]; acknowledged?: boolean }
 export const getWorkspaceBuilds = () =>
   request<{ builds: AssembledBuild[]; summary: { total: number; passing: number; blocked: number; avgScore: number } }>(`/workspace/builds`)
 export const getWorkspaceClients = () =>
   request<{ clients: { client: string; platform: string; store: string | null; builds: number; blocked: number; bestScore: number; lastCapturedAt: number | null }[]; summary: { total: number } }>(`/workspace/clients`)
 export const getWorkspaceEscalations = () =>
-  request<{ escalations: EscalationBuild[]; summary: { total: number } }>(`/workspace/escalations`)
+  request<{ escalations: EscalationBuild[]; summary: { total: number; unacked?: number } }>(`/workspace/escalations`)
+export const ackWorkspaceEscalation = (projectId: string) =>
+  request<{ ok: boolean; acknowledged: boolean }>(`/workspace/projects/${encodeURIComponent(projectId)}/escalation/ack`, { method: 'POST' })
 
 // One-button autonomous build (maestro:build) — see src/routes/build.js. POST kicks
 // off a hands-off build in a linked theme repo; watch via the SSE stream URL.
