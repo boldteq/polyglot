@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, Plus, ArrowRight, ArrowLeft, Check, AlertTriangle } from 'lucide-react'
+import { Store, Plus, ArrowRight, ArrowLeft, Check } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
+import { ErrorState } from '../components/ErrorState'
 import { Spinner } from '../components/Skeleton'
 import { listShopifyProjects, createShopifyIntake, type ClientProject } from '../lib/api'
 import { toast } from '../components/Toast'
@@ -36,7 +37,7 @@ export default function Shopify() {
       {wizard ? (
         <IntakeWizard onCancel={() => setWizard(false)} onDone={(id) => { setWizard(false); load(); nav(`/shopify/${id}`) }} />
       ) : error ? (
-        <div className="card p-6 text-red flex items-center gap-2"><AlertTriangle className="w-5 h-5" />{error}<button onClick={load} className="underline ml-2">Retry</button></div>
+        <ErrorState message={error} onRetry={load} />
       ) : projects === null ? (
         <Spinner />
       ) : projects.length === 0 ? (

@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, AlertTriangle, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink } from 'lucide-react'
+import { FolderKanban, RefreshCw, Plus, Link2, ChevronRight, X, Pencil, Archive, Search, Link as LinkIcon, Unlink } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
+import { ErrorState } from '../components/ErrorState'
 import { Spinner } from '../components/Skeleton'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
@@ -86,8 +87,7 @@ export default function WorkspaceProjects() {
       }
     >
       {loading ? <Spinner /> : error ? (
-        <div className="card p-6 text-red flex items-center gap-2"><AlertTriangle className="w-5 h-5" />{error}
-          <button onClick={load} className="underline ml-2">Retry</button></div>
+        <ErrorState message={error} onRetry={load} />
       ) : projects.length === 0 ? (
         <EmptyState icon={FolderKanban} title="No projects yet" description="Create a project to capture intake — or theme folders are auto-detected and appear here." action={{ label: 'New project', onClick: () => setShowNew(true) }} />
       ) : (

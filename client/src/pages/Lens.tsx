@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Eye, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
+import { ErrorState } from '../components/ErrorState'
 import { Spinner } from '../components/Skeleton'
 import { getLensLatest, getLensRuns, type LensLatest, type LensFrame, type LensRun } from '../lib/api'
 
@@ -79,10 +80,7 @@ export default function Lens() {
       {loading ? (
         <Spinner />
       ) : error ? (
-        <div className="card p-6 text-red flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5" />{error}
-          <button onClick={() => load(selectedDir)} className="underline ml-2">Retry</button>
-        </div>
+        <ErrorState message={error} onRetry={() => load(selectedDir)} />
       ) : !data?.present ? (
         <EmptyState
           icon={Eye}

@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, RefreshCw, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import { Spinner } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import { ErrorState } from '../components/ErrorState'
 import { FolderKanban } from 'lucide-react'
 import ProjectHeader from '../components/workspace/ProjectHeader'
 import ProjectAnchorNav from '../components/workspace/ProjectAnchorNav'
@@ -86,8 +87,7 @@ export default function WorkspaceProjectDetail() {
       }
     >
       {loading && !detail ? <Spinner /> : error ? (
-        <div className="card p-6 text-red flex items-center gap-2"><AlertTriangle className="w-5 h-5" />{error}
-          <button onClick={reloadAll} className="underline ml-2">Retry</button></div>
+        <ErrorState message={error} onRetry={reloadAll} />
       ) : detail ? (
         <div className="space-y-5">
           <ProjectHeader detail={detail} repo={repo} onReload={reloadAll} />
