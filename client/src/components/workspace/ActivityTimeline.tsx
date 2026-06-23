@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Bot, Zap, ShieldCheck, TrendingUp, DollarSign, FileEdit, Activity, ChevronDown, ChevronRight } from 'lucide-react'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
+import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
 import { relTime } from '../../lib/relTime'
 import { useWorkspaceStream } from '../../hooks/useWorkspaceStream'
@@ -42,8 +43,8 @@ export default function ActivityTimeline({ projectId, reloadKey }: { projectId: 
     debounce.current = setTimeout(() => { debounce.current = null; load() }, 800)
   }, [load]))
 
-  if (loading && !events.length) return <Spinner />
-  if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
+  if (loading && !events.length) return <SkeletonCards count={3} />
+  if (error) return <ErrorState message={error} />
   if (!events.length) return <EmptyState icon={Activity} title="No activity yet" description="Dispatches, gate runs, and score changes for this project will appear here, newest first." />
 
   return (

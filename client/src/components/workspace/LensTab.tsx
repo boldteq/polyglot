@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Eye, ExternalLink, CheckCircle2, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
+import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 import { fetchWorkspaceActions } from '../../hooks/useWorkspaceActions'
@@ -43,8 +44,8 @@ export default function LensTab({ buildId, dir, reloadKey, onChanged }: { buildI
     </button>
   ) : null
 
-  if (loading) return <Spinner />
-  if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
+  if (loading) return <SkeletonCards count={3} />
+  if (error) return <ErrorState message={error} />
   if (!data?.present) {
     return (
       <div className="space-y-3">

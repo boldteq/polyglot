@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FileText, FileJson, Loader2 } from 'lucide-react'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
+import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import { useBuildSection } from '../../hooks/useBuildSection'
@@ -33,8 +34,8 @@ export default function DocsTab({ buildId, reloadKey }: { buildId: string; reloa
     return () => { alive = false }
   }, [buildId, selected])
 
-  if (loading && !data) return <Spinner />
-  if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
+  if (loading && !data) return <SkeletonCards count={3} />
+  if (error) return <ErrorState message={error} />
   if (!data?.present) return <EmptyState icon={FileText} title="No docs yet" description="Agent-produced docs (copy, design-spec, schema, goals, SEO…) appear here once written under docs/. To produce one, dispatch the owning agent." />
 
   const isJson = selected?.endsWith('.json')

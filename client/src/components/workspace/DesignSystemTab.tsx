@@ -1,5 +1,6 @@
 import { Palette } from 'lucide-react'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
+import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
 import { useBuildSection } from '../../hooks/useBuildSection'
 import { getWorkspaceDesignSystem, type DesignSystemData } from '../../lib/api'
@@ -33,8 +34,8 @@ function Swatch({ name, hex }: { name: string; hex: string }) {
 // Visual viewer for docs/design/design-system.json (drape's ratified contract).
 export default function DesignSystemTab({ buildId, reloadKey }: { buildId: string; reloadKey?: number }) {
   const { data, loading, error } = useBuildSection<DesignSystemData>(() => getWorkspaceDesignSystem(buildId), reloadKey)
-  if (loading && !data) return <Spinner />
-  if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
+  if (loading && !data) return <SkeletonCards count={3} />
+  if (error) return <ErrorState message={error} />
   if (!data?.present || !data.system) {
     return <EmptyState icon={Palette} title="No design system yet" description="docs/design/design-system.json is drape's ratified contract — colors, type, spacing, voice. Not produced for this build yet." />
   }

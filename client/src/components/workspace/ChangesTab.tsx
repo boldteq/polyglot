@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CheckSquare, Square, Plus, ShieldAlert } from 'lucide-react'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
+import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
 import { toast } from '../Toast'
 import { confirmDialog } from '../../lib/confirm'
@@ -23,8 +24,8 @@ export default function ChangesTab({ buildId, reloadKey }: { buildId: string; re
   useEffect(() => { if (data) setLocal(data) }, [data])
 
   const d = local || data
-  if (loading && !d) return <Spinner />
-  if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
+  if (loading && !d) return <SkeletonCards count={3} />
+  if (error) return <ErrorState message={error} />
   if (!d?.present) return <EmptyState icon={Square} title="No CHANGES.md" description="This build has no changes list yet. Atrium writes one per client ask at intake." />
 
   const onToggle = async (index: number, checked: boolean) => {

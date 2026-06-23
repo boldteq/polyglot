@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, Circle, Loader2, FileCheck2, FileX2, Play, Lock, Bot, Rocket, Link2 } from 'lucide-react'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
+import { ErrorState } from '../ErrorState'
 import { toast } from '../Toast'
 import Collapsible from '../Collapsible'
 import { formatAgentDisplay } from '../../lib/agentDisplay'
@@ -82,8 +83,8 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
     navigator.clipboard?.writeText(url).then(() => toast('success', 'Step link copied')).catch(() => toast('warn', url))
   }
 
-  if (loading) return <Spinner />
-  if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
+  if (loading) return <SkeletonCards count={3} />
+  if (error) return <ErrorState message={error} />
 
   const runningId = run?.status === 'running' ? run.action : null
   const currentPhaseId = phaseForStep(current || 1).id

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Clock, CheckCircle2, XCircle, Loader2, TrendingUp } from 'lucide-react'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
+import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
 import { relTime } from '../../lib/relTime'
 import { getWorkspaceProjectSchedules, getWorkspaceProjectResults, type BuildSchedule, type BuildResults } from '../../lib/api'
@@ -39,8 +40,8 @@ export default function MonitoringPanel({ projectId, reloadKey }: { projectId: s
   }, [projectId])
   useEffect(() => { setLoading(true); load() }, [load, reloadKey])
 
-  if (loading && !data) return <Spinner />
-  if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
+  if (loading && !data) return <SkeletonCards count={3} />
+  if (error) return <ErrorState message={error} />
 
   const hasResults = results?.present && (Object.keys(results.meta).length > 0 || results.tables.length > 0)
 

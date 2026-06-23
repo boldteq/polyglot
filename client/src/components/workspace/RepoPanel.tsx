@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Folder, FolderOpen, FileText, ExternalLink, GitBranch, FolderGit2, Unlink, FileDiff } from 'lucide-react'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
+import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
 import FileViewer from './FileViewer'
 import { getWorkspaceProjectRepo, getWorkspaceProjectDiff, type RepoData, type FileNode, type RepoDiff } from '../../lib/api'
@@ -60,8 +61,8 @@ export default function RepoPanel({ projectId, reloadKey }: { projectId: string;
     setShowDiff((v) => !v)
   }, [showDiff, diff, projectId])
 
-  if (loading && !data) return <Spinner />
-  if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
+  if (loading && !data) return <SkeletonCards count={3} />
+  if (error) return <ErrorState message={error} />
   if (!data?.connected) return <EmptyState icon={Unlink} title="No repo linked" description="This project isn't linked to a theme folder on disk yet." />
 
   const git = data.git

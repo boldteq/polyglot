@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { ChevronDown, ChevronRight, RotateCw, Loader2 } from 'lucide-react'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
+import { ErrorState } from '../ErrorState'
 import { toast } from '../Toast'
 import GateStatusBadge from './GateStatusBadge'
 import { InfoIcon } from '../Tooltip'
@@ -51,8 +52,8 @@ export default function GatesTab({ buildId, reloadKey }: { buildId: string; relo
     }
   }, [buildId, rerunning, load])
 
-  if (loading) return <Spinner />
-  if (error) return <div className="card p-5 text-red text-[13px]">{error}</div>
+  if (loading) return <SkeletonCards count={3} />
+  if (error) return <ErrorState message={error} />
   if (!data) return null
 
   return (

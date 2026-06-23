@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { ExternalLink, Eye, Monitor, Tablet, Smartphone } from 'lucide-react'
-import { Spinner } from '../Skeleton'
+import { SkeletonCards } from '../Skeleton'
 import EmptyState from '../EmptyState'
 import { relTime } from '../../lib/relTime'
 import { getLensLatest, type LensLatest, type RepoData } from '../../lib/api'
@@ -23,7 +23,7 @@ export default function PreviewPanel({ dir, repo, reloadKey }: { dir: string; re
   // reloadKey bumps on workspace SSE (e.g. a Lens run) → refetch the latest frames
   useEffect(() => { setLoading(true); load() }, [load, reloadKey])
 
-  if (loading) return <Spinner />
+  if (loading) return <SkeletonCards count={3} />
 
   const hasLinks = !!storeUrl
   const frames = lens?.present ? lens.frames : []
