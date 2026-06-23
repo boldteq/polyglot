@@ -68,6 +68,22 @@ function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
   return <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
 }
 
+// Reflect the current route in document.title so browser tabs + history entries
+// are distinguishable instead of every page reading a static "Polyglot".
+const TITLE_ALIASES: Record<string, string> = {
+  '': 'Dashboard', global: 'Agents', docs: 'Documentation', hr: 'HR', workspace: 'Workspace',
+}
+function RouteTitle() {
+  const { pathname } = useLocation()
+  React.useEffect(() => {
+    const seg = pathname.split('/').filter(Boolean)[0] ?? ''
+    const name =
+      pathname === '/' ? 'Dashboard' : TITLE_ALIASES[seg] ?? (seg.charAt(0).toUpperCase() + seg.slice(1))
+    document.title = name ? `${name} · Polyglot` : 'Polyglot'
+  }, [pathname])
+  return null
+}
+
 export default function App() {
   const { data: projects, refetch } = useApi(getProjects, [], CacheKeys.projects)
   const [aiOpen, setAiOpen] = useState(false)
@@ -75,6 +91,7 @@ export default function App() {
   return (
     <ThemeProvider>
     <BrowserRouter>
+      <RouteTitle />
       <Routes>
         {/* WORKSPACE MODE — own shell + sidebar, isolated from Polyglot */}
         <Route path="/workspace/*" element={
