@@ -4,6 +4,7 @@ import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check, Hammer, R
 import ScoreGauge from './ScoreGauge'
 import StepIndicator from './StepIndicator'
 import VerdictPill from './VerdictPill'
+import { InfoIcon } from '../Tooltip'
 import { useWorkspaceAction } from '../../hooks/useWorkspaceAction'
 import { openDispatch } from '../../lib/dispatch'
 import { openBuild } from '../../lib/build'
@@ -150,16 +151,19 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
           <StatusChanger id={project.id} status={project.status} onChanged={onReload} />
           {build && <VerdictPill verdict={build.lensVerdict} blockers={build.gates.blockersOpen} />}
         </div>
-        <div className="text-[13px] text-text-muted mb-2">
-          {project.niche ? `${project.niche} · ` : ''}{project.domain || repo?.themeLock?.store || '—'}{build ? ` · ${build.grade}` : ' · intake only (no build linked)'}
+        <div className="flex items-center gap-1 text-[13px] text-text-muted mb-2">
+          <span>{project.niche ? `${project.niche} · ` : ''}{project.domain || repo?.themeLock?.store || '—'}{build ? ` · ${build.grade}` : ' · intake only (no build linked)'}</span>
+          {build && <InfoIcon label="Build health 0–100 (grade A–F): gates passed, Lens verdict, changes complete, and how close to this build's reachable max." />}
         </div>
 
         {build ? (
           <>
             <div className="max-w-md"><StepIndicator current={build.step.current} total={build.step.total} /></div>
-            <div className="flex flex-wrap gap-4 mt-2 text-[13px]">
+            <div className="flex flex-wrap items-center gap-4 mt-2 text-[13px]">
               <span><b>{build.gates.passed}/{build.gates.total}</b> <span className="text-text-muted">gates</span></span>
-              <span><b>{build.gates.blockersOpen}</b> <span className="text-text-muted">blockers</span></span>
+              <span className="flex items-center gap-1"><b>{build.gates.blockersOpen}</b> <span className="text-text-muted">blockers</span>
+                <InfoIcon label="A blocker is a gate failure or open issue that stops publishing. Clear all blockers to publish." />
+              </span>
               {build.changes.present && <span><b>{build.changes.rate}%</b> <span className="text-text-muted">changes</span></span>}
             </div>
           </>

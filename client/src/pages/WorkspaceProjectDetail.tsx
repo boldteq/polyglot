@@ -6,6 +6,7 @@ import { Spinner } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
 import Collapsible from '../components/Collapsible'
+import { InfoIcon } from '../components/Tooltip'
 import ProjectHeader from '../components/workspace/ProjectHeader'
 import ActivityTimeline from '../components/workspace/ActivityTimeline'
 import BriefPanel from '../components/workspace/BriefPanel'
@@ -23,8 +24,8 @@ import { getWorkspaceProject, getWorkspaceProjectRepo, type ProjectDetail, type 
 
 // Each tab opens calm: the PRIMARY section is expanded, secondary sections start
 // collapsed (one click to expand). Uses the bare Collapsible (no double-card).
-function Section({ title, open = false, children }: { title: string; open?: boolean; children: React.ReactNode }) {
-  return <Collapsible bare title={title} defaultOpen={open}>{children}</Collapsible>
+function Section({ title, open = false, info, children }: { title: string; open?: boolean; info?: string; children: React.ReactNode }) {
+  return <Collapsible bare title={title} defaultOpen={open} right={info ? <InfoIcon label={info} /> : undefined}>{children}</Collapsible>
 }
 
 // Project detail — Lovable-style: a slim hero + ~4 tabs instead of an 11-section
@@ -119,7 +120,7 @@ export default function WorkspaceProjectDetail() {
               {activeTab === 'quality' && (
                 <div className="space-y-6">
                   <Section title="Gates" open><GatesTab buildId={buildId} reloadKey={reloadKey} /></Section>
-                  <Section title="Lens">{dir && <LensTab buildId={buildId} dir={dir} reloadKey={reloadKey} onChanged={reloadAll} />}</Section>
+                  <Section title="Lens" info="The visual-truth gate (#18): captures the rendered theme and judges it with vision — catching layout, contrast and occlusion bugs the static gates miss.">{dir && <LensTab buildId={buildId} dir={dir} reloadKey={reloadKey} onChanged={reloadAll} />}</Section>
                   <Section title="Changes"><ChangesTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 </div>
               )}
@@ -127,7 +128,7 @@ export default function WorkspaceProjectDetail() {
               {activeTab === 'specs' && (
                 <div className="space-y-6">
                   <Section title="Docs" open><DocsTab buildId={buildId} reloadKey={reloadKey} /></Section>
-                  <Section title="Design"><DesignSystemTab buildId={buildId} reloadKey={reloadKey} /></Section>
+                  <Section title="Design" info="The locked design-system contract — colors, type scale, spacing, buttons, brand voice. Theme sections bind to these tokens; the design-system gate enforces it."><DesignSystemTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 </div>
               )}
 
