@@ -99,7 +99,7 @@ export default function WorkspaceProjectDetail() {
               <aside className="w-44 shrink-0 hidden lg:block"><ProjectAnchorNav sections={SECTIONS} /></aside>
               <div className="flex-1 min-w-0 space-y-10">
                 <Section id="activity" title="Activity"><ActivityTimeline projectId={id!} reloadKey={reloadKey} /></Section>
-                <Section id="brief" title="Brief"><BriefPanel detail={detail} /></Section>
+                <Section id="brief" title="Brief"><BriefPanel detail={detail} onReload={reloadAll} /></Section>
                 <Section id="repo" title="Repo & files"><RepoPanel projectId={id!} reloadKey={reloadKey} /></Section>
                 <Section id="preview" title="Preview">{dir && <PreviewPanel dir={dir} repo={repo} />}</Section>
                 <Section id="workflow" title="Workflow"><WorkflowTab buildId={buildId} reloadKey={reloadKey} onChanged={reloadAll} publish={{ projectId: id!, store: repo?.themeLock?.store ?? null, themeName: repo?.themeLock?.themeName }} /></Section>

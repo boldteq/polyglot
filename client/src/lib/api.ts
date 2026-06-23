@@ -300,7 +300,7 @@ export const linkWorkspaceProject = (id: string, buildId: string | null) =>
   request<{ ok: boolean; build_dir: string | null }>(`/workspace/projects/${encodeURIComponent(id)}/link`, {
     method: 'POST', body: JSON.stringify({ buildId }),
   })
-export const updateWorkspaceProject = (id: string, body: { name?: string; niche?: string | null; domain?: string | null }) =>
+export const updateWorkspaceProject = (id: string, body: { name?: string; niche?: string | null; domain?: string | null; intake?: Record<string, unknown> }) =>
   request<{ ok: boolean; project: WorkspaceProject }>(`/workspace/projects/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) })
 export const deleteWorkspaceProject = (id: string, hard = false) =>
   request<{ ok: boolean; mode: string }>(`/workspace/projects/${encodeURIComponent(id)}${hard ? '?hard=1' : ''}`, { method: 'DELETE' })
