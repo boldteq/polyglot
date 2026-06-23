@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { ChevronDown, ChevronRight, RotateCw, Loader2 } from 'lucide-react'
+import { ChevronRight, RotateCw, Loader2 } from 'lucide-react'
 import { SkeletonCards } from '../Skeleton'
 import { ErrorState } from '../ErrorState'
 import { toast } from '../Toast'
@@ -88,7 +88,7 @@ export default function GatesTab({ buildId, reloadKey }: { buildId: string; relo
                 </button>
                 {has ? (
                   <button onClick={() => setOpen((o) => ({ ...o, [g.name]: !o[g.name] }))} className="text-text-muted shrink-0">
-                    {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
                   </button>
                 ) : <span className="w-4 shrink-0" />}
               </div>

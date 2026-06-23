@@ -49,7 +49,7 @@ export default function PreviewPanel({ dir, repo, reloadKey }: { dir: string; re
             {frames.map((f, i) => {
               const Icon = VP_ICON[f.viewport] || Monitor
               return (
-                <a key={i} href={f.rest || undefined} target="_blank" rel="noreferrer" className="card overflow-hidden hover:border-accent/40 transition-colors block">
+                <a key={i} href={f.rest || undefined} target="_blank" rel="noreferrer" className="card card-hover overflow-hidden hover:border-accent/40 block">
                   <div className="flex items-center gap-1.5 px-3 pt-2 pb-1 text-[11px] text-text-muted capitalize"><Icon className="w-3 h-3" /> {f.surface} · {f.viewport}</div>
                   {f.rest ? <img src={f.rest} alt={`${f.surface} ${f.viewport}`} loading="lazy" className="w-full border-t border-border bg-black/5" /> : <div className="h-24 bg-surface-2" />}
                 </a>

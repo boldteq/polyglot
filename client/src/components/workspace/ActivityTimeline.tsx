@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Bot, Zap, ShieldCheck, TrendingUp, DollarSign, FileEdit, Activity, ChevronDown, ChevronRight } from 'lucide-react'
+import { Bot, Zap, ShieldCheck, TrendingUp, DollarSign, FileEdit, Activity, ChevronRight } from 'lucide-react'
 import { SkeletonCards } from '../Skeleton'
 import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
@@ -56,7 +56,7 @@ export default function ActivityTimeline({ projectId, reloadKey }: { projectId: 
             disabled={!spend.byAgent || !spend.byAgent.length}>
             <DollarSign className="w-3.5 h-3.5 text-green" />
             <span><span className="font-semibold text-text">${spend.totalCostUsd.toFixed(2)}</span> spent on this build · {spend.runs} dispatch run{spend.runs === 1 ? '' : 's'}</span>
-            {spend.byAgent && spend.byAgent.length > 0 && (spendOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />)}
+            {spend.byAgent && spend.byAgent.length > 0 && <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${spendOpen ? 'rotate-90' : ''}`} />}
           </button>
           {spendOpen && spend.byAgent && (
             <div className="mt-1.5 ml-5 card divide-y divide-border">
