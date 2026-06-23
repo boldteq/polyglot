@@ -9,12 +9,14 @@ import {
   XCircle,
   TrendingUp,
   ArrowRight,
+  RefreshCw,
 } from 'lucide-react'
 import { getAnalyticsRuns, getAnalyticsSummary, getRoutingSavings } from '../lib/api'
 import type { AgentRunEntry, AgentAnalyticsSummary, RoutingSavings } from '../lib/api'
 import { resource } from '../lib/cacheCore'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
+import { toast } from '../components/Toast'
 import { StatRow } from '../components/PageShell'
 
 type TimeRange = '1d' | '7d' | '30d' | 'all'
@@ -75,6 +77,7 @@ export default function Analytics() {
   const [savings, setSavings] = useState<RoutingSavings | null>(() => savingsRes.getState().data ?? null)
   const [loading, setLoading] = useState(() => summaryRes.getState().data === null)
   const [loadError, setLoadError] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [range, setRange] = useState<TimeRange>('7d')
 
   const loadData = () => {
@@ -91,6 +94,26 @@ export default function Analytics() {
     }).catch(() => {
       setLoadError(true)
     }).finally(() => setLoading(false))
+  }
+
+  // Manual refresh — refetches in the background (the full-screen loader only
+  // shows when there's no cached data) with spinner + toast feedback, so the
+  // cached page isn't stuck stale with no way to update short of a hard reload.
+  const refresh = async () => {
+    setRefreshing(true)
+    setLoadError(false)
+    try {
+      const [s, r, sv] = await Promise.all([summaryRes.refetch(), runsRes.refetch(), savingsRes.refetch()])
+      setSummary(s)
+      setAllRuns(r.runs)
+      setSavings(sv)
+      toast('success', 'Refreshed')
+    } catch {
+      setLoadError(true)
+      toast('error', 'Failed to refresh analytics')
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   useEffect(() => { loadData() }, [])
@@ -168,7 +191,15 @@ export default function Analytics() {
   return (
     <div className="space-y-5">
       {/* Range selector — hub provides the page title */}
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={refresh}
+          disabled={refreshing}
+          title="Refresh analytics"
+          className="btn-secondary btn-sm"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+        </button>
         <div className="segmented">
           {RANGES.map(r => (
             <button
