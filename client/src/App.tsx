@@ -113,8 +113,14 @@ export default function App() {
         {/* POLYGLOT MODE — default shell + sidebar */}
         <Route path="/*" element={
       <div className="flex min-h-screen">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[200] focus:px-3 focus:py-2 focus:rounded-lg focus:bg-accent focus:text-white focus:shadow-pop focus:text-sm focus:font-medium"
+        >
+          Skip to main content
+        </a>
         <Sidebar projects={projects || []} />
-        <main className="flex-1 min-w-0 h-screen overflow-y-auto">
+        <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 h-screen overflow-y-auto outline-none">
           <RouteErrorBoundary>
           <Suspense fallback={<PageLoader />}>
           <Routes>
