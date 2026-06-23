@@ -21,6 +21,7 @@ export default function WorkspaceStudio() {
   const [repo, setRepo] = useState<RepoData | null>(null)
   const [lensAction, setLensAction] = useState<ActionDef | null>(null)
   const [captureKey, setCaptureKey] = useState(0)
+  const [stale, setStale] = useState(false) // an agent edited the theme since the last capture
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,8 +44,8 @@ export default function WorkspaceStudio() {
 
   const buildId = detail?.buildId || ''
   const dir = detail?.build?.dir
-  // capture refreshes the preview pane (remount) when it finishes
-  const { run, trigger } = useWorkspaceAction(buildId, () => setCaptureKey((k) => k + 1))
+  // capture refreshes the preview pane (remount) when it finishes + clears staleness
+  const { run, trigger } = useWorkspaceAction(buildId, () => { setCaptureKey((k) => k + 1); setStale(false) })
   const capturing = run?.status === 'running' && run.action === 'lens:run'
 
   if (loading && !detail) return <div className="p-6"><Spinner /></div>
@@ -65,9 +66,9 @@ export default function WorkspaceStudio() {
         {dir && lensAction && (
           <button onClick={() => trigger(lensAction)} disabled={capturing || !lensAction.available}
             title={lensAction.available ? 'Capture the rendered preview (Lens)' : (lensAction.unavailableReason || '')}
-            className="btn-primary btn-sm flex items-center gap-1.5 disabled:opacity-50">
+            className={`btn-primary btn-sm flex items-center gap-1.5 disabled:opacity-50 ${stale && !capturing ? 'ring-2 ring-accent/40 animate-pulse' : ''}`}>
             {capturing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-            {capturing ? 'Capturing…' : 'Capture preview'}
+            {capturing ? 'Capturing…' : stale ? 'Capture to see change' : 'Capture preview'}
           </button>
         )}
       </div>
@@ -80,10 +81,17 @@ export default function WorkspaceStudio() {
         <div className="flex-1 min-h-0 flex">
           {/* EDIT */}
           <div className="w-[42%] min-w-[340px] border-r border-border flex flex-col p-4 min-h-0">
-            <DispatchComposer buildId={buildId} onDone={() => { /* preview is stale until captured */ }} />
+            <DispatchComposer buildId={buildId} onDone={() => setStale(true)} />
           </div>
           {/* PREVIEW */}
-          <div className="flex-1 min-w-0 overflow-y-auto p-4">
+          <div className="flex-1 min-w-0 overflow-y-auto p-4 space-y-3">
+            {stale && (
+              <div className="card px-3 py-2 bg-accent/5 border-accent/30 flex items-center gap-2 text-[12px]">
+                <Camera className="w-3.5 h-3.5 text-accent shrink-0" />
+                <span className="flex-1">The agent edited the theme — capture the preview to see the change.</span>
+                {dir && lensAction && <button onClick={() => trigger(lensAction)} disabled={capturing || !lensAction.available} className="btn-primary btn-sm text-[11px] disabled:opacity-50">{capturing ? 'Capturing…' : 'Capture now'}</button>}
+              </div>
+            )}
             {dir ? <PreviewPanel key={`prev-${captureKey}`} dir={dir} repo={repo} /> : null}
           </div>
         </div>
