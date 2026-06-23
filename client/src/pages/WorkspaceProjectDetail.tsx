@@ -5,6 +5,7 @@ import { PageShell, TabNav } from '../components/PageShell'
 import { Spinner } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
+import Collapsible from '../components/Collapsible'
 import ProjectHeader from '../components/workspace/ProjectHeader'
 import ActivityTimeline from '../components/workspace/ActivityTimeline'
 import BriefPanel from '../components/workspace/BriefPanel'
@@ -20,13 +21,10 @@ import DesignSystemTab from '../components/workspace/DesignSystemTab'
 import { useBuild } from '../hooks/useBuild'
 import { getWorkspaceProject, getWorkspaceProjectRepo, type ProjectDetail, type RepoData } from '../lib/api'
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="text-[15px] font-semibold mb-2.5">{title}</h2>
-      {children}
-    </section>
-  )
+// Each tab opens calm: the PRIMARY section is expanded, secondary sections start
+// collapsed (one click to expand). Uses the bare Collapsible (no double-card).
+function Section({ title, open = false, children }: { title: string; open?: boolean; children: React.ReactNode }) {
+  return <Collapsible bare title={title} defaultOpen={open}>{children}</Collapsible>
 }
 
 // Project detail — Lovable-style: a slim hero + ~4 tabs instead of an 11-section
@@ -104,37 +102,37 @@ export default function WorkspaceProjectDetail() {
               <TabNav tabs={tabs} active={activeTab} onChange={changeTab} />
 
               {activeTab === 'overview' && (
-                <div className="space-y-8">
-                  <Section title="Activity"><ActivityTimeline projectId={id!} reloadKey={reloadKey} /></Section>
+                <div className="space-y-6">
+                  <Section title="Activity" open><ActivityTimeline projectId={id!} reloadKey={reloadKey} /></Section>
                   <Section title="Brief"><BriefPanel detail={detail} onReload={reloadAll} /></Section>
                 </div>
               )}
 
               {activeTab === 'build' && (
-                <div className="space-y-8">
-                  <Section title="Workflow"><WorkflowTab buildId={buildId} reloadKey={reloadKey} onChanged={reloadAll} publish={{ projectId: id!, store: repo?.themeLock?.store ?? null, themeName: repo?.themeLock?.themeName }} /></Section>
+                <div className="space-y-6">
+                  <Section title="Workflow" open><WorkflowTab buildId={buildId} reloadKey={reloadKey} onChanged={reloadAll} publish={{ projectId: id!, store: repo?.themeLock?.store ?? null, themeName: repo?.themeLock?.themeName }} /></Section>
                   <Section title="Repo & files"><RepoPanel projectId={id!} reloadKey={reloadKey} /></Section>
                   <Section title="Preview">{dir && <PreviewPanel dir={dir} repo={repo} reloadKey={reloadKey} />}</Section>
                 </div>
               )}
 
               {activeTab === 'quality' && (
-                <div className="space-y-8">
-                  <Section title="Gates"><GatesTab buildId={buildId} reloadKey={reloadKey} /></Section>
+                <div className="space-y-6">
+                  <Section title="Gates" open><GatesTab buildId={buildId} reloadKey={reloadKey} /></Section>
                   <Section title="Lens">{dir && <LensTab buildId={buildId} dir={dir} reloadKey={reloadKey} onChanged={reloadAll} />}</Section>
                   <Section title="Changes"><ChangesTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 </div>
               )}
 
               {activeTab === 'specs' && (
-                <div className="space-y-8">
-                  <Section title="Docs"><DocsTab buildId={buildId} reloadKey={reloadKey} /></Section>
+                <div className="space-y-6">
+                  <Section title="Docs" open><DocsTab buildId={buildId} reloadKey={reloadKey} /></Section>
                   <Section title="Design"><DesignSystemTab buildId={buildId} reloadKey={reloadKey} /></Section>
                 </div>
               )}
 
               {activeTab === 'monitoring' && (
-                <Section title="Monitoring"><MonitoringPanel projectId={id!} reloadKey={reloadKey} /></Section>
+                <Section title="Monitoring" open><MonitoringPanel projectId={id!} reloadKey={reloadKey} /></Section>
               )}
             </div>
           ) : null}
