@@ -109,7 +109,12 @@ export default function WorkspaceProjectDetail() {
           <ProjectHeader detail={detail} repo={repo} onReload={reloadAll} />
 
           {!detail.hasBuild ? (
-            <EmptyState icon={FolderKanban} title="No build linked yet" description="This project has intake only. Link a discovered theme folder, or dispatch an agent to start the build." />
+            // Intake-first: no build yet, but you can still capture the brief here
+            // (the hero's "Link a build" CTA starts the build when ready).
+            <div className="space-y-6">
+              <Section title="Brief" open><BriefPanel detail={detail} onReload={reloadAll} /></Section>
+              <EmptyState icon={FolderKanban} title="No build linked yet" description="Capture the brief above, then link a discovered theme folder or dispatch an agent to start the build — use “Link a build” in the header." />
+            </div>
           ) : buildId ? (
             <div>
               <TabNav tabs={tabs} active={activeTab} onChange={changeTab} />
