@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, Plus, X, Archive, Search } from 'lucide-react'
+import { FolderKanban, RefreshCw, Plus, X, Archive, Search, Filter } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
@@ -104,12 +104,11 @@ export default function WorkspaceProjects() {
 
   // summary + filtered/searched list
   const { shown, summary } = useMemo(() => {
-    const withScore = projects.filter((p) => p.build)
     const summary = {
       total: projects.length,
       attention: projects.filter((p) => attentionOf(p).length).length,
-      avg: withScore.length ? Math.round(withScore.reduce((s, p) => s + (p.build!.score || 0), 0) / withScore.length) : 0,
-      passing: withScore.filter((p) => p.build!.lensVerdict === 'pass').length,
+      inProgress: projects.filter((p) => p.status === 'building' || p.status === 'preview').length,
+      live: projects.filter((p) => p.status === 'published').length,
     }
     const ql = q.trim().toLowerCase()
     const shown = projects.filter((p) => {
@@ -161,12 +160,12 @@ export default function WorkspaceProjects() {
         <EmptyState icon={FolderKanban} title="No projects yet" description="Create a project to capture intake — or theme folders are auto-detected and appear here." action={{ label: 'New project', onClick: () => setShowNew(true) }} />
       ) : (
         <div className="space-y-4">
-          {/* summary strip */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[13px] px-1">
+          {/* summary strip — human project lifecycle, not build-health jargon */}
+          <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-6 gap-y-1 text-[13px] px-1">
             <span><b>{summary.total}</b> <span className="text-text-muted">projects</span></span>
-            <span className={summary.attention ? 'text-red' : ''}><b>{summary.attention}</b> <span className={summary.attention ? '' : 'text-text-muted'}>need attention</span></span>
-            <span><b>{summary.avg}</b> <span className="text-text-muted">avg score</span></span>
-            <span><b>{summary.passing}</b> <span className="text-text-muted">passing</span></span>
+            <span className={summary.attention ? 'text-red' : 'text-text-muted'}><b>{summary.attention}</b> need attention</span>
+            <span><b>{summary.inProgress}</b> <span className="text-text-muted">in progress</span></span>
+            <span><b>{summary.live}</b> <span className="text-text-muted">live</span></span>
           </div>
 
           {/* search + filter */}
@@ -208,8 +207,8 @@ export default function WorkspaceProjects() {
             </div>
           )}
 
-          {/* project card grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* project card grid — auto-rows-fr keeps every card the same height */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
             <button onClick={() => setShowNew(true)}
               className="card card-hover border-dashed flex flex-col items-center justify-center gap-2 text-text-muted hover:text-accent hover:border-accent/40 min-h-[260px] transition-colors">
               <Plus className="w-7 h-7" />
@@ -221,7 +220,7 @@ export default function WorkspaceProjects() {
                 onOpen={() => openProject(p)} onToggleSel={() => toggleSel(p.id)}
                 onEdit={() => setEditFor(p)} onArchive={() => archive(p)} onLink={() => setLinkFor(p)} onAck={() => acknowledge(p)} />
             ))}
-            {shown.length === 0 && <div className="col-span-full px-4 py-8 text-center text-[13px] text-text-muted">No projects match your filters.</div>}
+            {shown.length === 0 && <div className="col-span-full"><EmptyState icon={Filter} title="No projects match" description="Adjust your search or filters to see more." size="sm" /></div>}
           </div>
         </div>
       )}
