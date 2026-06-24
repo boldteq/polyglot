@@ -161,7 +161,7 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
           {build && <VerdictPill verdict={build.lensVerdict} blockers={build.gates.blockersOpen} />}
         </div>
         <div className="flex items-center gap-1 text-[13px] text-text-muted mb-2">
-          <span>{project.niche ? `${project.niche} · ` : ''}{project.domain || repo?.themeLock?.store || '—'}{build ? ` · ${build.grade}` : ' · intake only (no build linked)'}</span>
+          <span>{project.niche ? `${project.niche} · ` : ''}{project.domain || repo?.themeLock?.store || '—'}{build ? ` · ${build.grade === 'BLOCK-RISK' ? 'at risk' : `grade ${build.grade}`}` : ' · intake only (no build linked)'}</span>
           {build && <InfoIcon label="Build health 0–100 (grade A–F): gates passed, Lens verdict, changes complete, and how close to this build's reachable max." />}
         </div>
 

@@ -65,7 +65,7 @@ export default function ProjectCard({ project: p, thumb, attention, selected, an
             </div>
             <div className="text-[12px] text-text-muted truncate mt-0.5">{sub}</div>
           </div>
-          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
             <button onClick={onEdit} title="Edit" className="btn-ghost btn-sm p-1.5"><Pencil className="w-3.5 h-3.5" /></button>
             {attention.length > 0 && <button onClick={onAck} title="Acknowledge escalation (clears until reasons change)" className="btn-ghost btn-sm p-1.5 text-text-muted hover:text-amber"><BellOff className="w-3.5 h-3.5" /></button>}
             {!p.build_dir && <button onClick={onLink} title="Link a build folder" className="btn-ghost btn-sm p-1.5"><Link2 className="w-3.5 h-3.5" /></button>}

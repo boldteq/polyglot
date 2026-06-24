@@ -119,9 +119,9 @@ export default function WorkspaceProjectDetail() {
                 <p className="text-[12px] text-text-muted mb-5">This project is at <b>intake</b> — no build is linked yet. Three steps to begin:</p>
                 <ol className="space-y-4">
                   {([
-                    ['Capture the brief', 'Fill in the client brief above — niche, store, goals. It feeds every later phase.'],
-                    ['Link or dispatch a build', 'Use “Link a build” in the header to attach a discovered theme folder, or dispatch an agent to scaffold one.'],
-                    ['The pipeline begins at step 1', 'Once linked, the 7-phase workflow opens at Intake → Discovery and runs through to Monitor.'],
+                    ['Add the brief', 'Fill in the brief above — the store name, what it sells, and the goal. Everything else builds on this.'],
+                    ['Connect or start a build', 'Use “Link a build” in the top bar to connect an existing theme folder, or start a new one for this client.'],
+                    ['Work moves through 7 stages', 'From here the project flows through Intake → Discovery → Design → Build → QA → Publish → Monitor.'],
                   ] as const).map(([t, d], i) => (
                     <li key={i} className="flex gap-3">
                       <span className="shrink-0 w-6 h-6 rounded-full bg-accent/10 text-accent text-[12px] font-bold flex items-center justify-center">{i + 1}</span>

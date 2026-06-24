@@ -45,7 +45,7 @@ export default function MonitoringPanel({ projectId, reloadKey }: { projectId: s
 
   const hasResults = results?.present && (Object.keys(results.meta).length > 0 || results.tables.length > 0)
 
-  if (!data?.present && !hasResults) return <EmptyState icon={Clock} title="No monitoring scheduled" description="The 48h watch + 30/90d results checkpoints register once this build is published to the live store." />
+  if (!data?.present && !hasResults) return <EmptyState icon={Clock} title="Monitoring starts after launch" description="Once you publish to the live store, we'll automatically watch the storefront's health for 48 hours, then check results at 30 and 90 days." />
 
   return (
     <div className="space-y-3">

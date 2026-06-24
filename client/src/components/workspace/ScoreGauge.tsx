@@ -27,7 +27,7 @@ export default function ScoreGauge({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
         <span className="font-bold" style={{ fontSize: size * 0.3, color }}>{score}</span>
-        {showGrade && <span className="text-[9px] font-medium text-text-muted mt-0.5">{grade === 'BLOCK-RISK' ? 'RISK' : grade}</span>}
+        {showGrade && <span className="text-[9px] font-medium text-text-muted mt-0.5">{grade === 'BLOCK-RISK' ? 'AT RISK' : grade}</span>}
       </div>
     </div>
   )
