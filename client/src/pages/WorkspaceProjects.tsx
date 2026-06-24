@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, Plus, X, Archive, Search, Filter } from 'lucide-react'
+import { FolderKanban, RefreshCw, Plus, X, Archive, Search, Filter, Unlink } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
@@ -146,10 +146,14 @@ export default function WorkspaceProjects() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="card overflow-hidden">
               <div className="h-36 bg-surface-2 animate-pulse" />
-              <div className="p-4 space-y-3">
+              <div className="p-4 space-y-2.5">
                 <div className="h-4 w-2/3 bg-surface-2 rounded animate-pulse" />
                 <div className="h-3 w-1/2 bg-surface-2 rounded animate-pulse" />
-                <div className="h-9 w-full bg-surface-2 rounded animate-pulse" />
+                <div className="flex items-center gap-2.5 pt-1">
+                  <div className="w-9 h-9 rounded-full bg-surface-2 animate-pulse shrink-0" />
+                  <div className="h-4 w-20 bg-surface-2 rounded-full animate-pulse" />
+                </div>
+                <div className="h-1.5 w-full bg-surface-2 rounded-full animate-pulse" />
               </div>
             </div>
           ))}
@@ -251,17 +255,21 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState(''); const [niche, setNiche] = useState(''); const [domain, setDomain] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] = useState(false); const [err, setErr] = useState<string | null>(null)
   const save = async () => {
-    if (!name.trim()) { toast('warn', 'Name is required'); return }
-    setSaving(true)
+    if (!name.trim()) { setErr('Brand name is required'); return }
+    setErr(null); setSaving(true)
     try { await createWorkspaceProject({ name: name.trim(), niche: niche.trim() || undefined, domain: domain.trim() || undefined }); toast('success', 'Project created'); onCreated() }
     catch (e) { toast('error', e instanceof Error ? e.message : 'Create failed') } finally { setSaving(false) }
   }
   return (
     <Modal title="New project" onClose={onClose}>
       <div className="space-y-3">
-        <div><label className="text-[12px] text-text-muted">Brand / name *</label><input value={name} onChange={(e) => setName(e.target.value)} className="input w-full" placeholder="Acme Skincare" autoFocus /></div>
+        <div>
+          <label className="text-[12px] font-medium text-text">Brand / name <span className="text-red">*</span></label>
+          <input value={name} onChange={(e) => { setName(e.target.value); if (err) setErr(null) }} className={`input w-full ${err ? 'border-red' : ''}`} placeholder="Acme Skincare" autoFocus />
+          {err && <p className="text-[11px] text-red mt-1">{err}</p>}
+        </div>
         <div><label className="text-[12px] text-text-muted">Niche</label><input value={niche} onChange={(e) => setNiche(e.target.value)} className="input w-full" placeholder="skincare" /></div>
         <div><label className="text-[12px] text-text-muted">Store domain</label><input value={domain} onChange={(e) => setDomain(e.target.value)} className="input w-full" placeholder="acme.myshopify.com" /></div>
         <button onClick={save} disabled={saving} className="btn-primary btn-sm w-full disabled:opacity-50">{saving ? 'Creating…' : 'Create project'}</button>
@@ -272,17 +280,21 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
 function EditProjectModal({ project, onClose, onSaved }: { project: WorkspaceProject; onClose: () => void; onSaved: () => void }) {
   const [name, setName] = useState(project.name); const [niche, setNiche] = useState(project.niche || ''); const [domain, setDomain] = useState(project.domain || '')
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] = useState(false); const [err, setErr] = useState<string | null>(null)
   const save = async () => {
-    if (!name.trim()) { toast('warn', 'Name is required'); return }
-    setSaving(true)
+    if (!name.trim()) { setErr('Brand name is required'); return }
+    setErr(null); setSaving(true)
     try { await updateWorkspaceProject(project.id, { name: name.trim(), niche: niche.trim() || null, domain: domain.trim() || null }); toast('success', 'Project updated'); onSaved() }
     catch (e) { toast('error', e instanceof Error ? e.message : 'Update failed') } finally { setSaving(false) }
   }
   return (
     <Modal title="Edit project" onClose={onClose}>
       <div className="space-y-3">
-        <div><label className="text-[12px] text-text-muted">Brand / name *</label><input value={name} onChange={(e) => setName(e.target.value)} className="input w-full" autoFocus /></div>
+        <div>
+          <label className="text-[12px] font-medium text-text">Brand / name <span className="text-red">*</span></label>
+          <input value={name} onChange={(e) => { setName(e.target.value); if (err) setErr(null) }} className={`input w-full ${err ? 'border-red' : ''}`} autoFocus />
+          {err && <p className="text-[11px] text-red mt-1">{err}</p>}
+        </div>
         <div><label className="text-[12px] text-text-muted">Niche</label><input value={niche} onChange={(e) => setNiche(e.target.value)} className="input w-full" /></div>
         <div><label className="text-[12px] text-text-muted">Store domain</label><input value={domain} onChange={(e) => setDomain(e.target.value)} className="input w-full" /></div>
         <button onClick={save} disabled={saving} className="btn-primary btn-sm w-full disabled:opacity-50">{saving ? 'Saving…' : 'Save changes'}</button>
@@ -298,7 +310,7 @@ function LinkBuildModal({ project, builds, onClose, onLinked }: { project: Works
   }
   return (
     <Modal title={`Link a build to ${project.name}`} onClose={onClose}>
-      {builds.length === 0 ? <p className="text-[13px] text-text-muted">No unlinked builds to choose from.</p> : (
+      {builds.length === 0 ? <EmptyState icon={Unlink} title="No unlinked builds" description="Every discovered build is already linked to a project." size="sm" card={false} /> : (
         <div className="space-y-1.5 max-h-80 overflow-y-auto">
           {builds.map((b) => (
             <button key={b.buildId} onClick={() => link(b.buildId)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-surface-2 text-left text-[13px]">

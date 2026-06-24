@@ -60,8 +60,8 @@ export default function ProjectCard({ project: p, thumb, attention, selected, an
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 min-w-0">
-              <h3 className="font-semibold text-[14px] capitalize truncate">{p.name}</h3>
-              {p.niche && <span className="pill bg-text-muted/10 text-text-muted uppercase tracking-wide shrink-0">{p.niche}</span>}
+              <h3 className="font-semibold text-[14px] capitalize truncate min-w-0 flex-1">{p.name}</h3>
+              {p.niche && <span className="pill bg-text-muted/10 text-text-muted uppercase tracking-wide shrink-0 max-w-[40%] truncate">{p.niche}</span>}
             </div>
             <div className="text-[12px] text-text-muted truncate mt-0.5">{sub}</div>
           </div>
