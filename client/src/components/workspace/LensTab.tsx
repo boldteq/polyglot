@@ -86,7 +86,7 @@ export default function LensTab({ buildId, dir, reloadKey, onChanged }: { buildI
       )}
 
       {data.frames.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {data.frames.map((f, i) => (
             <div key={i} className="card overflow-hidden">
               <div className="flex items-center justify-between px-3 pt-2 pb-1">

@@ -4,6 +4,7 @@ import { SkeletonCards } from '../Skeleton'
 import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
 import { toast } from '../Toast'
+import { InfoIcon } from '../Tooltip'
 import { confirmDialog } from '../../lib/confirm'
 import { useBuildSection } from '../../hooks/useBuildSection'
 import {
@@ -43,15 +44,15 @@ export default function ChangesTab({ buildId, reloadKey }: { buildId: string; re
   }
 
   const onAddWaiver = async () => {
-    const reason = window.prompt('Waiver reason (why this blocker is accepted):')?.trim()
+    const reason = window.prompt('Why is this blocker acceptable? (e.g. known limitation, client approved)')?.trim()
     if (!reason) return
     const ok = await confirmDialog({
-      title: 'Add waiver?', danger: true, confirmLabel: 'Add waiver',
-      message: `Waivers bypass a quality gate. This will be recorded in CHANGES.md:\n\n"${reason}"`,
+      title: 'Accept this blocker?', danger: true, confirmLabel: 'Accept blocker',
+      message: `This records an accepted exception in CHANGES.md so the build can publish despite the blocker:\n\n"${reason}"`,
     })
     if (!ok) return
-    try { setLocal(await addWorkspaceChangeWaiver(buildId, reason)); toast('warn', 'Waiver added') }
-    catch (e) { toast('error', e instanceof Error ? e.message : 'Waiver failed') }
+    try { setLocal(await addWorkspaceChangeWaiver(buildId, reason)); toast('warn', 'Exception recorded') }
+    catch (e) { toast('error', e instanceof Error ? e.message : 'Could not record exception') }
   }
 
   return (
@@ -93,12 +94,14 @@ export default function ChangesTab({ buildId, reloadKey }: { buildId: string; re
 
       <div className="card p-4">
         <div className="flex items-center justify-between mb-2">
-          <h4 className="font-semibold text-[13px] text-amber">Waivers ({d.waivers.length})</h4>
-          <button onClick={onAddWaiver} className="btn-ghost btn-sm flex items-center gap-1.5 text-[11px] text-amber"><ShieldAlert className="w-3.5 h-3.5" /> Add waiver</button>
+          <h4 className="font-semibold text-[13px] text-amber flex items-center gap-1">Accepted exceptions ({d.waivers.length})
+            <InfoIcon label="When a quality blocker is acceptable (a known limitation or client-approved), record the reason here so the build can publish despite it." />
+          </h4>
+          <button onClick={onAddWaiver} className="btn-ghost btn-sm flex items-center gap-1.5 text-[11px] text-amber"><ShieldAlert className="w-3.5 h-3.5" /> Add exception</button>
         </div>
         {d.waivers.length > 0
           ? <ul className="space-y-1 text-[12px] text-text-muted">{d.waivers.map((w, i) => <li key={i}>• {w}</li>)}</ul>
-          : <p className="text-[12px] text-text-muted">None. A waiver records why a gate blocker was accepted.</p>}
+          : <p className="text-[12px] text-text-muted">None. An accepted exception records why a quality blocker was deliberately allowed.</p>}
       </div>
     </div>
   )
