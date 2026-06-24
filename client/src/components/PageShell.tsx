@@ -176,7 +176,7 @@ export function TabNav({ tabs, active, onChange }: TabNavProps) {
           tabIndex={active === tab.id ? 0 : -1}
           onClick={() => onChange(tab.id)}
           onKeyDown={(e) => onKeyDown(e, idx)}
-          className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+          className={`px-4 py-2.5 text-sm font-medium transition-colors relative rounded-t-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
             active === tab.id
               ? 'text-accent'
               : 'text-text-muted hover:text-text'

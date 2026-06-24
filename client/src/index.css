@@ -224,7 +224,7 @@ html[data-theme="dark"] {
     @apply inline-flex items-center gap-0.5 bg-surface-2 border border-border-subtle rounded-lg p-0.5 shrink-0;
   }
   .segmented-btn {
-    @apply px-2.5 py-1 text-xs font-medium rounded-md text-text-muted hover:text-text transition-colors;
+    @apply px-2.5 py-1 text-xs font-medium rounded-md text-text-muted hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
   }
   .segmented-btn-active {
     @apply bg-surface text-text shadow-soft;

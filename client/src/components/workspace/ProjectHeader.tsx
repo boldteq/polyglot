@@ -74,8 +74,8 @@ function OverflowMenu({ groups }: { groups: { label?: string; items: MenuItem[] 
       {open && (
         <div className="absolute right-0 top-full mt-1.5 w-60 bg-surface border border-border rounded-xl shadow-lg py-1 z-[60] max-h-[70vh] overflow-y-auto">
           {visible.map((g, gi) => (
-            <div key={gi} className={gi > 0 ? 'border-t border-border-subtle mt-1 pt-1' : ''}>
-              {g.label && <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-text-muted">{g.label}</div>}
+            <div key={gi} className={gi > 0 ? 'border-t border-border mt-1.5 pt-1.5' : ''}>
+              {g.label && <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted/80">{g.label}</div>}
               {g.items.map((it) => (
                 <button key={it.label} onClick={() => { setOpen(false); it.onClick() }} disabled={it.disabled} title={it.hint}
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-surface-2 text-left disabled:opacity-40 disabled:cursor-not-allowed">
