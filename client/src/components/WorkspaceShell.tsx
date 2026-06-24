@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { FolderKanban, Handshake } from 'lucide-react'
+import { FolderKanban, Handshake, Menu, X } from 'lucide-react'
 import ModeSwitcher from './ModeSwitcher'
 
 // The Workspace-mode shell — a sidebar SEPARATE from Polyglot's. Holds only
-// client-project pages. It grows its own nav over time with zero impact on
-// Polyglot's sidebar. Switch back via the ModeSwitcher at the top-left.
+// client-project pages. On mobile it's an off-canvas drawer (hamburger toggle),
+// mirroring the Polyglot Sidebar pattern so content isn't squeezed on small
+// screens. Switch back via the ModeSwitcher at the top-left.
 
 const navItem = (active: boolean) =>
   `flex items-center gap-2 px-2 h-8 text-sm rounded-md mx-2 transition-colors [&>svg]:size-4 [&>svg]:shrink-0 ${
@@ -19,15 +21,30 @@ function NavSection({ label }: { label: string }) {
 }
 
 export default function WorkspaceShell({ children }: { children: React.ReactNode }) {
+  const [mobileOpen, setMobileOpen] = useState(false)
   return (
     <div className="flex min-h-screen w-full">
-      <aside className="w-64 min-w-64 h-screen bg-sidebar border-r border-sidebar-border flex flex-col z-50 sticky top-0">
+      {/* mobile hamburger — opens the drawer */}
+      <button onClick={() => setMobileOpen(true)} aria-label="Open menu"
+        className="md:hidden fixed top-3 left-3 z-40 p-2 rounded-lg bg-surface border border-border text-text-muted hover:text-text shadow-soft">
+        <Menu className="w-5 h-5" />
+      </button>
+      {/* backdrop */}
+      {mobileOpen && <div className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setMobileOpen(false)} aria-hidden />}
+
+      <aside
+        className={`w-64 min-w-64 h-screen bg-sidebar border-r border-sidebar-border flex flex-col z-50
+          md:sticky md:top-0 md:translate-x-0
+          fixed top-0 left-0 transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+      >
         {/* Logo + mode switcher */}
-        <div className="px-4 py-3.5 border-b border-border-subtle">
+        <div className="px-4 py-3.5 border-b border-border-subtle flex items-center justify-between">
           <ModeSwitcher mode="workspace" />
+          <button onClick={() => setMobileOpen(false)} aria-label="Close menu"
+            className="md:hidden p-1 rounded-md text-text-muted hover:text-text hover:bg-surface-2 transition-colors"><X className="w-4 h-4" /></button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto py-2 space-y-0.5" onClick={() => setMobileOpen(false)}>
           <NavSection label="Client Work" />
           <NavLink to="/workspace" end className={navLinkClass}>
             <FolderKanban className="w-4 h-4" /> Projects
@@ -44,7 +61,7 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 h-screen overflow-y-auto">{children}</main>
+      <main className="flex-1 min-w-0 h-screen overflow-y-auto pt-14 md:pt-0">{children}</main>
     </div>
   )
 }
