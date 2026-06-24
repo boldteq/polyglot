@@ -168,15 +168,17 @@ export default function WorkspaceProjects() {
             <span><b>{summary.live}</b> <span className="text-text-muted">live</span></span>
           </div>
 
-          {/* search + filter */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* search + filter — grouped into one subtle toolbar so they read as a set */}
+          <div className="flex items-center gap-2 flex-wrap bg-surface-2/40 border border-border-subtle rounded-xl px-2 py-2">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <Search className="w-4 h-4 text-text-muted absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search projects…" className="input w-full pl-8 text-[13px]" />
             </div>
             <div className="segmented">
               {(['all', 'attention', 'passing'] as Filter[]).map((f) => (
-                <button key={f} onClick={() => setFilter(f)} className={`segmented-btn capitalize ${filter === f ? 'segmented-btn-active' : ''}`}>{f}</button>
+                <button key={f} onClick={() => setFilter(f)}
+                  title={f === 'all' ? 'Show all projects' : f === 'attention' ? 'Only projects that need review' : 'Only projects that passed all checks'}
+                  className={`segmented-btn capitalize ${filter === f ? 'segmented-btn-active' : ''}`}>{f}</button>
               ))}
             </div>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-auto shrink-0 text-[12px] py-1.5 capitalize" aria-label="Filter by status">
@@ -195,10 +197,10 @@ export default function WorkspaceProjects() {
             <div className="flex items-center gap-3 flex-wrap card px-3 py-2 bg-accent/5 border-accent/30">
               <span className="text-[13px] font-medium">{selected.size} selected</span>
               <div className="flex items-center gap-1.5">
-                <span className="text-[12px] text-text-muted">Set status</span>
-                <select disabled={bulkBusy} defaultValue="" onChange={(e) => { if (e.target.value) { bulkStatus(e.target.value as ProjectStatus); e.target.value = '' } }}
-                  className="input text-[12px] py-1" aria-label="Set status for selected">
-                  <option value="" disabled>choose…</option>
+                <label htmlFor="bulk-status" className="text-[12px] text-text-muted">Set status</label>
+                <select id="bulk-status" disabled={bulkBusy} defaultValue="" onChange={(e) => { if (e.target.value) { bulkStatus(e.target.value as ProjectStatus); e.target.value = '' } }}
+                  className="input text-[12px] py-1 capitalize" aria-label="Set status for selected projects">
+                  <option value="" disabled>Select new status…</option>
                   {PROJECT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
