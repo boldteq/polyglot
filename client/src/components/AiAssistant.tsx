@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   X, Send, Sparkles, Copy, Check, RefreshCw,
   History, Plus, Trash2, FileCode, CheckCircle, Bot, Download, Paperclip,
-  ArrowDown, Pencil, Search, MessageSquare, MoreHorizontal, Square,
+  ArrowDown, Pencil, Search, MessageSquare, Square,
 } from 'lucide-react'
 import type { AiMessage, AiSession, AppContext } from '../lib/api'
 import {
@@ -1329,14 +1329,6 @@ export default function AiAssistant({ open, onClose }: Props) {
                   className="p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-accent-muted disabled:opacity-30 transition-colors"
                 >
                   <Paperclip className="w-4 h-4" />
-                </button>
-                <button
-                  disabled
-                  title="More options (coming soon)"
-                  aria-label="More options (coming soon)"
-                  className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-3 disabled:opacity-30 transition-colors"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
                 </button>
               </div>
               <div className="flex items-center gap-1.5">
