@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Target, Plus, Trash2, Edit3, Check, X, ChevronDown, ChevronRight, Flag, AlertCircle, CheckCircle, Pause } from 'lucide-react'
+import { Target, Plus, Trash2, Edit3, Check, X, ChevronDown, ChevronRight, Flag, AlertCircle, CheckCircle, Pause, RefreshCw } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
+import { toast } from '../components/Toast'
 import { Spinner } from '../components/Skeleton'
 import { confirmDialog } from '../lib/confirm'
 import {
@@ -54,6 +55,19 @@ export default function GoalCascadePage() {
       })
       .catch(err => apiError('Load goals', err))
       .finally(() => setLoading(false))
+  }
+
+  // Manual refresh — background refetch (no full-page spinner) that PRESERVES the user's expand/collapse
+  // state, so they can pull agents' latest goal progress (agents update status server-side) without a reset.
+  const [refreshing, setRefreshing] = useState(false)
+  const refresh = async () => {
+    setRefreshing(true)
+    try {
+      const [g, a, p] = await Promise.all([getGoals(), getGlobalAgents(), getProjects()])
+      setGoals(g); setAgents(a); setProjects(p)
+      toast('success', 'Refreshed')
+    } catch (err) { apiError('Refresh goals', err) }
+    finally { setRefreshing(false) }
   }
 
   useEffect(() => { load() }, [])
@@ -135,7 +149,12 @@ export default function GoalCascadePage() {
   if (loading) return <Spinner />
 
   return (
-    <PageShell title="Goal Cascade" subtitle="Company mission flows down to project goals, then to agent objectives">
+    <PageShell title="Goal Cascade" subtitle="Company mission flows down to project goals, then to agent objectives"
+      actions={
+        <button onClick={refresh} disabled={refreshing} title="Refresh goals" className="btn-secondary btn-sm">
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+        </button>
+      }>
       <div className="max-w-4xl space-y-8">
 
       {/* Mission */}
