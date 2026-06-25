@@ -123,6 +123,7 @@ export default function WebhooksPage() {
                 placeholder="GitHub Deploy Hook"
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
+                autoFocus
               />
             </div>
             <div>
