@@ -956,39 +956,6 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
           </span>
         </div>
 
-        {/* Per-card lock toggle — locks card position so Auto-adjust layout
-            skips it. Sits top-right; stops propagation to avoid triggering
-            card selection. */}
-        <span
-          role="button"
-          tabIndex={0}
-          aria-pressed={isLocked}
-          aria-label={isLocked ? 'Unlock card position' : 'Lock card position'}
-          title={isLocked ? 'Unlock card position' : 'Lock card to current position'}
-          onClick={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-            onToggleLock(data.id, !isLocked)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.stopPropagation()
-              e.preventDefault()
-              onToggleLock(data.id, !isLocked)
-            }
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          className={`absolute top-2 right-2 z-10 inline-flex items-center justify-center w-6 h-6 rounded-md border transition-colors cursor-pointer ${
-            isLocked
-              ? 'bg-amber/20 text-amber border-amber/40 hover:bg-amber/30'
-              : 'bg-surface-2/80 text-text-muted border-border hover:bg-surface-3 hover:text-amber hover:border-amber/40 opacity-0 group-hover:opacity-100'
-          }`}
-          style={isLocked ? undefined : { opacity: 1 }}
-        >
-          {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-        </span>
-
         <div className="px-4 pt-4 pb-3 flex items-center gap-3 h-full">
           <AgentIcon
             name={data.name}
@@ -1055,6 +1022,40 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
           </div>
         </div>
       </button>
+
+      {/* Per-card lock toggle — locks card position so Auto-adjust layout skips
+          it. Rendered as a SIBLING of the card <button> (not nested inside it)
+          to avoid a nested-interactive a11y violation; absolute-positioned over
+          the card's top-right via the `relative` wrapper. */}
+      <span
+        role="button"
+        tabIndex={0}
+        aria-pressed={isLocked}
+        aria-label={isLocked ? 'Unlock card position' : 'Lock card position'}
+        title={isLocked ? 'Unlock card position' : 'Lock card to current position'}
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          onToggleLock(data.id, !isLocked)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.stopPropagation()
+            e.preventDefault()
+            onToggleLock(data.id, !isLocked)
+          }
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        className={`absolute top-2 right-2 z-10 inline-flex items-center justify-center w-6 h-6 rounded-md border transition-colors cursor-pointer ${
+          isLocked
+            ? 'bg-amber/20 text-amber border-amber/40 hover:bg-amber/30'
+            : 'bg-surface-2/80 text-text-muted border-border hover:bg-surface-3 hover:text-amber hover:border-amber/40 opacity-0 group-hover:opacity-100'
+        }`}
+        style={isLocked ? undefined : { opacity: 1 }}
+      >
+        {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+      </span>
 
       <Handle
         type="source"
