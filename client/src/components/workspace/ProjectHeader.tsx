@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Bot, GitBranch, ExternalLink, Link2, ChevronDown, Check, Hammer, Rocket, Wand2, MoreHorizontal, ShieldCheck, Loader2, CheckCircle2, type LucideIcon } from 'lucide-react'
+import { Eye, Bot, ExternalLink, Link2, ChevronDown, Check, Hammer, Rocket, Wand2, MoreHorizontal, ShieldCheck, Loader2, CheckCircle2, type LucideIcon } from 'lucide-react'
 import ScoreGauge from './ScoreGauge'
 import PhaseJourney from './PhaseJourney'
 import VerdictPill from './VerdictPill'
@@ -93,7 +93,6 @@ function OverflowMenu({ groups }: { groups: { label?: string; items: MenuItem[] 
 export default function ProjectHeader({ detail, repo, onReload }: { detail: ProjectDetail; repo: RepoData | null; onReload: () => void }) {
   const nav = useNavigate()
   const { project, build, buildId } = detail
-  const git = repo?.git
   const { run, trigger } = useWorkspaceAction(buildId || '', onReload)
   const [safeActions, setSafeActions] = useState<ActionDef[]>([])
   const [steps, setSteps] = useState<PipelineStep[]>([])
@@ -161,7 +160,7 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
           {build && <VerdictPill verdict={build.lensVerdict} blockers={build.gates.blockersOpen} />}
         </div>
         <div className="flex items-center gap-1 text-[13px] text-text-muted mb-2">
-          <span>{project.niche ? `${project.niche} · ` : ''}{project.domain || repo?.themeLock?.store || '—'}{build ? ` · ${build.grade === 'BLOCK-RISK' ? 'at risk' : `grade ${build.grade}`}` : ' · intake only (no build linked)'}</span>
+          <span>{project.niche ? `${project.niche} · ` : ''}{project.domain || repo?.themeLock?.store || (build ? 'no store linked' : 'intake only — no build linked')}</span>
           {build && <InfoIcon label="Build health 0–100 (grade A–F): gates passed, Lens verdict, changes complete, and how close to this build's reachable max." />}
         </div>
 
@@ -191,14 +190,6 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
               </div>
             )}
           </>
-        ) : null}
-
-        {repo?.connected ? (
-          <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-border-subtle text-[12px]">
-            <code className="text-text-muted truncate max-w-[280px]">{repo.build_dir}</code>
-            {git?.isRepo && <span className="pill bg-surface-2 text-text-secondary flex items-center gap-1"><GitBranch className="w-3 h-3" />{git.branch}</span>}
-            {git?.isRepo && <span className={`pill ${git.clean ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'}`}>{git.clean ? 'clean' : `${git.dirty}●`}</span>}
-          </div>
         ) : null}
       </div>
 

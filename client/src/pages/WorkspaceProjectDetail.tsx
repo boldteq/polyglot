@@ -92,7 +92,7 @@ export default function WorkspaceProjectDetail() {
   return (
     <PageShell
       title={detail ? detail.project.name : 'Project'}
-      subtitle={detail ? `${detail.project.niche ? detail.project.niche + ' · ' : ''}${detail.hasBuild ? `step ${detail.build!.step.current}/18` : 'intake only'}` : 'Loading…'}
+      subtitle={detail ? (detail.hasBuild ? (detail.project.niche || undefined) : 'Intake — no build linked yet') : 'Loading…'}
       actions={
         <div className="flex items-center gap-2">
           <button onClick={() => nav('/workspace')} className="btn-ghost btn-sm flex items-center gap-1.5"><ArrowLeft className="w-4 h-4" />Projects</button>

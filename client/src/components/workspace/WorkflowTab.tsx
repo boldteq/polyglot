@@ -144,7 +144,7 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
 
   return (
     <div className="space-y-2">
-      <p className="text-[12px] text-text-muted px-1">The build as 7 phases · step {current}/18. Open a phase to see its steps; run a step’s check inline or dispatch its owner.</p>
+      <p className="text-[12px] text-text-muted px-1">Open a phase to run a step’s check or dispatch its owner.</p>
       <div className="space-y-2">
         {PHASES.map((phase) => {
           const phaseSteps = steps.filter((s) => s.step >= phase.from && s.step <= phase.to)
