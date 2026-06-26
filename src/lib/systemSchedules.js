@@ -71,9 +71,9 @@ const DEFINITIONS = [
   },
   {
     id: 'sys-tutor',
-    name: 'Tutor weekly training (deterministic)',
-    description: 'Phase C — consume open training_signals → synthesize rollback-armed patches → governor routes auto/review/reject → surgically patch agent .md for autos → measure impact + auto-rollback regressions. Local, no token cost; feedback.md never auto-written.',
-    cron: '0 2 * * 0',
+    name: 'Tutor daily training (deterministic)',
+    description: 'Phase C (now DAILY, after brain-aggregate emits the day’s signals) — consume open training_signals → synthesize rollback-armed patches → governor routes auto/review/reject → surgically patch agent .md for autos → measure impact + auto-rollback regressions. Safe daily: the 48h per-target cooldown prevents over-patching and the 24h observe window means regressions roll back a day sooner than the old weekly cadence. Holds all autos when the eval judge is miscalibrated. Local, no token cost; feedback.md never auto-written.',
+    cron: '30 6 * * *',
     agentName: 'tutor',
     handler: 'tutorTraining',
     needsLlm: false,
