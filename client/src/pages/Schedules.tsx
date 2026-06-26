@@ -260,6 +260,7 @@ export default function SchedulesPage() {
         <ScheduleForm
           mode="create"
           agents={agents}
+          existing={schedules}
           onSaved={handleSaved}
           onCancel={() => setShowCreate(false)}
         />

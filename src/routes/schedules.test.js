@@ -142,3 +142,19 @@ test('A3: a schedule whose agent is missing auto-pauses instead of failing forev
     agentExists = true;
   }
 });
+
+test('C1: POST rejects over-length name and prompt', async () => {
+  const longName = await req('POST', '/schedules', { name: 'x'.repeat(201), agentName: 'tester', prompt: 'ok', cronExpr: '0 9 * * *' });
+  assert.equal(longName.status, 400);
+  const longPrompt = await req('POST', '/schedules', { name: 'ok', agentName: 'tester', prompt: 'x'.repeat(20001), cronExpr: '0 9 * * *' });
+  assert.equal(longPrompt.status, 400);
+});
+
+test('C2: PUT trims the prompt (parity with POST)', async () => {
+  const id = 'sched-c2';
+  seed(id);
+  const r = await req('PUT', `/schedules/${id}`, { prompt: '  spaced out  ' });
+  assert.equal(r.status, 200);
+  const row = (await req('GET', '/schedules')).json.find((s) => s.id === id);
+  assert.equal(row.prompt, 'spaced out');
+});

@@ -17,9 +17,19 @@ import {
 import type { Agent } from '../types'
 import { useCronPresets } from '../hooks/useCronPresets'
 import { formatAgentDisplay } from '../lib/agentDisplay'
+import { confirmDialog } from '../lib/confirm'
 
-const CRON_FIELD = '(?:\\*|(?:[0-9]+|\\*)(?:[-/,][0-9]+)*(?:,(?:[0-9]+|\\*)(?:[-/,][0-9]+)*)*)'
-const CRON_RE = new RegExp(`^${CRON_FIELD}(?:\\s+${CRON_FIELD}){4,5}$`)
+const NAME_MAX = 200
+const PROMPT_MAX = 20000
+
+// One cron field: *, numbers, or 3-letter names (JAN/MON…), with -, /, and ,
+// combinations. Structural-only — node-cron on the server is authoritative — but
+// enforces EXACTLY 5 fields so 6-field/seconds exprs (which humanizeCron and the
+// presets don't model) are rejected, and accepts named months/days the old regex
+// wrongly blocked (e.g. "mon-fri", "JAN").
+const CRON_TOKEN = '(?:[0-9]{1,2}|[A-Za-z]{3}|\\*)(?:[-/](?:[0-9]{1,2}|[A-Za-z]{3}))?'
+const CRON_FIELD = `${CRON_TOKEN}(?:,${CRON_TOKEN})*`
+const CRON_RE = new RegExp(`^${CRON_FIELD}(?:\\s+${CRON_FIELD}){4}$`, 'i')
 
 function isValidCronClient(expr: string): boolean {
   if (!expr || typeof expr !== 'string') return false
@@ -30,6 +40,8 @@ export interface ScheduleFormProps {
   mode: 'create' | 'edit'
   initial?: Schedule | null
   agents: Agent[]
+  /** Existing schedules — used to warn on an exact duplicate in create mode. */
+  existing?: Schedule[]
   onSaved: (schedule: Schedule) => void
   onCancel: () => void
 }
@@ -50,7 +62,7 @@ function initialForm(initial?: Schedule | null): FormState {
   }
 }
 
-export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel }: ScheduleFormProps) {
+export default function ScheduleForm({ mode, initial, agents, existing, onSaved, onCancel }: ScheduleFormProps) {
   const [form, setForm] = useState<FormState>(() => initialForm(initial))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -120,6 +132,18 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
       setCronError('Invalid cron expression')
       return
     }
+    // C6: warn (don't block) on an exact duplicate when creating.
+    if (mode === 'create' && existing?.some(s =>
+      s.kind !== 'system' && s.agentName === agentName &&
+      (s.cron || '') === cronExpr && (s.prompt || '').trim() === prompt
+    )) {
+      const go = await confirmDialog({
+        title: 'Duplicate schedule?',
+        message: 'A schedule with the same agent, cron, and prompt already exists. Create another?',
+        confirmLabel: 'Create anyway',
+      })
+      if (!go) return
+    }
     setSaving(true)
     setError('')
     try {
@@ -159,6 +183,7 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
             className="input"
             placeholder="Daily Status Report"
             value={form.name}
+            maxLength={NAME_MAX}
             onChange={e => updateForm({ name: e.target.value })}
             autoFocus
           />
@@ -234,6 +259,7 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
           className="input min-h-[80px] resize-y"
           placeholder="What should this agent do on each run?"
           value={form.prompt}
+          maxLength={PROMPT_MAX}
           onChange={e => updateForm({ prompt: e.target.value })}
         />
       </div>
@@ -247,7 +273,7 @@ export default function ScheduleForm({ mode, initial, agents, onSaved, onCancel 
         </button>
         <button
           onClick={handleSave}
-          disabled={saving || agents.length === 0}
+          disabled={saving || agents.length === 0 || !!cronError}
           className="btn-primary btn-md"
         >
           {saving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</> : (mode === 'edit' ? 'Save Changes' : 'Create Schedule')}

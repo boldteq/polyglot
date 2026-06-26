@@ -19,6 +19,9 @@ const inflightJobs = new Map();
 const retryTimers = new Map();
 const RUN_TIMEOUT_MS = 5 * 60 * 1000;
 const RETRY_DELAY_MS = 60 * 1000;
+// C1: input bounds (kept in sync with ScheduleForm maxLength).
+const NAME_MAX = 200;
+const PROMPT_MAX = 20000;
 
 // MIRRORED by client/src/hooks/useCronPresets.ts FALLBACK_PRESETS (offline
 // fallback). This route is the source of truth — update both on change.
@@ -350,6 +353,14 @@ router.post('/schedules', rateLimit('write'), (req, res) => {
   if (!name.trim() || !agentName.trim() || !prompt.trim()) {
     return res.status(400).json({ error: 'name, agentName, prompt cannot be empty' });
   }
+  // C1: bound name/prompt — they are persisted, re-sent on every list fetch, and
+  // re-embedded into the LLM call on every tick.
+  if (name.trim().length > NAME_MAX || agentName.trim().length > NAME_MAX) {
+    return res.status(400).json({ error: `name and agentName must be ≤ ${NAME_MAX} characters` });
+  }
+  if (prompt.trim().length > PROMPT_MAX) {
+    return res.status(400).json({ error: `prompt must be ≤ ${PROMPT_MAX} characters` });
+  }
   if (!cron.validate(cronExpr)) {
     return res.status(400).json({ error: 'Invalid cron expression' });
   }
@@ -421,17 +432,17 @@ router.put('/schedules/:id', rateLimit('write'), (req, res) => {
   if (agentName !== undefined && !validateAgentExists(agentName)) {
     return res.status(400).json({ error: `Agent '${agentName}' not found` });
   }
-  if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
-    return res.status(400).json({ error: 'name cannot be empty' });
+  if (name !== undefined && (typeof name !== 'string' || !name.trim() || name.trim().length > NAME_MAX)) {
+    return res.status(400).json({ error: `name must be 1–${NAME_MAX} characters` });
   }
-  if (prompt !== undefined && (typeof prompt !== 'string' || !prompt.trim())) {
-    return res.status(400).json({ error: 'prompt cannot be empty' });
+  if (prompt !== undefined && (typeof prompt !== 'string' || !prompt.trim() || prompt.trim().length > PROMPT_MAX)) {
+    return res.status(400).json({ error: `prompt must be 1–${PROMPT_MAX} characters` });
   }
 
   const fields = { updatedAt: new Date().toISOString() };
   if (name !== undefined) fields.name = name.trim();
   if (agentName !== undefined) fields.agentName = agentName.trim();
-  if (prompt !== undefined) fields.prompt = prompt;
+  if (prompt !== undefined) fields.prompt = prompt.trim(); // C2: match POST's trim
   if (cronExpr !== undefined) fields.cron = cronExpr;
   if (enabled !== undefined) fields.enabled = enabled;
 
