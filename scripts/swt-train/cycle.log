@@ -59,3 +59,7 @@
 [2026-06-26T13:38:25.567Z] cycle 17: slices [trust-social-proof|cart-drawer, copy-voice|cart-drawer, honesty-claims|cart-drawer, data-binding|cart-drawer, performance-cwv|cart-drawer, seo-structured-data|cart-drawer, i18n-currency-rtl|cart-drawer] → generating 49 FAQs (FAQ-0781…)
 [2026-06-26T13:43:00.965Z] cycle 17 verify: kept 49/49 (dropped 0)
 [2026-06-26T13:43:01.008Z] cycle 17 distributed → 829 rules · 12/14 agents trained · 0 gate-gaps
+[2026-06-26T13:43:02.094Z] cycle 17 ✓ +49 FAQs → 829/5040 (16.4%) · 12/14 agents trained · committed
+[2026-06-26T13:58:02.110Z] cycle 18: slices [states-empty-loading-error|cart-drawer, edge-cases|cart-drawer, legal-compliance|cart-drawer, merchandising|cart-drawer, search-filtering|cart-drawer, nav-ia|cart-drawer, forms-validation|cart-drawer] → generating 49 FAQs (FAQ-0830…)
+[2026-06-26T14:02:41.873Z] cycle 18 verify: kept 49/49 (dropped 0)
+[2026-06-26T14:02:41.929Z] cycle 18 distributed → 878 rules · 12/14 agents trained · 0 gate-gaps
