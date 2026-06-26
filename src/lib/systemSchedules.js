@@ -258,6 +258,16 @@ const DEFINITIONS = [
     needsLlm: false,
     cancellable: true,
   },
+  {
+    id: 'sys-suite-health',
+    name: 'Suite health check (daily)',
+    description: 'Daily regression sweep against the COMMITTED HEAD (throwaway git worktree — not the WIP tree, so in-progress edits + env-coupled tests never false-alarm): client tsc -b + the backend test suite (Node 20). Files a Learning-Inbox candidate only when tsc errors or test failures RISE vs the last run. Local, no token cost.',
+    cron: '30 5 * * *',
+    agentName: 'sage',
+    handler: 'suiteHealth',
+    needsLlm: false,
+    cancellable: true,
+  },
 ];
 
 const DEFAULT_ENABLED = true;
@@ -516,6 +526,49 @@ const HANDLERS = {
     return {
       output: `App audit: ${t.pages || 0} pages · ${t.axeCritical || 0} critical a11y · ${t.consoleErrors || 0} console errors · ${t.colorContrast || 0} contrast nodes (tracked) · ${t.errored || 0} errored${actionable > prevActionable && prevActionable >= 0 ? ' — ⚠ rose' : ''}`,
       metadata: report,
+    };
+  },
+
+  // Bucket 2: daily tsc + test-suite sweep against committed HEAD (delta-alerted).
+  async suiteHealth(def, ctx) {
+    const path = require('path');
+    const { spawn } = require('child_process');
+    const script = path.join(__dirname, '..', '..', 'scripts', 'suite-health.mjs');
+    const raw = await new Promise((resolve) => {
+      let buf = '';
+      const proc = spawn(process.execPath, [script], { cwd: path.join(__dirname, '..', '..'), env: { ...process.env } });
+      if (ctx && typeof ctx.registerProc === 'function') ctx.registerProc(proc);
+      const timer = setTimeout(() => { try { proc.kill('SIGKILL'); } catch {} }, 20 * 60 * 1000);
+      proc.stdout.on('data', (d) => { buf += d.toString(); });
+      proc.stderr.on('data', () => {});
+      proc.on('close', () => { clearTimeout(timer); resolve(buf); });
+      proc.on('error', () => { clearTimeout(timer); resolve(''); });
+    });
+    let rep;
+    try { rep = JSON.parse(raw.trim().split('\n').pop()); } catch { rep = { error: 'suite-health produced no parseable output' }; }
+    if (rep.error) return { output: `Suite health error: ${rep.error}`, metadata: rep };
+
+    const tscErr = (rep.tsc && rep.tsc.errors) || 0;
+    const testFail = (rep.tests && rep.tests.fail) || 0;
+    const actionable = tscErr + testFail;
+    let prev = -1;
+    try {
+      const p = db.getScheduleRunsFor('sys-suite-health', { limit: 8 }).find((r) => r.status === 'success' && r.metadata && r.metadata.tsc);
+      if (p) prev = ((p.metadata.tsc && p.metadata.tsc.errors) || 0) + ((p.metadata.tests && p.metadata.tests.fail) || 0);
+    } catch { /* first run */ }
+    if (actionable > 0 && actionable > prev) {
+      try {
+        db.insertLearningCandidate({
+          type: 'suite-health',
+          title: `Suite health regression: ${tscErr} tsc errors, ${testFail} test failures at ${rep.head || 'HEAD'} (prev ${prev < 0 ? 'baseline' : prev})`,
+          payload: rep,
+          source: 'sys-suite-health', confidence: 1, status: 'pending',
+        });
+      } catch (e) { console.warn('[suiteHealth] inbox insert failed:', e.message); }
+    }
+    return {
+      output: `Suite health @${rep.head || 'HEAD'}: tsc ${tscErr} errors · tests ${(rep.tests && rep.tests.pass) || 0}/${(rep.tests && rep.tests.total) || 0} (${testFail} fail)${actionable > prev && prev >= 0 ? ' — ⚠ rose' : ''}`,
+      metadata: rep,
     };
   },
 
