@@ -1,10 +1,10 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 20,
-  "batches": 20,
-  "faqCount": 976,
-  "slicePointer": 133,
+  "cyclesRun": 21,
+  "batches": 21,
+  "faqCount": 1025,
+  "slicePointer": 140,
   "consecutiveFailures": 0,
   "log": [
     {
@@ -297,6 +297,21 @@
         "copy-voice|checkout-reassurance",
         "honesty-claims|checkout-reassurance",
         "data-binding|checkout-reassurance"
+      ]
+    },
+    {
+      "cycle": 21,
+      "ts": "2026-06-26T15:33:15.525Z",
+      "added": 49,
+      "faqTotal": 1025,
+      "slices": [
+        "performance-cwv|checkout-reassurance",
+        "seo-structured-data|checkout-reassurance",
+        "i18n-currency-rtl|checkout-reassurance",
+        "states-empty-loading-error|checkout-reassurance",
+        "edge-cases|checkout-reassurance",
+        "legal-compliance|checkout-reassurance",
+        "merchandising|checkout-reassurance"
       ]
     }
   ]
