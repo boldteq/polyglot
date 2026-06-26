@@ -45,13 +45,14 @@ export default function ProjectCard({ project: p, thumb, attention, selected, an
             <span className="text-4xl font-bold text-accent/30 select-none">{initial}</span>
           </div>
         )}
-        <span className={`absolute top-2 right-2 text-[11px] font-medium px-2 py-0.5 rounded-full capitalize backdrop-blur-sm ${PROJECT_STATUS_TONE[p.status] || PROJECT_STATUS_TONE.intake}`}>{p.status}</span>
-        <button onClick={(e) => { e.stopPropagation(); onToggleSel() }} aria-label={selected ? 'Deselect' : 'Select'}
-          className={`absolute top-2 left-2 rounded bg-surface/80 backdrop-blur-sm p-0.5 transition-opacity ${selected ? 'text-accent opacity-100' : `text-text-muted ${anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}`}>
+        <span className={`absolute top-2 right-2 z-20 text-[11px] font-medium px-2 py-0.5 rounded-full capitalize backdrop-blur-sm ${PROJECT_STATUS_TONE[p.status] || PROJECT_STATUS_TONE.intake}`}>{p.status}</span>
+        <button onClick={(e) => { e.stopPropagation(); onToggleSel() }} aria-label={selected ? 'Deselect project' : 'Select project'}
+          className={`absolute top-2 left-2 z-20 rounded bg-surface/80 backdrop-blur-sm p-0.5 transition-opacity ${selected ? 'text-accent opacity-100' : `text-text-muted ${anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}`}>
           {selected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
         </button>
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <span className="btn-primary btn-sm flex items-center gap-1.5 pointer-events-none">Open project <ArrowRight className="w-4 h-4" /></span>
+        {/* hover hint — purely visual; pointer-events-none so it never steals the checkbox click */}
+        <div className="absolute inset-0 z-10 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+          <span className="btn-primary btn-sm flex items-center gap-1.5">Open project <ArrowRight className="w-4 h-4" /></span>
         </div>
       </div>
 

@@ -7,7 +7,7 @@ import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
 import ProjectCard from '../components/workspace/ProjectCard'
-import { getWorkspaceProjects, getWorkspaceEscalations, ackWorkspaceEscalation, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, getLensLatest, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
+import { getWorkspaceProjects, getWorkspaceEscalations, ackWorkspaceEscalation, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, syncWorkspaceProjects, getLensLatest, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
 
 type Filter = 'all' | 'attention' | 'passing'
 
@@ -232,7 +232,7 @@ export default function WorkspaceProjects() {
       )}
 
       {showNew && <NewProjectModal onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); load() }} />}
-      {linkFor && <LinkBuildModal project={linkFor} builds={unlinked} onClose={() => setLinkFor(null)} onLinked={() => { setLinkFor(null); load() }} />}
+      {linkFor && <LinkBuildModal project={linkFor} builds={unlinked} onClose={() => setLinkFor(null)} onLinked={() => { setLinkFor(null); load() }} onRescan={load} />}
       {editFor && <EditProjectModal project={editFor} onClose={() => setEditFor(null)} onSaved={() => { setEditFor(null); load() }} />}
     </PageShell>
   )
@@ -303,23 +303,41 @@ function EditProjectModal({ project, onClose, onSaved }: { project: WorkspacePro
   )
 }
 
-function LinkBuildModal({ project, builds, onClose, onLinked }: { project: WorkspaceProject; builds: AssembledBuild[]; onClose: () => void; onLinked: () => void }) {
+function LinkBuildModal({ project, builds, onClose, onLinked, onRescan }: { project: WorkspaceProject; builds: AssembledBuild[]; onClose: () => void; onLinked: () => void; onRescan: () => void }) {
+  const [scanning, setScanning] = useState(false)
   const link = async (buildId: string) => {
-    try { await linkWorkspaceProject(project.id, buildId); toast('success', 'Build linked'); onLinked() }
+    try { await linkWorkspaceProject(project.id, buildId); toast('success', 'Folder linked'); onLinked() }
     catch (e) { toast('error', e instanceof Error ? e.message : 'Link failed') }
   }
+  const rescan = async () => {
+    setScanning(true)
+    try { const r = await syncWorkspaceProjects(); toast('success', r.adopted ? `Found ${r.adopted} new folder${r.adopted === 1 ? '' : 's'}` : 'Re-scanned — no new folders'); onRescan() }
+    catch (e) { toast('error', e instanceof Error ? e.message : 'Re-scan failed') }
+    finally { setScanning(false) }
+  }
   return (
-    <Modal title={`Link a build to ${project.name}`} onClose={onClose}>
-      {builds.length === 0 ? <EmptyState icon={Unlink} title="No unlinked builds" description="Every discovered build is already linked to a project." size="sm" card={false} /> : (
-        <div className="space-y-1.5 max-h-80 overflow-y-auto">
-          {builds.map((b) => (
-            <button key={b.buildId} onClick={() => link(b.buildId)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-surface-2 text-left text-[13px]">
-              <span className="capitalize">{b.client}</span>
-              <span className="text-text-muted text-[11px]">{b.store || ''}</span>
-            </button>
-          ))}
-        </div>
-      )}
+    <Modal title={`Link a folder to ${project.name}`} onClose={onClose}>
+      <div className="space-y-3">
+        <p className="text-[12px] text-text-muted leading-snug">Theme folders under your build roots are detected automatically. Pick one to link, or drop a new folder there and re-scan.</p>
+        {builds.length === 0 ? (
+          <EmptyState icon={Unlink} title="No unlinked folders found" description="Add a theme folder under your build roots, then re-scan to see it here." size="sm" card={false} />
+        ) : (
+          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            {builds.map((b) => (
+              <button key={b.buildId} onClick={() => link(b.buildId)} className="w-full px-3 py-2 rounded-lg border border-border hover:border-accent/40 hover:bg-surface-2 text-left transition-colors">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] font-medium capitalize truncate">{b.client}</span>
+                  {b.store && <span className="text-text-muted text-[11px] shrink-0">{b.store}</span>}
+                </div>
+                <code className="text-[11px] text-text-muted/80 truncate block mt-0.5">{b.dir}</code>
+              </button>
+            ))}
+          </div>
+        )}
+        <button onClick={rescan} disabled={scanning} className="btn-ghost btn-sm w-full flex items-center justify-center gap-1.5 disabled:opacity-50">
+          <RefreshCw className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} /> {scanning ? 'Re-scanning…' : 'Re-scan folders'}
+        </button>
+      </div>
     </Modal>
   )
 }
