@@ -89,3 +89,7 @@
 [2026-06-26T16:32:28.415Z] cycle 24: slices [copy-voice|search, honesty-claims|search, data-binding|search, performance-cwv|search, seo-structured-data|search, i18n-currency-rtl|search, states-empty-loading-error|search] → generating 49 FAQs (FAQ-1123…)
 [2026-06-26T16:38:47.864Z] cycle 24 verify: kept 45/49 (dropped 4)
 [2026-06-26T16:38:47.903Z] cycle 24 distributed → 1167 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-26T16:38:48.029Z] cycle 24 ✓ +45 FAQs → 1167/5040 (23.2%) · 13/14 agents trained · committed
+[2026-06-26T16:53:48.044Z] cycle 25: slices [edge-cases|search, legal-compliance|search, merchandising|search, search-filtering|search, nav-ia|search, forms-validation|search, email-lifecycle|search] → generating 49 FAQs (FAQ-1168…)
+[2026-06-26T16:57:30.749Z] cycle 25 verify: kept 49/49 (dropped 0)
+[2026-06-26T16:57:30.785Z] cycle 25 distributed → 1216 rules · 13/14 agents trained · 11 gate-gaps
