@@ -363,6 +363,31 @@ function cancelInflight(id) {
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
+// Surface a handler-internal failure instead of swallowing it: log to the
+// error_log AND collect it into the run's metadata.faults[] (visible in the
+// Schedule history drawer), and for loop-breaking faults stage a 'system-fault'
+// Learning-Inbox candidate. Replaces the silent console.warn-only catches that
+// used to hide self-improvement-loop breakages. Never throws.
+function recordFault(faults, scheduleId, where, err, { critical = false } = {}) {
+  const message = (err && err.message) ? err.message : String(err);
+  const stack = (err && err.stack) ? err.stack : undefined;
+  console.warn(`[systemSchedule] ${scheduleId}/${where}: ${message}`);
+  try {
+    db.insertErrorLog({ source: 'system-schedule', message: `${scheduleId}/${where}: ${message}`, stack, context: { scheduleId, where } });
+  } catch { /* error log must never break the handler */ }
+  if (critical) {
+    try {
+      db.insertLearningCandidate({
+        type: 'system-fault',
+        title: `${scheduleId}: ${where} failed — ${message}`.slice(0, 200),
+        payload: { scheduleId, where, message },
+        source: scheduleId, confidence: 1, status: 'pending',
+      });
+    } catch { /* best-effort */ }
+  }
+  if (Array.isArray(faults)) faults.push({ where, message });
+}
+
 const HANDLERS = {
   // Post-publish results loop — run every DUE build checkpoint (the workspace.js:477 fix).
   // No-op when no build has due checkpoints, so it's safe to tick hourly.
@@ -563,43 +588,38 @@ const HANDLERS = {
   async witnessSweep() {
     const { org, experience, hr, loadRecentAgentRuns } = requireDeps();
     const recent = loadRecentAgentRuns(24);
+    const faults = [];
 
     // Pillar 3 → Witness: pull any new LLM-judge scores from eval-runs.jsonl into
     // eval_scores BEFORE the sweep reads them — otherwise runWitnessSweep classifies
     // on yesterday's eval_scores and today's judged outputs never raise an eval_drop
     // (the learn-from-consequences loop was dead until this ran first). Idempotent.
+    // CRITICAL: a silent ingest failure neutered the PIP eval gate with no trace.
     let evalIngested = 0;
-    try { evalIngested = (db.ingestEvalRuns() || {}).ingested || 0; } catch (err) {
-      console.warn(`[systemSchedules] eval ingest failed: ${err.message}`);
-    }
+    try { evalIngested = (db.ingestEvalRuns() || {}).ingested || 0; }
+    catch (err) { recordFault(faults, 'sys-witness', 'eval-ingest', err, { critical: true }); }
 
     // FIX #11 — read the judge calibration ONCE and hand it to the sweep so eval_drop /
     // PIP decisions agree with the rest of the brain (no double-read, no drift).
     let evalCalibration;
     try { evalCalibration = (await import('../intelligence/governor.mjs')).getEvalCalibration(); }
-    catch (err) { console.warn(`[systemSchedules] calibration read failed: ${err.message}`); evalCalibration = undefined; }
+    catch (err) { recordFault(faults, 'sys-witness', 'calibration-read', err); evalCalibration = undefined; }
 
     const result = hr.runWitnessSweep(org, experience, recent, { evalCalibration });
 
     let escalationsAdvanced = 0;
     try {
       const escalation = require('./escalation');
-      const advanced = escalation.autoAdvanceExpired();
-      escalationsAdvanced = advanced.length;
-    } catch (err) {
-      console.warn(`[systemSchedules] escalation sweep failed: ${err.message}`);
-    }
+      escalationsAdvanced = escalation.autoAdvanceExpired().length;
+    } catch (err) { recordFault(faults, 'sys-witness', 'escalation-sweep', err); }
 
     try {
-      const tasks = require('./tasks');
-      tasks.reconcileLoad();
-    } catch (err) {
-      console.warn(`[systemSchedules] task reconcile failed: ${err.message}`);
-    }
+      require('./tasks').reconcileLoad();
+    } catch (err) { recordFault(faults, 'sys-witness', 'task-reconcile', err); }
 
     return {
-      output: `Witness sweep: ${result.runsClassified} runs, ${result.pipCandidates.length} PIP, ${result.promotionCandidates.length} promo, ${escalationsAdvanced} escalations advanced, ${evalIngested} eval scores ingested`,
-      metadata: { sweep: result, escalationsAdvanced, evalIngested },
+      output: `Witness sweep: ${result.runsClassified} runs, ${result.pipCandidates.length} PIP, ${result.promotionCandidates.length} promo, ${escalationsAdvanced} escalations advanced, ${evalIngested} eval scores ingested${faults.length ? ` · ${faults.length} fault(s)` : ''}`,
+      metadata: { sweep: result, escalationsAdvanced, evalIngested, faults },
     };
   },
 
@@ -765,7 +785,9 @@ const HANDLERS = {
         projectsDir: cfg('learning.vscode.projectsDir', undefined),
       });
     } catch (err) {
-      console.warn(`[learningDigest] transcript scan failed: ${err.message}`);
+      // CRITICAL: a silent scan failure means NO sessions get discovered → the whole
+      // day's lessons/bugs/decisions are lost with no trace. Surface it.
+      recordFault(null, 'sys-learning-digest', 'transcript-scan', err, { critical: true });
     }
 
     const sessions = db.getPendingVscodeSessions(24, maxSessions);
@@ -893,23 +915,27 @@ const HANDLERS = {
   // eval_scores for the Witness loop.
   async intelEval(def, ctx) {
     const res = await runIntelScript('eval/run-eval.mjs', ['--selftest'], { ctx, timeoutMs: 12 * 60 * 1000, label: 'eval' });
+    const faults = [];
+    // CRITICAL: a silent ingest failure leaves the judge calibration stale → the
+    // trainer holds every auto-patch with no obvious cause. Surface it.
     let ingested = 0;
-    try { ingested = (db.ingestEvalRuns() || {}).ingested || 0; } catch (err) { console.warn('[systemSchedules] ingestEvalRuns failed:', err.message); }
+    try { ingested = (db.ingestEvalRuns() || {}).ingested || 0; }
+    catch (err) { recordFault(faults, 'sys-intel-eval', 'eval-ingest', err, { critical: true }); }
     // FIX #10 — surface the selftest that was just written: it IS the calibration the
-    // trainer reads next (now at 02:00, after this 01:00 run). Name pass-ratio + separation
+    // trainer reads next (now at 06:30, after this 01:00 run). Name pass-ratio + separation
     // so judge drift is visible here, not only later when the trainer holds autos.
     let selftest = null, calibration = null;
     try {
       const { getEvalCalibration } = await import('../intelligence/governor.mjs');
       selftest = db.getLatestSelftest?.() || null;
       calibration = getEvalCalibration();
-    } catch (err) { console.warn('[systemSchedules] selftest read failed:', err.message); }
+    } catch (err) { recordFault(faults, 'sys-intel-eval', 'selftest-read', err); }
     const stPart = selftest
       ? `; selftest ${selftest.calibrated}/${selftest.total} calibrated, sep ${Number(selftest.meanSeparation ?? 0).toFixed(3)} → ${calibration?.calibrated ? 'CALIBRATED' : `miscalibrated (${calibration?.reason})`}`
       : '; no selftest record written';
     return {
-      output: `${res.output}; ingested ${ingested} eval score(s) into Witness${stPart}`,
-      metadata: { ...res.metadata, ingested, selftest, calibration },
+      output: `${res.output}; ingested ${ingested} eval score(s) into Witness${stPart}${faults.length ? ` · ${faults.length} fault(s)` : ''}`,
+      metadata: { ...res.metadata, ingested, selftest, calibration, faults },
     };
   },
 
@@ -1670,6 +1696,8 @@ module.exports = {
   enqueueMemoryChange,
   appendReindexQueue, // exported for tests + write-path callers
   drainReindexQueue,  // exported for tests
+  recordFault,        // exported for tests
+
   setEnabled,
   isEnabled,
   getAllForApi,
