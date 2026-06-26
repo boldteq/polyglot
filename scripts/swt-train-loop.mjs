@@ -159,7 +159,7 @@ function callClaude(prompt) {
   if (MODEL) args.push('--model', MODEL)
   const r = spawnSync(CLAUDE_BIN, args, {
     encoding: 'utf8',
-    timeout: 5 * 60 * 1000,
+    timeout: 8 * 60 * 1000, // headroom: 49-FAQ gen runs ~4–5min; 5min tipped over occasionally
     maxBuffer: 30 * 1024 * 1024,
     cwd: ROOT,
   })
