@@ -22,7 +22,6 @@ import {
   Loader,
   type LucideIcon,
 } from 'lucide-react'
-import type { Project } from '../types'
 import {
   getAnalyticsRuns,
   getAnalyticsSummary,
@@ -42,9 +41,6 @@ import { resource } from '../lib/cacheCore'
 import { CacheKeys } from '../lib/cacheKeys'
 import { StatRow } from '../components/PageShell'
 
-interface Props {
-  projects: Project[]
-}
 
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime()
@@ -110,7 +106,7 @@ function buildTrend(runs: AgentRunEntry[]): { label: string; success: number; er
   return days
 }
 
-export default function Dashboard({ projects }: Props) {
+export default function Dashboard() {
   const navigate = useNavigate()
   const { config } = useAppConfig()
   const healthy = config.health.threshold_healthy
@@ -252,7 +248,6 @@ export default function Dashboard({ projects }: Props) {
         <GetStartedHero
           runsCount={runs.length}
           schedulesCount={schedules.length}
-          projectsCount={projects.length}
           onDismiss={dismissFirstRun}
           navigate={navigate}
         />
@@ -286,12 +281,11 @@ export default function Dashboard({ projects }: Props) {
       )}
 
       {/* Quick actions */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-3 mb-6">
         {[
           { label: 'Run Agent', icon: FlaskConical, path: '/playground', color: 'text-purple', bg: 'bg-purple/10' },
           { label: 'Orchestrate', icon: Sparkles, path: '/orchestration', color: 'text-blue', bg: 'bg-blue/10' },
           { label: 'Agents', icon: Bot, path: '/agents', color: 'text-accent', bg: 'bg-accent/10', sub: `${registryCounts?.active ?? Object.keys(summary).length} active` },
-          { label: 'Projects', icon: FolderOpen, path: '/settings', color: 'text-amber', bg: 'bg-amber/10', sub: `${projects.length}` },
         ].map(q => (
           <button
             key={q.label}
@@ -698,15 +692,15 @@ function RunDetailPanel({ run, onClose }: { run: AgentRunEntry; onClose: () => v
 interface HeroStep { icon: LucideIcon; title: string; body: string; time: string; path: string; done: boolean }
 
 function GetStartedHero({
-  runsCount, schedulesCount, projectsCount, onDismiss, navigate,
+  runsCount, schedulesCount, onDismiss, navigate,
 }: {
-  runsCount: number; schedulesCount: number; projectsCount: number
+  runsCount: number; schedulesCount: number
   onDismiss: () => void; navigate: (p: string) => void
 }) {
   const steps: HeroStep[] = [
     { icon: FlaskConical, title: 'Run your first agent', body: 'Pick a specialist in the Playground, write a prompt, run with ⌘Enter.', time: '1 min', path: '/playground', done: runsCount > 0 },
     { icon: Clock, title: 'Schedule a task', body: 'Put an agent on a cron so it runs on autopilot.', time: '2 min', path: '/schedules', done: schedulesCount > 0 },
-    { icon: FolderOpen, title: 'Open a project', body: 'Browse a project workspace — its agents, commands and rules.', time: '30 sec', path: projectsCount > 0 ? '/' : '/settings', done: projectsCount > 0 },
+    { icon: FolderOpen, title: 'Open a SaaS project', body: 'Browse a project — its agents, commands and rules — in the Workspace panel.', time: '30 sec', path: '/workspace/saas', done: false },
   ]
   const completed = steps.filter(s => s.done).length
 

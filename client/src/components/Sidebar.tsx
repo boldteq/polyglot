@@ -1,9 +1,8 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useState, useEffect, useCallback, useRef, type SyntheticEvent } from 'react'
+import { useState, useEffect, useCallback, type SyntheticEvent } from 'react'
 import {
   LayoutDashboard,
   Bot,
-  FolderOpen,
   Settings,
   Sparkles,
   FlaskConical,
@@ -17,8 +16,6 @@ import {
   Users,
   UserCog,
   Search,
-  Check,
-  ChevronDown,
   ChevronsUpDown,
   AlertCircle,
   Activity,
@@ -27,15 +24,10 @@ import {
   Menu,
   X,
 } from 'lucide-react'
-import type { Project } from '../types'
 import ModeSwitcher from './ModeSwitcher'
 import { useTheme } from '../contexts/ThemeContext'
 import { getErrorLogCount, subscribeLogStream, getLearningInboxCounts, subscribeLearningStream, getSystemStatus } from '../lib/api'
 import { usePrefetch } from '../hooks/usePrefetch'
-
-interface SidebarProps {
-  projects: Project[]
-}
 
 // Nav item — exact shadcn sidebar menu-button spec: h-8, rounded-md, gap-2,
 // text-sm; active = brand gradient pill (#6959ff→#4a25ff) with white text+icon.
@@ -57,79 +49,8 @@ function NavSection({ label }: { label: string }) {
   )
 }
 
-function ProjectSelector({ projects }: { projects: Project[] }) {
-  const [open, setOpen] = useState(false)
-  const location = useLocation()
-  const navigate = useNavigate()
-  const ref = useRef<HTMLDivElement>(null)
 
-  const activeProject = projects.find(p => location.pathname.includes(`/projects/${p.id}`))
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  if (projects.length === 0) return null
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className={`w-full flex items-center gap-2.5 px-3 py-2 text-[13px] rounded-xl border transition-all ${
-          activeProject
-            ? 'bg-accent/8 border-accent/20 text-accent-hover'
-            : 'bg-surface-2/50 border-border text-text-secondary hover:bg-surface-2 hover:text-text'
-        }`}
-      >
-        <FolderOpen className="w-4 h-4 shrink-0" />
-        <span className="flex-1 text-left truncate font-medium">
-          {activeProject ? activeProject.name : 'Select project...'}
-        </span>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[9px] bg-surface-2 text-text-muted px-1.5 py-0.5 rounded-full">{projects.length}</span>
-          <ChevronDown className={`w-3.5 h-3.5 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
-        </div>
-      </button>
-      {open && (
-        <div className="absolute left-0 right-0 bottom-full mb-1 bg-surface border border-border rounded-xl shadow-pop z-50 overflow-hidden">
-          <div className="py-1 max-h-[280px] overflow-y-auto">
-            {projects.map((p) => {
-              const isActive = activeProject?.id === p.id
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => { navigate(`/projects/${p.id}`); setOpen(false) }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-[13px] transition-colors ${
-                    isActive
-                      ? 'bg-accent/10 text-accent-hover'
-                      : 'text-text-secondary hover:bg-surface-2 hover:text-text'
-                  }`}
-                >
-                  <FolderOpen className="w-3.5 h-3.5 shrink-0" />
-                  <span className="flex-1 text-left truncate">{p.name}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {p.agentCount > 0 && (
-                      <span className="text-[9px] text-text-muted bg-surface-2 px-1.5 py-0.5 rounded-full">
-                        {p.agentCount} agents
-                      </span>
-                    )}
-                    {isActive && <Check className="w-3.5 h-3.5 text-accent" />}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-export default function Sidebar({ projects }: SidebarProps) {
+export default function Sidebar() {
   const { theme, toggle } = useTheme()
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [unresolvedErrors, setUnresolvedErrors] = useState(0)
@@ -363,9 +284,8 @@ export default function Sidebar({ projects }: SidebarProps) {
         </NavLink>
       </nav>
 
-      {/* Projects + profile — sticky footer (shadcn footer: flex-col gap-2 p-2) */}
+      {/* Profile — sticky footer (shadcn footer: flex-col gap-2 p-2) */}
       <div className="border-t border-sidebar-border p-2 flex flex-col gap-2">
-        <ProjectSelector projects={projects} />
         <button
           onClick={() => navigate('/settings')}
           className="w-full flex items-center gap-2 h-12 px-2 rounded-md hover:bg-sidebar-accent transition-colors text-left"

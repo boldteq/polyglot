@@ -146,8 +146,8 @@ export default function WorkspaceProjects() {
 
   return (
     <PageShell
-      title="Projects"
-      subtitle="Your client projects — brand · niche · store, with live build state"
+      title="Shopify Projects"
+      subtitle="Your client Shopify theme builds — brand · niche · store, with live build state"
       actions={
         <div className="flex items-center gap-2">
           <button onClick={() => setShowNew(true)} className="btn-primary btn-sm flex items-center gap-1.5"><Plus className="w-4 h-4" />New project</button>

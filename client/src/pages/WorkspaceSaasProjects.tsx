@@ -45,7 +45,7 @@ export default function WorkspaceSaasProjects() {
       ) : error ? (
         <ErrorState message={error} onRetry={load} />
       ) : projects.length === 0 ? (
-        <EmptyState icon={Zap} title="No projects found" description="Projects with a .claude folder or CLAUDE.md in your configured directories appear here. Add a directory in Settings." />
+        <EmptyState icon={Zap} title="No projects found" description="Projects with a .claude folder or CLAUDE.md in your configured directories appear here." action={{ label: 'Configure directories', onClick: () => nav('/settings') }} />
       ) : (
         <div className="space-y-4">
           <div className="flex items-center gap-2 flex-wrap bg-surface-2/40 border border-border-subtle rounded-xl px-2 py-2">

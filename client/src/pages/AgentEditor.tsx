@@ -219,16 +219,16 @@ export default function AgentEditor({ scope }: Props) {
   const { data: categories } = useApi(getCategories, [], CacheKeys.categories)
   const activeCorrections = (trainingData || []).filter(c => c.status === 'active')
 
-  const backPath = scope === 'global' ? '/agents' : `/projects/${projectId}`
+  const backPath = scope === 'global' ? '/agents' : `/workspace/saas/${projectId}`
 
   const displayName = meta.name || name || ''
   const crumbs: BreadcrumbItem[] =
     scope === 'global'
       ? [{ label: 'Agents', to: '/agents' }, { label: displayName }]
       : [
-          { label: 'Projects', to: '/' },
-          { label: projectNameFromId(projectId || ''), to: `/projects/${projectId}` },
-          { label: 'Agents', to: `/projects/${projectId}` },
+          { label: 'SaaS Projects', to: '/workspace/saas' },
+          { label: projectNameFromId(projectId || ''), to: `/workspace/saas/${projectId}` },
+          { label: 'Agents', to: `/workspace/saas/${projectId}` },
           { label: displayName },
         ]
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { FolderKanban, Handshake, Menu, X } from 'lucide-react'
+import { FolderKanban, Handshake, Zap, Menu, X } from 'lucide-react'
 import ModeSwitcher from './ModeSwitcher'
 
 // The Workspace-mode shell — a sidebar SEPARATE from Polyglot's. Holds only
@@ -47,7 +47,10 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
         <nav className="flex-1 overflow-y-auto py-2 space-y-0.5" onClick={() => setMobileOpen(false)}>
           <NavSection label="Client Work" />
           <NavLink to="/workspace" end className={navLinkClass}>
-            <FolderKanban className="w-4 h-4" /> Projects
+            <FolderKanban className="w-4 h-4" /> Shopify Projects
+          </NavLink>
+          <NavLink to="/workspace/saas" className={navLinkClass}>
+            <Zap className="w-4 h-4" /> SaaS Projects
           </NavLink>
           <NavLink to="/workspace/sales" className={navLinkClass}>
             <Handshake className="w-4 h-4" /> Sales

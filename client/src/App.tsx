@@ -46,6 +46,7 @@ const MemoryHistory = React.lazy(() => import('./pages/MemoryHistory'))
 const LearningInbox = React.lazy(() => import('./pages/LearningInbox'))
 const Lens = React.lazy(() => import('./pages/Lens'))
 const WorkspaceProjects = React.lazy(() => import('./pages/WorkspaceProjects'))
+const WorkspaceSaasProjects = React.lazy(() => import('./pages/WorkspaceSaasProjects'))
 const WorkspaceProjectDetail = React.lazy(() => import('./pages/WorkspaceProjectDetail'))
 const WorkspaceStudio = React.lazy(() => import('./pages/WorkspaceStudio'))
 const Shopify = React.lazy(() => import('./pages/Shopify'))
@@ -68,6 +69,13 @@ function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
   return <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
 }
 
+// SaaS Projects moved to Workspace — forward any old /projects/* path (incl. deep
+// links to a project's agents/commands/rules/chat) to /workspace/saas/*.
+function ProjectsRedirect() {
+  const loc = useLocation()
+  return <Navigate to={`/workspace/saas${loc.pathname.replace(/^\/projects/, '')}${loc.search}`} replace />
+}
+
 // Reflect the current route in document.title so browser tabs + history entries
 // are distinguishable instead of every page reading a static "Polyglot".
 const TITLE_ALIASES: Record<string, string> = {
@@ -85,7 +93,7 @@ function RouteTitle() {
 }
 
 export default function App() {
-  const { data: projects, refetch } = useApi(getProjects, [], CacheKeys.projects)
+  const { refetch } = useApi(getProjects, [], CacheKeys.projects)
   const [aiOpen, setAiOpen] = useState(false)
 
   return (
@@ -102,6 +110,12 @@ export default function App() {
               <Route path="/" element={<WorkspaceProjects />} />
               <Route path="/p/:id" element={<WorkspaceProjectDetail />} />
               <Route path="/p/:id/studio" element={<WorkspaceStudio />} />
+              <Route path="/saas" element={<WorkspaceSaasProjects />} />
+              <Route path="/saas/:projectId" element={<ProjectDetail />} />
+              <Route path="/saas/:projectId/agents/:name" element={<AgentEditor scope="project" />} />
+              <Route path="/saas/:projectId/commands/:name" element={<CommandEditor />} />
+              <Route path="/saas/:projectId/rules/:name" element={<RuleEditor scope="project" />} />
+              <Route path="/saas/:projectId/chat" element={<ProjectChat />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/lens" element={<Lens />} />
               <Route path="/projects" element={<Navigate to="/workspace" replace />} />
@@ -121,13 +135,13 @@ export default function App() {
         >
           Skip to main content
         </a>
-        <Sidebar projects={projects || []} />
+        <Sidebar />
         <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 h-screen overflow-y-auto outline-none">
           <RouteErrorBoundary>
           <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Core pages — sidebar items */}
-            <Route path="/" element={<Dashboard projects={projects || []} />} />
+            <Route path="/" element={<Dashboard />} />
             <Route path="/agents" element={<AllAgents />} />
             <Route path="/orchestration" element={<Orchestration />} />
             <Route path="/playground" element={<Playground />} />
@@ -144,16 +158,13 @@ export default function App() {
             <Route path="/system" element={<SystemHealth />} />
             <Route path="/settings" element={<SettingsHub onSave={refetch} />} />
             <Route path="/database" element={<Navigate to="/settings?tab=database" replace />} />
-            <Route path="/projects" element={<Navigate to="/" replace />} />
+            {/* SaaS Projects moved into Workspace ("Client Work" → SaaS Projects);
+                old /projects/* links redirect there, preserving deep links. */}
+            <Route path="/projects/*" element={<ProjectsRedirect />} />
 
             {/* Editors — deep links */}
             <Route path="/global/agents/:name" element={<AgentEditor scope="global" />} />
             <Route path="/global/rules/:name" element={<RuleEditor scope="global" />} />
-            <Route path="/projects/:projectId" element={<ProjectDetail />} />
-            <Route path="/projects/:projectId/agents/:name" element={<AgentEditor scope="project" />} />
-            <Route path="/projects/:projectId/commands/:name" element={<CommandEditor />} />
-            <Route path="/projects/:projectId/rules/:name" element={<RuleEditor scope="project" />} />
-            <Route path="/projects/:projectId/chat" element={<ProjectChat />} />
             <Route path="/templates/:name" element={<TemplateEditor />} />
             <Route path="/agents/:name/training" element={<TrainingView />} />
 

@@ -12,6 +12,7 @@ import {
   Pencil,
   Bot,
   MessageSquare,
+  ArrowLeft,
 } from 'lucide-react'
 import {
   getProjectAgents,
@@ -64,7 +65,8 @@ export default function ProjectDetail() {
   const projectName = projectPath.split('/').pop() || ''
 
   return (
-    <PageShell title={projectName} subtitle={projectPath.replace(/^\/Users\/[^/]+/, '~')}>
+    <PageShell title={projectName} subtitle={projectPath.replace(/^\/Users\/[^/]+/, '~')}
+      actions={<Link to="/workspace/saas" className="btn-ghost btn-sm flex items-center gap-1.5"><ArrowLeft className="w-4 h-4" />SaaS Projects</Link>}>
       <div className="max-w-5xl">
       <TabNav tabs={tabs} active={tab} onChange={(id) => setTab(id as Tab)} />
 
@@ -134,7 +136,7 @@ function OverviewTab({
         ))}
       </div>
       <button
-        onClick={() => navigate(`/projects/${projectId}/chat`)}
+        onClick={() => navigate(`/workspace/saas/${projectId}/chat`)}
         className="w-full card p-5 flex items-center gap-4 hover:border-accent/40 active:scale-[0.99] transition-all text-left"
       >
         <div className="p-3 rounded-xl bg-accent/10 text-accent">
@@ -237,14 +239,14 @@ function AgentsTab({
       await updateProjectAgent(projectId, slug, template, { createOnly: true })
       setCreating(false)
       setNewName('')
-      navigate(`/projects/${projectId}/agents/${slug}`)
+      navigate(`/workspace/saas/${projectId}/agents/${slug}`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create agent'
       toast('error', msg)
       if (msg.includes('already exists')) {
         // Open the existing agent instead of clobbering it.
         setCreating(false); setNewName('')
-        navigate(`/projects/${projectId}/agents/${slug}`)
+        navigate(`/workspace/saas/${projectId}/agents/${slug}`)
       }
     } finally {
       setCreateLoading(false)
@@ -295,7 +297,7 @@ function AgentsTab({
           {agents.map((agent) => {
             const display = formatAgentDisplay({ name: agent.name, id: agent.filename })
             return (
-            <Link key={agent.filename} to={`/projects/${projectId}/agents/${agent.filename}`} className="group card card-hover p-5 flex items-center justify-between hover:border-accent/40">
+            <Link key={agent.filename} to={`/workspace/saas/${projectId}/agents/${agent.filename}`} className="group card card-hover p-5 flex items-center justify-between hover:border-accent/40">
               <div className="flex items-center gap-4">
                 <AgentIcon name={agent.name} uid={`${projectId}-${agent.filename}`} size={44} />
                 <div>
@@ -356,7 +358,7 @@ function CommandsTab({
       await updateProjectCommand(projectId, slug, `Describe what this command should do.\n\nUse $ARGUMENTS to accept user input.`)
       setCreating(false)
       setNewName('')
-      navigate(`/projects/${projectId}/commands/${slug}`)
+      navigate(`/workspace/saas/${projectId}/commands/${slug}`)
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to create command')
     } finally {
@@ -413,7 +415,7 @@ function CommandsTab({
                   <span className="font-medium text-sm font-mono">/{cmd.name}</span>
                 </button>
                 <div className="flex items-center gap-1">
-                  <Link to={`/projects/${projectId}/commands/${cmd.name}`} className="p-1.5 rounded-md text-text-muted hover:text-accent hover:bg-accent-muted transition-colors opacity-0 group-hover:opacity-100">
+                  <Link to={`/workspace/saas/${projectId}/commands/${cmd.name}`} className="p-1.5 rounded-md text-text-muted hover:text-accent hover:bg-accent-muted transition-colors opacity-0 group-hover:opacity-100">
                     <Pencil className="w-3.5 h-3.5" />
                   </Link>
                   <button
@@ -466,7 +468,7 @@ function RulesTab({
       await updateProjectRule(projectId, slug, `Describe the rule Claude must follow in this project.`)
       setCreating(false)
       setNewName('')
-      navigate(`/projects/${projectId}/rules/${slug}`)
+      navigate(`/workspace/saas/${projectId}/rules/${slug}`)
     } catch (err) {
       toast('error', err instanceof Error ? err.message : 'Failed to create rule')
     } finally {
@@ -522,7 +524,7 @@ function RulesTab({
                   <span className="font-medium text-sm">{rule.name}</span>
                 </button>
                 <div className="flex items-center gap-1">
-                  <Link to={`/projects/${projectId}/rules/${rule.name}`} className="p-1.5 rounded-md text-text-muted hover:text-accent hover:bg-accent-muted transition-colors opacity-0 group-hover:opacity-100">
+                  <Link to={`/workspace/saas/${projectId}/rules/${rule.name}`} className="p-1.5 rounded-md text-text-muted hover:text-accent hover:bg-accent-muted transition-colors opacity-0 group-hover:opacity-100">
                     <Pencil className="w-3.5 h-3.5" />
                   </Link>
                   <button

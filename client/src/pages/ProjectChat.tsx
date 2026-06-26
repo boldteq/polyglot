@@ -172,7 +172,7 @@ export default function ProjectChat() {
       <div className="w-[280px] min-w-[280px] border-r border-border bg-surface flex flex-col">
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
-            <button onClick={() => navigate(`/projects/${projectId}`)} className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text">
+            <button onClick={() => navigate(`/workspace/saas/${projectId}`)} className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text">
               <ArrowLeft className="w-3.5 h-3.5" /> Back to project
             </button>
           </div>
