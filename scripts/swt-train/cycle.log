@@ -30,3 +30,7 @@
 [2026-06-26T10:54:40.979Z] cycle 10: slices [cro|pdp, trust-social-proof|pdp, copy-voice|pdp, honesty-claims|pdp, data-binding|pdp, performance-cwv|pdp, seo-structured-data|pdp] → generating 49 FAQs (FAQ-0443…)
 [2026-06-26T10:59:02.355Z] cycle 10 verify: kept 49/49 (dropped 0)
 [2026-06-26T10:59:02.388Z] cycle 10 distributed → 491 rules · 12/14 agents trained · 0 gate-gaps
+[2026-06-26T10:59:02.577Z] cycle 10 ✓ +49 FAQs → 491/5040 (9.7%) · 12/14 agents trained · committed
+[2026-06-26T11:14:02.602Z] cycle 11: slices [i18n-currency-rtl|pdp, states-empty-loading-error|pdp, edge-cases|pdp, legal-compliance|pdp, merchandising|pdp, search-filtering|pdp, nav-ia|pdp] → generating 49 FAQs (FAQ-0492…)
+[2026-06-26T11:19:26.204Z] cycle 11 verify: kept 47/49 (dropped 2)
+[2026-06-26T11:19:26.234Z] cycle 11 distributed → 538 rules · 12/14 agents trained · 0 gate-gaps
