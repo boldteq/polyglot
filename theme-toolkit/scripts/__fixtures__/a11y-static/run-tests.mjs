@@ -54,5 +54,38 @@ console.log('img without alt in DEV (no STRICT) → warning, exit 0')
   fs.rmSync(d, { recursive: true, force: true })
 }
 
+console.log('autoplay <video> without muted + STRICT → BLOCK a11y.autoplay-media')
+{
+  const d = build('<video autoplay src="hero.mp4"></video>')
+  const { code, rep } = run(d, { A11Y_STRICT: '1' })
+  code === 1 && blockerIds(rep).has('a11y.autoplay-media') ? ok('exit 1 + autoplay-media') : bad(`expected block, got ${code}; blockers ${[...blockerIds(rep)]}`)
+  fs.rmSync(d, { recursive: true, force: true })
+}
+
+console.log('autoplay <video muted> → no autoplay finding (conformant)')
+{
+  const d = build('<video autoplay muted playsinline src="hero.mp4"></video>')
+  const { code, rep } = run(d, { A11Y_STRICT: '1' })
+  const ids = new Set([...(rep?.blockers || []), ...(rep?.warnings || [])].map(x => x.id))
+  code === 0 && !ids.has('a11y.autoplay-media') ? ok('muted autoplay → no finding') : bad(`muted: code ${code} ids ${[...ids]}`)
+  fs.rmSync(d, { recursive: true, force: true })
+}
+
+console.log('keyframe animation with NO reduced-motion guard → WARN a11y.motion-no-reduced-guard')
+{
+  const d = build('{% style %}@keyframes pulse{from{opacity:.5}to{opacity:1}}.hero{animation:pulse 2s infinite}{% endstyle %}<h1>Hi</h1>')
+  const { code, rep } = run(d)
+  code === 0 && (rep?.warnings || []).some(w => w.id === 'a11y.motion-no-reduced-guard') ? ok('exit 0 + motion warning') : bad(`motion: code ${code} warns ${[...new Set((rep?.warnings || []).map(w => w.id))]}`)
+  fs.rmSync(d, { recursive: true, force: true })
+}
+
+console.log('keyframe animation WITH reduced-motion guard → no motion finding')
+{
+  const d = build('{% style %}@keyframes pulse{from{opacity:.5}to{opacity:1}}.hero{animation:pulse 2s infinite}@media (prefers-reduced-motion: reduce){.hero{animation:none}}{% endstyle %}<h1>Hi</h1>')
+  const { code, rep } = run(d)
+  !new Set((rep?.warnings || []).map(w => w.id)).has('a11y.motion-no-reduced-guard') ? ok('guarded motion → no finding') : bad('guarded motion wrongly flagged')
+  fs.rmSync(d, { recursive: true, force: true })
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

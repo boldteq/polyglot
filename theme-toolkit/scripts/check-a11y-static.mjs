@@ -102,7 +102,7 @@ function main() {
       if (fs.existsSync(path.resolve(cwd, sn))) addFile(files, sn)
     }
   }
-  const counts = { imgNoAlt: 0, handler: 0, inputFont: 0 }
+  const counts = { imgNoAlt: 0, handler: 0, inputFont: 0, autoplayMedia: 0, motionNoGuard: 0 }
 
   for (const file of files) {
     const raw = read(file)
@@ -126,6 +126,24 @@ function main() {
     for (const m of css.matchAll(/((?:input|select|textarea)[^{};]*)\{[^}]*?font-size\s*:\s*(\d+(?:\.\d+)?)(px|rem|em)/gi)) {
       const px = m[3] === 'px' ? Number(m[2]) : Number(m[2]) * 16
       if (px < 16) { finding('a11y.input-font-small', `${file}`, `form control font-size ${m[2]}${m[3]} (≈${px}px) < 16px — iOS Safari zooms the viewport on focus (jarring mobile UX). Use ≥16px on inputs/selects/textareas.`, m[1].trim().slice(0, 50)); counts.inputFont += 1 }
+    }
+    // 4. autoplay media WITH sound (WCAG 1.4.2) — <video autoplay> w/o muted, <audio autoplay>, or a
+    //    Shopify video_tag autoplay:true w/o muted:true. Autoplaying sound is a hard violation. block-eligible.
+    for (const m of raw.matchAll(/<video\b[^>]*\bautoplay\b[^>]*>/gi)) {
+      if (!/\bmuted\b/i.test(m[0])) { finding('a11y.autoplay-media', `${file}:${lineAt(raw, m.index)}`, `<video autoplay> without muted — autoplaying sound is a WCAG 1.4.2 violation + hostile UX. Add muted (or drop autoplay).`, m[0].slice(0, 70)); counts.autoplayMedia += 1 }
+    }
+    for (const m of raw.matchAll(/<audio\b[^>]*\bautoplay\b[^>]*>/gi)) {
+      finding('a11y.autoplay-media', `${file}:${lineAt(raw, m.index)}`, `<audio autoplay> — autoplaying audio is a WCAG 1.4.2 violation. Remove autoplay; let the user start it.`, m[0].slice(0, 70)); counts.autoplayMedia += 1
+    }
+    for (const m of raw.matchAll(/\|\s*video_tag\b[^%}]*autoplay\s*:\s*true/gi)) {
+      if (!/muted\s*:\s*true/i.test(m[0])) { finding('a11y.autoplay-media', `${file}:${lineAt(raw, m.index)}`, `video_tag autoplay:true without muted:true — autoplaying sound is a WCAG 1.4.2 violation. Add muted:true.`, m[0].slice(0, 70)); counts.autoplayMedia += 1 }
+    }
+    // 5. keyframe/animation motion with NO prefers-reduced-motion guard (WCAG 2.3.3 / vestibular safety). WARN.
+    //    Only the `animation:` shorthand + @keyframes (continuous/decorative motion) — not hover `transition`s.
+    const hasMotion = /@keyframes\b/i.test(css) || /\banimation\s*:(?!\s*none)/i.test(css)
+    if (hasMotion && !/prefers-reduced-motion/i.test(css)) {
+      add(warnings, 'a11y.motion-no-reduced-guard', file, 'section uses a keyframe/animation but has no `@media (prefers-reduced-motion: reduce)` guard — disable/soften the motion for users who request it (WCAG 2.3.3, vestibular safety).')
+      counts.motionNoGuard += 1
     }
   }
 
