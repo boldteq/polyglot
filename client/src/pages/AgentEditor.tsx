@@ -343,6 +343,7 @@ export default function AgentEditor({ scope }: Props) {
                     onChange={e => updateMeta('name', e.target.value)}
                     className="input"
                     placeholder="Agent Name"
+                    aria-label="Agent name"
                   />
                 </div>
 
@@ -463,6 +464,7 @@ export default function AgentEditor({ scope }: Props) {
                       onChange={e => updateMeta('category', e.target.value)}
                       className="input"
                       placeholder="Type or select a category..."
+                      aria-label="Agent category"
                     />
                   </div>
                 </div>
@@ -477,6 +479,7 @@ export default function AgentEditor({ scope }: Props) {
                     onChange={e => updateMeta('tags', e.target.value)}
                     className="input"
                     placeholder="comma, separated, tags"
+                    aria-label="Tags"
                   />
                   {meta.tags && (
                     <div className="flex gap-1 flex-wrap mt-1.5">
@@ -498,6 +501,7 @@ export default function AgentEditor({ scope }: Props) {
                     value={meta.output_template || ''}
                     onChange={e => updateMeta('output_template', e.target.value)}
                     className="input appearance-none cursor-pointer"
+                    aria-label="Output template"
                   >
                     <option value="">None (free-form output)</option>
                     {(templates || []).map(t => (
@@ -541,6 +545,7 @@ export default function AgentEditor({ scope }: Props) {
                         value={val}
                         onChange={e => updateMeta(key, e.target.value)}
                         className="input"
+                        aria-label={key}
                       />
                     </div>
                   ))
