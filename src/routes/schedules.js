@@ -56,8 +56,8 @@ function decorateForApi(s) {
   };
 }
 
-function persistRunStatus(id, status) {
-  try { db.updateScheduleRunStatus(id, new Date().toISOString(), status); }
+function persistRunStatus(id, status, ts) {
+  try { db.updateScheduleRunStatus(id, ts || new Date().toISOString(), status); }
   catch (err) {
     console.error('[schedule] failed to persist run status:', err.message);
     try {
@@ -117,18 +117,25 @@ async function runTickBody(prep, { retryCount = 0 } = {}) {
 
   const finish = (status, { output = '', error = null, metadataPatch = {}, usage = null } = {}) => {
     const duration = Date.now() - startTime;
+    const finishedAt = new Date().toISOString();
     try {
       db.completeAgentRun(runId, { status, duration, output, error, metadataPatch, usage });
     } catch (err) {
       console.error('[schedule] completeAgentRun failed:', err.message);
     }
-    persistRunStatus(fresh.id, status === 'success' ? 'success' : status === 'cancelled' ? 'cancelled' : 'error');
+    const runStatus = status === 'success' ? 'success' : status === 'cancelled' ? 'cancelled' : 'error';
+    // A4: stamp the schedule row AND the SSE event with the completion time
+    // (not startedAt) so the UI's "Last run" matches when the run finished.
+    persistRunStatus(fresh.id, runStatus, finishedAt);
     const evt = status === 'success' ? 'complete' : status === 'cancelled' ? 'cancelled' : 'error';
     agentSync.emitScheduleEvent(evt, {
       id: fresh.id, kind: 'user', status, runId,
-      lastRunAt: startedAt, duration, error,
+      lastRunAt: finishedAt, duration, error,
     });
-    inflightJobs.delete(schedule.id);
+    // A1: the ONLY place inflight clears on completion. runTickBody never binds
+    // `schedule` — must use the in-scope `fresh.id` or finish() throws
+    // ReferenceError and the schedule is wedged "running" forever.
+    inflightJobs.delete(fresh.id);
     return { ok: status === 'success', runId, status, duration, output, error };
   };
 
@@ -148,11 +155,26 @@ async function runTickBody(prep, { retryCount = 0 } = {}) {
     }
     const result = finish('error', { error: err.message });
 
-    if (retryCount === 0) {
-      console.warn(`[schedule] ${fresh.id} failed — scheduling 60s retry`);
+    // A3: a missing agent file is non-transient — retrying every tick just
+    // spams identical errors. Auto-pause so it stops until the user fixes it.
+    if (!validateAgentExists(fresh.agentName)) {
+      console.warn(`[schedule] ${fresh.id} agent "${fresh.agentName}" missing — auto-pausing`);
+      autoPauseSchedule(fresh.id, `agent "${fresh.agentName}" not found`);
+      return result;
+    }
+
+    // A2: one delayed retry, but only if the schedule still exists, is still
+    // enabled, and isn't already running again. A per-minute cron may re-tick
+    // inside the retry window — the inflight check (here + in prepareTick)
+    // prevents a double LLM hit, and the row is re-read so a paused/edited
+    // schedule isn't retried with stale data.
+    if (retryCount === 0 && !retryTimers.has(fresh.id)) {
+      console.warn(`[schedule] ${fresh.id} failed — scheduling ${RETRY_DELAY_MS / 1000}s retry`);
       const timer = setTimeout(() => {
         retryTimers.delete(fresh.id);
-        executeTick(fresh, { retryCount: 1 }).catch(e =>
+        const current = db.getScheduleById(fresh.id);
+        if (!current || !current.enabled || inflightJobs.has(fresh.id)) return;
+        executeTick(current, { retryCount: 1 }).catch(e =>
           console.warn(`[schedule] retry tick unhandled: ${e.message}`)
         );
       }, RETRY_DELAY_MS);
@@ -185,6 +207,23 @@ function startScheduleJob(schedule) {
     );
   }, { timezone: 'Etc/UTC' });
   activeJobs.set(schedule.id, job);
+}
+
+// A3: disable a schedule programmatically (e.g. its agent file vanished), tear
+// down its cron job + any pending retry, and notify the UI via an SSE upsert.
+function autoPauseSchedule(id, reason) {
+  try {
+    db.updateScheduleFields(id, { enabled: false, updatedAt: new Date().toISOString() });
+  } catch (err) {
+    console.error('[schedule] auto-pause persist failed:', err.message);
+  }
+  if (activeJobs.has(id)) {
+    try { activeJobs.get(id).stop(); } catch {}
+    activeJobs.delete(id);
+  }
+  const retry = retryTimers.get(id);
+  if (retry) { clearTimeout(retry); retryTimers.delete(id); }
+  agentSync.emitScheduleEvent('upsert', { id, kind: 'user', reason: reason || 'auto-paused' });
 }
 
 function bootSchedules() {
@@ -225,6 +264,13 @@ function stopAllSchedules() {
   for (const [id, timer] of retryTimers.entries()) {
     try { clearTimeout(timer); } catch {}
     retryTimers.delete(id);
+  }
+  // A5: best-effort SIGTERM to in-flight LLM children so they terminate before
+  // the process exits, instead of being orphaned and reconciled to 'crashed' on
+  // next boot. proc.kill is synchronous, so the signal is delivered before the
+  // caller's subsequent process.exit().
+  for (const [, state] of inflightJobs.entries()) {
+    try { state.child?._polyglotCancel?.(); } catch {}
   }
 }
 
