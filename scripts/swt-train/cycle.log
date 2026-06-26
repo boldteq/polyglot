@@ -42,3 +42,7 @@
 [2026-06-26T11:54:33.228Z] cycle 13: slices [motion|cart, mobile|cart, a11y|cart, cro|cart, trust-social-proof|cart, copy-voice|cart, honesty-claims|cart] → generating 49 FAQs (FAQ-0588…)
 [2026-06-26T11:58:50.029Z] cycle 13 verify: kept 49/49 (dropped 0)
 [2026-06-26T11:58:50.089Z] cycle 13 distributed → 636 rules · 12/14 agents trained · 0 gate-gaps
+[2026-06-26T11:58:50.302Z] cycle 13 ✓ +49 FAQs → 636/5040 (12.6%) · 12/14 agents trained · committed
+[2026-06-26T12:13:50.339Z] cycle 14: slices [data-binding|cart, performance-cwv|cart, seo-structured-data|cart, i18n-currency-rtl|cart, states-empty-loading-error|cart, edge-cases|cart, legal-compliance|cart] → generating 49 FAQs (FAQ-0637…)
+[2026-06-26T12:17:56.935Z] cycle 14 verify: kept 47/49 (dropped 2)
+[2026-06-26T12:17:56.992Z] cycle 14 distributed → 683 rules · 12/14 agents trained · 0 gate-gaps
