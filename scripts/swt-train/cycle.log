@@ -117,3 +117,7 @@
 [2026-06-26T18:51:53.161Z] cycle 31: slices [honesty-claims|account, data-binding|account, performance-cwv|account, seo-structured-data|account, i18n-currency-rtl|account, states-empty-loading-error|account, edge-cases|account] → generating 49 FAQs (FAQ-1457…)
 [2026-06-26T18:55:45.431Z] cycle 31 verify: kept 48/49 (dropped 1)
 [2026-06-26T18:55:45.474Z] cycle 31 distributed → 1504 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-26T18:55:45.597Z] cycle 31 ✓ +48 FAQs → 1504/5040 (29.8%) · 13/14 agents trained · committed
+[2026-06-26T19:10:45.613Z] cycle 32: slices [legal-compliance|account, merchandising|account, search-filtering|account, nav-ia|account, forms-validation|account, email-lifecycle|account, layout|article] → generating 49 FAQs (FAQ-1505…)
+[2026-06-26T19:15:20.664Z] cycle 32 verify: kept 48/49 (dropped 1)
+[2026-06-26T19:15:20.705Z] cycle 32 distributed → 1552 rules · 13/14 agents trained · 11 gate-gaps
