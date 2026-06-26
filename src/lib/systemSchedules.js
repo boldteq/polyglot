@@ -248,6 +248,16 @@ const DEFINITIONS = [
     needsLlm: false,
     cancellable: false,
   },
+  {
+    id: 'sys-app-audit',
+    name: 'App UX/a11y audit (daily)',
+    description: 'Headless sweep of the Polyglot app’s key routes — console errors, critical/serious axe a11y violations (color-contrast tracked separately as a known backlog), and blank-render checks. Files a Learning-Inbox candidate only when findings RISE vs the last run. The automated version of a manual UX/a11y audit. Local, no token cost.',
+    cron: '0 7 * * *',
+    agentName: 'vigil',
+    handler: 'appAudit',
+    needsLlm: false,
+    cancellable: true,
+  },
 ];
 
 const DEFAULT_ENABLED = true;
@@ -458,6 +468,54 @@ const HANDLERS = {
     return {
       output: `Cost digest: $${yCost.toFixed(2)} yesterday (${yesterday.calls || 0} calls) · 30d avg $${dailyAvg30.toFixed(2)}/day${anomaly ? ' — ⚠ SPIKE' : ''}`,
       metadata: { yesterday, dailyAvg30Usd: dailyAvg30, anomaly, topAgents },
+    };
+  },
+
+  // Bucket 4: daily headless UX/a11y audit of the Polyglot app itself.
+  async appAudit(def, ctx) {
+    const path = require('path');
+    const { spawn } = require('child_process');
+    const base = configService.getConfig('audit.baseUrl') || `http://localhost:${process.env.PORT || 3847}`;
+    const script = path.join(__dirname, '..', '..', 'scripts', 'app-audit.mjs');
+    const raw = await new Promise((resolve) => {
+      let buf = '';
+      const proc = spawn(process.execPath, [script, base], { env: { ...process.env } });
+      if (ctx && typeof ctx.registerProc === 'function') ctx.registerProc(proc);
+      const timer = setTimeout(() => { try { proc.kill('SIGKILL'); } catch {} }, 5 * 60 * 1000);
+      proc.stdout.on('data', (d) => { buf += d.toString(); });
+      proc.stderr.on('data', () => {});
+      proc.on('close', () => { clearTimeout(timer); resolve(buf); });
+      proc.on('error', () => { clearTimeout(timer); resolve(''); });
+    });
+    let report;
+    try { report = JSON.parse(raw.trim().split('\n').pop()); } catch { report = { error: 'app-audit produced no parseable output' }; }
+    if (report.error) return { output: `App audit error: ${report.error}`, metadata: report };
+
+    const t = report.totals || {};
+    const actionableOf = (x) => (x.axeCritical || 0) + (x.axeSerious || 0) + (x.consoleErrors || 0) + (x.blankPages || 0) + (x.errored || 0);
+    const actionable = actionableOf(t);
+    // Delta-based: file a candidate only when actionable findings RISE vs the last
+    // successful run — steady-state known issues (font-CSP console error, the
+    // color-contrast backlog) don't re-alarm every day. First run reports baseline.
+    let prevActionable = -1;
+    try {
+      const prev = db.getScheduleRunsFor('sys-app-audit', { limit: 8 }).find((r) => r.status === 'success' && r.metadata && r.metadata.totals);
+      if (prev) prevActionable = actionableOf(prev.metadata.totals);
+    } catch { /* first run / no history */ }
+    if (actionable > 0 && actionable > prevActionable) {
+      try {
+        db.insertLearningCandidate({
+          type: 'app-audit',
+          title: `App audit: ${t.axeCritical || 0} critical a11y · ${t.consoleErrors || 0} console errors · ${t.blankPages || 0} blank · ${t.errored || 0} errored (prev ${prevActionable < 0 ? 'baseline' : prevActionable})`,
+          payload: report,
+          source: 'sys-app-audit', confidence: 1, status: 'pending',
+        });
+      } catch (e) { console.warn('[appAudit] inbox insert failed:', e.message); }
+    }
+    try { agentSync.events.emit('app.audit', { totals: t, actionable }); } catch { /* best-effort */ }
+    return {
+      output: `App audit: ${t.pages || 0} pages · ${t.axeCritical || 0} critical a11y · ${t.consoleErrors || 0} console errors · ${t.colorContrast || 0} contrast nodes (tracked) · ${t.errored || 0} errored${actionable > prevActionable && prevActionable >= 0 ? ' — ⚠ rose' : ''}`,
+      metadata: report,
     };
   },
 
