@@ -234,6 +234,12 @@ const GATES = [
   // (MOBILE_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK on viewport-meta + sub-12px font); SKIPS when no custom
   // surface. Covered by --static-only + --verify/--require-full.
   { name: 'mobile-layout', number: 35, kind: 'static', runner: 'node', script: 'check-mobile-layout.mjs' },
+  // Placeholder / dev-leftover (#36, build-standards §7) — a shopper must never see a dev/test leftover
+  // ("© GPT TEST 1.0", lorem ipsum, rendered [CLAIM], "your-store-name"/example.com → BLOCK) or
+  // unreplaced theme-default copy ("Talk about your brand", "Button label" in SHIPPED settings/templates
+  // → WARN dev, BLOCK at DS_REQUIRE_SCOPE/PLACEHOLDER_ENFORCE). Scans templates/locales/settings_data +
+  // section/snippet Liquid; SKIPS when no content surfaces. Covered by --static-only + --verify/--require-full.
+  { name: 'placeholder', number: 36, kind: 'static', runner: 'node', script: 'check-placeholder-text.mjs' },
 ]
 
 // ── args ──────────────────────────────────────────────────────────────────

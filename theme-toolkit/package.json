@@ -39,6 +39,7 @@
     "check:redirects": "node scripts/check-redirects.mjs",
     "check:images": "node scripts/check-image-quality.mjs",
     "check:copy": "node scripts/check-copy-quality.mjs",
+    "check:placeholder": "node scripts/check-placeholder-text.mjs",
     "check:app-conflicts": "node scripts/check-app-conflicts.mjs",
     "check:locales": "node scripts/check-locale-completeness.mjs",
     "check:email": "node scripts/check-email-triggers.mjs",
