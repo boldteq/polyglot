@@ -1062,7 +1062,7 @@ export default function Memory() {
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
       {/* ═══ Left Panel — File Tree ═══ */}
-      <aside className="w-[280px] min-w-[280px] border-r border-border bg-surface flex flex-col h-full">
+      <div className="w-[280px] min-w-[280px] border-r border-border bg-surface flex flex-col h-full">
         {/* Header */}
         <div className="px-3 py-3 border-b border-border shrink-0">
           <div className="flex items-center justify-between mb-2.5">
@@ -1248,10 +1248,10 @@ export default function Memory() {
             <span>{formatBytes(stats.totalSize)}</span>
           </div>
         )}
-      </aside>
+      </div>
 
       {/* ═══ Middle Panel — Editor ═══ */}
-      <main className="flex-1 min-w-0 flex flex-col h-full bg-surface">
+      <div className="flex-1 min-w-0 flex flex-col h-full bg-surface">
         {/* Editor header */}
         <div className="px-4 py-2.5 border-b border-border flex items-center justify-between shrink-0">
           <div className="flex items-center gap-1.5 text-[12px] text-text-muted min-w-0">
@@ -1350,10 +1350,10 @@ export default function Memory() {
             />
           )}
         </div>
-      </main>
+      </div>
 
       {/* ═══ Right Panel — Info / Stats ═══ */}
-      <aside className="w-[260px] min-w-[260px] border-l border-border bg-surface flex flex-col h-full">
+      <div className="w-[260px] min-w-[260px] border-l border-border bg-surface flex flex-col h-full">
         {/* Panel tabs */}
         <div className="px-3 py-2 border-b border-border shrink-0 flex items-center gap-1">
           <button
@@ -1388,7 +1388,7 @@ export default function Memory() {
             <InfoSidebar filePath={selectedPath} content={content} node={selectedNode} />
           )}
         </div>
-      </aside>
+      </div>
 
       {/* ═══ Rename Dialog ═══ */}
       {renamingPath && (
