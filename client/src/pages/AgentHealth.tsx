@@ -286,8 +286,8 @@ export default function AgentHealth() {
         <div
           className="rounded-xl border border-border overflow-x-auto focus:outline-none"
           tabIndex={0}
-          role="grid"
-          aria-label="Agent health metrics"
+          role="group"
+          aria-label="Agent health metrics — use up and down arrows to navigate rows, Enter to expand"
           onKeyDown={onTableKeyDown}
         >
           <table className="w-full text-sm border-collapse">
@@ -353,9 +353,6 @@ function FragmentRow({
   return (
     <>
       <tr
-        role="row"
-        aria-selected={focused}
-        aria-expanded={isOpen}
         onClick={onToggle}
         className={`border-b border-border/60 cursor-pointer transition-colors ${
           focused ? 'bg-surface-2 ring-2 ring-inset ring-accent/50' : idx % 2 ? 'bg-surface' : 'bg-surface/40'
