@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FolderKanban, RefreshCw, Plus, X, Archive, Search, Filter, Unlink } from 'lucide-react'
+import { FolderKanban, RefreshCw, Plus, X, Archive, Search, Filter, Unlink, RotateCcw } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import EmptyState from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
 import { toast } from '../components/Toast'
+import { relTime } from '../lib/relTime'
 import { confirmDialog } from '../lib/confirm'
 import ProjectCard from '../components/workspace/ProjectCard'
-import { getWorkspaceProjects, getWorkspaceEscalations, ackWorkspaceEscalation, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, syncWorkspaceProjects, getLensLatest, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
+import { getWorkspaceProjects, getArchivedWorkspaceProjects, getWorkspaceEscalations, ackWorkspaceEscalation, createWorkspaceProject, linkWorkspaceProject, updateWorkspaceProject, deleteWorkspaceProject, setWorkspaceProjectStatus, syncWorkspaceProjects, getLensLatest, PROJECT_STATUSES, type WorkspaceProject, type AssembledBuild, type ProjectStatus } from '../lib/api'
 
 type Filter = 'all' | 'attention' | 'passing'
 
@@ -31,12 +32,20 @@ export default function WorkspaceProjects() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [thumbs, setThumbs] = useState<Record<string, string | null>>({})
+  const [archived, setArchived] = useState<WorkspaceProject[] | null>(null)
 
+  // Load active projects + escalations + the archived list together, so the
+  // archived count is always known (the "View archived" affordance stays correct
+  // even when every project is archived and the main list is empty).
   const load = useCallback(() => {
     setLoading(true); setError(null)
-    Promise.all([getWorkspaceProjects(), getWorkspaceEscalations().catch(() => ({ escalations: [] as { buildId: string; reasons: string[]; acknowledged?: boolean }[] }))])
-      .then(([d, esc]) => {
-        setProjects(d.projects); setUnlinked(d.unlinkedBuilds)
+    Promise.all([
+      getWorkspaceProjects(),
+      getWorkspaceEscalations().catch(() => ({ escalations: [] as { buildId: string; reasons: string[]; acknowledged?: boolean }[] })),
+      getArchivedWorkspaceProjects().catch(() => ({ projects: [] as WorkspaceProject[] })),
+    ])
+      .then(([d, esc, arch]) => {
+        setProjects(d.projects); setUnlinked(d.unlinkedBuilds); setArchived(arch.projects)
         setReasons(Object.fromEntries(esc.escalations.map((e) => [e.buildId, e.reasons])))
         setAcked(new Set(esc.escalations.filter((e) => e.acknowledged).map((e) => e.buildId)))
       })
@@ -44,6 +53,11 @@ export default function WorkspaceProjects() {
       .finally(() => setLoading(false))
   }, [])
   useEffect(() => { load() }, [load])
+
+  const restore = useCallback(async (p: WorkspaceProject) => {
+    try { await setWorkspaceProjectStatus(p.id, 'intake'); toast('success', `${p.name} restored`); load() }
+    catch (e) { toast('error', e instanceof Error ? e.message : 'Restore failed') }
+  }, [load])
 
   // Lovable-style preview thumbnails: pull the latest Lens desktop/home frame per
   // build in parallel (best-effort; cards fall back to a gradient when absent).
@@ -160,7 +174,7 @@ export default function WorkspaceProjects() {
         </div>
       ) : error ? (
         <ErrorState message={error} onRetry={load} />
-      ) : projects.length === 0 ? (
+      ) : (projects.length === 0 && (archived?.length ?? 0) === 0 && statusFilter !== 'archived') ? (
         <EmptyState icon={FolderKanban} title="No projects yet" description="Create a project to capture intake — or theme folders are auto-detected and appear here." action={{ label: 'New project', onClick: () => setShowNew(true) }} />
       ) : (
         <div className="space-y-4">
@@ -170,6 +184,14 @@ export default function WorkspaceProjects() {
             <span className={summary.attention ? 'text-red' : 'text-text-muted'}><b>{summary.attention}</b> need attention</span>
             <span><b>{summary.inProgress}</b> <span className="text-text-muted">in progress</span></span>
             <span><b>{summary.live}</b> <span className="text-text-muted">live</span></span>
+            {(archived?.length ?? 0) > 0 && statusFilter !== 'archived' && (
+              <button onClick={() => setStatusFilter('archived')} className="flex items-center gap-1 text-text-muted hover:text-accent transition-colors ml-auto">
+                <Archive className="w-3.5 h-3.5" /> <b>{archived!.length}</b> archived
+              </button>
+            )}
+            {statusFilter === 'archived' && (
+              <button onClick={() => setStatusFilter('all')} className="flex items-center gap-1 text-accent hover:underline ml-auto">← Back to active</button>
+            )}
           </div>
 
           {/* search + filter — grouped into one subtle toolbar so they read as a set */}
@@ -213,7 +235,28 @@ export default function WorkspaceProjects() {
             </div>
           )}
 
-          {/* project card grid — auto-rows-fr keeps every card the same height */}
+          {statusFilter === 'archived' ? (
+            /* Archived view — restore-only list (these are hidden from the main grid) */
+            archived === null ? (
+              <div className="card p-8 text-center text-[13px] text-text-muted">Loading archived…</div>
+            ) : archived.length === 0 ? (
+              <EmptyState icon={Archive} title="No archived projects" description="Archive a project from its card to hide it from the main list — it'll show up here to restore." size="sm" />
+            ) : (
+              <div className="card divide-y divide-border">
+                {archived.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                    <Archive className="w-4 h-4 text-text-muted shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-[13px] capitalize truncate">{p.name}</div>
+                      <div className="text-[12px] text-text-muted truncate">{[p.niche, p.domain, `archived ${relTime(p.updated_at)}`].filter(Boolean).join(' · ')}</div>
+                    </div>
+                    <button onClick={() => restore(p)} className="btn-ghost btn-sm flex items-center gap-1.5 text-accent shrink-0"><RotateCcw className="w-3.5 h-3.5" /> Restore</button>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+          /* project card grid — auto-rows-fr keeps every card the same height */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
             <button onClick={() => setShowNew(true)}
               className="card card-hover border-dashed flex flex-col items-center justify-center gap-2 text-text-muted hover:text-accent hover:border-accent/40 min-h-[260px] transition-colors">
@@ -228,6 +271,7 @@ export default function WorkspaceProjects() {
             ))}
             {shown.length === 0 && <div className="col-span-full"><EmptyState icon={Filter} title="No projects match" description="Adjust your search or filters to see more." size="sm" /></div>}
           </div>
+          )}
         </div>
       )}
 

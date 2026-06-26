@@ -396,6 +396,18 @@ router.post('/workspace/projects/sync', (_req, res) => {
   catch (err) { console.error('[workspace] /projects/sync failed:', err.message); res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/workspace/projects/archived — archived projects (hidden from the main
+// list). Lets the panel surface + restore them. Registered BEFORE '/:id'.
+router.get('/workspace/projects/archived', (_req, res) => {
+  try {
+    const archived = db.listClientProjects({ includeArchived: true }).filter((p) => p.status === 'archived');
+    res.json({ projects: archived.map((p) => ({ ...p, build: null })) });
+  } catch (err) {
+    console.error('[workspace] /projects/archived failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/workspace/projects — create an intake project (panel "New Project").
 router.post('/workspace/projects', (req, res) => {
   try {

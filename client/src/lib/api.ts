@@ -298,6 +298,8 @@ export interface WorkspaceProject {
 }
 export const getWorkspaceProjects = () =>
   request<{ projects: WorkspaceProject[]; unlinkedBuilds: AssembledBuild[] }>(`/workspace/projects`)
+export const getArchivedWorkspaceProjects = () =>
+  request<{ projects: WorkspaceProject[] }>(`/workspace/projects/archived`)
 export const createWorkspaceProject = (body: { name: string; niche?: string; domain?: string }) =>
   request<{ id: string }>(`/workspace/projects`, { method: 'POST', body: JSON.stringify(body) })
 export const linkWorkspaceProject = (id: string, buildId: string | null) =>
