@@ -170,7 +170,6 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
                 <span className="text-text-muted">{build.gates.blockersOpen === 1 ? 'blocker' : 'blockers'}{build.gates.blockersOpen > 0 && currentPhaseLabel ? ` in ${currentPhaseLabel}` : ''}</span>
                 <InfoIcon label="A blocker is a gate failure or open issue that stops publishing. Clear all blockers to publish." />
               </span>
-              {build.changes.present && <span><b>{build.changes.rate}%</b> <span className="text-text-muted">changes</span></span>}
             </div>
             {nextStep && project.status !== 'published' && (
               <div className="flex items-center gap-1.5 mt-2 text-[12px]">

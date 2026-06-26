@@ -169,7 +169,7 @@ export default function WorkspaceProjectDetail() {
               </TabPanel>
 
               <TabPanel id="monitoring" active={activeTab} visited={visited}>
-                <Section title="Monitoring" open><MonitoringPanel projectId={id!} reloadKey={reloadKey} /></Section>
+                <MonitoringPanel projectId={id!} reloadKey={reloadKey} />
               </TabPanel>
             </div>
           ) : null}
