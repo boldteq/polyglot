@@ -109,3 +109,7 @@
 [2026-06-26T18:10:47.007Z] cycle 29: slices [nav-ia|search-empty, forms-validation|search-empty, email-lifecycle|search-empty, layout|account, typography|account, color-contrast|account, spacing-rhythm|account] → generating 49 FAQs (FAQ-1361…)
 [2026-06-26T18:15:53.126Z] cycle 29 verify: kept 48/49 (dropped 1)
 [2026-06-26T18:15:53.165Z] cycle 29 distributed → 1408 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-26T18:15:53.311Z] cycle 29 ✓ +48 FAQs → 1408/5040 (27.9%) · 13/14 agents trained · committed
+[2026-06-26T18:30:53.330Z] cycle 30: slices [imagery-art-direction|account, motion|account, mobile|account, a11y|account, cro|account, trust-social-proof|account, copy-voice|account] → generating 49 FAQs (FAQ-1409…)
+[2026-06-26T18:36:52.986Z] cycle 30 verify: kept 48/49 (dropped 1)
+[2026-06-26T18:36:53.027Z] cycle 30 distributed → 1456 rules · 13/14 agents trained · 11 gate-gaps
