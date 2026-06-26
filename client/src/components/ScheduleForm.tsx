@@ -3,8 +3,9 @@
 // client regex pre-check for instant UX. Presets fetched from API (no
 // hardcoded list — see .claude/rules/no-hardcoded-org-data.md).
 //
-// `mode='edit'` disables the agent dropdown when locked (system schedules
-// route through a different code path entirely — see Schedules.tsx).
+// The agent dropdown stays editable in both create and edit mode — you can
+// repoint an existing schedule at a different agent. (System schedules are
+// read-only and route through a different code path — see Schedules.tsx.)
 
 import { useState, useEffect, useRef } from 'react'
 import { AlertCircle, Clock, Loader2 } from 'lucide-react'
@@ -192,6 +193,7 @@ export default function ScheduleForm({ mode, initial, agents, existing, onSaved,
           <label htmlFor="schedule-agent" className="block text-xs text-text-muted mb-1">Agent</label>
           <select
             id="schedule-agent"
+            name="agentName"
             className="input"
             value={form.agentName}
             onChange={e => updateForm({ agentName: e.target.value })}

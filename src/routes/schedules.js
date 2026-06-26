@@ -576,10 +576,14 @@ router.post('/schedules/:id/cancel', rateLimit('write'), (req, res) => {
     result = cancelUserRun(id);
   }
   if (!result.ok) {
-    const status = result.reason === 'not_cancellable' ? 400
-      : result.reason === 'not_running' ? 404
-      : 500;
-    return res.status(status).json({ error: result.reason });
+    // F4: expected operational outcomes return 200 with a friendly message so the
+    // client surfaces it inline (request() throws on 4xx/5xx → generic error toast).
+    const messages = {
+      not_running: 'Run already finished',
+      no_subprocess: 'Run is still starting — try again in a moment',
+      not_cancellable: "This handler can't be cancelled",
+    };
+    return res.status(200).json({ ok: false, error: messages[result.reason] || result.reason });
   }
   res.json({ ok: true, runId: result.runId });
 });

@@ -24,6 +24,7 @@ function formatCost(low: number, high: number): string {
 export default function ConfirmRunModal({ schedule, running, onConfirm, onCancel }: ConfirmRunModalProps) {
   // Restore focus to the trigger element when the modal closes (a11y).
   const lastFocusedRef = useRef<HTMLElement | null>(null)
+  const dialogRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (schedule) {
@@ -39,6 +40,18 @@ export default function ConfirmRunModal({ schedule, running, onConfirm, onCancel
       if (e.key === 'Escape' && !running) onCancel()
       // preventDefault so the focused Run button doesn't also fire on keyup.
       if (e.key === 'Enter' && !running) { e.preventDefault(); onConfirm() }
+      // F1: trap Tab within the dialog so focus can't escape to the page behind.
+      if (e.key === 'Tab' && dialogRef.current) {
+        const f = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        if (f.length) {
+          const first = f[0]
+          const last = f[f.length - 1]
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+        }
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -55,6 +68,7 @@ export default function ConfirmRunModal({ schedule, running, onConfirm, onCancel
         aria-hidden="true"
       />
       <div
+        ref={dialogRef}
         className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-surface border border-border rounded-2xl shadow-pop p-6"
         role="dialog"
         aria-modal="true"

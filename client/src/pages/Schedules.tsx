@@ -190,7 +190,7 @@ export default function SchedulesPage() {
     try {
       const result = await cancelScheduleRun(s.id)
       if (result.error) {
-        toast('error', `Cancel failed: ${result.error}`)
+        toast('warn', result.error)
       } else {
         toast('success', `Cancelling ${s.name}...`)
       }
