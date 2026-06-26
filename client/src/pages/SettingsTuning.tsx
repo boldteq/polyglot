@@ -309,6 +309,7 @@ function ConfigRow({
             <select
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              aria-label={schema.label}
               className="input w-auto text-xs py-1.5"
             >
               {schema.options!.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
@@ -318,6 +319,7 @@ function ConfigRow({
               type={schema.type === 'number' ? 'number' : 'text'}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              aria-label={schema.label}
               min={schema.min}
               max={schema.max}
               step={schema.step}
@@ -401,6 +403,7 @@ const DispatchPolicySection = memo(function DispatchPolicySection({
             <label className="text-xs font-medium w-44 text-text-muted">{k}</label>
             <input
               type="range"
+              aria-label={`${k} weight`}
               min={0}
               max={1}
               step={0.05}
@@ -418,6 +421,7 @@ const DispatchPolicySection = memo(function DispatchPolicySection({
               <label className="text-xs font-medium w-44 text-text-muted">{p}</label>
               <input
                 type="range"
+                aria-label={`${p} priority boost`}
                 min={-0.5}
                 max={0.5}
                 step={0.05}
@@ -514,10 +518,10 @@ function ModelRow({ model, isNew = false, onSave, onCancel }: {
   return (
     <div className="px-5 py-3 flex items-center gap-2 flex-wrap">
       {isNew
-        ? <input value={id} onChange={e => setId(e.target.value)} placeholder="model id (e.g. claude-opus-4-8)" className="input text-xs py-1.5 font-mono w-56" />
+        ? <input value={id} onChange={e => setId(e.target.value)} placeholder="model id (e.g. claude-opus-4-8)" aria-label="Model id" className="input text-xs py-1.5 font-mono w-56" />
         : <span className="text-xs font-mono w-56 truncate" title={model.id}>{model.id}</span>}
-      <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Display name" className="input text-xs py-1.5 w-32" />
-      <input value={tier} onChange={e => setTier(e.target.value)} placeholder="tier" className="input text-xs py-1.5 w-28" />
+      <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Display name" aria-label="Model display name" className="input text-xs py-1.5 w-32" />
+      <input value={tier} onChange={e => setTier(e.target.value)} placeholder="tier" aria-label="Model tier" className="input text-xs py-1.5 w-28" />
       <input type="number" step={0.05} min={0} value={costPenalty} onChange={e => setCostPenalty(e.target.value)} title="cost penalty" className="input text-xs py-1.5 w-20 font-mono text-right" />
       <button type="button" role="switch" aria-checked={enabled} aria-label="Model enabled" onClick={() => setEnabled(v => !v)}
         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${enabled ? 'bg-accent' : 'bg-surface-2 border border-border'}`}>
@@ -583,11 +587,11 @@ function PodRow({ pod, isNew = false, onSave, onDelete, onCancel }: {
   return (
     <div className="px-5 py-3 flex items-center gap-2 flex-wrap">
       {isNew
-        ? <input value={id} onChange={e => setId(e.target.value)} placeholder="pod id" className="input text-xs py-1.5 font-mono w-32" />
+        ? <input value={id} onChange={e => setId(e.target.value)} placeholder="pod id" aria-label="Pod id" className="input text-xs py-1.5 font-mono w-32" />
         : <span className="text-xs font-mono w-32 truncate" title={pod.id}>{pod.id}</span>}
-      <input value={prefix} onChange={e => setPrefix(e.target.value)} placeholder="prefix" className="input text-xs py-1.5 w-24 font-mono" />
-      <input value={department} onChange={e => setDepartment(e.target.value)} placeholder="department" className="input text-xs py-1.5 w-36" />
-      <input value={description} onChange={e => setDescription(e.target.value)} placeholder="description" className="input text-xs py-1.5 flex-1 min-w-[8rem]" />
+      <input value={prefix} onChange={e => setPrefix(e.target.value)} placeholder="prefix" aria-label="Pod prefix" className="input text-xs py-1.5 w-24 font-mono" />
+      <input value={department} onChange={e => setDepartment(e.target.value)} placeholder="department" aria-label="Pod department" className="input text-xs py-1.5 w-36" />
+      <input value={description} onChange={e => setDescription(e.target.value)} placeholder="description" aria-label="Pod description" className="input text-xs py-1.5 flex-1 min-w-[8rem]" />
       <div className="ml-auto flex items-center gap-2">
         <button onClick={save} disabled={!dirty || !valid} className="btn-primary btn-sm">Save</button>
         {isNew
@@ -625,10 +629,10 @@ const ModelPolicySection = memo(function ModelPolicySection({ rows, onSave }: {
         {draft.length === 0 && <div className="px-5 py-4 text-xs text-text-muted">No policy rules.</div>}
         {draft.map((r, i) => (
           <div key={r.id} className="px-5 py-3 flex items-center gap-2 flex-wrap">
-            <input value={r.pattern} onChange={e => update(i, { pattern: e.target.value })} placeholder="pattern" className="input text-xs py-1.5 w-40 font-mono" />
-            <input value={r.model} onChange={e => update(i, { model: e.target.value })} placeholder="model" className="input text-xs py-1.5 w-44 font-mono" />
-            <input value={r.tier} onChange={e => update(i, { tier: e.target.value })} placeholder="tier" className="input text-xs py-1.5 w-24" />
-            <input value={r.agents.join(', ')} onChange={e => update(i, { agents: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="agents (comma-sep)" className="input text-xs py-1.5 w-40" />
+            <input value={r.pattern} onChange={e => update(i, { pattern: e.target.value })} placeholder="pattern" aria-label="Agent-name pattern" className="input text-xs py-1.5 w-40 font-mono" />
+            <input value={r.model} onChange={e => update(i, { model: e.target.value })} placeholder="model" aria-label="Model" className="input text-xs py-1.5 w-44 font-mono" />
+            <input value={r.tier} onChange={e => update(i, { tier: e.target.value })} placeholder="tier" aria-label="Tier" className="input text-xs py-1.5 w-24" />
+            <input value={r.agents.join(', ')} onChange={e => update(i, { agents: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="agents (comma-sep)" aria-label="Agents (comma-separated)" className="input text-xs py-1.5 w-40" />
             <input type="number" value={String(r.priority)} onChange={e => update(i, { priority: Number(e.target.value) })} title="priority" className="input text-xs py-1.5 w-16 font-mono text-right" />
             <button type="button" role="switch" aria-checked={r.enabled} aria-label="Rule enabled" onClick={() => update(i, { enabled: !r.enabled })}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${r.enabled ? 'bg-accent' : 'bg-surface-2 border border-border'}`}>
