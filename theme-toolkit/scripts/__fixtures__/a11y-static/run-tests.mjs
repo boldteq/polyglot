@@ -32,7 +32,7 @@ const blockerIds = (rep) => new Set((rep?.blockers || []).map(b => b.id))
 
 console.log('conformant (img has alt, real button) → PASS')
 {
-  const d = build('<img src="{{ x }}" alt="restful hero"><button type="button">Shop</button>')
+  const d = build('<img src="{{ x }}" alt="restful hero" width="1600" height="900"><button type="button">Shop</button>')
   const { code, rep } = run(d, { A11Y_STRICT: '1' })
   code === 0 ? ok('exit 0') : bad(`expected 0, got ${code}; blockers ${[...blockerIds(rep)]}`)
   fs.rmSync(d, { recursive: true, force: true })
@@ -77,6 +77,24 @@ console.log('keyframe animation with NO reduced-motion guard → WARN a11y.motio
   const { code, rep } = run(d)
   code === 0 && (rep?.warnings || []).some(w => w.id === 'a11y.motion-no-reduced-guard') ? ok('exit 0 + motion warning') : bad(`motion: code ${code} warns ${[...new Set((rep?.warnings || []).map(w => w.id))]}`)
   fs.rmSync(d, { recursive: true, force: true })
+}
+
+console.log('<img> with no width/height/aspect-ratio → WARN a11y.img-no-dimensions (CLS)')
+{
+  const d = build('<img src="{{ x }}" alt="hero">') // alt present (isolates the dimension check), no width/height
+  const { code, rep } = run(d)
+  code === 0 && (rep?.warnings || []).some(w => w.id === 'a11y.img-no-dimensions') ? ok('exit 0 + img-no-dimensions') : bad(`dims: code ${code} warns ${[...new Set((rep?.warnings || []).map(w => w.id))]}`)
+  fs.rmSync(d, { recursive: true, force: true })
+}
+
+console.log('<img> with width+height → no CLS finding; section aspect-ratio CSS → no CLS finding')
+{
+  const wh = build('<img src="{{ x }}" alt="hero" width="800" height="800">')
+  !new Set((run(wh).rep?.warnings || []).map(w => w.id)).has('a11y.img-no-dimensions') ? ok('width+height → no dim finding') : bad('width+height wrongly flagged')
+  fs.rmSync(wh, { recursive: true, force: true })
+  const ar = build('{% style %}.hero img{aspect-ratio:16/9}{% endstyle %}<img src="{{ x }}" alt="hero">')
+  !new Set((run(ar).rep?.warnings || []).map(w => w.id)).has('a11y.img-no-dimensions') ? ok('section aspect-ratio CSS → no dim finding') : bad('aspect-ratio section wrongly flagged')
+  fs.rmSync(ar, { recursive: true, force: true })
 }
 
 console.log('keyframe animation WITH reduced-motion guard → no motion finding')

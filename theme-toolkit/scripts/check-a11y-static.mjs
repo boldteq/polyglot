@@ -102,15 +102,24 @@ function main() {
       if (fs.existsSync(path.resolve(cwd, sn))) addFile(files, sn)
     }
   }
-  const counts = { imgNoAlt: 0, handler: 0, inputFont: 0, autoplayMedia: 0, motionNoGuard: 0 }
+  const counts = { imgNoAlt: 0, handler: 0, inputFont: 0, autoplayMedia: 0, motionNoGuard: 0, imgNoDim: 0 }
 
   for (const file of files) {
     const raw = read(file)
     const html = stripNonHtml(raw)
+    // a section that sets an img aspect-ratio anywhere already reserves space → don't flag CLS dimensions
+    const sectionReservesRatio = /aspect-ratio/i.test(raw)
 
-    // 1. <img> without alt (literal img tags only — Liquid image_tag auto-alts)
+    // 1. <img> without alt (literal img tags only — Liquid image_tag auto-alts) + CLS dimension reservation
     for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
       if (!/\balt\s*=/.test(m[0])) { finding('a11y.img-no-alt', `${file}:${lineAt(html, m.index)}`, `<img> with no alt attribute — screen readers announce nothing (use alt="" only for purely decorative images, or render via {{ image | image_tag }} which auto-alts)`, m[0].slice(0, 70)); counts.imgNoAlt += 1 }
+      // CLS — a literal <img> must reserve space: width+height attrs, an inline aspect-ratio, or a section
+      // aspect-ratio rule. Otherwise it loads with 0 height → layout shift (CLS, a Core Web Vital). WARN.
+      const hasWH = /\bwidth\s*=/.test(m[0]) && /\bheight\s*=/.test(m[0])
+      if (!hasWH && !/aspect-ratio/i.test(m[0]) && !sectionReservesRatio) {
+        add(warnings, 'a11y.img-no-dimensions', `${file}:${lineAt(html, m.index)}`, `<img> has no width+height attributes and no aspect-ratio — it reserves no space → layout shift (CLS). Add width+height (or render via {{ image | image_tag }}, which sets them), or give images an aspect-ratio in CSS.`, m[0].slice(0, 70))
+        counts.imgNoDim += 1
+      }
     }
     // 2. non-interactive element with a click handler but no button/tab role + keyboard access
     for (const m of html.matchAll(/<(div|span|li)\b[^>]*>/gi)) {
