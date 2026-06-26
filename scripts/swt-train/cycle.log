@@ -50,3 +50,8 @@
 [2026-06-26T13:11:09.055Z] cycle 15: slices [merchandising|cart, search-filtering|cart, nav-ia|cart, forms-validation|cart, email-lifecycle|cart, layout|cart-drawer, typography|cart-drawer] → generating 49 FAQs (FAQ-0684…)
 [2026-06-26T13:16:25.498Z] cycle 15 verify: kept 48/49 (dropped 1)
 [2026-06-26T13:16:25.529Z] cycle 15 distributed → 731 rules · 12/14 agents trained · 0 gate-gaps
+[2026-06-26T13:16:25.656Z] cycle 15 ✓ +48 FAQs → 731/5040 (14.5%) · 12/14 agents trained · committed
+[2026-06-26T13:18:23.458Z] SWT training daemon START — interval 15min · max 60 cycles · 7 slices/cycle · model inherit · at 731/5040
+[2026-06-26T13:18:23.462Z] cycle 16: slices [color-contrast|cart-drawer, spacing-rhythm|cart-drawer, imagery-art-direction|cart-drawer, motion|cart-drawer, mobile|cart-drawer, a11y|cart-drawer, cro|cart-drawer] → generating 49 FAQs (FAQ-0732…)
+[2026-06-26T13:23:25.371Z] cycle 16 verify: kept 49/49 (dropped 0)
+[2026-06-26T13:23:25.415Z] cycle 16 distributed → 780 rules · 12/14 agents trained · 0 gate-gaps
