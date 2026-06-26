@@ -105,3 +105,7 @@
 [2026-06-26T17:50:44.110Z] cycle 28: slices [seo-structured-data|search-empty, i18n-currency-rtl|search-empty, states-empty-loading-error|search-empty, edge-cases|search-empty, legal-compliance|search-empty, merchandising|search-empty, search-filtering|search-empty] → generating 49 FAQs (FAQ-1313…)
 [2026-06-26T17:55:46.813Z] cycle 28 verify: kept 48/49 (dropped 1)
 [2026-06-26T17:55:46.855Z] cycle 28 distributed → 1360 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-26T17:55:46.981Z] cycle 28 ✓ +48 FAQs → 1360/5040 (27.0%) · 13/14 agents trained · committed
+[2026-06-26T18:10:47.007Z] cycle 29: slices [nav-ia|search-empty, forms-validation|search-empty, email-lifecycle|search-empty, layout|account, typography|account, color-contrast|account, spacing-rhythm|account] → generating 49 FAQs (FAQ-1361…)
+[2026-06-26T18:15:53.126Z] cycle 29 verify: kept 48/49 (dropped 1)
+[2026-06-26T18:15:53.165Z] cycle 29 distributed → 1408 rules · 13/14 agents trained · 11 gate-gaps
