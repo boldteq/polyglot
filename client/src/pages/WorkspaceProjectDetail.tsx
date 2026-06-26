@@ -91,7 +91,7 @@ export default function WorkspaceProjectDetail() {
 
   return (
     <PageShell
-      title={detail ? detail.project.name : 'Project'}
+      title={detail ? detail.project.name.replace(/(^|[-\s_])([a-z])/g, (_, s, c) => s + c.toUpperCase()) : 'Project'}
       subtitle={detail ? (detail.hasBuild ? (detail.project.niche || undefined) : 'Intake — no build linked yet') : 'Loading…'}
       actions={
         <div className="flex items-center gap-2">

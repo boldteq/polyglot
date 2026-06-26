@@ -153,15 +153,11 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
         : <div className="w-[76px] h-[76px] rounded-full border-2 border-border shrink-0" />}
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <h1 className="text-[22px] font-bold tracking-tight capitalize">{project.name}</h1>
+        <div className="flex items-center gap-2 flex-wrap mb-1.5">
           <StatusChanger id={project.id} status={project.status} onChanged={onReload} />
           <InfoIcon label="Lifecycle status → build phase. intake = Intake · building = Discovery–QA · preview = Publish (staging) · published = Monitor (live) · archived = done." />
           {build && <VerdictPill verdict={build.lensVerdict} blockers={build.gates.blockersOpen} />}
-        </div>
-        <div className="flex items-center gap-1 text-[13px] text-text-muted mb-2">
-          <span>{project.niche ? `${project.niche} · ` : ''}{project.domain || repo?.themeLock?.store || (build ? 'no store linked' : 'intake only — no build linked')}</span>
-          {build && <InfoIcon label="Build health 0–100 (grade A–F): gates passed, Lens verdict, changes complete, and how close to this build's reachable max." />}
+          <span className="text-[13px] text-text-muted truncate">{project.niche ? `${project.niche} · ` : ''}{project.domain || repo?.themeLock?.store || (build ? 'no store linked' : 'intake only — no build linked')}</span>
         </div>
 
         {build ? (
