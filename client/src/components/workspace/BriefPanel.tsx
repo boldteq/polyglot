@@ -65,10 +65,11 @@ function BriefEditModal({ detail, onClose, onSaved }: { detail: ProjectDetail; o
   const [goals, setGoals] = useState(str(intake.goals))
   const [audience, setAudience] = useState(str(intake.audience))
   const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
   const save = async () => {
-    if (!name.trim()) { toast('warn', 'Brand / name is required'); return }
-    setSaving(true)
+    if (!name.trim()) { setErr('Brand name is required'); return }
+    setErr(null); setSaving(true)
     try {
       // intake merges server-side (shallow) — only send the fields we edit here
       await updateWorkspaceProject(project.id, {
@@ -90,7 +91,7 @@ function BriefEditModal({ detail, onClose, onSaved }: { detail: ProjectDetail; o
         </div>
         <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-[12px] text-text-muted">Brand / name *</label><input value={name} onChange={(e) => setName(e.target.value)} className="input w-full" autoFocus /></div>
+            <div><label className="text-[12px] font-medium text-text">Brand / name <span className="text-red">*</span></label><input value={name} onChange={(e) => { setName(e.target.value); if (err) setErr(null) }} className={`input w-full ${err ? 'border-red' : ''}`} autoFocus />{err && <p className="text-[11px] text-red mt-1">{err}</p>}</div>
             <div><label className="text-[12px] text-text-muted">Niche</label><input value={niche} onChange={(e) => setNiche(e.target.value)} className="input w-full" placeholder="skincare" /></div>
           </div>
           <div><label className="text-[12px] text-text-muted">Store domain</label><input value={domain} onChange={(e) => setDomain(e.target.value)} className="input w-full" placeholder="acme.myshopify.com" /></div>
