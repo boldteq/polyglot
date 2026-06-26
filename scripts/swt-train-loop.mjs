@@ -346,7 +346,7 @@ function runCycle(state) {
   // VERIFY before these rules train the agents — drop wrong/contradictory/fabricated
   const before = entries.length
   entries = verifyBatch(entries, cycle)
-  if (entries.length !== before) logLine(`cycle ${cycle} verify: kept ${entries.length}/${before} (dropped ${before - entries.length})`)
+  logLine(`cycle ${cycle} verify: kept ${entries.length}/${before} (dropped ${before - entries.length})`)
 
   const lastId = appendBatch(entries, state.batches + 1, startId)
   state.faqCount = lastId
