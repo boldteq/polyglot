@@ -136,9 +136,9 @@ export default function TemplateLibrary() {
                     <div className="p-2 rounded-lg bg-accent-muted shrink-0">
                       <FileText className="w-4 h-4 text-accent" />
                     </div>
-                    <h3 className="font-semibold text-sm group-hover:text-accent-hover transition-colors truncate">
+                    <h2 className="font-semibold text-sm group-hover:text-accent-hover transition-colors truncate">
                       {template.name}
-                    </h3>
+                    </h2>
                   </div>
                   {template.description && (
                     <p className="text-xs text-text-secondary mb-3 line-clamp-2">{template.description}</p>
