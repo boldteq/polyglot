@@ -1168,12 +1168,12 @@ function OrgDepartmentNode({ id, data }: { id: string; data: DepartmentNodeData;
               {data.cardEmoji && (
                 <span className="text-sm shrink-0" aria-hidden>{data.cardEmoji}</span>
               )}
-              <h3
+              <h2
                 className="text-base font-bold truncate"
                 style={{ color: data.phaseColor }}
               >
                 {data.phaseLabel}
-              </h3>
+              </h2>
               {data.cardIsDrift && (
                 <span
                   className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded ml-1"
