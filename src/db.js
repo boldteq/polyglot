@@ -2486,16 +2486,7 @@ function deleteOrchestration(id) {
 // ── Schedules ───────────────────────────────────────────────────────────────
 
 function loadSchedules() {
-  return stmt('SELECT * FROM schedules ORDER BY createdAt DESC').all().map(s => ({ ...s, enabled: !!s.enabled, cronExpression: s.cron }));
-}
-
-function saveSchedules(list) {
-  const db = getDb();
-  const s = db.prepare('INSERT INTO schedules (id,name,agentName,prompt,cron,enabled,lastRunAt,lastRunStatus,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?)');
-  db.transaction(() => {
-    db.exec('DELETE FROM schedules');
-    for (const r of list) s.run(r.id, r.name, r.agentName, r.prompt, r.cron || r.cronExpression, r.enabled ? 1 : 0, r.lastRunAt || r.lastRun, r.lastRunStatus, r.createdAt, r.updatedAt);
-  })();
+  return stmt('SELECT * FROM schedules ORDER BY createdAt DESC').all().map(s => ({ ...s, enabled: !!s.enabled }));
 }
 
 function insertSchedule(r) {
@@ -2544,7 +2535,7 @@ function deleteScheduleById(id) {
 
 function getScheduleById(id) {
   const row = stmt('SELECT * FROM schedules WHERE id = ?').get(id);
-  return row ? { ...row, enabled: !!row.enabled, cronExpression: row.cron } : null;
+  return row ? { ...row, enabled: !!row.enabled } : null;
 }
 
 // ── System schedule overrides ──────────────────────────────────────────────
@@ -4311,7 +4302,7 @@ module.exports = {
   // Orchestrations
   loadOrchestrations, saveOrchestration, deleteOrchestration,
   // Schedules
-  loadSchedules, saveSchedules, insertSchedule, updateScheduleFields, updateScheduleRunStatus, deleteScheduleById, getScheduleById,
+  loadSchedules, insertSchedule, updateScheduleFields, updateScheduleRunStatus, deleteScheduleById, getScheduleById,
   // Build schedules (post-publish results loop)
   insertBuildSchedule, dueBuildSchedules, listBuildSchedules, markBuildScheduleStatus,
   ackEscalation, getEscalationAck, getEscalationAckMap,

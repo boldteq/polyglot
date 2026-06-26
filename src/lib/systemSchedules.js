@@ -19,12 +19,12 @@
 
 const { randomUUID } = require('crypto');
 const cron = require('node-cron');
-const { CronExpressionParser } = require('cron-parser');
 
 const db = require('../db');
 const agentSync = require('./agentSync');
 const configService = require('./configService');
 const { runClaudeSync, buildAgentPrompt, validateAgentExists } = require('./runClaude');
+const { computeNextRunAt } = require('./cronUtil');
 
 // ── Definitions ────────────────────────────────────────────────────────────
 
@@ -282,17 +282,6 @@ function setEnabled(id, enabled) {
   return result;
 }
 
-// ── Cron next-run helper ───────────────────────────────────────────────────
-
-function computeNextRunAt(cronExpr) {
-  if (!cronExpr) return null;
-  try {
-    const it = CronExpressionParser.parse(cronExpr, { tz: 'Etc/UTC' });
-    return it.next().toDate().toISOString();
-  } catch {
-    return null;
-  }
-}
 
 // ── Inflight introspection ─────────────────────────────────────────────────
 

@@ -73,7 +73,6 @@ export default function SchedulesPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<Schedule | null>(null)
   const [drawerSchedule, setDrawerSchedule] = useState<Schedule | null>(null)
-  const [drawerRefresh, setDrawerRefresh] = useState(0)
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
   const [pendingRun, setPendingRun] = useState<Schedule | null>(null)
   const [confirmStarting, setConfirmStarting] = useState(false)
@@ -97,19 +96,6 @@ export default function SchedulesPage() {
     const id = setInterval(() => setTick(t => t + 1), 30_000)
     return () => clearInterval(id)
   }, [])
-
-  // Drawer auto-refresh: if a schedule completes while its drawer is open,
-  // bump refreshSignal so the drawer refetches the new run.
-  useEffect(() => {
-    if (!drawerSchedule) return
-    // Subscribe via parent's patchRow side-effect — we re-detect when the
-    // currently-shown schedule's lastRunAt changes.
-    const found = schedules.find(s => s.id === drawerSchedule.id)
-    if (found && found.lastRunAt !== drawerSchedule.lastRunAt) {
-      setDrawerSchedule(found)
-      setDrawerRefresh(n => n + 1)
-    }
-  }, [schedules, drawerSchedule])
 
   const setBusy = (id: string, busy: boolean) => {
     setBusyIds(prev => {
@@ -166,7 +152,7 @@ export default function SchedulesPage() {
       }
       if (result.status === 'started') {
         toast('success', `${s.name} running in background`)
-        patchRow(s.id, { lastRunStatus: 'running', runId: result.runId ?? null })
+        patchRow(s.id, { lastRunStatus: 'running' })
         setDrawerSchedule(s)
       }
     } catch (err) {
@@ -477,7 +463,6 @@ export default function SchedulesPage() {
 
       <ScheduleHistoryDrawer
         schedule={drawerSchedule}
-        refreshSignal={drawerRefresh}
         onClose={() => setDrawerSchedule(null)}
       />
 

@@ -5,6 +5,8 @@
 import { useEffect, useState } from 'react'
 import { getCronPresets, type CronPreset } from '../lib/api'
 
+// MIRRORS src/routes/schedules.js CRON_PRESETS (the server source of truth via
+// /api/schedules/presets). Offline-only fallback — keep both in sync on change.
 const FALLBACK_PRESETS: CronPreset[] = [
   { label: 'Every minute',         value: '* * * * *' },
   { label: 'Every 5 minutes',      value: '*/5 * * * *' },

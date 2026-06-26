@@ -3,13 +3,13 @@
 const { randomUUID } = require('crypto');
 const { Router } = require('express');
 const cron = require('node-cron');
-const { CronExpressionParser } = require('cron-parser');
 
 const { rateLimit } = require('../middleware/rateLimit');
 const db = require('../db');
 const agentSync = require('../lib/agentSync');
 const systemSchedules = require('../lib/systemSchedules');
 const { runClaudeSync, buildAgentPrompt, validateAgentExists } = require('../lib/runClaude');
+const { computeNextRunAt } = require('../lib/cronUtil');
 
 const router = Router();
 
@@ -20,6 +20,8 @@ const retryTimers = new Map();
 const RUN_TIMEOUT_MS = 5 * 60 * 1000;
 const RETRY_DELAY_MS = 60 * 1000;
 
+// MIRRORED by client/src/hooks/useCronPresets.ts FALLBACK_PRESETS (offline
+// fallback). This route is the source of truth — update both on change.
 const CRON_PRESETS = [
   { label: 'Every minute',         value: '* * * * *' },
   { label: 'Every 5 minutes',      value: '*/5 * * * *' },
@@ -31,16 +33,6 @@ const CRON_PRESETS = [
 ];
 
 function genId() { return randomUUID(); }
-
-function computeNextRunAt(cronExpr) {
-  if (!cronExpr) return null;
-  try {
-    const it = CronExpressionParser.parse(cronExpr, { tz: 'Etc/UTC' });
-    return it.next().toDate().toISOString();
-  } catch {
-    return null;
-  }
-}
 
 function decorateForApi(s) {
   if (!s) return s;
