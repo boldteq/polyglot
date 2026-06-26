@@ -1881,6 +1881,21 @@ function reconcileOrphanRuns() {
   return { reconciled: r.changes };
 }
 
+// Age-bounded variant of reconcileOrphanRuns — marks ONLY runs that have been
+// 'running' longer than maxAgeMin as 'crashed'. Safe to call while the server is
+// up (won't kill a legitimately long-running job), unlike reconcileOrphanRuns
+// which marks every running row (boot-only). Used by sys-stale-run-reconcile.
+function reconcileStaleRuns({ maxAgeMin = 30 } = {}) {
+  const cutoff = new Date(Date.now() - maxAgeMin * 60_000).toISOString();
+  const r = stmt(`
+    UPDATE agent_runs
+       SET status = 'crashed',
+           error  = COALESCE(error, 'Run exceeded max age while still running — reconciled')
+     WHERE status = 'running' AND timestamp < ?
+  `).run(cutoff);
+  return { reconciled: r.changes };
+}
+
 function getRecentAgentRuns(hours = 24) {
   const cutoff = new Date(Date.now() - hours * 3600000).toISOString();
   return stmt('SELECT * FROM agent_runs WHERE timestamp >= ? ORDER BY timestamp DESC').all(cutoff).map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
@@ -3568,6 +3583,27 @@ function pruneErrorLog({ resolvedDays = 7, allDays = 30 } = {}) {
   return { resolvedPruned, oldPruned, capPruned, remaining: db.prepare('SELECT COUNT(*) as n FROM error_log').get().n };
 }
 
+// ── Table retention (sys-db-retention) ───────────────────────────────────────
+// These tables INSERT-only and grow forever; nothing pruned them before. Cutoffs
+// are computed in JS as ISO strings so they compare correctly against the stored
+// toISOString() timestamps (datetime('now') would space-format and mis-compare).
+function _isoCutoff(daysOld) { return new Date(Date.now() - daysOld * 86_400_000).toISOString(); }
+
+function pruneCostLogs({ daysOld = 90 } = {}) {
+  return { removed: stmt(`DELETE FROM cost_logs WHERE ts < ?`).run(_isoCutoff(daysOld)).changes };
+}
+// Never delete an in-flight run (status='running'); keeps the history drawer's
+// recent window intact (it reads the last 50 per schedule).
+function pruneAgentRuns({ daysOld = 180 } = {}) {
+  return { removed: stmt(`DELETE FROM agent_runs WHERE status != 'running' AND timestamp < ?`).run(_isoCutoff(daysOld)).changes };
+}
+function pruneAgentEvents({ daysOld = 30 } = {}) {
+  return { removed: stmt(`DELETE FROM agent_events WHERE ts < ?`).run(_isoCutoff(daysOld)).changes };
+}
+function pruneDelegations({ daysOld = 90 } = {}) {
+  return { removed: stmt(`DELETE FROM delegations WHERE ts < ?`).run(_isoCutoff(daysOld)).changes };
+}
+
 // Dashboard sparkline: hourly counts for last N hours, split by level.
 function getErrorLogHistogram({ hours = 24 } = {}) {
   const db = getDb();
@@ -3667,6 +3703,21 @@ function getSpend({ since, agentName } = {}) {
       SUM(CASE WHEN estimated = 0 THEN 1 ELSE 0 END) AS realCalls,
       ROUND(SUM(CASE WHEN estimated = 0 THEN costUsd ELSE 0 END), 4) AS realCostUsd
     FROM cost_logs${where}`).get(...args);
+}
+
+// Spend grouped by agent (top spenders) for the daily cost digest.
+function getSpendByAgent({ since, limit = 5 } = {}) {
+  const conds = [], args = [];
+  if (since) { conds.push('ts >= ?'); args.push(since); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT agentName,
+      COUNT(*) AS calls,
+      SUM(totalTokens) AS tokens,
+      ROUND(SUM(costUsd), 4) AS costUsd
+    FROM cost_logs${where}
+    GROUP BY agentName
+    ORDER BY costUsd DESC
+    LIMIT ?`).all(...args, Math.min(Number(limit) || 5, 50));
 }
 
 function getCostLogs({ runId, agentName, since, buildId, limit = 200 } = {}) {
@@ -4268,14 +4319,16 @@ module.exports = {
   listProjectPages, updatePageStatus, createRevision, listRevisions,
   // Agent Runs
   loadAgentRuns, insertAgentRun, getRecentAgentRuns,
-  insertAgentRunStub, completeAgentRun, reconcileOrphanRuns,
+  insertAgentRunStub, completeAgentRun, reconcileOrphanRuns, reconcileStaleRuns,
+  // Table retention (sys-db-retention)
+  pruneCostLogs, pruneAgentRuns, pruneAgentEvents, pruneDelegations,
   // Learning Loop (VS Code sessions → review inbox)
   insertVscodeSession, getSessionWatermark, getPendingVscodeSessions, getDigestedSessionStats, getRealRunStats, markVscodeSessionsDigested, getAgentRunsBySession,
   insertLearningCandidate, listLearningInbox, getLearningCandidate,
   updateLearningStatus, updateLearningPayload, getInboxCounts, pruneLearningInbox,
   insertCalibrationGrade, listCalibrationGrades,
   // Run observability (Pillar 1)
-  logCost, getSpend, getCostLogs,
+  logCost, getSpend, getSpendByAgent, getCostLogs,
   replaceWorkspaceIndex, getWorkspaceIndex, workspaceIndexAgeMs,
   logAgentEvent, getAgentEvents,
   trackDelegation, getDelegations,

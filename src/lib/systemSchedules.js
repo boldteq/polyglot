@@ -207,6 +207,47 @@ const DEFINITIONS = [
     needsLlm: false,
     cancellable: true,
   },
+  // ── Operational self-enhancement (Bucket 1 — no token cost) ────────────────
+  {
+    id: 'sys-db-retention',
+    name: 'Database retention (daily)',
+    description: 'Prune the insert-only tables that otherwise grow forever — cost_logs (90d), agent_runs (180d, never deletes a running row), agent_events (30d), delegations (90d). Keeps observability queries fast. Windows are config-overridable. Local, no token cost.',
+    cron: '45 3 * * *',
+    agentName: 'system',
+    handler: 'dbRetention',
+    needsLlm: false,
+    cancellable: false,
+  },
+  {
+    id: 'sys-stale-run-reconcile',
+    name: 'Stale run reconcile (daily)',
+    description: 'Mark any run stuck in "running" for more than 30 min as crashed (age-bounded — never touches a legitimately long-running job). Self-heals hung runs without waiting for a restart. Local, no token cost.',
+    cron: '30 4 * * *',
+    agentName: 'system',
+    handler: 'staleRunReconcile',
+    needsLlm: false,
+    cancellable: false,
+  },
+  {
+    id: 'sys-org-drift',
+    name: 'Org registry drift check (weekly)',
+    description: 'Compare the agent registry against the on-disk .md files; stage a Learning-Inbox candidate when they diverge (agent on disk but not in registry, or vice-versa). Enforces the single-source-of-truth. Local, no token cost.',
+    cron: '0 5 * * 2',
+    agentName: 'roster',
+    handler: 'orgDriftCheck',
+    needsLlm: false,
+    cancellable: false,
+  },
+  {
+    id: 'sys-cost-digest',
+    name: 'Cost digest + anomaly (daily)',
+    description: 'Roll up yesterday’s LLM spend + top-5 agents; flag a spike (≥ multiplier × the trailing 30-day daily average) as a Learning-Inbox candidate. Pillar-1 spend visibility. Local, no token cost.',
+    cron: '0 8 * * *',
+    agentName: 'system',
+    handler: 'costDigest',
+    needsLlm: false,
+    cancellable: false,
+  },
 ];
 
 const DEFAULT_ENABLED = true;
@@ -332,6 +373,91 @@ const HANDLERS = {
     return {
       output: `Roster recompute: ${summary.updated}/${summary.total} agents refreshed`,
       metadata: { summary },
+    };
+  },
+
+  // ── Bucket 1: operational self-enhancement (deterministic, no token cost) ───
+  async dbRetention() {
+    const cfgN = (k, d) => { const v = configService.getConfig(k); return Number.isFinite(v) ? v : d; };
+    const cost = db.pruneCostLogs({ daysOld: cfgN('retention.costLogsDays', 90) });
+    const runs = db.pruneAgentRuns({ daysOld: cfgN('retention.agentRunsDays', 180) });
+    const events = db.pruneAgentEvents({ daysOld: cfgN('retention.agentEventsDays', 30) });
+    const delegs = db.pruneDelegations({ daysOld: cfgN('retention.delegationsDays', 90) });
+    const removed = cost.removed + runs.removed + events.removed + delegs.removed;
+    return {
+      output: `DB retention: pruned ${removed} rows (cost_logs ${cost.removed}, agent_runs ${runs.removed}, agent_events ${events.removed}, delegations ${delegs.removed})`,
+      metadata: { removed, cost, runs, events, delegs },
+    };
+  },
+
+  async staleRunReconcile() {
+    const cfgN = (k, d) => { const v = configService.getConfig(k); return Number.isFinite(v) ? v : d; };
+    const r = db.reconcileStaleRuns({ maxAgeMin: cfgN('retention.staleRunMaxAgeMin', 30) });
+    return {
+      output: r.reconciled ? `Reconciled ${r.reconciled} stale run(s) → crashed` : 'No stale runs to reconcile',
+      metadata: r,
+    };
+  },
+
+  async orgDriftCheck() {
+    const { org } = requireDeps();
+    const { listAgents } = require('./cache');
+    const path = require('path');
+    const os = require('os');
+    const globalAgents = listAgents(path.join(os.homedir(), '.claude', 'agents'));
+    const agentMap = Object.fromEntries(globalAgents.map((a) => [a.filename, a]));
+    const drift = org.detectDrift(agentMap);
+    const onDisk = drift.onlyOnDisk || [];
+    const inReg = drift.onlyInRegistry || [];
+    const total = onDisk.length + inReg.length;
+    if (total > 0) {
+      try {
+        db.insertLearningCandidate({
+          type: 'org-drift',
+          title: `Org drift: ${onDisk.length} on-disk-only, ${inReg.length} registry-only`,
+          payload: drift,
+          source: 'sys-org-drift',
+          confidence: 1,
+          status: 'pending',
+        });
+      } catch (e) { console.warn('[orgDriftCheck] inbox insert failed:', e.message); }
+    }
+    return {
+      output: total ? `Org drift: ${onDisk.length} disk-only, ${inReg.length} registry-only` : 'Org registry ↔ disk in sync',
+      metadata: { onlyOnDisk: onDisk, onlyInRegistry: inReg, total },
+    };
+  },
+
+  async costDigest() {
+    const cfgN = (k, d) => { const v = configService.getConfig(k); return Number.isFinite(v) ? v : d; };
+    const dayMs = 86_400_000;
+    const now = Date.now();
+    const since1d = new Date(now - dayMs).toISOString();
+    const since30d = new Date(now - 30 * dayMs).toISOString();
+    const yesterday = db.getSpend({ since: since1d }) || {};
+    const last30 = db.getSpend({ since: since30d }) || {};
+    const topAgents = db.getSpendByAgent({ since: since1d, limit: 5 });
+    const yCost = Number(yesterday.costUsd) || 0;
+    const dailyAvg30 = (Number(last30.costUsd) || 0) / 30;
+    const multiplier = cfgN('cost.anomalyMultiplier', 2.5);
+    const floor = cfgN('cost.anomalyFloorUsd', 1);
+    const anomaly = yCost >= floor && dailyAvg30 > 0 && yCost > dailyAvg30 * multiplier;
+    if (anomaly) {
+      try {
+        db.insertLearningCandidate({
+          type: 'cost-anomaly',
+          title: `Cost spike: $${yCost.toFixed(2)} yesterday vs $${dailyAvg30.toFixed(2)}/day avg`,
+          payload: { yesterdayUsd: yCost, dailyAvg30Usd: dailyAvg30, multiplier, topAgents },
+          source: 'sys-cost-digest',
+          confidence: 1,
+          status: 'pending',
+        });
+      } catch (e) { console.warn('[costDigest] inbox insert failed:', e.message); }
+    }
+    try { agentSync.events.emit('observability.cost-digest', { yesterdayUsd: yCost, dailyAvg30Usd: dailyAvg30, anomaly, topAgents }); } catch { /* best-effort */ }
+    return {
+      output: `Cost digest: $${yCost.toFixed(2)} yesterday (${yesterday.calls || 0} calls) · 30d avg $${dailyAvg30.toFixed(2)}/day${anomaly ? ' — ⚠ SPIKE' : ''}`,
+      metadata: { yesterday, dailyAvg30Usd: dailyAvg30, anomaly, topAgents },
     };
   },
 
