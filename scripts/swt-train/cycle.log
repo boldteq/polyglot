@@ -14,3 +14,6 @@
 [2026-06-26T10:00:36.510Z] SWT training daemon START — interval 15min · max 60 cycles · 7 slices/cycle · model inherit · at 246/5040
 [2026-06-26T10:00:36.514Z] cycle 6: slices [imagery-art-direction|collection, motion|collection, mobile|collection, a11y|collection, cro|collection, trust-social-proof|collection, copy-voice|collection] → generating 49 FAQs (FAQ-0247…)
 [2026-06-26T10:06:11.209Z] cycle 6 ✓ +49 FAQs → 295/5040 (5.9%) · committed
+[2026-06-26T10:09:02.315Z] SWT training daemon START — interval 15min · max 60 cycles · 7 slices/cycle · model inherit · at 295/5040
+[2026-06-26T10:09:02.316Z] cycle 7: slices [honesty-claims|collection, data-binding|collection, performance-cwv|collection, seo-structured-data|collection, i18n-currency-rtl|collection, states-empty-loading-error|collection, edge-cases|collection] → generating 49 FAQs (FAQ-0296…)
+[2026-06-26T10:12:32.454Z] cycle 7 distributed → 344 rules · 12/14 agents trained · 0 gate-gaps
