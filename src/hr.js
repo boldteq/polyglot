@@ -425,6 +425,18 @@ function promoteAgent(orgModule, experienceModule, agentId) {
   const nextThreshold = experienceModule.LEVEL_THRESHOLDS[currentLevel + 1];
   if (!nextThreshold) return { ok: false, error: 'No higher level available' };
 
+  // Idempotency guard: don't re-promote an agent promoted within the cooldown
+  // window — prevents a duplicate cadence run (e.g. a manual run-now after the
+  // weekly success) from double-applying the YoE bonus + level bump. Cadence is
+  // weekly, so the 6-day default skips any same-week re-run.
+  const cooldownDays = configService.getConfig('hr.promoteCooldownDays') ?? 6;
+  if (record.lastPromoted) {
+    const ageDays = (Date.now() - new Date(record.lastPromoted).getTime()) / 86_400_000;
+    if (ageDays >= 0 && ageDays < cooldownDays) {
+      return { ok: false, skipped: true, error: `Promoted ${ageDays.toFixed(1)}d ago — within ${cooldownDays}d cooldown` };
+    }
+  }
+
   // Grant a promotion bonus: enough XP to cross the threshold
   const bonusYears = Math.max(0, nextThreshold.minYoE - (record.yearsOfExperience || 0)) + 0.1;
 

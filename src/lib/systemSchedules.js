@@ -113,18 +113,6 @@ const DEFINITIONS = [
     cancellable: false,
   },
   {
-    id: 'sys-mira-results',
-    name: 'Mira results-loop promotion',
-    description: 'On a 30/90d CRO verdict, promote validated mechanics to gold-examples (closes the results learning loop). Event-driven.',
-    cron: null,
-    trigger: 'event:results.verdict_emitted',
-    agentName: 'mira',
-    handler: 'miraExtract',
-    needsLlm: true,
-    cancellable: true,
-    costEstimate: { lowUsd: 0.02, highUsd: 0.20 },
-  },
-  {
     id: 'sys-intel-reindex',
     name: 'Intelligence reindex (nightly)',
     description: 'Incrementally re-embed the memory brain into the vector store (Pillar 2 — keeps RAG fresh). Local Ollama, no token cost.',
@@ -1612,8 +1600,6 @@ function bootAll(deps = {}) {
   }
   agentSync.events.on('agent_run.recorded', onBuildSuccessEvent);
   agentSync.events.on('memory.changed', onMemoryChangedEvent);
-  // Results-loop: a 30/90d CRO verdict promotes validated mechanics via mira (closes the loop).
-  agentSync.events.on('results.verdict_emitted', () => runHandler('sys-mira-results', { async: true }).catch((err) => console.warn(`[systemSchedule] results.verdict_emitted: ${err.message}`)));
 
   // Log retention — 03:15 UTC nightly. Plain DB op, no LLM, no agent_runs stub.
   startLogRetentionJob();
