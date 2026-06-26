@@ -159,6 +159,7 @@ export default function TemplateLibrary() {
                 </Link>
                 <button
                   onClick={() => handleDelete(template.filename)}
+                  aria-label={`Delete ${template.name} template`}
                   className="p-1.5 rounded-md text-text-muted hover:text-red hover:bg-red-muted opacity-0 group-hover:opacity-100 transition-all"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
