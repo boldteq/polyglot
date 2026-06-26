@@ -23,6 +23,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
 import path from 'node:path'
+import { distribute } from './swt-distribute.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '..')
@@ -311,18 +312,26 @@ function runCycle(state) {
   appendLedger(cycle, entries.length, slices, 'auto')
   saveState(state)
 
+  // IMPLEMENT: distribute every learning into the owning agents' .md + the team-wide
+  // digest + the gate-gap queue. This is the "train the team" step — not just a doc.
+  let dist = null
+  try { dist = distribute() } catch (e) { logLine(`distribute warn: ${e.message}`) }
+  if (dist) logLine(`cycle ${cycle} distributed → ${dist.rules} rules · ${dist.agentsUpdated}/14 agents trained · ${dist.gateGaps} gate-gaps`)
+
   storeScan(cycle)
 
-  // BRAIN lives in ~/.claude/memory (not a repo) — persisted on disk, not committed here.
+  // BRAIN, DIGEST + agent .md live in ~/.claude (not a repo) — persisted on disk.
+  // The Polyglot repo commits only its own state/queue/log/gate-gaps.
   gitCommit(
-    `train(swt): cycle ${cycle} — +${entries.length} design-gap FAQs (${state.faqCount}/${TARGET})`,
+    `train(swt): cycle ${cycle} — +${entries.length} FAQs → ${dist ? dist.rules + ' rules in ' + dist.agentsUpdated + '/14 agents' : 'distributed'} (${state.faqCount}/${TARGET})`,
     [
       path.relative(ROOT, STATE_F),
       path.relative(ROOT, QUEUE_F),
       path.relative(ROOT, LOG_F),
+      path.relative(ROOT, path.join(STATE_DIR, 'gate-gaps.md')),
     ],
   )
-  logLine(`cycle ${cycle} ✓ +${entries.length} FAQs → ${state.faqCount}/${TARGET} (${((state.faqCount / TARGET) * 100).toFixed(1)}%) · committed`)
+  logLine(`cycle ${cycle} ✓ +${entries.length} FAQs → ${state.faqCount}/${TARGET} (${((state.faqCount / TARGET) * 100).toFixed(1)}%)${dist ? ` · ${dist.agentsUpdated}/14 agents trained` : ''} · committed`)
 }
 
 function finish(state) {
