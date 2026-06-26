@@ -97,6 +97,14 @@ export default function SchedulesPage() {
     return () => clearInterval(id)
   }, [])
 
+  // E3: close the history drawer if its schedule disappears from the list
+  // (deleted here or from another tab) — never leave stale history for a gone row.
+  useEffect(() => {
+    if (drawerSchedule && !loading && !schedules.some(s => s.id === drawerSchedule.id)) {
+      setDrawerSchedule(null)
+    }
+  }, [schedules, drawerSchedule, loading])
+
   const setBusy = (id: string, busy: boolean) => {
     setBusyIds(prev => {
       const next = new Set(prev)

@@ -17,6 +17,7 @@ type Listener = (ev: OrgChartStreamEvent) => void
 type ScheduleListener = (ev: ScheduleStreamEvent) => void
 
 let _es: EventSource | null = null
+let _lifecycleBound = false
 const _listeners = new Set<Listener>()
 const _scheduleListeners = new Set<ScheduleListener>()
 
@@ -26,8 +27,18 @@ function ensureOpen(): void {
     onOrgChart: (ev) => { for (const fn of _listeners) fn(ev) },
     onSchedule: (ev) => { for (const fn of _scheduleListeners) fn(ev) },
   })
-  if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', () => { _es?.close(); _es = null })
+  // Bind page-lifecycle handling exactly once (guard against re-binding on every
+  // reopen). The old code used `beforeunload` to close + null the connection, but
+  // on a bfcache (back/forward) restore the page resumes with _es === null and
+  // nothing reopened it → all live schedule/org-chart updates silently died (E2).
+  if (typeof window !== 'undefined' && !_lifecycleBound) {
+    _lifecycleBound = true
+    window.addEventListener('pagehide', () => { _es?.close(); _es = null })
+    window.addEventListener('pageshow', (e) => {
+      if ((e as PageTransitionEvent).persisted && (_listeners.size > 0 || _scheduleListeners.size > 0)) {
+        ensureOpen()
+      }
+    })
   }
 }
 
