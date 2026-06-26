@@ -417,9 +417,23 @@ const HANDLERS = {
     const events = db.pruneAgentEvents({ daysOld: cfgN('retention.agentEventsDays', 30) });
     const delegs = db.pruneDelegations({ daysOld: cfgN('retention.delegationsDays', 90) });
     const removed = cost.removed + runs.removed + events.removed + delegs.removed;
+    // Anomaly guard: an abnormally large prune (mis-set retention window, runaway
+    // writer, or a clock jump) should be visible, not a silent mass-delete.
+    const anomalyThreshold = cfgN('retention.anomalyRows', 50000);
+    const anomaly = removed > anomalyThreshold;
+    if (anomaly) {
+      try {
+        db.insertLearningCandidate({
+          type: 'retention-anomaly',
+          title: `DB retention pruned ${removed} rows in one run (> ${anomalyThreshold})`,
+          payload: { removed, cost, runs, events, delegs, anomalyThreshold },
+          source: 'sys-db-retention', confidence: 1, status: 'pending',
+        });
+      } catch { /* best-effort */ }
+    }
     return {
-      output: `DB retention: pruned ${removed} rows (cost_logs ${cost.removed}, agent_runs ${runs.removed}, agent_events ${events.removed}, delegations ${delegs.removed})`,
-      metadata: { removed, cost, runs, events, delegs },
+      output: `DB retention: pruned ${removed} rows (cost_logs ${cost.removed}, agent_runs ${runs.removed}, agent_events ${events.removed}, delegations ${delegs.removed})${anomaly ? ' — ⚠ ANOMALY' : ''}`,
+      metadata: { removed, cost, runs, events, delegs, anomaly },
     };
   },
 
