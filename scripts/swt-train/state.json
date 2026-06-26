@@ -1,10 +1,10 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 5,
-  "batches": 5,
-  "faqCount": 246,
-  "slicePointer": 28,
+  "cyclesRun": 6,
+  "batches": 6,
+  "faqCount": 295,
+  "slicePointer": 35,
   "consecutiveFailures": 0,
   "log": [
     {
@@ -72,6 +72,21 @@
         "typography|collection",
         "color-contrast|collection",
         "spacing-rhythm|collection"
+      ]
+    },
+    {
+      "cycle": 6,
+      "ts": "2026-06-26T10:06:11.052Z",
+      "added": 49,
+      "faqTotal": 295,
+      "slices": [
+        "imagery-art-direction|collection",
+        "motion|collection",
+        "mobile|collection",
+        "a11y|collection",
+        "cro|collection",
+        "trust-social-proof|collection",
+        "copy-voice|collection"
       ]
     }
   ]
