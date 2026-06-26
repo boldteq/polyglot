@@ -36,6 +36,7 @@ const STATE_F = path.join(STATE_DIR, 'state.json')
 const QUEUE_F = path.join(STATE_DIR, 'store-fix-queue.md')
 const LOG_F = path.join(STATE_DIR, 'cycle.log')
 const STOP_F = path.join(STATE_DIR, 'STOP')
+const REJECTED_F = path.join(STATE_DIR, 'rejected-rules.md')
 const STORE = '/Users/yashbaldha/Desktop/Shopify Task/gpt test 1'
 
 const CLAUDE_BIN =
@@ -189,6 +190,47 @@ function validEntry(e) {
   )
 }
 
+// ---- adversarial verify: a critic drops wrong/contradictory/fabricated rules
+//      BEFORE they're written into agents. Degrades to keep-all on error; an
+//      over-zealous critic (>70% dropped) is distrusted so it can't starve a cycle.
+function verifyPrompt(entries) {
+  const list = entries
+    .map((e, i) => `${i}. [${e.concern}/${e.surface}] GAP: ${e.gap.slice(0, 140)} | RULE: ${e.solution.slice(0, 190)}`)
+    .join('\n')
+  return `You are a senior Shopify Online Store 2.0 / Liquid expert auditing auto-generated TRAINING RULES for an AI website-building team BEFORE they are written into the agents. For EACH numbered entry, decide keep or drop.
+DROP if: factually wrong about Shopify/Liquid/theme behavior; violates honesty (fabricated reviews/press/stats, fake urgency/countdown); cites a gate that doesn't exist; generic web advice not specific to Shopify ecom; or essentially duplicates another entry in this list.
+KEEP if it is a correct, specific, actionable Shopify ecom design rule.
+
+${list}
+
+Output ONLY a JSON array, one object per entry, covering all ${entries.length}: [{"i":<index>,"verdict":"keep"|"drop","reason":"<=10 words"}]`
+}
+function verifyBatch(entries, cycle) {
+  let verdicts
+  try {
+    verdicts = extractJsonArray(callClaude(verifyPrompt(entries)))
+  } catch (e) {
+    logLine(`cycle ${cycle} verify SKIPPED (${e.message}) — keeping all unverified`)
+    return entries
+  }
+  const drops = new Map()
+  for (const v of verdicts)
+    if (v && v.verdict === 'drop' && Number.isInteger(v.i) && v.i >= 0 && v.i < entries.length)
+      drops.set(v.i, String(v.reason || '').slice(0, 80))
+  const kept = entries.filter((_, i) => !drops.has(i))
+  if (kept.length < entries.length * 0.3) {
+    logLine(`cycle ${cycle} verify ANOMALY (kept ${kept.length}/${entries.length}) — distrusting critic, keeping all`)
+    return entries
+  }
+  if (drops.size > 0) {
+    const lines = [...drops.entries()].map(
+      ([i, r]) => `- cycle ${cycle} [${entries[i].concern}/${entries[i].surface}] "${entries[i].gap.slice(0, 80)}" — DROPPED: ${r}`,
+    )
+    fs.appendFileSync(REJECTED_F, lines.join('\n') + '\n')
+  }
+  return kept
+}
+
 function renderEntry(e, id) {
   const num = String(id).padStart(4, '0')
   return [
@@ -300,6 +342,11 @@ function runCycle(state) {
     logLine(`cycle ${cycle}: zero valid entries — skipping, pointer not advanced.`)
     return
   }
+
+  // VERIFY before these rules train the agents — drop wrong/contradictory/fabricated
+  const before = entries.length
+  entries = verifyBatch(entries, cycle)
+  if (entries.length !== before) logLine(`cycle ${cycle} verify: kept ${entries.length}/${before} (dropped ${before - entries.length})`)
 
   const lastId = appendBatch(entries, state.batches + 1, startId)
   state.faqCount = lastId
