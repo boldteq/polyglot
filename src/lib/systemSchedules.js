@@ -713,11 +713,18 @@ const HANDLERS = {
   },
 
   async forgeGapScan(def, ctx) {
+    const faults = [];
     let gapsCount = 0;
     try {
       const recent = db.getRecentGaps?.(30) || [];
       gapsCount = Array.isArray(recent) ? recent.length : 0;
-    } catch {}
+    } catch (err) { recordFault(faults, 'sys-forge', 'getRecentGaps', err); }
+
+    // Don't spend tokens on an empty prompt — with no logged gaps there is nothing
+    // for forge to analyze (it used to run the LLM blind every month).
+    if (gapsCount === 0) {
+      return { output: 'NO_GAPS — 0 capability gaps logged in the last 30d; skipped the LLM scan.', metadata: { llm: false, gapsCount, skipped: true, faults } };
+    }
 
     if (!validateAgentExists('forge')) {
       throw new Error('forge agent .md not found in ~/.claude/agents/');
@@ -733,7 +740,21 @@ const HANDLERS = {
     ].join('\n');
     const prompt = buildAgentPrompt(def.agentName, task);
     const { output, usage } = await runLLMWithUsage(prompt, ctx);
-    return { output, usage, metadata: { llm: true, gapsCount } };
+
+    // Make the proposal ACTIONABLE: stage it in the Learning Inbox so Yash sees it
+    // (it used to land in agent_runs.metadata and was never read by anything).
+    const found = !!output && !/NO_GAPS_DETECTED/i.test(output);
+    if (found) {
+      try {
+        db.insertLearningCandidate({
+          type: 'capability-proposal',
+          title: `Forge: ${gapsCount} capability gap(s) — proposed agent template(s)`,
+          payload: { proposal: String(output).slice(0, 8000), gapsCount },
+          source: 'sys-forge', confidence: 0.7, status: 'pending',
+        });
+      } catch (err) { recordFault(faults, 'sys-forge', 'stage-proposal', err); }
+    }
+    return { output, usage, metadata: { llm: true, gapsCount, staged: found, faults } };
   },
 
   async miraExtract(def, ctx) {
