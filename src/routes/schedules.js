@@ -531,7 +531,9 @@ router.post('/schedules/:id/run-now', rateLimit('write'), async (req, res) => {
     try {
       const result = await systemSchedules.runHandler(id, { async: true });
       if (result.skipped) {
-        return res.status(409).json({ error: 'Already running', runId: result.runId });
+        // D1: 200 (not 409) so the client's result.skipped branch shows a
+        // friendly "already running" toast instead of a thrown generic error.
+        return res.status(200).json({ skipped: true, reason: result.reason || 'inflight', runId: result.runId });
       }
       return res.status(202).json(result);
     } catch (err) {
@@ -548,7 +550,8 @@ router.post('/schedules/:id/run-now', rateLimit('write'), async (req, res) => {
   const prep = prepareTick(existing);
   if (prep.skipped) {
     if (prep.reason === 'inflight') {
-      return res.status(409).json({ error: 'Already running', runId: prep.runId });
+      // D1: 200 skipped (not 409) — see the system-schedule branch above.
+      return res.status(200).json({ skipped: true, reason: 'inflight', runId: prep.runId });
     }
     return res.status(500).json({ error: prep.error || prep.reason });
   }

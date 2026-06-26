@@ -147,7 +147,7 @@ export default function SchedulesPage() {
     try {
       const result = await runScheduleNow(s.id)
       if (result.skipped) {
-        toast('error', `${s.name}: ${result.reason || 'already running'}`)
+        toast('warn', `${s.name} is already running`)
         return
       }
       if (result.status === 'started') {

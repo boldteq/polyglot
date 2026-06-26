@@ -143,6 +143,28 @@ test('A3: a schedule whose agent is missing auto-pauses instead of failing forev
   }
 });
 
+test('D1: a concurrent run-now returns 200 skipped (not a thrown 409)', async () => {
+  const id = 'sched-d1';
+  seed(id);
+  let release;
+  // Hold the first run inflight by blocking the LLM call until we release it.
+  llmBehavior = () => new Promise((res) => { release = () => res({ text: 'ok', usage: null }); });
+  try {
+    const r1 = await req('POST', `/schedules/${id}/run-now`, {});
+    assert.equal(r1.status, 202);
+    const r2 = await req('POST', `/schedules/${id}/run-now`, {});
+    assert.equal(r2.status, 200, 'second run-now should be 200 skipped, not a 409 the client throws on');
+    assert.equal(r2.json.skipped, true);
+  } finally {
+    if (release) release();
+    llmBehavior = async () => ({ text: 'ok', usage: null });
+    await waitFor(async () => {
+      const inf = await req('GET', '/schedules/inflight');
+      return !inf.json.inflight.some((x) => x.id === id);
+    });
+  }
+});
+
 test('C1: POST rejects over-length name and prompt', async () => {
   const longName = await req('POST', '/schedules', { name: 'x'.repeat(201), agentName: 'tester', prompt: 'ok', cronExpr: '0 9 * * *' });
   assert.equal(longName.status, 400);
