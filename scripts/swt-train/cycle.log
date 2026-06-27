@@ -360,3 +360,8 @@
 [2026-06-27T16:06:12.478Z] cycle 83 verify: kept 31/49 (dropped 18)
 [2026-06-27T16:06:12.602Z] cycle 83 distributed → 3586 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T16:06:12.602Z] cycle 83 reindex: skipped (batched separately)
+[2026-06-27T16:06:12.762Z] cycle 83 ✓ +31 FAQs → 3586/5040 (71.2%) · 14/14 agents trained · committed
+[2026-06-27T16:07:42.765Z] cycle 84: slices [forms-validation|quiz-finder, email-lifecycle|quiz-finder, layout|landing-advertorial, typography|landing-advertorial, color-contrast|landing-advertorial, spacing-rhythm|landing-advertorial, imagery-art-direction|landing-advertorial] → generating 49 FAQs (FAQ-3587…)
+[2026-06-27T16:13:31.507Z] cycle 84 verify: kept 19/49 (dropped 30)
+[2026-06-27T16:13:31.626Z] cycle 84 distributed → 3605 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T16:13:31.626Z] cycle 84 reindex: skipped (batched separately)
