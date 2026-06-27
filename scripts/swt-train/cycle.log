@@ -434,3 +434,9 @@
 [2026-06-27T17:40:00.110Z] cycle 97 verify: kept 23/49 (dropped 26)
 [2026-06-27T17:40:00.251Z] cycle 97 distributed → 4034 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T17:40:00.251Z] cycle 97 reindex: skipped (batched separately)
+[2026-06-27T17:40:00.485Z] cycle 97 ✓ +23 FAQs → 4034/5040 (80.0%) · 14/14 agents trained · committed
+[2026-06-27T17:41:30.486Z] cycle 98: slices [layout|announcement-bar, typography|announcement-bar, color-contrast|announcement-bar, spacing-rhythm|announcement-bar, imagery-art-direction|announcement-bar, motion|announcement-bar, mobile|announcement-bar] → generating 49 FAQs (FAQ-4035…)
+[2026-06-27T17:46:05.709Z] cycle 98 verify ANOMALY (kept 6/49) — distrusting critic, keeping all
+[2026-06-27T17:46:05.712Z] cycle 98 verify: kept 49/49 (dropped 0)
+[2026-06-27T17:46:05.845Z] cycle 98 distributed → 4083 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T17:46:05.845Z] cycle 98 reindex: skipped (batched separately)
