@@ -237,6 +237,16 @@ const DEFINITIONS = [
     cancellable: false,
   },
   {
+    id: 'sys-metrics-rollup',
+    name: 'Metrics rollup (daily)',
+    description: 'Aggregate yesterday’s runs/success-rate/cost/latency-percentiles/eval-avg into the metrics_daily table that powers the Monitoring time-series charts. Idempotent (INSERT OR REPLACE), so a catch-up re-run is safe. Local, no token cost.',
+    cron: '15 5 * * *',
+    agentName: 'system',
+    handler: 'metricsRollup',
+    needsLlm: false,
+    cancellable: false,
+  },
+  {
     id: 'sys-app-audit',
     name: 'App UX/a11y audit (daily)',
     description: 'Headless sweep of the Polyglot app’s key routes — console errors, critical/serious axe a11y violations (color-contrast tracked separately as a known backlog), and blank-render checks. Files a Learning-Inbox candidate only when findings RISE vs the last run. The automated version of a manual UX/a11y audit. Local, no token cost.',
@@ -329,6 +339,36 @@ function setEnabled(id, enabled) {
   startJob(def);
   agentSync.emitScheduleEvent('upsert', { id, kind: 'system' });
   return result;
+}
+
+// F3: how many of the most-recent runs failed CONSECUTIVELY (newest-first; stops
+// at the first success). Used to auto-pause a chronically-broken schedule.
+const FAILURE_PAUSE_THRESHOLD = 5;
+function consecutiveFailures(id) {
+  const runs = db.getScheduleRunsFor(id, { limit: FAILURE_PAUSE_THRESHOLD });
+  let n = 0;
+  for (const r of runs) {
+    if (r.status === 'error' || r.status === 'crashed') n += 1; else break;
+  }
+  return n;
+}
+// Auto-pause a system schedule after N consecutive failures so a chronically broken
+// job (e.g. a daily 300s timeout) stops burning compute/tokens instead of failing
+// forever, and stages a Learning-Inbox candidate so the operator knows + can fix it.
+function maybeAutoPauseOnFailures(id) {
+  try {
+    if (!isEnabled(id) || consecutiveFailures(id) < FAILURE_PAUSE_THRESHOLD) return;
+    console.warn(`[systemSchedule] ${id} failed ${FAILURE_PAUSE_THRESHOLD}× in a row — auto-pausing`);
+    setEnabled(id, false);
+    try {
+      db.insertLearningCandidate({
+        type: 'schedule-autopaused',
+        title: `Auto-paused "${id}": failed ${FAILURE_PAUSE_THRESHOLD}× in a row`,
+        payload: { id, threshold: FAILURE_PAUSE_THRESHOLD },
+        source: 'sys-failure-autopause', confidence: 1, status: 'pending',
+      });
+    } catch { /* inbox best-effort */ }
+  } catch (e) { console.warn('[systemSchedule] auto-pause check failed:', e.message); }
 }
 
 
@@ -505,6 +545,24 @@ const HANDLERS = {
     return {
       output: `Cost digest: $${yCost.toFixed(2)} yesterday (${yesterday.calls || 0} calls) · 30d avg $${dailyAvg30.toFixed(2)}/day${anomaly ? ' — ⚠ SPIKE' : ''}`,
       metadata: { yesterday, dailyAvg30Usd: dailyAvg30, anomaly, topAgents },
+    };
+  },
+
+  // Roll yesterday's raw runs/cost/eval into the metrics_daily time-series the
+  // Monitoring charts read. Idempotent (INSERT OR REPLACE) so a catch-up is safe.
+  async metricsRollup() {
+    const yd = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const m = db.computeDayMetrics(yd);
+    db.upsertMetricsDaily(yd, '__all__', m);
+    // Per-agent rows so the Trends agent selector has data.
+    let agents = 0;
+    for (const agent of db.getAgentsWithRunsOnDay(yd)) {
+      const am = db.computeDayMetrics(yd, agent);
+      if (am.runs > 0) { db.upsertMetricsDaily(yd, agent, am); agents++; }
+    }
+    return {
+      output: `Metrics rollup ${yd}: ${m.runs} runs · ${Math.round(m.successRate * 100)}% ok · $${m.costUsd.toFixed(4)} · p95 ${m.p95LatencyMs}ms · ${agents} agents`,
+      metadata: { date: yd, agents, ...m },
     };
   },
 
@@ -943,7 +1001,26 @@ const HANDLERS = {
   // Pillar 2: incrementally re-embed the brain. Spawns the ESM reindex CLI in its
   // own process (isolation) — local Ollama, no token cost. Self-bounded timeout.
   async intelReindex(def, ctx) {
-    return runIntelScript('reindex.mjs', [], { ctx, timeoutMs: 10 * 60 * 1000, label: 'reindex' });
+    const res = await runIntelScript('reindex.mjs', [], { ctx, timeoutMs: 10 * 60 * 1000, label: 'reindex' });
+    // Silent-loss guard: after a reindex, every enumerable source should be represented in the index.
+    // A gap means a prune dropped it without re-adding (the failure that wiped the FAQ brain) — surface
+    // it as a CRITICAL fault so it alerts here, not weeks later when memory_search silently misses.
+    const faults = [];
+    try {
+      const { brainCoverage } = await import('../../scripts/brain-coverage.mjs');
+      const cov = await brainCoverage();
+      if (cov.missing.length) {
+        const sample = cov.missing.slice(0, 3).map((m) => m.source_ref.split('/').pop()).join(', ');
+        recordFault(faults, 'sys-intel-reindex', 'coverage-gap', new Error(`${cov.missing.length}/${cov.total} enumerated sources MISSING from index (e.g. ${sample}) — run reindex`), { critical: true });
+      }
+      return {
+        output: `${res.output}; coverage ${cov.indexed}/${cov.total}${cov.missing.length ? ` — ${cov.missing.length} MISSING` : ' (complete)'}${faults.length ? ` · ${faults.length} fault(s)` : ''}`,
+        metadata: { ...res.metadata, coverage: { total: cov.total, indexed: cov.indexed, missing: cov.missing.length }, faults },
+      };
+    } catch (err) {
+      recordFault(faults, 'sys-intel-reindex', 'coverage-check', err);
+      return { output: `${res.output}; coverage-check failed: ${err.message}`, metadata: { ...res.metadata, faults } };
+    }
   },
 
   // Pillar 3: weekly judge self-test (catches judge drift) then push scores into
@@ -1557,6 +1634,9 @@ async function runHandler(id, opts = {}) {
     } catch (err) {
       console.error('[systemSchedules] completeAgentRun failed:', err.message);
     }
+    // F3: a failed run might be the Nth in a row — auto-pause if so (runs AFTER
+    // completeAgentRun so this run is counted in the streak).
+    if (status === 'error') maybeAutoPauseOnFailures(id);
     const evt = status === 'success' ? 'complete' : status === 'cancelled' ? 'cancelled' : 'error';
     agentSync.emitScheduleEvent(evt, {
       id, kind: 'system', status, runId,

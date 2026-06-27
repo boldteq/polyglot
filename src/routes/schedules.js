@@ -22,6 +22,8 @@ const RETRY_DELAY_MS = 60 * 1000;
 // C1: input bounds (kept in sync with ScheduleForm maxLength).
 const NAME_MAX = 200;
 const PROMPT_MAX = 20000;
+// F3: auto-pause a schedule after this many consecutive failed runs.
+const FAILURE_PAUSE_THRESHOLD = 5;
 
 // MIRRORED by client/src/hooks/useCronPresets.ts FALLBACK_PRESETS (offline
 // fallback). This route is the source of truth — update both on change.
@@ -155,6 +157,17 @@ async function runTickBody(prep, { retryCount = 0 } = {}) {
     if (!validateAgentExists(fresh.agentName)) {
       console.warn(`[schedule] ${fresh.id} agent "${fresh.agentName}" missing — auto-pausing`);
       autoPauseSchedule(fresh.id, `agent "${fresh.agentName}" not found`);
+      return result;
+    }
+
+    // F3: auto-pause after N consecutive failures (newest-first streak incl. this
+    // run) so a chronically-broken schedule stops burning instead of failing forever.
+    const recentFails = db.getScheduleRunsFor(fresh.id, { limit: FAILURE_PAUSE_THRESHOLD });
+    let streak = 0;
+    for (const r of recentFails) { if (r.status === 'error' || r.status === 'crashed') streak += 1; else break; }
+    if (streak >= FAILURE_PAUSE_THRESHOLD) {
+      console.warn(`[schedule] ${fresh.id} failed ${FAILURE_PAUSE_THRESHOLD}× in a row — auto-pausing`);
+      autoPauseSchedule(fresh.id, `failed ${FAILURE_PAUSE_THRESHOLD}× in a row`);
       return result;
     }
 

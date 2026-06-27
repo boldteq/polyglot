@@ -165,6 +165,28 @@ test('D1: a concurrent run-now returns 200 skipped (not a thrown 409)', async ()
   }
 });
 
+test('F3: a schedule auto-pauses after 5 consecutive failures', async () => {
+  const id = 'sched-f3';
+  seed(id);
+  llmBehavior = async () => { throw new Error('boom'); };
+  try {
+    for (let i = 0; i < 5; i++) {
+      await req('POST', `/schedules/${id}/run-now`, {});
+      await waitFor(async () => {
+        const inf = await req('GET', '/schedules/inflight');
+        return !inf.json.inflight.some((x) => x.id === id);
+      });
+    }
+    const paused = await waitFor(async () => {
+      const row = (await req('GET', '/schedules')).json.find((s) => s.id === id);
+      return row && row.enabled === false;
+    });
+    assert.ok(paused, 'should auto-pause after 5 consecutive failures');
+  } finally {
+    llmBehavior = async () => ({ text: 'ok', usage: null });
+  }
+});
+
 test('C1: POST rejects over-length name and prompt', async () => {
   const longName = await req('POST', '/schedules', { name: 'x'.repeat(201), agentName: 'tester', prompt: 'ok', cronExpr: '0 9 * * *' });
   assert.equal(longName.status, 400);
