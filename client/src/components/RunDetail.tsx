@@ -1,13 +1,38 @@
-// Expanded detail for a single run — the "what happened / why it failed" panel.
-// Shared by the Activity feed (and reusable by the per-schedule drawer).
+// Expanded detail for a single run — the "what happened / why it failed" panel,
+// with one-click recovery actions (Run again / Open schedule) so a failure isn't a
+// dead-end. Shared by the Activity feed (and reusable by the per-schedule drawer).
+import { Play, ExternalLink } from 'lucide-react'
+import type { Schedule } from '../lib/api'
 import type { ScheduleActivityRun } from '../lib/scheduleApi'
 import { fmtDuration, fmtCost, runCost } from '../lib/scheduleFormat'
 
-export default function RunDetail({ run }: { run: ScheduleActivityRun }) {
+interface RunDetailProps {
+  run: ScheduleActivityRun
+  /** The controlling schedule (resolved from run metadata) — enables the actions. */
+  schedule?: Schedule
+  onRunNow?: (s: Schedule) => void
+  onOpenSchedule?: (s: Schedule) => void
+}
+
+export default function RunDetail({ run, schedule, onRunNow, onOpenSchedule }: RunDetailProps) {
   const m = run.metadata || {}
   const cost = runCost(run)
   return (
     <div className="px-3 pb-3 pt-2 border-t border-border space-y-2 text-[11px]">
+      {schedule && (onRunNow || onOpenSchedule) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {onRunNow && (
+            <button onClick={() => onRunNow(schedule)} className="btn-secondary btn-sm" title={`Run ${schedule.name} now`}>
+              <Play className="w-3.5 h-3.5" /> Run again
+            </button>
+          )}
+          {onOpenSchedule && (
+            <button onClick={() => onOpenSchedule(schedule)} className="btn-secondary btn-sm" title={`Open ${schedule.name} to pause or edit it`}>
+              <ExternalLink className="w-3.5 h-3.5" /> Open schedule
+            </button>
+          )}
+        </div>
+      )}
       {run.error && (
         <div>
           <div className="text-text-muted mb-0.5">Why it failed</div>

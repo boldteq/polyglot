@@ -1,4 +1,4 @@
-import { type ReactNode, type KeyboardEvent } from 'react'
+import { type ReactNode, type KeyboardEvent, type CSSProperties } from 'react'
 import { Search, type LucideIcon } from 'lucide-react'
 
 // ── PageShell — consistent page wrapper ──────────────────────────────────────
@@ -66,6 +66,10 @@ interface StatItem {
   color?: string
   /** Optional plain-language explanation shown as a hover tooltip on the card. */
   hint?: string
+  /** When set, the card becomes a button (e.g. a KPI that deep-links to a filtered view). */
+  onClick?: () => void
+  /** Tints the value to draw attention (danger=red, warn=amber). */
+  tone?: 'default' | 'danger' | 'warn'
 }
 
 interface StatRowProps {
@@ -74,17 +78,35 @@ interface StatRowProps {
 
 export function StatRow({ stats }: StatRowProps) {
   return (
-    <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${Math.min(stats.length, 4)}, 1fr)` }}>
+    // 2-up on phones (was a hardcoded repeat(n,1fr) that never stacked), N-up on sm+.
+    <div
+      className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-[repeat(var(--sr-cols),minmax(0,1fr))]"
+      style={{ '--sr-cols': Math.min(stats.length, 4) } as CSSProperties}
+    >
       {stats.map((s) => {
         const Icon = s.icon
-        return (
-          <div key={s.label} className="card p-5" title={s.hint}>
-            <div className={`flex items-center gap-2 text-text-muted mb-2.5 ${s.hint ? 'cursor-help' : ''}`}>
+        const toneCls = s.tone === 'danger' ? 'text-red' : s.tone === 'warn' ? 'text-amber' : ''
+        const inner = (
+          <>
+            <div className={`flex items-center gap-2 text-text-muted mb-2.5 ${s.hint && !s.onClick ? 'cursor-help' : ''}`}>
               {Icon && <Icon className="w-4 h-4" />}
               <span className="text-[13px] font-medium">{s.label}</span>
             </div>
-            <div className="text-[28px] font-bold tracking-tight leading-none">{s.value}</div>
-          </div>
+            <div className={`text-[28px] font-bold tracking-tight leading-none ${toneCls}`}>{s.value}</div>
+          </>
+        )
+        return s.onClick ? (
+          <button
+            key={s.label}
+            type="button"
+            onClick={s.onClick}
+            title={s.hint}
+            className="card p-5 text-left transition-colors hover:border-accent/40 hover:bg-surface-2/40 focus-visible:ring-2 focus-visible:ring-accent/40 outline-none"
+          >
+            {inner}
+          </button>
+        ) : (
+          <div key={s.label} className="card p-5" title={s.hint}>{inner}</div>
         )
       })}
     </div>

@@ -19,6 +19,7 @@ import {
   type Schedule,
 } from '../lib/api'
 import { getScheduleActivity } from '../lib/scheduleApi'
+import { onScheduleEvent } from '../lib/sseBus'
 import type { Agent } from '../types'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
@@ -85,14 +86,23 @@ export default function SchedulesPage() {
   const [kindFilter, setKindFilter] = useState<'all' | 'system' | 'user'>('all')
   const [view, setView] = useState<'schedules' | 'activity' | 'upcoming'>('schedules')
   const [failed24h, setFailed24h] = useState<number | null>(null)
+  const [activityStatus, setActivityStatus] = useState<string>('all')
 
-  // Failed-runs count over the last 24h for the header KPI.
+  // F1/F8: Failed-runs count over the rolling 24h — kept LIVE (refetched on any
+  // schedule SSE event so a fresh failure updates the KPI immediately), and the
+  // error is logged, never silently swallowed (per .claude/rules/error-handling.md).
   useEffect(() => {
-    const since = new Date(Date.now() - 86_400_000).toISOString()
-    getScheduleActivity({ status: 'error,crashed', since, limit: 1 })
-      .then(r => setFailed24h(r.total))
-      .catch(() => {})
-  }, [schedules.length])
+    let t: ReturnType<typeof setTimeout> | null = null
+    const fetchFailed = () => {
+      const since = new Date(Date.now() - 86_400_000).toISOString()
+      getScheduleActivity({ status: 'error,crashed', since, limit: 1 })
+        .then(r => setFailed24h(r.total))
+        .catch(err => console.error('[failed24h] fetch failed:', err?.message || err))
+    }
+    fetchFailed()
+    const un = onScheduleEvent(() => { if (t) clearTimeout(t); t = setTimeout(fetchFailed, 800) })
+    return () => { if (t) clearTimeout(t); un() }
+  }, [])
 
   // Fetch agents once.
   useEffect(() => {
@@ -265,7 +275,12 @@ export default function SchedulesPage() {
               { label: 'Total', value: stats.total, icon: CalendarClock },
               { label: 'Active', value: stats.active, icon: Play },
               { label: 'Running now', value: stats.running, icon: Zap },
-              { label: 'Failed (24h)', value: failed24h ?? '—', icon: XCircle },
+              {
+                label: 'Failed (24h)', value: failed24h ?? '—', icon: XCircle,
+                tone: (failed24h ?? 0) > 0 ? 'danger' : 'default',
+                hint: 'Runs that errored or crashed in the last rolling 24h (UTC). Click to see them.',
+                onClick: () => { setActivityStatus('failed'); setView('activity') },
+              },
             ]}
           />
         </div>
@@ -285,7 +300,7 @@ export default function SchedulesPage() {
         <button onClick={() => setView('schedules')} aria-pressed={view === 'schedules'} className={`segmented-btn ${view === 'schedules' ? 'segmented-btn-active' : ''}`}>
           <ListChecks className="w-3.5 h-3.5" /> Schedules
         </button>
-        <button onClick={() => setView('activity')} aria-pressed={view === 'activity'} className={`segmented-btn ${view === 'activity' ? 'segmented-btn-active' : ''}`}>
+        <button onClick={() => { setActivityStatus('all'); setView('activity') }} aria-pressed={view === 'activity'} className={`segmented-btn ${view === 'activity' ? 'segmented-btn-active' : ''}`}>
           <Activity className="w-3.5 h-3.5" /> Activity
         </button>
         <button onClick={() => setView('upcoming')} aria-pressed={view === 'upcoming'} className={`segmented-btn ${view === 'upcoming' ? 'segmented-btn-active' : ''}`}>
@@ -293,7 +308,15 @@ export default function SchedulesPage() {
         </button>
       </div>
 
-      {view === 'activity' && <ScheduleActivityFeed schedules={schedules} />}
+      {view === 'activity' && (
+        <ScheduleActivityFeed
+          key={activityStatus}
+          schedules={schedules}
+          initialStatusKey={activityStatus}
+          onRunNow={handleRunNow}
+          onOpenSchedule={(s) => { setQuery(s.name); setKindFilter('all'); setView('schedules') }}
+        />
+      )}
       {view === 'upcoming' && <ScheduleUpcoming />}
 
       {view === 'schedules' && (
@@ -352,19 +375,26 @@ export default function SchedulesPage() {
           const isSystem = s.kind === 'system'
           const isRunning = s.lastRunStatus === 'running'
           const d = formatAgentDisplay({ name: s.agentName, id: s.agentName })
+          // F5/F6: the pill reflects the last-run OUTCOME (a failed/crashed last
+          // run shows red 'failed', never a green 'active' that hides the failure);
+          // enabled/paused is conveyed by the Pause/Play toggle, not this pill.
+          const lastFailed = s.lastRunStatus === 'error' || s.lastRunStatus === 'crashed'
           const statusLabel = isRunning ? 'running'
+            : lastFailed ? 'failed'
             : s.lastRunStatus === 'cancelled' ? 'cancelled'
-            : s.lastRunStatus === 'crashed' ? 'crashed'
             : s.enabled ? 'active' : 'paused'
           const statusTone = isRunning
             ? 'bg-blue/15 text-blue'
-            : s.lastRunStatus === 'cancelled' || s.lastRunStatus === 'crashed'
-              ? 'bg-amber/15 text-amber'
-              : s.enabled
-                ? 'bg-green/15 text-green'
-                : 'bg-surface-2 text-text-muted'
+            : lastFailed
+              ? 'bg-red/15 text-red'
+              : s.lastRunStatus === 'cancelled'
+                ? 'bg-amber/15 text-amber'
+                : s.enabled
+                  ? 'bg-green/15 text-green'
+                  : 'bg-surface-2 text-text-muted'
           const dotTone = isRunning ? 'bg-blue animate-pulse'
-            : s.lastRunStatus === 'cancelled' || s.lastRunStatus === 'crashed' ? 'bg-amber'
+            : lastFailed ? 'bg-red'
+            : s.lastRunStatus === 'cancelled' ? 'bg-amber'
             : s.enabled ? 'bg-green' : 'bg-text-muted/40'
           return (
             <div

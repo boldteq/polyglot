@@ -34,8 +34,13 @@ function StatusIcon({ status }: { status: RunStatus }) {
   return <Clock className="w-4 h-4 text-text-muted shrink-0" />
 }
 
-export default function ScheduleActivityFeed({ schedules }: { schedules: Schedule[] }) {
-  const [statusKey, setStatusKey] = useState('all')
+export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'all', onRunNow, onOpenSchedule }: {
+  schedules: Schedule[]
+  initialStatusKey?: string
+  onRunNow?: (s: Schedule) => void
+  onOpenSchedule?: (s: Schedule) => void
+}) {
+  const [statusKey, setStatusKey] = useState(initialStatusKey)
   const [kind, setKind] = useState<'all' | 'user' | 'system'>('all')
   const [scheduleId, setScheduleId] = useState('')
   const [query, setQuery] = useState('')
@@ -54,6 +59,17 @@ export default function ScheduleActivityFeed({ schedules }: { schedules: Schedul
     for (const s of schedules) m.set(s.id, s.name)
     return m
   }, [schedules])
+
+  const scheduleById = useMemo(() => {
+    const m = new Map<string, Schedule>()
+    for (const s of schedules) m.set(s.id, s)
+    return m
+  }, [schedules])
+
+  const scheduleOf = (run: ScheduleActivityRun): Schedule | undefined => {
+    const id = run.metadata?.scheduleId || run.metadata?.systemId
+    return id ? scheduleById.get(id) : undefined
+  }
 
   const scheduleName = (run: ScheduleActivityRun): string => {
     const id = run.metadata?.scheduleId || run.metadata?.systemId
@@ -141,7 +157,7 @@ export default function ScheduleActivityFeed({ schedules }: { schedules: Schedul
                 {why && !open && <div className="text-[11px] text-red truncate mt-0.5">{why}</div>}
               </div>
             </button>
-            {open && <RunDetail run={run} />}
+            {open && <RunDetail run={run} schedule={scheduleOf(run)} onRunNow={onRunNow} onOpenSchedule={onOpenSchedule} />}
           </div>
         )
       })}
