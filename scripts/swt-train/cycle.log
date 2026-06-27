@@ -387,3 +387,8 @@
 [2026-06-27T16:40:38.211Z] cycle 88 verify: kept 49/49 (dropped 0)
 [2026-06-27T16:40:38.339Z] cycle 88 distributed → 3760 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T16:40:38.340Z] cycle 88 reindex: skipped (batched separately)
+[2026-06-27T16:40:38.577Z] cycle 88 ✓ +49 FAQs → 3760/5040 (74.6%) · 14/14 agents trained · committed
+[2026-06-27T16:42:08.579Z] cycle 89: slices [trust-social-proof|header-nav, copy-voice|header-nav, honesty-claims|header-nav, data-binding|header-nav, performance-cwv|header-nav, seo-structured-data|header-nav, i18n-currency-rtl|header-nav] → generating 49 FAQs (FAQ-3761…)
+[2026-06-27T16:46:40.344Z] cycle 89 verify: kept 46/49 (dropped 3)
+[2026-06-27T16:46:40.470Z] cycle 89 distributed → 3806 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T16:46:40.470Z] cycle 89 reindex: skipped (batched separately)
