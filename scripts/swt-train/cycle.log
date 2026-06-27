@@ -462,3 +462,8 @@
 [2026-06-27T18:14:44.614Z] cycle 102 verify: kept 49/49 (dropped 0)
 [2026-06-27T18:14:44.756Z] cycle 102 distributed → 4239 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T18:14:44.756Z] cycle 102 reindex: skipped (batched separately)
+[2026-06-27T18:14:45.014Z] cycle 102 ✓ +49 FAQs → 4239/5040 (84.1%) · 14/14 agents trained · committed
+[2026-06-27T18:16:15.015Z] cycle 103: slices [honesty-claims|password-page, data-binding|password-page, performance-cwv|password-page, seo-structured-data|password-page, i18n-currency-rtl|password-page, states-empty-loading-error|password-page, edge-cases|password-page] → generating 49 FAQs (FAQ-4240…)
+[2026-06-27T18:21:18.374Z] cycle 103 verify: kept 33/49 (dropped 16)
+[2026-06-27T18:21:18.520Z] cycle 103 distributed → 4272 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T18:21:18.520Z] cycle 103 reindex: skipped (batched separately)
