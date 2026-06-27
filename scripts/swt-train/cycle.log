@@ -413,3 +413,9 @@
 [2026-06-27T17:12:13.431Z] cycle 93 verify: kept 21/49 (dropped 28)
 [2026-06-27T17:12:13.566Z] cycle 93 distributed → 3911 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T17:12:13.566Z] cycle 93 reindex: skipped (batched separately)
+[2026-06-27T17:12:13.805Z] cycle 93 ✓ +21 FAQs → 3911/5040 (77.6%) · 14/14 agents trained · committed
+[2026-06-27T17:13:43.807Z] cycle 94: slices [search-filtering|footer, nav-ia|footer, forms-validation|footer, email-lifecycle|footer, layout|mega-menu, typography|mega-menu, color-contrast|mega-menu] → generating 49 FAQs (FAQ-3912…)
+[2026-06-27T17:18:50.760Z] cycle 94 verify ANOMALY (kept 10/49) — distrusting critic, keeping all
+[2026-06-27T17:18:50.761Z] cycle 94 verify: kept 49/49 (dropped 0)
+[2026-06-27T17:18:50.897Z] cycle 94 distributed → 3960 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T17:18:50.897Z] cycle 94 reindex: skipped (batched separately)
