@@ -265,3 +265,8 @@
 [2026-06-27T13:59:11.026Z] cycle 65 verify: kept 32/49 (dropped 17)
 [2026-06-27T13:59:11.135Z] cycle 65 distributed → 3006 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T13:59:11.135Z] cycle 65 reindex: skipped (batched separately)
+[2026-06-27T13:59:11.352Z] cycle 65 ✓ +32 FAQs → 3006/5040 (59.6%) · 14/14 agents trained · committed
+[2026-06-27T14:00:41.357Z] cycle 66: slices [states-empty-loading-error|faq-page, edge-cases|faq-page, legal-compliance|faq-page, merchandising|faq-page, search-filtering|faq-page, nav-ia|faq-page, forms-validation|faq-page] → generating 49 FAQs (FAQ-3007…)
+[2026-06-27T14:06:22.527Z] cycle 66 verify: kept 16/49 (dropped 33)
+[2026-06-27T14:06:22.635Z] cycle 66 distributed → 3022 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T14:06:22.635Z] cycle 66 reindex: skipped (batched separately)
