@@ -1,10 +1,10 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 74,
-  "batches": 74,
-  "faqCount": 3285,
-  "slicePointer": 511,
+  "cyclesRun": 75,
+  "batches": 75,
+  "faqCount": 3314,
+  "slicePointer": 518,
   "consecutiveFailures": 0,
   "log": [
     {
@@ -1077,6 +1077,21 @@
         "imagery-art-direction|comparison",
         "motion|comparison",
         "mobile|comparison"
+      ]
+    },
+    {
+      "cycle": 75,
+      "ts": "2026-06-27T15:10:31.727Z",
+      "added": 29,
+      "faqTotal": 3314,
+      "slices": [
+        "a11y|comparison",
+        "cro|comparison",
+        "trust-social-proof|comparison",
+        "copy-voice|comparison",
+        "honesty-claims|comparison",
+        "data-binding|comparison",
+        "performance-cwv|comparison"
       ]
     }
   ],

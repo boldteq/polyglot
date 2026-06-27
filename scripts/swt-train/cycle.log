@@ -313,3 +313,8 @@
 [2026-06-27T15:05:06.991Z] cycle 74 verify: kept 49/49 (dropped 0)
 [2026-06-27T15:05:07.105Z] cycle 74 distributed → 3285 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T15:05:07.105Z] cycle 74 reindex: skipped (batched separately)
+[2026-06-27T15:05:07.249Z] cycle 74 ✓ +49 FAQs → 3285/5040 (65.2%) · 14/14 agents trained · committed
+[2026-06-27T15:06:37.251Z] cycle 75: slices [a11y|comparison, cro|comparison, trust-social-proof|comparison, copy-voice|comparison, honesty-claims|comparison, data-binding|comparison, performance-cwv|comparison] → generating 49 FAQs (FAQ-3286…)
+[2026-06-27T15:10:31.712Z] cycle 75 verify: kept 29/49 (dropped 20)
+[2026-06-27T15:10:31.829Z] cycle 75 distributed → 3314 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T15:10:31.829Z] cycle 75 reindex: skipped (batched separately)
