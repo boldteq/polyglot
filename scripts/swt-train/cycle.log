@@ -231,3 +231,9 @@
 [2026-06-27T12:10:13.203Z] cycle 58: slices [cro|contact, trust-social-proof|contact, copy-voice|contact, honesty-claims|contact, data-binding|contact, performance-cwv|contact, seo-structured-data|contact] → generating 49 FAQs (FAQ-2757…)
 [2026-06-27T12:16:24.419Z] cycle 58 verify: kept 49/49 (dropped 0)
 [2026-06-27T12:18:36.964Z] cycle 58 distributed → 2805 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-27T12:18:37.137Z] cycle 58 ✓ +49 FAQs → 2805/5040 (55.7%) · 13/14 agents trained · committed
+[2026-06-27T12:20:07.139Z] cycle 59: slices [i18n-currency-rtl|contact, states-empty-loading-error|contact, edge-cases|contact, legal-compliance|contact, merchandising|contact, search-filtering|contact, nav-ia|contact] → generating 49 FAQs (FAQ-2806…)
+[2026-06-27T12:32:07.826Z] cycle 59 generation FAILED (claude generation failed: timeout after 12min) — failure 1/20; pointer not advanced.
+[2026-06-27T12:33:37.858Z] cycle 59: slices [i18n-currency-rtl|contact, states-empty-loading-error|contact, edge-cases|contact, legal-compliance|contact, merchandising|contact, search-filtering|contact, nav-ia|contact] → generating 49 FAQs (FAQ-2806…)
+[2026-06-27T12:38:03.013Z] cycle 59 verify: kept 48/49 (dropped 1)
+[2026-06-27T12:40:05.001Z] cycle 59 distributed → 2853 rules · 14/14 agents trained · 11 gate-gaps
