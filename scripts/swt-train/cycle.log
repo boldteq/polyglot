@@ -237,3 +237,9 @@
 [2026-06-27T12:33:37.858Z] cycle 59: slices [i18n-currency-rtl|contact, states-empty-loading-error|contact, edge-cases|contact, legal-compliance|contact, merchandising|contact, search-filtering|contact, nav-ia|contact] → generating 49 FAQs (FAQ-2806…)
 [2026-06-27T12:38:03.013Z] cycle 59 verify: kept 48/49 (dropped 1)
 [2026-06-27T12:40:05.001Z] cycle 59 distributed → 2853 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T12:40:05.141Z] cycle 59 ✓ +48 FAQs → 2853/5040 (56.6%) · 14/14 agents trained · committed
+[2026-06-27T12:41:35.143Z] cycle 60: slices [forms-validation|contact, email-lifecycle|contact, layout|about, typography|about, color-contrast|about, spacing-rhythm|about, imagery-art-direction|about] → generating 49 FAQs (FAQ-2854…)
+[2026-06-27T12:58:44.675Z] SWT training daemon START — interval 1.5min · max 200 cycles · 7 slices/cycle · model inherit · at 2853/5040
+[2026-06-27T12:58:44.676Z] cycle 60: slices [forms-validation|contact, email-lifecycle|contact, layout|about, typography|about, color-contrast|about, spacing-rhythm|about, imagery-art-direction|about] → generating 49 FAQs (FAQ-2854…)
+[2026-06-27T13:03:25.985Z] cycle 60 verify: kept 21/49 (dropped 28)
+[2026-06-27T13:05:33.710Z] cycle 60 distributed → 2874 rules · 14/14 agents trained · 11 gate-gaps
