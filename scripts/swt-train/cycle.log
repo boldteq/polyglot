@@ -146,3 +146,8 @@
 [2026-06-27T08:03:50.755Z] cycle 37: slices [motion|blog, mobile|blog, a11y|blog, cro|blog, trust-social-proof|blog, copy-voice|blog, honesty-claims|blog] → generating 49 FAQs (FAQ-1748…)
 [2026-06-27T08:11:00.165Z] cycle 37 verify: kept 49/49 (dropped 0)
 [2026-06-27T08:12:27.882Z] cycle 37 distributed → 1796 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-27T08:12:28.121Z] cycle 37 ✓ +49 FAQs → 1796/5040 (35.6%) · 13/14 agents trained · committed
+[2026-06-27T08:34:18.838Z] SWT training daemon START — interval 1.5min · max 200 cycles · 7 slices/cycle · model inherit · at 1796/5040
+[2026-06-27T08:34:18.841Z] cycle 38: slices [data-binding|blog, performance-cwv|blog, seo-structured-data|blog, i18n-currency-rtl|blog, states-empty-loading-error|blog, edge-cases|blog, legal-compliance|blog] → generating 49 FAQs (FAQ-1797…)
+[2026-06-27T08:38:52.329Z] cycle 38 verify: kept 46/49 (dropped 3)
+[2026-06-27T08:40:11.135Z] cycle 38 distributed → 1842 rules · 13/14 agents trained · 11 gate-gaps
