@@ -2615,10 +2615,10 @@ function getScheduleRunsFor(scheduleId, { limit = 50 } = {}) {
 // honor the status filter (for pagination); `stats` is the outcome breakdown over the
 // kind/schedule/time scope WITHOUT the status filter, so success-rate stays meaningful
 // even when viewing only Failed. status accepts a comma list; kind maps to source.
-function getScheduleActivity({ limit = 50, offset = 0, status, kind, scheduleId, sinceIso } = {}) {
+function getScheduleActivity({ limit = 50, offset = 0, status, kind, scheduleId, sinceIso, q } = {}) {
   const lim = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
   const off = Math.max(parseInt(offset, 10) || 0, 0);
-  // base scope: kind + schedule + time (shared by stats and the run list)
+  // base scope: kind + schedule + time + text (shared by stats and the run list)
   const base = [];
   const baseArgs = [];
   if (kind === 'user') base.push(`source = 'schedule'`);
@@ -2629,6 +2629,13 @@ function getScheduleActivity({ limit = 50, offset = 0, status, kind, scheduleId,
     baseArgs.push(scheduleId, scheduleId);
   }
   if (sinceIso) { base.push(`timestamp >= ?`); baseArgs.push(sinceIso); }
+  // F16: server-side text search across ALL history (agent, error, prompt) — not
+  // just the loaded page.
+  if (q && String(q).trim()) {
+    const like = `%${String(q).trim()}%`;
+    base.push(`(agentName LIKE ? OR IFNULL(error,'') LIKE ? OR IFNULL(prompt,'') LIKE ?)`);
+    baseArgs.push(like, like, like);
+  }
   const baseWhere = 'WHERE ' + base.join(' AND ');
 
   // Overview stats over the base scope (all statuses).

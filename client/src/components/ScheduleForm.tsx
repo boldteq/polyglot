@@ -63,6 +63,13 @@ function initialForm(initial?: Schedule | null): FormState {
   }
 }
 
+// F13: one-click starters so creating a schedule doesn't start from a blank cron.
+const STARTER_TEMPLATES = [
+  { label: 'Daily status report', name: 'Daily status report', cronExpr: '0 9 * * *', prompt: 'Summarize the last 24 hours of activity and flag anything that needs attention.' },
+  { label: 'Weekly review', name: 'Weekly review', cronExpr: '0 9 * * 1', prompt: 'Produce a weekly review: what shipped, what failed, and the top priorities for next week.' },
+  { label: 'Hourly health check', name: 'Hourly health check', cronExpr: '0 * * * *', prompt: 'Check system health and report any anomalies or errors found.' },
+]
+
 export default function ScheduleForm({ mode, initial, agents, existing, onSaved, onCancel }: ScheduleFormProps) {
   const [form, setForm] = useState<FormState>(() => initialForm(initial))
   const [saving, setSaving] = useState(false)
@@ -174,6 +181,23 @@ export default function ScheduleForm({ mode, initial, agents, existing, onSaved,
       {agents.length === 0 && (
         <div className="flex items-center gap-2 text-amber text-xs bg-amber/10 px-3 py-2 rounded-lg">
           <AlertCircle className="w-3.5 h-3.5" /> No agents available — create an agent first.
+        </div>
+      )}
+      {mode === 'create' && (
+        <div>
+          <span className="block text-xs text-text-muted mb-1.5">Start from a template</span>
+          <div className="flex flex-wrap gap-1.5">
+            {STARTER_TEMPLATES.map(t => (
+              <button
+                key={t.label}
+                type="button"
+                onClick={() => updateForm({ name: t.name, cronExpr: t.cronExpr, prompt: t.prompt })}
+                className="segmented-btn"
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">

@@ -347,8 +347,8 @@ router.get('/schedules/inflight', rateLimit('read'), (req, res) => {
 // status/duration/error/faults/cost. Filters: status (comma list), kind, scheduleId, since.
 router.get('/schedules/activity', rateLimit('read'), (req, res) => {
   try {
-    const { status, kind, scheduleId, since, limit, offset } = req.query;
-    res.json(db.getScheduleActivity({ limit, offset, status, kind, scheduleId, sinceIso: since }));
+    const { status, kind, scheduleId, since, limit, offset, q } = req.query;
+    res.json(db.getScheduleActivity({ limit, offset, status, kind, scheduleId, sinceIso: since, q }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

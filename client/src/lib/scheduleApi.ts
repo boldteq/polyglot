@@ -38,6 +38,7 @@ export interface ScheduleActivityParams {
   kind?: 'user' | 'system'
   scheduleId?: string
   since?: string // ISO
+  q?: string // free-text search across agent/error/prompt (server-side, all history)
 }
 
 export interface ScheduleActivityStats {
@@ -58,6 +59,7 @@ export function getScheduleActivity(p: ScheduleActivityParams = {}) {
   if (p.kind) q.set('kind', p.kind)
   if (p.scheduleId) q.set('scheduleId', p.scheduleId)
   if (p.since) q.set('since', p.since)
+  if (p.q) q.set('q', p.q)
   const qs = q.toString()
   return get<{ runs: ScheduleActivityRun[]; total: number; stats: ScheduleActivityStats }>(`/schedules/activity${qs ? `?${qs}` : ''}`)
 }

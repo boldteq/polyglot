@@ -2,7 +2,7 @@
 // ran, which task, done/failed, WHY it failed. Server-filtered + paginated via
 // useScheduleActivity; each row expands to full RunDetail. The centerpiece of the
 // command center (replaces the buried per-schedule drawer for "see everything").
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CheckCircle, XCircle, MinusCircle, Loader2, AlertCircle, Clock,
   ChevronRight, ChevronDown, RefreshCw, Search,
@@ -44,13 +44,18 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
   const [kind, setKind] = useState<'all' | 'user' | 'system'>('all')
   const [scheduleId, setScheduleId] = useState('')
   const [query, setQuery] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  // F16: debounce the text query into the server filters so search spans ALL history.
+  useEffect(() => { const t = setTimeout(() => setDebouncedQ(query.trim()), 350); return () => clearTimeout(t) }, [query])
 
   const filters = useMemo(() => ({
     status: STATUS_TABS.find(t => t.key === statusKey)?.param,
     kind: kind === 'all' ? undefined : kind,
     scheduleId: scheduleId || undefined,
-  }), [statusKey, kind, scheduleId])
+    q: debouncedQ || undefined,
+  }), [statusKey, kind, scheduleId, debouncedQ])
 
   const { runs, total, stats, loading, loadError, loadingMore, hasMore, reload, loadMore } = useScheduleActivity(filters)
 
@@ -76,12 +81,9 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
     return (id && nameById.get(id)) || run.agentName
   }
 
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return runs
-    return runs.filter(r => `${scheduleName(r)} ${r.agentName} ${r.error || ''}`.toLowerCase().includes(q))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runs, query, nameById])
+  // F16: search is now server-side (in `filters.q`), so the visible runs are exactly
+  // what the server returned — no client-side re-filtering over the loaded page.
+  const shown = runs
 
   // F15: collapse consecutive identical failures (same schedule + status + error)
   // into one row with a ×N count, so a job failing the same way N times stops
@@ -129,7 +131,7 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
         </select>
         <div className="relative flex-1 min-w-0">
           <Search className="w-3.5 h-3.5 text-text-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search loaded runs…" aria-label="Search runs" className="input pl-8" />
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search runs by agent or error…" aria-label="Search runs" className="input pl-8" />
         </div>
         <button onClick={reload} className="p-2 rounded-lg text-text-muted hover:bg-surface-2 shrink-0" title="Refresh" aria-label="Refresh activity"><RefreshCw className="w-4 h-4" /></button>
       </div>

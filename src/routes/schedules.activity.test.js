@@ -51,4 +51,15 @@ test('getScheduleActivity returns only schedule runs, with filters + pagination'
   const page = db.getScheduleActivity({ limit: 1, offset: 0 });
   assert.equal(page.runs.length, 1, 'limit applied');
   assert.ok(page.total >= 3, 'total ignores limit (for pagination)');
+
+  // F12: stats span the scope regardless of status filter
+  assert.ok(page.stats && page.stats.total >= 3 && page.stats.failed >= 1, 'stats returned');
+});
+
+test('getScheduleActivity q searches agent/error text server-side', () => {
+  db.getDb().prepare('INSERT INTO agent_runs (id,agentName,prompt,source,timestamp,status,error,metadata) VALUES (?,?,?,?,?,?,?,?)')
+    .run('q1', 'tester', 'p', 'schedule', iso(1), 'error', 'unique-timeout-xyz', '{}');
+  const hit = db.getScheduleActivity({ q: 'unique-timeout-xyz' });
+  assert.ok(hit.runs.length >= 1 && hit.runs.every((r) => (r.error || '').includes('unique-timeout-xyz')));
+  assert.equal(db.getScheduleActivity({ q: 'no-such-text-zzz' }).runs.length, 0);
 });
