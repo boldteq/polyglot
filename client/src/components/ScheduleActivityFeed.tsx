@@ -4,16 +4,18 @@
 // command center (replaces the buried per-schedule drawer for "see everything").
 import { useEffect, useMemo, useState } from 'react'
 import {
-  CheckCircle, XCircle, MinusCircle, Loader2, AlertCircle, Clock,
+  Loader2, AlertCircle, Clock, LayoutList, Table2,
   ChevronRight, ChevronDown, RefreshCw, Search,
 } from 'lucide-react'
 import type { Schedule } from '../lib/api'
 import type { ScheduleActivityRun } from '../lib/scheduleApi'
 import { useScheduleActivity } from '../hooks/useScheduleActivity'
 import { formatAgentDisplay } from '../lib/agentDisplay'
-import { fmtDuration, fmtCost, runCost, runWhy, timeAgo, statusMeta, type RunStatus } from '../lib/scheduleFormat'
+import { fmtDuration, fmtCost, runCost, runWhy, timeAgo, statusMeta } from '../lib/scheduleFormat'
 import { statusPill } from '../lib/colors'
 import RunDetail from './RunDetail'
+import StatusIcon from './StatusIcon'
+import ScheduleActivityTable from './ScheduleActivityTable'
 import { SkeletonCards } from './Skeleton'
 import EmptyState from './EmptyState'
 
@@ -25,14 +27,7 @@ const STATUS_TABS: { key: string; label: string; param?: string }[] = [
   { key: 'cancelled', label: 'Cancelled', param: 'cancelled' },
 ]
 
-function StatusIcon({ status }: { status: RunStatus }) {
-  if (status === 'success') return <CheckCircle className="w-4 h-4 text-green shrink-0" />
-  if (status === 'error') return <XCircle className="w-4 h-4 text-red shrink-0" />
-  if (status === 'crashed') return <AlertCircle className="w-4 h-4 text-amber shrink-0" />
-  if (status === 'cancelled') return <MinusCircle className="w-4 h-4 text-amber shrink-0" />
-  if (status === 'running') return <Loader2 className="w-4 h-4 text-blue animate-spin shrink-0" />
-  return <Clock className="w-4 h-4 text-text-muted shrink-0" />
-}
+const VIEW_KEY = 'polyglot.schedule.activityView'
 
 export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'all', onRunNow, onOpenSchedule }: {
   schedules: Schedule[]
@@ -46,6 +41,14 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
   const [query, setQuery] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  // F11: card feed vs dense sortable table — remembered across visits.
+  const [view, setView] = useState<'cards' | 'table'>(() => {
+    try { return localStorage.getItem(VIEW_KEY) === 'table' ? 'table' : 'cards' } catch { return 'cards' }
+  })
+  const setViewPersist = (v: 'cards' | 'table') => {
+    setView(v)
+    try { localStorage.setItem(VIEW_KEY, v) } catch { /* private mode */ }
+  }
 
   // F16: debounce the text query into the server filters so search spans ALL history.
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(query.trim()), 350); return () => clearTimeout(t) }, [query])
@@ -133,6 +136,10 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
           <Search className="w-3.5 h-3.5 text-text-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search runs by agent or error…" aria-label="Search runs" className="input pl-8" />
         </div>
+        <div className="segmented shrink-0" role="group" aria-label="View mode">
+          <button onClick={() => setViewPersist('cards')} aria-pressed={view === 'cards'} title="Card view" aria-label="Card view" className={`segmented-btn ${view === 'cards' ? 'segmented-btn-active' : ''}`}><LayoutList className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setViewPersist('table')} aria-pressed={view === 'table'} title="Table view" aria-label="Table view" className={`segmented-btn ${view === 'table' ? 'segmented-btn-active' : ''}`}><Table2 className="w-3.5 h-3.5" /></button>
+        </div>
         <button onClick={reload} className="p-2 rounded-lg text-text-muted hover:bg-surface-2 shrink-0" title="Refresh" aria-label="Refresh activity"><RefreshCw className="w-4 h-4" /></button>
       </div>
 
@@ -170,7 +177,11 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
         <EmptyState icon={Clock} title="No runs found" description={filtered ? 'No runs match these filters.' : 'Run history will appear here as schedules fire.'} card />
       )}
 
-      {!loading && !loadError && grouped.map(({ run, count, oldest }) => {
+      {!loading && !loadError && shown.length > 0 && view === 'table' && (
+        <ScheduleActivityTable runs={shown} scheduleName={scheduleName} scheduleOf={scheduleOf} onRunNow={onRunNow} onOpenSchedule={onOpenSchedule} />
+      )}
+
+      {!loading && !loadError && view === 'cards' && grouped.map(({ run, count, oldest }) => {
         const open = expanded.has(run.id)
         const why = runWhy(run)
         const cost = runCost(run)
