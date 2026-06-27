@@ -187,3 +187,7 @@
 [2026-06-27T09:51:07.397Z] cycle 47: slices [spacing-rhythm|order-confirmation, imagery-art-direction|order-confirmation, motion|order-confirmation, mobile|order-confirmation, a11y|order-confirmation, cro|order-confirmation, trust-social-proof|order-confirmation] → generating 49 FAQs (FAQ-2229…)
 [2026-06-27T09:57:00.452Z] cycle 47 verify: kept 48/49 (dropped 1)
 [2026-06-27T09:58:32.376Z] cycle 47 distributed → 2276 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-27T09:58:32.547Z] cycle 47 ✓ +48 FAQs → 2276/5040 (45.2%) · 13/14 agents trained · committed
+[2026-06-27T10:00:02.551Z] cycle 48: slices [copy-voice|order-confirmation, honesty-claims|order-confirmation, data-binding|order-confirmation, performance-cwv|order-confirmation, seo-structured-data|order-confirmation, i18n-currency-rtl|order-confirmation, states-empty-loading-error|order-confirmation] → generating 49 FAQs (FAQ-2277…)
+[2026-06-27T10:04:07.930Z] cycle 48 verify: kept 49/49 (dropped 0)
+[2026-06-27T10:05:47.741Z] cycle 48 distributed → 2325 rules · 13/14 agents trained · 11 gate-gaps
