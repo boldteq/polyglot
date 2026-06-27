@@ -66,6 +66,7 @@ export default function SchedulesPage() {
   const [editing, setEditing] = useState<Schedule | null>(null)
   const [drawerSchedule, setDrawerSchedule] = useState<Schedule | null>(null)
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
   const [pendingRun, setPendingRun] = useState<Schedule | null>(null)
   const [confirmStarting, setConfirmStarting] = useState(false)
   const [, setTick] = useState(0)
@@ -135,6 +136,33 @@ export default function SchedulesPage() {
     } finally {
       setBusy(s.id, false)
     }
+  }
+
+  // P3/F47: bulk pause / resume over the CURRENTLY-FILTERED set (so you can scope
+  // to user-only first). Runs sequentially, patches each row, reports a summary.
+  const handleBulkToggle = async (enable: boolean) => {
+    const targets = shown.filter(s => s.enabled !== enable && !busyIds.has(s.id))
+    if (targets.length === 0) return
+    const n = targets.length
+    const ok = await confirmDialog({
+      title: enable ? `Resume ${n} schedule${n === 1 ? '' : 's'}?` : `Pause ${n} schedule${n === 1 ? '' : 's'}?`,
+      message: enable
+        ? `${n} paused schedule${n === 1 ? '' : 's'} in the current view will start running on their cron again.`
+        : `${n} active schedule${n === 1 ? '' : 's'} in the current view will stop running until resumed.`,
+      confirmLabel: enable ? 'Resume all' : 'Pause all',
+    })
+    if (!ok) return
+    setBulkBusy(true)
+    let done = 0, failed = 0
+    for (const s of targets) {
+      setBusy(s.id, true)
+      try { await updateSchedule(s.id, { enabled: enable }); patchRow(s.id, { enabled: enable }); done++ }
+      catch (err) { failed++; console.error('[bulk-toggle]', s.id, err instanceof Error ? err.message : err) }
+      finally { setBusy(s.id, false) }
+    }
+    setBulkBusy(false)
+    toast(failed ? 'error' : 'success',
+      failed ? `${done} updated, ${failed} failed` : `${done} schedule${done === 1 ? '' : 's'} ${enable ? 'resumed' : 'paused'}`)
   }
 
   const handleDelete = async (s: Schedule) => {
@@ -349,6 +377,25 @@ export default function SchedulesPage() {
           {(query || kindFilter !== 'all') && (
             <span className="text-[11px] text-text-muted shrink-0">{shown.length} of {schedules.length}</span>
           )}
+          {(() => {
+            const pausable = shown.filter(s => s.enabled).length
+            const resumable = shown.filter(s => !s.enabled).length
+            if (pausable + resumable < 2) return null // not worth bulk on 0–1 rows
+            return (
+              <div className="flex items-center gap-1.5 shrink-0">
+                {pausable > 1 && (
+                  <button onClick={() => handleBulkToggle(false)} disabled={bulkBusy} className="btn-secondary btn-sm" title={`Pause ${pausable} active schedules in view`}>
+                    {bulkBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pause className="w-3.5 h-3.5" />} Pause all ({pausable})
+                  </button>
+                )}
+                {resumable > 1 && (
+                  <button onClick={() => handleBulkToggle(true)} disabled={bulkBusy} className="btn-secondary btn-sm" title={`Resume ${resumable} paused schedules in view`}>
+                    {bulkBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Resume all ({resumable})
+                  </button>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 
