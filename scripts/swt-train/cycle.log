@@ -329,3 +329,8 @@
 [2026-06-27T15:25:48.579Z] cycle 77 verify: kept 49/49 (dropped 0)
 [2026-06-27T15:25:48.708Z] cycle 77 distributed → 3397 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T15:25:48.708Z] cycle 77 reindex: skipped (batched separately)
+[2026-06-27T15:25:48.993Z] cycle 77 ✓ +49 FAQs → 3397/5040 (67.4%) · 14/14 agents trained · committed
+[2026-06-27T15:27:18.997Z] cycle 78: slices [imagery-art-direction|bundle-builder, motion|bundle-builder, mobile|bundle-builder, a11y|bundle-builder, cro|bundle-builder, trust-social-proof|bundle-builder, copy-voice|bundle-builder] → generating 49 FAQs (FAQ-3398…)
+[2026-06-27T15:32:50.466Z] cycle 78 verify: kept 19/49 (dropped 30)
+[2026-06-27T15:32:50.579Z] cycle 78 distributed → 3416 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T15:32:50.579Z] cycle 78 reindex: skipped (batched separately)
