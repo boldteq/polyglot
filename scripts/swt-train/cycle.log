@@ -219,3 +219,7 @@
 [2026-06-27T10:55:29.476Z] cycle 55: slices [honesty-claims|gift-card, data-binding|gift-card, performance-cwv|gift-card, seo-structured-data|gift-card, i18n-currency-rtl|gift-card, states-empty-loading-error|gift-card, edge-cases|gift-card] → generating 49 FAQs (FAQ-2615…)
 [2026-06-27T11:02:15.310Z] cycle 55 verify: kept 47/49 (dropped 2)
 [2026-06-27T11:05:19.898Z] cycle 55 distributed → 2661 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-27T11:05:20.741Z] cycle 55 ✓ +47 FAQs → 2661/5040 (52.8%) · 13/14 agents trained · committed
+[2026-06-27T11:06:50.749Z] cycle 56: slices [legal-compliance|gift-card, merchandising|gift-card, search-filtering|gift-card, nav-ia|gift-card, forms-validation|gift-card, email-lifecycle|gift-card, layout|contact] → generating 49 FAQs (FAQ-2662…)
+[2026-06-27T11:15:01.669Z] cycle 56 verify: kept 47/49 (dropped 2)
+[2026-06-27T11:18:02.001Z] cycle 56 distributed → 2708 rules · 13/14 agents trained · 11 gate-gaps
