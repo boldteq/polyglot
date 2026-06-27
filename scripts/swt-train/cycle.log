@@ -408,3 +408,8 @@
 [2026-06-27T17:05:49.907Z] cycle 92 verify: kept 17/49 (dropped 32)
 [2026-06-27T17:05:50.120Z] cycle 92 distributed → 3890 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T17:05:50.120Z] cycle 92 reindex: skipped (batched separately)
+[2026-06-27T17:05:50.606Z] cycle 92 ✓ +17 FAQs → 3890/5040 (77.2%) · 14/14 agents trained · committed
+[2026-06-27T17:07:20.610Z] cycle 93: slices [performance-cwv|footer, seo-structured-data|footer, i18n-currency-rtl|footer, states-empty-loading-error|footer, edge-cases|footer, legal-compliance|footer, merchandising|footer] → generating 49 FAQs (FAQ-3891…)
+[2026-06-27T17:12:13.431Z] cycle 93 verify: kept 21/49 (dropped 28)
+[2026-06-27T17:12:13.566Z] cycle 93 distributed → 3911 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T17:12:13.566Z] cycle 93 reindex: skipped (batched separately)
