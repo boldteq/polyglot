@@ -302,3 +302,8 @@
 [2026-06-27T14:51:15.202Z] cycle 72 verify: kept 24/49 (dropped 25)
 [2026-06-27T14:51:15.316Z] cycle 72 distributed → 3211 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T14:51:15.316Z] cycle 72 reindex: skipped (batched separately)
+[2026-06-27T14:51:15.487Z] cycle 72 ✓ +24 FAQs → 3211/5040 (63.7%) · 14/14 agents trained · committed
+[2026-06-27T14:52:45.491Z] cycle 73: slices [edge-cases|store-locator, legal-compliance|store-locator, merchandising|store-locator, search-filtering|store-locator, nav-ia|store-locator, forms-validation|store-locator, email-lifecycle|store-locator] → generating 49 FAQs (FAQ-3212…)
+[2026-06-27T14:59:17.282Z] cycle 73 verify: kept 25/49 (dropped 24)
+[2026-06-27T14:59:17.402Z] cycle 73 distributed → 3236 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T14:59:17.402Z] cycle 73 reindex: skipped (batched separately)
