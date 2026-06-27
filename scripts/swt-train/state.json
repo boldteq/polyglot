@@ -1,10 +1,10 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 85,
-  "batches": 85,
-  "faqCount": 3654,
-  "slicePointer": 588,
+  "cyclesRun": 86,
+  "batches": 86,
+  "faqCount": 3693,
+  "slicePointer": 595,
   "consecutiveFailures": 0,
   "log": [
     {
@@ -1242,6 +1242,21 @@
         "trust-social-proof|landing-advertorial",
         "copy-voice|landing-advertorial",
         "honesty-claims|landing-advertorial"
+      ]
+    },
+    {
+      "cycle": 86,
+      "ts": "2026-06-27T16:27:43.217Z",
+      "added": 39,
+      "faqTotal": 3693,
+      "slices": [
+        "data-binding|landing-advertorial",
+        "performance-cwv|landing-advertorial",
+        "seo-structured-data|landing-advertorial",
+        "i18n-currency-rtl|landing-advertorial",
+        "states-empty-loading-error|landing-advertorial",
+        "edge-cases|landing-advertorial",
+        "legal-compliance|landing-advertorial"
       ]
     }
   ],

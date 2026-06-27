@@ -371,3 +371,8 @@
 [2026-06-27T16:20:50.001Z] cycle 85 verify: kept 49/49 (dropped 0)
 [2026-06-27T16:20:50.125Z] cycle 85 distributed → 3654 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T16:20:50.125Z] cycle 85 reindex: skipped (batched separately)
+[2026-06-27T16:20:50.300Z] cycle 85 ✓ +49 FAQs → 3654/5040 (72.5%) · 14/14 agents trained · committed
+[2026-06-27T16:22:20.312Z] cycle 86: slices [data-binding|landing-advertorial, performance-cwv|landing-advertorial, seo-structured-data|landing-advertorial, i18n-currency-rtl|landing-advertorial, states-empty-loading-error|landing-advertorial, edge-cases|landing-advertorial, legal-compliance|landing-advertorial] → generating 49 FAQs (FAQ-3655…)
+[2026-06-27T16:27:43.200Z] cycle 86 verify: kept 39/49 (dropped 10)
+[2026-06-27T16:27:43.328Z] cycle 86 distributed → 3693 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T16:27:43.328Z] cycle 86 reindex: skipped (batched separately)
