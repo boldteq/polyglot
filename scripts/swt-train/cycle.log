@@ -467,3 +467,8 @@
 [2026-06-27T18:21:18.374Z] cycle 103 verify: kept 33/49 (dropped 16)
 [2026-06-27T18:21:18.520Z] cycle 103 distributed → 4272 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T18:21:18.520Z] cycle 103 reindex: skipped (batched separately)
+[2026-06-27T18:21:18.709Z] cycle 103 ✓ +33 FAQs → 4272/5040 (84.8%) · 14/14 agents trained · committed
+[2026-06-27T18:22:48.710Z] cycle 104: slices [legal-compliance|password-page, merchandising|password-page, search-filtering|password-page, nav-ia|password-page, forms-validation|password-page, email-lifecycle|password-page] → generating 42 FAQs (FAQ-4273…)
+[2026-06-27T18:27:11.764Z] cycle 104 verify: kept 23/42 (dropped 19)
+[2026-06-27T18:27:11.901Z] cycle 104 distributed → 4295 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T18:27:11.901Z] cycle 104 reindex: skipped (batched separately)
