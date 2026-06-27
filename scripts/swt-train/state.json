@@ -1,10 +1,10 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 73,
-  "batches": 73,
-  "faqCount": 3236,
-  "slicePointer": 504,
+  "cyclesRun": 74,
+  "batches": 74,
+  "faqCount": 3285,
+  "slicePointer": 511,
   "consecutiveFailures": 0,
   "log": [
     {
@@ -1062,6 +1062,21 @@
         "nav-ia|store-locator",
         "forms-validation|store-locator",
         "email-lifecycle|store-locator"
+      ]
+    },
+    {
+      "cycle": 74,
+      "ts": "2026-06-27T15:05:07.005Z",
+      "added": 49,
+      "faqTotal": 3285,
+      "slices": [
+        "layout|comparison",
+        "typography|comparison",
+        "color-contrast|comparison",
+        "spacing-rhythm|comparison",
+        "imagery-art-direction|comparison",
+        "motion|comparison",
+        "mobile|comparison"
       ]
     }
   ],

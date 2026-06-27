@@ -307,3 +307,9 @@
 [2026-06-27T14:59:17.282Z] cycle 73 verify: kept 25/49 (dropped 24)
 [2026-06-27T14:59:17.402Z] cycle 73 distributed → 3236 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T14:59:17.402Z] cycle 73 reindex: skipped (batched separately)
+[2026-06-27T14:59:17.727Z] cycle 73 ✓ +25 FAQs → 3236/5040 (64.2%) · 14/14 agents trained · committed
+[2026-06-27T15:00:47.730Z] cycle 74: slices [layout|comparison, typography|comparison, color-contrast|comparison, spacing-rhythm|comparison, imagery-art-direction|comparison, motion|comparison, mobile|comparison] → generating 49 FAQs (FAQ-3237…)
+[2026-06-27T15:05:06.990Z] cycle 74 verify ANOMALY (kept 8/49) — distrusting critic, keeping all
+[2026-06-27T15:05:06.991Z] cycle 74 verify: kept 49/49 (dropped 0)
+[2026-06-27T15:05:07.105Z] cycle 74 distributed → 3285 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T15:05:07.105Z] cycle 74 reindex: skipped (batched separately)
