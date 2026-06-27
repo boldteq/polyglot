@@ -355,3 +355,8 @@
 [2026-06-27T15:59:54.817Z] cycle 82 verify: kept 37/49 (dropped 12)
 [2026-06-27T15:59:54.936Z] cycle 82 distributed → 3555 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T15:59:54.936Z] cycle 82 reindex: skipped (batched separately)
+[2026-06-27T15:59:55.101Z] cycle 82 ✓ +37 FAQs → 3555/5040 (70.5%) · 14/14 agents trained · committed
+[2026-06-27T16:01:25.093Z] cycle 83: slices [i18n-currency-rtl|quiz-finder, states-empty-loading-error|quiz-finder, edge-cases|quiz-finder, legal-compliance|quiz-finder, merchandising|quiz-finder, search-filtering|quiz-finder, nav-ia|quiz-finder] → generating 49 FAQs (FAQ-3556…)
+[2026-06-27T16:06:12.478Z] cycle 83 verify: kept 31/49 (dropped 18)
+[2026-06-27T16:06:12.602Z] cycle 83 distributed → 3586 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T16:06:12.602Z] cycle 83 reindex: skipped (batched separately)
