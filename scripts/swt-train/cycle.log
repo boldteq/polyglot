@@ -159,3 +159,7 @@
 [2026-06-27T08:50:51.181Z] cycle 40: slices [color-contrast|policy, spacing-rhythm|policy, imagery-art-direction|policy, motion|policy, mobile|policy, a11y|policy, cro|policy] → generating 49 FAQs (FAQ-1891…)
 [2026-06-27T08:55:35.534Z] cycle 40 verify: kept 49/49 (dropped 0)
 [2026-06-27T08:56:59.186Z] cycle 40 distributed → 1939 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-27T08:56:59.375Z] cycle 40 ✓ +49 FAQs → 1939/5040 (38.5%) · 13/14 agents trained · committed
+[2026-06-27T08:58:29.379Z] cycle 41: slices [trust-social-proof|policy, copy-voice|policy, honesty-claims|policy, data-binding|policy, performance-cwv|policy, seo-structured-data|policy, i18n-currency-rtl|policy] → generating 49 FAQs (FAQ-1940…)
+[2026-06-27T09:03:46.456Z] cycle 41 verify: kept 48/49 (dropped 1)
+[2026-06-27T09:05:13.076Z] cycle 41 distributed → 1987 rules · 13/14 agents trained · 11 gate-gaps
