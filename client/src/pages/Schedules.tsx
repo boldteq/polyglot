@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Clock, Plus, Trash2, Play, Pause, AlertCircle, CheckCircle, XCircle,
   Pencil, PlayCircle, Loader2, Cpu, History, StopCircle, MinusCircle,
-  CalendarClock, Zap, Search,
+  CalendarClock, Zap, Search, Activity, ListChecks,
 } from 'lucide-react'
 import {
   getGlobalAgents,
@@ -18,6 +18,7 @@ import {
   apiError,
   type Schedule,
 } from '../lib/api'
+import { getScheduleActivity } from '../lib/scheduleApi'
 import type { Agent } from '../types'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
@@ -28,6 +29,8 @@ import { formatAgentDisplay } from '../lib/agentDisplay'
 import ScheduleForm from '../components/ScheduleForm'
 import ScheduleHistoryDrawer from '../components/ScheduleHistoryDrawer'
 import ConfirmRunModal from '../components/ConfirmRunModal'
+import RunningNowStrip from '../components/RunningNowStrip'
+import ScheduleActivityFeed from '../components/ScheduleActivityFeed'
 
 function humanizeCron(expr: string | null): string {
   if (!expr) return 'event-driven'
@@ -79,6 +82,16 @@ export default function SchedulesPage() {
   const [, setTick] = useState(0)
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState<'all' | 'system' | 'user'>('all')
+  const [view, setView] = useState<'schedules' | 'activity'>('schedules')
+  const [failed24h, setFailed24h] = useState<number | null>(null)
+
+  // Failed-runs count over the last 24h for the header KPI.
+  useEffect(() => {
+    const since = new Date(Date.now() - 86_400_000).toISOString()
+    getScheduleActivity({ status: 'error,crashed', since, limit: 1 })
+      .then(r => setFailed24h(r.total))
+      .catch(() => {})
+  }, [schedules.length])
 
   // Fetch agents once.
   useEffect(() => {
@@ -242,27 +255,44 @@ export default function SchedulesPage() {
   )
 
   return (
-    <div className="space-y-6">
-      {/* Summary KPIs + create — hub provides the page title */}
+    <div className="space-y-5">
+      {/* Header: KPIs + create */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <StatRow
             stats={[
-              { label: 'Total schedules', value: stats.total, icon: CalendarClock },
+              { label: 'Total', value: stats.total, icon: CalendarClock },
               { label: 'Active', value: stats.active, icon: Play },
-              { label: 'System', value: stats.system, icon: Cpu },
               { label: 'Running now', value: stats.running, icon: Zap },
+              { label: 'Failed (24h)', value: failed24h ?? '—', icon: XCircle },
             ]}
           />
         </div>
         <button
-          onClick={() => { setShowCreate(true); setEditing(null) }}
+          onClick={() => { setShowCreate(true); setEditing(null); setView('schedules') }}
           className="btn-primary btn-md shrink-0"
         >
           <Plus className="w-4 h-4" /> New Schedule
         </button>
       </div>
 
+      {/* Running now — live, with elapsed timers + cancel */}
+      <RunningNowStrip schedules={schedules} busyIds={busyIds} onCancel={handleCancel} />
+
+      {/* View switch: Schedules (control) | Activity (full history) */}
+      <div className="segmented">
+        <button onClick={() => setView('schedules')} aria-pressed={view === 'schedules'} className={`segmented-btn ${view === 'schedules' ? 'segmented-btn-active' : ''}`}>
+          <ListChecks className="w-3.5 h-3.5" /> Schedules
+        </button>
+        <button onClick={() => setView('activity')} aria-pressed={view === 'activity'} className={`segmented-btn ${view === 'activity' ? 'segmented-btn-active' : ''}`}>
+          <Activity className="w-3.5 h-3.5" /> Activity
+        </button>
+      </div>
+
+      {view === 'activity' && <ScheduleActivityFeed schedules={schedules} />}
+
+      {view === 'schedules' && (
+      <>
       {/* Create / Edit form */}
       {showCreate && (
         <ScheduleForm
@@ -469,6 +499,9 @@ export default function SchedulesPage() {
           />
         )}
       </div>
+
+      </>
+      )}
 
       <ScheduleHistoryDrawer
         schedule={drawerSchedule}
