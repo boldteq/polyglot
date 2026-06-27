@@ -129,3 +129,20 @@
 [2026-06-26T19:50:30.257Z] cycle 34: slices [cro|article, trust-social-proof|article, copy-voice|article, honesty-claims|article, data-binding|article, performance-cwv|article, seo-structured-data|article] → generating 49 FAQs (FAQ-1601…)
 [2026-06-26T19:54:28.428Z] cycle 34 verify: kept 48/49 (dropped 1)
 [2026-06-26T19:54:28.472Z] cycle 34 distributed → 1648 rules · 13/14 agents trained · 11 gate-gaps
+[2026-06-26T19:54:28.595Z] cycle 34 ✓ +48 FAQs → 1648/5040 (32.7%) · 13/14 agents trained · committed
+[2026-06-26T20:39:23.938Z] cycle 35: slices [i18n-currency-rtl|article, states-empty-loading-error|article, edge-cases|article, legal-compliance|article, merchandising|article, search-filtering|article, nav-ia|article] → generating 49 FAQs (FAQ-1649…)
+[2026-06-26T20:42:26.901Z] cycle 35 generation FAILED (claude exit 1: ) — failure 1/5; pointer not advanced.
+[2026-06-26T20:57:26.922Z] cycle 35: slices [i18n-currency-rtl|article, states-empty-loading-error|article, edge-cases|article, legal-compliance|article, merchandising|article, search-filtering|article, nav-ia|article] → generating 49 FAQs (FAQ-1649…)
+[2026-06-26T21:00:27.712Z] cycle 35 generation FAILED (claude exit 1: ) — failure 2/5; pointer not advanced.
+[2026-06-26T21:15:27.729Z] cycle 35: slices [i18n-currency-rtl|article, states-empty-loading-error|article, edge-cases|article, legal-compliance|article, merchandising|article, search-filtering|article, nav-ia|article] → generating 49 FAQs (FAQ-1649…)
+[2026-06-26T21:18:44.120Z] cycle 35 generation FAILED (claude exit 1: ) — failure 3/5; pointer not advanced.
+[2026-06-26T21:33:44.137Z] cycle 35: slices [i18n-currency-rtl|article, states-empty-loading-error|article, edge-cases|article, legal-compliance|article, merchandising|article, search-filtering|article, nav-ia|article] → generating 49 FAQs (FAQ-1649…)
+[2026-06-26T21:36:45.982Z] cycle 35 generation FAILED (claude exit 1: ) — failure 4/5; pointer not advanced.
+[2026-06-26T21:51:45.997Z] cycle 35: slices [i18n-currency-rtl|article, states-empty-loading-error|article, edge-cases|article, legal-compliance|article, merchandising|article, search-filtering|article, nav-ia|article] → generating 49 FAQs (FAQ-1649…)
+[2026-06-26T21:54:49.406Z] cycle 35 generation FAILED (claude exit 1: ) — failure 5/5; pointer not advanced.
+[2026-06-26T21:54:49.407Z] 5 consecutive failures — writing STOP.
+[2026-06-27T00:00:00.000Z] cycle 35 COMPLETE (human-gated, Claude-authored) — 50 FAQs 1649…1698 on the article surface across 7 concerns → distributed 1698 rules / 13 agents / 11 pre-existing gate-gaps. pointer 231→238.
+[2026-06-27T01:00:00.000Z] cycle 36 COMMITTED (human-gated) — 49 FAQs 1699…1747 (forms/email·article + layout/type/color/spacing/imagery·blog). pointer 238→245.
+[2026-06-27T08:03:50.755Z] cycle 37: slices [motion|blog, mobile|blog, a11y|blog, cro|blog, trust-social-proof|blog, copy-voice|blog, honesty-claims|blog] → generating 49 FAQs (FAQ-1748…)
+[2026-06-27T08:11:00.165Z] cycle 37 verify: kept 49/49 (dropped 0)
+[2026-06-27T08:12:27.882Z] cycle 37 distributed → 1796 rules · 13/14 agents trained · 11 gate-gaps
