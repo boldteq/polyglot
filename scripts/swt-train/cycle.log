@@ -339,3 +339,8 @@
 [2026-06-27T15:38:49.348Z] cycle 79 verify: kept 38/48 (dropped 10)
 [2026-06-27T15:38:49.471Z] cycle 79 distributed → 3454 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T15:38:49.471Z] cycle 79 reindex: skipped (batched separately)
+[2026-06-27T15:38:49.725Z] cycle 79 ✓ +38 FAQs → 3454/5040 (68.5%) · 14/14 agents trained · committed
+[2026-06-27T15:40:19.729Z] cycle 80: slices [legal-compliance|bundle-builder, merchandising|bundle-builder, search-filtering|bundle-builder, nav-ia|bundle-builder, forms-validation|bundle-builder, email-lifecycle|bundle-builder, layout|quiz-finder] → generating 49 FAQs (FAQ-3455…)
+[2026-06-27T15:46:18.539Z] cycle 80 verify: kept 15/49 (dropped 34)
+[2026-06-27T15:46:18.652Z] cycle 80 distributed → 3469 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T15:46:18.652Z] cycle 80 reindex: skipped (batched separately)
