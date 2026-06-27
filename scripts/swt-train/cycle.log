@@ -334,3 +334,8 @@
 [2026-06-27T15:32:50.466Z] cycle 78 verify: kept 19/49 (dropped 30)
 [2026-06-27T15:32:50.579Z] cycle 78 distributed → 3416 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T15:32:50.579Z] cycle 78 reindex: skipped (batched separately)
+[2026-06-27T15:32:50.726Z] cycle 78 ✓ +19 FAQs → 3416/5040 (67.8%) · 14/14 agents trained · committed
+[2026-06-27T15:34:20.729Z] cycle 79: slices [honesty-claims|bundle-builder, data-binding|bundle-builder, performance-cwv|bundle-builder, seo-structured-data|bundle-builder, i18n-currency-rtl|bundle-builder, states-empty-loading-error|bundle-builder, edge-cases|bundle-builder] → generating 49 FAQs (FAQ-3417…)
+[2026-06-27T15:38:49.348Z] cycle 79 verify: kept 38/48 (dropped 10)
+[2026-06-27T15:38:49.471Z] cycle 79 distributed → 3454 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T15:38:49.471Z] cycle 79 reindex: skipped (batched separately)
