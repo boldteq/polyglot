@@ -1794,6 +1794,12 @@ function completeAgentRun(runId, patch = {}) {
 
   const oldMeta = JSON.parse(existing.metadata || '{}');
   const mergedMeta = { ...oldMeta, ...(patch.metadataPatch || {}) };
+  // Retain a short preview of what a SCHEDULE run produced so the command center
+  // can show "what happened", not just a char count. Gated to schedule sources +
+  // bounded (1.2k) so it never bloats high-volume playground/AI runs.
+  if (patch.output && (existing.source === 'schedule' || existing.source === 'system-schedule')) {
+    mergedMeta.outputPreview = String(patch.output).slice(0, 1200);
+  }
   // Pillar 1: when the CLI returned real usage, record it on the row itself.
   if (patch.usage && (patch.usage.inputTokens != null || patch.usage.outputTokens != null)) {
     mergedMeta.realTokens = (patch.usage.inputTokens || 0) + (patch.usage.outputTokens || 0);
