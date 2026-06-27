@@ -445,3 +445,8 @@
 [2026-06-27T17:52:47.007Z] cycle 99 verify: kept 25/49 (dropped 24)
 [2026-06-27T17:52:47.143Z] cycle 99 distributed → 4108 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T17:52:47.143Z] cycle 99 reindex: skipped (batched separately)
+[2026-06-27T17:52:47.295Z] cycle 99 ✓ +25 FAQs → 4108/5040 (81.5%) · 14/14 agents trained · committed
+[2026-06-27T17:54:17.296Z] cycle 100: slices [seo-structured-data|announcement-bar, i18n-currency-rtl|announcement-bar, states-empty-loading-error|announcement-bar, edge-cases|announcement-bar, legal-compliance|announcement-bar, merchandising|announcement-bar, search-filtering|announcement-bar] → generating 49 FAQs (FAQ-4109…)
+[2026-06-27T18:00:01.997Z] cycle 100 verify: kept 33/49 (dropped 16)
+[2026-06-27T18:00:02.132Z] cycle 100 distributed → 4141 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T18:00:02.132Z] cycle 100 reindex: skipped (batched separately)
