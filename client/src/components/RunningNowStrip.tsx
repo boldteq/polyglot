@@ -33,15 +33,27 @@ export default function RunningNowStrip({ schedules, busyIds, onCancel }: Props)
     return () => clearInterval(id)
   }, [inflight.length])
 
+  // F24: a persistent polite live region announces start/stop to screen readers.
+  const liveRegion = (
+    <div className="sr-only" role="status" aria-live="polite">
+      {inflight.length === 0 ? 'Nothing running' : `${inflight.length} schedule${inflight.length === 1 ? '' : 's'} running`}
+    </div>
+  )
+
   if (inflight.length === 0) {
     return (
-      <div className="card p-3 flex items-center gap-2 text-xs text-text-muted">
-        <Zap className="w-3.5 h-3.5 shrink-0" /> Nothing running right now.
-      </div>
+      <>
+        {liveRegion}
+        <div className="card p-3 flex items-center gap-2 text-xs text-text-muted">
+          <Zap className="w-3.5 h-3.5 shrink-0" /> Nothing running right now.
+        </div>
+      </>
     )
   }
 
   return (
+    <>
+    {liveRegion}
     <div className="card border-blue/30 bg-blue/[0.04] p-3 space-y-2">
       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-blue uppercase tracking-wide">
         <Loader2 className="w-3 h-3 animate-spin shrink-0" /> Running now · {inflight.length}
@@ -75,5 +87,6 @@ export default function RunningNowStrip({ schedules, busyIds, onCancel }: Props)
         )
       })}
     </div>
+    </>
   )
 }
