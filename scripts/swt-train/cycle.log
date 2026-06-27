@@ -344,3 +344,9 @@
 [2026-06-27T15:46:18.539Z] cycle 80 verify: kept 15/49 (dropped 34)
 [2026-06-27T15:46:18.652Z] cycle 80 distributed → 3469 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T15:46:18.652Z] cycle 80 reindex: skipped (batched separately)
+[2026-06-27T15:46:18.861Z] cycle 80 ✓ +15 FAQs → 3469/5040 (68.8%) · 14/14 agents trained · committed
+[2026-06-27T15:47:48.864Z] cycle 81: slices [typography|quiz-finder, color-contrast|quiz-finder, spacing-rhythm|quiz-finder, imagery-art-direction|quiz-finder, motion|quiz-finder, mobile|quiz-finder, a11y|quiz-finder] → generating 49 FAQs (FAQ-3470…)
+[2026-06-27T15:52:44.046Z] cycle 81 verify ANOMALY (kept 4/49) — distrusting critic, keeping all
+[2026-06-27T15:52:44.047Z] cycle 81 verify: kept 49/49 (dropped 0)
+[2026-06-27T15:52:44.162Z] cycle 81 distributed → 3518 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T15:52:44.162Z] cycle 81 reindex: skipped (batched separately)
