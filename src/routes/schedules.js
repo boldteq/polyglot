@@ -9,7 +9,7 @@ const db = require('../db');
 const agentSync = require('../lib/agentSync');
 const systemSchedules = require('../lib/systemSchedules');
 const { runClaudeSync, buildAgentPrompt, validateAgentExists } = require('../lib/runClaude');
-const { computeNextRunAt } = require('../lib/cronUtil');
+const { computeNextRunAt, computeNextRuns } = require('../lib/cronUtil');
 
 const router = Router();
 
@@ -324,6 +324,43 @@ router.get('/schedules/inflight', rateLimit('read'), (req, res) => {
     res.json({
       inflight: [...getUserInflight(), ...systemSchedules.getInflight()],
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/schedules/activity — global cross-schedule run feed (paginated + filtered).
+// Powers the Activity view: every schedule + system-schedule run, newest first, with
+// status/duration/error/faults/cost. Filters: status (comma list), kind, scheduleId, since.
+router.get('/schedules/activity', rateLimit('read'), (req, res) => {
+  try {
+    const { status, kind, scheduleId, since, limit, offset } = req.query;
+    res.json(db.getScheduleActivity({ limit, offset, status, kind, scheduleId, sinceIso: since }));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/schedules/upcoming — merged upcoming-runs timeline across all ENABLED cron
+// schedules (user + system). Event-driven schedules (no cron) are returned separately
+// so the UI can label them "event-driven, no fixed time".
+router.get('/schedules/upcoming', rateLimit('read'), (req, res) => {
+  try {
+    const perSchedule = Math.min(Math.max(parseInt(req.query.perSchedule, 10) || 3, 1), 10);
+    const max = Math.min(Math.max(parseInt(req.query.count, 10) || 60, 1), 200);
+    const users = db.loadSchedules().map(s => ({ id: s.id, name: s.name, agentName: s.agentName, cron: s.cron, enabled: !!s.enabled, kind: 'user' }));
+    const systems = systemSchedules.getAllForApi().map(s => ({ id: s.id, name: s.name, agentName: s.agentName, cron: s.cron, trigger: s.trigger, enabled: !!s.enabled, kind: 'system' }));
+    const upcoming = [];
+    const eventDriven = [];
+    for (const s of [...users, ...systems]) {
+      if (!s.enabled) continue;
+      if (!s.cron) { eventDriven.push({ id: s.id, name: s.name, agentName: s.agentName, kind: s.kind, trigger: s.trigger || 'event' }); continue; }
+      for (const fireAt of computeNextRuns(s.cron, perSchedule)) {
+        upcoming.push({ id: s.id, name: s.name, agentName: s.agentName, kind: s.kind, cron: s.cron, fireAt });
+      }
+    }
+    upcoming.sort((a, b) => (a.fireAt < b.fireAt ? -1 : a.fireAt > b.fireAt ? 1 : 0));
+    res.json({ upcoming: upcoming.slice(0, max), eventDriven });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

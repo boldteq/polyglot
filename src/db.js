@@ -2590,6 +2590,34 @@ function getScheduleRunsFor(scheduleId, { limit = 50 } = {}) {
   `).all(scheduleId, scheduleId, lim).map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
 }
 
+// Global cross-schedule activity feed: all schedule + system-schedule runs, newest
+// first, with optional filters + pagination. Returns { runs, total } so the UI can
+// page. status accepts a comma list (e.g. 'error,crashed'); kind maps to source.
+function getScheduleActivity({ limit = 50, offset = 0, status, kind, scheduleId, sinceIso } = {}) {
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+  const off = Math.max(parseInt(offset, 10) || 0, 0);
+  const where = [];
+  const args = [];
+  if (kind === 'user') where.push(`source = 'schedule'`);
+  else if (kind === 'system') where.push(`source = 'system-schedule'`);
+  else where.push(`source IN ('schedule','system-schedule')`);
+  if (scheduleId) {
+    where.push(`(json_extract(metadata,'$.scheduleId') = ? OR json_extract(metadata,'$.systemId') = ?)`);
+    args.push(scheduleId, scheduleId);
+  }
+  if (status) {
+    const parts = String(status).split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length) { where.push(`status IN (${parts.map(() => '?').join(',')})`); args.push(...parts); }
+  }
+  if (sinceIso) { where.push(`timestamp >= ?`); args.push(sinceIso); }
+  const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const total = stmt(`SELECT COUNT(*) n FROM agent_runs ${whereSql}`).get(...args).n;
+  const runs = stmt(`SELECT * FROM agent_runs ${whereSql} ORDER BY timestamp DESC LIMIT ? OFFSET ?`)
+    .all(...args, lim, off)
+    .map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
+  return { runs, total };
+}
+
 // ── Webhooks ────────────────────────────────────────────────────────────────
 
 function loadWebhooks() {
@@ -4360,7 +4388,7 @@ module.exports = {
   insertBuildSchedule, dueBuildSchedules, listBuildSchedules, markBuildScheduleStatus,
   ackEscalation, getEscalationAck, getEscalationAckMap,
   // System schedule overrides + run history
-  loadSystemOverrides, getSystemOverride, upsertSystemOverride, getScheduleRunsFor,
+  loadSystemOverrides, getSystemOverride, upsertSystemOverride, getScheduleRunsFor, getScheduleActivity,
   // Error Log
   insertErrorLog, getErrorLog, markErrorResolved, clearErrorLog, getUnresolvedErrorCount,
   pruneErrorLog, getErrorLogHistogram,
