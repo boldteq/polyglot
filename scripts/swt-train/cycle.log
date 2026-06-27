@@ -243,3 +243,7 @@
 [2026-06-27T12:58:44.676Z] cycle 60: slices [forms-validation|contact, email-lifecycle|contact, layout|about, typography|about, color-contrast|about, spacing-rhythm|about, imagery-art-direction|about] → generating 49 FAQs (FAQ-2854…)
 [2026-06-27T13:03:25.985Z] cycle 60 verify: kept 21/49 (dropped 28)
 [2026-06-27T13:05:33.710Z] cycle 60 distributed → 2874 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T13:05:33.899Z] cycle 60 ✓ +21 FAQs → 2874/5040 (57.0%) · 14/14 agents trained · committed
+[2026-06-27T13:07:03.903Z] cycle 61: slices [motion|about, mobile|about, a11y|about, cro|about, trust-social-proof|about, copy-voice|about, honesty-claims|about] → generating 49 FAQs (FAQ-2875…)
+[2026-06-27T13:16:45.935Z] cycle 61 verify: kept 17/49 (dropped 32)
+[2026-06-27T13:18:45.938Z] cycle 61 distributed → 2891 rules · 14/14 agents trained · 11 gate-gaps
