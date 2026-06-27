@@ -1,10 +1,10 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 86,
-  "batches": 86,
-  "faqCount": 3693,
-  "slicePointer": 595,
+  "cyclesRun": 87,
+  "batches": 87,
+  "faqCount": 3711,
+  "slicePointer": 602,
   "consecutiveFailures": 0,
   "log": [
     {
@@ -1257,6 +1257,21 @@
         "states-empty-loading-error|landing-advertorial",
         "edge-cases|landing-advertorial",
         "legal-compliance|landing-advertorial"
+      ]
+    },
+    {
+      "cycle": 87,
+      "ts": "2026-06-27T16:34:11.806Z",
+      "added": 18,
+      "faqTotal": 3711,
+      "slices": [
+        "merchandising|landing-advertorial",
+        "search-filtering|landing-advertorial",
+        "nav-ia|landing-advertorial",
+        "forms-validation|landing-advertorial",
+        "email-lifecycle|landing-advertorial",
+        "layout|header-nav",
+        "typography|header-nav"
       ]
     }
   ],

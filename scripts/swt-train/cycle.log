@@ -376,3 +376,8 @@
 [2026-06-27T16:27:43.200Z] cycle 86 verify: kept 39/49 (dropped 10)
 [2026-06-27T16:27:43.328Z] cycle 86 distributed → 3693 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T16:27:43.328Z] cycle 86 reindex: skipped (batched separately)
+[2026-06-27T16:27:43.460Z] cycle 86 ✓ +39 FAQs → 3693/5040 (73.3%) · 14/14 agents trained · committed
+[2026-06-27T16:29:13.462Z] cycle 87: slices [merchandising|landing-advertorial, search-filtering|landing-advertorial, nav-ia|landing-advertorial, forms-validation|landing-advertorial, email-lifecycle|landing-advertorial, layout|header-nav, typography|header-nav] → generating 49 FAQs (FAQ-3694…)
+[2026-06-27T16:34:11.794Z] cycle 87 verify: kept 18/49 (dropped 31)
+[2026-06-27T16:34:11.909Z] cycle 87 distributed → 3711 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T16:34:11.909Z] cycle 87 reindex: skipped (batched separately)
