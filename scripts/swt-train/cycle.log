@@ -440,3 +440,8 @@
 [2026-06-27T17:46:05.712Z] cycle 98 verify: kept 49/49 (dropped 0)
 [2026-06-27T17:46:05.845Z] cycle 98 distributed → 4083 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T17:46:05.845Z] cycle 98 reindex: skipped (batched separately)
+[2026-06-27T17:46:06.041Z] cycle 98 ✓ +49 FAQs → 4083/5040 (81.0%) · 14/14 agents trained · committed
+[2026-06-27T17:47:36.041Z] cycle 99: slices [a11y|announcement-bar, cro|announcement-bar, trust-social-proof|announcement-bar, copy-voice|announcement-bar, honesty-claims|announcement-bar, data-binding|announcement-bar, performance-cwv|announcement-bar] → generating 49 FAQs (FAQ-4084…)
+[2026-06-27T17:52:47.007Z] cycle 99 verify: kept 25/49 (dropped 24)
+[2026-06-27T17:52:47.143Z] cycle 99 distributed → 4108 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T17:52:47.143Z] cycle 99 reindex: skipped (batched separately)
