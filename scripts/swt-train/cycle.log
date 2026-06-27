@@ -350,3 +350,8 @@
 [2026-06-27T15:52:44.047Z] cycle 81 verify: kept 49/49 (dropped 0)
 [2026-06-27T15:52:44.162Z] cycle 81 distributed → 3518 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T15:52:44.162Z] cycle 81 reindex: skipped (batched separately)
+[2026-06-27T15:52:44.347Z] cycle 81 ✓ +49 FAQs → 3518/5040 (69.8%) · 14/14 agents trained · committed
+[2026-06-27T15:54:14.350Z] cycle 82: slices [cro|quiz-finder, trust-social-proof|quiz-finder, copy-voice|quiz-finder, honesty-claims|quiz-finder, data-binding|quiz-finder, performance-cwv|quiz-finder, seo-structured-data|quiz-finder] → generating 49 FAQs (FAQ-3519…)
+[2026-06-27T15:59:54.817Z] cycle 82 verify: kept 37/49 (dropped 12)
+[2026-06-27T15:59:54.936Z] cycle 82 distributed → 3555 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T15:59:54.936Z] cycle 82 reindex: skipped (batched separately)
