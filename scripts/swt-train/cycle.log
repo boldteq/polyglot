@@ -255,3 +255,13 @@
 [2026-06-27T13:28:46.465Z] cycle 63: slices [merchandising|about, search-filtering|about, nav-ia|about, forms-validation|about, email-lifecycle|about, layout|faq-page, typography|faq-page] → generating 49 FAQs (FAQ-2919…)
 [2026-06-27T13:37:18.173Z] cycle 63 verify: kept 15/49 (dropped 34)
 [2026-06-27T13:39:22.585Z] cycle 63 distributed → 2933 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T13:39:22.727Z] cycle 63 ✓ +15 FAQs → 2933/5040 (58.2%) · 14/14 agents trained · committed
+[2026-06-27T13:40:52.730Z] cycle 64: slices [color-contrast|faq-page, spacing-rhythm|faq-page, imagery-art-direction|faq-page, motion|faq-page, mobile|faq-page, a11y|faq-page, cro|faq-page] → generating 49 FAQs (FAQ-2934…)
+[2026-06-27T13:45:46.823Z] cycle 64 generation FAILED (Unexpected token ''', ...".","pros":'150ms deb"... is not valid JSON) — failure 1/20; pointer not advanced.
+[2026-06-27T13:47:16.842Z] cycle 64: slices [color-contrast|faq-page, spacing-rhythm|faq-page, imagery-art-direction|faq-page, motion|faq-page, mobile|faq-page, a11y|faq-page, cro|faq-page] → generating 49 FAQs (FAQ-2934…)
+[2026-06-27T13:50:42.155Z] cycle 64 verify: kept 41/49 (dropped 8)
+[2026-06-27T13:53:21.727Z] SWT training daemon START — interval 1.5min · max 200 cycles · 7 slices/cycle · model inherit · at 2974/5040
+[2026-06-27T13:53:21.728Z] cycle 65: slices [trust-social-proof|faq-page, copy-voice|faq-page, honesty-claims|faq-page, data-binding|faq-page, performance-cwv|faq-page, seo-structured-data|faq-page, i18n-currency-rtl|faq-page] → generating 49 FAQs (FAQ-2975…)
+[2026-06-27T13:59:11.026Z] cycle 65 verify: kept 32/49 (dropped 17)
+[2026-06-27T13:59:11.135Z] cycle 65 distributed → 3006 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T13:59:11.135Z] cycle 65 reindex: skipped (batched separately)
