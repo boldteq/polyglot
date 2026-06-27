@@ -392,3 +392,8 @@
 [2026-06-27T16:46:40.344Z] cycle 89 verify: kept 46/49 (dropped 3)
 [2026-06-27T16:46:40.470Z] cycle 89 distributed → 3806 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T16:46:40.470Z] cycle 89 reindex: skipped (batched separately)
+[2026-06-27T16:46:40.616Z] cycle 89 ✓ +46 FAQs → 3806/5040 (75.5%) · 14/14 agents trained · committed
+[2026-06-27T16:48:10.626Z] cycle 90: slices [states-empty-loading-error|header-nav, edge-cases|header-nav, legal-compliance|header-nav, merchandising|header-nav, search-filtering|header-nav, nav-ia|header-nav, forms-validation|header-nav] → generating 49 FAQs (FAQ-3807…)
+[2026-06-27T16:52:03.794Z] cycle 90 verify: kept 18/49 (dropped 31)
+[2026-06-27T16:52:03.924Z] cycle 90 distributed → 3824 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T16:52:03.924Z] cycle 90 reindex: skipped (batched separately)
