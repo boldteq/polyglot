@@ -318,3 +318,8 @@
 [2026-06-27T15:10:31.712Z] cycle 75 verify: kept 29/49 (dropped 20)
 [2026-06-27T15:10:31.829Z] cycle 75 distributed → 3314 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T15:10:31.829Z] cycle 75 reindex: skipped (batched separately)
+[2026-06-27T15:10:32.033Z] cycle 75 ✓ +29 FAQs → 3314/5040 (65.8%) · 14/14 agents trained · committed
+[2026-06-27T15:12:02.037Z] cycle 76: slices [seo-structured-data|comparison, i18n-currency-rtl|comparison, states-empty-loading-error|comparison, edge-cases|comparison, legal-compliance|comparison, merchandising|comparison, search-filtering|comparison] → generating 49 FAQs (FAQ-3315…)
+[2026-06-27T15:17:18.785Z] cycle 76 verify: kept 34/49 (dropped 15)
+[2026-06-27T15:17:18.898Z] cycle 76 distributed → 3348 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T15:17:18.898Z] cycle 76 reindex: skipped (batched separately)
