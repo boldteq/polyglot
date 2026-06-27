@@ -41,6 +41,22 @@ export function elapsed(startedAt: string | null | undefined): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`
 }
 
+/** Turn a cron expression into a human cadence label (best-effort, common cases). */
+export function humanizeCron(expr: string | null | undefined): string {
+  if (!expr) return 'event-driven'
+  const parts = expr.trim().split(/\s+/)
+  if (parts.length < 5) return expr
+  const [min, hour, dom, mon, dow] = parts
+  if (min === '0' && hour !== '*' && dom === '*' && mon === '*' && dow === '*') return `Daily ${hour.padStart(2, '0')}:00 UTC`
+  if (min === '0' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return 'Every hour'
+  if (min.startsWith('*/') && hour === '*') return `Every ${min.slice(2)} min`
+  if (min === '0' && dow === '1') return `Mondays ${hour.padStart(2, '0')}:00 UTC`
+  if (min === '0' && dow === '2') return `Tuesdays ${hour.padStart(2, '0')}:00 UTC`
+  if (min === '0' && dow === '0') return `Sundays ${hour.padStart(2, '0')}:00 UTC`
+  if (min === '0' && dom === '1' && dow === '*') return `Monthly (1st) ${hour.padStart(2, '0')}:00 UTC`
+  return expr
+}
+
 export function statusMeta(status: RunStatus): { label: string; intent: Intent } {
   switch (status) {
     case 'success': return { label: 'success', intent: 'success' }

@@ -31,6 +31,7 @@ import ScheduleHistoryDrawer from '../components/ScheduleHistoryDrawer'
 import ConfirmRunModal from '../components/ConfirmRunModal'
 import RunningNowStrip from '../components/RunningNowStrip'
 import ScheduleActivityFeed from '../components/ScheduleActivityFeed'
+import ScheduleUpcoming from '../components/ScheduleUpcoming'
 
 function humanizeCron(expr: string | null): string {
   if (!expr) return 'event-driven'
@@ -82,7 +83,7 @@ export default function SchedulesPage() {
   const [, setTick] = useState(0)
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState<'all' | 'system' | 'user'>('all')
-  const [view, setView] = useState<'schedules' | 'activity'>('schedules')
+  const [view, setView] = useState<'schedules' | 'activity' | 'upcoming'>('schedules')
   const [failed24h, setFailed24h] = useState<number | null>(null)
 
   // Failed-runs count over the last 24h for the header KPI.
@@ -287,9 +288,13 @@ export default function SchedulesPage() {
         <button onClick={() => setView('activity')} aria-pressed={view === 'activity'} className={`segmented-btn ${view === 'activity' ? 'segmented-btn-active' : ''}`}>
           <Activity className="w-3.5 h-3.5" /> Activity
         </button>
+        <button onClick={() => setView('upcoming')} aria-pressed={view === 'upcoming'} className={`segmented-btn ${view === 'upcoming' ? 'segmented-btn-active' : ''}`}>
+          <CalendarClock className="w-3.5 h-3.5" /> Upcoming
+        </button>
       </div>
 
       {view === 'activity' && <ScheduleActivityFeed schedules={schedules} />}
+      {view === 'upcoming' && <ScheduleUpcoming />}
 
       {view === 'schedules' && (
       <>
