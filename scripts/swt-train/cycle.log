@@ -424,3 +424,8 @@
 [2026-06-27T17:24:33.774Z] cycle 95 verify: kept 22/49 (dropped 27)
 [2026-06-27T17:24:33.902Z] cycle 95 distributed → 3982 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T17:24:33.902Z] cycle 95 reindex: skipped (batched separately)
+[2026-06-27T17:24:34.033Z] cycle 95 ✓ +22 FAQs → 3982/5040 (79.0%) · 14/14 agents trained · committed
+[2026-06-27T17:26:04.034Z] cycle 96: slices [copy-voice|mega-menu, honesty-claims|mega-menu, data-binding|mega-menu, performance-cwv|mega-menu, seo-structured-data|mega-menu, i18n-currency-rtl|mega-menu, states-empty-loading-error|mega-menu] → generating 49 FAQs (FAQ-3983…)
+[2026-06-27T17:30:44.319Z] cycle 96 verify: kept 29/49 (dropped 20)
+[2026-06-27T17:30:44.451Z] cycle 96 distributed → 4011 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T17:30:44.451Z] cycle 96 reindex: skipped (batched separately)
