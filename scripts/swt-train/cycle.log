@@ -292,3 +292,8 @@
 [2026-06-27T14:36:12.789Z] cycle 70 verify: kept 48/48 (dropped 0)
 [2026-06-27T14:36:12.898Z] cycle 70 distributed → 3166 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T14:36:12.898Z] cycle 70 reindex: skipped (batched separately)
+[2026-06-27T14:36:13.065Z] cycle 70 ✓ +48 FAQs → 3166/5040 (62.8%) · 14/14 agents trained · committed
+[2026-06-27T14:37:43.069Z] cycle 71: slices [spacing-rhythm|store-locator, imagery-art-direction|store-locator, motion|store-locator, mobile|store-locator, a11y|store-locator, cro|store-locator, trust-social-proof|store-locator] → generating 49 FAQs (FAQ-3167…)
+[2026-06-27T14:43:22.214Z] cycle 71 verify: kept 21/49 (dropped 28)
+[2026-06-27T14:43:22.321Z] cycle 71 distributed → 3187 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T14:43:22.321Z] cycle 71 reindex: skipped (batched separately)
