@@ -281,3 +281,8 @@
 [2026-06-27T14:20:14.776Z] cycle 68 verify: kept 22/49 (dropped 27)
 [2026-06-27T14:20:14.912Z] cycle 68 distributed → 3093 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T14:20:14.912Z] cycle 68 reindex: skipped (batched separately)
+[2026-06-27T14:20:15.229Z] cycle 68 ✓ +22 FAQs → 3093/5040 (61.4%) · 14/14 agents trained · committed
+[2026-06-27T14:21:45.237Z] cycle 69: slices [performance-cwv|lookbook, seo-structured-data|lookbook, i18n-currency-rtl|lookbook, states-empty-loading-error|lookbook, edge-cases|lookbook, legal-compliance|lookbook, merchandising|lookbook] → generating 49 FAQs (FAQ-3094…)
+[2026-06-27T14:28:14.366Z] cycle 69 verify: kept 25/49 (dropped 24)
+[2026-06-27T14:28:14.472Z] cycle 69 distributed → 3118 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T14:28:14.472Z] cycle 69 reindex: skipped (batched separately)
