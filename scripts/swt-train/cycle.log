@@ -429,3 +429,8 @@
 [2026-06-27T17:30:44.319Z] cycle 96 verify: kept 29/49 (dropped 20)
 [2026-06-27T17:30:44.451Z] cycle 96 distributed → 4011 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T17:30:44.451Z] cycle 96 reindex: skipped (batched separately)
+[2026-06-27T17:30:44.650Z] cycle 96 ✓ +29 FAQs → 4011/5040 (79.6%) · 14/14 agents trained · committed
+[2026-06-27T17:32:14.652Z] cycle 97: slices [edge-cases|mega-menu, legal-compliance|mega-menu, merchandising|mega-menu, search-filtering|mega-menu, nav-ia|mega-menu, forms-validation|mega-menu, email-lifecycle|mega-menu] → generating 49 FAQs (FAQ-4012…)
+[2026-06-27T17:40:00.110Z] cycle 97 verify: kept 23/49 (dropped 26)
+[2026-06-27T17:40:00.251Z] cycle 97 distributed → 4034 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T17:40:00.251Z] cycle 97 reindex: skipped (batched separately)
