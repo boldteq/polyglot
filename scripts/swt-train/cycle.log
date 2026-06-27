@@ -365,3 +365,9 @@
 [2026-06-27T16:13:31.507Z] cycle 84 verify: kept 19/49 (dropped 30)
 [2026-06-27T16:13:31.626Z] cycle 84 distributed → 3605 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T16:13:31.626Z] cycle 84 reindex: skipped (batched separately)
+[2026-06-27T16:13:31.781Z] cycle 84 ✓ +19 FAQs → 3605/5040 (71.5%) · 14/14 agents trained · committed
+[2026-06-27T16:15:01.783Z] cycle 85: slices [motion|landing-advertorial, mobile|landing-advertorial, a11y|landing-advertorial, cro|landing-advertorial, trust-social-proof|landing-advertorial, copy-voice|landing-advertorial, honesty-claims|landing-advertorial] → generating 49 FAQs (FAQ-3606…)
+[2026-06-27T16:20:49.999Z] cycle 85 verify ANOMALY (kept 7/49) — distrusting critic, keeping all
+[2026-06-27T16:20:50.001Z] cycle 85 verify: kept 49/49 (dropped 0)
+[2026-06-27T16:20:50.125Z] cycle 85 distributed → 3654 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T16:20:50.125Z] cycle 85 reindex: skipped (batched separately)
