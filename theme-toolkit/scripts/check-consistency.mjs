@@ -36,6 +36,9 @@ const add = (list, id, detail, evidence = '') => list.push({ id, page: 'store-wi
 const block = (id, detail, evidence) => ALLOW_WAIVER
   ? add(warnings, `${id}.waived`, `${detail} (waived via ## Waivers)`, evidence)
   : add(blockers, id, detail, evidence)
+// BUG-8: warn in dev, BLOCK at publish-grade (DS_REQUIRE_SCOPE) — for drift that's tolerable mid-build but
+// must not ship (button/card-style zoo). Mirrors the URL-cohesion doctrine (lenient in dev, strict to ship).
+const scopeBlock = (id, detail, evidence) => REQUIRE_SCOPE ? block(id, detail, evidence) : add(warnings, id, detail, evidence)
 
 function writeMd(reportDir, stats, pass) {
   const lines = [
@@ -44,8 +47,9 @@ function writeMd(reportDir, stats, pass) {
     `| Dimension | Found | Allowed | Verdict |`,
     `|---|---|---|---|`,
     `| Distinct font-sizes (custom sections) | ${stats.fontSizes.length} (${stats.fontSizes.join(', ')}) | ≤${MAX_FONT_SIZES} | ${stats.fontSizes.length <= MAX_FONT_SIZES ? 'PASS' : 'BLOCK'} |`,
+    `| Distinct font-weights | ${stats.fontWeights.length} (${stats.fontWeights.join(', ')}) | ≤${stats.weightCap} | ${stats.fontWeights.length <= stats.weightCap ? 'PASS' : 'BLOCK'} |`,
     `| Distinct radii | ${stats.radii.length} (${stats.radii.join(', ')}) | ≤${stats.radiusAllowed} | ${stats.radii.length <= stats.radiusAllowed ? 'PASS' : 'BLOCK'} |`,
-    `| Distinct button-family classes | ${stats.buttonClasses.length} | ≤${stats.buttonAllowed} | ${stats.buttonClasses.length <= stats.buttonAllowed ? 'PASS' : 'warn'} |`,
+    `| Distinct button-family classes | ${stats.buttonClasses.length} | ≤${stats.buttonAllowed} | ${stats.buttonClasses.length <= stats.buttonAllowed ? 'PASS' : 'block@publish'} |`,
     `| Distinct card classes | ${stats.cardClasses.length} | ≤1 | ${stats.cardClasses.length <= 1 ? 'PASS' : 'warn'} |`,
     ``,
     `Human layer (NOT automated here): vega visual sweep across home/collection/PDP/cart/search/header/footer/account + lumen device QA.`,
@@ -80,6 +84,9 @@ let contract
 try { contract = JSON.parse(fs.readFileSync(dsAbs, 'utf-8')) } catch (err) { finish(`${DS} invalid JSON: ${err.message}`, null) }
 const radiusAllowed = Object.keys(contract.radius?.tokens || {}).length || 4
 const buttonAllowed = Object.keys(contract.buttons?.variants || {}).length || 2
+// BUG-7/D5: one type VOICE store-wide — too many distinct font-weights reads as drift. Cap from the
+// contract (typography.weight_cap) or a premium default of 3 (e.g. regular/medium/bold). var() is exempt.
+const weightCap = Number(contract.typography?.weight_cap) || 3
 
 // ── scope (same convention as check-design-system) ───────────────────────────
 const SCAN_DIRS = ['sections', 'snippets', 'assets']
@@ -119,7 +126,25 @@ if (targets === null) {
 targets = targets.filter(f => /\.(liquid|css|scss)$/.test(f) && SCAN_DIRS.some(d => f.startsWith(`${d}/`)))
 
 // ── gather store-wide stats ──────────────────────────────────────────────────
-const lenTokens = (value) => [...value.matchAll(/(-?\d*\.?\d+)(px|rem|em)\b/g)].map(m => { const n = parseFloat(m[1]); return m[2] === 'px' ? n : n * 16 })
+// rem/em → px ROOT — same Dawn 62.5% (1rem=10px) calibration as check-design-system.mjs;
+// a 16px assumption inflates every rem 1.6× and fabricates a font-size/radius "zoo".
+function detectRemRootPx() {
+  const declared = Number(contract.typography?.rem_root_px)
+  if (declared > 0) return declared
+  for (const f of ['assets/base.css', 'assets/reset.css', 'assets/theme.css', 'assets/section-password.css', 'assets/template-giftcard.css', 'assets/premium.css']) {
+    try {
+      const p = path.resolve(cwd, f)
+      if (fs.existsSync(p) && /font-size:\s*(?:calc\([^;{}]*?)?62\.5%/.test(fs.readFileSync(p, 'utf-8'))) return 10
+    } catch { /* unreadable — try next */ }
+  }
+  return 16
+}
+const REM_ROOT_PX = detectRemRootPx()
+const lenTokens = (value) => [...value.matchAll(/(-?\d*\.?\d+)(px|rem|em)\b/g)].map(m => { const n = parseFloat(m[1]); return m[2] === 'px' ? n : n * REM_ROOT_PX })
+// font-weight values are unitless (400, 700) or keywords (normal→400, bold→700). lighter/bolder/inherit are relative → skipped.
+const WEIGHT_KW = { normal: 400, bold: 700 }
+const weightTokens = (value) => value.split(/[\s,]+/).map(t => t.trim().toLowerCase())
+  .map(t => (/^\d{3}$/.test(t) && Number(t) >= 100 && Number(t) <= 900 ? Number(t) : WEIGHT_KW[t] || null)).filter(Boolean)
 function extractCss(file, raw) {
   if (/\.css(\.liquid)?$|\.scss$/.test(file)) return raw
   let css = ''
@@ -128,7 +153,7 @@ function extractCss(file, raw) {
   return css
 }
 const RE_DECL = /([a-zA-Z-]+)\s*:\s*([^;{}]+)(?=[;}])/g
-const fontSizes = new Set(), radii = new Set(), buttonClasses = new Set(), cardClasses = new Set()
+const fontSizes = new Set(), fontWeights = new Set(), radii = new Set(), buttonClasses = new Set(), cardClasses = new Set()
 
 for (const file of targets) {
   const abs = path.resolve(cwd, file); if (!fs.existsSync(abs)) continue
@@ -138,6 +163,7 @@ for (const file of targets) {
     const prop = d[1].toLowerCase(); const value = d[2].trim()
     if (/var\(/.test(value)) continue
     if (prop === 'font-size') for (const px of lenTokens(value)) fontSizes.add(px)
+    if (prop === 'font-weight') for (const w of weightTokens(value)) fontWeights.add(w)
     if (prop === 'border-radius') for (const px of lenTokens(value)) radii.add(px)
   }
   if (/\.liquid$/.test(file)) {
@@ -152,6 +178,7 @@ for (const file of targets) {
 
 const stats = {
   fontSizes: [...fontSizes].sort((a, b) => a - b),
+  fontWeights: [...fontWeights].sort((a, b) => a - b), weightCap,
   radii: [...radii].sort((a, b) => a - b), radiusAllowed,
   buttonClasses: [...buttonClasses], buttonAllowed,
   cardClasses: [...cardClasses],
@@ -159,8 +186,9 @@ const stats = {
 
 // ── invariants ───────────────────────────────────────────────────────────────
 if (stats.fontSizes.length > MAX_FONT_SIZES) block('consistency.font-size-variety', `store uses ${stats.fontSizes.length} distinct custom font-sizes (${stats.fontSizes.join(', ')}) — keep ≤${MAX_FONT_SIZES} store-wide for one hierarchy`)
+if (stats.fontWeights.length > weightCap) block('consistency.font-weight-variety', `store uses ${stats.fontWeights.length} distinct font-weights (${stats.fontWeights.join(', ')}) — keep ≤${weightCap} store-wide for one type voice (set typography.weight_cap to widen)`)
 if (stats.radii.length > radiusAllowed) block('consistency.radius-variety', `store uses ${stats.radii.length} distinct radii (${stats.radii.join(', ')}) but the system defines ${radiusAllowed} radius tokens — one radius language store-wide`)
-if (stats.buttonClasses.length > buttonAllowed) add(warnings, 'consistency.button-variety', `${stats.buttonClasses.length} distinct button-family classes across custom sections (${stats.buttonClasses.join(', ')}) — system allows ${buttonAllowed} variants; verify CTA consistency`)
-if (stats.cardClasses.length > 1) add(warnings, 'consistency.card-variety', `${stats.cardClasses.length} distinct card classes (${stats.cardClasses.join(', ')}) — one canonical card store-wide`)
+if (stats.buttonClasses.length > buttonAllowed) scopeBlock('consistency.button-variety', `${stats.buttonClasses.length} distinct button-family classes across custom sections (${stats.buttonClasses.join(', ')}) — system allows ${buttonAllowed} variants; CTAs must look the same store-wide (warns in dev, blocks at publish)`)
+if (stats.cardClasses.length > 1) scopeBlock('consistency.card-variety', `${stats.cardClasses.length} distinct card classes (${stats.cardClasses.join(', ')}) — one canonical card store-wide (warns in dev, blocks at publish)`)
 
 finish(null, stats)

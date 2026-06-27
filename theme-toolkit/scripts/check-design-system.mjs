@@ -51,7 +51,7 @@ const drift = (id, page, detail, evidence) => ALLOW_WAIVER
 
 function finish(envError) {
   const pass = !envError && blockers.length === 0
-  writeReport('design-system', 8, {
+  writeReport('design-tokens', 8, {
     cwd, pass, blockers, warnings,
     evidence: { contract: DS, baseRef: BASE_REF, reason: envError || undefined },
     duration_ms: Date.now() - t0,
@@ -160,10 +160,26 @@ function extractCss(file, raw) {
 }
 
 const RE_DECL = /([a-zA-Z-]+)\s*:\s*([^;{}]+)(?=[;}])/g
+// rem/em → px ROOT. Dawn-based themes reset html to 62.5% (1rem = 10px) and author the
+// scale against THAT root; assuming 16 inflates every rem 1.6× and manufactures phantom
+// off-scale drift (the "1.7rem body reads as 27.2px" bug). Honor an explicit contract
+// value (typography.rem_root_px), else auto-detect Dawn's 62.5% reset, else 16.
+function detectRemRootPx() {
+  const declared = Number(contract.typography?.rem_root_px)
+  if (declared > 0) return declared
+  for (const f of ['assets/base.css', 'assets/reset.css', 'assets/theme.css', 'assets/section-password.css', 'assets/template-giftcard.css', 'assets/premium.css']) {
+    try {
+      const p = path.resolve(cwd, f)
+      if (fs.existsSync(p) && /font-size:\s*(?:calc\([^;{}]*?)?62\.5%/.test(fs.readFileSync(p, 'utf-8'))) return 10
+    } catch { /* unreadable — try next */ }
+  }
+  return 16
+}
+const REM_ROOT_PX = detectRemRootPx()
 // Extract EVERY absolute length literal (px/rem/em) anywhere in a value — so drift
 // wrapped in clamp()/calc()/min()/max()/shorthand is caught, not just bare literals.
 const lenTokens = (value) => [...value.matchAll(/(-?\d*\.?\d+)(px|rem|em)\b/g)]
-  .map(m => { const n = parseFloat(m[1]); return m[2] === 'px' ? n : n * 16 }) // rem/em → px (root 16)
+  .map(m => { const n = parseFloat(m[1]); return m[2] === 'px' ? n : n * REM_ROOT_PX }) // rem/em → px (theme root)
 
 for (const file of targets) {
   const abs = path.resolve(cwd, file)

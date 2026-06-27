@@ -101,6 +101,7 @@ grep -nHE '(https?:)?//[^"'"'"' )]+\.(png|jpe?g|gif|webp|avif|svg)|cdn\.shopify\
 # ── 1.3 — Hex/rgb colors where a scheme var exists (diff + lines only) ────
 for f in $FILES; do case "$f" in sections/*|snippets/*|assets/*|layout/*)
   git diff "$BASE"...HEAD -- "$f" \
+  | node -e 'const s=require("fs").readFileSync(0,"utf8");process.stdout.write(s.replace(/\/\*[\s\S]*?\*\//g,m=>m.replace(/[^\n]/g," ")))' \
   | grep -nE '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\([0-9])' \
   | grep -vE '"default"|fill[=:]|stroke[=:]|var\(--|\{\{|\{%' \
   | sed "s|^|$f:|" ;; esac; done | collect 1.3
@@ -110,7 +111,7 @@ grep -nHE 'alt="[^"{][^"]*"' $FILES | collect 1.4
 
 # ── 1.5 — Hardcoded hrefs ─────────────────────────────────────────────────
 grep -nHE 'href="(/|https?://)[^"]*"' $FILES \
-| grep -vE 'routes\.|settings\.|\{\{|shopifycloud|href="//www\.shopify\.com"' | collect 1.5
+| grep -vE 'routes\.|settings\.|\{\{|shopifycloud|href="//www\.shopify\.com"|rel="(preconnect|dns-prefetch|preload|modulepreload|stylesheet)"|fonts\.(googleapis|gstatic|shopifycdn)\.com' | collect 1.5
 
 # ── verdict ───────────────────────────────────────────────────────────────
 BLOCKERS_JSON="$(node "$SCRIPT_DIR/lib/jsonify-hits.mjs" <"$TSV")"
