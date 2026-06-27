@@ -83,6 +83,24 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runs, query, nameById])
 
+  // F15: collapse consecutive identical failures (same schedule + status + error)
+  // into one row with a ×N count, so a job failing the same way N times stops
+  // spamming N identical rows (log-viewer pattern). Non-failures stay individual.
+  const grouped = useMemo(() => {
+    const out: { run: ScheduleActivityRun; count: number; oldest: string }[] = []
+    for (const run of shown) {
+      const last = out[out.length - 1]
+      const isFail = run.status === 'error' || run.status === 'crashed'
+      const sameKey = last && isFail
+        && last.run.status === run.status
+        && (last.run.metadata?.scheduleId || last.run.metadata?.systemId) === (run.metadata?.scheduleId || run.metadata?.systemId)
+        && (last.run.error || '') === (run.error || '')
+      if (sameKey) { last.count += 1; last.oldest = run.timestamp }
+      else out.push({ run, count: 1, oldest: run.timestamp })
+    }
+    return out
+  }, [shown])
+
   const toggle = (id: string) => setExpanded(prev => {
     const next = new Set(prev)
     if (next.has(id)) next.delete(id); else next.add(id)
@@ -130,7 +148,7 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
         <EmptyState icon={Clock} title="No runs found" description={filtered ? 'No runs match these filters.' : 'Run history will appear here as schedules fire.'} card />
       )}
 
-      {!loading && !loadError && shown.map(run => {
+      {!loading && !loadError && grouped.map(({ run, count, oldest }) => {
         const open = expanded.has(run.id)
         const why = runWhy(run)
         const cost = runCost(run)
@@ -145,14 +163,15 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium truncate">{scheduleName(run)}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusPill(sm.intent)}`}>{sm.label}</span>
+                  {count > 1 && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red/15 text-red" title={`Failed ${count} times in a row`}>×{count}</span>}
                   {isSystem && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-purple">system</span>}
                 </div>
                 <div className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
                   <span title={run.agentName}>{formatAgentDisplay({ name: run.agentName, id: run.agentName }).realName}</span>
                   <span className="text-border">·</span>
-                  <span>{timeAgo(run.timestamp)}</span>
-                  {run.duration > 0 && <><span className="text-border">·</span><span>{fmtDuration(run.duration)}</span></>}
-                  {cost && <><span className="text-border">·</span><span>{fmtCost(cost.value)}</span></>}
+                  <span>{count > 1 ? `${count}× since ${timeAgo(oldest)}` : timeAgo(run.timestamp)}</span>
+                  {count === 1 && run.duration > 0 && <><span className="text-border">·</span><span>{fmtDuration(run.duration)}</span></>}
+                  {count === 1 && cost && <><span className="text-border">·</span><span>{fmtCost(cost.value)}</span></>}
                 </div>
                 {why && !open && <div className="text-[11px] text-red truncate mt-0.5">{why}</div>}
               </div>

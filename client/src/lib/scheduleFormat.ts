@@ -41,20 +41,35 @@ export function elapsed(startedAt: string | null | undefined): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`
 }
 
-/** Turn a cron expression into a human cadence label (best-effort, common cases). */
+const DOW_NAMES = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays']
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
+}
+
+/** Turn a cron expression into a human cadence label. Handles arbitrary minutes
+ * (so '45 3 * * *' → 'Daily 03:45 UTC', never raw cron); falls back to the raw
+ * expression only for genuinely complex expressions (ranges/lists/named fields). */
 export function humanizeCron(expr: string | null | undefined): string {
   if (!expr) return 'event-driven'
   const parts = expr.trim().split(/\s+/)
   if (parts.length < 5) return expr
   const [min, hour, dom, mon, dow] = parts
-  if (min === '0' && hour !== '*' && dom === '*' && mon === '*' && dow === '*') return `Daily ${hour.padStart(2, '0')}:00 UTC`
-  if (min === '0' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return 'Every hour'
-  if (min.startsWith('*/') && hour === '*') return `Every ${min.slice(2)} min`
-  if (min === '0' && dow === '1') return `Mondays ${hour.padStart(2, '0')}:00 UTC`
-  if (min === '0' && dow === '2') return `Tuesdays ${hour.padStart(2, '0')}:00 UTC`
-  if (min === '0' && dow === '0') return `Sundays ${hour.padStart(2, '0')}:00 UTC`
-  if (min === '0' && dom === '1' && dow === '*') return `Monthly (1st) ${hour.padStart(2, '0')}:00 UTC`
-  return expr
+  const num = (s: string) => /^\d{1,2}$/.test(s)
+  const allStar = dom === '*' && mon === '*' && dow === '*'
+  const hhmm = num(hour) && num(min) ? `${hour.padStart(2, '0')}:${min.padStart(2, '0')} UTC` : null
+
+  if (min === '*' && hour === '*') return 'Every minute'
+  if (/^\*\/\d+$/.test(min) && hour === '*' && allStar) return `Every ${min.slice(2)} min`
+  if (num(min) && hour === '*' && allStar) return min === '0' ? 'Every hour' : `Hourly at :${min.padStart(2, '0')}`
+
+  if (hhmm) {
+    if (allStar) return `Daily ${hhmm}`
+    if (dom === '*' && mon === '*' && num(dow)) return `${DOW_NAMES[Number(dow) % 7]} ${hhmm}`
+    if (num(dom) && mon === '*' && dow === '*') return `Monthly (${ordinal(Number(dom))}) ${hhmm}`
+  }
+  return expr // genuinely complex (ranges, lists, named months/days) → raw
 }
 
 export function statusMeta(status: RunStatus): { label: string; intent: Intent } {

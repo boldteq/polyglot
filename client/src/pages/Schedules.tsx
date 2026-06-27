@@ -33,20 +33,7 @@ import ConfirmRunModal from '../components/ConfirmRunModal'
 import RunningNowStrip from '../components/RunningNowStrip'
 import ScheduleActivityFeed from '../components/ScheduleActivityFeed'
 import ScheduleUpcoming from '../components/ScheduleUpcoming'
-
-function humanizeCron(expr: string | null): string {
-  if (!expr) return 'event-driven'
-  const parts = expr.trim().split(/\s+/)
-  if (parts.length < 5) return expr
-  const [min, hour, dom, mon, dow] = parts
-  if (min === '0' && hour !== '*' && dom === '*' && mon === '*' && dow === '*') return `Daily ${hour.padStart(2, '0')}:00 UTC`
-  if (min === '0' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return 'Every hour'
-  if (min.startsWith('*/') && hour === '*') return `Every ${min.slice(2)} min`
-  if (min === '0' && dow === '1') return `Mondays ${hour.padStart(2, '0')}:00 UTC`
-  if (min === '0' && dow === '0') return `Sundays ${hour.padStart(2, '0')}:00 UTC`
-  if (min === '0' && dom === '1' && dow === '*') return `Monthly (1st) ${hour.padStart(2, '0')}:00 UTC`
-  return expr
-}
+import { humanizeCron } from '../lib/scheduleFormat'
 
 function timeAgo(ts: string | null): string {
   if (!ts) return 'never'
@@ -298,7 +285,7 @@ export default function SchedulesPage() {
       {/* View switch: Schedules (control) | Activity (full history) */}
       <div className="segmented">
         <button onClick={() => setView('schedules')} aria-pressed={view === 'schedules'} className={`segmented-btn ${view === 'schedules' ? 'segmented-btn-active' : ''}`}>
-          <ListChecks className="w-3.5 h-3.5" /> Schedules
+          <ListChecks className="w-3.5 h-3.5" /> Manage
         </button>
         <button onClick={() => { setActivityStatus('all'); setView('activity') }} aria-pressed={view === 'activity'} className={`segmented-btn ${view === 'activity' ? 'segmented-btn-active' : ''}`}>
           <Activity className="w-3.5 h-3.5" /> Activity

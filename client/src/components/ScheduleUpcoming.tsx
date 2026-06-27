@@ -23,6 +23,15 @@ function dayGroup(iso: string): typeof ORDER[number] {
 
 const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+// The viewer's short tz label (e.g. "GMT+5:30"), computed once for the disclosure
+// note so the local fire times reconcile with the UTC crons beside them.
+const localTz = (() => {
+  try {
+    const part = new Intl.DateTimeFormat([], { timeZoneName: 'short' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')
+    return part?.value || 'local time'
+  } catch { return 'local time' }
+})()
+
 export default function ScheduleUpcoming() {
   const [data, setData] = useState<{ upcoming: UpcomingRun[]; eventDriven: EventDrivenSchedule[] } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -54,6 +63,9 @@ export default function ScheduleUpcoming() {
 
   return (
     <div className="space-y-5">
+      <p className="text-[11px] text-text-muted">
+        Times shown in your local timezone (<span className="font-medium">{localTz}</span>) · schedules are defined in UTC.
+      </p>
       {ORDER.filter(g => groups[g]?.length).map(g => (
         <div key={g}>
           <div className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">{g}</div>
