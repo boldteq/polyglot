@@ -323,3 +323,9 @@
 [2026-06-27T15:17:18.785Z] cycle 76 verify: kept 34/49 (dropped 15)
 [2026-06-27T15:17:18.898Z] cycle 76 distributed → 3348 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T15:17:18.898Z] cycle 76 reindex: skipped (batched separately)
+[2026-06-27T15:17:19.160Z] cycle 76 ✓ +34 FAQs → 3348/5040 (66.4%) · 14/14 agents trained · committed
+[2026-06-27T15:18:49.165Z] cycle 77: slices [nav-ia|comparison, forms-validation|comparison, email-lifecycle|comparison, layout|bundle-builder, typography|bundle-builder, color-contrast|bundle-builder, spacing-rhythm|bundle-builder] → generating 49 FAQs (FAQ-3349…)
+[2026-06-27T15:25:48.578Z] cycle 77 verify ANOMALY (kept 3/49) — distrusting critic, keeping all
+[2026-06-27T15:25:48.579Z] cycle 77 verify: kept 49/49 (dropped 0)
+[2026-06-27T15:25:48.708Z] cycle 77 distributed → 3397 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T15:25:48.708Z] cycle 77 reindex: skipped (batched separately)
