@@ -40,6 +40,16 @@ export interface ScheduleActivityParams {
   since?: string // ISO
 }
 
+export interface ScheduleActivityStats {
+  total: number
+  success: number
+  failed: number
+  running: number
+  cancelled: number
+  avgDurationMs: number
+  totalCostUsd: number
+}
+
 export function getScheduleActivity(p: ScheduleActivityParams = {}) {
   const q = new URLSearchParams()
   if (p.limit != null) q.set('limit', String(p.limit))
@@ -49,7 +59,7 @@ export function getScheduleActivity(p: ScheduleActivityParams = {}) {
   if (p.scheduleId) q.set('scheduleId', p.scheduleId)
   if (p.since) q.set('since', p.since)
   const qs = q.toString()
-  return get<{ runs: ScheduleActivityRun[]; total: number }>(`/schedules/activity${qs ? `?${qs}` : ''}`)
+  return get<{ runs: ScheduleActivityRun[]; total: number; stats: ScheduleActivityStats }>(`/schedules/activity${qs ? `?${qs}` : ''}`)
 }
 
 export interface UpcomingRun { id: string; name: string; agentName: string; kind: ScheduleKind; cron: string; fireAt: string }

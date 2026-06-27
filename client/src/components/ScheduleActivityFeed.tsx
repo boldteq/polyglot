@@ -52,7 +52,7 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
     scheduleId: scheduleId || undefined,
   }), [statusKey, kind, scheduleId])
 
-  const { runs, total, loading, loadError, loadingMore, hasMore, reload, loadMore } = useScheduleActivity(filters)
+  const { runs, total, stats, loading, loadError, loadingMore, hasMore, reload, loadMore } = useScheduleActivity(filters)
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>()
@@ -133,6 +133,26 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
         </div>
         <button onClick={reload} className="p-2 rounded-lg text-text-muted hover:bg-surface-2 shrink-0" title="Refresh" aria-label="Refresh activity"><RefreshCw className="w-4 h-4" /></button>
       </div>
+
+      {/* F12: Attio-style overview — success rate / outcomes / avg runtime / spend over
+          the kind+schedule+time scope (independent of the status filter). */}
+      {stats && stats.total > 0 && (() => {
+        const completed = stats.success + stats.failed + stats.cancelled
+        const rate = completed > 0 ? Math.round((stats.success / completed) * 100) : null
+        const cost = fmtCost(stats.totalCostUsd)
+        return (
+          <div className="card px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-text-muted">
+            {rate !== null && <span><span className={`font-semibold ${rate >= 90 ? 'text-green' : rate >= 70 ? 'text-amber' : 'text-red'}`}>{rate}%</span> success</span>}
+            <span><span className="text-green font-medium">{stats.success}</span> ok</span>
+            <span><span className="text-red font-medium">{stats.failed}</span> failed</span>
+            {stats.running > 0 && <span><span className="text-blue font-medium">{stats.running}</span> running</span>}
+            {stats.cancelled > 0 && <span><span className="text-amber font-medium">{stats.cancelled}</span> cancelled</span>}
+            {stats.avgDurationMs > 0 && <span>avg <span className="text-text font-medium">{fmtDuration(stats.avgDurationMs)}</span></span>}
+            {cost && <span>spend <span className="text-text font-medium">{cost}</span></span>}
+            <span className="text-text-muted/60">· {stats.total} runs</span>
+          </div>
+        )
+      })()}
 
       {loading && <SkeletonCards count={6} />}
 

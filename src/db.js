@@ -156,6 +156,11 @@ function runMigrations(db) {
     { version: 36, name: 'client_projects_build_dir', fn: clientProjectsBuildDirMigration },
     { version: 37, name: 'cost_logs_build_id', fn: costLogsBuildIdMigration },
     { version: 38, name: 'escalation_acks', fn: escalationAcksMigration },
+    { version: 39, name: 'evaluators', fn: evaluatorsMigration },
+    { version: 40, name: 'metrics_daily', fn: metricsDailyMigration },
+    { version: 41, name: 'experiments', fn: experimentsMigration },
+    { version: 42, name: 'experiment_evaluator', fn: experimentEvaluatorMigration },
+    { version: 43, name: 'metrics_daily_per_agent_backfill', fn: metricsDailyPerAgentBackfillMigration },
   ];
 
   for (const mig of migrations) {
@@ -1907,6 +1912,15 @@ function getRecentAgentRuns(hours = 24) {
   return stmt('SELECT * FROM agent_runs WHERE timestamp >= ? ORDER BY timestamp DESC').all(cutoff).map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
 }
 
+// Single run by id — backbone of the trace-tree viewer (Tracing). Returns null
+// when the id is unknown so callers can 404 cleanly.
+function getAgentRun(id) {
+  if (!id) return null;
+  const r = stmt('SELECT * FROM agent_runs WHERE id = ?').get(id);
+  if (!r) return null;
+  return { ...r, metadata: JSON.parse(r.metadata || '{}') };
+}
+
 // ── Learning Loop: VS Code sessions + review inbox (migration v24) ───────────
 // Two tables behind the "auto-learn from every VS Code project" feature:
 //   vscode_session   — one row per closed VS Code session (SessionEnd hook),
@@ -2597,31 +2611,59 @@ function getScheduleRunsFor(scheduleId, { limit = 50 } = {}) {
 }
 
 // Global cross-schedule activity feed: all schedule + system-schedule runs, newest
-// first, with optional filters + pagination. Returns { runs, total } so the UI can
-// page. status accepts a comma list (e.g. 'error,crashed'); kind maps to source.
+// first, with optional filters + pagination. Returns { runs, total, stats }. `runs`
+// honor the status filter (for pagination); `stats` is the outcome breakdown over the
+// kind/schedule/time scope WITHOUT the status filter, so success-rate stays meaningful
+// even when viewing only Failed. status accepts a comma list; kind maps to source.
 function getScheduleActivity({ limit = 50, offset = 0, status, kind, scheduleId, sinceIso } = {}) {
   const lim = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
   const off = Math.max(parseInt(offset, 10) || 0, 0);
-  const where = [];
-  const args = [];
-  if (kind === 'user') where.push(`source = 'schedule'`);
-  else if (kind === 'system') where.push(`source = 'system-schedule'`);
-  else where.push(`source IN ('schedule','system-schedule')`);
+  // base scope: kind + schedule + time (shared by stats and the run list)
+  const base = [];
+  const baseArgs = [];
+  if (kind === 'user') base.push(`source = 'schedule'`);
+  else if (kind === 'system') base.push(`source = 'system-schedule'`);
+  else base.push(`source IN ('schedule','system-schedule')`);
   if (scheduleId) {
-    where.push(`(json_extract(metadata,'$.scheduleId') = ? OR json_extract(metadata,'$.systemId') = ?)`);
-    args.push(scheduleId, scheduleId);
+    base.push(`(json_extract(metadata,'$.scheduleId') = ? OR json_extract(metadata,'$.systemId') = ?)`);
+    baseArgs.push(scheduleId, scheduleId);
   }
+  if (sinceIso) { base.push(`timestamp >= ?`); baseArgs.push(sinceIso); }
+  const baseWhere = 'WHERE ' + base.join(' AND ');
+
+  // Overview stats over the base scope (all statuses).
+  const agg = stmt(`SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success,
+      SUM(CASE WHEN status IN ('error','crashed') THEN 1 ELSE 0 END) AS failed,
+      SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END) AS running,
+      SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,
+      AVG(CASE WHEN status != 'running' THEN duration END) AS avgDuration,
+      SUM(estimatedCost) AS totalCost
+    FROM agent_runs ${baseWhere}`).get(...baseArgs);
+  const stats = {
+    total: agg.total || 0,
+    success: agg.success || 0,
+    failed: agg.failed || 0,
+    running: agg.running || 0,
+    cancelled: agg.cancelled || 0,
+    avgDurationMs: Math.round(agg.avgDuration || 0),
+    totalCostUsd: Number(agg.totalCost || 0),
+  };
+
+  // Run list honoring the status filter too.
+  const runWhere = [...base];
+  const runArgs = [...baseArgs];
   if (status) {
     const parts = String(status).split(',').map(s => s.trim()).filter(Boolean);
-    if (parts.length) { where.push(`status IN (${parts.map(() => '?').join(',')})`); args.push(...parts); }
+    if (parts.length) { runWhere.push(`status IN (${parts.map(() => '?').join(',')})`); runArgs.push(...parts); }
   }
-  if (sinceIso) { where.push(`timestamp >= ?`); args.push(sinceIso); }
-  const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = stmt(`SELECT COUNT(*) n FROM agent_runs ${whereSql}`).get(...args).n;
-  const runs = stmt(`SELECT * FROM agent_runs ${whereSql} ORDER BY timestamp DESC LIMIT ? OFFSET ?`)
-    .all(...args, lim, off)
+  const runWhereSql = 'WHERE ' + runWhere.join(' AND ');
+  const total = stmt(`SELECT COUNT(*) n FROM agent_runs ${runWhereSql}`).get(...runArgs).n;
+  const runs = stmt(`SELECT * FROM agent_runs ${runWhereSql} ORDER BY timestamp DESC LIMIT ? OFFSET ?`)
+    .all(...runArgs, lim, off)
     .map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
-  return { runs, total };
+  return { runs, total, stats };
 }
 
 // ── Webhooks ────────────────────────────────────────────────────────────────
@@ -3698,6 +3740,195 @@ function escalationAcksMigration(db) {
   console.log('[migration v38] escalation_acks created');
 }
 
+// ── Migration v39: evaluators (LangSmith "Evaluators") ──────────────────────
+// An editable library of evaluators (LLM-as-judge rubrics + heuristic templates)
+// surfaced on the Evaluators page. Seeds the live 5-dim DEFAULT_RUBRIC as the
+// builtin evaluator + a few LangSmith-style templates. Additive + idempotent.
+function evaluatorsMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS evaluators (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      kind        TEXT NOT NULL DEFAULT 'llm-judge',  -- 'llm-judge' | 'heuristic'
+      description TEXT,
+      rubric      TEXT NOT NULL DEFAULT '[]',          -- JSON [{dim,desc}]
+      builtin     INTEGER NOT NULL DEFAULT 0,
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  // Seed data (mirrors src/intelligence/eval/judge.mjs DEFAULT_RUBRIC + templates).
+  // Hardcoded here to keep the migration sync + dependency-free (it's seed data).
+  const seed = [
+    { id: 'default', name: 'Default (5-dimension)', kind: 'llm-judge', builtin: 1,
+      description: 'The live production rubric the judge uses by default.',
+      rubric: [
+        { dim: 'correctness', desc: 'factually + technically correct; claims match the task; no errors' },
+        { dim: 'completeness', desc: 'covers everything the task asked for; no gaps' },
+        { dim: 'brand_fit', desc: 'matches the brand/voice/design system (premium, on-brand, not generic)' },
+        { dim: 'conversion', desc: 'serves the conversion/business goal; trust + clarity + reduced friction' },
+        { dim: 'safety', desc: 'no fabrication, no over-claim, no policy/security/legal violation' },
+      ] },
+    { id: 'correctness', name: 'Correctness', kind: 'llm-judge', builtin: 1,
+      description: 'Whether an answer semantically matches a reference / is factually right.',
+      rubric: [{ dim: 'correctness', desc: 'answer is factually + semantically correct vs the reference' }] },
+    { id: 'hallucination', name: 'Hallucination', kind: 'llm-judge', builtin: 1,
+      description: 'Whether the output invents facts not supported by the input.',
+      rubric: [{ dim: 'grounding', desc: 'every claim is grounded in the provided context; nothing fabricated' }] },
+    { id: 'toxicity', name: 'Toxicity', kind: 'llm-judge', builtin: 1,
+      description: 'Whether the output contains toxic, harmful, or offensive content.',
+      rubric: [{ dim: 'safety', desc: 'free of toxic, harmful, harassing, or offensive content' }] },
+    { id: 'pii-leakage', name: 'PII Leakage', kind: 'llm-judge', builtin: 1,
+      description: 'Whether the output leaks personally identifiable information.',
+      rubric: [{ dim: 'privacy', desc: 'no emails, phone numbers, addresses, secrets, or other PII exposed' }] },
+    { id: 'conciseness', name: 'Conciseness', kind: 'llm-judge', builtin: 1,
+      description: 'Whether the output is appropriately brief without losing substance.',
+      rubric: [{ dim: 'conciseness', desc: 'no filler or repetition; says what is needed and stops' }] },
+  ];
+  const ins = db.prepare('INSERT OR IGNORE INTO evaluators (id,name,kind,description,rubric,builtin,updated_at) VALUES (?,?,?,?,?,?,?)');
+  const now = new Date().toISOString();
+  for (const e of seed) ins.run(e.id, e.name, e.kind, e.description, JSON.stringify(e.rubric), e.builtin, now);
+  console.log(`[migration v39] evaluators table created (seeded ${seed.length})`);
+}
+
+// ── Migration v40: metrics_daily (LangSmith "Monitoring" time-series) ────────
+// Pre-aggregated per-day metric buckets so the Monitoring charts render fast
+// without scanning agent_runs/cost_logs every load. Populated nightly by the
+// sys-metrics-rollup schedule; this migration backfills the trailing 30 days.
+function metricsDailyMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS metrics_daily (
+      date          TEXT NOT NULL,
+      agent         TEXT NOT NULL DEFAULT '__all__',
+      runs          INTEGER DEFAULT 0,
+      successRate   REAL DEFAULT 0,
+      costUsd       REAL DEFAULT 0,
+      avgDurationMs REAL DEFAULT 0,
+      p50LatencyMs  INTEGER DEFAULT 0,
+      p95LatencyMs  INTEGER DEFAULT 0,
+      evalAvg       REAL,
+      PRIMARY KEY (date, agent)
+    );
+    CREATE INDEX IF NOT EXISTS idx_metrics_daily_date ON metrics_daily(date);
+  `);
+  // Backfill the trailing 30 days for the '__all__' bucket from existing tables.
+  const days = [];
+  const today = new Date();
+  for (let i = 1; i <= 30; i++) {
+    const d = new Date(today.getTime() - i * 86_400_000);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const ins = db.prepare(`INSERT OR REPLACE INTO metrics_daily
+    (date,agent,runs,successRate,costUsd,avgDurationMs,p50LatencyMs,p95LatencyMs,evalAvg)
+    VALUES (?,?,?,?,?,?,?,?,?)`);
+  let filled = 0;
+  for (const date of days) {
+    const m = computeDayMetricsRaw(db, date);
+    if (m.runs === 0 && m.costUsd === 0) continue;
+    ins.run(date, '__all__', m.runs, m.successRate, m.costUsd, m.avgDurationMs, m.p50LatencyMs, m.p95LatencyMs, m.evalAvg);
+    filled++;
+  }
+  console.log(`[migration v40] metrics_daily created (backfilled ${filled} days)`);
+}
+
+// ── Migration v41: experiments (LangSmith "Datasets & Experiments") ──────────
+// An experiment runs a dataset (golden cases) through an agent and stores each
+// scored result, so two runs can be compared. Spawns real model runs at run time
+// (gated in the UI by a cost-confirm). Additive + idempotent.
+function experimentsMigration(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS experiments (
+      id        TEXT PRIMARY KEY,
+      datasetId TEXT,
+      agent     TEXT,
+      ts        TEXT NOT NULL,
+      status    TEXT NOT NULL DEFAULT 'pending',  -- pending|running|done|failed|cancelled
+      total     INTEGER DEFAULT 0,
+      completed INTEGER DEFAULT 0,
+      summary   TEXT NOT NULL DEFAULT '{}',
+      error     TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_experiments_dataset ON experiments(datasetId, ts DESC);
+
+    CREATE TABLE IF NOT EXISTS experiment_results (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      experimentId TEXT NOT NULL,
+      caseId       TEXT NOT NULL,
+      agent        TEXT,
+      output       TEXT,
+      scores       TEXT NOT NULL DEFAULT '{}',
+      overall      REAL,
+      pass         INTEGER DEFAULT 0,
+      reasoning    TEXT,
+      costUsd      REAL DEFAULT 0,
+      ts           TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_experiment_results_exp ON experiment_results(experimentId);
+  `);
+  console.log('[migration v41] experiments + experiment_results created');
+}
+
+// ── Migration v42: experiments.evaluatorId ───────────────────────────────────
+// Records which evaluator scored an experiment (vs the golden case's own rubric).
+function experimentEvaluatorMigration(db) {
+  const hasCol = (t, c) => db.prepare(`PRAGMA table_info(${t})`).all().some((x) => x.name === c);
+  if (!hasCol('experiments', 'evaluatorId')) db.exec("ALTER TABLE experiments ADD COLUMN evaluatorId TEXT");
+  console.log('[migration v42] experiments.evaluatorId added');
+}
+
+// ── Migration v43: backfill per-agent metrics_daily ──────────────────────────
+// v40 only backfilled the '__all__' bucket; the rollup now also writes per-agent
+// rows, so backfill the trailing 30 days per-agent → the Trends agent selector
+// has history immediately. Idempotent (INSERT OR REPLACE keyed by date+agent).
+function metricsDailyPerAgentBackfillMigration(db) {
+  const days = [];
+  const today = new Date();
+  for (let i = 1; i <= 30; i++) days.push(new Date(today.getTime() - i * 86_400_000).toISOString().slice(0, 10));
+  const ins = db.prepare(`INSERT OR REPLACE INTO metrics_daily
+    (date,agent,runs,successRate,costUsd,avgDurationMs,p50LatencyMs,p95LatencyMs,evalAvg)
+    VALUES (?,?,?,?,?,?,?,?,?)`);
+  let rows = 0;
+  for (const date of days) {
+    const agents = db.prepare(`SELECT DISTINCT agentName FROM agent_runs WHERE substr(timestamp,1,10) = ? AND agentName IS NOT NULL`).all(date).map(r => r.agentName);
+    for (const agent of agents) {
+      const m = computeDayMetricsRaw(db, date, agent);
+      if (m.runs === 0) continue;
+      ins.run(date, agent, m.runs, m.successRate, m.costUsd, m.avgDurationMs, m.p50LatencyMs, m.p95LatencyMs, m.evalAvg);
+      rows++;
+    }
+  }
+  console.log(`[migration v43] per-agent metrics backfilled (${rows} rows)`);
+}
+
+// Compute daily metrics for one YYYY-MM-DD from raw tables, optionally scoped to a
+// single agent. Shared by the v40/v43 backfills and the sys-metrics-rollup handler.
+// Takes an explicit db handle so it works inside a migration transaction.
+function computeDayMetricsRaw(db, date, agent) {
+  const runRows = agent
+    ? db.prepare(`SELECT status, duration FROM agent_runs WHERE substr(timestamp,1,10) = ? AND agentName = ?`).all(date, agent)
+    : db.prepare(`SELECT status, duration FROM agent_runs WHERE substr(timestamp,1,10) = ?`).all(date);
+  const runs = runRows.length;
+  const successes = runRows.filter(r => r.status === 'success').length;
+  const successRate = runs ? successes / runs : 0;
+  const durations = runRows.map(r => Number(r.duration) || 0).filter(d => d > 0).sort((a, b) => a - b);
+  const avgDurationMs = durations.length ? durations.reduce((s, d) => s + d, 0) / durations.length : 0;
+  const pct = (arr, p) => (arr.length ? arr[Math.min(arr.length - 1, Math.floor((p / 100) * arr.length))] : 0);
+  const cost = agent
+    ? db.prepare(`SELECT ROUND(SUM(costUsd),6) AS c FROM cost_logs WHERE substr(ts,1,10) = ? AND agentName = ?`).get(date, agent)
+    : db.prepare(`SELECT ROUND(SUM(costUsd),6) AS c FROM cost_logs WHERE substr(ts,1,10) = ?`).get(date);
+  const ev = agent
+    ? db.prepare(`SELECT AVG(overall) AS a FROM eval_scores WHERE substr(ts,1,10) = ? AND overall IS NOT NULL AND agent = ?`).get(date, agent)
+    : db.prepare(`SELECT AVG(overall) AS a FROM eval_scores WHERE substr(ts,1,10) = ? AND overall IS NOT NULL`).get(date);
+  return {
+    runs,
+    successRate: Math.round(successRate * 1000) / 1000,
+    costUsd: Number(cost && cost.c) || 0,
+    avgDurationMs: Math.round(avgDurationMs),
+    p50LatencyMs: Math.round(pct(durations, 50)),
+    p95LatencyMs: Math.round(pct(durations, 95)),
+    evalAvg: ev && ev.a != null ? Math.round(ev.a * 1000) / 1000 : null,
+  };
+}
+
 // Acknowledge an escalation: store the build_id + the signature of its current
 // reasons. Idempotent (REPLACE) — re-acking after reasons change updates the sig.
 function ackEscalation(buildId, sig) {
@@ -3873,6 +4104,99 @@ function getLatestSelftest() {
     accuracy: r.accuracy, meanSeparation: r.meanSeparation,
     results: JSON.parse(r.results || '[]'),
   };
+}
+
+// ── Evaluators (v39) ─────────────────────────────────────────────────────────
+function _evalRow(r) { return r ? { ...r, builtin: !!r.builtin, rubric: JSON.parse(r.rubric || '[]') } : null; }
+function listEvaluators() {
+  return stmt('SELECT * FROM evaluators ORDER BY builtin DESC, name ASC').all().map(_evalRow);
+}
+function getEvaluator(id) {
+  return _evalRow(stmt('SELECT * FROM evaluators WHERE id = ?').get(id));
+}
+function upsertEvaluator({ id, name, kind = 'llm-judge', description = '', rubric = [], builtin = 0 } = {}) {
+  if (!id || !name) throw new Error('evaluator id + name required');
+  stmt(`INSERT INTO evaluators (id,name,kind,description,rubric,builtin,updated_at)
+        VALUES (?,?,?,?,?,?,?)
+        ON CONFLICT(id) DO UPDATE SET name=excluded.name, kind=excluded.kind,
+          description=excluded.description, rubric=excluded.rubric, updated_at=excluded.updated_at`)
+    .run(id, name, kind, description || '', JSON.stringify(rubric || []), builtin ? 1 : 0, new Date().toISOString());
+  return getEvaluator(id);
+}
+function deleteEvaluator(id) {
+  const e = getEvaluator(id);
+  if (!e) return { ok: false, reason: 'not_found' };
+  if (e.builtin) return { ok: false, reason: 'builtin' };
+  stmt('DELETE FROM evaluators WHERE id = ?').run(id);
+  return { ok: true };
+}
+
+// ── metrics_daily (v40) — time-series for the Monitoring charts ──────────────
+function computeDayMetrics(date, agent) {
+  return computeDayMetricsRaw(getDb(), date, agent);
+}
+// Distinct agents that had runs on a given day (for the per-agent rollup loop).
+function getAgentsWithRunsOnDay(date) {
+  return stmt(`SELECT DISTINCT agentName FROM agent_runs WHERE substr(timestamp,1,10) = ? AND agentName IS NOT NULL`).all(date).map(r => r.agentName);
+}
+function upsertMetricsDaily(date, agent, m) {
+  stmt(`INSERT OR REPLACE INTO metrics_daily
+        (date,agent,runs,successRate,costUsd,avgDurationMs,p50LatencyMs,p95LatencyMs,evalAvg)
+        VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(date, agent || '__all__', m.runs, m.successRate, m.costUsd, m.avgDurationMs, m.p50LatencyMs, m.p95LatencyMs, m.evalAvg);
+}
+function getMetricsDaily({ since, agent = '__all__', limit = 90 } = {}) {
+  const conds = ['agent = ?'], args = [agent];
+  if (since) { conds.push('date >= ?'); args.push(since); }
+  return stmt(`SELECT * FROM metrics_daily WHERE ${conds.join(' AND ')} ORDER BY date ASC LIMIT ?`)
+    .all(...args, Math.min(Number(limit) || 90, 366));
+}
+
+// ── Experiments (v41) ────────────────────────────────────────────────────────
+function createExperiment({ id, datasetId, agent, evaluatorId, total = 0, ts } = {}) {
+  if (!id) throw new Error('experiment id required');
+  stmt('INSERT INTO experiments (id,datasetId,agent,evaluatorId,ts,status,total,completed,summary) VALUES (?,?,?,?,?,?,?,?,?)')
+    .run(id, datasetId || null, agent || null, evaluatorId || null, ts || new Date().toISOString(), 'pending', total, 0, '{}');
+  return getExperimentRow(id);
+}
+function getExperimentRow(id) {
+  const r = stmt('SELECT * FROM experiments WHERE id = ?').get(id);
+  return r ? { ...r, summary: JSON.parse(r.summary || '{}') } : null;
+}
+function setExperimentStatus(id, status, { summary, error, completed } = {}) {
+  const sets = ['status = ?'], args = [status];
+  if (summary !== undefined) { sets.push('summary = ?'); args.push(JSON.stringify(summary || {})); }
+  if (error !== undefined) { sets.push('error = ?'); args.push(error); }
+  if (completed !== undefined) { sets.push('completed = ?'); args.push(completed); }
+  stmt(`UPDATE experiments SET ${sets.join(', ')} WHERE id = ?`).run(...args, id);
+}
+function bumpExperimentProgress(id) {
+  stmt('UPDATE experiments SET completed = completed + 1 WHERE id = ?').run(id);
+}
+function addExperimentResult({ experimentId, caseId, agent, output, scores, overall, pass, reasoning, costUsd } = {}) {
+  stmt(`INSERT INTO experiment_results (experimentId,caseId,agent,output,scores,overall,pass,reasoning,costUsd,ts)
+        VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(experimentId, caseId, agent || null, output != null ? String(output).slice(0, 20000) : null,
+         JSON.stringify(scores || {}), overall != null ? Number(overall) : null, pass ? 1 : 0,
+         reasoning || null, Number(costUsd) || 0, new Date().toISOString());
+}
+function listExperiments({ datasetId, limit = 50 } = {}) {
+  const conds = [], args = [];
+  if (datasetId) { conds.push('datasetId = ?'); args.push(datasetId); }
+  const where = conds.length ? ' WHERE ' + conds.join(' AND ') : '';
+  return stmt(`SELECT * FROM experiments${where} ORDER BY ts DESC LIMIT ?`)
+    .all(...args, Math.min(Number(limit) || 50, 500))
+    .map(r => ({ ...r, summary: JSON.parse(r.summary || '{}') }));
+}
+function getExperimentResults(experimentId) {
+  return stmt('SELECT * FROM experiment_results WHERE experimentId = ? ORDER BY id ASC')
+    .all(experimentId)
+    .map(r => ({ ...r, pass: !!r.pass, scores: JSON.parse(r.scores || '{}') }));
+}
+function getExperiment(id) {
+  const exp = getExperimentRow(id);
+  if (!exp) return null;
+  return { ...exp, results: getExperimentResults(id) };
 }
 
 // Ingest data/intel/eval-runs.jsonl into the DB (idempotent). 'score' records →
@@ -4352,7 +4676,11 @@ module.exports = {
   linkProjectBuildDir, getProjectByBuildDir,
   listProjectPages, updatePageStatus, createRevision, listRevisions,
   // Agent Runs
-  loadAgentRuns, insertAgentRun, getRecentAgentRuns,
+  loadAgentRuns, insertAgentRun, getRecentAgentRuns, getAgentRun,
+  listEvaluators, getEvaluator, upsertEvaluator, deleteEvaluator,
+  computeDayMetrics, upsertMetricsDaily, getMetricsDaily, getAgentsWithRunsOnDay,
+  createExperiment, getExperimentRow, setExperimentStatus, bumpExperimentProgress,
+  addExperimentResult, listExperiments, getExperimentResults, getExperiment,
   insertAgentRunStub, completeAgentRun, reconcileOrphanRuns, reconcileStaleRuns,
   // Table retention (sys-db-retention)
   pruneCostLogs, pruneAgentRuns, pruneAgentEvents, pruneDelegations,

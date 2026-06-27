@@ -3,7 +3,7 @@
 // event. Filters change → reset to the first page.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiError } from '../lib/api'
-import { getScheduleActivity, type ScheduleActivityRun, type ScheduleActivityParams } from '../lib/scheduleApi'
+import { getScheduleActivity, type ScheduleActivityRun, type ScheduleActivityParams, type ScheduleActivityStats } from '../lib/scheduleApi'
 import { onScheduleEvent } from '../lib/sseBus'
 
 const PAGE = 30
@@ -13,6 +13,7 @@ type Filters = Omit<ScheduleActivityParams, 'limit' | 'offset'>
 export function useScheduleActivity(filters: Filters) {
   const [runs, setRuns] = useState<ScheduleActivityRun[]>([])
   const [total, setTotal] = useState(0)
+  const [stats, setStats] = useState<ScheduleActivityStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -29,6 +30,7 @@ export function useScheduleActivity(filters: Filters) {
       if (!mounted.current) return
       setRuns(res.runs)
       setTotal(res.total)
+      setStats(res.stats)
     } catch (err) {
       if (!mounted.current) return
       if (!silent) { apiError('Load activity', err); setLoadError(true) }
@@ -55,5 +57,5 @@ export function useScheduleActivity(filters: Filters) {
     return () => { if (t) clearTimeout(t); un() }
   }, [fetchWindow])
 
-  return { runs, total, loading, loadError, loadingMore, hasMore: runs.length < total, reload: () => fetchWindow(false), loadMore }
+  return { runs, total, stats, loading, loadError, loadingMore, hasMore: runs.length < total, reload: () => fetchWindow(false), loadMore }
 }
