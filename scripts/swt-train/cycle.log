@@ -270,3 +270,9 @@
 [2026-06-27T14:06:22.527Z] cycle 66 verify: kept 16/49 (dropped 33)
 [2026-06-27T14:06:22.635Z] cycle 66 distributed → 3022 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T14:06:22.635Z] cycle 66 reindex: skipped (batched separately)
+[2026-06-27T14:06:22.865Z] cycle 66 ✓ +16 FAQs → 3022/5040 (60.0%) · 14/14 agents trained · committed
+[2026-06-27T14:07:52.868Z] cycle 67: slices [email-lifecycle|faq-page, layout|lookbook, typography|lookbook, color-contrast|lookbook, spacing-rhythm|lookbook, imagery-art-direction|lookbook, motion|lookbook] → generating 49 FAQs (FAQ-3023…)
+[2026-06-27T14:12:13.556Z] cycle 67 verify ANOMALY (kept 12/49) — distrusting critic, keeping all
+[2026-06-27T14:12:13.557Z] cycle 67 verify: kept 49/49 (dropped 0)
+[2026-06-27T14:12:13.693Z] cycle 67 distributed → 3071 rules · 14/14 agents trained · 11 gate-gaps
+[2026-06-27T14:12:13.693Z] cycle 67 reindex: skipped (batched separately)
