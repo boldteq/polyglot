@@ -16,7 +16,8 @@ export function fmtDuration(ms: number | null | undefined): string {
 
 /** Real cost preferred over estimate; null when there's nothing worth showing. */
 export function fmtCost(usd: number | null | undefined): string | null {
-  if (typeof usd !== 'number' || usd <= 0) return null
+  if (typeof usd !== 'number' || usd < 0) return null
+  if (usd === 0) return '$0'
   return usd < 0.01 ? '<$0.01' : `$${usd.toFixed(usd < 1 ? 4 : 2)}`
 }
 
@@ -93,7 +94,7 @@ export function runWhy(run: Pick<ScheduleActivityRun, 'error' | 'metadata'>): st
 /** Best cost we have for a run: real (from CLI usage) over estimated. */
 export function runCost(run: Pick<ScheduleActivityRun, 'estimatedCost' | 'metadata'>): { value: number; real: boolean } | null {
   const real = run.metadata?.realCostUsd
-  if (typeof real === 'number' && real > 0) return { value: real, real: true }
+  if (typeof real === 'number' && real >= 0) return { value: real, real: true }
   if (typeof run.estimatedCost === 'number' && run.estimatedCost > 0) return { value: run.estimatedCost, real: false }
   return null
 }

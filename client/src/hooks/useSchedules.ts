@@ -43,34 +43,34 @@ export function useSchedules(): UseSchedulesResult {
 
   useEffect(() => () => { mountedRef.current = false }, [])
 
+  // Shared fetch+merge body used by both the loading reload() and the silent
+  // background reconcile(). Three parallel fetches: user list (required), system
+  // list (degrades gracefully), inflight (marks running rows even after a mid-run
+  // page reload).
+  const fetchAndSet = useCallback(async () => {
+    const [user, sys, inflightRes] = await Promise.all([
+      getSchedules(),
+      getSystemSchedules().catch(err => {
+        apiError('Load system schedules', err)
+        return [] as Schedule[]
+      }),
+      getInflightSchedules().catch(err => {
+        console.warn('[useSchedules] inflight fetch failed:', err?.message || err)
+        return { inflight: [] }
+      }),
+    ])
+    if (!mountedRef.current) return
+    const inflightIds = new Set(inflightRes.inflight.map(r => r.id))
+    const applyInflight = (s: Schedule): Schedule =>
+      inflightIds.has(s.id) ? { ...s, lastRunStatus: 'running' } : s
+    setSchedules(mergeAndSort(user, sys).map(applyInflight))
+  }, [])
+
   const reload = useCallback(async () => {
     setLoading(true)
     setLoadError(false)
     try {
-      // Three parallel fetches: user list (required), system list (degrades
-      // gracefully), inflight (used to mark currently-running rows even if
-      // the user reloaded the page mid-handler).
-      const [user, sys, inflightRes] = await Promise.all([
-        getSchedules(),
-        getSystemSchedules().catch(err => {
-          apiError('Load system schedules', err)
-          return [] as Schedule[]
-        }),
-        getInflightSchedules().catch(err => {
-          console.warn('[useSchedules] inflight fetch failed:', err?.message || err)
-          return { inflight: [] }
-        }),
-      ])
-      if (!mountedRef.current) return
-      // Build a set of inflight IDs so the merged list shows a 'running'
-      // badge that survives browser refresh.
-      const inflightIds = new Set(inflightRes.inflight.map(r => r.id))
-      const inflightById = new Map(inflightRes.inflight.map(r => [r.id, r]))
-      const applyInflight = (s: Schedule): Schedule =>
-        inflightIds.has(s.id)
-          ? { ...s, lastRunStatus: 'running', runId: inflightById.get(s.id)?.runId ?? null }
-          : s
-      setSchedules(mergeAndSort(user, sys).map(applyInflight))
+      await fetchAndSet()
     } catch (err) {
       if (!mountedRef.current) return
       apiError('Load schedules', err)
@@ -78,9 +78,24 @@ export function useSchedules(): UseSchedulesResult {
     } finally {
       if (mountedRef.current) setLoading(false)
     }
-  }, [])
+  }, [fetchAndSet])
+
+  // E1: silent reconcile (no loading flash) — re-syncs against the server to
+  // self-heal a row stuck optimistically 'running' if its terminal SSE event was
+  // dropped or coalesced away.
+  const reconcile = useCallback(async () => {
+    try { await fetchAndSet() } catch { /* background sync — ignore */ }
+  }, [fetchAndSet])
 
   useEffect(() => { reload() }, [reload])
+
+  // E1: while any row shows 'running', poll the server every 45s so a missed
+  // terminal event doesn't leave the spinner badge stuck forever. No-op when idle.
+  useEffect(() => {
+    if (!schedules.some(s => s.lastRunStatus === 'running')) return
+    const t = setInterval(() => { reconcile() }, 45_000)
+    return () => clearInterval(t)
+  }, [schedules, reconcile])
 
   const patchRow = useCallback((id: string, patch: Partial<Schedule>) => {
     setSchedules(prev => prev.map(s => (s.id === id ? { ...s, ...patch } : s)))
@@ -92,7 +107,7 @@ export function useSchedules(): UseSchedulesResult {
   // schedule:complete / error → update lastRunAt + lastRunStatus.
   // schedule:upsert → full refetch (create/edit/delete/enable-toggle).
   useEffect(() => {
-    let es: EventSource | null = null
+    let unsubscribe: (() => void) | null = null
     let cancelled = false
     let reloadDebounce: ReturnType<typeof setTimeout> | null = null
     const scheduleReload = () => {
@@ -102,29 +117,34 @@ export function useSchedules(): UseSchedulesResult {
     }
     const handle = (ev: ScheduleStreamEvent) => {
       if (cancelled || !ev.id) return
-      switch (ev.type) {
+      // Cast to string so we can handle future event types (e.g. schedule:crashed)
+      // without needing to touch the shared ScheduleStreamEventType union in api.ts.
+      switch (ev.type as string) {
         case 'schedule:start':
-          patchRow(ev.id, { lastRunStatus: 'running', runId: ev.runId ?? null })
+          patchRow(ev.id, { lastRunStatus: 'running' })
           break
         case 'schedule:complete':
           patchRow(ev.id, {
             lastRunAt: ev.lastRunAt || new Date().toISOString(),
             lastRunStatus: 'success',
-            runId: null,
           })
           break
         case 'schedule:error':
           patchRow(ev.id, {
             lastRunAt: ev.lastRunAt || new Date().toISOString(),
             lastRunStatus: 'error',
-            runId: null,
           })
           break
         case 'schedule:cancelled':
           patchRow(ev.id, {
             lastRunAt: ev.lastRunAt || new Date().toISOString(),
             lastRunStatus: 'cancelled',
-            runId: null,
+          })
+          break
+        case 'schedule:crashed':
+          patchRow(ev.id, {
+            lastRunAt: ev.lastRunAt || new Date().toISOString(),
+            lastRunStatus: 'crashed',
           })
           break
         case 'schedule:upsert':
@@ -133,14 +153,14 @@ export function useSchedules(): UseSchedulesResult {
       }
     }
     try {
-      es = subscribeSchedules(handle)
+      unsubscribe = onScheduleEvent(handle)
     } catch (err) {
       apiError('Schedules SSE', err)
     }
     return () => {
       cancelled = true
       if (reloadDebounce) clearTimeout(reloadDebounce)
-      if (es) es.close()
+      if (unsubscribe) unsubscribe()
     }
   }, [reload, patchRow])
 

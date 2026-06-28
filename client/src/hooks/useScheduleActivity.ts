@@ -41,8 +41,9 @@ export function useScheduleActivity(filters: Filters) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
-  // Filters changed → reset the window + reload.
-  useEffect(() => { sizeRef.current = PAGE; fetchWindow(false) }, [fetchWindow])
+  // Filters changed → clear stale runs immediately (prevents old results flashing
+  // through before the new fetch resolves) then reset the window + reload.
+  useEffect(() => { sizeRef.current = PAGE; setRuns([]); setTotal(0); setStats(null); fetchWindow(false) }, [fetchWindow])
 
   const loadMore = useCallback(async () => {
     setLoadingMore(true)

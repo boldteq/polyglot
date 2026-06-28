@@ -160,11 +160,16 @@ async function runTickBody(prep, { retryCount = 0 } = {}) {
       return result;
     }
 
-    // F3: auto-pause after N consecutive failures (newest-first streak incl. this
-    // run) so a chronically-broken schedule stops burning instead of failing forever.
-    const recentFails = db.getScheduleRunsFor(fresh.id, { limit: FAILURE_PAUSE_THRESHOLD });
+    // F3: auto-pause after N consecutive failures. Retries (retryCount > 0) are a
+    // second attempt within the same cron tick — exclude them so tick+retry counts
+    // as 1 failure, not 2 (otherwise a schedule auto-pauses after 3 ticks not 5).
+    const recentFails = db.getScheduleRunsFor(fresh.id, { limit: FAILURE_PAUSE_THRESHOLD * 2 });
     let streak = 0;
-    for (const r of recentFails) { if (r.status === 'error' || r.status === 'crashed') streak += 1; else break; }
+    for (const r of recentFails) {
+      if (r.metadata?.retryCount > 0) continue;
+      if (r.status === 'error' || r.status === 'crashed') streak += 1; else break;
+      if (streak >= FAILURE_PAUSE_THRESHOLD) break;
+    }
     if (streak >= FAILURE_PAUSE_THRESHOLD) {
       console.warn(`[schedule] ${fresh.id} failed ${FAILURE_PAUSE_THRESHOLD}× in a row — auto-pausing`);
       autoPauseSchedule(fresh.id, `failed ${FAILURE_PAUSE_THRESHOLD}× in a row`);

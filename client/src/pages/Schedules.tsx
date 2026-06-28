@@ -325,7 +325,6 @@ export default function SchedulesPage() {
 
       {view === 'activity' && (
         <ScheduleActivityFeed
-          key={activityStatus}
           schedules={schedules}
           initialStatusKey={activityStatus}
           onRunNow={handleRunNow}
@@ -380,15 +379,17 @@ export default function SchedulesPage() {
           {(() => {
             const pausable = shown.filter(s => s.enabled).length
             const resumable = shown.filter(s => !s.enabled).length
-            if (pausable + resumable < 2) return null // not worth bulk on 0–1 rows
+            // Show when total actionable ≥ 2 (not each bucket individually —
+            // avoids the 1-pausable + 1-resumable edge case hiding both buttons).
+            if (pausable + resumable < 2) return null
             return (
               <div className="flex items-center gap-1.5 shrink-0">
-                {pausable > 1 && (
+                {pausable >= 1 && (
                   <button onClick={() => handleBulkToggle(false)} disabled={bulkBusy} className="btn-secondary btn-sm" title={`Pause ${pausable} active schedules in view`}>
                     {bulkBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pause className="w-3.5 h-3.5" />} Pause all ({pausable})
                   </button>
                 )}
-                {resumable > 1 && (
+                {resumable >= 1 && (
                   <button onClick={() => handleBulkToggle(true)} disabled={bulkBusy} className="btn-secondary btn-sm" title={`Resume ${resumable} paused schedules in view`}>
                     {bulkBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Resume all ({resumable})
                   </button>
@@ -550,8 +551,8 @@ export default function SchedulesPage() {
                   )}
                 </div>
               </div>
-              {s.prompt && (
-                <div className="mt-2 text-xs text-text-muted truncate pl-5" title={s.prompt}>
+              {(s.prompt || s.description) && (
+                <div className="mt-2 text-xs text-text-muted truncate pl-5" title={isSystem ? s.description : s.prompt}>
                   {isSystem ? s.description : s.prompt}
                 </div>
               )}

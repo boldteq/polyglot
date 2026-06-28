@@ -50,6 +50,10 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
     try { localStorage.setItem(VIEW_KEY, v) } catch { /* private mode */ }
   }
 
+  // #17: sync filter when parent navigates here via a KPI click (e.g. "Failed 24h").
+  // useEffect instead of key= avoids unmount/remount which would reset scroll position.
+  useEffect(() => { setStatusKey(initialStatusKey) }, [initialStatusKey])
+
   // F16: debounce the text query into the server filters so search spans ALL history.
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(query.trim()), 350); return () => clearTimeout(t) }, [query])
 
@@ -217,7 +221,7 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
       {!loading && !loadError && hasMore && (
         <div className="flex justify-center pt-1">
           <button onClick={loadMore} disabled={loadingMore} className="btn-secondary btn-sm">
-            {loadingMore ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…</> : `Load more · ${runs.length} of ${total}`}
+            {loadingMore ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading…</> : `Load more (${total - runs.length} remaining)`}
           </button>
         </div>
       )}

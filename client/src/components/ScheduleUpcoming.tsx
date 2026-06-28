@@ -14,7 +14,7 @@ const ORDER = ['Today', 'Tomorrow', 'This week', 'Later'] as const
 
 function dayGroup(iso: string): typeof ORDER[number] {
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
-  const days = Math.round((startOfDay(new Date(iso)) - startOfDay(new Date())) / 86_400_000)
+  const days = Math.floor((startOfDay(new Date(iso)) - startOfDay(new Date())) / 86_400_000)
   if (days <= 0) return 'Today'
   if (days === 1) return 'Tomorrow'
   if (days <= 7) return 'This week'
