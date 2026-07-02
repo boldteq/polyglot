@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 117,
-  "batches": 117,
-  "faqCount": 4589,
+  "cyclesRun": 118,
+  "batches": 118,
+  "faqCount": 4593,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -1721,6 +1721,21 @@
         "i18n-currency-rtl|store-locator",
         "states-empty-loading-error|store-locator",
         "forms-validation|store-locator"
+      ]
+    },
+    {
+      "cycle": 118,
+      "ts": "2026-07-02T21:33:34.886Z",
+      "added": 4,
+      "faqTotal": 4593,
+      "slices": [
+        "forms-validation|about",
+        "i18n-currency-rtl|lookbook",
+        "mobile|store-locator",
+        "performance-cwv|store-locator",
+        "i18n-currency-rtl|store-locator",
+        "forms-validation|store-locator",
+        "legal-compliance|comparison"
       ]
     }
   ]

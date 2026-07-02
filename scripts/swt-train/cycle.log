@@ -577,3 +577,10 @@
 [2026-07-02T21:01:52.555Z] cycle 117 verify: kept 5/14 (dropped 9)
 [2026-07-02T21:01:52.706Z] cycle 117 distributed → 4587 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-02T21:01:52.706Z] cycle 117 reindex: skipped (batched separately)
+[2026-07-02T21:01:52.877Z] cycle 117 ✓ +5 FAQs → 4589/5040 (91.1%) · 14/14 agents trained · committed
+[2026-07-02T21:03:22.895Z] cycle 118: slices [forms-validation|about, i18n-currency-rtl|lookbook, mobile|store-locator, performance-cwv|store-locator, i18n-currency-rtl|store-locator, forms-validation|store-locator, legal-compliance|comparison] → generating 49 FAQs (FAQ-4590…)
+[2026-07-02T21:18:23.693Z] cycle 118 generation FAILED (Unexpected token 'd', "[dir='rtl']"... is not valid JSON) — failure 1/20; pointer not advanced.
+[2026-07-02T21:19:53.717Z] cycle 118: slices [forms-validation|about, i18n-currency-rtl|lookbook, mobile|store-locator, performance-cwv|store-locator, i18n-currency-rtl|store-locator, forms-validation|store-locator, legal-compliance|comparison] → generating 49 FAQs (FAQ-4590…)
+[2026-07-02T21:33:34.872Z] cycle 118 verify: kept 4/7 (dropped 3)
+[2026-07-02T21:33:35.037Z] cycle 118 distributed → 4591 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-02T21:33:35.038Z] cycle 118 reindex: skipped (batched separately)
