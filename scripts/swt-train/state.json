@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 113,
-  "batches": 113,
-  "faqCount": 4527,
+  "cyclesRun": 114,
+  "batches": 114,
+  "faqCount": 4565,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -1661,6 +1661,21 @@
         "honesty-claims|footer",
         "performance-cwv|footer",
         "states-empty-loading-error|footer"
+      ]
+    },
+    {
+      "cycle": 114,
+      "ts": "2026-07-02T19:36:34.855Z",
+      "added": 38,
+      "faqTotal": 4565,
+      "slices": [
+        "legal-compliance|footer",
+        "mobile|mega-menu",
+        "a11y|mega-menu",
+        "a11y|announcement-bar",
+        "performance-cwv|announcement-bar",
+        "typography|about",
+        "a11y|about"
       ]
     }
   ]
