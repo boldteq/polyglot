@@ -505,3 +505,9 @@
 [2026-07-02T16:47:36.534Z] cycle 105 verify: kept 5/5 (dropped 0)
 [2026-07-02T16:47:36.686Z] cycle 105 distributed → 4298 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-02T16:47:36.686Z] cycle 105 reindex: skipped (batched separately)
+[2026-07-02T16:47:36.932Z] cycle 105 ✓ +5 FAQs → 4300/5040 (85.3%) · 14/14 agents trained · committed
+[2026-07-02T16:49:06.950Z] cycle 106: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, a11y|bundle-builder] → generating 49 FAQs (FAQ-4301…)
+[2026-07-02T17:03:14.101Z] cycle 106 verify ANOMALY (kept 10/49) — distrusting critic, keeping all
+[2026-07-02T17:03:14.103Z] cycle 106 verify: kept 49/49 (dropped 0)
+[2026-07-02T17:03:14.255Z] cycle 106 distributed → 4347 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-02T17:03:14.255Z] cycle 106 reindex: skipped (batched separately)

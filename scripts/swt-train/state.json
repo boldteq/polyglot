@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 105,
-  "batches": 105,
-  "faqCount": 4300,
+  "cyclesRun": 106,
+  "batches": 106,
+  "faqCount": 4349,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -1541,6 +1541,21 @@
         "copy-voice|store-locator",
         "copy-voice|comparison",
         "motion|bundle-builder"
+      ]
+    },
+    {
+      "cycle": 106,
+      "ts": "2026-07-02T17:03:14.127Z",
+      "added": 49,
+      "faqTotal": 4349,
+      "slices": [
+        "motion|about",
+        "copy-voice|faq-page",
+        "search-filtering|faq-page",
+        "motion|store-locator",
+        "copy-voice|store-locator",
+        "copy-voice|comparison",
+        "a11y|bundle-builder"
       ]
     }
   ]
