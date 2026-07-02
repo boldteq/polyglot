@@ -564,3 +564,9 @@
 [2026-07-02T20:08:07.070Z] cycle 115 verify: kept 15/49 (dropped 34)
 [2026-07-02T20:08:07.269Z] cycle 115 distributed → 4578 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-02T20:08:07.269Z] cycle 115 reindex: skipped (batched separately)
+[2026-07-02T20:08:07.553Z] cycle 115 ✓ +15 FAQs → 4580/5040 (90.9%) · 14/14 agents trained · committed
+[2026-07-02T20:09:37.574Z] cycle 116: slices [forms-validation|about, i18n-currency-rtl|lookbook, spacing-rhythm|store-locator, mobile|store-locator, performance-cwv|store-locator, i18n-currency-rtl|store-locator, states-empty-loading-error|store-locator] → generating 49 FAQs (FAQ-4581…)
+[2026-07-02T20:24:10.096Z] cycle 116 verify ANOMALY (kept 0/4) — distrusting critic, keeping all
+[2026-07-02T20:24:10.098Z] cycle 116 verify: kept 4/4 (dropped 0)
+[2026-07-02T20:24:10.234Z] cycle 116 distributed → 4582 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-02T20:24:10.234Z] cycle 116 reindex: skipped (batched separately)

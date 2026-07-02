@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 115,
-  "batches": 115,
-  "faqCount": 4580,
+  "cyclesRun": 116,
+  "batches": 116,
+  "faqCount": 4584,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -1691,6 +1691,21 @@
         "edge-cases|faq-page",
         "forms-validation|faq-page",
         "mobile|lookbook"
+      ]
+    },
+    {
+      "cycle": 116,
+      "ts": "2026-07-02T20:24:10.112Z",
+      "added": 4,
+      "faqTotal": 4584,
+      "slices": [
+        "forms-validation|about",
+        "i18n-currency-rtl|lookbook",
+        "spacing-rhythm|store-locator",
+        "mobile|store-locator",
+        "performance-cwv|store-locator",
+        "i18n-currency-rtl|store-locator",
+        "states-empty-loading-error|store-locator"
       ]
     }
   ]
