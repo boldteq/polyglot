@@ -537,3 +537,9 @@
 [2026-07-02T18:17:56.071Z] cycle 111 verify: kept 8/25 (dropped 17)
 [2026-07-02T18:17:56.429Z] cycle 111 distributed → 4458 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-02T18:17:56.430Z] cycle 111 reindex: skipped (batched separately)
+[2026-07-02T18:17:57.237Z] cycle 111 ✓ +8 FAQs → 4460/5040 (88.5%) · 14/14 agents trained · committed
+[2026-07-02T18:19:27.317Z] cycle 112: slices [a11y|lookbook, a11y|store-locator, search-filtering|store-locator, nav-ia|quiz-finder, layout|landing-advertorial, spacing-rhythm|landing-advertorial, nav-ia|landing-advertorial] → generating 49 FAQs (FAQ-4461…)
+[2026-07-02T18:41:09.365Z] cycle 112 verify ANOMALY (kept 14/49) — distrusting critic, keeping all
+[2026-07-02T18:41:09.371Z] cycle 112 verify: kept 49/49 (dropped 0)
+[2026-07-02T18:41:09.569Z] cycle 112 distributed → 4507 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-02T18:41:09.569Z] cycle 112 reindex: skipped (batched separately)
