@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 107,
-  "batches": 107,
-  "faqCount": 4375,
+  "cyclesRun": 108,
+  "batches": 108,
+  "faqCount": 4380,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -1571,6 +1571,21 @@
         "layout|header-nav",
         "typography|header-nav",
         "edge-cases|header-nav"
+      ]
+    },
+    {
+      "cycle": 108,
+      "ts": "2026-07-02T17:34:46.301Z",
+      "added": 5,
+      "faqTotal": 4380,
+      "slices": [
+        "mobile|footer",
+        "states-empty-loading-error|footer",
+        "copy-voice|mega-menu",
+        "forms-validation|password-page",
+        "spacing-rhythm|about",
+        "mobile|about",
+        "cro|about"
       ]
     }
   ]
