@@ -570,3 +570,10 @@
 [2026-07-02T20:24:10.098Z] cycle 116 verify: kept 4/4 (dropped 0)
 [2026-07-02T20:24:10.234Z] cycle 116 distributed → 4582 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-02T20:24:10.234Z] cycle 116 reindex: skipped (batched separately)
+[2026-07-02T20:24:10.386Z] cycle 116 ✓ +4 FAQs → 4584/5040 (91.0%) · 14/14 agents trained · committed
+[2026-07-02T20:25:40.410Z] cycle 117: slices [forms-validation|about, i18n-currency-rtl|lookbook, mobile|store-locator, performance-cwv|store-locator, i18n-currency-rtl|store-locator, states-empty-loading-error|store-locator, forms-validation|store-locator] → generating 49 FAQs (FAQ-4585…)
+[2026-07-02T20:45:41.165Z] cycle 117 generation FAILED (claude generation failed: timeout after 20min) — failure 1/20; pointer not advanced.
+[2026-07-02T20:47:11.187Z] cycle 117: slices [forms-validation|about, i18n-currency-rtl|lookbook, mobile|store-locator, performance-cwv|store-locator, i18n-currency-rtl|store-locator, states-empty-loading-error|store-locator, forms-validation|store-locator] → generating 49 FAQs (FAQ-4585…)
+[2026-07-02T21:01:52.555Z] cycle 117 verify: kept 5/14 (dropped 9)
+[2026-07-02T21:01:52.706Z] cycle 117 distributed → 4587 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-02T21:01:52.706Z] cycle 117 reindex: skipped (batched separately)
