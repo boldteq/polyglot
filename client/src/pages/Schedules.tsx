@@ -75,6 +75,7 @@ export default function SchedulesPage() {
   const [view, setView] = useState<'schedules' | 'activity' | 'upcoming'>('schedules')
   const [failed24h, setFailed24h] = useState<number | null>(null)
   const [activityStatus, setActivityStatus] = useState<string>('all')
+  const [activityScheduleId, setActivityScheduleId] = useState<string>('')
 
   // F1/F8: Failed-runs count over the rolling 24h — kept LIVE (refetched on any
   // schedule SSE event so a fresh failure updates the KPI immediately), and the
@@ -327,11 +328,12 @@ export default function SchedulesPage() {
         <ScheduleActivityFeed
           schedules={schedules}
           initialStatusKey={activityStatus}
+          initialScheduleId={activityScheduleId}
           onRunNow={handleRunNow}
           onOpenSchedule={(s) => { setQuery(s.name); setKindFilter('all'); setView('schedules') }}
         />
       )}
-      {view === 'upcoming' && <ScheduleUpcoming />}
+      {view === 'upcoming' && <ScheduleUpcoming schedules={schedules} />}
 
       {view === 'schedules' && (
       <>
@@ -509,9 +511,9 @@ export default function SchedulesPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => setDrawerSchedule(s)}
+                    onClick={() => { setActivityScheduleId(s.id); setView('activity') }}
                     className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
-                    title="View run history"
+                    title="View run history in Activity feed"
                     aria-label="View run history"
                   >
                     <History className="w-4 h-4" />

@@ -2,7 +2,7 @@
 // card feed for scanning many runs at once. Columns sort client-side over the
 // loaded window (the server already returns newest-first; sorting re-orders what
 // you've loaded). Click any row to expand the full RunDetail inline.
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useCallback, useMemo, useState } from 'react'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import type { Schedule } from '../lib/api'
 import type { ScheduleActivityRun } from '../lib/scheduleApi'
@@ -26,13 +26,24 @@ export default function ScheduleActivityTable({ runs, scheduleName, scheduleOf, 
   onRunNow?: (s: Schedule) => void
   onOpenSchedule?: (s: Schedule) => void
 }) {
-  const [sortKey, setSortKey] = useState<SortKey>('time')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const SORT_KEY = 'polyglot.schedule.tableSortKey'
+  const SORT_DIR = 'polyglot.schedule.tableSortDir'
+  const [sortKey, setSortKey] = useState<SortKey>(() => {
+    try { return (localStorage.getItem(SORT_KEY) as SortKey) || 'time' } catch { return 'time' }
+  })
+  const [sortDir, setSortDir] = useState<SortDir>(() => {
+    try { return (localStorage.getItem(SORT_DIR) as SortDir) || 'desc' } catch { return 'desc' }
+  })
+
+  const setSort = useCallback((key: SortKey, dir: SortDir) => {
+    setSortKey(key); setSortDir(dir)
+    try { localStorage.setItem(SORT_KEY, key); localStorage.setItem(SORT_DIR, dir) } catch { /* private mode */ }
+  }, [])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const toggleSort = (key: SortKey) => {
-    if (key === sortKey) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortKey(key); setSortDir(key === 'time' ? 'desc' : 'asc') }
+    if (key === sortKey) setSort(key, sortDir === 'asc' ? 'desc' : 'asc')
+    else setSort(key, key === 'time' ? 'desc' : 'asc')
   }
   const toggleRow = (id: string) => setExpanded(prev => {
     const next = new Set(prev)
@@ -76,6 +87,7 @@ export default function ScheduleActivityTable({ runs, scheduleName, scheduleOf, 
 
   return (
     <div className="card overflow-x-auto">
+      <div className="px-3 pt-2 pb-1 text-[10px] text-text-muted/60">Sorted within loaded runs — load more to expand sort scope</div>
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="text-[11px] text-text-muted border-b border-border">

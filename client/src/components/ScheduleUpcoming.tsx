@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CalendarClock, Zap, AlertCircle, Clock } from 'lucide-react'
 import { getScheduleUpcoming, type UpcomingRun, type EventDrivenSchedule } from '../lib/scheduleApi'
-import { apiError } from '../lib/api'
+import { apiError, type Schedule } from '../lib/api'
 import { formatAgentDisplay } from '../lib/agentDisplay'
 import { humanizeCron } from '../lib/scheduleFormat'
 import { SkeletonCards } from './Skeleton'
@@ -32,7 +32,7 @@ const localTz = (() => {
   } catch { return 'local time' }
 })()
 
-export default function ScheduleUpcoming() {
+export default function ScheduleUpcoming({ schedules = [] }: { schedules?: Schedule[] }) {
   const [data, setData] = useState<{ upcoming: UpcomingRun[]; eventDriven: EventDrivenSchedule[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -55,7 +55,14 @@ export default function ScheduleUpcoming() {
     </div>
   )
   if (!data || (data.upcoming.length === 0 && data.eventDriven.length === 0)) {
-    return <EmptyState icon={Clock} title="Nothing scheduled" description="Enable a schedule with a cron timer and its next runs will appear here." card />
+    const hasCronSchedules = schedules.some(s => s.cron && s.enabled !== false)
+    const hasPausedCron = schedules.some(s => s.cron && s.enabled === false)
+    const description = hasCronSchedules
+      ? 'No upcoming runs found in the lookahead window.'
+      : hasPausedCron
+        ? 'All cron schedules are paused. Resume a schedule to see upcoming runs.'
+        : 'Create a schedule with a cron expression and its upcoming runs will appear here.'
+    return <EmptyState icon={Clock} title="Nothing scheduled" description={description} card />
   }
 
   const groups: Record<string, UpcomingRun[]> = {}

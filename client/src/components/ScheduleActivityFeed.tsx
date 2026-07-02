@@ -29,15 +29,16 @@ const STATUS_TABS: { key: string; label: string; param?: string }[] = [
 
 const VIEW_KEY = 'polyglot.schedule.activityView'
 
-export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'all', onRunNow, onOpenSchedule }: {
+export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'all', initialScheduleId = '', onRunNow, onOpenSchedule }: {
   schedules: Schedule[]
   initialStatusKey?: string
+  initialScheduleId?: string
   onRunNow?: (s: Schedule) => void
   onOpenSchedule?: (s: Schedule) => void
 }) {
   const [statusKey, setStatusKey] = useState(initialStatusKey)
   const [kind, setKind] = useState<'all' | 'user' | 'system'>('all')
-  const [scheduleId, setScheduleId] = useState('')
+  const [scheduleId, setScheduleId] = useState(initialScheduleId)
   const [query, setQuery] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -53,6 +54,8 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
   // #17: sync filter when parent navigates here via a KPI click (e.g. "Failed 24h").
   // useEffect instead of key= avoids unmount/remount which would reset scroll position.
   useEffect(() => { setStatusKey(initialStatusKey) }, [initialStatusKey])
+  // #16: sync schedule filter when parent navigates here from a History button click.
+  useEffect(() => { setScheduleId(initialScheduleId) }, [initialScheduleId])
 
   // F16: debounce the text query into the server filters so search spans ALL history.
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(query.trim()), 350); return () => clearTimeout(t) }, [query])
