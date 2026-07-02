@@ -472,3 +472,36 @@
 [2026-06-27T18:27:11.764Z] cycle 104 verify: kept 23/42 (dropped 19)
 [2026-06-27T18:27:11.901Z] cycle 104 distributed → 4295 rules · 14/14 agents trained · 11 gate-gaps
 [2026-06-27T18:27:11.901Z] cycle 104 reindex: skipped (batched separately)
+[2026-06-27T18:27:12.170Z] cycle 104 ✓ +23 FAQs → 4295/5040 (85.2%) · 14/14 agents trained · committed
+[2026-06-27T18:28:42.172Z] slice plan exhausted — full possibility space covered. Done.
+[2026-07-02T14:05:00.651Z] SWT training daemon START — interval 15min · max 60 cycles · 7 slices/cycle · model inherit · at 4293/5040
+[2026-07-02T14:05:00.653Z] STOP file present — exiting.
+[2026-07-02T14:05:19.032Z] reached MAX_CYCLES=60 — done.
+[2026-07-02T14:05:34.601Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4294…)
+[2026-07-02T14:17:35.322Z] cycle 105 generation FAILED (claude generation failed: timeout after 12min) — failure 1/5; pointer not advanced.
+[2026-07-02T14:25:00.632Z] SWT training daemon START — interval 1.5min · max 200 cycles · 7 slices/cycle · model inherit · at 4293/5040
+[2026-07-02T14:25:00.641Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4294…)
+[2026-07-02T14:28:08.690Z] SWT training daemon START — interval 1.5min · max 200 cycles · 7 slices/cycle · model inherit · at 4293/5040
+[2026-07-02T14:28:08.700Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4294…)
+[2026-07-02T14:31:00.709Z] SWT training daemon START — interval 1.5min · max 200 cycles · 7 slices/cycle · model inherit · at 4293/5040
+[2026-07-02T14:31:00.717Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4294…)
+[2026-07-02T14:34:01.389Z] SWT training daemon START — interval 1.5min · max 200 cycles · 7 slices/cycle · model inherit · at 4293/5040
+[2026-07-02T14:34:01.405Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4296…)
+[2026-07-02T14:46:02.172Z] cycle 105 generation FAILED (claude generation failed: timeout after 12min) — failure 2/20; pointer not advanced.
+[2026-07-02T14:47:32.215Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4296…)
+[2026-07-02T14:59:32.887Z] cycle 105 generation FAILED (claude generation failed: timeout after 12min) — failure 3/20; pointer not advanced.
+[2026-07-02T15:01:02.915Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4296…)
+[2026-07-02T15:13:03.661Z] cycle 105 generation FAILED (claude generation failed: timeout after 12min) — failure 4/20; pointer not advanced.
+[2026-07-02T15:14:33.688Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4296…)
+[2026-07-02T15:26:34.292Z] cycle 105 generation FAILED (claude generation failed: timeout after 12min) — failure 5/20; pointer not advanced.
+[2026-07-02T15:28:04.312Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4296…)
+[2026-07-02T15:40:04.888Z] cycle 105 generation FAILED (claude generation failed: timeout after 12min) — failure 6/20; pointer not advanced.
+[2026-07-02T15:41:34.910Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4296…)
+[2026-07-02T15:53:35.552Z] cycle 105 generation FAILED (claude generation failed: timeout after 12min) — failure 7/20; pointer not advanced.
+[2026-07-02T15:55:05.579Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4296…)
+[2026-07-02T16:34:49.737Z] SWT training daemon START — interval 1.5min · max 200 cycles · 7 slices/cycle · model inherit · at 4293/5040
+[2026-07-02T16:34:49.756Z] cycle 105: slices [motion|about, copy-voice|faq-page, search-filtering|faq-page, motion|store-locator, copy-voice|store-locator, copy-voice|comparison, motion|bundle-builder] → generating 49 FAQs (FAQ-4296…)
+[2026-07-02T16:47:36.533Z] cycle 105 verify ANOMALY (kept 0/5) — distrusting critic, keeping all
+[2026-07-02T16:47:36.534Z] cycle 105 verify: kept 5/5 (dropped 0)
+[2026-07-02T16:47:36.686Z] cycle 105 distributed → 4298 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-02T16:47:36.686Z] cycle 105 reindex: skipped (batched separately)
