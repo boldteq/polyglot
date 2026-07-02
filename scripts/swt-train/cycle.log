@@ -557,3 +557,10 @@
 [2026-07-02T19:36:34.836Z] cycle 114 verify: kept 38/49 (dropped 11)
 [2026-07-02T19:36:34.984Z] cycle 114 distributed → 4563 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-02T19:36:34.984Z] cycle 114 reindex: skipped (batched separately)
+[2026-07-02T19:36:35.243Z] cycle 114 ✓ +38 FAQs → 4565/5040 (90.6%) · 14/14 agents trained · committed
+[2026-07-02T19:38:05.262Z] cycle 115: slices [states-empty-loading-error|about, search-filtering|about, forms-validation|about, email-lifecycle|about, edge-cases|faq-page, forms-validation|faq-page, mobile|lookbook] → generating 49 FAQs (FAQ-4566…)
+[2026-07-02T19:52:25.630Z] cycle 115 generation FAILED (Unexpected token 'p', "[product-ha"... is not valid JSON) — failure 1/20; pointer not advanced.
+[2026-07-02T19:53:55.656Z] cycle 115: slices [states-empty-loading-error|about, search-filtering|about, forms-validation|about, email-lifecycle|about, edge-cases|faq-page, forms-validation|faq-page, mobile|lookbook] → generating 49 FAQs (FAQ-4566…)
+[2026-07-02T20:08:07.070Z] cycle 115 verify: kept 15/49 (dropped 34)
+[2026-07-02T20:08:07.269Z] cycle 115 distributed → 4578 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-02T20:08:07.269Z] cycle 115 reindex: skipped (batched separately)
