@@ -532,3 +532,8 @@
 [2026-07-02T18:01:04.270Z] cycle 110 verify: kept 23/49 (dropped 26)
 [2026-07-02T18:01:04.424Z] cycle 110 distributed → 4450 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-02T18:01:04.424Z] cycle 110 reindex: skipped (batched separately)
+[2026-07-02T18:01:04.619Z] cycle 110 ✓ +23 FAQs → 4452/5040 (88.3%) · 14/14 agents trained · committed
+[2026-07-02T18:02:34.639Z] cycle 111: slices [a11y|lookbook, a11y|store-locator, search-filtering|store-locator, cro|comparison, mobile|bundle-builder, nav-ia|bundle-builder, nav-ia|quiz-finder] → generating 49 FAQs (FAQ-4453…)
+[2026-07-02T18:17:56.071Z] cycle 111 verify: kept 8/25 (dropped 17)
+[2026-07-02T18:17:56.429Z] cycle 111 distributed → 4458 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-02T18:17:56.430Z] cycle 111 reindex: skipped (batched separately)
