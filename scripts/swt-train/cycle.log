@@ -685,3 +685,8 @@
 [2026-07-03T07:26:33.391Z] cycle 135 verify: kept 49/49 (dropped 0)
 [2026-07-03T07:26:33.544Z] cycle 135 distributed → 5099 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T07:26:33.544Z] cycle 135 reindex: skipped (batched separately)
+[2026-07-03T07:26:33.700Z] cycle 135 ✓ +49 FAQs → 5101/5040 (101.2%) · 14/14 agents trained · committed
+[2026-07-03T07:28:03.737Z] cycle 136: slices [nav-ia|password-page, forms-validation|password-page, nav-ia|pdp, honesty-claims|cart, i18n-currency-rtl|cart, color-contrast|search, i18n-currency-rtl|search] → generating 49 FAQs (FAQ-5102…)
+[2026-07-03T07:32:48.862Z] cycle 136 verify: kept 24/49 (dropped 25)
+[2026-07-03T07:32:49.050Z] cycle 136 distributed → 5123 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T07:32:49.050Z] cycle 136 reindex: skipped (batched separately)
