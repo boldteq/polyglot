@@ -764,3 +764,8 @@
 [2026-07-03T09:09:29.032Z] cycle 150 verify: kept 49/49 (dropped 0)
 [2026-07-03T09:09:29.200Z] cycle 150 distributed → 5555 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T09:09:29.200Z] cycle 150 reindex: skipped (batched separately)
+[2026-07-03T09:09:29.364Z] cycle 150 ✓ +49 FAQs → 5557/5040 (110.3%) · 14/14 agents trained · committed
+[2026-07-03T09:10:59.403Z] cycle 151: slices [performance-cwv|404, i18n-currency-rtl|404, merchandising|404, spacing-rhythm|order-confirmation, trust-social-proof|order-confirmation, edge-cases|order-confirmation, trust-social-proof|subscription] → generating 49 FAQs (FAQ-5558…)
+[2026-07-03T09:17:11.196Z] cycle 151 verify: kept 24/49 (dropped 25)
+[2026-07-03T09:17:11.371Z] cycle 151 distributed → 5579 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T09:17:11.371Z] cycle 151 reindex: skipped (batched separately)
