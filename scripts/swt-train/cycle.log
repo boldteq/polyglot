@@ -808,3 +808,8 @@
 [2026-07-03T10:07:06.592Z] cycle 158 verify: kept 28/49 (dropped 21)
 [2026-07-03T10:07:06.806Z] cycle 158 distributed → 5847 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T10:07:06.806Z] cycle 158 reindex: skipped (batched separately)
+[2026-07-03T10:07:07.041Z] cycle 158 ✓ +28 FAQs → 5849/5040 (116.1%) · 14/14 agents trained · committed
+[2026-07-03T10:08:37.087Z] cycle 159: slices [layout|header-nav, forms-validation|header-nav, copy-voice|footer, a11y|mega-menu, trust-social-proof|mega-menu, performance-cwv|mega-menu, forms-validation|mega-menu] → generating 49 FAQs (FAQ-5850…)
+[2026-07-03T10:14:31.893Z] cycle 159 verify: kept 22/49 (dropped 27)
+[2026-07-03T10:14:32.075Z] cycle 159 distributed → 5869 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T10:14:32.075Z] cycle 159 reindex: skipped (batched separately)
