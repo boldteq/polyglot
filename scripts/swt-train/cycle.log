@@ -629,3 +629,10 @@
 [2026-07-03T05:58:16.177Z] cycle 125 verify: kept 17/49 (dropped 32)
 [2026-07-03T05:58:16.345Z] cycle 125 distributed → 4749 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T05:58:16.345Z] cycle 125 reindex: skipped (batched separately)
+[2026-07-03T05:58:16.550Z] cycle 125 ✓ +17 FAQs → 4751/5040 (94.3%) · 14/14 agents trained · committed
+[2026-07-03T05:59:46.570Z] cycle 126: slices [forms-validation|header-nav, copy-voice|footer, merchandising|footer, cro|mega-menu, performance-cwv|mega-menu, seo-structured-data|mega-menu, edge-cases|mega-menu] → generating 49 FAQs (FAQ-4752…)
+[2026-07-03T06:11:17.557Z] cycle 126 generation FAILED (no JSON array in output) — failure 1/20; pointer not advanced.
+[2026-07-03T06:12:47.595Z] cycle 126: slices [forms-validation|header-nav, copy-voice|footer, merchandising|footer, cro|mega-menu, performance-cwv|mega-menu, seo-structured-data|mega-menu, edge-cases|mega-menu] → generating 49 FAQs (FAQ-4752…)
+[2026-07-03T06:18:38.758Z] cycle 126 verify: kept 20/49 (dropped 29)
+[2026-07-03T06:18:40.093Z] cycle 126 distributed → 4769 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T06:18:40.101Z] cycle 126 reindex: skipped (batched separately)
