@@ -28,6 +28,8 @@ export const CacheKeys = {
   projectCommands: (id: string) => `projects/${id}/commands`,
   projectRules: (id: string) => `projects/${id}/rules`,
   projectClaudeMd: (id: string) => `projects/${id}/claude-md`,
+  projectActivity: (id: string) => `projects/${id}/activity`,
+  projectSpend: (id: string) => `projects/${id}/spend`,
   training: (name: string) => `training/${name}`,
   learningInbox: (status: string) => `learning/inbox/${status}`,
   learningStatus: 'learning/status',

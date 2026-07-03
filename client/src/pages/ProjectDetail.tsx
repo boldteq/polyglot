@@ -13,6 +13,9 @@ import {
   Bot,
   MessageSquare,
   ArrowLeft,
+  DollarSign,
+  Activity,
+  AlertCircle,
 } from 'lucide-react'
 import {
   getProjectAgents,
@@ -27,6 +30,9 @@ import {
   updateProjectRule,
   deleteProjectRule,
   sanitizeName,
+  getProjectActivity,
+  getProjectSpend,
+  type AgentRunEntry,
 } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
@@ -116,6 +122,13 @@ function OverviewTab({
     { label: 'Rules', value: rules.length, color: 'text-text-secondary', icon: ShieldCheck, onClick: () => onTabChange('rules') },
   ]
 
+  const { data: spend, error: spendError } = useApi(
+    () => getProjectSpend(projectId!), [projectId], CacheKeys.projectSpend(projectId!),
+  )
+  const { data: activity, error: activityError } = useApi(
+    () => getProjectActivity(projectId!, 8), [projectId], CacheKeys.projectActivity(projectId!),
+  )
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -147,6 +160,63 @@ function OverviewTab({
           <p className="text-xs text-text-muted mt-0.5">Chat with agents about this project — all conversations saved and searchable</p>
         </div>
       </button>
+
+      {/* Spend — real cost attributed to this project's chat-dispatched runs */}
+      <div className="card p-5">
+        <p className="text-xs font-semibold text-text-muted flex items-center gap-1.5 mb-3">
+          <DollarSign className="w-3.5 h-3.5" /> Spend
+        </p>
+        {spendError ? (
+          <p className="text-xs text-red">Failed to load spend: {spendError}</p>
+        ) : !spend ? (
+          <div className="h-10 bg-surface-2 rounded-lg animate-pulse" />
+        ) : spend.calls === 0 ? (
+          <p className="text-xs text-text-muted">No cost logged yet — spend appears here once you chat with an agent about this project.</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-lg font-semibold">${spend.costUsd.toFixed(4)}</p>
+              <p className="text-[11px] text-text-muted mt-0.5">{spend.realCalls > 0 ? `$${spend.realCostUsd.toFixed(4)} real` : 'estimated'}</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold">{spend.calls}</p>
+              <p className="text-[11px] text-text-muted mt-0.5">calls</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold">{spend.tokens.toLocaleString()}</p>
+              <p className="text-[11px] text-text-muted mt-0.5">tokens</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Recent activity */}
+      <div className="card p-5">
+        <p className="text-xs font-semibold text-text-muted flex items-center gap-1.5 mb-3">
+          <Activity className="w-3.5 h-3.5" /> Recent activity
+        </p>
+        {activityError ? (
+          <p className="text-xs text-red flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> Failed to load activity: {activityError}</p>
+        ) : !activity ? (
+          <div className="space-y-2">
+            <div className="h-8 bg-surface-2 rounded-lg animate-pulse" />
+            <div className="h-8 bg-surface-2 rounded-lg animate-pulse" />
+          </div>
+        ) : activity.runs.length === 0 ? (
+          <p className="text-xs text-text-muted">No runs yet — activity from Project Chat and dispatched agents will appear here.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {activity.runs.map((r: AgentRunEntry) => (
+              <div key={r.id} className="flex items-center gap-2.5 text-xs py-1.5 border-b border-border last:border-0">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.status === 'success' ? 'bg-green' : 'bg-red'}`} />
+                <span className="font-medium truncate max-w-[140px]">{r.agentName}</span>
+                <span className="text-text-muted truncate flex-1">{r.prompt}</span>
+                <span className="text-text-muted shrink-0 tabular-nums">{new Date(r.timestamp).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

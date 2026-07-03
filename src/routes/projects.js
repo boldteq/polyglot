@@ -275,9 +275,11 @@ router.post('/projects/:projectId/conversations/:id/send', rateLimit('heavy'), (
         db.saveProjectConversations(projectId, freshConvos);
       }
 
+      const estimateTokens = (text) => Math.ceil((text || '').length / 4);
+      const runId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       try {
         const agentRun = {
-          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+          id: runId,
           agentName: convo.agentName || 'chat',
           prompt: message.slice(0, 200),
           source: 'project-chat',
@@ -286,13 +288,33 @@ router.post('/projects/:projectId/conversations/:id/send', rateLimit('heavy'), (
           status: 'success',
           promptChars: message.length,
           outputChars: trimmed.length,
-          estimatedTokens: Math.ceil((message.length + trimmed.length) / 4),
+          estimatedTokens: estimateTokens(message) + estimateTokens(trimmed),
           estimatedCost: 0,
           error: null,
           metadata: { projectId, conversationId: convo.id },
         };
         db.insertAgentRun(agentRun);
-      } catch {}
+      } catch (err) {
+        console.error('[projects] insertAgentRun failed:', err.message);
+      }
+      // Real cost attribution (was invisible before — estimatedCost above is a
+      // legacy display field on agent_runs; cost_logs is what Monitoring/spend
+      // rollups actually read). runClaudeSync gives no usage envelope, so tokens
+      // are estimated from char length, same basis as every other char-based
+      // estimate in this codebase (mirrors orchestrations.js logStepCost).
+      try {
+        db.logCost({
+          runId,
+          agentName: convo.agentName || 'chat',
+          model: null,
+          inputTokens: estimateTokens(message),
+          outputTokens: estimateTokens(trimmed),
+          estimated: true,
+          source: 'project-chat',
+        });
+      } catch (err) {
+        console.error('[projects] cost log failed:', err.message);
+      }
 
       endStream({ type: 'done', content: trimmed });
     }
@@ -323,6 +345,17 @@ router.get('/projects/:projectId/activity', rateLimit('read'), (req, res) => {
   );
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
   res.json({ total: projectRuns.length, runs: projectRuns.slice(0, limit) });
+});
+
+// GET /api/projects/:projectId/spend — real cost attributed to this project's
+// chat-dispatched runs (joins agent_runs.metadata.projectId → cost_logs.runId).
+router.get('/projects/:projectId/spend', rateLimit('read'), (req, res) => {
+  try {
+    res.json(db.getProjectSpend(req.params.projectId));
+  } catch (err) {
+    console.error('[projects] /spend failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/setup/status
