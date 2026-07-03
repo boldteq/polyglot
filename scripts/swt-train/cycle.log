@@ -753,3 +753,8 @@
 [2026-07-03T08:55:17.990Z] cycle 148 verify: kept 49/49 (dropped 0)
 [2026-07-03T08:55:18.172Z] cycle 148 distributed → 5480 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T08:55:18.172Z] cycle 148 reindex: skipped (batched separately)
+[2026-07-03T08:55:18.389Z] cycle 148 ✓ +49 FAQs → 5482/5040 (108.8%) · 14/14 agents trained · committed
+[2026-07-03T08:56:48.432Z] cycle 149: slices [merchandising|account, typography|article, a11y|article, honesty-claims|article, performance-cwv|blog, seo-structured-data|blog, legal-compliance|blog] → generating 49 FAQs (FAQ-5483…)
+[2026-07-03T09:02:31.118Z] cycle 149 verify: kept 26/49 (dropped 23)
+[2026-07-03T09:02:31.285Z] cycle 149 distributed → 5506 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T09:02:31.285Z] cycle 149 reindex: skipped (batched separately)
