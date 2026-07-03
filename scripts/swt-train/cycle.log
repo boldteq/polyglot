@@ -622,3 +622,10 @@
 [2026-07-03T05:22:55.646Z] cycle 124 verify: kept 31/49 (dropped 18)
 [2026-07-03T05:22:55.810Z] cycle 124 distributed → 4732 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T05:22:55.810Z] cycle 124 reindex: skipped (batched separately)
+[2026-07-03T05:22:56.011Z] cycle 124 ✓ +31 FAQs → 4734/5040 (93.9%) · 14/14 agents trained · committed
+[2026-07-03T05:24:26.036Z] cycle 125: slices [mobile|bundle-builder, layout|quiz-finder, cro|quiz-finder, states-empty-loading-error|quiz-finder, typography|landing-advertorial, legal-compliance|header-nav, search-filtering|header-nav] → generating 49 FAQs (FAQ-4735…)
+[2026-07-03T05:45:23.000Z] SWT training daemon START — interval 1.5min · max 200 cycles · 7 slices/cycle · model inherit · at 4734/5040
+[2026-07-03T05:45:23.023Z] cycle 125: slices [mobile|bundle-builder, layout|quiz-finder, cro|quiz-finder, states-empty-loading-error|quiz-finder, typography|landing-advertorial, legal-compliance|header-nav, search-filtering|header-nav] → generating 49 FAQs (FAQ-4735…)
+[2026-07-03T05:58:16.177Z] cycle 125 verify: kept 17/49 (dropped 32)
+[2026-07-03T05:58:16.345Z] cycle 125 distributed → 4749 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T05:58:16.345Z] cycle 125 reindex: skipped (batched separately)

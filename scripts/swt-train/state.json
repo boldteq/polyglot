@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 124,
-  "batches": 124,
-  "faqCount": 4734,
+  "cyclesRun": 125,
+  "batches": 125,
+  "faqCount": 4751,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -1826,6 +1826,21 @@
         "states-empty-loading-error|bundle-builder",
         "edge-cases|bundle-builder",
         "email-lifecycle|bundle-builder"
+      ]
+    },
+    {
+      "cycle": 125,
+      "ts": "2026-07-03T05:58:16.195Z",
+      "added": 17,
+      "faqTotal": 4751,
+      "slices": [
+        "mobile|bundle-builder",
+        "layout|quiz-finder",
+        "cro|quiz-finder",
+        "states-empty-loading-error|quiz-finder",
+        "typography|landing-advertorial",
+        "legal-compliance|header-nav",
+        "search-filtering|header-nav"
       ]
     }
   ]
