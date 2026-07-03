@@ -224,7 +224,7 @@ export default function DatabaseExplorer() {
                 }`}
               >
                 <span className="font-medium truncate">{t.name}</span>
-                <span className={`text-[10px] font-mono shrink-0 ml-1 ${t.rowCount > 0 ? 'text-text-muted' : 'text-text-muted/40'}`}>
+                <span className={`text-[10px] font-mono shrink-0 ml-1 ${t.rowCount > 0 ? 'text-text-muted' : 'text-text-muted'}`}>
                   {t.rowCount}
                 </span>
               </button>
@@ -516,7 +516,7 @@ function TableDataView({ data, loading, pkCol, editingRow, editPk, onEdit, onEdi
                           <td
                             key={col}
                             className={`px-3 py-2 whitespace-nowrap max-w-[250px] overflow-hidden text-ellipsis ${
-                              isNull ? 'text-text-muted/40 italic' : isJson ? 'font-mono text-[10px] text-blue' : 'text-text'
+                              isNull ? 'text-text-muted italic' : isJson ? 'font-mono text-[10px] text-blue' : 'text-text'
                             }`}
                             title={isLong ? display : undefined}
                           >
@@ -571,7 +571,7 @@ function QueryResultView({ result }: { result: DbQueryResult }) {
                       <td
                         key={col}
                         className={`px-3 py-2 whitespace-nowrap max-w-[250px] overflow-hidden text-ellipsis ${
-                          isNull ? 'text-text-muted/40 italic' : isJson ? 'font-mono text-[10px] text-blue' : 'text-text'
+                          isNull ? 'text-text-muted italic' : isJson ? 'font-mono text-[10px] text-blue' : 'text-text'
                         }`}
                         title={display.length > 60 ? display : undefined}
                       >
@@ -627,7 +627,7 @@ function BackupRecoveryInfo({ dbPath }: { dbPath: string }) {
             </div>
             <div className="flex items-start gap-2">
               <span className="text-green font-bold shrink-0">2.</span>
-              <p><span className="font-semibold text-text">Auto-backup every 6 hours</span> — full JSON export saved to <code className="text-accent bg-accent/10 px-1 rounded">~/.claude/backups/polyglot-db-backup.json</code></p>
+              <p><span className="font-semibold text-text">Auto-backup every 6 hours</span> — an online binary SQLite copy saved to <code className="text-accent bg-accent/10 px-1 rounded">~/.claude/backups/polyglot-db-backup.db</code></p>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-green font-bold shrink-0">3.</span>
@@ -645,8 +645,8 @@ function BackupRecoveryInfo({ dbPath }: { dbPath: string }) {
             <Code>{dbPath}</Code>
           </div>
           <div>
-            <span className="text-[10px] text-text-muted font-semibold">Auto-backup (JSON)</span>
-            <Code>{'~/.claude/backups/polyglot-db-backup.json'}</Code>
+            <span className="text-[10px] text-text-muted font-semibold">Auto-backup (binary SQLite)</span>
+            <Code>{'~/.claude/backups/polyglot-db-backup.db'}</Code>
           </div>
           <div>
             <span className="text-[10px] text-text-muted font-semibold">Original data (migrated)</span>
@@ -680,7 +680,7 @@ function BackupRecoveryInfo({ dbPath }: { dbPath: string }) {
           <div>
             <p className="font-semibold text-text mb-1">If .migrated files are also gone:</p>
             <p className="text-text-secondary mb-2">Restore from the auto-backup or GitHub:</p>
-            <Code>{`# Check backup exists\nls -la ~/.claude/backups/polyglot-db-backup.json\n\n# Or pull from GitHub\ncd ~/.claude && git pull`}</Code>
+            <Code>{`# Check backup exists\nls -la ~/.claude/backups/polyglot-db-backup.db\n\n# Restore it in place\ncp ~/.claude/backups/polyglot-db-backup.db "${dbPath}"\n\n# Or pull from GitHub\ncd ~/.claude && git pull`}</Code>
           </div>
 
           <div>

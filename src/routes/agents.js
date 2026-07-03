@@ -119,7 +119,10 @@ router.get('/global/agents/:name/versions', validateName, rateLimit('read'), (re
   const versions = fs.readdirSync(agentDir).filter(f => f.endsWith('.md')).sort().reverse();
   res.json(versions.map(f => {
     const stat = fs.statSync(path.join(agentDir, f));
-    return { filename: f, timestamp: f.replace('.md', '').replace(/-/g, (m, i) => i > 15 ? '.' : i === 10 ? 'T' : '-') + 'Z', size: stat.size };
+    // Use the file's real mtime for the timestamp. The previous index-math
+    // reconstruction of an ISO string from the snapshot filename produced
+    // malformed output (e.g. "…T19-29.12.623ZZ") that rendered "Invalid Date".
+    return { filename: f, timestamp: stat.mtime.toISOString(), size: stat.size };
   }));
 });
 
@@ -128,6 +131,27 @@ router.get('/global/agents/:name/versions/:ts', validateName, rateLimit('read'),
   const fp = path.join(VERSIONS_DIR, req.params.name, req.params.ts);
   if (!fs.existsSync(fp)) return res.status(404).json({ error: 'Version not found' });
   res.json({ content: fs.readFileSync(fp, 'utf-8') });
+});
+
+// GET /api/global/agents/:name/diff?from=<ts.md>&to=<ts.md|current>
+// Line diff between two snapshots (or a snapshot vs the live file when to=current).
+router.get('/global/agents/:name/diff', validateName, rateLimit('read'), (req, res) => {
+  const { computeLineDiff } = require('../lib/diff');
+  const agentDir = path.join(VERSIONS_DIR, req.params.name);
+  const livePath = path.join(CLAUDE_DIR, 'agents', req.params.name + '.md');
+
+  const readSnap = (ts) => {
+    if (!ts || ts === 'current') return fs.existsSync(livePath) ? fs.readFileSync(livePath, 'utf-8') : '';
+    // Guard against path traversal — only a bare snapshot filename is allowed.
+    if (ts.includes('/') || ts.includes('..')) return null;
+    const fp = path.join(agentDir, ts);
+    return fs.existsSync(fp) ? fs.readFileSync(fp, 'utf-8') : null;
+  };
+
+  const before = readSnap(req.query.from);
+  const after = readSnap(req.query.to || 'current');
+  if (before === null || after === null) return res.status(404).json({ error: 'Version not found' });
+  res.json({ hunks: computeLineDiff(before, after) });
 });
 
 // POST /api/global/agents/:name/rollback/:ts

@@ -73,7 +73,7 @@ function healthIntent(rate: number, healthy: number, degraded: number): HealthIn
   return 'error'
 }
 function healthColor(rate: number, healthy: number, degraded: number): string {
-  const map: Record<HealthIntent, string> = { success: 'text-green', warning: 'text-amber', error: 'text-red' }
+  const map: Record<HealthIntent, string> = { success: 'text-text', warning: 'text-text', error: 'text-red' }
   return map[healthIntent(rate, healthy, degraded)]
 }
 function healthBg(rate: number, healthy: number, degraded: number): string {
@@ -123,7 +123,7 @@ export default function Dashboard() {
   const runsRes = resource(`analytics/runs:${runsLimit}`, () => getAnalyticsRuns({ limit: runsLimit }))
   const summaryRes = resource('analytics/summary', getAnalyticsSummary)
   const schedulesRes = resource('schedules', getSchedules)
-  const savingsRes = resource('routing/savings', () => getRoutingSavings().catch(() => null))
+  const savingsRes = resource('routing/savings', () => getRoutingSavings().catch((err) => { console.error('[dashboard] routing savings load failed:', err?.message || err); return null }))
   const registryRes = resource(CacheKeys.hrRegistry, getHrRegistry)
 
   const [runs, setRuns] = useState<AgentRunEntry[]>(() => runsRes.getState().data?.runs ?? [])
@@ -392,7 +392,7 @@ export default function Dashboard() {
               {savings.savings > 0 && (
                 <div className="flex items-center gap-1.5 bg-green-muted border border-green/20 rounded-lg px-2.5 py-1.5">
                   <TrendingUp className="w-3 h-3 text-green" />
-                  <span className="text-[11px] font-semibold text-green">{savings.savings}% saved via routing</span>
+                  <span className="text-[11px] font-semibold text-text">{savings.savings}% saved via routing</span>
                 </div>
               )}
               <div className="flex items-center gap-1 text-[10px] text-text-muted">
@@ -591,7 +591,7 @@ function RunDetailPanel({ run, onClose }: { run: AgentRunEntry; onClose: () => v
                 <h3 id={titleId} className="text-base font-bold truncate">{run.agentName}</h3>
               </div>
               <div className="flex items-center gap-2 mt-2">
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${run.status === 'success' ? 'bg-green-muted text-green' : 'bg-red-muted text-red'}`}>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${run.status === 'success' ? 'bg-green-muted text-text' : 'bg-red-muted text-text'}`}>
                   {run.status}
                 </span>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${SOURCE_COLORS[run.source] || 'bg-surface-2 text-text-muted'}`}>
@@ -662,7 +662,7 @@ function RunDetailPanel({ run, onClose }: { run: AgentRunEntry; onClose: () => v
             {run.status === 'error' && run.error ? (
               <div>
                 <h4 className="text-[10px] text-red font-bold mb-1.5">Error</h4>
-                <pre className="max-h-60 overflow-auto bg-red-muted border border-red/20 rounded-lg p-3 text-[11px] font-mono whitespace-pre-wrap break-words text-red">
+                <pre className="max-h-60 overflow-auto bg-red-muted border border-red/20 rounded-lg p-3 text-[11px] font-mono whitespace-pre-wrap break-words text-text">
                   {run.error}
                 </pre>
               </div>
@@ -747,7 +747,7 @@ function GetStartedHero({
               </div>
               <p className="text-[11px] text-text-muted leading-relaxed flex-1">{s.body}</p>
               <span className={`mt-3 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold ${
-                s.done ? 'bg-green/10 text-green' : 'bg-text text-surface hover:opacity-90'
+                s.done ? 'bg-green/10 text-text' : 'bg-text text-surface hover:opacity-90'
               } transition-opacity`}>
                 {s.done ? <>Done <CheckCircle className="w-3 h-3" /></> : <>Start <ArrowRight className="w-3 h-3" /></>}
               </span>

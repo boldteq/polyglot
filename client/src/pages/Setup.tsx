@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   CheckCircle, XCircle, RefreshCw, Package, Bot, Zap,
   AlertTriangle, Info, ChevronDown, ChevronRight,
@@ -130,7 +131,7 @@ function CodeBlock({ code, lang = 'bash' }: { code: string; lang?: string }) {
       <button onClick={copy} aria-label="Copy code to clipboard" className="btn-secondary btn-sm absolute top-2 right-2 opacity-0 group-hover:opacity-100">
         {copied ? 'Copied!' : 'Copy'}
       </button>
-      <span className="absolute bottom-2 right-2 text-[10px] text-text-muted/40 font-mono">{lang}</span>
+      <span className="absolute bottom-2 right-2 text-[10px] text-text-muted font-mono">{lang}</span>
     </div>
   )
 }
@@ -313,22 +314,20 @@ export default function Setup() {
             <StatusCard
               icon={Bot}
               title="Global Agents"
-              status={(status?.agentCount ?? 0) >= 12 ? 'ok' : (status?.agentCount ?? 0) > 0 ? 'warn' : 'error'}
+              status={(status?.agentCount ?? 0) > 0 ? 'ok' : 'error'}
               statusLabel={
                 (status?.agentCount ?? 0) > 0
-                  ? `${status?.agentCount} / 12 agents loaded`
+                  ? `${status?.agentCount} agents loaded`
                   : 'No agents found'
               }
               detail="~/.claude/agents/"
               note={
-                (status?.agentCount ?? 0) >= 12
-                  ? 'All 12 global agents are loaded and available in every Claude Code session.'
-                  : (status?.agentCount ?? 0) > 0
-                  ? `Only ${status?.agentCount} agents found. Expected 12 — some may be missing.`
+                (status?.agentCount ?? 0) > 0
+                  ? `${status?.agentCount} global agents are loaded and available in every Claude Code session.`
                   : 'No agent files found. Agents are not available.'
               }
-              action={(status?.agentCount ?? 0) < 12 ? (
-                <CodeBlock code={`ls ~/.claude/agents/\n# Expected: arya.md bolt.md hawk.md koda.md luna.md\n#           mira.md nova.md quill.md yash.md riko.md sage.md vex.md`} />
+              action={(status?.agentCount ?? 0) === 0 ? (
+                <CodeBlock code={`ls ~/.claude/agents/\n# No agent .md files were found in this directory.`} />
               ) : undefined}
             />
 
@@ -381,7 +380,7 @@ export default function Setup() {
           <div className="bg-surface border border-border rounded-xl p-8 text-center">
             <Folder className="w-8 h-8 text-text-muted mx-auto mb-2" />
             <p className="text-sm text-text-secondary font-medium">No projects found</p>
-            <p className="text-xs text-text-muted mt-1">Add project directories in <a href="/settings" className="text-accent hover:underline">Settings</a>.</p>
+            <p className="text-xs text-text-muted mt-1">Add project directories in <Link to="/settings" className="text-accent hover:underline">Settings</Link>.</p>
           </div>
         ) : (
           <div className="bg-surface border border-border rounded-xl overflow-hidden">
@@ -454,7 +453,7 @@ export default function Setup() {
           <div className="bg-surface border border-border rounded-xl p-8 text-center">
             <Folder className="w-8 h-8 text-text-muted mx-auto mb-2" />
             <p className="text-sm text-text-secondary font-medium">No projects found</p>
-            <p className="text-xs text-text-muted mt-1">Add project directories in <a href="/settings" className="text-accent hover:underline">Settings</a>.</p>
+            <p className="text-xs text-text-muted mt-1">Add project directories in <Link to="/settings" className="text-accent hover:underline">Settings</Link>.</p>
           </div>
         ) : (
           <div className="bg-surface border border-border rounded-xl overflow-hidden">

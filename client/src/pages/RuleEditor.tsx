@@ -119,7 +119,7 @@ export default function RuleEditor({ scope = 'project' }: RuleEditorProps) {
           <button
             onClick={async () => {
               if (dirty && !(await confirmDialog({ title: 'Discard unsaved changes?', message: 'You have unsaved changes that will be lost if you leave.', danger: true, confirmLabel: 'Leave' }))) return
-              navigate(isGlobal ? '/rules' : `/workspace/saas/${projectId}`)
+              navigate(isGlobal ? '/settings?tab=commands' : `/workspace/saas/${projectId}`)
             }}
             aria-label="Go back"
             className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"

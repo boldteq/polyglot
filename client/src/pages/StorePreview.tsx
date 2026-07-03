@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, MessageSquarePlus, ExternalLink, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, MessageSquarePlus, ExternalLink, CheckCircle2, FileStack } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import { ErrorState } from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
 import { Spinner } from '../components/Skeleton'
 import { getShopifyProject, requestPageRevision, type ProjectPage, type ProjectRevision, type ClientProject } from '../lib/api'
 import { toast } from '../components/Toast'
@@ -46,6 +47,13 @@ export default function StorePreview() {
         <ErrorState message={error} onRetry={load} />
       ) : !data ? (
         <Spinner />
+      ) : data.pages.length === 0 ? (
+        <EmptyState
+          icon={FileStack}
+          title="No pages generated yet"
+          description="The build pipeline hasn't produced any pages for this store yet. Pages appear here as the build runs."
+          card
+        />
       ) : (
         <div className="space-y-6">
           {/* pages */}

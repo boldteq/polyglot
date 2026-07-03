@@ -1,7 +1,7 @@
-import React, { Suspense, useState } from 'react'
+import React, { Suspense, useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext'
-import { Sparkles, X } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import ErrorBoundary from './components/ErrorBoundary'
 import Sidebar from './components/Sidebar'
 import WorkspaceShell from './components/WorkspaceShell'
@@ -28,7 +28,13 @@ const CommandEditor = React.lazy(() => import('./pages/CommandEditor'))
 const RuleEditor    = React.lazy(() => import('./pages/RuleEditor'))
 const ProjectDetail = React.lazy(() => import('./pages/ProjectDetail'))
 const SettingsHub   = React.lazy(() => import('./pages/SettingsHub'))
-const AnalyticsHub  = React.lazy(() => import('./pages/AnalyticsHub'))
+const Monitoring    = React.lazy(() => import('./pages/AnalyticsHub'))
+const Tracing       = React.lazy(() => import('./pages/Tracing'))
+const TraceView     = React.lazy(() => import('./pages/TraceView'))
+const Prompts       = React.lazy(() => import('./pages/Prompts'))
+const Datasets      = React.lazy(() => import('./pages/Datasets'))
+const Evaluators    = React.lazy(() => import('./pages/Evaluators'))
+const ContextHub    = React.lazy(() => import('./pages/ContextHub'))
 const SchedulesHub  = React.lazy(() => import('./pages/SchedulesHub'))
 const SystemHealth  = React.lazy(() => import('./pages/SystemHealth'))
 const Orchestration = React.lazy(() => import('./pages/Orchestration'))
@@ -52,6 +58,7 @@ const WorkspaceStudio = React.lazy(() => import('./pages/WorkspaceStudio'))
 const Shopify = React.lazy(() => import('./pages/Shopify'))
 const StorePreview = React.lazy(() => import('./pages/StorePreview'))
 const Sales = React.lazy(() => import('./pages/Sales'))
+const DesignLibrary = React.lazy(() => import('./pages/DesignLibrary'))
 
 // Minimal page-level spinner shown while lazy chunk loads
 function PageLoader() {
@@ -76,10 +83,21 @@ function ProjectsRedirect() {
   return <Navigate to={`/workspace/saas${loc.pathname.replace(/^\/projects/, '')}${loc.search}`} replace />
 }
 
+// Analytics → split between the new Tracing (per-run) and Monitoring (aggregate)
+// surfaces. The old ?tab=runs deep link maps to Tracing; everything else keeps
+// its tab under Monitoring.
+function AnalyticsRedirect() {
+  const loc = useLocation()
+  const tab = new URLSearchParams(loc.search).get('tab')
+  if (tab === 'runs') return <Navigate to="/tracing" replace />
+  return <Navigate to={`/monitoring${tab ? `?tab=${tab}` : ''}`} replace />
+}
+
 // Reflect the current route in document.title so browser tabs + history entries
 // are distinguishable instead of every page reading a static "Polyglot".
 const TITLE_ALIASES: Record<string, string> = {
   '': 'Dashboard', global: 'Agents', docs: 'Documentation', hr: 'HR', workspace: 'Workspace',
+  'context-hub': 'Context Hub',
 }
 function RouteTitle() {
   const { pathname } = useLocation()
@@ -95,6 +113,25 @@ function RouteTitle() {
 export default function App() {
   const { refetch } = useApi(getProjects, [], CacheKeys.projects)
   const [aiOpen, setAiOpen] = useState(false)
+
+  // Open the AI assistant from anywhere: ⌘J / Ctrl+J, or a `polyglot:open-ai`
+  // custom event (dispatched by the command palette). The panel itself lives
+  // always-mounted below so background generations survive it being closed.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault()
+        setAiOpen((v) => !v)
+      }
+    }
+    const onOpen = () => setAiOpen(true)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('polyglot:open-ai', onOpen)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('polyglot:open-ai', onOpen)
+    }
+  }, [])
 
   return (
     <ThemeProvider>
@@ -118,6 +155,7 @@ export default function App() {
               <Route path="/saas/:projectId/chat" element={<ProjectChat />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/lens" element={<Lens />} />
+              <Route path="/design-library" element={<DesignLibrary />} />
               <Route path="/projects" element={<Navigate to="/workspace" replace />} />
               <Route path="*" element={<Navigate to="/workspace" replace />} />
             </Routes>
@@ -143,7 +181,10 @@ export default function App() {
             {/* Core pages — sidebar items */}
             <Route path="/" element={<Dashboard />} />
             <Route path="/agents" element={<AllAgents />} />
-            <Route path="/orchestration" element={<Orchestration />} />
+            {/* Studio = the React Flow DAG builder (renamed from Orchestration) */}
+            <Route path="/studio" element={<Orchestration />} />
+            <Route path="/orchestration" element={<Navigate to="/studio" replace />} />
+            <Route path="/prompts" element={<Prompts />} />
             <Route path="/playground" element={<Playground />} />
             {/* Sales moved into Workspace ("Client Work"); Build removed (the
                 project-scoped Build button + Studio cover it). Old links redirect. */}
@@ -152,7 +193,17 @@ export default function App() {
             <Route path="/lens" element={<Navigate to="/workspace/lens" replace />} />
             <Route path="/shopify" element={<Shopify />} />
             <Route path="/shopify/:id" element={<StorePreview />} />
-            <Route path="/analytics" element={<AnalyticsHub />} />
+            {/* Observe — Tracing (per-run tree) + Monitoring (aggregate) */}
+            <Route path="/tracing" element={<Tracing />} />
+            <Route path="/tracing/:runId" element={<TraceView />} />
+            <Route path="/monitoring" element={<Monitoring />} />
+            <Route path="/analytics" element={<AnalyticsRedirect />} />
+            {/* Evaluate */}
+            <Route path="/datasets" element={<Datasets />} />
+            <Route path="/evaluators" element={<Evaluators />} />
+            {/* Context Hub (promoted from Settings → Memory) */}
+            <Route path="/context-hub" element={<ContextHub />} />
+            <Route path="/memory" element={<Navigate to="/context-hub" replace />} />
             <Route path="/org-chart" element={<OrgChart />} />
             <Route path="/schedules" element={<SchedulesHub />} />
             <Route path="/system" element={<SystemHealth />} />
@@ -171,8 +222,10 @@ export default function App() {
             {/* Power-user pages */}
             <Route path="/hr" element={<HrPage />} />
             <Route path="/logs" element={<LogsPage />} />
-            <Route path="/learning" element={<LearningInbox />} />
-            <Route path="/governance" element={<Navigate to="/analytics?tab=governance" replace />} />
+            {/* Annotation Queue = the human review/labeling inbox (renamed from Learning) */}
+            <Route path="/annotation" element={<LearningInbox />} />
+            <Route path="/learning" element={<Navigate to="/annotation" replace />} />
+            <Route path="/governance" element={<Navigate to="/monitoring?tab=governance" replace />} />
             <Route path="/goals" element={<GoalCascadePage />} />
             <Route path="/setup" element={<Setup />} />
             <Route path="/docs" element={<Documentation />} />
@@ -198,23 +251,23 @@ export default function App() {
       <BuildHost />
       <PublishHost />
 
-      {/* AI assistant */}
-      {aiOpen && (
-        <div className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-sm flex items-end justify-end p-6">
-          <div className="w-[480px] max-w-full bg-surface border border-border rounded-2xl shadow-pop flex flex-col max-h-[80vh]">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-              <span className="text-sm font-semibold flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-accent" /> AI Assistant
-              </span>
-              <button onClick={() => setAiOpen(false)} aria-label="Close AI assistant" className="text-text-muted hover:text-text">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <AiAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
-            </div>
-          </div>
-        </div>
+      {/* AI assistant — always mounted (renders its own full-screen overlay +
+          slide-in panel, toggled by `open`) so a background generation survives
+          the panel being closed. Opened via the floating button, ⌘J, or the
+          command palette's "Ask Claude" action. */}
+      <AiAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
+
+      {/* Floating trigger — hidden while the panel is open to avoid overlap */}
+      {!aiOpen && (
+        <button
+          onClick={() => setAiOpen(true)}
+          aria-label="Open AI assistant (⌘J)"
+          title="Ask Claude — ⌘J"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-full bg-accent text-white shadow-pop hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span className="text-sm font-medium">Ask Claude</span>
+        </button>
       )}
     </BrowserRouter>
     </ThemeProvider>

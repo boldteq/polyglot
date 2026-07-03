@@ -29,6 +29,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import type { MemoryNode, MemorySearchResult, MemoryStats, MemoryFrontmatter, IntelHit } from '../lib/api'
+import { confirmDialog } from '../lib/confirm'
 import {
   getMemoryTree,
   getMemoryFile,
@@ -926,7 +927,7 @@ export default function Memory() {
   const handleSelectFile = useCallback(
     async (filePath: string) => {
       if (dirty) {
-        const confirmed = window.confirm('You have unsaved changes. Discard them?')
+        const confirmed = await confirmDialog({ title: 'Discard unsaved changes?', message: 'You have unsaved changes that will be lost if you switch files.', danger: true, confirmLabel: 'Discard' })
         if (!confirmed) return
       }
       setSelectedPath(filePath)
@@ -1518,7 +1519,7 @@ function SemanticSearchModal({ onClose }: { onClose: () => void }) {
                     <span className="text-[11px] font-semibold truncate">{r.heading_path || r.title || r.source_ref}</span>
                   </div>
                   <p className="text-[11px] text-text-muted line-clamp-3 whitespace-pre-wrap">{r.text.slice(0, 280)}</p>
-                  <p className="text-[9px] text-text-muted/70 font-mono mt-1 truncate">{r.source_ref}</p>
+                  <p className="text-[9px] text-text-muted font-mono mt-1 truncate">{r.source_ref}</p>
                 </div>
               ))}
             </div>
@@ -1618,7 +1619,7 @@ function DeleteConfirmDialog({
               disabled={busy}
               autoFocus
               placeholder={requiredText}
-              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red/50 focus:ring-2 focus:ring-red/10 placeholder:text-text-muted/40 disabled:opacity-50"
+              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red/50 focus:ring-2 focus:ring-red/10 placeholder:text-text-muted disabled:opacity-50"
             />
           </div>
         </div>

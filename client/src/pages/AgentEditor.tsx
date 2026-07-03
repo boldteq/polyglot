@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Save, ArrowLeft, RotateCcw, AlertCircle, Code, Eye,
   Bot, Cpu, Wrench, FileText, Tag, LayoutTemplate, GraduationCap, FolderOpen,
+  History, X, Loader2,
 } from 'lucide-react'
 import { confirmDialog } from '../lib/confirm'
 import {
@@ -13,6 +14,12 @@ import {
   getTemplates,
   getTraining,
   getCategories,
+  getAgentVersions,
+  getAgentDiff,
+  rollbackAgent,
+  apiError,
+  type AgentVersion,
+  type DiffHunk,
 } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
@@ -110,6 +117,37 @@ export default function AgentEditor({ scope }: Props) {
   // Source text for source mode
   const [sourceText, setSourceText] = useState('')
 
+  // Version history (global agents only — snapshots taken server-side on save)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [versions, setVersions] = useState<AgentVersion[]>([])
+  const [versionsLoading, setVersionsLoading] = useState(false)
+  const [versionsError, setVersionsError] = useState<string | null>(null)
+  const [diffVersion, setDiffVersion] = useState<AgentVersion | null>(null)
+  const [diffHunks, setDiffHunks] = useState<DiffHunk[] | null>(null)
+  const [diffLoading, setDiffLoading] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+
+  const loadVersions = useCallback(() => {
+    if (scope !== 'global' || !name) return
+    setVersionsLoading(true)
+    setVersionsError(null)
+    getAgentVersions(name)
+      .then(setVersions)
+      .catch(err => { setVersionsError(err instanceof Error ? err.message : 'Failed to load history'); apiError('Load agent versions', err) })
+      .finally(() => setVersionsLoading(false))
+  }, [scope, name])
+
+  const openDiff = useCallback((v: AgentVersion) => {
+    if (!name) return
+    setDiffVersion(v)
+    setDiffHunks(null)
+    setDiffLoading(true)
+    getAgentDiff(name, v.filename, 'current')
+      .then(r => setDiffHunks(r.hunks))
+      .catch(err => { setDiffHunks([]); apiError('Load agent diff', err) })
+      .finally(() => setDiffLoading(false))
+  }, [name])
+
   useEffect(() => {
     const load = async () => {
       setLoading(true)
@@ -169,6 +207,32 @@ export default function AgentEditor({ scope }: Props) {
     setBody(parsed.body)
     setSourceText(originalContent)
     setDirty(false)
+  }
+
+  const handleRestore = async (v: AgentVersion) => {
+    if (!name) return
+    const msg = dirty
+      ? 'You have UNSAVED edits that will be discarded (they are not snapshotted). The currently saved file is snapshotted first, then replaced with this version.'
+      : 'The current agent will be snapshotted first, then replaced with this version. You can undo by restoring the snapshot.'
+    if (!(await confirmDialog({ title: 'Restore this version?', message: msg, danger: dirty, confirmLabel: 'Restore' }))) return
+    setRestoring(true)
+    try {
+      await rollbackAgent(name, v.filename)
+      // Reload the live file into the editor + refresh history.
+      const agent = await getGlobalAgent(name)
+      setOriginalContent(agent.raw)
+      const parsed = parseFrontmatter(agent.raw)
+      setMeta(parsed.meta); setBody(parsed.body); setSourceText(agent.raw)
+      setDirty(false)
+      setDiffVersion(null)
+      loadVersions()
+      toast('success', 'Version restored')
+      window.dispatchEvent(new Event('polyglot:file-applied'))
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to restore')
+    } finally {
+      setRestoring(false)
+    }
   }
 
   const updateMeta = (key: string, value: string) => {
@@ -295,6 +359,42 @@ export default function AgentEditor({ scope }: Props) {
             </button>
           </div>
 
+          {scope === 'global' && (
+            <div className="relative">
+              <button
+                onClick={() => { const next = !historyOpen; setHistoryOpen(next); if (next) loadVersions() }}
+                aria-haspopup="true"
+                aria-expanded={historyOpen}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs text-text-secondary hover:text-text rounded-lg hover:bg-surface-2 transition-colors"
+              >
+                <History className="w-3.5 h-3.5" /> History
+              </button>
+              {historyOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setHistoryOpen(false)} aria-hidden="true" />
+                  <div className="absolute right-0 top-full mt-1 w-80 max-h-96 overflow-y-auto bg-surface border border-border rounded-xl shadow-pop z-40 py-1">
+                    <div className="px-3 py-2 text-[10px] font-semibold text-text-muted uppercase tracking-wide border-b border-border-subtle">Version history</div>
+                    {versionsLoading ? (
+                      <div className="px-3 py-6 text-center text-text-muted text-xs"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
+                    ) : versionsError ? (
+                      <div className="px-3 py-4 text-xs text-red">{versionsError}</div>
+                    ) : versions.length === 0 ? (
+                      <div className="px-3 py-6 text-center text-text-muted text-xs">No saved versions yet. Versions are snapshotted each time you save.</div>
+                    ) : versions.map(v => (
+                      <button
+                        key={v.filename}
+                        onClick={() => { setHistoryOpen(false); openDiff(v) }}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-surface-2 transition-colors"
+                      >
+                        <span className="text-text truncate">{new Date(v.timestamp).toLocaleString()}</span>
+                        <span className="text-[10px] text-text-muted shrink-0">{(v.size / 1024).toFixed(1)} KB</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {dirty && (
             <button onClick={handleReset} className="flex items-center gap-1.5 px-3 py-2 text-xs text-text-secondary hover:text-text rounded-lg hover:bg-surface-2 transition-colors">
               <RotateCcw className="w-3.5 h-3.5" /> Reset
@@ -518,8 +618,8 @@ export default function AgentEditor({ scope }: Props) {
                   <label className="text-xs font-medium text-text-muted block mb-1.5">
                     <span className="flex items-center gap-1.5"><GraduationCap className="w-3 h-3" /> Training</span>
                   </label>
-                  <a
-                    href={`/agents/${name}/training`}
+                  <Link
+                    to={`/agents/${name}/training`}
                     className="flex items-center justify-between w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-sm hover:border-accent/30 transition-colors"
                   >
                     <span className="text-text-secondary">
@@ -532,7 +632,7 @@ export default function AgentEditor({ scope }: Props) {
                         {activeCorrections.length}
                       </span>
                     )}
-                  </a>
+                  </Link>
                 </div>
 
                 {/* Extra frontmatter fields */}
@@ -578,6 +678,51 @@ export default function AgentEditor({ scope }: Props) {
           </div>
         )}
       </div>
+
+      {/* Version diff drawer */}
+      {diffVersion && (
+        <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Version diff">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDiffVersion(null)} aria-hidden="true" />
+          <div className="relative w-full max-w-2xl h-full bg-surface border-l border-border shadow-pop flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold flex items-center gap-2"><History className="w-4 h-4 text-accent" /> Compare with current</h2>
+                <p className="text-xs text-text-muted mt-0.5 truncate">{new Date(diffVersion.timestamp).toLocaleString()} → now</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => handleRestore(diffVersion)} disabled={restoring} className="btn-secondary btn-sm">
+                  {restoring ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />} Restore this version
+                </button>
+                <button onClick={() => setDiffVersion(null)} aria-label="Close diff" className="p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-2">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed">
+              {diffLoading ? (
+                <div className="flex items-center justify-center h-32 text-text-muted"><Loader2 className="w-5 h-5 animate-spin" /></div>
+              ) : !diffHunks || diffHunks.length === 0 ? (
+                <p className="text-text-muted text-center py-10 font-sans">No differences — this version is identical to the current file.</p>
+              ) : (
+                diffHunks.map((h, i) => (
+                  <div key={i} className="mb-4">
+                    <div className="text-[10px] text-text-muted mb-1 font-sans">Line {h.line}</div>
+                    {h.removed.map((line, j) => (
+                      <div key={`r${j}`} className="bg-red/10 text-red px-2 py-0.5 whitespace-pre-wrap break-words"><span className="select-none opacity-60">- </span>{line || ' '}</div>
+                    ))}
+                    {h.added.map((line, j) => (
+                      <div key={`a${j}`} className="bg-green/10 text-green px-2 py-0.5 whitespace-pre-wrap break-words"><span className="select-none opacity-60">+ </span>{line || ' '}</div>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="px-5 py-2.5 border-t border-border text-[10px] text-text-muted shrink-0 font-sans">
+              <span className="text-red">Red</span> = in this old version · <span className="text-green">Green</span> = in the current file
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={richGuardOpen}

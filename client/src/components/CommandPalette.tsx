@@ -29,14 +29,22 @@ export default function CommandPalette() {
 
   // Static navigation items
   const staticItems: CommandItem[] = useMemo(() => [
-    // Core
+    // Build
     { id: 'dashboard', label: 'Dashboard', category: 'Pages', icon: LayoutDashboard, action: () => go('/') },
     { id: 'agents', label: 'All Agents', category: 'Pages', icon: Bot, action: () => go('/agents'), keywords: 'agent list manage' },
-    { id: 'orchestration', label: 'Orchestration', category: 'Pages', icon: Sparkles, action: () => go('/orchestration'), keywords: 'pipeline dag workflow' },
+    { id: 'studio', label: 'Studio', category: 'Pages', icon: Sparkles, action: () => go('/studio'), keywords: 'orchestration pipeline dag workflow graph' },
+    { id: 'ask-claude', label: 'Ask Claude', category: 'Actions', icon: Sparkles, action: () => { window.dispatchEvent(new Event('polyglot:open-ai')); setOpen(false) }, keywords: 'ai assistant chat help ⌘j cmd j' },
     { id: 'playground', label: 'Playground', category: 'Pages', icon: FlaskConical, action: () => go('/playground'), keywords: 'test run agent' },
-    { id: 'analytics', label: 'Analytics', category: 'Pages', icon: BarChart3, action: () => go('/analytics'), keywords: 'cost tokens usage stats overview' },
-    { id: 'runs', label: 'Run History', category: 'Pages', icon: Activity, action: () => go('/analytics?tab=runs'), keywords: 'history logs' },
-    { id: 'health', label: 'Agent Health', category: 'Pages', icon: Activity, action: () => go('/analytics?tab=health'), keywords: 'health performance' },
+    { id: 'prompts', label: 'Prompts', category: 'Pages', icon: FileText, action: () => go('/prompts'), keywords: 'system prompt agent edit version' },
+    { id: 'context-hub', label: 'Context Hub', category: 'Pages', icon: Brain, action: () => go('/context-hub'), keywords: 'memory knowledge notes brain' },
+    // Observe
+    { id: 'tracing', label: 'Tracing', category: 'Pages', icon: Activity, action: () => go('/tracing'), keywords: 'runs trace history logs spans' },
+    { id: 'monitoring', label: 'Monitoring', category: 'Pages', icon: BarChart3, action: () => go('/monitoring'), keywords: 'analytics cost tokens usage stats overview' },
+    { id: 'health', label: 'Agent Health', category: 'Pages', icon: Activity, action: () => go('/monitoring?tab=health'), keywords: 'health performance' },
+    // Evaluate
+    { id: 'datasets', label: 'Datasets & Experiments', category: 'Pages', icon: BarChart3, action: () => go('/datasets'), keywords: 'golden cases experiments compare' },
+    { id: 'evaluators', label: 'Evaluators', category: 'Pages', icon: ShieldCheck, action: () => go('/evaluators'), keywords: 'judge rubric score quality' },
+    { id: 'annotation', label: 'Annotation Queue', category: 'Pages', icon: Activity, action: () => go('/annotation'), keywords: 'learning review label inbox' },
     { id: 'org-chart', label: 'Org Chart', category: 'Pages', icon: Users, action: () => go('/org-chart'), keywords: 'hierarchy pipeline agents' },
     { id: 'schedules', label: 'Schedules', category: 'Pages', icon: Clock, action: () => go('/schedules'), keywords: 'cron timer automatic' },
     { id: 'webhooks', label: 'Webhooks', category: 'Pages', icon: Globe, action: () => go('/schedules?tab=webhooks'), keywords: 'trigger external event' },
@@ -46,7 +54,6 @@ export default function CommandPalette() {
     { id: 'commands', label: 'Commands', category: 'Config', icon: Terminal, action: () => go('/settings?tab=commands'), keywords: 'slash command' },
     { id: 'rules', label: 'Rules', category: 'Config', icon: ShieldCheck, action: () => go('/settings?tab=commands'), keywords: 'guard constraint' },
     { id: 'templates', label: 'Templates', category: 'Config', icon: LayoutTemplate, action: () => go('/settings?tab=templates') },
-    { id: 'memory', label: 'Memory Brain', category: 'Config', icon: Brain, action: () => go('/settings?tab=memory'), keywords: 'knowledge notes' },
     { id: 'backup', label: 'Backup', category: 'Config', icon: Settings, action: () => go('/settings?tab=backup'), keywords: 'github cloud' },
     { id: 'database', label: 'Database', category: 'Config', icon: Settings, action: () => go('/settings?tab=database'), keywords: 'sqlite tables query sql' },
     { id: 'memory-history', label: 'Memory History', category: 'Config', icon: Activity, action: () => go('/memory/history') },
@@ -61,9 +68,9 @@ export default function CommandPalette() {
   useEffect(() => {
     if (!open) return
     Promise.all([
-      getUnifiedAgents().catch(() => []),
-      getSchedules().catch(() => []),
-      getWebhooks().catch(() => []),
+      getUnifiedAgents().catch((err) => { console.error('[command-palette] agents load failed:', err?.message || err); return [] }),
+      getSchedules().catch((err) => { console.error('[command-palette] schedules load failed:', err?.message || err); return [] }),
+      getWebhooks().catch((err) => { console.error('[command-palette] webhooks load failed:', err?.message || err); return [] }),
     ]).then(([agents, schedules, webhooks]) => {
       const items: CommandItem[] = []
       for (const a of agents) {

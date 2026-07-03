@@ -153,7 +153,7 @@ export default function TemplateEditor() {
       <div className="p-8 flex flex-col items-center justify-center h-64 gap-3">
         <AlertCircle className="w-8 h-8 text-red" />
         <p className="text-red font-medium">{loadError}</p>
-        <button onClick={() => navigate('/templates')} className="text-sm text-accent hover:underline">
+        <button onClick={() => navigate('/settings?tab=templates')} className="text-sm text-accent hover:underline">
           Go back
         </button>
       </div>
@@ -168,7 +168,7 @@ export default function TemplateEditor() {
           <button
             onClick={async () => {
               if (dirty && !(await confirmDialog({ title: 'Discard unsaved changes?', message: 'You have unsaved changes that will be lost if you leave.', danger: true, confirmLabel: 'Leave' }))) return
-              navigate('/templates')
+              navigate('/settings?tab=templates')
             }}
             aria-label="Go back"
             className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"

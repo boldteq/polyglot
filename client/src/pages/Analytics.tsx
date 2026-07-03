@@ -395,7 +395,7 @@ export default function Analytics() {
       <div className="card p-5">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-semibold">Recent runs</h2>
-          <Link to="/analytics" className="text-xs text-accent hover:text-accent-hover flex items-center gap-1">
+          <Link to="/tracing" className="text-xs text-accent hover:text-accent-hover flex items-center gap-1">
             Full history <ArrowRight className="w-3 h-3" />
           </Link>
         </div>

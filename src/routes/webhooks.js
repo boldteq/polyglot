@@ -7,6 +7,7 @@ const os = require('os');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { rateLimit } = require('../middleware/rateLimit');
+const { validateAgentExists } = require('../lib/runClaude');
 const { listAgents } = require('../lib/cache');
 const { topoSort } = require('../lib/graph');
 const db = require('../db');
@@ -113,6 +114,9 @@ router.get('/webhooks/:id/secret', rateLimit('read'), (req, res) => {
 router.post('/webhooks', rateLimit('write'), (req, res) => {
   const { name, agentName, orchestrationId } = req.body;
   if (!name || (!agentName && !orchestrationId)) return res.status(400).json({ error: 'name and either agentName or orchestrationId required' });
+  // Validate the agent at create time (parity with POST /api/schedules) so a
+  // webhook can't persist pointing at a non-existent agent and fail only at fire time.
+  if (agentName && !validateAgentExists(agentName)) return res.status(400).json({ error: `Agent '${agentName}' not found` });
 
   const webhook = {
     id: 'wh_' + genId(),
