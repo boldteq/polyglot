@@ -668,3 +668,9 @@
 [2026-07-03T07:07:50.719Z] cycle 132 verify: kept 15/49 (dropped 34)
 [2026-07-03T07:07:50.963Z] cycle 132 distributed → 4971 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T07:07:50.963Z] cycle 132 reindex: skipped (batched separately)
+[2026-07-03T07:07:51.197Z] cycle 132 ✓ +15 FAQs → 4973/5040 (98.7%) · 14/14 agents trained · committed
+[2026-07-03T07:09:21.232Z] cycle 133: slices [performance-cwv|quiz-finder, edge-cases|quiz-finder, legal-compliance|quiz-finder, forms-validation|quiz-finder, typography|landing-advertorial, performance-cwv|landing-advertorial, forms-validation|landing-advertorial] → generating 49 FAQs (FAQ-4974…)
+[2026-07-03T07:14:02.306Z] cycle 133 verify ANOMALY (kept 6/49) — distrusting critic, keeping all
+[2026-07-03T07:14:02.307Z] cycle 133 verify: kept 49/49 (dropped 0)
+[2026-07-03T07:14:02.469Z] cycle 133 distributed → 5020 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T07:14:02.469Z] cycle 133 reindex: skipped (batched separately)
