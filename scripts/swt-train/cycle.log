@@ -711,3 +711,8 @@
 [2026-07-03T07:59:21.166Z] cycle 140 verify: kept 20/49 (dropped 29)
 [2026-07-03T07:59:21.428Z] cycle 140 distributed → 5242 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T07:59:21.428Z] cycle 140 reindex: skipped (batched separately)
+[2026-07-03T07:59:21.681Z] cycle 140 ✓ +20 FAQs → 5244/5040 (104.0%) · 14/14 agents trained · committed
+[2026-07-03T08:00:51.724Z] cycle 141: slices [motion|bundle-builder, copy-voice|bundle-builder, performance-cwv|bundle-builder, legal-compliance|bundle-builder, nav-ia|bundle-builder, forms-validation|bundle-builder, layout|quiz-finder] → generating 49 FAQs (FAQ-5245…)
+[2026-07-03T08:05:44.170Z] cycle 141 verify: kept 21/49 (dropped 28)
+[2026-07-03T08:05:44.332Z] cycle 141 distributed → 5263 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T08:05:44.332Z] cycle 141 reindex: skipped (batched separately)
