@@ -747,3 +747,9 @@
 [2026-07-03T08:48:46.164Z] cycle 147 verify: kept 20/49 (dropped 29)
 [2026-07-03T08:48:46.330Z] cycle 147 distributed → 5431 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T08:48:46.330Z] cycle 147 reindex: skipped (batched separately)
+[2026-07-03T08:48:46.501Z] cycle 147 ✓ +20 FAQs → 5433/5040 (107.8%) · 14/14 agents trained · committed
+[2026-07-03T08:50:16.541Z] cycle 148: slices [motion|search-empty, data-binding|search-empty, i18n-currency-rtl|search-empty, nav-ia|search-empty, spacing-rhythm|account, copy-voice|account, seo-structured-data|account] → generating 49 FAQs (FAQ-5434…)
+[2026-07-03T08:55:17.988Z] cycle 148 verify ANOMALY (kept 12/49) — distrusting critic, keeping all
+[2026-07-03T08:55:17.990Z] cycle 148 verify: kept 49/49 (dropped 0)
+[2026-07-03T08:55:18.172Z] cycle 148 distributed → 5480 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T08:55:18.172Z] cycle 148 reindex: skipped (batched separately)
