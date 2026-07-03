@@ -803,3 +803,8 @@
 [2026-07-03T10:00:19.972Z] cycle 157 verify: kept 49/49 (dropped 0)
 [2026-07-03T10:00:20.155Z] cycle 157 distributed → 5819 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T10:00:20.155Z] cycle 157 reindex: skipped (batched separately)
+[2026-07-03T10:00:20.340Z] cycle 157 ✓ +49 FAQs → 5821/5040 (115.5%) · 14/14 agents trained · committed
+[2026-07-03T10:01:50.385Z] cycle 158: slices [states-empty-loading-error|landing-advertorial, legal-compliance|landing-advertorial, search-filtering|landing-advertorial, layout|header-nav, typography|header-nav, states-empty-loading-error|header-nav, nav-ia|header-nav] → generating 49 FAQs (FAQ-5822…)
+[2026-07-03T10:07:06.592Z] cycle 158 verify: kept 28/49 (dropped 21)
+[2026-07-03T10:07:06.806Z] cycle 158 distributed → 5847 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T10:07:06.806Z] cycle 158 reindex: skipped (batched separately)
