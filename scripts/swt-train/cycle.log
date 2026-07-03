@@ -584,3 +584,16 @@
 [2026-07-02T21:33:34.872Z] cycle 118 verify: kept 4/7 (dropped 3)
 [2026-07-02T21:33:35.037Z] cycle 118 distributed → 4591 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-02T21:33:35.038Z] cycle 118 reindex: skipped (batched separately)
+[2026-07-02T21:33:35.222Z] cycle 118 ✓ +4 FAQs → 4593/5040 (91.1%) · 14/14 agents trained · committed
+[2026-07-02T21:35:05.241Z] cycle 119: slices [forms-validation|about, i18n-currency-rtl|lookbook, mobile|store-locator, performance-cwv|store-locator, forms-validation|store-locator, legal-compliance|comparison, copy-voice|bundle-builder] → generating 49 FAQs (FAQ-4594…)
+[2026-07-03T00:28:38.438Z] cycle 119 generation FAILED (claude generation failed: timeout after 20min) — failure 1/20; pointer not advanced.
+[2026-07-03T02:05:39.076Z] cycle 119: slices [forms-validation|about, i18n-currency-rtl|lookbook, mobile|store-locator, performance-cwv|store-locator, forms-validation|store-locator, legal-compliance|comparison, copy-voice|bundle-builder] → generating 49 FAQs (FAQ-4594…)
+[2026-07-03T02:25:39.727Z] cycle 119 generation FAILED (claude generation failed: timeout after 20min) — failure 2/20; pointer not advanced.
+[2026-07-03T02:27:09.751Z] cycle 119: slices [forms-validation|about, i18n-currency-rtl|lookbook, mobile|store-locator, performance-cwv|store-locator, forms-validation|store-locator, legal-compliance|comparison, copy-voice|bundle-builder] → generating 49 FAQs (FAQ-4594…)
+[2026-07-03T02:38:08.868Z] cycle 119 generation FAILED (no JSON array in output) — failure 3/20; pointer not advanced.
+[2026-07-03T02:39:38.889Z] cycle 119: slices [forms-validation|about, i18n-currency-rtl|lookbook, mobile|store-locator, performance-cwv|store-locator, forms-validation|store-locator, legal-compliance|comparison, copy-voice|bundle-builder] → generating 49 FAQs (FAQ-4594…)
+[2026-07-03T04:06:31.645Z] cycle 119 generation FAILED (claude generation failed: timeout after 20min) — failure 4/20; pointer not advanced.
+[2026-07-03T04:08:01.664Z] cycle 119: slices [forms-validation|about, i18n-currency-rtl|lookbook, mobile|store-locator, performance-cwv|store-locator, forms-validation|store-locator, legal-compliance|comparison, copy-voice|bundle-builder] → generating 49 FAQs (FAQ-4594…)
+[2026-07-03T04:22:46.022Z] cycle 119 verify: kept 16/49 (dropped 33)
+[2026-07-03T04:22:46.166Z] cycle 119 distributed → 4607 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T04:22:46.166Z] cycle 119 reindex: skipped (batched separately)
