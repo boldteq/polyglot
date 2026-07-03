@@ -706,3 +706,8 @@
 [2026-07-03T07:51:35.723Z] cycle 139 verify: kept 31/49 (dropped 18)
 [2026-07-03T07:51:35.895Z] cycle 139 distributed → 5222 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T07:51:35.895Z] cycle 139 reindex: skipped (batched separately)
+[2026-07-03T07:51:36.248Z] cycle 139 ✓ +31 FAQs → 5224/5040 (103.7%) · 14/14 agents trained · committed
+[2026-07-03T07:53:06.284Z] cycle 140: slices [cro|comparison, honesty-claims|comparison, states-empty-loading-error|comparison, legal-compliance|comparison, merchandising|comparison, imagery-art-direction|bundle-builder, motion|bundle-builder] → generating 49 FAQs (FAQ-5225…)
+[2026-07-03T07:59:21.166Z] cycle 140 verify: kept 20/49 (dropped 29)
+[2026-07-03T07:59:21.428Z] cycle 140 distributed → 5242 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T07:59:21.428Z] cycle 140 reindex: skipped (batched separately)

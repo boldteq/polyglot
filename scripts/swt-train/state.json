@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 139,
-  "batches": 139,
-  "faqCount": 5224,
+  "cyclesRun": 140,
+  "batches": 140,
+  "faqCount": 5244,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -2051,6 +2051,21 @@
         "i18n-currency-rtl|lookbook",
         "states-empty-loading-error|lookbook",
         "legal-compliance|lookbook"
+      ]
+    },
+    {
+      "cycle": 140,
+      "ts": "2026-07-03T07:59:21.204Z",
+      "added": 20,
+      "faqTotal": 5244,
+      "slices": [
+        "cro|comparison",
+        "honesty-claims|comparison",
+        "states-empty-loading-error|comparison",
+        "legal-compliance|comparison",
+        "merchandising|comparison",
+        "imagery-art-direction|bundle-builder",
+        "motion|bundle-builder"
       ]
     }
   ]
