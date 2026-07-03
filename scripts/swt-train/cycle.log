@@ -690,3 +690,8 @@
 [2026-07-03T07:32:48.862Z] cycle 136 verify: kept 24/49 (dropped 25)
 [2026-07-03T07:32:49.050Z] cycle 136 distributed → 5123 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T07:32:49.050Z] cycle 136 reindex: skipped (batched separately)
+[2026-07-03T07:32:49.229Z] cycle 136 ✓ +24 FAQs → 5125/5040 (101.7%) · 14/14 agents trained · committed
+[2026-07-03T07:34:19.278Z] cycle 137: slices [color-contrast|search, states-empty-loading-error|search, edge-cases|gift-card, search-filtering|gift-card, forms-validation|contact, a11y|about, trust-social-proof|about] → generating 49 FAQs (FAQ-5126…)
+[2026-07-03T07:39:46.274Z] cycle 137 verify: kept 19/49 (dropped 30)
+[2026-07-03T07:39:46.438Z] cycle 137 distributed → 5142 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T07:39:46.438Z] cycle 137 reindex: skipped (batched separately)
