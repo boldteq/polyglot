@@ -701,3 +701,8 @@
 [2026-07-03T07:45:39.897Z] cycle 138 verify: kept 49/49 (dropped 0)
 [2026-07-03T07:45:40.081Z] cycle 138 distributed → 5191 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T07:45:40.082Z] cycle 138 reindex: skipped (batched separately)
+[2026-07-03T07:45:40.298Z] cycle 138 ✓ +49 FAQs → 5193/5040 (103.0%) · 14/14 agents trained · committed
+[2026-07-03T07:47:10.334Z] cycle 139: slices [seo-structured-data|faq-page, nav-ia|faq-page, trust-social-proof|lookbook, seo-structured-data|lookbook, i18n-currency-rtl|lookbook, states-empty-loading-error|lookbook, legal-compliance|lookbook] → generating 49 FAQs (FAQ-5194…)
+[2026-07-03T07:51:35.723Z] cycle 139 verify: kept 31/49 (dropped 18)
+[2026-07-03T07:51:35.895Z] cycle 139 distributed → 5222 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T07:51:35.895Z] cycle 139 reindex: skipped (batched separately)

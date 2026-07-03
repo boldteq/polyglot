@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 138,
-  "batches": 138,
-  "faqCount": 5193,
+  "cyclesRun": 139,
+  "batches": 139,
+  "faqCount": 5224,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -2036,6 +2036,21 @@
         "color-contrast|faq-page",
         "motion|faq-page",
         "performance-cwv|faq-page"
+      ]
+    },
+    {
+      "cycle": 139,
+      "ts": "2026-07-03T07:51:35.748Z",
+      "added": 31,
+      "faqTotal": 5224,
+      "slices": [
+        "seo-structured-data|faq-page",
+        "nav-ia|faq-page",
+        "trust-social-proof|lookbook",
+        "seo-structured-data|lookbook",
+        "i18n-currency-rtl|lookbook",
+        "states-empty-loading-error|lookbook",
+        "legal-compliance|lookbook"
       ]
     }
   ]
