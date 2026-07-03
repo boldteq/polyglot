@@ -722,3 +722,8 @@
 [2026-07-03T08:13:21.520Z] cycle 142 verify: kept 49/49 (dropped 0)
 [2026-07-03T08:13:21.685Z] cycle 142 distributed → 5312 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T08:13:21.685Z] cycle 142 reindex: skipped (batched separately)
+[2026-07-03T08:13:21.841Z] cycle 142 ✓ +49 FAQs → 5314/5040 (105.4%) · 14/14 agents trained · committed
+[2026-07-03T08:14:51.874Z] cycle 143: slices [merchandising|landing-advertorial, email-lifecycle|landing-advertorial, layout|header-nav, typography|header-nav, data-binding|header-nav, i18n-currency-rtl|header-nav, edge-cases|header-nav] → generating 49 FAQs (FAQ-5315…)
+[2026-07-03T08:21:09.297Z] cycle 143 verify: kept 33/49 (dropped 16)
+[2026-07-03T08:21:09.493Z] cycle 143 distributed → 5345 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T08:21:09.493Z] cycle 143 reindex: skipped (batched separately)
