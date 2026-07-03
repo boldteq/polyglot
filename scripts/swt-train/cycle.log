@@ -663,3 +663,8 @@
 [2026-07-03T06:59:04.931Z] cycle 131 verify: kept 18/49 (dropped 31)
 [2026-07-03T06:59:05.090Z] cycle 131 distributed → 4956 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T06:59:05.090Z] cycle 131 reindex: skipped (batched separately)
+[2026-07-03T06:59:05.329Z] cycle 131 ✓ +18 FAQs → 4958/5040 (98.4%) · 14/14 agents trained · committed
+[2026-07-03T07:00:35.368Z] cycle 132: slices [forms-validation|store-locator, copy-voice|bundle-builder, i18n-currency-rtl|bundle-builder, merchandising|bundle-builder, nav-ia|bundle-builder, performance-cwv|quiz-finder, edge-cases|quiz-finder] → generating 49 FAQs (FAQ-4959…)
+[2026-07-03T07:07:50.719Z] cycle 132 verify: kept 15/49 (dropped 34)
+[2026-07-03T07:07:50.963Z] cycle 132 distributed → 4971 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T07:07:50.963Z] cycle 132 reindex: skipped (batched separately)
