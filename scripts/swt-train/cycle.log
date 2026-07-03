@@ -742,3 +742,8 @@
 [2026-07-03T08:41:36.319Z] cycle 146 verify: kept 22/49 (dropped 27)
 [2026-07-03T08:41:36.496Z] cycle 146 distributed → 5411 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T08:41:36.496Z] cycle 146 reindex: skipped (batched separately)
+[2026-07-03T08:41:36.681Z] cycle 146 ✓ +22 FAQs → 5413/5040 (107.4%) · 14/14 agents trained · committed
+[2026-07-03T08:43:06.724Z] cycle 147: slices [mobile|home, forms-validation|cart, cro|cart-drawer, data-binding|checkout-reassurance, imagery-art-direction|search, email-lifecycle|search, motion|search-empty] → generating 49 FAQs (FAQ-5414…)
+[2026-07-03T08:48:46.164Z] cycle 147 verify: kept 20/49 (dropped 29)
+[2026-07-03T08:48:46.330Z] cycle 147 distributed → 5431 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T08:48:46.330Z] cycle 147 reindex: skipped (batched separately)
