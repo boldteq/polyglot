@@ -636,3 +636,9 @@
 [2026-07-03T06:18:38.758Z] cycle 126 verify: kept 20/49 (dropped 29)
 [2026-07-03T06:18:40.093Z] cycle 126 distributed → 4769 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T06:18:40.101Z] cycle 126 reindex: skipped (batched separately)
+[2026-07-03T06:18:41.506Z] cycle 126 ✓ +20 FAQs → 4771/5040 (94.7%) · 14/14 agents trained · committed
+[2026-07-03T06:20:11.555Z] cycle 127: slices [email-lifecycle|mega-menu, cro|announcement-bar, edge-cases|announcement-bar, performance-cwv|password-page, states-empty-loading-error|password-page, edge-cases|password-page, email-lifecycle|password-page] → generating 49 FAQs (FAQ-4772…)
+[2026-07-03T06:24:54.510Z] cycle 127 verify ANOMALY (kept 11/49) — distrusting critic, keeping all
+[2026-07-03T06:24:54.511Z] cycle 127 verify: kept 49/49 (dropped 0)
+[2026-07-03T06:24:54.671Z] cycle 127 distributed → 4818 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T06:24:54.672Z] cycle 127 reindex: skipped (batched separately)
