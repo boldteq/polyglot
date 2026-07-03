@@ -769,3 +769,9 @@
 [2026-07-03T09:17:11.196Z] cycle 151 verify: kept 24/49 (dropped 25)
 [2026-07-03T09:17:11.371Z] cycle 151 distributed → 5579 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T09:17:11.371Z] cycle 151 reindex: skipped (batched separately)
+[2026-07-03T09:17:11.544Z] cycle 151 ✓ +24 FAQs → 5581/5040 (110.7%) · 14/14 agents trained · committed
+[2026-07-03T09:18:41.595Z] cycle 152: slices [spacing-rhythm|order-confirmation, honesty-claims|subscription, forms-validation|subscription, typography|gift-card, legal-compliance|gift-card, mobile|contact, edge-cases|contact] → generating 49 FAQs (FAQ-5582…)
+[2026-07-03T09:24:25.835Z] cycle 152 verify ANOMALY (kept 12/49) — distrusting critic, keeping all
+[2026-07-03T09:24:25.837Z] cycle 152 verify: kept 49/49 (dropped 0)
+[2026-07-03T09:24:26.012Z] cycle 152 distributed → 5628 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T09:24:26.012Z] cycle 152 reindex: skipped (batched separately)
