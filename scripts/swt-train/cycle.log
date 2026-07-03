@@ -617,3 +617,8 @@
 [2026-07-03T05:08:28.124Z] cycle 123 verify: kept 29/49 (dropped 20)
 [2026-07-03T05:08:28.290Z] cycle 123 distributed → 4701 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T05:08:28.290Z] cycle 123 reindex: skipped (batched separately)
+[2026-07-03T05:08:28.498Z] cycle 123 ✓ +29 FAQs → 4703/5040 (93.3%) · 14/14 agents trained · committed
+[2026-07-03T05:09:58.526Z] cycle 124: slices [performance-cwv|lookbook, mobile|store-locator, email-lifecycle|store-locator, mobile|bundle-builder, states-empty-loading-error|bundle-builder, edge-cases|bundle-builder, email-lifecycle|bundle-builder] → generating 49 FAQs (FAQ-4704…)
+[2026-07-03T05:22:55.646Z] cycle 124 verify: kept 31/49 (dropped 18)
+[2026-07-03T05:22:55.810Z] cycle 124 distributed → 4732 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T05:22:55.810Z] cycle 124 reindex: skipped (batched separately)
