@@ -792,3 +792,8 @@
 [2026-07-03T09:46:05.412Z] cycle 155 verify: kept 49/49 (dropped 0)
 [2026-07-03T09:46:05.591Z] cycle 155 distributed → 5752 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T09:46:05.591Z] cycle 155 reindex: skipped (batched separately)
+[2026-07-03T09:46:05.768Z] cycle 155 ✓ +49 FAQs → 5754/5040 (114.2%) · 14/14 agents trained · committed
+[2026-07-03T09:47:35.812Z] cycle 156: slices [performance-cwv|store-locator, i18n-currency-rtl|store-locator, a11y|comparison, trust-social-proof|comparison, search-filtering|comparison, mobile|bundle-builder, forms-validation|bundle-builder] → generating 49 FAQs (FAQ-5755…)
+[2026-07-03T09:53:28.465Z] cycle 156 verify: kept 18/49 (dropped 31)
+[2026-07-03T09:53:28.645Z] cycle 156 distributed → 5770 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T09:53:28.645Z] cycle 156 reindex: skipped (batched separately)
