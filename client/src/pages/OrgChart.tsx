@@ -121,9 +121,9 @@ function countActiveTagFilters(f: TagFilters) {
 }
 
 const MODEL_BADGES: Record<string, { label: string; bg: string; text: string; border: string }> = {
-  opus: { label: 'Opus', bg: 'rgba(168,85,247,0.15)', text: '#c084fc', border: 'rgba(168,85,247,0.3)' },
-  sonnet: { label: 'Sonnet', bg: 'rgba(96,165,250,0.15)', text: '#60a5fa', border: 'rgba(96,165,250,0.3)' },
-  haiku: { label: 'Haiku', bg: 'rgba(52,211,153,0.15)', text: '#34d399', border: 'rgba(52,211,153,0.3)' },
+  opus: { label: 'Opus', bg: 'rgba(168,85,247,0.15)', text: 'var(--color-text)', border: 'rgba(168,85,247,0.3)' },
+  sonnet: { label: 'Sonnet', bg: 'rgba(96,165,250,0.15)', text: 'var(--color-text)', border: 'rgba(96,165,250,0.3)' },
+  haiku: { label: 'Haiku', bg: 'rgba(52,211,153,0.15)', text: 'var(--color-text)', border: 'rgba(52,211,153,0.3)' },
 }
 
 // Plain-language meaning of each model tier — shared by the model pills (tooltip)
@@ -335,6 +335,7 @@ function LoadDot({ status, active, max, successRate, lastDispatchAt }: {
   ].filter(Boolean).join(' · ')
   return (
     <span
+      role="img"
       title={tooltip}
       aria-label={tooltip}
       className={`inline-block shrink-0 rounded-full ${pulse ? 'animate-pulse' : ''}`}
@@ -949,7 +950,7 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
         {/* Crown badge — only `tier === 'leadership'` agents reach this card,
             so the badge always reads LEADERSHIP. (Strict leader rule enforced
             in computeDepartmentLayout.) */}
-        <div className="absolute -top-2.5 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber to-yellow text-white shadow-soft">
+        <div className="absolute -top-2.5 left-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber to-yellow text-text shadow-soft">
           <Crown className="w-2.5 h-2.5" />
           <span className="text-[9px] font-bold ">
             Leadership
@@ -1008,10 +1009,10 @@ function OrgLeaderNode({ data, selected }: { data: LeaderNodeData; selected: boo
                 {data.status && data.status !== 'active' && (
                   <span
                     className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap border ${
-                      data.status === 'probation' ? 'bg-amber/15 text-amber border-amber/30' :
+                      data.status === 'probation' ? 'bg-amber/15 text-text border-amber/30' :
                       data.status === 'pip' ? 'bg-red/15 text-red border-red/30' :
-                      data.status === 'pending' ? 'bg-sky/15 text-sky border-sky/30' :
-                      'bg-zinc/10 text-zinc border-zinc/20'
+                      data.status === 'pending' ? 'bg-sky/15 text-text border-sky/30' :
+                      'bg-zinc/10 text-text-secondary border-zinc/20'
                     }`}
                   >
                     {data.status}
@@ -1327,39 +1328,42 @@ function renderMemberRow(
       {indent > 0 && (
         <span
           aria-hidden
-          className="shrink-0 select-none font-mono text-text-muted/60 self-center mr-1"
+          className="shrink-0 select-none font-mono text-text-muted self-center mr-1"
           style={{ fontSize: 12, lineHeight: 1 }}
           title={member.reportsTo ? `Reports to ${member.reportsTo}` : undefined}
         >
           └─
         </span>
       )}
-      {/* Outer row is a div w/ role=button (not <button>) so the nested
-          mentor `↗` button at line ~1450 is valid DOM. Native button cannot
-          contain another button — that triggered React's `<button> cannot
-          contain a nested <button>` warning. */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={(e) => {
-          e.stopPropagation()
-          onSelect(member.id)
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            e.stopPropagation()
-            onSelect(member.id)
-          }
-        }}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group cursor-pointer
+      {/* The row selects the member; the nested mentor `↗` button (below) selects
+          a different member. Both need to be real, independently focusable
+          interactive elements, but an interactive element can never contain
+          another (an axe/WCAG "nested interactive controls" violation, and for
+          a literal <button> also an invalid DOM nesting) — that ruled out
+          wrapping everything in one <button> or one role="button" div (as a
+          prior version did). Instead: a real, invisible, full-cover <button>
+          handles "select member" (native semantics, no manual key handling
+          needed); the visible content stack sits on top with pointer-events
+          disabled so clicks pass through to it, except the mentor button
+          re-enables its own pointer-events. The two buttons end up as true DOM
+          siblings — zero nesting, zero visual change. Mirrors the sibling-not-
+          nested pattern OrgLeaderNode's lock toggle already uses. */}
+      <div className="relative flex-1 group">
+        <button
+          type="button"
+          onClick={() => onSelect(member.id)}
+          aria-label={`Select ${member.name}, ${member.title}`}
+          className="absolute inset-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        />
+        <div
+          className={`relative pointer-events-none w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all
           ${isSelected
             ? 'bg-accent/10 border-accent/50 shadow-card shadow-accent/10 border'
             : isLead
-              ? 'bg-accent/[0.06] border-l-[3px] border-l-accent border-r border-y border-border hover:bg-accent/10 hover:border-l-accent hover:shadow-soft'
+              ? 'bg-accent/[0.06] border-l-[3px] border-l-accent border-r border-y border-border group-hover:bg-accent/10 group-hover:border-l-accent group-hover:shadow-soft'
               : isDotted
-                ? 'bg-surface-2/40 border border-dashed border-border/60 hover:bg-surface-3 hover:border-accent/40'
-                : 'bg-surface-2 border border-border hover:bg-surface-3 hover:border-accent/40 hover:shadow-soft'
+                ? 'bg-surface-2/40 border border-dashed border-border/60 group-hover:bg-surface-3 group-hover:border-accent/40'
+                : 'bg-surface-2 border border-border group-hover:bg-surface-3 group-hover:border-accent/40 group-hover:shadow-soft'
           }`}
         style={{
           height: MEMBER_ROW_HEIGHT,
@@ -1387,7 +1391,7 @@ function renderMemberRow(
             </span>
             {isLead && (
               <span
-                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-accent text-white shrink-0 whitespace-nowrap tracking-wider"
+                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full bg-accent/20 text-text shrink-0 whitespace-nowrap tracking-wider"
                 title="Team lead"
               >
                 Lead
@@ -1395,7 +1399,7 @@ function renderMemberRow(
             )}
             {isDotted && (
               <span
-                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full text-purple border border-purple/40 bg-purple/10 shrink-0 whitespace-nowrap tracking-wider"
+                className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded-full text-text border border-purple/40 bg-purple/10 shrink-0 whitespace-nowrap tracking-wider"
                 title="Dotted-line cross-team support"
               >
                 Dotted
@@ -1451,10 +1455,10 @@ function renderMemberRow(
               {member.status && member.status !== 'active' && (
                 <span
                   className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap border ${
-                    member.status === 'probation' ? 'bg-amber/15 text-amber border-amber/30' :
+                    member.status === 'probation' ? 'bg-amber/15 text-text border-amber/30' :
                     member.status === 'pip' ? 'bg-red/15 text-red border-red/30' :
-                    member.status === 'pending' ? 'bg-sky/15 text-sky border-sky/30' :
-                    'bg-zinc/10 text-zinc border-zinc/20'
+                    member.status === 'pending' ? 'bg-sky/15 text-text border-sky/30' :
+                    'bg-zinc/10 text-text-secondary border-zinc/20'
                   }`}
                 >
                   {member.status}
@@ -1463,11 +1467,8 @@ function renderMemberRow(
               {member.secondaryReportsTo && (
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onSelect(member.secondaryReportsTo as string)
-                  }}
-                  className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap border bg-purple/10 text-purple border-purple/30 hover:bg-purple/25 hover:text-purple hover:border-purple/50 transition-colors cursor-pointer"
+                  onClick={() => onSelect(member.secondaryReportsTo as string)}
+                  className="pointer-events-auto text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 whitespace-nowrap border bg-purple/10 text-text border-purple/30 hover:bg-purple/25 hover:text-text hover:border-purple/50 transition-colors cursor-pointer"
                   title={`Mentor / cross-functional report → ${member.secondaryReportsTo} (click to focus)`}
                 >
                   ↗ {member.secondaryReportsTo}
@@ -1476,6 +1477,7 @@ function renderMemberRow(
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   )
@@ -1668,7 +1670,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
     + (form.tier && form.tier !== 'engineer' ? 1 : 0) + (form.secondaryReportsTo ? 1 : 0)
 
   const sectionHeading = (label: string) => (
-    <div className="text-[10px] text-text-muted/70 font-semibold pt-1 pb-0.5">{label}</div>
+    <div className="text-[10px] text-text-muted font-semibold pt-1 pb-0.5">{label}</div>
   )
 
   return (
@@ -1988,7 +1990,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
         <button
           type="button"
           onClick={() => setShowAdvanced(s => !s)}
-          className="w-full flex items-center justify-between text-[11px] text-text-muted/70 font-semibold hover:text-text-muted transition-colors"
+          className="w-full flex items-center justify-between text-[11px] text-text-muted font-semibold hover:text-text-muted transition-colors"
         >
           <span className="flex items-center gap-1.5">
             <ChevronDown className={`w-3 h-3 transition-transform ${showAdvanced ? 'rotate-180' : '-rotate-90'}`} />
@@ -1997,7 +1999,7 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
               <span className="text-[10px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full">{advancedCount}</span>
             )}
           </span>
-          {!showAdvanced && <span className="text-[10px] text-text-muted/60 normal-case tracking-normal">Sub-dept · Pod · Tier · 2nd reports</span>}
+          {!showAdvanced && <span className="text-[10px] text-text-muted normal-case tracking-normal">Sub-dept · Pod · Tier · 2nd reports</span>}
         </button>
 
         {showAdvanced && (
@@ -2032,12 +2034,12 @@ function OrgSetupForm({ agentId, initial, allNodes, onSaved }: OrgSetupFormProps
                   )}
                 </select>
                 {subDeptUnknown && (
-                  <div className="text-[10px] px-2 py-1 rounded bg-amber/10 text-amber dark:text-amber border border-amber/20">
+                  <div className="text-[10px] px-2 py-1 rounded bg-amber/10 text-text border border-amber/20">
                     ⚠️ '{form.subDepartment}' is not registered in departments.json for {currentDept?.label}. Agent will land in "Other" column. Add it to departments.json or pick a valid value.
                   </div>
                 )}
                 {subDeptHasNoPod && (
-                  <div className="text-[10px] px-2 py-1 rounded bg-amber/10 text-amber dark:text-amber border border-amber/20">
+                  <div className="text-[10px] px-2 py-1 rounded bg-amber/10 text-text border border-amber/20">
                     ⚠️ Sub-dept '{selectedSubDept?.label}' has no `pod` field. Agent may render outside the team card.
                   </div>
                 )}
@@ -2390,11 +2392,11 @@ function AgentRecentTasks({ agentId }: { agentId: string }) {
         <div className="space-y-1.5">
           {items.map((t) => {
             const statusColor =
-              t.status === 'completed' ? 'text-emerald bg-emerald/10 border-emerald/30' :
+              t.status === 'completed' ? 'text-text bg-emerald/10 border-emerald/30' :
               t.status === 'failed'    ? 'text-red bg-red/10 border-red/30' :
-              t.status === 'running'   ? 'text-amber bg-amber/10 border-amber/30' :
-              t.status === 'cancelled' ? 'text-zinc bg-zinc/10 border-zinc/30' :
-                                         'text-blue bg-blue/10 border-blue/30'
+              t.status === 'running'   ? 'text-text bg-amber/10 border-amber/30' :
+              t.status === 'cancelled' ? 'text-text-secondary bg-zinc/10 border-zinc/30' :
+                                         'text-text bg-blue/10 border-blue/30'
             return (
               <div key={t.id} className="rounded-lg bg-surface-2/50 border border-border px-3 py-2">
                 <div className="flex items-center gap-2 mb-1">
@@ -3616,16 +3618,16 @@ export default function OrgChartPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-accent" />
                 {data.stats.totalAgents} members
               </span>
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple/10 text-purple text-[11px] font-semibold">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple/10 text-text text-[11px] font-semibold">
                 {data.stats.byModel.opus || 0} Opus
               </span>
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue/10 text-blue text-[11px] font-semibold">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue/10 text-text text-[11px] font-semibold">
                 {data.stats.byModel.sonnet || 0} Sonnet
               </span>
               <span
                 title={live ? 'Live — syncing with disk in real time' : 'Disconnected — reconnecting…'}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                  live ? 'bg-emerald/10 text-emerald' : 'bg-red/10 text-red'
+                  live ? 'bg-emerald/10 text-text' : 'bg-red/10 text-text'
                 }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${live ? 'bg-emerald animate-pulse' : 'bg-red'}`} />
@@ -3651,6 +3653,7 @@ export default function OrgChartPage() {
                 }}
                 placeholder="Search… or press Enter to smart-route a task"
                 title="Type to filter agents. Press Enter to dispatch a new task with this description."
+                aria-label="Search agents, or type a task description and press Enter to dispatch it"
                 className="input pl-9 pr-12"
               />
               {search.trim() && (
@@ -3815,10 +3818,10 @@ export default function OrgChartPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-accent" />
             {data.stats.totalAgents} members
           </span>
-          <span className="px-2.5 py-1 rounded-full bg-purple/10 text-purple text-[11px] font-semibold">
+          <span className="px-2.5 py-1 rounded-full bg-purple/10 text-text text-[11px] font-semibold">
             {data.stats.byModel.opus || 0} Opus
           </span>
-          <span className="px-2.5 py-1 rounded-full bg-blue/10 text-blue text-[11px] font-semibold">
+          <span className="px-2.5 py-1 rounded-full bg-blue/10 text-text text-[11px] font-semibold">
             {data.stats.byModel.sonnet || 0} Sonnet
           </span>
         </div>
@@ -3838,7 +3841,7 @@ export default function OrgChartPage() {
                   onClick={() => setConfigureId(id)}
                   className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold transition-colors ${
                     configureId === id
-                      ? 'bg-amber/40 text-amber ring-1 ring-amber/50'
+                      ? 'bg-amber/40 text-text ring-1 ring-amber/50'
                       : 'bg-amber/20 text-amber hover:bg-amber/30'
                   }`}
                 >
