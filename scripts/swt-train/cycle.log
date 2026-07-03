@@ -679,3 +679,9 @@
 [2026-07-03T07:20:23.831Z] cycle 134 verify: kept 30/49 (dropped 19)
 [2026-07-03T07:20:24.050Z] cycle 134 distributed → 5050 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T07:20:24.050Z] cycle 134 reindex: skipped (batched separately)
+[2026-07-03T07:20:24.255Z] cycle 134 ✓ +30 FAQs → 5052/5040 (100.2%) · 14/14 agents trained · committed
+[2026-07-03T07:21:54.293Z] cycle 135: slices [spacing-rhythm|mega-menu, i18n-currency-rtl|mega-menu, legal-compliance|mega-menu, search-filtering|mega-menu, seo-structured-data|announcement-bar, copy-voice|password-page, legal-compliance|password-page] → generating 49 FAQs (FAQ-5053…)
+[2026-07-03T07:26:33.389Z] cycle 135 verify ANOMALY (kept 13/49) — distrusting critic, keeping all
+[2026-07-03T07:26:33.391Z] cycle 135 verify: kept 49/49 (dropped 0)
+[2026-07-03T07:26:33.544Z] cycle 135 distributed → 5099 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T07:26:33.544Z] cycle 135 reindex: skipped (batched separately)
