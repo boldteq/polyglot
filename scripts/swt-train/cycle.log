@@ -602,3 +602,8 @@
 [2026-07-03T04:41:15.564Z] cycle 120 verify: kept 3/4 (dropped 1)
 [2026-07-03T04:41:15.762Z] cycle 120 distributed → 4610 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T04:41:15.762Z] cycle 120 reindex: skipped (batched separately)
+[2026-07-03T04:41:16.010Z] cycle 120 ✓ +3 FAQs → 4612/5040 (91.5%) · 14/14 agents trained · committed
+[2026-07-03T04:42:46.036Z] cycle 121: slices [search-filtering|bundle-builder, color-contrast|landing-advertorial, a11y|footer, performance-cwv|footer, motion|mega-menu, copy-voice|mega-menu, nav-ia|mega-menu] → generating 49 FAQs (FAQ-4613…)
+[2026-07-03T04:48:19.279Z] cycle 121 verify: kept 47/47 (dropped 0)
+[2026-07-03T04:48:19.448Z] cycle 121 distributed → 4657 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T04:48:19.449Z] cycle 121 reindex: skipped (batched separately)
