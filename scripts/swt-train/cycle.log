@@ -716,3 +716,9 @@
 [2026-07-03T08:05:44.170Z] cycle 141 verify: kept 21/49 (dropped 28)
 [2026-07-03T08:05:44.332Z] cycle 141 distributed → 5263 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T08:05:44.332Z] cycle 141 reindex: skipped (batched separately)
+[2026-07-03T08:05:44.491Z] cycle 141 ✓ +21 FAQs → 5265/5040 (104.5%) · 14/14 agents trained · committed
+[2026-07-03T08:07:14.519Z] cycle 142: slices [cro|quiz-finder, copy-voice|quiz-finder, honesty-claims|quiz-finder, search-filtering|quiz-finder, imagery-art-direction|landing-advertorial, seo-structured-data|landing-advertorial, edge-cases|landing-advertorial] → generating 49 FAQs (FAQ-5266…)
+[2026-07-03T08:13:21.518Z] cycle 142 verify ANOMALY (kept 13/49) — distrusting critic, keeping all
+[2026-07-03T08:13:21.520Z] cycle 142 verify: kept 49/49 (dropped 0)
+[2026-07-03T08:13:21.685Z] cycle 142 distributed → 5312 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T08:13:21.685Z] cycle 142 reindex: skipped (batched separately)
