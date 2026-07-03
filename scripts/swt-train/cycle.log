@@ -797,3 +797,9 @@
 [2026-07-03T09:53:28.465Z] cycle 156 verify: kept 18/49 (dropped 31)
 [2026-07-03T09:53:28.645Z] cycle 156 distributed → 5770 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T09:53:28.645Z] cycle 156 reindex: skipped (batched separately)
+[2026-07-03T09:53:28.827Z] cycle 156 ✓ +18 FAQs → 5772/5040 (114.5%) · 14/14 agents trained · committed
+[2026-07-03T09:54:58.871Z] cycle 157: slices [a11y|comparison, mobile|bundle-builder, layout|quiz-finder, a11y|quiz-finder, data-binding|quiz-finder, states-empty-loading-error|quiz-finder, i18n-currency-rtl|landing-advertorial] → generating 49 FAQs (FAQ-5773…)
+[2026-07-03T10:00:19.972Z] cycle 157 verify ANOMALY (kept 11/49) — distrusting critic, keeping all
+[2026-07-03T10:00:19.972Z] cycle 157 verify: kept 49/49 (dropped 0)
+[2026-07-03T10:00:20.155Z] cycle 157 distributed → 5819 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T10:00:20.155Z] cycle 157 reindex: skipped (batched separately)
