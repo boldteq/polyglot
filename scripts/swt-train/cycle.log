@@ -695,3 +695,9 @@
 [2026-07-03T07:39:46.274Z] cycle 137 verify: kept 19/49 (dropped 30)
 [2026-07-03T07:39:46.438Z] cycle 137 distributed → 5142 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T07:39:46.438Z] cycle 137 reindex: skipped (batched separately)
+[2026-07-03T07:39:46.653Z] cycle 137 ✓ +19 FAQs → 5144/5040 (102.1%) · 14/14 agents trained · committed
+[2026-07-03T07:41:16.683Z] cycle 138: slices [color-contrast|search, a11y|about, data-binding|about, search-filtering|about, color-contrast|faq-page, motion|faq-page, performance-cwv|faq-page] → generating 49 FAQs (FAQ-5145…)
+[2026-07-03T07:45:39.896Z] cycle 138 verify ANOMALY (kept 9/49) — distrusting critic, keeping all
+[2026-07-03T07:45:39.897Z] cycle 138 verify: kept 49/49 (dropped 0)
+[2026-07-03T07:45:40.081Z] cycle 138 distributed → 5191 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T07:45:40.082Z] cycle 138 reindex: skipped (batched separately)
