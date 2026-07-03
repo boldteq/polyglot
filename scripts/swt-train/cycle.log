@@ -648,3 +648,8 @@
 [2026-07-03T06:31:35.453Z] cycle 128 verify: kept 49/49 (dropped 0)
 [2026-07-03T06:31:35.631Z] cycle 128 distributed → 4867 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T06:31:35.631Z] cycle 128 reindex: skipped (batched separately)
+[2026-07-03T06:31:35.811Z] cycle 128 ✓ +49 FAQs → 4869/5040 (96.6%) · 14/14 agents trained · committed
+[2026-07-03T06:33:05.840Z] cycle 129: slices [email-lifecycle|about, motion|faq-page, states-empty-loading-error|faq-page, edge-cases|faq-page, legal-compliance|faq-page, mobile|lookbook, cro|lookbook] → generating 49 FAQs (FAQ-4870…)
+[2026-07-03T06:40:39.859Z] cycle 129 verify: kept 27/49 (dropped 22)
+[2026-07-03T06:40:40.045Z] cycle 129 distributed → 4894 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T06:40:40.045Z] cycle 129 reindex: skipped (batched separately)

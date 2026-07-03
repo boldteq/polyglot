@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 128,
-  "batches": 128,
-  "faqCount": 4869,
+  "cyclesRun": 129,
+  "batches": 129,
+  "faqCount": 4896,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -1886,6 +1886,21 @@
         "performance-cwv|about",
         "i18n-currency-rtl|about",
         "legal-compliance|about"
+      ]
+    },
+    {
+      "cycle": 129,
+      "ts": "2026-07-03T06:40:39.884Z",
+      "added": 27,
+      "faqTotal": 4896,
+      "slices": [
+        "email-lifecycle|about",
+        "motion|faq-page",
+        "states-empty-loading-error|faq-page",
+        "edge-cases|faq-page",
+        "legal-compliance|faq-page",
+        "mobile|lookbook",
+        "cro|lookbook"
       ]
     }
   ]
