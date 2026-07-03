@@ -781,3 +781,8 @@
 [2026-07-03T09:32:39.955Z] cycle 153 verify: kept 49/49 (dropped 0)
 [2026-07-03T09:32:40.155Z] cycle 153 distributed → 5677 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T09:32:40.155Z] cycle 153 reindex: skipped (batched separately)
+[2026-07-03T09:32:40.325Z] cycle 153 ✓ +49 FAQs → 5679/5040 (112.7%) · 14/14 agents trained · committed
+[2026-07-03T09:34:10.374Z] cycle 154: slices [cro|faq-page, trust-social-proof|faq-page, i18n-currency-rtl|faq-page, motion|lookbook, mobile|lookbook, copy-voice|lookbook, honesty-claims|lookbook] → generating 49 FAQs (FAQ-5680…)
+[2026-07-03T09:39:32.854Z] cycle 154 verify: kept 26/49 (dropped 23)
+[2026-07-03T09:39:33.027Z] cycle 154 distributed → 5703 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T09:39:33.027Z] cycle 154 reindex: skipped (batched separately)
