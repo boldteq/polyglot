@@ -174,8 +174,56 @@ function updateRunStatus(runId, status, fields = {}) {
 
   getDb().prepare(`UPDATE orchestration_runs SET ${sets.join(', ')} WHERE id = ?`).run(...args);
   const updated = getRun(runId);
+
+  // Mirror terminal runs into the legacy run_history table so the Studio
+  // "History" tab (which reads run_history) shows runs the durable executor
+  // just produced. Without this the two tables are disjoint and a user can't
+  // see the run they just launched. Telemetry-only — never block the transition.
+  if (['completed', 'failed', 'cancelled'].includes(status)) {
+    try { mirrorToRunHistory(updated); } catch (err) {
+      console.error(`[orchestrationRunner] run_history mirror failed for ${runId}: ${err.message}`);
+    }
+  }
+
   events.emit(`run:${status}`, updated);
   return updated;
+}
+
+// Project a durable run (+ its steps) into the run_history row shape the Studio
+// History tab expects. Edges aren't tracked at the step level, so the replay
+// graph shows nodes + per-step logs without connectors (acceptable for history).
+function mirrorToRunHistory(run) {
+  const steps = run.steps || [];
+  const nodeOutputs = {};
+  const logs = [];
+  const nodes = steps.map((s) => {
+    const m = s.metadata || {};
+    if (s.output != null) nodeOutputs[s.nodeId] = s.output;
+    logs.push({
+      nodeId: s.nodeId,
+      label: m.label || null,
+      type: s.status,
+      output: s.output || undefined,
+      error: s.error || undefined,
+    });
+    return { id: s.nodeId, label: m.label || s.nodeId, agentName: s.agentName || undefined, isStart: !!m.isStart, isCustom: false };
+  });
+  db.insertRunHistory({
+    id: run.id,
+    orchestrationName: run.orchestrationName || 'Untitled',
+    orchestrationId: run.orchestrationId || null,
+    task: run.task,
+    status: run.status,
+    nodeCount: steps.length,
+    nodes,
+    edges: [],
+    logs,
+    nodeOutputs,
+    finalOutput: run.finalOutput || null,
+    startedAt: run.startedAt,
+    completedAt: run.completedAt,
+    duration: run.duration || 0,
+  });
 }
 
 // ── Step-level transitions ────────────────────────────────────────────────

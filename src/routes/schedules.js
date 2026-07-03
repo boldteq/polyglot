@@ -9,6 +9,7 @@ const db = require('../db');
 const agentSync = require('../lib/agentSync');
 const systemSchedules = require('../lib/systemSchedules');
 const { runClaudeSync, buildAgentPrompt, validateAgentExists } = require('../lib/runClaude');
+const { startDurableRun } = require('./orchestrations');
 const { computeNextRunAt, computeNextRuns } = require('../lib/cronUtil');
 
 const router = Router();
@@ -84,10 +85,10 @@ function prepareTick(schedule, { retryCount = 0 } = {}) {
   try {
     db.insertAgentRunStub({
       id: runId,
-      agentName: fresh.agentName,
+      agentName: fresh.agentName || 'orchestration',
       prompt: fresh.prompt,
       source: 'schedule',
-      metadata: { scheduleId: fresh.id, retryCount },
+      metadata: { scheduleId: fresh.id, retryCount, orchestrationId: fresh.orchestrationId || null },
     });
   } catch (err) {
     console.error('[schedule] stub insert failed:', err.message);
@@ -99,7 +100,7 @@ function prepareTick(schedule, { retryCount = 0 } = {}) {
 
   agentSync.emitScheduleEvent('start', {
     id: fresh.id, kind: 'user', name: fresh.name,
-    agentName: fresh.agentName, startedAt, runId, retryCount,
+    agentName: fresh.agentName || 'orchestration', startedAt, runId, retryCount,
   });
   return { runId, inflightState, fresh, startedAt };
 }
@@ -137,6 +138,14 @@ async function runTickBody(prep, { retryCount = 0 } = {}) {
   };
 
   try {
+    // Cron → pipeline: launch a durable orchestration run. The executor runs
+    // asynchronously and tracks its own steps/cost/history, so the tick's job is
+    // just to kick it off and record that it launched.
+    if (fresh.orchestrationId) {
+      const run = startDurableRun(fresh.orchestrationId, fresh.prompt || `Scheduled run: ${fresh.name}`, { createdBy: `schedule:${fresh.id}` });
+      return finish('success', { output: `Launched pipeline run ${run.id}`, metadataPatch: { orchestrationId: fresh.orchestrationId, runId: run.id } });
+    }
+
     const prompt = buildAgentPrompt(fresh.agentName, fresh.prompt);
     const res = await runClaudeSync(prompt, RUN_TIMEOUT_MS, {
       onProc: (child) => { inflightState.child = child; },
@@ -154,6 +163,13 @@ async function runTickBody(prep, { retryCount = 0 } = {}) {
 
     // A3: a missing agent file is non-transient — retrying every tick just
     // spams identical errors. Auto-pause so it stops until the user fixes it.
+    // (Orchestration schedules have no agentName — a missing pipeline throws
+    // synchronously from startDurableRun above and lands here; auto-pause it too.)
+    if (fresh.orchestrationId) {
+      console.warn(`[schedule] ${fresh.id} pipeline launch failed — auto-pausing`);
+      autoPauseSchedule(fresh.id, `pipeline "${fresh.orchestrationId}" could not launch`);
+      return result;
+    }
     if (!validateAgentExists(fresh.agentName)) {
       console.warn(`[schedule] ${fresh.id} agent "${fresh.agentName}" missing — auto-pausing`);
       autoPauseSchedule(fresh.id, `agent "${fresh.agentName}" not found`);
@@ -398,19 +414,21 @@ router.post('/schedules/validate-cron', rateLimit('read'), (req, res) => {
 });
 
 router.post('/schedules', rateLimit('write'), (req, res) => {
-  const { name, agentName, prompt, cronExpr, enabled } = req.body || {};
-  if (!name || !agentName || !prompt || !cronExpr) {
-    return res.status(400).json({ error: 'name, agentName, prompt, cronExpr required' });
+  const { name, agentName, orchestrationId, prompt, cronExpr, enabled } = req.body || {};
+  // A schedule targets EITHER a single agent OR a saved orchestration (pipeline).
+  const isPipeline = !!orchestrationId;
+  if (!name || !prompt || !cronExpr || (!agentName && !orchestrationId)) {
+    return res.status(400).json({ error: 'name, prompt, cronExpr and one of agentName / orchestrationId are required' });
   }
-  if (typeof name !== 'string' || typeof agentName !== 'string' || typeof prompt !== 'string' || typeof cronExpr !== 'string') {
-    return res.status(400).json({ error: 'name, agentName, prompt, cronExpr must be strings' });
+  if (typeof name !== 'string' || typeof prompt !== 'string' || typeof cronExpr !== 'string' || (agentName && typeof agentName !== 'string') || (orchestrationId && typeof orchestrationId !== 'string')) {
+    return res.status(400).json({ error: 'name, prompt, cronExpr, agentName, orchestrationId must be strings' });
   }
-  if (!name.trim() || !agentName.trim() || !prompt.trim()) {
-    return res.status(400).json({ error: 'name, agentName, prompt cannot be empty' });
+  if (!name.trim() || !prompt.trim() || (!isPipeline && !agentName.trim())) {
+    return res.status(400).json({ error: 'name, prompt, and the target cannot be empty' });
   }
   // C1: bound name/prompt — they are persisted, re-sent on every list fetch, and
   // re-embedded into the LLM call on every tick.
-  if (name.trim().length > NAME_MAX || agentName.trim().length > NAME_MAX) {
+  if (name.trim().length > NAME_MAX || (agentName && agentName.trim().length > NAME_MAX)) {
     return res.status(400).json({ error: `name and agentName must be ≤ ${NAME_MAX} characters` });
   }
   if (prompt.trim().length > PROMPT_MAX) {
@@ -419,7 +437,11 @@ router.post('/schedules', rateLimit('write'), (req, res) => {
   if (!cron.validate(cronExpr)) {
     return res.status(400).json({ error: 'Invalid cron expression' });
   }
-  if (!validateAgentExists(agentName)) {
+  if (isPipeline) {
+    const orc = (db.loadOrchestrations() || []).find((o) => o.id === orchestrationId);
+    if (!orc) return res.status(400).json({ error: `Orchestration '${orchestrationId}' not found` });
+    if ((orc.nodes || []).length === 0) return res.status(400).json({ error: 'Orchestration has no nodes' });
+  } else if (!validateAgentExists(agentName)) {
     return res.status(400).json({ error: `Agent '${agentName}' not found` });
   }
 
@@ -427,7 +449,8 @@ router.post('/schedules', rateLimit('write'), (req, res) => {
   const schedule = {
     id: genId(),
     name: name.trim(),
-    agentName: agentName.trim(),
+    agentName: isPipeline ? null : agentName.trim(),
+    orchestrationId: isPipeline ? orchestrationId : null,
     prompt: prompt.trim(),
     cron: cronExpr,
     enabled: enabled !== false,
@@ -479,13 +502,16 @@ router.put('/schedules/:id', rateLimit('write'), (req, res) => {
   const existing = db.getScheduleById(id);
   if (!existing) return res.status(404).json({ error: 'Schedule not found' });
 
-  const { name, agentName, prompt, cronExpr, enabled } = req.body || {};
+  const { name, agentName, orchestrationId, prompt, cronExpr, enabled } = req.body || {};
 
   if (cronExpr !== undefined && !cron.validate(cronExpr)) {
     return res.status(400).json({ error: 'Invalid cron expression' });
   }
-  if (agentName !== undefined && !validateAgentExists(agentName)) {
+  if (agentName !== undefined && agentName && !validateAgentExists(agentName)) {
     return res.status(400).json({ error: `Agent '${agentName}' not found` });
+  }
+  if (orchestrationId !== undefined && orchestrationId && !(db.loadOrchestrations() || []).some((o) => o.id === orchestrationId)) {
+    return res.status(400).json({ error: `Orchestration '${orchestrationId}' not found` });
   }
   if (name !== undefined && (typeof name !== 'string' || !name.trim() || name.trim().length > NAME_MAX)) {
     return res.status(400).json({ error: `name must be 1–${NAME_MAX} characters` });
@@ -496,7 +522,8 @@ router.put('/schedules/:id', rateLimit('write'), (req, res) => {
 
   const fields = { updatedAt: new Date().toISOString() };
   if (name !== undefined) fields.name = name.trim();
-  if (agentName !== undefined) fields.agentName = agentName.trim();
+  if (agentName !== undefined) fields.agentName = agentName ? agentName.trim() : null;
+  if (orchestrationId !== undefined) fields.orchestrationId = orchestrationId || null;
   if (prompt !== undefined) fields.prompt = prompt.trim(); // C2: match POST's trim
   if (cronExpr !== undefined) fields.cron = cronExpr;
   if (enabled !== undefined) fields.enabled = enabled;

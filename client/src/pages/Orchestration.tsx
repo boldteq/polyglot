@@ -22,10 +22,10 @@ import {
   CheckCircle, AlertCircle, Loader, Terminal, FileText,
   LayoutTemplate, X, Sparkles, Copy, Settings2, RotateCcw, HelpCircle,
   ArrowRight, Clock, Eye, Trash, Search, ChevronDown,
-  StopCircle, Layers, AlertTriangle, SearchX,
+  StopCircle, Layers, AlertTriangle, SearchX, Download,
 } from 'lucide-react'
-import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHistory, getOrchestrationTemplates, startOrchestrationRun, getOrchestrationRun, cancelOrchestrationRun } from '../lib/api'
-import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate, OrchestrationRun, OrchestrationStep } from '../lib/api'
+import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHistory, getOrchestrationTemplates, startOrchestrationRun, getOrchestrationRun, cancelOrchestrationRun, advanceStep, exportOrchestration } from '../lib/api'
+import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate, OrchestrationRun, OrchestrationStep, DAGExport } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { writeToClipboard } from '../lib/clipboard'
@@ -233,6 +233,11 @@ export default function Orchestration() {
   const abortRef = useRef<AbortController | null>(null)
   const [runLog, setRunLog] = useState<RunLog[]>([])
   const [showRunPanel, setShowRunPanel] = useState(false)
+  // HITL approval gate — set when the durable run pauses at an approval node.
+  const [pendingApproval, setPendingApproval] = useState<{ nodeId: string; label: string } | null>(null)
+  const [approving, setApproving] = useState(false)
+  // DAG export modal (mermaid + JSON of the saved pipeline).
+  const [exportData, setExportData] = useState<DAGExport | null>(null)
   const [savedList, setSavedList] = useState<{ id: string; name: string; updatedAt: string; nodeCount: number; edgeCount: number }[]>([])
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [pendingTemplate, setPendingTemplate] = useState<typeof TEMPLATES[0] | null>(null)
@@ -603,6 +608,34 @@ export default function Orchestration() {
     abortRef.current?.abort()
   }
 
+  // Resolve a paused approval gate. Approve re-drives the durable executor
+  // (downstream nodes run); Reject cancels the run. The open SSE stream shows
+  // the continuation live, so no re-attach needed.
+  const resolveApproval = useCallback(async (approved: boolean) => {
+    const runId = activeRunIdRef.current
+    if (!runId || !pendingApproval) return
+    setApproving(true)
+    try {
+      await advanceStep(runId, pendingApproval.nodeId, approved, approved ? undefined : 'Rejected from run panel')
+      setPendingApproval(null)
+      toast(approved ? 'success' : 'warn', approved ? 'Approved — resuming pipeline' : 'Rejected — run cancelled')
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Failed to resolve approval')
+    } finally {
+      setApproving(false)
+    }
+  }, [pendingApproval])
+
+  // Export the saved pipeline as Mermaid + JSON.
+  const handleExport = useCallback(async () => {
+    if (!orchId) { toast('warn', 'Save the pipeline first to export it'); return }
+    try {
+      setExportData(await exportOrchestration(orchId))
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Export failed')
+    }
+  }, [orchId])
+
   const processSSEEvent = useCallback((event: RunLog) => {
     setRunLog(log => [...log, { ...event, ts: event.ts ?? Date.now() }])
     if (event.type === 'start' && event.nodeId) {
@@ -690,17 +723,28 @@ export default function Orchestration() {
           applyStep(payload as OrchestrationStep)
         } else if (name === 'run:completed') {
           reachedTerminal = true
+          setPendingApproval(null)
           const run = payload as Partial<OrchestrationRun>
           setRunLog(log => [...log, { type: 'complete', nodeId: null, label: null, finalOutput: run.finalOutput ?? '', ts: Date.now() }])
         } else if (name === 'run:failed') {
           reachedTerminal = true
+          setPendingApproval(null)
           const run = payload as Partial<OrchestrationRun>
           setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: run.error || 'Run failed', ts: Date.now() }])
         } else if (name === 'run:cancelled') {
           reachedTerminal = true
+          setPendingApproval(null)
           setRunLog(log => [...log, { type: 'error', nodeId: null, label: null, error: 'Run cancelled', ts: Date.now() }])
         } else if (name === 'run:paused') {
           // HITL approval gate — the run is still alive; leave `running` true.
+          // Surface an Approve/Reject bar for the paused step so the run can advance.
+          const run = payload as OrchestrationRun
+          const paused = (run.steps || []).find(s => s.status === 'paused')
+            || (run.currentNodeId ? (run.steps || []).find(s => s.nodeId === run.currentNodeId) : undefined)
+          if (paused) {
+            const label = typeof paused.metadata?.label === 'string' ? paused.metadata.label : paused.nodeId
+            setPendingApproval({ nodeId: paused.nodeId, label })
+          }
           toast('warn', 'Paused for approval')
         }
       }
@@ -1317,6 +1361,16 @@ export default function Orchestration() {
               {saving ? 'Saving...' : 'Save'}
             </button>
             <button
+              onClick={handleExport}
+              disabled={!orchId}
+              title={orchId ? 'Export as Mermaid + JSON' : 'Save the pipeline first to export it'}
+              aria-label="Export pipeline"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-surface-2 transition-colors disabled:opacity-30"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export
+            </button>
+            <button
               onClick={() => {
                 if (running) { setShowRunPanel(true); return }
                 if (!showRunPanel) { setShowRunPanel(true); return }
@@ -1619,6 +1673,33 @@ export default function Orchestration() {
                 </div>
               )}
 
+              {/* HITL approval gate */}
+              {pendingApproval && (
+                <div className="px-5 py-3 border-b border-border shrink-0 bg-amber/5">
+                  <p className="text-xs font-semibold text-text flex items-center gap-1.5 mb-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber" />
+                    Approval needed — <span className="text-amber">{pendingApproval.label}</span>
+                  </p>
+                  <p className="text-[11px] text-text-muted mb-2.5">The pipeline is paused at this gate. Approve to continue, or reject to cancel the run.</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => resolveApproval(true)}
+                      disabled={approving}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-green text-white rounded-lg text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" /> Approve
+                    </button>
+                    <button
+                      onClick={() => resolveApproval(false)}
+                      disabled={approving}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-red/40 text-red rounded-lg text-xs font-semibold hover:bg-red-muted disabled:opacity-40 transition"
+                    >
+                      <X className="w-3.5 h-3.5" /> Reject
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Run log */}
               <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
                 {runLog.length === 0 && (
@@ -1820,6 +1901,45 @@ export default function Orchestration() {
               ) : (
                 <p className="text-sm text-text-muted">No output available.</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export DAG modal — Mermaid + JSON of the saved pipeline */}
+      {exportData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setExportData(null)} aria-hidden="true" />
+          <div className="relative bg-surface border border-border rounded-2xl w-[680px] max-h-[82vh] shadow-pop flex flex-col" role="dialog" aria-modal="true" aria-label="Export pipeline">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Download className="w-4 h-4 text-accent" />
+                <h3 className="text-sm font-bold">{exportData.name}</h3>
+                <span className="text-xs text-text-muted">{exportData.nodeCount} nodes · {exportData.edgeCount} edges</span>
+              </div>
+              <button onClick={() => setExportData(null)} aria-label="Close export" className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-text-muted">Mermaid</span>
+                  <button onClick={() => copyToClipboard(exportData.mermaid)} className="flex items-center gap-1.5 text-[11px] text-accent hover:underline">
+                    <Copy className="w-3 h-3" /> Copy
+                  </button>
+                </div>
+                <pre className="text-xs bg-surface-2 border border-border rounded-lg p-3 overflow-x-auto leading-relaxed">{exportData.mermaid}</pre>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-text-muted">JSON</span>
+                  <button onClick={() => copyToClipboard(JSON.stringify(exportData.json, null, 2))} className="flex items-center gap-1.5 text-[11px] text-accent hover:underline">
+                    <Copy className="w-3 h-3" /> Copy
+                  </button>
+                </div>
+                <pre className="text-xs bg-surface-2 border border-border rounded-lg p-3 overflow-x-auto leading-relaxed max-h-[240px]">{JSON.stringify(exportData.json, null, 2)}</pre>
+              </div>
             </div>
           </div>
         </div>

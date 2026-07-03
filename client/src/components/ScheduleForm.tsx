@@ -13,7 +13,9 @@ import {
   createSchedule,
   updateSchedule,
   validateCronOnServer,
+  getOrchestrations,
   type Schedule,
+  type OrchestrationSummary,
 } from '../lib/api'
 import type { Agent } from '../types'
 import { useCronPresets } from '../hooks/useCronPresets'
@@ -49,7 +51,9 @@ export interface ScheduleFormProps {
 
 interface FormState {
   name: string
+  targetType: 'agent' | 'pipeline'
   agentName: string
+  orchestrationId: string
   prompt: string
   cronExpr: string
 }
@@ -57,7 +61,9 @@ interface FormState {
 function initialForm(initial?: Schedule | null): FormState {
   return {
     name: initial?.name || '',
+    targetType: initial?.orchestrationId ? 'pipeline' : 'agent',
     agentName: initial?.agentName || '',
+    orchestrationId: initial?.orchestrationId || '',
     prompt: initial?.prompt || '',
     cronExpr: initial?.cron || '0 9 * * *',
   }
@@ -72,6 +78,7 @@ const STARTER_TEMPLATES = [
 
 export default function ScheduleForm({ mode, initial, agents, existing, onSaved, onCancel }: ScheduleFormProps) {
   const [form, setForm] = useState<FormState>(() => initialForm(initial))
+  const [orchestrations, setOrchestrations] = useState<OrchestrationSummary[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [cronError, setCronError] = useState('')
@@ -83,6 +90,13 @@ export default function ScheduleForm({ mode, initial, agents, existing, onSaved,
 
   // Re-seed form when switching from create→edit or editing a different row.
   useEffect(() => { setForm(initialForm(initial)) }, [initial])
+
+  // Load saved orchestrations for the "pipeline" target picker.
+  useEffect(() => {
+    getOrchestrations()
+      .then(list => setOrchestrations(list.filter(o => (o.nodes?.length || 0) > 0)))
+      .catch(err => console.error('[schedule-form] orchestrations load failed:', err?.message || err))
+  }, [])
 
   useEffect(() => () => { if (blurTimer.current) clearTimeout(blurTimer.current) }, [])
 
@@ -128,20 +142,22 @@ export default function ScheduleForm({ mode, initial, agents, existing, onSaved,
   }
 
   const handleSave = async () => {
+    const isPipeline = form.targetType === 'pipeline'
     const name = form.name.trim()
     const agentName = form.agentName.trim()
+    const orchestrationId = form.orchestrationId
     const prompt = form.prompt.trim()
     const cronExpr = form.cronExpr.trim()
-    if (!name || !agentName || !prompt || !cronExpr) {
-      setError('All fields are required')
+    if (!name || !prompt || !cronExpr || (isPipeline ? !orchestrationId : !agentName)) {
+      setError(isPipeline ? 'Name, pipeline, task, and cron are required' : 'All fields are required')
       return
     }
     if (!isValidCronClient(cronExpr)) {
       setCronError('Invalid cron expression')
       return
     }
-    // C6: warn (don't block) on an exact duplicate when creating.
-    if (mode === 'create' && existing?.some(s =>
+    // C6: warn (don't block) on an exact duplicate when creating (agent mode only).
+    if (mode === 'create' && !isPipeline && existing?.some(s =>
       s.kind !== 'system' && s.agentName === agentName &&
       (s.cron || '') === cronExpr && (s.prompt || '').trim() === prompt
     )) {
@@ -155,9 +171,12 @@ export default function ScheduleForm({ mode, initial, agents, existing, onSaved,
     setSaving(true)
     setError('')
     try {
+      const payload = isPipeline
+        ? { name, orchestrationId, prompt, cronExpr }
+        : { name, agentName, prompt, cronExpr }
       const saved = mode === 'edit' && initial
-        ? await updateSchedule(initial.id, { name, agentName, prompt, cronExpr })
-        : await createSchedule({ name, agentName, prompt, cronExpr })
+        ? await updateSchedule(initial.id, payload)
+        : await createSchedule(payload)
       onSaved(saved)
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to ${mode === 'edit' ? 'update' : 'create'} schedule`)
@@ -174,13 +193,18 @@ export default function ScheduleForm({ mode, initial, agents, existing, onSaved,
     <div onKeyDown={handleKeyDown} className="card p-5 space-y-4">
       <h2 className="text-sm font-semibold">{mode === 'edit' ? 'Edit Schedule' : 'Create Schedule'}</h2>
       {error && (
-        <div className="flex items-center gap-2 text-red text-xs bg-red/10 px-3 py-2 rounded-lg">
+        <div className="flex items-center gap-2 text-text text-xs bg-red/10 px-3 py-2 rounded-lg">
           <AlertCircle className="w-3.5 h-3.5" /> {error}
         </div>
       )}
-      {agents.length === 0 && (
-        <div className="flex items-center gap-2 text-amber text-xs bg-amber/10 px-3 py-2 rounded-lg">
+      {form.targetType === 'agent' && agents.length === 0 && (
+        <div className="flex items-center gap-2 text-text text-xs bg-amber/10 px-3 py-2 rounded-lg">
           <AlertCircle className="w-3.5 h-3.5" /> No agents available — create an agent first.
+        </div>
+      )}
+      {form.targetType === 'pipeline' && orchestrations.length === 0 && (
+        <div className="flex items-center gap-2 text-text text-xs bg-amber/10 px-3 py-2 rounded-lg">
+          <AlertCircle className="w-3.5 h-3.5" /> No pipelines available — build one in Studio first.
         </div>
       )}
       {mode === 'create' && (
@@ -214,21 +238,57 @@ export default function ScheduleForm({ mode, initial, agents, existing, onSaved,
           />
         </div>
         <div>
-          <label htmlFor="schedule-agent" className="block text-xs text-text-muted mb-1">Agent</label>
-          <select
-            id="schedule-agent"
-            name="agentName"
-            className="input"
-            value={form.agentName}
-            onChange={e => updateForm({ agentName: e.target.value })}
-            disabled={agents.length === 0}
-          >
-            <option value="">Select agent...</option>
-            {agents.map(a => {
-              const d = formatAgentDisplay({ name: a.name, id: a.filename })
-              return <option key={a.filename} value={a.filename}>{d.fullDisplay}</option>
-            })}
-          </select>
+          <label htmlFor="schedule-target" className="block text-xs text-text-muted mb-1">Target</label>
+          <div className="flex gap-1.5 mb-2" role="radiogroup" aria-label="Schedule target type">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={form.targetType === 'agent'}
+              onClick={() => updateForm({ targetType: 'agent' })}
+              className={`segmented-btn flex-1 ${form.targetType === 'agent' ? 'segmented-btn-active' : ''}`}
+            >
+              Single agent
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={form.targetType === 'pipeline'}
+              onClick={() => updateForm({ targetType: 'pipeline' })}
+              className={`segmented-btn flex-1 ${form.targetType === 'pipeline' ? 'segmented-btn-active' : ''}`}
+            >
+              Pipeline
+            </button>
+          </div>
+          {form.targetType === 'agent' ? (
+            <select
+              id="schedule-target"
+              name="agentName"
+              className="input"
+              value={form.agentName}
+              onChange={e => updateForm({ agentName: e.target.value })}
+              disabled={agents.length === 0}
+            >
+              <option value="">Select agent...</option>
+              {agents.map(a => {
+                const d = formatAgentDisplay({ name: a.name, id: a.filename })
+                return <option key={a.filename} value={a.filename}>{d.fullDisplay}</option>
+              })}
+            </select>
+          ) : (
+            <select
+              id="schedule-target"
+              name="orchestrationId"
+              className="input"
+              value={form.orchestrationId}
+              onChange={e => updateForm({ orchestrationId: e.target.value })}
+              disabled={orchestrations.length === 0}
+            >
+              <option value="">Select pipeline...</option>
+              {orchestrations.map(o => (
+                <option key={o.id} value={o.id}>{o.name} ({o.nodes?.length || 0} nodes)</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
       <div>
@@ -279,11 +339,11 @@ export default function ScheduleForm({ mode, initial, agents, existing, onSaved,
         </p>
       </div>
       <div>
-        <label htmlFor="schedule-prompt" className="block text-xs text-text-muted mb-1">Prompt</label>
+        <label htmlFor="schedule-prompt" className="block text-xs text-text-muted mb-1">{form.targetType === 'pipeline' ? 'Task (passed to the pipeline)' : 'Prompt'}</label>
         <textarea
           id="schedule-prompt"
           className="input min-h-[80px] resize-y"
-          placeholder="What should this agent do on each run?"
+          placeholder={form.targetType === 'pipeline' ? 'What task should this pipeline run each time?' : 'What should this agent do on each run?'}
           value={form.prompt}
           maxLength={PROMPT_MAX}
           onChange={e => updateForm({ prompt: e.target.value })}

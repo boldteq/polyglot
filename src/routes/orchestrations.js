@@ -895,6 +895,7 @@ async function executeDurableRun(runId, orchestration, taskInput) {
       );
       tasks.markComplete(task.id, output);
       orchRunner.markStepCompleted(runId, nodeId, output);
+      logStepCost({ runId, agentName, prompt, output });
       outputs[nodeId] = output;
       lastOutput = output;
     } catch (err) {
@@ -943,6 +944,7 @@ async function executeSingleNode(runId, orchestration, taskInput, nodeId) {
     );
     tasks.markComplete(task.id, output);
     orchRunner.markStepCompleted(runId, nodeId, output);
+    logStepCost({ runId, agentName, prompt: composePrompt(agentName, node, taskInput), output });
   } catch (err) {
     tasks.markFailed(task.id, err.message || String(err));
     orchRunner.markStepFailed(runId, nodeId, err.message || String(err));
@@ -955,4 +957,61 @@ function composePrompt(agentName, node, lastOutput) {
   return lastOutput ? `${base}\n\n--- previous step output ---\n${lastOutput}` : base;
 }
 
-module.exports = { router, runClaudeSync };
+// Best-effort per-agent model resolution from the model_routing singleton
+// (tiers → agents[]). Cached 60s. Falls back to null → logCost applies opus rates.
+let _routingCache = null;
+let _routingAt = 0;
+function resolveAgentModel(agentName) {
+  try {
+    const now = Date.now();
+    if (!_routingCache || now - _routingAt > 60000) {
+      _routingCache = db.loadModelRouting() || {};
+      _routingAt = now;
+    }
+    const tiers = _routingCache.tiers || {};
+    for (const t of Object.values(tiers)) {
+      if (t && Array.isArray(t.agents) && t.agents.includes(agentName)) return t.model || null;
+    }
+  } catch { /* fall through to null */ }
+  return null;
+}
+
+// Log an ESTIMATED cost row for one orchestration step. runClaudeSync returns
+// only text (the `claude -p` CLI emits no usage envelope), so tokens are
+// estimated from char length — the same basis logAgentRun already uses. This
+// closes the Run→Cost gap: pipeline spend was previously invisible to
+// Monitoring and Governance budget rollups (source='orchestration').
+function logStepCost({ runId, agentName, prompt, output }) {
+  try {
+    const estTok = (s) => Math.ceil((s || '').length / 4);
+    db.logCost({
+      runId,
+      agentName,
+      model: resolveAgentModel(agentName),
+      inputTokens: estTok(prompt),
+      outputTokens: estTok(output),
+      estimated: true,
+      source: 'orchestration',
+    });
+  } catch (err) {
+    console.error('[orchestration] cost log failed:', err.message);
+  }
+}
+
+// Start a durable run of a saved orchestration by id. Shared by the HTTP route
+// and by schedules (cron → pipeline). Runs asynchronously via the durable
+// executor, so cost logging + run_history mirroring come for free. Returns the
+// created run (throws if the orchestration is missing or empty).
+function startDurableRun(orchestrationId, task, { createdBy = 'system', metadata = {} } = {}) {
+  const orc = (db.loadOrchestrations() || []).find((o) => o.id === orchestrationId);
+  if (!orc) throw new Error(`orchestration ${orchestrationId} not found`);
+  const nodes = orc.nodes || [];
+  if (nodes.length === 0) throw new Error(`orchestration ${orchestrationId} has no nodes`);
+  const run = orchRunner.createRun({ orchestrationId: orc.id, orchestrationName: orc.name, task, nodes, createdBy, metadata });
+  setImmediate(() => executeDurableRun(run.id, orc, task).catch((err) => {
+    try { orchRunner.markRunFailed(run.id, err.message || String(err)); } catch { /* already terminal */ }
+  }));
+  return run;
+}
+
+module.exports = { router, runClaudeSync, startDurableRun };

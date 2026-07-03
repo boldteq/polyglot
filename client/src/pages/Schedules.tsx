@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Clock, Plus, Trash2, Play, Pause, AlertCircle, CheckCircle, XCircle,
-  Pencil, PlayCircle, Loader2, Cpu, History, StopCircle, MinusCircle,
+  Pencil, PlayCircle, Loader2, Cpu, History, StopCircle, MinusCircle, Workflow,
   CalendarClock, Zap, Search, Activity, ListChecks,
 } from 'lucide-react'
 import {
@@ -410,6 +410,7 @@ export default function SchedulesPage() {
         {shown.map(s => {
           const busy = busyIds.has(s.id)
           const isSystem = s.kind === 'system'
+          const isPipeline = !!s.orchestrationId
           const isRunning = s.lastRunStatus === 'running'
           const d = formatAgentDisplay({ name: s.agentName, id: s.agentName })
           // F5/F6: the pill reflects the last-run OUTCOME (a failed/crashed last
@@ -421,14 +422,14 @@ export default function SchedulesPage() {
             : s.lastRunStatus === 'cancelled' ? 'cancelled'
             : s.enabled ? 'active' : 'paused'
           const statusTone = isRunning
-            ? 'bg-blue/15 text-blue'
+            ? 'bg-blue/15 text-text'
             : lastFailed
-              ? 'bg-red/15 text-red'
+              ? 'bg-red/15 text-text'
               : s.lastRunStatus === 'cancelled'
-                ? 'bg-amber/15 text-amber'
+                ? 'bg-amber/15 text-text'
                 : s.enabled
-                  ? 'bg-green/15 text-green'
-                  : 'bg-surface-2 text-text-muted'
+                  ? 'bg-green/15 text-text'
+                  : 'bg-surface-2 text-text-secondary'
           const dotTone = isRunning ? 'bg-blue animate-pulse'
             : lastFailed ? 'bg-red'
             : s.lastRunStatus === 'cancelled' ? 'bg-amber'
@@ -448,8 +449,13 @@ export default function SchedulesPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-text truncate">{s.name}</span>
                       {isSystem && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-purple flex items-center gap-1">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-text flex items-center gap-1">
                           <Cpu className="w-3 h-3" /> system
+                        </span>
+                      )}
+                      {isPipeline && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-accent/15 text-accent flex items-center gap-1">
+                          <Workflow className="w-3 h-3" /> pipeline
                         </span>
                       )}
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusTone}`}>
@@ -457,7 +463,7 @@ export default function SchedulesPage() {
                       </span>
                     </div>
                     <div className="text-xs text-text-muted mt-1 flex items-center gap-2 flex-wrap">
-                      <span title={s.agentName}>{d.fullDisplay}</span>
+                      <span title={isPipeline ? 'Runs a saved Studio pipeline' : s.agentName}>{isPipeline ? 'Pipeline run' : d.fullDisplay}</span>
                       <span className="text-border">·</span>
                       <span className="font-mono text-[11px] bg-surface-2 px-1.5 py-0.5 rounded text-secondary" title={s.cron || s.trigger || ''}>
                         {humanizeCron(s.cron)}
@@ -465,7 +471,7 @@ export default function SchedulesPage() {
                     </div>
                     {/* Mobile-only timing fallback — the right-hand timing column is
                         hidden < sm, so surface last/next inline under the name. */}
-                    <div className="text-[11px] text-text-muted/80 mt-1 flex items-center gap-1.5 sm:hidden">
+                    <div className="text-[11px] text-text-secondary mt-1 flex items-center gap-1.5 sm:hidden">
                       {isRunning && <Loader2 className="w-3 h-3 text-blue animate-spin shrink-0" />}
                       <span>Last {timeAgo(s.lastRunAt)}</span>
                       <span className="text-border">·</span>
@@ -484,7 +490,7 @@ export default function SchedulesPage() {
                     {!isRunning && s.lastRunStatus === 'crashed'   && <XCircle    className="w-3 h-3 text-amber" />}
                     <span>Last {timeAgo(s.lastRunAt)}</span>
                   </div>
-                  <div className="text-[11px] mt-0.5 text-text-muted/70">Next {timeUntil(s.nextRunAt)}</div>
+                  <div className="text-[11px] mt-0.5 text-text-secondary">Next {timeUntil(s.nextRunAt)}</div>
                 </div>
 
                 {/* Actions */}

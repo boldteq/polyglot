@@ -161,7 +161,21 @@ function runMigrations(db) {
     { version: 41, name: 'experiments', fn: experimentsMigration },
     { version: 42, name: 'experiment_evaluator', fn: experimentEvaluatorMigration },
     { version: 43, name: 'metrics_daily_per_agent_backfill', fn: metricsDailyPerAgentBackfillMigration },
+    { version: 44, name: 'schedule_orchestration', fn: scheduleOrchestrationMigration },
   ];
+
+  // ── Migration v44: schedule → orchestration ────────────────────────────────
+  // A schedule could only tick a single agent (agentName). Add orchestrationId so
+  // a cron can launch a saved multi-node pipeline (parity with webhooks, which
+  // already carry orchestrationId). agentName stays for single-agent schedules;
+  // exactly one of the two is set per schedule.
+  function scheduleOrchestrationMigration(db) {
+    const cols = db.prepare('PRAGMA table_info(schedules)').all().map((c) => c.name);
+    if (!cols.includes('orchestrationId')) {
+      db.exec('ALTER TABLE schedules ADD COLUMN orchestrationId TEXT');
+    }
+    console.log('[migration v44] schedules.orchestrationId added');
+  }
 
   for (const mig of migrations) {
     if (applied.has(mig.version)) continue;
@@ -2525,12 +2539,12 @@ function loadSchedules() {
 }
 
 function insertSchedule(r) {
-  stmt('INSERT INTO schedules (id,name,agentName,prompt,cron,enabled,lastRunAt,lastRunStatus,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?)')
-    .run(r.id, r.name, r.agentName, r.prompt, r.cron || r.cronExpression, r.enabled ? 1 : 0, r.lastRunAt || null, r.lastRunStatus || null, r.createdAt, r.updatedAt);
+  stmt('INSERT INTO schedules (id,name,agentName,orchestrationId,prompt,cron,enabled,lastRunAt,lastRunStatus,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+    .run(r.id, r.name, r.agentName || null, r.orchestrationId || null, r.prompt, r.cron || r.cronExpression, r.enabled ? 1 : 0, r.lastRunAt || null, r.lastRunStatus || null, r.createdAt, r.updatedAt);
 }
 
 function updateScheduleFields(id, fields) {
-  const allowed = ['name', 'agentName', 'prompt', 'cron', 'enabled', 'updatedAt'];
+  const allowed = ['name', 'agentName', 'orchestrationId', 'prompt', 'cron', 'enabled', 'updatedAt'];
   const sets = [];
   const args = [];
   for (const k of allowed) {
@@ -3992,6 +4006,32 @@ function getSpendByAgent({ since, limit = 5 } = {}) {
     LIMIT ?`).all(...args, Math.min(Number(limit) || 5, 50));
 }
 
+// Project → run/cost attribution. client_projects has no FK to agent_runs/
+// cost_logs (by design — projects can be Shopify disk builds OR SaaS chat
+// projects); this bridges via the runId agent_runs and cost_logs already share.
+// agent_runs.metadata.projectId is stamped by project-chat sends; cost_logs has
+// no projectId column, so join through the shared runId instead of migrating.
+function getProjectSpend(projectId) {
+  const runs = stmt(`SELECT id FROM agent_runs WHERE json_extract(metadata,'$.projectId') = ?`).all(projectId);
+  const empty = { calls: 0, tokens: 0, costUsd: 0, realCalls: 0, realCostUsd: 0 };
+  if (!runs.length) return empty;
+  const placeholders = runs.map(() => '?').join(',');
+  const row = stmt(`SELECT
+      COUNT(*) AS calls,
+      SUM(totalTokens) AS tokens,
+      ROUND(SUM(costUsd), 4) AS costUsd,
+      SUM(CASE WHEN estimated = 0 THEN 1 ELSE 0 END) AS realCalls,
+      ROUND(SUM(CASE WHEN estimated = 0 THEN costUsd ELSE 0 END), 4) AS realCostUsd
+    FROM cost_logs WHERE runId IN (${placeholders})`).get(...runs.map((r) => r.id));
+  return {
+    calls: row.calls || 0,
+    tokens: row.tokens || 0,
+    costUsd: row.costUsd || 0,
+    realCalls: row.realCalls || 0,
+    realCostUsd: row.realCostUsd || 0,
+  };
+}
+
 function getCostLogs({ runId, agentName, since, buildId, limit = 200 } = {}) {
   const conds = [], args = [];
   if (runId)     { conds.push('runId = ?'); args.push(runId); }
@@ -4697,7 +4737,7 @@ module.exports = {
   updateLearningStatus, updateLearningPayload, getInboxCounts, pruneLearningInbox,
   insertCalibrationGrade, listCalibrationGrades,
   // Run observability (Pillar 1)
-  logCost, getSpend, getSpendByAgent, getCostLogs,
+  logCost, getSpend, getSpendByAgent, getCostLogs, getProjectSpend,
   replaceWorkspaceIndex, getWorkspaceIndex, workspaceIndexAgeMs,
   logAgentEvent, getAgentEvents,
   trackDelegation, getDelegations,

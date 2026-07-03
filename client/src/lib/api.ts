@@ -210,8 +210,8 @@ export interface PipelineStep { step: number; key: string; title: string; owner:
 export const getWorkspaceBuildPipeline = (buildId: string) =>
   request<{ current: number; total: number; steps: PipelineStep[] }>(`/workspace/builds/${encodeURIComponent(buildId)}/pipeline`)
 
-export interface GateFinding { text: string; severity: string }
-export interface GateDetail { number: number | null; name: string; kind: string; blocking: boolean; status: 'pass' | 'fail' | 'missing' | 'warn'; findings: GateFinding[]; reportFile: string; ts: string | null }
+export interface GateFinding { text: string; severity: string; id?: string | null; page?: string | null }
+export interface GateDetail { number: number | null; name: string; stage?: string; category?: string; desc?: string; kind: string; blocking: boolean; status: 'pass' | 'fail' | 'missing' | 'warn'; findings: GateFinding[]; reportFile: string; ts: string | null }
 export const getWorkspaceBuildGates = (buildId: string) =>
   request<{ total: number; reported: number; passed: number; failed: number; missing: number; gates: GateDetail[] }>(`/workspace/builds/${encodeURIComponent(buildId)}/gates`)
 
@@ -224,6 +224,10 @@ export const toggleWorkspaceChange = (buildId: string, index: number, checked: b
   request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes/toggle`, { method: 'POST', body: JSON.stringify({ index, checked }) })
 export const addWorkspaceChangeItem = (buildId: string, text: string) =>
   request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes/item`, { method: 'POST', body: JSON.stringify({ text }) })
+export const removeWorkspaceChangeItem = (buildId: string, index: number) =>
+  request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes/remove`, { method: 'POST', body: JSON.stringify({ index }) })
+export const editWorkspaceChangeItem = (buildId: string, index: number, text: string) =>
+  request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes/edit`, { method: 'POST', body: JSON.stringify({ index, text }) })
 export const addWorkspaceChangeWaiver = (buildId: string, text: string) =>
   request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes/waiver`, { method: 'POST', body: JSON.stringify({ text }) })
 
@@ -486,6 +490,39 @@ export const browseDirectory = (dirPath?: string) =>
 export const getUnifiedAgents = () => request<UnifiedAgent[]>('/unified/agents')
 export const getUnifiedAgentsByCategory = (category: string) =>
   request<UnifiedAgent[]>(`/unified/agents?category=${encodeURIComponent(category)}`)
+
+// ── Sales Desk (Sway) ──────────────────────────────────────────────────────────
+export interface SalesDeal { slug: string; title: string; niche: string | null; stage: string | null; outcome: string }
+export type SalesOutcome = 'WON' | 'LOST' | 'OPEN'
+// Rich sidecar fields (situation/scores/failures/reasoning/reply/source) are present on
+// new sales-desk records; legacy eval-runs rows omit them — all optional.
+export interface SalesScore {
+  at: string; case: string; task_type?: string; overall: number; pass: boolean
+  situation?: string; scores?: Record<string, number>; failures?: string[]; reasoning?: string; reply?: string; source?: string
+}
+export interface SalesScoreResult { case: string; overall: number; pass: boolean; scores: Record<string, number>; failures?: string[]; reasoning?: string }
+export const getSalesDeals = () => request<{ deals: SalesDeal[] }>('/sales/deals')
+export const getSalesDeal = (slug: string) => request<{ slug: string; content: string }>(`/sales/deals/${encodeURIComponent(slug)}`)
+export const createSalesDeal = (deal: { title: string; niche?: string; stage?: string; outcome?: SalesOutcome }) =>
+  request<{ ok: boolean; deal: SalesDeal }>('/sales/deals', { method: 'POST', body: JSON.stringify(deal) })
+export const updateSalesDealOutcome = (slug: string, outcome: SalesOutcome) =>
+  request<{ ok: boolean; deal: SalesDeal }>(`/sales/deals/${encodeURIComponent(slug)}`, { method: 'PATCH', body: JSON.stringify({ outcome }) })
+export const deleteSalesDeal = (slug: string) =>
+  request<{ ok: boolean }>(`/sales/deals/${encodeURIComponent(slug)}`, { method: 'DELETE' })
+export const getSalesCorpus = () => request<{ chats: { file: string; addedAt: string }[] }>('/sales/corpus')
+export const deleteSalesCorpusFile = (file: string) =>
+  request<{ ok: boolean }>(`/sales/corpus/${encodeURIComponent(file)}`, { method: 'DELETE' })
+export const getSalesScores = () => request<{ scores: SalesScore[] }>('/sales/scores')
+export const scoreSalesReply = (reply: string, situation: string, source = 'sales-desk') =>
+  request<SalesScoreResult>('/sales/score', { method: 'POST', body: JSON.stringify({ reply, situation, source }), timeoutMs: 120000 })
+export const ingestSalesChat = (chat: string, slug?: string) =>
+  request<{ ok: boolean; file: string; next: string }>('/sales/ingest', { method: 'POST', body: JSON.stringify({ chat, slug }) })
+export interface SalesDraft { id: string; at: string; situation: string; chat: string; reply: string }
+export const getSalesDrafts = () => request<{ drafts: SalesDraft[] }>('/sales/drafts')
+export const createSalesDraft = (d: { chat: string; situation: string; reply: string }) =>
+  request<{ ok: boolean; draft: SalesDraft }>('/sales/drafts', { method: 'POST', body: JSON.stringify(d) })
+export const clearSalesDrafts = () => request<{ ok: boolean }>('/sales/drafts', { method: 'DELETE' })
+export const deleteSalesDraft = (id: string) => request<{ ok: boolean }>(`/sales/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' })
 export const getUnifiedCommands = () => request<UnifiedCommand[]>('/unified/commands')
 export const getUnifiedRules = () => request<UnifiedRule[]>('/unified/rules')
 
@@ -877,6 +914,11 @@ export const getAgentVersions = (name: string) => request<AgentVersion[]>(`/glob
 export const getAgentVersion = (name: string, ts: string) => request<{ content: string }>(`/global/agents/${name}/versions/${ts}`)
 export const rollbackAgent = (name: string, ts: string) => request(`/global/agents/${name}/rollback/${ts}`, { method: 'POST' })
 
+// (DiffHunk is already defined above — reused here.)
+// Line diff between a snapshot (`from`) and another snapshot or the live file (`to`, default 'current').
+export const getAgentDiff = (name: string, from: string, to = 'current') =>
+  request<{ hunks: DiffHunk[] }>(`/global/agents/${name}/diff?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+
 // ── Project Conversations ────────────────────────────────────────────────────
 export interface ConversationMessage {
   role: 'user' | 'assistant'
@@ -956,6 +998,9 @@ export async function streamProjectChat(
 // Project activity
 export const getProjectActivity = (projectId: string, limit?: number) =>
   request<{ total: number; runs: AgentRunEntry[] }>(`/projects/${projectId}/activity${limit ? `?limit=${limit}` : ''}`)
+
+export interface ProjectSpend { calls: number; tokens: number; costUsd: number; realCalls: number; realCostUsd: number }
+export const getProjectSpend = (projectId: string) => request<ProjectSpend>(`/projects/${projectId}/spend`)
 
 // ── Org Chart ────────────────────────────────────────────────────────────────
 export interface OrgChartNode {
@@ -1116,6 +1161,8 @@ export interface OrchestrationRun {
   steps: OrchestrationStep[]
 }
 
+export interface OrchestrationSummary { id: string; name: string; nodes?: unknown[]; edges?: unknown[] }
+export const getOrchestrations = () => request<OrchestrationSummary[]>('/orchestrations')
 export const startOrchestrationRun = (orchestrationId: string, body: { task: string; createdBy?: string; metadata?: Record<string, unknown> }) =>
   request<{ ok: boolean; runId: string; statusUrl: string }>(
     `/orchestrations/${orchestrationId}/runs`,
@@ -1712,7 +1759,7 @@ export interface AgentRunEntry {
   id: string
   agentName: string
   prompt: string
-  source: 'playground' | 'orchestration' | 'schedule' | 'webhook' | 'sdk' | 'ai-chat'
+  source: 'playground' | 'orchestration' | 'schedule' | 'webhook' | 'sdk' | 'ai-chat' | 'project-chat'
   timestamp: string
   duration: number
   status: 'success' | 'error'
@@ -1781,6 +1828,7 @@ export interface Schedule {
   name: string
   description?: string
   agentName: string
+  orchestrationId?: string | null
   prompt: string
   cron: string | null
   trigger?: string | null
@@ -1793,8 +1841,6 @@ export interface Schedule {
   needsLlm?: boolean
   cancellable?: boolean
   costEstimate?: CostEstimate | null
-  /** Set transiently when an inflight run exists for this schedule. */
-  runId?: string | null
 }
 
 export interface InflightRun {
@@ -1832,9 +1878,9 @@ export const validateCronOnServer = (cronExpr: string) =>
     '/schedules/validate-cron',
     { method: 'POST', body: JSON.stringify({ cronExpr }) },
   )
-export const createSchedule = (data: { name: string; agentName: string; prompt: string; cronExpr: string; enabled?: boolean }) =>
+export const createSchedule = (data: { name: string; prompt: string; cronExpr: string; agentName?: string; orchestrationId?: string; enabled?: boolean }) =>
   request<Schedule>('/schedules', { method: 'POST', body: JSON.stringify(data) })
-export const updateSchedule = (id: string, data: Partial<{ name: string; agentName: string; prompt: string; cronExpr: string; enabled: boolean }>) =>
+export const updateSchedule = (id: string, data: Partial<{ name: string; agentName: string; orchestrationId: string; prompt: string; cronExpr: string; enabled: boolean }>) =>
   request<Schedule>(`/schedules/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 export const deleteSchedule = (id: string) =>
   request(`/schedules/${id}`, { method: 'DELETE' })
@@ -3275,6 +3321,135 @@ export const getEvalScores = (opts?: { agent?: string; caseId?: string; limit?: 
 export const getDelegations = (opts?: { parentRunId?: string; childAgent?: string; limit?: number }) =>
   request<{ items: DelegationRow[] }>(`/observability/delegations${qstr({ ...opts })}`)
 
+// ── Tracing (per-run trace tree) ─────────────────────────────────────────────
+export interface TraceEvent {
+  ts: string
+  type: string
+  data: Record<string, unknown>
+}
+export interface TraceNode {
+  runId: string | null
+  agentName: string
+  status: string
+  startTs: string | null
+  durationMs: number
+  costUsd: number
+  tokens: number
+  estimated: boolean
+  events: TraceEvent[]
+  task: string | null
+  children: TraceNode[]
+}
+export interface TraceResponse {
+  tree: TraceNode | null
+  totals: { costUsd: number; tokens: number; spanMs: number; nodeCount: number }
+}
+export const getTrace = (runId: string) =>
+  request<TraceResponse>(`/observability/trace/${encodeURIComponent(runId)}`)
+
+// ── Monitoring (daily metric time-series) ────────────────────────────────────
+export interface MetricsDailyRow {
+  date: string
+  agent: string
+  runs: number
+  successRate: number
+  costUsd: number
+  avgDurationMs: number
+  p50LatencyMs: number
+  p95LatencyMs: number
+  evalAvg: number | null
+}
+export const getMetrics = (opts?: { since?: string; agent?: string; limit?: number }) =>
+  request<{ items: MetricsDailyRow[] }>(`/observability/metrics${qstr({ ...opts })}`)
+
+// ── Evaluators ───────────────────────────────────────────────────────────────
+export interface RubricDim { dim: string; desc: string }
+export interface Evaluator {
+  id: string
+  name: string
+  kind: 'llm-judge' | 'heuristic'
+  description: string
+  rubric: RubricDim[]
+  builtin: boolean
+  updated_at: string
+}
+export interface EvalCalibration {
+  at: string
+  total: number | null
+  calibrated: number | null
+  accuracy: number | null
+  meanSeparation: number | null
+  results: unknown[]
+}
+// ── Datasets & Experiments ───────────────────────────────────────────────────
+export interface DatasetCase {
+  id: string
+  agent: string | null
+  task_type: string | null
+  niche: string | null
+  task: string
+  hasFixtures: boolean
+}
+export interface DatasetDetail {
+  id: string
+  agent: string | null
+  task_type: string | null
+  niche: string | null
+  task: string
+  reference: string
+  rubric: RubricDim[]
+  fixtures: string[]
+}
+export interface ExperimentSummary { cases?: number; passed?: number; avgOverall?: number | null; costUsd?: number }
+export interface Experiment {
+  id: string
+  datasetId: string | null
+  agent: string | null
+  evaluatorId: string | null
+  ts: string
+  status: 'pending' | 'running' | 'done' | 'failed' | 'cancelled'
+  total: number
+  completed: number
+  summary: ExperimentSummary
+  error?: string | null
+}
+export interface ExperimentResult {
+  id: number
+  experimentId: string
+  caseId: string
+  agent: string | null
+  output: string | null
+  scores: Record<string, number>
+  overall: number | null
+  pass: boolean
+  reasoning: string | null
+  costUsd: number
+}
+export interface ExperimentDetail extends Experiment { results: ExperimentResult[] }
+export interface ComparisonRow { caseId: string; aOverall: number | null; aPass: boolean | null; bOverall: number | null; bPass: boolean | null; delta: number | null }
+
+export const getDatasets = () => request<{ items: DatasetCase[] }>('/datasets')
+export const getDatasetCase = (id: string) => request<DatasetDetail>(`/datasets/${encodeURIComponent(id)}`)
+export const listExperiments = (datasetId?: string) => request<{ items: Experiment[] }>(`/experiments${qstr({ datasetId })}`)
+export const getExperiment = (id: string) => request<ExperimentDetail>(`/experiments/${encodeURIComponent(id)}`)
+export const startExperiment = (body: { agent: string; caseIds: string[]; datasetId?: string; evaluatorId?: string }) =>
+  request<{ id: string; total: number }>('/experiments', { method: 'POST', body: JSON.stringify(body), timeoutMs: 20000 })
+export const cancelExperiment = (id: string) => request<{ ok: boolean }>(`/experiments/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: '{}' })
+export const compareExperiments = (a: string, b: string) =>
+  request<{ a: { id: string; agent: string | null; summary: ExperimentSummary }; b: { id: string; agent: string | null; summary: ExperimentSummary }; rows: ComparisonRow[] }>(`/experiments/compare${qstr({ a, b })}`)
+
+export const getEvaluators = () => request<{ items: Evaluator[] }>('/evaluators')
+export const getEvaluatorCalibration = () => request<{ calibration: EvalCalibration | null }>('/evaluators/calibration')
+export const createEvaluator = (body: { name: string; kind?: string; description?: string; rubric: RubricDim[] }) =>
+  request<Evaluator>('/evaluators', { method: 'POST', body: JSON.stringify(body) })
+export interface EvaluatorRunResult { evaluator: string; scores: Record<string, number>; overall: number; pass: boolean; reasoning: string; failures: string[] }
+export const runEvaluator = (id: string, body: { output: string; task?: string; reference?: string }) =>
+  request<EvaluatorRunResult>(`/evaluators/${encodeURIComponent(id)}/run`, { method: 'POST', body: JSON.stringify(body), timeoutMs: 200000 })
+export const updateEvaluator = (id: string, body: { name?: string; kind?: string; description?: string; rubric?: RubricDim[] }) =>
+  request<Evaluator>(`/evaluators/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) })
+export const deleteEvaluator = (id: string) =>
+  request<{ ok: boolean }>(`/evaluators/${encodeURIComponent(id)}`, { method: 'DELETE' })
+
 // ── Consolidation (Pillar 6) ─────────────────────────────────────────────────
 export interface ConsolidationCluster {
   cluster: string
@@ -3352,3 +3527,100 @@ export interface SystemStatus {
 }
 export const getSystemStatus = (force?: boolean) =>
   request<SystemStatus>(`/system/status${force ? '?force=1' : ''}`)
+
+// ── Design Library (workspace) ──────────────────────────────────────────────
+export interface DesignComponentMeta {
+  slug: string
+  path: string
+  title: string
+  /** Stable, append-only registry number (#N) — never changes once assigned. */
+  number: number
+  concept: string
+  conversionJob: string
+  source: string
+  hasJs: boolean
+}
+export interface DesignCategory { id: string; label: string; count: number; components: DesignComponentMeta[] }
+export interface DesignFamily { id: string; label: string; order: number; purpose: string; useWhen: string; categories: DesignCategory[] }
+export interface DesignLibraryIndex {
+  families: DesignFamily[]
+  counts: { components: number; categories: number; families: number; screenshots: number; templates: number }
+}
+export interface DesignComponentUsage { number: number; title: string; path: string; pageType: string }
+export interface DesignComponent {
+  path: string
+  title: string
+  number: number | null
+  /** Templates that include this component (reverse index). */
+  usedIn: DesignComponentUsage[]
+  meta: {
+    category: string; concept: string; sectionFamily: string; useWhen: string
+    conversionJob: string; source: string
+    layout: string | null; bindings: string | null; honesty: string | null
+  }
+  html: string | null
+  css: string | null
+  js: string | null
+  hasJs: boolean
+  demo: boolean
+}
+export interface PagePilotShot { file: string; viewport: 'desktop' | 'mobile'; label: string }
+
+/** A full-page template = a recipe of ordered sections, each mapping to a component. */
+export interface DesignTemplateMeta {
+  path: string
+  slug: string
+  /** Stable, append-only "T#N" registry number (separate sequence from components). */
+  number: number
+  title: string
+  url: string
+  niche: string
+  pageType: string
+  sectionCount: number
+  description: string
+}
+export interface DesignTemplateSection {
+  index: number
+  section: string
+  componentPath: string
+  /** The library component this section maps to (#N), or null if not in the library. */
+  componentNumber: number | null
+  concept: string
+  rung: string
+  status: string
+}
+export interface DesignTemplatesIndex {
+  templates: DesignTemplateMeta[]
+  counts: { templates: number; byType: Record<string, number> }
+}
+export interface DesignTemplate {
+  path: string
+  number: number | null
+  title: string
+  slug: string
+  url: string
+  niche: string
+  pageType: string
+  description: string
+  sections: DesignTemplateSection[]
+}
+
+export const getDesignLibraryIndex = () => request<DesignLibraryIndex>('/design-library/index')
+export const getDesignComponent = (p: string, opts?: { signal?: AbortSignal }) =>
+  request<DesignComponent>(`/design-library/component?path=${encodeURIComponent(p)}`, opts)
+export const getDesignTemplates = () => request<DesignTemplatesIndex>('/design-library/templates')
+export const getDesignTemplate = (p: string, opts?: { signal?: AbortSignal }) =>
+  request<DesignTemplate>(`/design-library/template?path=${encodeURIComponent(p)}`, opts)
+/** Composed full-page preview (sections stacked) — an <iframe> src string. */
+// `static: true` (grid cards) renders HTML+CSS only — no component JS — so 200+ grid
+// iframes don't run carousels/timers. Drawers omit it (default) for a live preview.
+export const designTemplatePreviewUrl = (p: string, opts?: { static?: boolean }) =>
+  `/api/design-library/template-preview?path=${encodeURIComponent(p)}${opts?.static ? '&static=1' : ''}`
+export const getPagePilotShots = () => request<PagePilotShot[]>('/design-library/shots')
+// Preview + screenshot are <iframe>/<img> src strings, not request<T>():
+export const designPreviewUrl = (p: string, opts?: { static?: boolean }) =>
+  `/api/design-library/preview?path=${encodeURIComponent(p)}${opts?.static ? '&static=1' : ''}`
+export const designShotUrl = (file: string) => `/api/design-library/shot?file=${encodeURIComponent(file)}`
+// Pre-captured PNG thumbnail (crisp, no iframe). 404s for un-captured items → caller falls back to the iframe.
+export const designThumbUrl = (p: string, kind: 'component' | 'template') =>
+  `/api/design-library/thumb?kind=${kind}&path=${encodeURIComponent(p)}`
