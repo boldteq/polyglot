@@ -819,3 +819,9 @@
 [2026-07-03T10:21:05.598Z] cycle 160 verify: kept 49/49 (dropped 0)
 [2026-07-03T10:21:05.768Z] cycle 160 distributed → 5918 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T10:21:05.768Z] cycle 160 reindex: skipped (batched separately)
+[2026-07-03T10:21:05.924Z] cycle 160 ✓ +49 FAQs → 5920/5040 (117.5%) · 14/14 agents trained · committed
+[2026-07-03T10:22:35.970Z] cycle 161: slices [seo-structured-data|password-page, merchandising|password-page, search-filtering|password-page] → generating 21 FAQs (FAQ-5921…)
+[2026-07-03T10:24:46.444Z] cycle 161 verify ANOMALY (kept 0/21) — distrusting critic, keeping all
+[2026-07-03T10:24:46.446Z] cycle 161 verify: kept 21/21 (dropped 0)
+[2026-07-03T10:24:46.626Z] cycle 161 distributed → 5939 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T10:24:46.626Z] cycle 161 reindex: skipped (batched separately)
