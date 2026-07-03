@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 129,
-  "batches": 129,
-  "faqCount": 4896,
+  "cyclesRun": 130,
+  "batches": 130,
+  "faqCount": 4940,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -1901,6 +1901,21 @@
         "legal-compliance|faq-page",
         "mobile|lookbook",
         "cro|lookbook"
+      ]
+    },
+    {
+      "cycle": 130,
+      "ts": "2026-07-03T06:47:19.124Z",
+      "added": 44,
+      "faqTotal": 4940,
+      "slices": [
+        "edge-cases|lookbook",
+        "imagery-art-direction|store-locator",
+        "mobile|store-locator",
+        "seo-structured-data|store-locator",
+        "edge-cases|store-locator",
+        "legal-compliance|store-locator",
+        "nav-ia|store-locator"
       ]
     }
   ]

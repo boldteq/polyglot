@@ -653,3 +653,8 @@
 [2026-07-03T06:40:39.859Z] cycle 129 verify: kept 27/49 (dropped 22)
 [2026-07-03T06:40:40.045Z] cycle 129 distributed → 4894 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T06:40:40.045Z] cycle 129 reindex: skipped (batched separately)
+[2026-07-03T06:40:40.244Z] cycle 129 ✓ +27 FAQs → 4896/5040 (97.1%) · 14/14 agents trained · committed
+[2026-07-03T06:42:10.294Z] cycle 130: slices [edge-cases|lookbook, imagery-art-direction|store-locator, mobile|store-locator, seo-structured-data|store-locator, edge-cases|store-locator, legal-compliance|store-locator, nav-ia|store-locator] → generating 49 FAQs (FAQ-4897…)
+[2026-07-03T06:47:19.102Z] cycle 130 verify: kept 44/49 (dropped 5)
+[2026-07-03T06:47:19.277Z] cycle 130 distributed → 4938 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T06:47:19.277Z] cycle 130 reindex: skipped (batched separately)
