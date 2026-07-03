@@ -737,3 +737,8 @@
 [2026-07-03T08:35:59.432Z] cycle 145 verify: kept 24/49 (dropped 25)
 [2026-07-03T08:35:59.621Z] cycle 145 distributed → 5389 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T08:35:59.621Z] cycle 145 reindex: skipped (batched separately)
+[2026-07-03T08:35:59.818Z] cycle 145 ✓ +24 FAQs → 5391/5040 (107.0%) · 14/14 agents trained · committed
+[2026-07-03T08:37:29.860Z] cycle 146: slices [states-empty-loading-error|announcement-bar, merchandising|announcement-bar, search-filtering|announcement-bar, i18n-currency-rtl|password-page, mobile|home, copy-voice|home, nav-ia|pdp] → generating 49 FAQs (FAQ-5392…)
+[2026-07-03T08:41:36.319Z] cycle 146 verify: kept 22/49 (dropped 27)
+[2026-07-03T08:41:36.496Z] cycle 146 distributed → 5411 rules · 14/14 agents trained · 11 gate-gaps
+[2026-07-03T08:41:36.496Z] cycle 146 reindex: skipped (batched separately)
