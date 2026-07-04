@@ -67,6 +67,12 @@ export function initCacheInvalidation(): void {
     } else if (ev.type === 'taxonomy:update') {
       invalidateKey(CacheKeys.taxonomy)
       invalidateKey(CacheKeys.orgChart)
+    } else if (ev.type === 'agent_run.recorded') {
+      // A run just persisted (playground, orchestration, schedule, project-chat…).
+      // Broad-invalidate project caches — SWR means only the currently-mounted
+      // project's Spend/Activity tiles actually refetch. Without this, chatting
+      // in a project leaves those tiles stale until a full nav-away-and-back.
+      invalidate((k) => k.startsWith('projects/'))
     }
     // task:* events are consumed directly by pages that need live capacity
     // patching (OrgChart load dots, Orchestration step status) via onOrgChartEvent.

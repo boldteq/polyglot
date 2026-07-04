@@ -175,14 +175,11 @@ router.post('/projects/:projectId/conversations/:id/send', rateLimit('heavy'), (
   // Atomic read-modify-write under per-conversation lock. Prevents lost messages
   // when two requests arrive simultaneously on the same conversation.
   const convoSnapshot = withConversationLock(lockKey, () => {
-    const convos = db.loadProjectConversations(projectId);
-    const convoIdx = convos.findIndex(c => c.id === convoId);
-    if (convoIdx < 0) return null;
-    const c = convos[convoIdx];
-    c.messages.push({ role: 'user', content: message, timestamp: new Date().toISOString() });
-    c.updatedAt = new Date().toISOString();
-    db.saveProjectConversations(projectId, convos);
-    return c;
+    const existing = db.getProjectConversation(projectId, convoId);
+    if (!existing) return null;
+    const userMsg = { role: 'user', content: message, timestamp: new Date().toISOString() };
+    db.appendProjectConversationMessage(projectId, convoId, userMsg);
+    return { ...existing, messages: [...existing.messages, userMsg] };
   });
 
   // Snapshot returned via lock-chain Promise. Continue handler when settled.
@@ -267,13 +264,7 @@ router.post('/projects/:projectId/conversations/:id/send', rateLimit('heavy'), (
     if (code !== 0 && !trimmed) {
       endStream({ type: 'error', error: 'Agent failed to respond' });
     } else {
-      const freshConvos = db.loadProjectConversations(projectId);
-      const freshIdx = freshConvos.findIndex(c => c.id === req.params.id);
-      if (freshIdx >= 0) {
-        freshConvos[freshIdx].messages.push({ role: 'assistant', content: trimmed, timestamp: new Date().toISOString() });
-        freshConvos[freshIdx].updatedAt = new Date().toISOString();
-        db.saveProjectConversations(projectId, freshConvos);
-      }
+      db.appendProjectConversationMessage(projectId, req.params.id, { role: 'assistant', content: trimmed, timestamp: new Date().toISOString() });
 
       const estimateTokens = (text) => Math.ceil((text || '').length / 4);
       const runId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);

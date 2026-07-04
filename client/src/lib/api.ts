@@ -1393,6 +1393,7 @@ export const ORG_CHART_STREAM_URL = `${BASE}/org-chart/stream`
 export type OrgChartStreamEventType =
   | 'agent:upsert' | 'agent:remove' | 'ready' | 'taxonomy:update'
   | 'task:created' | 'task:started' | 'task:completed' | 'task:failed' | 'task:cancelled'
+  | 'agent_run.recorded'
 export interface OrgChartStreamEvent {
   type: OrgChartStreamEventType
   agentId?: string
@@ -1454,6 +1455,7 @@ export function subscribeOrgChartStream(handlers: {
     es.addEventListener('task:completed', handle('task:completed'))
     es.addEventListener('task:failed',    handle('task:failed'))
     es.addEventListener('task:cancelled', handle('task:cancelled'))
+    es.addEventListener('agent_run.recorded', handle('agent_run.recorded'))
   }
   const onSched = handlers.onSchedule
   if (onSched) {

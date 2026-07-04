@@ -64,6 +64,10 @@ router.get('/org-chart/stream', (req, res) => {
   const onUpsert = (p) => send('agent:upsert', p);
   const onRemove = (p) => send('agent:remove', p);
   const onTaxonomy = (p) => send('taxonomy:update', p);
+  // Any agent run persisting (playground, orchestration, schedule, webhook,
+  // project-chat…) — forwarded so the client can invalidate per-project
+  // spend/activity caches live instead of only refreshing on nav-away-and-back.
+  const onRunRecorded = (p) => send('agent_run.recorded', p);
 
   // Phase A — task lifecycle events. Frontend uses these to flip the load
   // dot 🟢→🟡→🔴 in real time without polling /api/org-chart.
@@ -89,6 +93,7 @@ router.get('/org-chart/stream', (req, res) => {
   agentSync.events.on('agent:upsert', onUpsert);
   agentSync.events.on('agent:remove', onRemove);
   agentSync.events.on('taxonomy:update', onTaxonomy);
+  agentSync.events.on('agent_run.recorded', onRunRecorded);
   agentSync.events.on('task:created',   onTaskCreated);
   agentSync.events.on('task:started',   onTaskStarted);
   agentSync.events.on('task:completed', onTaskCompleted);
@@ -109,6 +114,7 @@ router.get('/org-chart/stream', (req, res) => {
     agentSync.events.off('agent:upsert', onUpsert);
     agentSync.events.off('agent:remove', onRemove);
     agentSync.events.off('taxonomy:update', onTaxonomy);
+    agentSync.events.off('agent_run.recorded', onRunRecorded);
     agentSync.events.off('task:created',   onTaskCreated);
     agentSync.events.off('task:started',   onTaskStarted);
     agentSync.events.off('task:completed', onTaskCompleted);

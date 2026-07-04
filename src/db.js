@@ -3338,6 +3338,24 @@ function getProjectConversation(projectId, conversationId) {
   return convo;
 }
 
+// Append ONE message to an existing conversation (single INSERT + updatedAt
+// bump). loadProjectConversations() is a LIST/summary view (messageCount, no
+// .messages array) — reading it and mutating .messages then calling
+// saveProjectConversations() (a destructive delete-all-then-reinsert) crashes
+// on the missing array, and if it hadn't crashed would have silently wiped
+// every OTHER conversation's message history for the project (every list item
+// lacks .messages, so `c.messages || []` erases them on the reinsert). Returns
+// false if the conversation doesn't exist (caller decides how to respond).
+function appendProjectConversationMessage(projectId, conversationId, message) {
+  const d = getDb();
+  const exists = d.prepare('SELECT id FROM project_conversations WHERE id = ? AND projectId = ?').get(conversationId, projectId);
+  if (!exists) return false;
+  d.prepare('INSERT INTO project_conversation_messages (conversationId,role,content,timestamp) VALUES (?,?,?,?)')
+    .run(conversationId, message.role, message.content, message.timestamp);
+  d.prepare('UPDATE project_conversations SET updatedAt = ? WHERE id = ?').run(message.timestamp, conversationId);
+  return true;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CHANGE LOG — auto-snapshot before every write for revert capability
 // ═══════════════════════════════════════════════════════════════════════════
@@ -4819,7 +4837,7 @@ module.exports = {
   getTrainingQueue, saveTrainingQueue,
   getLatestReview, saveReview,
   // Project Conversations
-  loadProjectConversations, saveProjectConversations, getProjectConversation,
+  loadProjectConversations, saveProjectConversations, getProjectConversation, appendProjectConversationMessage,
   // Change Log & Row Operations
   logChange, getChanges, updateRow, revertChange, deleteRow, getPrimaryKeyColumn,
   // Export & Backup
