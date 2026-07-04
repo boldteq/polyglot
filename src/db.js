@@ -162,6 +162,7 @@ function runMigrations(db) {
     { version: 42, name: 'experiment_evaluator', fn: experimentEvaluatorMigration },
     { version: 43, name: 'metrics_daily_per_agent_backfill', fn: metricsDailyPerAgentBackfillMigration },
     { version: 44, name: 'schedule_orchestration', fn: scheduleOrchestrationMigration },
+    { version: 45, name: 'webhook_orchestration_columns', fn: webhookOrchestrationColumnsMigration },
   ];
 
   // ── Migration v44: schedule → orchestration ────────────────────────────────
@@ -175,6 +176,21 @@ function runMigrations(db) {
       db.exec('ALTER TABLE schedules ADD COLUMN orchestrationId TEXT');
     }
     console.log('[migration v44] schedules.orchestrationId added');
+  }
+
+  // ── Migration v45: webhooks.orchestrationId / lastTriggeredAt / triggerCount ──
+  // saveWebhooks()'s INSERT only ever wrote 8 fixed columns; webhooks.js has set
+  // orchestrationId (since webhooks were the PRECEDENT cited when building v44's
+  // schedule→orchestration — the irony: that precedent never actually persisted)
+  // plus lastTriggeredAt/triggerCount on every create/trigger, all three silently
+  // dropped on save. A created orchestration-webhook would respond with the field
+  // set but revert to neither an agent nor a pipeline on the very next load.
+  function webhookOrchestrationColumnsMigration(db) {
+    const cols = db.prepare('PRAGMA table_info(webhooks)').all().map((c) => c.name);
+    if (!cols.includes('orchestrationId')) db.exec('ALTER TABLE webhooks ADD COLUMN orchestrationId TEXT');
+    if (!cols.includes('lastTriggeredAt')) db.exec('ALTER TABLE webhooks ADD COLUMN lastTriggeredAt TEXT');
+    if (!cols.includes('triggerCount')) db.exec('ALTER TABLE webhooks ADD COLUMN triggerCount INTEGER DEFAULT 0');
+    console.log('[migration v45] webhooks.orchestrationId/lastTriggeredAt/triggerCount added');
   }
 
   for (const mig of migrations) {
@@ -2695,10 +2711,10 @@ function loadWebhooks() {
 
 function saveWebhooks(list) {
   const db = getDb();
-  const s = db.prepare('INSERT INTO webhooks (id,name,agentName,prompt,secret,enabled,lastUsedAt,createdAt) VALUES (?,?,?,?,?,?,?,?)');
+  const s = db.prepare('INSERT INTO webhooks (id,name,agentName,orchestrationId,prompt,secret,enabled,lastUsedAt,lastTriggeredAt,triggerCount,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
   db.transaction(() => {
     db.exec('DELETE FROM webhooks');
-    for (const w of list) s.run(w.id, w.name, w.agentName, w.prompt, w.secret, w.enabled ? 1 : 0, w.lastUsedAt, w.createdAt);
+    for (const w of list) s.run(w.id, w.name, w.agentName || null, w.orchestrationId || null, w.prompt, w.secret, w.enabled ? 1 : 0, w.lastUsedAt || null, w.lastTriggeredAt || null, w.triggerCount || 0, w.createdAt);
   })();
 }
 
