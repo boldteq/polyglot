@@ -24,7 +24,7 @@
   /* Text — near-black slate hierarchy */
   --color-text: oklch(13% 0.028 261.7);
   --color-text-secondary: oklch(37% 0.025 264.4);
-  --color-text-muted: oklch(55.1% 0.027 264.4);
+  --color-text-muted: oklch(46% 0.027 264.4);
 
   /* Brand accent — PagePilot indigo (#6959ff) + dark gradient end (#4a25ff) */
   --color-accent: #6959ff;
@@ -101,7 +101,7 @@ html[data-theme="dark"] {
   --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55);
   --color-text: #fafafa;
   --color-text-secondary: #a1a1aa;
-  --color-text-muted: #71717a;
+  --color-text-muted: #8a8a9a;
   /* Brand accent harmonized for dark (brighter #6959ff) */
   --color-accent: #7c6fff;
   --color-accent-hover: #9486ff;
@@ -224,7 +224,7 @@ html[data-theme="dark"] {
     @apply inline-flex items-center gap-0.5 bg-surface-2 border border-border-subtle rounded-lg p-0.5 shrink-0;
   }
   .segmented-btn {
-    @apply px-2.5 py-1 text-xs font-medium rounded-md text-text-muted hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
+    @apply px-2.5 py-1 text-xs font-medium rounded-md text-text-secondary hover:text-text transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
   }
   .segmented-btn-active {
     @apply bg-surface text-text shadow-soft;

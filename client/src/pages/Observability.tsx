@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Activity, DollarSign, ShieldAlert, Gauge, GitBranch,
   RefreshCw, Loader2, AlertCircle, Play, CheckCircle2, XCircle,
@@ -13,6 +14,7 @@ import EmptyState from '../components/EmptyState'
 // Pillar 1/3/5 dashboard — one /observability/summary call → real spend, the
 // policy-audit block trail, independent judge scores, and the delegation graph.
 export default function Observability() {
+  const navigate = useNavigate()
   const [data, setData] = useState<ObservabilitySummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -189,6 +191,11 @@ export default function Observability() {
                   <span className="font-semibold">{d.childAgent}</span>
                   {d.task && <span className="text-text-muted truncate ml-2">{d.task}</span>}
                   <span className="ml-auto text-[10px] text-text-muted">{new Date(d.ts).toLocaleString()}</span>
+                  {d.parentRunId && (
+                    <button onClick={() => navigate(`/tracing/${d.parentRunId}`)} className="text-[10px] text-accent hover:underline shrink-0" title="Open the full trace tree for this run">
+                      View trace
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

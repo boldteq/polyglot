@@ -43,7 +43,7 @@ export default function FileViewer({ projectId, relPath, absPath, onClose }: { p
             <div className="text-[11px] text-text-muted flex items-center gap-2 truncate">
               {lang && <span>{lang}</span>}
               {sizeLabel && <><span>·</span><span>{sizeLabel}</span></>}
-              <code className="truncate text-text-muted/70">{relPath}</code>
+              <code className="truncate text-text-muted">{relPath}</code>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">

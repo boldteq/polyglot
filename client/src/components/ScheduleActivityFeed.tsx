@@ -165,7 +165,7 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
             {stats.cancelled > 0 && <span><span className="text-amber font-medium">{stats.cancelled}</span> cancelled</span>}
             {stats.avgDurationMs > 0 && <span>avg <span className="text-text font-medium">{fmtDuration(stats.avgDurationMs)}</span></span>}
             {cost && <span>spend <span className="text-text font-medium">{cost}</span></span>}
-            <span className="text-text-muted/60">· {stats.total} runs</span>
+            <span className="text-text-muted">· {stats.total} runs</span>
           </div>
         )
       })()}
@@ -203,8 +203,8 @@ export default function ScheduleActivityFeed({ schedules, initialStatusKey = 'al
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium truncate">{scheduleName(run)}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusPill(sm.intent)}`}>{sm.label}</span>
-                  {count > 1 && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red/15 text-red" title={`Failed ${count} times in a row`}>×{count}</span>}
-                  {isSystem && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-purple">system</span>}
+                  {count > 1 && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red/15 text-text" title={`Failed ${count} times in a row`}>×{count}</span>}
+                  {isSystem && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-text">system</span>}
                 </div>
                 <div className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
                   <span title={run.agentName}>{formatAgentDisplay({ name: run.agentName, id: run.agentName }).realName}</span>

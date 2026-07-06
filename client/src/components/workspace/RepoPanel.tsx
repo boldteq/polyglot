@@ -79,7 +79,7 @@ export default function RepoPanel({ projectId, reloadKey }: { projectId: string;
           {git?.isRepo ? (
             <>
               <span className="pill bg-surface-2 text-text-secondary flex items-center gap-1"><GitBranch className="w-3 h-3" />{git.branch || '—'}</span>
-              <span className={`pill ${git.clean ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'}`}>{git.clean ? 'clean' : `${git.dirty} changed`}</span>
+              <span className={`pill ${git.clean ? 'bg-green/10 text-text' : 'bg-amber/10 text-text'}`}>{git.clean ? 'clean' : `${git.dirty} changed`}</span>
               {!git.clean && <button onClick={toggleDiff} className="btn-ghost btn-sm flex items-center gap-1 text-[11px]"><FileDiff className="w-3 h-3" /> {showDiff ? 'Hide' : 'View'} changes</button>}
               {git.lastCommit && <span className="text-[11px] text-text-muted truncate">· {git.lastCommit.subject}</span>}
             </>

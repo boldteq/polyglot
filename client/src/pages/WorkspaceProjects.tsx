@@ -373,7 +373,7 @@ function LinkBuildModal({ project, builds, onClose, onLinked, onRescan }: { proj
                   <span className="text-[13px] font-medium capitalize truncate">{b.client}</span>
                   {b.store && <span className="text-text-muted text-[11px] shrink-0">{b.store}</span>}
                 </div>
-                <code className="text-[11px] text-text-muted/80 truncate block mt-0.5">{b.dir}</code>
+                <code className="text-[11px] text-text-muted truncate block mt-0.5">{b.dir}</code>
               </button>
             ))}
           </div>

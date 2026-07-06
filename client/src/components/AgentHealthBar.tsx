@@ -117,7 +117,7 @@ export default function AgentHealthBar({ agentName, scope, projectId, content }:
         <div className="flex items-center gap-4 text-[11px] text-text-muted font-mono shrink-0">
           <span className="flex items-center gap-1" title="Lines">
             <Hash className="w-3 h-3" />
-            {health.actual.lines}<span className="text-text-muted/60">/{health.budget.lines}</span>
+            {health.actual.lines}<span className="text-text-muted">/{health.budget.lines}</span>
           </span>
           <span className="flex items-center gap-1" title="Size">
             <FileCode className="w-3 h-3" />
@@ -150,7 +150,7 @@ export default function AgentHealthBar({ agentName, scope, projectId, content }:
           </div>
 
           {health.violations.length > 0 && (
-            <div className="mt-2 p-2.5 rounded-lg bg-red/10 border border-red/20 text-[11px] text-red">
+            <div className="mt-2 p-2.5 rounded-lg bg-red/10 border border-red/20 text-[11px] text-text">
               <p className="font-semibold mb-1">Budget violations</p>
               {health.violations.map((v, i) => (
                 <p key={i}>
@@ -161,7 +161,7 @@ export default function AgentHealthBar({ agentName, scope, projectId, content }:
           )}
 
           {health.warnings.length > 0 && health.violations.length === 0 && (
-            <div className="mt-2 p-2.5 rounded-lg bg-amber-muted border border-amber/20 text-[11px] text-amber">
+            <div className="mt-2 p-2.5 rounded-lg bg-amber-muted border border-amber/20 text-[11px] text-text">
               <p className="font-semibold mb-1">Warnings</p>
               {health.warnings.map((w, i) => (
                 <p key={i}>

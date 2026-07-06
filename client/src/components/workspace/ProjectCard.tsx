@@ -34,7 +34,7 @@ export default function ProjectCard({ project: p, thumb, attention, selected, an
   const initial = (p.name.trim()[0] || '?').toUpperCase()
 
   return (
-    <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => { if (e.key === 'Enter') onOpen() }}
+    <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
       className={`group card card-hover overflow-hidden cursor-pointer flex flex-col ${selected ? 'ring-2 ring-accent' : ''}`}>
       {/* preview header — Lens thumbnail or gradient fallback */}
       <div className="relative h-36 shrink-0 overflow-hidden">
@@ -79,7 +79,7 @@ export default function ProjectCard({ project: p, thumb, attention, selected, an
             {b ? <ScoreGauge score={b.score} grade={b.grade} size={36} stroke={5} showGrade={false} /> : <div className="w-9 h-9 rounded-full border-2 border-border shrink-0" />}
             <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <VerdictPill verdict={b?.lensVerdict ?? null} blockers={b?.gates.blockersOpen ?? 0} />
-              {attention.length > 0 && <span className="pill bg-red/10 text-red normal-case shrink-0"><AlertTriangle className="w-3 h-3" />{attLabel}</span>}
+              {attention.length > 0 && <span className="pill bg-red/10 text-text normal-case shrink-0"><AlertTriangle className="w-3 h-3" />{attLabel}</span>}
               <span className="text-[11px] text-text-muted shrink-0 ml-auto">{relTime(b?.capturedAt ?? p.updated_at)}</span>
             </div>
           </div>

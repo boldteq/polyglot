@@ -112,7 +112,7 @@ export function SquadCard({
               {totalCount} {totalCount === 1 ? 'agent' : 'agents'}
             </span>
             {squad.placeholder ? (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber/15 text-amber border border-amber/30">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber/15 text-text border border-amber/30">
                 Placeholder
               </span>
             ) : null}
@@ -123,7 +123,7 @@ export function SquadCard({
         </div>
         {lead ? (
           <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-text-muted shrink-0">
-            <span className="text-text-muted/60">Lead</span>
+            <span className="text-text-secondary">Lead</span>
             <span className="font-medium text-text">{formatAgentDisplay(lead).fullDisplay}</span>
           </span>
         ) : null}
@@ -148,7 +148,7 @@ export function SquadCard({
 
           {groups.map(group => (
             <div key={group.band}>
-              <div className="px-4 pt-3 pb-1 text-[10px] font-semibold text-text-muted bg-surface-2/40">
+              <div className="px-4 pt-3 pb-1 text-[10px] font-semibold text-text-secondary bg-surface-2/40">
                 {group.label}
               </div>
               {group.agents.map(agent => (
@@ -164,7 +164,7 @@ export function SquadCard({
 
           {dottedMembers.length > 0 ? (
             <div className="border-t border-dashed border-border/60">
-              <div className="px-4 pt-3 pb-1 text-[10px] font-semibold text-text-muted/80 bg-surface-2/40">
+              <div className="px-4 pt-3 pb-1 text-[10px] font-semibold text-text-secondary bg-surface-2/40">
                 Dotted-line specialists
               </div>
               {dottedMembers.map(agent => (
@@ -212,7 +212,7 @@ function AgentRow({ agent, isLead = false, dotted = false, squadColor, onClick }
   const baseClass = isLead
     ? 'border-l-[3px] border-l-accent bg-accent/[0.06]'
     : dotted
-    ? 'border-l border-dashed border-border/60 opacity-75'
+    ? 'border-l border-dashed border-border/60'
     : 'border-l border-l-transparent'
 
   const inner = (
@@ -228,12 +228,12 @@ function AgentRow({ agent, isLead = false, dotted = false, squadColor, onClick }
         <div className="flex items-center gap-2">
           <span className={`${isLead ? 'text-sm font-semibold' : 'text-[13px] font-medium'} text-text truncate`}>{display.realName}</span>
           {isLead ? (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent text-white font-extrabold">
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent/20 text-text font-extrabold">
               Lead
             </span>
           ) : null}
           {dotted ? (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple/10 text-purple border border-purple/30">
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple/10 text-text border border-purple/30">
               Dotted
             </span>
           ) : null}

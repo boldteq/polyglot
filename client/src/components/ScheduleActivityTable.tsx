@@ -87,7 +87,7 @@ export default function ScheduleActivityTable({ runs, scheduleName, scheduleOf, 
 
   return (
     <div className="card overflow-x-auto">
-      <div className="px-3 pt-2 pb-1 text-[10px] text-text-muted/60">Sorted within loaded runs — load more to expand sort scope</div>
+      <div className="px-3 pt-2 pb-1 text-[10px] text-text-muted">Sorted within loaded runs — load more to expand sort scope</div>
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="text-[11px] text-text-muted border-b border-border">
@@ -125,7 +125,7 @@ export default function ScheduleActivityTable({ runs, scheduleName, scheduleOf, 
                   <td className="px-3 py-2 max-w-[200px]">
                     <span className="flex items-center gap-1.5 min-w-0">
                       <span className="truncate font-medium">{scheduleName(run)}</span>
-                      {isSystem && <span className="text-[9px] px-1 py-0.5 rounded bg-purple/15 text-purple shrink-0">sys</span>}
+                      {isSystem && <span className="text-[9px] px-1 py-0.5 rounded bg-purple/15 text-text shrink-0">sys</span>}
                     </span>
                     {why && !open && <span className="block text-[11px] text-red truncate">{why}</span>}
                   </td>

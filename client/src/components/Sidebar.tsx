@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Bot,
   Settings,
-  Sparkles,
   FlaskConical,
   Sun,
   Moon,
@@ -23,6 +22,12 @@ import {
   Inbox,
   Menu,
   X,
+  Workflow,
+  FileText,
+  Library,
+  ListTree,
+  Database,
+  Gavel,
 } from 'lucide-react'
 import ModeSwitcher from './ModeSwitcher'
 import { useTheme } from '../contexts/ThemeContext'
@@ -131,13 +136,21 @@ export default function Sidebar() {
   }, [])
 
   // Settings is active for any config-related path
-  const isSettingsActive = ['/settings', '/global/claude-md', '/commands', '/rules', '/templates', '/memory', '/backup', '/database'].some(
+  const isSettingsActive = ['/settings', '/global/claude-md', '/commands', '/rules', '/templates', '/backup', '/database'].some(
     p => location.pathname.startsWith(p)
   )
-  // Analytics is active for runs and health too
-  const isAnalyticsActive = ['/analytics', '/runs', '/health'].some(
-    p => location.pathname.startsWith(p)
-  )
+  // Studio = the DAG builder (renamed from Orchestration)
+  const isStudioActive = ['/studio', '/orchestration'].some(p => location.pathname.startsWith(p))
+  // Prompts highlights when editing an agent .md too
+  const isPromptsActive = ['/prompts', '/global/agents'].some(p => location.pathname.startsWith(p))
+  // Context Hub absorbs the old /memory path
+  const isContextHubActive = ['/context-hub', '/memory'].some(p => location.pathname.startsWith(p))
+  // Tracing covers per-run trace detail
+  const isTracingActive = ['/tracing', '/runs'].some(p => location.pathname.startsWith(p))
+  // Monitoring covers the old analytics/health/governance surfaces
+  const isMonitoringActive = ['/monitoring', '/analytics', '/health', '/governance'].some(p => location.pathname.startsWith(p))
+  // Annotation Queue (renamed from Learning)
+  const isAnnotationActive = ['/annotation', '/learning'].some(p => location.pathname.startsWith(p))
   // Schedules is active for webhooks too
   const isSchedulesActive = ['/schedules', '/webhooks'].some(
     p => location.pathname.startsWith(p)
@@ -214,15 +227,18 @@ export default function Sidebar() {
 
       {/* Navigation — grouped into semantic sections. Hover/focus prefetches the target chunk+data. */}
       <nav className="flex-1 overflow-y-auto py-2 space-y-0.5" onMouseOver={handleNavPrefetch} onFocus={handleNavPrefetch}>
-        <NavSection label="Core Work" />
+        <NavSection label="Build" />
         <NavLink to="/" className={navLinkClass} end>
           <LayoutDashboard className="w-4 h-4" /> Dashboard
         </NavLink>
         <NavLink to="/playground" className={navLinkClass}>
           <FlaskConical className="w-4 h-4" /> Playground
         </NavLink>
-        <NavLink to="/orchestration" className={navLinkClass}>
-          <Sparkles className="w-4 h-4" /> Orchestration
+        <NavLink to="/studio" className={({ isActive }) => navItem(isActive || isStudioActive)}>
+          <Workflow className="w-4 h-4" /> Studio
+        </NavLink>
+        <NavLink to="/prompts" className={({ isActive }) => navItem(isActive || isPromptsActive)}>
+          <FileText className="w-4 h-4" /> Prompts
         </NavLink>
 
         <NavSection label="Agents & Teams" />
@@ -235,10 +251,16 @@ export default function Sidebar() {
         <NavLink to="/hr" className={navLinkClass}>
           <UserCog className="w-4 h-4" /> HR
         </NavLink>
+        <NavLink to="/context-hub" className={({ isActive }) => navItem(isActive || isContextHubActive)}>
+          <Library className="w-4 h-4" /> Context Hub
+        </NavLink>
 
-        <NavSection label="Observability" />
-        <NavLink to="/analytics" className={({ isActive }) => navItem(isActive || isAnalyticsActive)}>
-          <BarChart3 className="w-4 h-4" /> Analytics
+        <NavSection label="Observe" />
+        <NavLink to="/tracing" className={({ isActive }) => navItem(isActive || isTracingActive)}>
+          <ListTree className="w-4 h-4" /> Tracing
+        </NavLink>
+        <NavLink to="/monitoring" className={({ isActive }) => navItem(isActive || isMonitoringActive)}>
+          <BarChart3 className="w-4 h-4" /> Monitoring
         </NavLink>
         <NavLink to="/logs" className={navLinkClass}>
           <AlertCircle className="w-4 h-4" />
@@ -246,15 +268,6 @@ export default function Sidebar() {
           {unresolvedErrors > 0 && (
             <span className="bg-red text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
               {unresolvedErrors > 99 ? '99+' : unresolvedErrors}
-            </span>
-          )}
-        </NavLink>
-        <NavLink to="/learning" className={navLinkClass}>
-          <Inbox className="w-4 h-4" />
-          <span className="flex-1">Learning</span>
-          {pendingLearning > 0 && (
-            <span className="bg-amber text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-              {pendingLearning > 99 ? '99+' : pendingLearning}
             </span>
           )}
         </NavLink>
@@ -270,7 +283,24 @@ export default function Sidebar() {
           )}
         </NavLink>
 
-        <NavSection label="Automation" />
+        <NavSection label="Evaluate" />
+        <NavLink to="/datasets" className={navLinkClass}>
+          <Database className="w-4 h-4" /> Datasets
+        </NavLink>
+        <NavLink to="/evaluators" className={navLinkClass}>
+          <Gavel className="w-4 h-4" /> Evaluators
+        </NavLink>
+        <NavLink to="/annotation" className={({ isActive }) => navItem(isActive || isAnnotationActive)}>
+          <Inbox className="w-4 h-4" />
+          <span className="flex-1">Annotation Queue</span>
+          {pendingLearning > 0 && (
+            <span className="bg-amber/90 text-[var(--color-text)] text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+              {pendingLearning > 99 ? '99+' : pendingLearning}
+            </span>
+          )}
+        </NavLink>
+
+        <NavSection label="Operate" />
         <NavLink to="/schedules" className={({ isActive }) => navItem(isActive || isSchedulesActive)}>
           <Clock className="w-4 h-4" /> Schedules
         </NavLink>

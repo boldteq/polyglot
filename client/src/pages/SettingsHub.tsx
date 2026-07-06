@@ -8,18 +8,17 @@ const GeneralTab = lazy(() => import('./Settings'))
 const ClaudeMdTab = lazy(() => import('./GlobalClaudeMd'))
 const CommandsRulesTab = lazy(() => import('./CommandsRulesTab'))
 const TemplatesTab = lazy(() => import('./TemplateLibrary'))
-const MemoryTab = lazy(() => import('./Memory'))
 const BackupTab = lazy(() => import('./Backup'))
 const DatabaseTab = lazy(() => import('./DatabaseExplorer'))
 const TuningTab = lazy(() => import('./SettingsTuning'))
 
-// Flat, calm tab row (the System/Knowledge clusters read cluttered). ids
-// unchanged so ?tab= deep links still resolve.
+// Flat, calm tab row. Memory was promoted to a top-level "Context Hub"
+// (/context-hub) — old /settings?tab=memory links redirect there (App.tsx).
+// Remaining ids unchanged so ?tab= deep links still resolve.
 const TABS = [
   { id: 'general', label: 'General' },
   { id: 'tuning', label: 'Tuning' },
   { id: 'claude-md', label: 'CLAUDE.md' },
-  { id: 'memory', label: 'Memory' },
   { id: 'templates', label: 'Templates' },
   { id: 'commands', label: 'Commands & Rules' },
   { id: 'backup', label: 'Backup' },
@@ -53,7 +52,6 @@ export default function SettingsHub({ onSave }: Props) {
         {activeTab === 'claude-md' && <ClaudeMdTab />}
         {activeTab === 'commands' && <CommandsRulesTab />}
         {activeTab === 'templates' && <TemplatesTab />}
-        {activeTab === 'memory' && <MemoryTab />}
         {activeTab === 'backup' && <BackupTab />}
         {activeTab === 'database' && <DatabaseTab />}
       </Suspense>

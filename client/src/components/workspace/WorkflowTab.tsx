@@ -103,7 +103,7 @@ export default function WorkflowTab({ buildId, reloadKey, onChanged, publish }: 
             <span className={`text-[13px] font-medium ${s.status === 'pending' ? 'text-text-muted' : ''}`}>{s.step}. {s.title}</span>
             <span className="text-[11px] text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">@{owner}</span>
             <button onClick={() => copyStepLink(s.key)} title="Copy a link to this step"
-              className="text-text-muted/40 hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity"><Link2 className="w-3 h-3" /></button>
+              className="text-text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity"><Link2 className="w-3 h-3" /></button>
           </div>
           {stepDescription(s.key) && <p className="text-[12px] text-text-muted mt-0.5 leading-snug">{stepDescription(s.key)}</p>}
           <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-1">

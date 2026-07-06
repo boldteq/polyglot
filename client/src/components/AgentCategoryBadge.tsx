@@ -173,7 +173,7 @@ export function CategoryFilterPills({
             <Layers className="w-3.5 h-3.5" />
             All
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-              selected === 'all' ? 'bg-white/20' : 'bg-surface-3'
+              selected === 'all' ? 'bg-black/20 text-white' : 'bg-surface-3 text-text-secondary'
             }`}>
               {total}
             </span>
@@ -449,7 +449,7 @@ export function CategoryFilterPills({
                 >
                   {/* Drag handle */}
                   {rowDraggable && (
-                    <span className="text-text-muted/60 cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder">
+                    <span className="text-text-muted cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder">
                       <GripVertical className="w-4 h-4" />
                     </span>
                   )}

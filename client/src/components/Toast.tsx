@@ -110,10 +110,10 @@ export function ToastContainer() {
           role={t.type === 'success' || t.type === 'warn' ? 'status' : 'alert'}
           className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-card text-sm font-medium pointer-events-auto transition-all ${
             t.type === 'success'
-              ? 'bg-green-muted border border-green/30 text-green'
+              ? 'bg-green-muted border border-green/30 text-text'
               : t.type === 'warn'
-              ? 'bg-amber-muted border border-amber/30 text-amber'
-              : 'bg-red-muted border border-red/30 text-red'
+              ? 'bg-amber-muted border border-amber/30 text-text'
+              : 'bg-red-muted border border-red/30 text-text'
           }`}
         >
           {t.type === 'success'

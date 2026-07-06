@@ -29,7 +29,7 @@ export default function PhaseJourney({ current, total = 18 }: { current: number;
                 {state === 'done' && <Check className="w-3 h-3 shrink-0" />}
                 {p.label}
               </span>
-              {i < PHASES.length - 1 && <ChevronRight className="w-3.5 h-3.5 text-text-muted/40 shrink-0 mx-0.5" />}
+              {i < PHASES.length - 1 && <ChevronRight className="w-3.5 h-3.5 text-text-muted shrink-0 mx-0.5" />}
             </div>
           )
         })}

@@ -7,12 +7,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { X, CheckCircle, XCircle, Clock, RefreshCw, ChevronDown, ChevronRight, AlertCircle, MinusCircle, Loader2 } from 'lucide-react'
-import { getScheduleRuns, subscribeSchedules, type Schedule, type ScheduleRun, apiError } from '../lib/api'
+import { getScheduleRuns, type Schedule, type ScheduleRun, apiError } from '../lib/api'
+import { onScheduleEvent } from '../lib/sseBus'
 
 export interface ScheduleHistoryDrawerProps {
   schedule: Schedule | null
-  /** Bump to force a refetch (parent sets when SSE event lands for this id). */
-  refreshSignal?: number
   onClose: () => void
 }
 
@@ -26,7 +25,7 @@ function fmtTimestamp(ts: string): string {
   try { return new Date(ts).toLocaleString() } catch { return ts }
 }
 
-export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose }: ScheduleHistoryDrawerProps) {
+export default function ScheduleHistoryDrawer({ schedule, onClose }: ScheduleHistoryDrawerProps) {
   const [runs, setRuns] = useState<ScheduleRun[]>([])
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -52,7 +51,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
     if (!id) return
     setExpanded(new Set())
     load(id)
-  }, [id, refreshSignal, load])
+  }, [id, load])
 
   // Drawer owns its own SSE subscription. Any schedule:* event for the
   // currently-viewed id triggers a refetch — no dependency on parent's
@@ -62,7 +61,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
     if (!id) return
     let cancelled = false
     let debounce: ReturnType<typeof setTimeout> | null = null
-    const es = subscribeSchedules(ev => {
+    const unsubscribe = onScheduleEvent(ev => {
       if (cancelled || ev.id !== id) return
       // Refetch on terminal events; start events don't change history (run
       // row already inserted as stub by server before SSE fires).
@@ -77,7 +76,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
     return () => {
       cancelled = true
       if (debounce) clearTimeout(debounce)
-      es.close()
+      unsubscribe()
     }
   }, [id, load])
 
@@ -116,7 +115,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-sm font-semibold truncate">{schedule.name}</h2>
               {schedule.kind === 'system' && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/20 text-purple">system</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/20 text-text">system</span>
               )}
             </div>
             <p className="text-xs text-text-muted truncate">
@@ -206,7 +205,7 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
                 {isOpen && (
                   <div className="px-3 pb-3 pt-1 border-t border-border space-y-2">
                     {run.error && (
-                      <div className="text-[11px] text-red bg-red/10 px-2 py-1.5 rounded font-mono whitespace-pre-wrap break-all">
+                      <div className="text-[11px] text-text bg-red/10 px-2 py-1.5 rounded font-mono whitespace-pre-wrap break-all">
                         {run.error}
                       </div>
                     )}
@@ -228,6 +227,10 @@ export default function ScheduleHistoryDrawer({ schedule, refreshSignal, onClose
               </div>
             )
           })}
+
+          {!loading && !loadError && runs.length >= 50 && (
+            <p className="text-[10px] text-text-muted text-center pt-2">Showing the 50 most recent runs.</p>
+          )}
         </div>
       </aside>
     </>

@@ -22,9 +22,9 @@ export function classifyHealth(rate: number, t: HealthThresholds = DEFAULT_HEALT
 // status colors auto-flip and stay AA-contrast in BOTH light and dark mode,
 // instead of fixed Tailwind -400/-500 shades tuned only for dark backgrounds.
 export const HEALTH_TEXT_COLOR: Record<HealthBucket, string> = {
-  healthy: 'text-green',
-  degraded: 'text-amber',
-  critical: 'text-red',
+  healthy: 'text-text',
+  degraded: 'text-text',
+  critical: 'text-text',
 }
 
 export const HEALTH_BG_COLOR: Record<HealthBucket, string> = {
@@ -63,10 +63,10 @@ export function getHealthLabel(rate: number, t: HealthThresholds = DEFAULT_HEALT
 
 // Status badge colors — kept here so Hr.tsx stops using ad-hoc 'tone' strings.
 export const STATUS_COLORS: Record<string, { text: string; bg: string; border: string }> = {
-  active:    { text: 'text-green',     bg: 'bg-green-muted',  border: 'border-green/30' },
-  probation: { text: 'text-amber',     bg: 'bg-amber-muted',  border: 'border-amber/30' },
-  pip:       { text: 'text-red',       bg: 'bg-red-muted',    border: 'border-red/30' },
-  pending:   { text: 'text-accent',    bg: 'bg-accent-muted', border: 'border-accent/30' },
+  active:    { text: 'text-text',      bg: 'bg-green-muted',  border: 'border-green/30' },
+  probation: { text: 'text-text',      bg: 'bg-amber-muted',  border: 'border-amber/30' },
+  pip:       { text: 'text-text',      bg: 'bg-red-muted',    border: 'border-red/30' },
+  pending:   { text: 'text-text',      bg: 'bg-accent-muted', border: 'border-accent/30' },
   retired:   { text: 'text-text-muted', bg: 'bg-surface-2',   border: 'border-border' },
 }
 
@@ -81,11 +81,11 @@ export function getStatusColor(status: string) {
 export type Intent = 'success' | 'warning' | 'error' | 'info' | 'neutral'
 
 export const INTENT_PILL: Record<Intent, string> = {
-  success: 'bg-green-muted text-green',
-  warning: 'bg-amber-muted text-amber',
-  error:   'bg-red-muted text-red',
-  info:    'bg-accent-muted text-accent',
-  neutral: 'bg-surface-2 text-text-muted',
+  success: 'bg-green/15 text-text',
+  warning: 'bg-amber/15 text-text',
+  error:   'bg-red/15 text-text',
+  info:    'bg-accent/15 text-text',
+  neutral: 'bg-surface-2 text-text-secondary',
 }
 
 export const INTENT_TEXT: Record<Intent, string> = {

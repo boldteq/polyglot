@@ -36,7 +36,7 @@ export default function RunDetail({ run, schedule, onRunNow, onOpenSchedule }: R
       {run.error && (
         <div>
           <div className="text-text-muted mb-0.5">Why it failed</div>
-          <div className="text-red bg-red/10 px-2 py-1.5 rounded font-mono whitespace-pre-wrap break-all">{run.error}</div>
+          <div className="text-text bg-red/10 px-2 py-1.5 rounded font-mono whitespace-pre-wrap break-all">{run.error}</div>
         </div>
       )}
 
@@ -44,7 +44,7 @@ export default function RunDetail({ run, schedule, onRunNow, onOpenSchedule }: R
         <div>
           <div className="text-text-muted mb-0.5">Faults ({m.faults.length})</div>
           {m.faults.map((f, i) => (
-            <div key={i} className="text-amber bg-amber/10 px-2 py-1 rounded font-mono break-all mb-1">
+            <div key={i} className="text-text bg-amber/10 px-2 py-1 rounded font-mono break-all mb-1">
               <span className="font-semibold">{f.where}</span>: {f.message}
             </div>
           ))}

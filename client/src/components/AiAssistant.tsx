@@ -913,7 +913,7 @@ export default function AiAssistant({ open, onClose }: Props) {
                     <FileCode className="w-3.5 h-3.5 text-accent shrink-0" />
                     <span className="text-[11px] font-mono text-text-secondary truncate">{fileName}</span>
                     {isAgent && (
-                      <span className="text-[10px] bg-purple-muted text-purple px-1.5 py-0.5 rounded-full font-medium shrink-0">agent</span>
+                      <span className="text-[10px] bg-purple-muted text-text px-1.5 py-0.5 rounded-full font-medium shrink-0">agent</span>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0 ml-2">
@@ -932,7 +932,7 @@ export default function AiAssistant({ open, onClose }: Props) {
                         disabled={applied || applying}
                         className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg font-medium transition-all ${
                           applied
-                            ? 'bg-green-muted text-green cursor-default'
+                            ? 'bg-green-muted text-text cursor-default'
                             : 'bg-accent text-white hover:bg-accent-hover disabled:opacity-50'
                         }`}
                       >

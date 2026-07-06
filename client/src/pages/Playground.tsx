@@ -476,6 +476,16 @@ export default function Playground() {
     }
   }, [showSettings])
 
+  // Mobile rail drawer: lock body scroll while the slide-over is open so the page
+  // behind the backdrop doesn't scroll under the user's finger (mobile only — the
+  // drawer is `md:static`, so this is a no-op on desktop where overflow is fine).
+  useEffect(() => {
+    if (!railOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [railOpen])
+
   // Row-actions (⋮) menu: Escape closes it + move focus to the first item on open
   // so it's fully keyboard-operable.
   useEffect(() => {
@@ -1196,9 +1206,16 @@ export default function Playground() {
 
   // ─── Actions ──────────────────────────────────────────────────────────
 
-  const copyOutput = () => {
-    navigator.clipboard.writeText(output)
-    toast('success', 'Copied to clipboard')
+  const copyOutput = async () => {
+    // Await + catch: clipboard.writeText rejects when the browser blocks access
+    // (insecure context, denied permission). Don't claim success on failure and
+    // don't leak an unhandled rejection.
+    try {
+      await navigator.clipboard.writeText(output)
+      toast('success', 'Copied to clipboard')
+    } catch {
+      toast('error', 'Copy failed — your browser blocked clipboard access')
+    }
   }
 
   const exportItem = (item?: TestResult) => {
@@ -1624,7 +1641,7 @@ export default function Playground() {
               </div>
             ) : threads.length === 0 ? (
               <div className="flex flex-col items-center text-center py-8 px-3">
-                <MessageSquare className="w-6 h-6 text-text-muted/50 mb-2" />
+                <MessageSquare className="w-6 h-6 text-text-muted mb-2" />
                 <p className="text-[11px] text-text-muted">No chats yet.</p>
                 <p className="text-[10px] text-text-muted mt-0.5">Type a message below to start your first conversation.</p>
               </div>
@@ -1946,10 +1963,17 @@ export default function Playground() {
                           <button
                             onClick={async () => {
                               try {
-                                await addTraining(selectedAgent || 'playground', '', 'Output is correct — positive example')
+                                // The training store is correction-shaped (issue→correction);
+                                // record the positive as a real reinforcement entry (a blank
+                                // issue is rejected 400). Honest: real save → real toast.
+                                await addTraining(
+                                  selectedAgent || 'playground',
+                                  'Positive signal — this output was correct',
+                                  'Reproduce this quality and approach in future runs.',
+                                )
                                 toast('success', 'Positive signal saved')
-                              } catch {
-                                toast('success', 'Positive signal noted')
+                              } catch (err) {
+                                apiError('Save positive signal', err)
                               }
                             }}
                             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-text-secondary hover:text-emerald hover:bg-emerald/10 transition-colors"

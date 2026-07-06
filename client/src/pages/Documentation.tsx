@@ -790,9 +790,9 @@ export default function Documentation() {
               <span className="text-text-muted">Docs</span>
               {currentDoc && (
                 <>
-                  <ChevronRight className="w-3.5 h-3.5 text-text-muted/50" />
+                  <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
                   <span className="text-text-muted">{currentDoc.section}</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-text-muted/50" />
+                  <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
                   <span className="font-medium text-text truncate">{currentDoc.title}</span>
                 </>
               )}

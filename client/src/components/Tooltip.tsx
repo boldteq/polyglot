@@ -25,7 +25,7 @@ export function InfoIcon({ label, side = 'top', className = '' }: { label: strin
   return (
     <Tooltip label={label} side={side}>
       <button type="button" aria-label={label}
-        className={`text-text-muted/60 hover:text-text-muted focus:text-text-muted outline-none ${className}`}>
+        className={`text-text-muted hover:text-text-muted focus:text-text-muted outline-none ${className}`}>
         <HelpCircle className="w-3.5 h-3.5" />
       </button>
     </Tooltip>

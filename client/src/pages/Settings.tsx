@@ -157,9 +157,9 @@ export default function SettingsPage({ onSave }: Props) {
         <p className="text-[13px] text-text-secondary leading-relaxed">
           <span className="font-medium text-accent-hover">How project discovery works — </span>
           Polyglot scans each directory below for subdirectories containing{' '}
-          <code className="text-accent font-mono text-xs">.claude/</code>,{' '}
-          <code className="text-accent font-mono text-xs">CLAUDE.md</code>, or{' '}
-          <code className="text-accent font-mono text-xs">package.json</code>.
+          <code className="text-text font-mono text-xs">.claude/</code>,{' '}
+          <code className="text-text font-mono text-xs">CLAUDE.md</code>, or{' '}
+          <code className="text-text font-mono text-xs">package.json</code>.
         </p>
       </div>
 
@@ -177,7 +177,7 @@ export default function SettingsPage({ onSave }: Props) {
               </div>
               <span
                 className={`ml-auto text-xs px-2 py-1 rounded-md shrink-0 ${
-                  config?.claudeDirExists ? 'bg-green-muted text-green' : 'bg-red-muted text-red'
+                  config?.claudeDirExists ? 'bg-green-muted text-text' : 'bg-red-muted text-text'
                 }`}
               >
                 {config?.claudeDirExists ? 'Found' : 'Not found'}
@@ -277,6 +277,7 @@ export default function SettingsPage({ onSave }: Props) {
                   <select
                     value={current}
                     onChange={e => { setSettingsData(s => ({ ...s, model: e.target.value })); setSettingsDirty(true) }}
+                    aria-label="Default model"
                     className="input w-auto"
                   >
                     {!current && <option value="" disabled>Select a model…</option>}

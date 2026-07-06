@@ -41,13 +41,13 @@ function agentName(id: string): string {
 }
 
 const PATCH_TYPE_META: Record<string, { label: string; cls: string; desc: string }> = {
-  anti_pattern:  { label: 'Antipattern', cls: 'bg-red/10 text-red border-red/25', desc: 'A guardrail against a mistake the agent keeps making' },
-  smart_default: { label: 'Smart default', cls: 'bg-blue/10 text-blue border-blue/25', desc: 'A recommended default the agent should adopt' },
+  anti_pattern:  { label: 'Antipattern', cls: 'bg-red/10 text-text border-red/25', desc: 'A guardrail against a mistake the agent keeps making' },
+  smart_default: { label: 'Smart default', cls: 'bg-blue/10 text-text border-blue/25', desc: 'A recommended default the agent should adopt' },
 }
 const SEVERITY_META: Record<string, string> = {
-  p0: 'bg-red/15 text-red border-red/30',
-  high: 'bg-amber/15 text-amber border-amber/30',
-  medium: 'bg-blue/10 text-blue border-blue/25',
+  p0: 'bg-red/15 text-text border-red/30',
+  high: 'bg-amber/15 text-text border-amber/30',
+  medium: 'bg-blue/10 text-text border-blue/25',
   low: 'bg-surface-2 text-text-muted border-border',
 }
 // kind → icon + tone for the self-improvement timeline.

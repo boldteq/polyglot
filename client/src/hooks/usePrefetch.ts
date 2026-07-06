@@ -9,7 +9,7 @@ import { prefetch } from '../lib/cacheCore'
 import { CacheKeys } from '../lib/cacheKeys'
 import {
   getUnifiedAgents, getOrgChart, getHrRegistry, getProjects, getCategories,
-  getAnalyticsSummary, getLearningInbox,
+  getAnalyticsSummary, getLearningInbox, getAnalyticsRuns,
 } from '../lib/api'
 
 // Keyed by route path. Each warmer fires the chunk import + the data prefetch.
@@ -32,15 +32,26 @@ const PREFETCHERS: Record<string, () => void> = {
     void import('../pages/Playground')
     prefetch(CacheKeys.unifiedAgents, getUnifiedAgents)
   },
-  '/orchestration': () => {
+  '/studio': () => {
     void import('../pages/Orchestration')
     prefetch(CacheKeys.unifiedAgents, getUnifiedAgents)
   },
-  '/analytics': () => {
+  '/prompts': () => {
+    void import('../pages/Prompts')
+    prefetch(CacheKeys.unifiedAgents, getUnifiedAgents)
+  },
+  '/context-hub': () => {
+    void import('../pages/ContextHub')
+  },
+  '/tracing': () => {
+    void import('../pages/Tracing')
+    prefetch('analytics/runs', () => getAnalyticsRuns({ limit: 500 }))
+  },
+  '/monitoring': () => {
     void import('../pages/AnalyticsHub')
     prefetch('analytics/summary', getAnalyticsSummary)
   },
-  '/learning': () => {
+  '/annotation': () => {
     void import('../pages/LearningInbox')
     prefetch(CacheKeys.learningInbox('pending'), () => getLearningInbox('pending'))
   },

@@ -207,7 +207,7 @@ export default function AssignTaskModal({ open, onClose, preferredAgent, initial
           )}
 
           {error && (
-            <div role="alert" className="px-3 py-2 rounded-lg bg-red-muted text-red text-xs font-semibold border border-red/20">
+            <div role="alert" className="px-3 py-2 rounded-lg bg-red-muted text-text text-xs font-semibold border border-red/20">
               {error}
             </div>
           )}

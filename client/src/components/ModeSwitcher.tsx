@@ -40,10 +40,10 @@ export default function ModeSwitcher({ mode }: { mode: Mode }) {
         <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-soft ${mode === 'workspace' ? 'bg-violet-600' : 'bg-accent'}`}>
           <Icon className="w-4 h-4 text-white" />
         </div>
-        <h1 className="text-base font-bold tracking-tight flex items-center gap-1">
+        <span className="text-base font-bold tracking-tight flex items-center gap-1">
           {current.label}
           <ChevronsUpDown className="w-3.5 h-3.5 text-text-muted group-hover:text-text transition-colors" />
-        </h1>
+        </span>
       </button>
 
       {open && (

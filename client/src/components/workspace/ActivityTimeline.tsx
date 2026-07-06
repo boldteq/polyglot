@@ -4,6 +4,7 @@ import { SkeletonCards } from '../Skeleton'
 import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
 import { relTime } from '../../lib/relTime'
+import { InlineMd } from '../../lib/inlineMd'
 import { useWorkspaceStream } from '../../hooks/useWorkspaceStream'
 import { getWorkspaceProjectActivity, type ActivityEvent, type ActivitySpend } from '../../lib/api'
 
@@ -84,7 +85,7 @@ export default function ActivityTimeline({ projectId, reloadKey }: { projectId: 
               <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${k.cls}`} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] truncate">{e.summary}</span>
+                  <span className="text-[13px] truncate"><InlineMd text={e.summary} /></span>
                 </div>
                 <div className="text-[11px] text-text-muted">{e.actor} · {k.label}</div>
                 {hasDetail && open[i] && <pre className="mt-1.5 text-[11px] text-text-muted whitespace-pre-wrap break-words bg-surface-2 rounded-lg p-2 max-h-48 overflow-y-auto">{e.detail}</pre>}

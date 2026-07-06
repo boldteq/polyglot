@@ -37,14 +37,14 @@ const LEVEL_NAMES: Record<number, string> = {
 // Token-backed (flips light/dark). Mirrors LEVEL_COLOR in lib/designTokens.ts.
 const LEVEL_COLORS: Record<number, { bg: string; text: string; ring: string }> = {
   0: { bg: 'bg-surface-2', text: 'text-text-muted', ring: 'ring-border' },
-  1: { bg: 'bg-emerald/10', text: 'text-emerald', ring: 'ring-emerald/20' },
-  2: { bg: 'bg-emerald/15', text: 'text-emerald', ring: 'ring-emerald/25' },
-  3: { bg: 'bg-teal/15', text: 'text-teal', ring: 'ring-teal/25' },
-  4: { bg: 'bg-blue/15', text: 'text-blue', ring: 'ring-blue/25' },
-  5: { bg: 'bg-purple/15', text: 'text-purple', ring: 'ring-purple/25' },
-  6: { bg: 'bg-fuchsia/15', text: 'text-fuchsia', ring: 'ring-fuchsia/25' },
-  7: { bg: 'bg-amber/15', text: 'text-amber', ring: 'ring-amber/25' },
-  8: { bg: 'bg-yellow/20', text: 'text-yellow', ring: 'ring-yellow/30' },
+  1: { bg: 'bg-emerald/10', text: 'text-text', ring: 'ring-emerald/20' },
+  2: { bg: 'bg-emerald/15', text: 'text-text', ring: 'ring-emerald/25' },
+  3: { bg: 'bg-teal/15', text: 'text-text', ring: 'ring-teal/25' },
+  4: { bg: 'bg-blue/15', text: 'text-text', ring: 'ring-blue/25' },
+  5: { bg: 'bg-purple/15', text: 'text-text', ring: 'ring-purple/25' },
+  6: { bg: 'bg-fuchsia/15', text: 'text-text', ring: 'ring-fuchsia/25' },
+  7: { bg: 'bg-amber/15', text: 'text-text', ring: 'ring-amber/25' },
+  8: { bg: 'bg-yellow/20', text: 'text-text', ring: 'ring-yellow/30' },
 }
 
 const SIZES = {
@@ -111,7 +111,7 @@ export default function LevelBadge({
       {showIcon && <Icon className={s.icon} />}
       {displayTitle}
       {showYoE && yearsOfExperience != null && (
-        <span className="opacity-70 font-normal">· {yearsOfExperience}y</span>
+        <span className="text-text-secondary font-normal">· {yearsOfExperience}y</span>
       )}
     </span>
   )

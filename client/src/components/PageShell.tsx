@@ -19,7 +19,7 @@ export function PageShell({ title, subtitle, actions, children, fullHeight, noPa
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-[22px] font-bold tracking-tight">{title}</h1>
-            {subtitle && <p className="text-[13px] text-text-muted mt-1">{subtitle}</p>}
+            {subtitle && <p className="text-[13px] text-text-secondary mt-1">{subtitle}</p>}
           </div>
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>
@@ -48,7 +48,7 @@ export function SectionCard({ title, action, children, className, noPadding }: S
     <div className={`card ${className || ''}`}>
       {title && (
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle">
-          <span className="text-xs font-medium text-text-muted">{title}</span>
+          <span className="text-xs font-medium text-text-secondary">{title}</span>
           {action}
         </div>
       )}
@@ -85,7 +85,7 @@ export function StatRow({ stats }: StatRowProps) {
     >
       {stats.map((s) => {
         const Icon = s.icon
-        const toneCls = s.tone === 'danger' ? 'text-red' : s.tone === 'warn' ? 'text-amber' : ''
+        const toneCls = s.tone === 'danger' ? 'text-red' : s.tone === 'warn' ? 'text-text' : ''
         const inner = (
           <>
             <div className={`flex items-center gap-2 text-text-muted mb-2.5 ${s.hint && !s.onClick ? 'cursor-help' : ''}`}>
@@ -188,25 +188,29 @@ export function TabNav({ tabs, active, onChange }: TabNavProps) {
   }
 
   return (
-    <div role="tablist" aria-orientation="horizontal" className="flex items-center gap-1 border-b border-border-subtle mb-6">
+    <div role="tablist" aria-orientation="horizontal" className="flex items-center gap-1 border-b border-border-subtle mb-6 overflow-x-auto flex-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {tabs.map((tab, idx) => (
         <button
           key={tab.id}
           role="tab"
           id={`tab-${tab.id}`}
+          // No aria-controls: most TabNav consumers don't render a matching
+          // id={`panel-${id}`}, so emitting it produces a dangling reference
+          // (axe aria-valid-attr-value, critical). Pages that do render a panel link
+          // it back via aria-labelledby={`tab-${id}`}, which preserves the association.
           aria-selected={active === tab.id}
           tabIndex={active === tab.id ? 0 : -1}
           onClick={() => onChange(tab.id)}
           onKeyDown={(e) => onKeyDown(e, idx)}
-          className={`px-4 py-2.5 text-sm font-medium transition-colors relative rounded-t-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+          className={`shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors relative rounded-t-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
             active === tab.id
-              ? 'text-accent'
-              : 'text-text-muted hover:text-text'
+              ? 'text-text font-semibold'
+              : 'text-text-secondary hover:text-text'
           }`}
         >
           {tab.label}
-          {tab.count !== undefined && (
-            <span className="ml-1.5 text-[10px] bg-surface-2 text-text-muted px-1.5 py-0.5 rounded-full">{tab.count}</span>
+          {tab.count !== undefined && tab.count > 0 && (
+            <span className="ml-1.5 text-[10px] bg-surface-2 text-text-secondary px-1.5 py-0.5 rounded-full">{tab.count}</span>
           )}
           {active === tab.id && (
             <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent rounded-full" />

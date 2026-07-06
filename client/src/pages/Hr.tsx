@@ -481,7 +481,7 @@ function AgentRow({
             </span>
           ))}
           {agent.weaknesses && agent.weaknesses.length > 0 && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber/10 text-amber font-mono shrink-0">
+            <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber/15 text-text font-mono shrink-0">
               {agent.weaknesses.length} weak
             </span>
           )}
@@ -498,7 +498,7 @@ function AgentRow({
         onClick={onSquadClick}
         className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-opacity hover:opacity-80"
         style={sq
-          ? { background: `${sq.color}26`, color: sq.color }
+          ? { background: `${sq.color}26`, color: 'var(--color-text)' }
           : { background: 'transparent', color: 'var(--color-text-muted)', border: '1px dashed var(--color-border)' }
         }
         title={sq ? `Squad: ${sq.label} — click to change` : 'Click to assign squad'}
@@ -725,7 +725,7 @@ function AgentDetailPanel({
                 {agent.weaknesses.map((w) => (
                   <span
                     key={w}
-                    className="text-[10px] px-2 py-0.5 rounded bg-amber/10 text-amber font-mono"
+                    className="text-[10px] px-2 py-0.5 rounded bg-amber/15 text-text font-mono"
                   >
                     {w}
                   </span>
@@ -1293,7 +1293,7 @@ function CapabilityScannerTab() {
                     className={`text-[10px] px-2 py-0.5 rounded font-mono ${
                       result.gaps.includes(s)
                         ? 'bg-red/10 text-red'
-                        : 'bg-emerald/10 text-emerald'
+                        : 'bg-emerald/10 text-text'
                     }`}
                   >
                     {s} {result.gaps.includes(s) ? '✗' : '✓'}
@@ -1575,9 +1575,9 @@ function HistoryTab({ onRefresh }: { onRefresh: () => void }) {
           <div key={h.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-colors ${h.undone ? 'bg-surface-2 border-border opacity-60' : 'bg-surface border-border hover:border-accent/30'}`}>
             <span className="font-mono text-xs font-semibold w-32 truncate">{h.agent_id}</span>
             <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-              h.action === 'patch' ? 'bg-blue/10 text-blue' :
-              h.action === 'bulk-patch' ? 'bg-purple/10 text-purple' :
-              h.action === 'undo' ? 'bg-amber/10 text-amber' :
+              h.action === 'patch' ? 'bg-blue/10 text-text' :
+              h.action === 'bulk-patch' ? 'bg-purple/10 text-text' :
+              h.action === 'undo' ? 'bg-amber/10 text-text' :
               'bg-surface-2 text-text-muted'
             }`}>{h.action}</span>
             <span className="flex-1 text-xs text-text-muted truncate">

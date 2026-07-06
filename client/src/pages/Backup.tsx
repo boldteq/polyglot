@@ -503,7 +503,7 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
             <div className="bg-amber-muted border border-amber/20 rounded-xl px-4 py-3 flex items-start gap-3">
               <RefreshCw className="w-4 h-4 text-amber shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-xs font-semibold text-amber">
+                <p className="text-xs font-semibold text-text">
                   {status.pendingQueue} commit{status.pendingQueue > 1 ? 's' : ''} waiting to push
                 </p>
                 <p className="text-[11px] text-text-muted mt-0.5">
@@ -579,7 +579,7 @@ function OverviewTab({ status, onRefresh }: { status: BackupStatus; onRefresh: (
             </div>
             <div className="px-5 pb-4 pt-1 text-[10px] text-text-muted flex items-center justify-between gap-3 flex-wrap">
               <span>5-sec debounce · 15-min safety-net · auto-retry push with backoff · AES-256-GCM encrypted token</span>
-              <span className="text-text-muted/70 font-mono">
+              <span className="text-text-muted font-mono">
                 <kbd className="px-1 py-0.5 bg-surface-2 rounded">B</kbd> backup ·
                 <kbd className="px-1 py-0.5 bg-surface-2 rounded ml-1">R</kbd> refresh ·
                 <kbd className="px-1 py-0.5 bg-surface-2 rounded ml-1">V</kbd> verify
@@ -1113,11 +1113,11 @@ function DiagnosisCard({
         <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${color === 'red' ? 'text-red' : 'text-amber'}`} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className={`text-xs font-bold ${color === 'red' ? 'text-red' : 'text-amber'}`}>
+            <p className="text-xs font-bold text-text">
               {diagnosis.title}
             </p>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${
-              color === 'red' ? 'bg-red-muted text-red' : 'bg-amber-muted text-amber'
+            <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold text-text ${
+              color === 'red' ? 'bg-red-muted' : 'bg-amber-muted'
             }`}>
               {diagnosis.code}
             </span>
@@ -1232,10 +1232,10 @@ function LogLineView({ line }: { line: BackupLogLine }) {
     .join(' ')
   return (
     <div className="flex items-start gap-3 py-0.5">
-      <span className="text-text-muted/60 shrink-0">{time}</span>
+      <span className="text-text-muted shrink-0">{time}</span>
       <span className={`font-bold shrink-0 ${color}`}>{line.level.toUpperCase().padEnd(5)}</span>
       <span className="text-text shrink-0">{line.event}</span>
-      {meta && <span className="text-text-muted/80 truncate">{meta}</span>}
+      {meta && <span className="text-text-muted truncate">{meta}</span>}
     </div>
   )
 }

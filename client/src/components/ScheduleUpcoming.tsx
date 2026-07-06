@@ -87,7 +87,7 @@ export default function ScheduleUpcoming({ schedules = [] }: { schedules?: Sched
                     <div className="text-sm font-medium truncate">{u.name}</div>
                     <div className="text-[11px] text-text-muted truncate" title={u.cron}>{d.realName} · {humanizeCron(u.cron)}</div>
                   </div>
-                  {u.kind === 'system' && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-purple shrink-0">system</span>}
+                  {u.kind === 'system' && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-text shrink-0">system</span>}
                 </div>
               )
             })}
@@ -110,7 +110,7 @@ export default function ScheduleUpcoming({ schedules = [] }: { schedules?: Sched
                     <div className="text-sm font-medium truncate">{e.name}</div>
                     <div className="text-[11px] text-text-muted truncate">{d.realName} · fires on {e.trigger}</div>
                   </div>
-                  {e.kind === 'system' && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-purple shrink-0">system</span>}
+                  {e.kind === 'system' && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple/15 text-text shrink-0">system</span>}
                 </div>
               )
             })}

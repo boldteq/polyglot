@@ -364,7 +364,7 @@ function AuditTrail({ open, error, rows }: { open: boolean; error: string | null
         <div key={row.id} className="text-[10px] font-mono text-text-muted flex items-center gap-2">
           <span>{new Date(row.changedAt).toLocaleString()}</span>
           <span className="text-text">{formatValue(row.before)} → {formatValue(row.after)}</span>
-          <span className="text-text-muted/70">{row.source}</span>
+          <span className="text-text-muted">{row.source}</span>
         </div>
       ))}
     </div>

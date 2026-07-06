@@ -30,8 +30,8 @@ export default function DependencyBanner({ subsystem, hint }: { subsystem: Subsy
   if (state === 'ok') return null
 
   const tone = state === 'down'
-    ? 'text-red bg-red/10 border-red/20'
-    : 'text-amber bg-amber/10 border-amber/20'
+    ? 'text-text bg-red/10 border-red/20'
+    : 'text-text bg-amber/10 border-amber/20'
 
   return (
     <div className={`flex items-start gap-2 text-xs rounded-lg border px-3 py-2 mb-4 ${tone}`} role="status">

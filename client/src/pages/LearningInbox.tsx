@@ -29,19 +29,19 @@ interface InboxData { items: LearningCandidate[]; counts: InboxCounts }
 // Token-backed (flips light/dark). Mirrors LEARNING_TYPE_COLOR in lib/designTokens.ts.
 // `desc` is a one-line plain-language tooltip shown on the type badge.
 const TYPE_META: Record<LearningType, { label: string; Icon: LucideIcon; cls: string; desc: string }> = {
-  lesson:        { label: 'Lesson',        Icon: Lightbulb,            cls: 'bg-blue/10 text-blue border-blue/25',       desc: 'Something your team learned that should help next time' },
-  bug:           { label: 'Bug',           Icon: Bug,                  cls: 'bg-red/10 text-red border-red/25',          desc: 'A problem worth remembering so it isn’t repeated' },
-  decision:      { label: 'Decision',      Icon: GitBranch,            cls: 'bg-purple/10 text-purple border-purple/25', desc: 'A choice that was made, kept for the record' },
-  feedback:      { label: 'Feedback',      Icon: MessageSquareWarning, cls: 'bg-amber/10 text-amber border-amber/25',    desc: 'A correction from you — saved to feedback.md only when you approve' },
-  golden:        { label: 'Golden',        Icon: Sparkles,             cls: 'bg-emerald/10 text-emerald border-emerald/25', desc: 'An exemplary output worth reusing as a template' },
+  lesson:        { label: 'Lesson',        Icon: Lightbulb,            cls: 'bg-blue/10 text-text border-blue/25',       desc: 'Something your team learned that should help next time' },
+  bug:           { label: 'Bug',           Icon: Bug,                  cls: 'bg-red/10 text-text border-red/25',          desc: "A problem worth remembering so it isn't repeated" },
+  decision:      { label: 'Decision',      Icon: GitBranch,            cls: 'bg-purple/10 text-text border-purple/25', desc: 'A choice that was made, kept for the record' },
+  feedback:      { label: 'Feedback',      Icon: MessageSquareWarning, cls: 'bg-amber/10 text-text border-amber/25',    desc: 'A correction from you — saved to feedback.md only when you approve' },
+  golden:        { label: 'Golden',        Icon: Sparkles,             cls: 'bg-emerald/10 text-text border-emerald/25', desc: 'An exemplary output worth reusing as a template' },
   // Continuity-brain types — each approve is a human sign-off (identity-lock).
-  identity:      { label: 'Identity',      Icon: User,                 cls: 'bg-cyan/10 text-cyan border-cyan/25',       desc: 'A fact about who you are / how you work' },
-  preference:    { label: 'Preference',    Icon: Heart,                cls: 'bg-rose/10 text-rose border-rose/25',       desc: 'A way you prefer things done' },
-  contradiction: { label: 'Contradiction', Icon: AlertTriangle,        cls: 'bg-orange/10 text-orange border-orange/25', desc: 'A new fact that conflicts with an old one — approving replaces the old' },
-  open_loop:     { label: 'Open Loop',     Icon: CircleDot,            cls: 'bg-indigo/10 text-indigo border-indigo/25', desc: 'An unfinished thread to pick back up later' },
-  decay_review:  { label: 'Decay Review',  Icon: TrendingDown,         cls: 'bg-slate/10 text-slate border-slate/25',    desc: 'An old memory the system asks you to confirm is still true' },
+  identity:      { label: 'Identity',      Icon: User,                 cls: 'bg-cyan/10 text-text border-cyan/25',       desc: 'A fact about who you are / how you work' },
+  preference:    { label: 'Preference',    Icon: Heart,                cls: 'bg-rose/10 text-text border-rose/25',       desc: 'A way you prefer things done' },
+  contradiction: { label: 'Contradiction', Icon: AlertTriangle,        cls: 'bg-orange/10 text-text border-orange/25', desc: 'A new fact that conflicts with an old one — approving replaces the old' },
+  open_loop:     { label: 'Open Loop',     Icon: CircleDot,            cls: 'bg-indigo/10 text-text border-indigo/25', desc: 'An unfinished thread to pick back up later' },
+  decay_review:  { label: 'Decay Review',  Icon: TrendingDown,         cls: 'bg-slate/10 text-text border-slate/25',    desc: 'An old memory the system asks you to confirm is still true' },
   // Lens calibration (WS-G): approve = agree with the judge, reject = judge was wrong.
-  calibration:   { label: 'Calibration',   Icon: ScanLine,             cls: 'bg-teal/10 text-teal border-teal/25',       desc: 'Teaching the quality judge: approve = it judged right, reject = it judged wrong' },
+  calibration:   { label: 'Calibration',   Icon: ScanLine,             cls: 'bg-teal/10 text-text border-teal/25',       desc: 'Teaching the quality judge: approve = it judged right, reject = it judged wrong' },
 }
 
 function relTime(iso: string): string {
@@ -351,7 +351,7 @@ export default function LearningInbox() {
         <p className="text-[12px] text-text-muted -mt-3 mb-4">
           {tab === 'pending' && 'Learnings your AI team found, waiting for you to approve (save to memory) or reject.'}
           {tab === 'auto' && 'High-confidence learnings saved automatically — no action needed. Shown here for transparency.'}
-          {tab === 'reviewed' && 'A history of what you’ve already approved or rejected — your audit trail.'}
+          {tab === 'reviewed' && "A history of what you've already approved or rejected — your audit trail."}
         </p>
       )}
 
@@ -695,7 +695,7 @@ const CandidateCard = memo(function CandidateCard({ c, readOnly, busy, editing, 
             <span title={meta.desc} className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md border ${meta.cls}`}>
               <Icon className="w-3 h-3" /> {meta.label}
             </span>
-            <span className={`text-[10px] ${pct >= 80 ? 'text-emerald' : pct >= 50 ? 'text-text-muted' : 'text-text-muted/60'}`}>
+            <span className={`text-[10px] ${pct >= 80 ? 'text-emerald' : pct >= 50 ? 'text-text-muted' : 'text-text-muted'}`}>
               {confidenceTier(pct)} · {pct}% confident
             </span>
             {c.source && <span className="text-[10px] text-text-muted truncate">· {c.source}</span>}
@@ -1030,14 +1030,14 @@ function OverviewPanel({ ov, loading, error, onRetry }: OverviewPanelProps) {
     <div className="space-y-5">
       {/* Stat cards — the accurate headline numbers */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard Icon={GraduationCap} label="Lessons learned" value={ov.captured.total} tone="text-emerald"
+        <StatCard Icon={GraduationCap} label="Lessons learned" value={ov.captured.total} tone="text-text"
           sub={ov.captured.last7d > 0 ? `+${ov.captured.last7d} this week` : 'all-time captured'}
           title="Total lessons, bugs, decisions and golden examples saved to memory so far." />
         <ImprovementCard imp={ov.improvement} />
-        <StatCard Icon={Inbox} label="Pending review" value={ov.counts.pending} tone={ov.counts.pending > 0 ? 'text-amber' : 'text-text'}
+        <StatCard Icon={Inbox} label="Pending review" value={ov.counts.pending} tone="text-text"
           title="Learnings waiting for you to approve or reject on the Pending review tab." />
         <StatCard Icon={ScanLine} label="Sessions digested (7d)" value={ov.sessions.lastWeek} tone="text-text" sub={`${ov.deduped7d} duplicates skipped`}
-          title="VS Code work sessions the nightly digest analyzed this week. ‘Duplicates skipped’ = things already in memory, so they weren’t saved again." />
+          title="VS Code work sessions the nightly digest analyzed this week. 'Duplicates skipped' = things already in memory, so they weren't saved again." />
       </div>
 
       {/* Where lessons came from + knowledge growth */}
@@ -1049,7 +1049,7 @@ function OverviewPanel({ ov, loading, error, onRetry }: OverviewPanelProps) {
           <p className="text-[11px] text-text-muted mb-3">How each saved lesson got into memory.</p>
           <SourceBar bySource={ov.bySource} total={ov.captured.total} />
           <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-3 pt-2 border-t border-border/50">
-            <Brain className="w-3.5 h-3.5" /> Memory brain: <span className="text-text-secondary font-medium cursor-help" title="Reusable workflow & anti-pattern playbooks stored in ~/.claude/memory/patterns.">{ov.memory.patterns}</span> patterns · <span className="text-text-secondary font-medium cursor-help" title="Personal rules you’ve approved into feedback.md (each starts with ★).">{ov.memory.feedbackDirectives}</span> directives
+            <Brain className="w-3.5 h-3.5" /> Memory brain: <span className="text-text-secondary font-medium cursor-help" title="Reusable workflow & anti-pattern playbooks stored in ~/.claude/memory/patterns.">{ov.memory.patterns}</span> patterns · <span className="text-text-secondary font-medium cursor-help" title="Personal rules you've approved into feedback.md (each starts with ★).">{ov.memory.feedbackDirectives}</span> directives
           </div>
         </div>
         <div className="card p-4">

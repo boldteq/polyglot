@@ -180,7 +180,7 @@ export default function SystemHealth() {
                     : <AlertTriangle className="w-3 h-3 text-amber shrink-0 opacity-60" />}
                 <span className="font-medium truncate flex-1">{c.name}</span>
                 <span className="text-text-muted">{ago(c.lastRunAt)}</span>
-                <span className="text-text-muted/60 w-14 text-right">{c.enabled ? next(c.nextRunAt) : 'off'}</span>
+                <span className="text-text-muted w-14 text-right">{c.enabled ? next(c.nextRunAt) : 'off'}</span>
                 <button onClick={() => runNow(c.id, c.name)} disabled={busy.has(c.id)} title="Run now"
                   className="p-0.5 rounded text-text-muted hover:text-accent disabled:opacity-40">
                   {busy.has(c.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
@@ -197,7 +197,7 @@ export default function SystemHealth() {
 function InfoTooltip({ text }: { text: string }) {
   return (
     <span className="relative group/tip shrink-0">
-      <Info className="w-3 h-3 text-text-muted/40 hover:text-text-muted cursor-default transition-colors" />
+      <Info className="w-3 h-3 text-text-muted hover:text-text-muted cursor-default transition-colors" />
       <span className="pointer-events-none absolute bottom-full right-0 mb-2 w-56 rounded-lg bg-gray-900 text-white p-2.5 text-[11px] leading-relaxed shadow-xl opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150 z-50">
         {text}
         <span className="absolute top-full right-2 border-4 border-transparent border-t-gray-900" />

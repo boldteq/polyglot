@@ -119,7 +119,7 @@ export default function EditSubDepartmentModal({
               <span>{previewLabel}</span>
             </span>
             {deptLabel && (
-              <span className="text-[10px] text-text-muted/70 ">
+              <span className="text-[10px] text-text-muted ">
                 under {deptLabel}
               </span>
             )}
@@ -132,7 +132,7 @@ export default function EditSubDepartmentModal({
         <div className="px-5 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
             <label className="text-[11px] font-bold text-text-muted mb-1.5 block">
-              Sub-Department ID <span className="text-text-muted/70 font-normal normal-case">(immutable — changing would orphan all members)</span>
+              Sub-Department ID <span className="text-text-muted font-normal normal-case">(immutable — changing would orphan all members)</span>
             </label>
             <div className="px-3 py-2 text-sm bg-surface-2 border border-border rounded-lg font-mono text-text-muted">
               {deptId}.{subDept.id}
@@ -164,7 +164,7 @@ export default function EditSubDepartmentModal({
 
           <div>
             <label className="text-[11px] font-bold text-text-muted mb-1.5 block">
-              Card Label <span className="text-text-muted/70 font-normal normal-case">(optional — overrides Label on the card header)</span>
+              Card Label <span className="text-text-muted font-normal normal-case">(optional — overrides Label on the card header)</span>
             </label>
             <input
               value={cardLabel}
@@ -256,7 +256,7 @@ export default function EditSubDepartmentModal({
                 </button>
               ))}
             </div>
-            <div className="text-[10px] text-text-muted/70 mt-1">
+            <div className="text-[10px] text-text-muted mt-1">
               {displayMode === 'expanded' && 'Show full card with all members.'}
               {displayMode === 'collapsed' && 'Show header + member count only (click to expand).'}
               {displayMode === 'hidden' && 'Hide card entirely from org chart.'}
@@ -276,7 +276,7 @@ export default function EditSubDepartmentModal({
           </div>
 
           {error && (
-            <div className="px-3 py-2 rounded-lg bg-red/10 text-red text-xs font-semibold border border-red/20">
+            <div className="px-3 py-2 rounded-lg bg-red/10 text-text text-xs font-semibold border border-red/20">
               {error}
             </div>
           )}
