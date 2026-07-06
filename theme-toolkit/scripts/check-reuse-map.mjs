@@ -71,7 +71,7 @@ function finish(envError) {
     blockers.length = 0
   }
   const pass = !envError && blockers.length === 0
-  writeReport('reuse-map', 23, {
+  writeReport('section-reuse', 23, {
     cwd, pass, blockers, warnings,
     evidence: { reuseMap: REUSE_MAP, baseRef: BASE_REF, reuseTarget: REUSE_TARGET, reason: envError || undefined },
     duration_ms: Date.now() - t0,

@@ -26,10 +26,10 @@ const fail = (m) => { console.log(`  FAIL  ${m}`); failures += 1 }
 // static gates that legitimately lack a hermetic fixture TODAY — a shrinking tech-debt ledger.
 // Each MUST carry a reason. Remove an entry the moment its fixture lands (stale-exemption enforces this).
 const EXEMPT_STATIC = new Map([
-  ['theme-check', 'proxies the Shopify CLI (`shopify theme check`) — no hermetic fixture without the CLI'],
+  ['code-lint', 'proxies the Shopify CLI (`shopify theme check`) — no hermetic fixture without the CLI'],
   ['editability', 'bash grep script — covered by its own greps; node-fixture not tractable'],
 ])
-const EXEMPT_NUMBER = new Set(['card-bindings']) // library gate: writeReport gateNumber is null by design
+const EXEMPT_NUMBER = new Set(['library-cards']) // library gate: writeReport gateNumber is null by design
 
 // PURE: audit a manifest against injected probes. Returns violations [{id, gate, detail}].
 function auditCoherence(manifest, { scriptExists, fixtureExists, gateNumberOf, exemptStatic, exemptNumber }) {

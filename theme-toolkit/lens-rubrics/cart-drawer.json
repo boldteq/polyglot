@@ -1,0 +1,15 @@
+{ "surface": "cart-drawer", "viewport_notes": "The cart was populated and the slide-out drawer was opened from the PDP. Judge the OPEN drawer overlay as the shopper sees it (esp. on mobile, where the drawer IS the cart). The drawer should sit over the page, not replace it.",
+  "checks": [
+    { "id": "drawer-open", "rule": "a cart drawer / mini-cart is actually OPEN and visible as an overlay panel (not just the underlying product page with no drawer). If no drawer overlay is visible, this fails — the slide-out cart did not open.", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "checkout-cta", "rule": "a clear, prominent Checkout button is visible AND fully inside the drawer (not cut off / pushed below the fold / overlapped by express-pay buttons). It is the primary action.", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "line-items", "rule": "at least one line item (image + title + price + quantity) is visible in the drawer — the added product shows.", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "close-affordance", "rule": "a visible, labeled way to close the drawer or continue shopping (×, Close, or Continue shopping) — not an unlabeled glyph or a trap.", "severity_if_fail": "warning", "fix_owner": "loom" },
+    { "id": "upsell-shipping", "rule": "if the drawer has a free-shipping progress bar or an upsell/recommendation slot, it renders REAL content (a product image+title, a real threshold) — not an empty slot, a spinner, or placeholder text.", "severity_if_fail": "warning", "fix_owner": "conduit" },
+    { "id": "drawer-overflow", "rule": "drawer content does not overflow horizontally or push the checkout CTA off-screen; the drawer width is sensible (a side panel, not a full-bleed wall or a tiny sliver); body scrolls if items exceed height.", "severity_if_fail": "blocker", "fix_owner": "loom" },
+    { "id": "chrome-on-brand", "rule": "the drawer matches the store's brand (colors, type, button style) — not raw default-theme chrome clashing with the rest of the page.", "severity_if_fail": "warning", "fix_owner": "drape" },
+    { "id": "broken-state", "rule": "no missing-image placeholders, no Liquid errors, no Lorem/[CLAIM] placeholder text inside the drawer.", "severity_if_fail": "blocker", "fix_owner": "loom" }
+  ],
+  "mobile_overlay": [
+    { "id": "drawer-tap-targets", "rule": "on mobile, the Checkout button and the qty +/- and remove controls are ≥44px tap targets and not crowded; the checkout CTA is reachable without awkward scrolling.", "severity_if_fail": "warning", "fix_owner": "loom" }
+  ],
+  "sources": ["theme-page-recipes.md#cart", "patterns/good/shopify-conversion-gate-checklist.md (C7/C8 cart)", "dawn-theme-architecture.md#cart-drawer"] }

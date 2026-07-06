@@ -101,146 +101,89 @@ const FRESHNESS_ALLOWLIST = ['gate-reports', 'CHANGES.md', 'merchant-editability
 // freshness). FRESHNESS_TTL_OFF=1 disables the check (dogfood / re-gate-then-verify edge).
 const URL_GATE_TTL_MS = 24 * 60 * 60 * 1000
 
+// Branded gate stack — 31 gates across 9 families (Bedrock · Forge · Catalyst · Integrity · Lens ·
+// DNA · Press · Signal · Tribunal). `name` is the contract (report file, --gate, SKIP_<NAME>, fixture
+// dir); `number` is display-only and STABLE (merges keep the lowest absorbed number; retired: 15/17/21/26/32/34).
+// Old names still resolve via GATE_ALIAS (below) for one transition.
+// 35 quality gates · 2 levels: stage (setup|quality) → category (plain-English).
+// `name` is the contract (report file, --gate, SKIP_<NAME>, fixture dir). `desc` drives the info button.
+// NOT gates (removed 2026-06-26): theme-lock = a publish-safety POLICY (enforced by shopify-theme-push.mjs
+// + CI, not here); library-cards = component-library CI (COMPONENT_LIBRARY_AUDIT); review-board = retired
+// human sign-off (script kept on disk). Old names still resolve via GATE_ALIAS for back-compat.
 const GATES = [
-  // Gate 0 — theme lock: every push targets the linked theme only, never live/another store
-  // (static; lenient on a missing lock — THEME_LOCK_REQUIRED=1 makes absence a blocker at publish).
-  { name: 'theme-lock', number: 0, kind: 'static', runner: 'node', script: 'shopify-theme-guard.mjs' },
-  // Gate 0.4 — discovery-complete: the structured BRIEF (docs/discovery/goals.json numeric targets
-  // + docs/design/brand-direction.md) must exist before design/build dispatch. Mechanizes the prose
-  // gate in shopify-technical-goals-discovery.md §4 — the dispatch-time refusal that makes "brief in
-  // → store out" real. Static; warns in dev, BLOCKS at dispatch/publish-grade (DS_REQUIRE_SCOPE).
-  { name: 'discovery', number: 0.4, kind: 'static', runner: 'node', script: 'check-discovery.mjs' },
-  // Gate 0.5 — bootstrap-complete: the FOUNDATION must exist before any QA gate is meaningful
-  // (design-system.json present, JSON templates/config parse, store identity not a placeholder,
-  // baseline tag). Static; warns in dev, BLOCKS at publish-grade (DS_REQUIRE_SCOPE). Stops a build
-  // reaching the gates on a broken base — where ~12 downstream gates "skip — scope unresolvable"
-  // and the run reads as fine. Runs first so the failure is loud + at-the-door.
-  { name: 'bootstrap', number: 0.5, kind: 'static', runner: 'node', script: 'check-bootstrap.mjs' },
-  { name: 'lighthouse', number: 1, kind: 'url', runner: 'node', script: 'gate-lighthouse.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
-  { name: 'theme-check', number: 2, kind: 'static', runner: 'node', script: 'gate-theme-check.mjs' },
-  { name: 'editability', number: 3, kind: 'static', runner: 'bash', script: 'gate-editability-greps.sh' },
-  { name: 'axe', number: 5, kind: 'url', runner: 'node', script: 'gate-axe.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
-  { name: 'seo', number: 6, kind: 'url', runner: 'node', script: 'gate-seo.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
-  { name: 'conversion', number: 7, kind: 'url', runner: 'node', script: 'gate-conversion.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
-  // DGS — design cohesion (static; run in full + --static-only + covered by --verify/--require-full).
-  { name: 'design-system', number: 8, kind: 'static', runner: 'node', script: 'check-design-system.mjs' },
-  { name: 'consistency', number: 9, kind: 'static', runner: 'node', script: 'check-consistency.mjs' },
-  // Verification Layer 3 — functional/interaction smoke (drives real flows, url-kind).
-  { name: 'functional', number: 10, kind: 'url', runner: 'node', script: 'gate-functional.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
-  // Prevention — dead-code/bloat anti-patterns (static; the rest of the library is gates above + the review board).
-  { name: 'antipatterns', number: 11, kind: 'static', runner: 'node', script: 'check-antipatterns.mjs' },
-  // Design QUALITY — per-niche taste fingerprint vs the DNA pack (static; calibration-gated so
-  // an untuned pack warns rather than blocks). Covered by --static-only + --verify/--require-full.
-  { name: 'design-quality', number: 12, kind: 'static', runner: 'node', script: 'check-design-quality.mjs' },
-  // Honesty — fake-urgency / fabricated-scarcity / unsourced-claim killer (static; blocks
-  // evergreen countdowns + hardcoded scarcity, warns on fake-activity/unsourced stats).
-  { name: 'honesty', number: 13, kind: 'static', runner: 'node', script: 'check-honesty.mjs' },
-  // Render-wiring — tokens must RENDER, not just conform on paper (static; closes the #8/#12 blind
-  // spot where color schemes + fonts are declared but never wired → flat black-on-white default).
-  { name: 'render-wiring', number: 14, kind: 'static', runner: 'node', script: 'check-render-wiring.mjs' },
-  // Commerce-readiness — the PDP must be able to TRANSACT, not just render (static; catches an
-  // editorial-only product template with no form/price/variant — a store that sells nothing).
-  { name: 'commerce-readiness', number: 15, kind: 'static', runner: 'node', script: 'check-commerce-readiness.mjs' },
-  // Static a11y — the high-frequency a11y/mobile defects axe (#5, url-kind) can't catch pre-deploy
-  // (advisory WARN; A11Y_STRICT=1 promotes to block). Complements, doesn't replace, the runtime axe gate.
-  { name: 'a11y-static', number: 16, kind: 'static', runner: 'node', script: 'check-a11y-static.mjs' },
-  // Visual-quality — "gates-green ≠ looks-good" (static VERIFIER of onyx's agentic visual review).
-  // Warns if the review artifact is absent in dev; BLOCKS at publish-grade (DS_REQUIRE_SCOPE) when
-  // missing/unapproved/<min-confidence/any-fail. The judgment is onyx's; this enforces it mechanically.
-  { name: 'visual-quality', number: 17, kind: 'static', runner: 'node', script: 'check-visual-quality.mjs' },
-  // Visual-truth (Lens · Layer 3) — the static ENFORCER of the Lens pass (lens-capture.mjs renders
-  // every surface; vision subagents judge each frame against its rubric). This gate aggregates
-  // gate-reports/lens/{lens-manifest,judge/*}.json → BLOCKS on render-error / overflow / broken image
-  // / judge FAIL / low-confidence / blocker finding / systemic cross-frame defect. Warns if the Lens
-  // pass is absent in dev; BLOCKS at publish-grade (DS_REQUIRE_SCOPE/LENS_REQUIRE). This is the
-  // pixels-actually-looked-right signal #17 (self-attestation) cannot give. mantle blocks publish on it.
-  { name: 'visual-truth', number: 18, kind: 'static', runner: 'node', script: 'check-visual-truth.mjs' },
-  // Section-cohesion (#19, URL) — the render-time "do the sections feel like ONE page?" enforcer.
-  // #8 locks the token SET + #9 counts store-wide variety, but neither sees a rendered page: section A
-  // can ship h2=32 and section B h2=28 and both pass. This pulls COMPUTED styles per section on the
-  // staging URL and BLOCKs cross-section drift (off-ladder type, off-scale padding, multi-H1) against
-  // design-system.json. Content-only (chrome excluded). mantle gates publish.
-  { name: 'section-cohesion', number: 19, kind: 'url', runner: 'node', script: 'check-section-cohesion.mjs', freshnessTtlMs: URL_GATE_TTL_MS },
-  // Card-bindings (#20, LIBRARY) — proves a component-library card renders DGS-conformant + honest
-  // + wired by instantiating it into a Dawn-style section (binding its ## Design-system bindings
-  // roles to theme-native vars — the loom step) and running #8/#13/#14 against it. Catches a
-  // drifting card BEFORE drape/stitch consume it. kind:'library' — it scans the LIBRARY, not the
-  // theme repo in cwd, so it is EXCLUDED from the static/url theme sweeps; run it explicitly with
-  // `--gate card-bindings` (CI library check) or `node check-card-bindings.mjs` directly.
-  { name: 'card-bindings', number: 20, kind: 'library', runner: 'node', script: 'check-card-bindings.mjs' },
-  // Conversion sign-off (#21, static) — makes catalyst's lift_target MACHINE-CHECKABLE. #7 enforces
-  // CRO mechanics but not the lift TARGET; this verifies docs/cro/catalyst-signoff.json applied the
-  // canonical rule (lift_target = niche_benchmark × 2.5, ×1.5 sparse) + is signed + names surfaces +
-  // cites ≥5 decoder brands. Records the COMPUTED target, never a measured lift. mantle blocks publish.
-  { name: 'conversion-signoff', number: 21, kind: 'static', runner: 'node', script: 'check-conversion-signoff.mjs' },
-  // CSS-layout (#22, static) — the DETERMINISTIC complement to Lens #18. Lens's vision judge demotes
-  // sub-confidence layout calls to warnings; this catches the deterministic 80% on the BUILD's own CSS
-  // (custom section {% style %} blocks + build-authored assets/*.css; vendor Dawn/Minimog CSS out of
-  // scope): viewport-overflow `100vw` (blocker at publish-grade), no-wrap flex rows / white-space:nowrap /
-  // large negative margins (advisory). Covered by --static-only + --verify/--require-full.
-  { name: 'css-layout', number: 22, kind: 'static', runner: 'node', script: 'check-css-layout.mjs' },
-  // Section-reuse map (#23, static) — onyx Audit-7 / stitch self-check, now an authoritative manifest
-  // gate (was an orphan validator: existed but unwired → falsely signalled coverage). Enforces the
-  // reuse ladder: ≥70% REUSE+CONFIGURE share, Custom split reconciliation, scratch-custom needs a
-  // `blueprint: none (...)` justification, Counts custom == new sections/*.liquid since base. SKIPS when
-  // no new sections (not applicable — never false-BLOCKs a refresh). Phase A warn-only by default;
-  // REUSE_MAP_ENFORCE=1 flips to BLOCK after the ≥2-store dogfood. Covered by --static-only + --require-full.
-  { name: 'reuse-map', number: 23, kind: 'static', runner: 'node', script: 'check-reuse-map.mjs' },
-  // Art-direction (#24, WS-C) — deterministic complement to Lens #18: when design-system.json declares
-  // imagery.art_direction, hero/banner must render responsive sources (<picture>/srcset/image_tag).
-  // WARN-ONLY (ART_DIRECTION_ENFORCE=1 to BLOCK after ≥2 stores); SKIPS when art_direction not declared.
-  { name: 'art-direction', number: 24, kind: 'static', runner: 'node', script: 'check-art-direction.mjs' },
-  // Redirects (#25, #30) — redirect-map validation: self-redirects/loops/multi-hop chains/dead targets
-  // (beacon's SEO sign-off, made machine-checkable). Static + hermetic (validates the map rows); an
-  // opt-in live crawl (REDIRECTS_CRAWL=1) asserts ≤1 hop to 200. SKIPS when there's no redirect map
-  // (greenfield/refresh = not a migration). Covered by --static-only + --verify/--require-full.
-  { name: 'redirects', number: 25, kind: 'static', runner: 'node', script: 'check-redirects.mjs' },
-  // Copy-quality (#26, #23/#24/#25) — ink's DoD made machine-checkable: hero formula+citation,
-  // objection coverage, voice reference. Warn-first (COPY_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK); SKIPS
-  // when there are no content/briefs. Covered by --static-only + --verify/--require-full.
-  { name: 'copy-quality', number: 26, kind: 'static', runner: 'node', script: 'check-copy-quality.mjs' },
-  // App-conflicts (#27, #55) — flags conflict groups (popup wars, duplicate review/subscription/cart
-  // apps, competing page builders) with ≥2 members in the theme source. Warn-first
-  // (APP_CONFLICTS_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK); SKIPS when there's no theme.
-  { name: 'app-conflicts', number: 27, kind: 'static', runner: 'node', script: 'check-app-conflicts.mjs' },
-  // Locale-completeness (#28, #51) — every key in the default storefront locale must exist in every
-  // other locale (no untranslated fallbacks). Warn-first (LOCALE_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK);
-  // SKIPS a monolingual store (<2 locale files).
-  { name: 'locale-completeness', number: 28, kind: 'static', runner: 'node', script: 'check-locale-completeness.mjs' },
-  // Email-triggers (#29, #35) — every declared lifecycle email (welcome/cart-abandon/post-purchase/…)
-  // must have its trigger wired, or it never sends. Warn-first (EMAIL_ENFORCE=1 / DS_REQUIRE_SCOPE →
-  // BLOCK); SKIPS when there's no docs/email/lifecycle.json (not an email build).
-  { name: 'email-triggers', number: 29, kind: 'static', runner: 'node', script: 'check-email-triggers.mjs' },
-  // DS-cascade (#30, #2) — a brand-change must CASCADE: assets/design-system.css must be regenerated
-  // (its stamped ds-hash matches design-system.json) so editing the brand once propagates everywhere.
-  // BLOCKS a stale/missing cascade at publish-grade (DS_CASCADE_ENFORCE=1 / DS_REQUIRE_SCOPE); warns on
-  // sections hardcoding literals that won't cascade. SKIPS when there's no design-system.json.
-  { name: 'ds-cascade', number: 30, kind: 'static', runner: 'node', script: 'check-ds-cascade.mjs' },
-  // Image-quality (#34) — was an ORPHAN validator (tested but unwired → false coverage). Per-slot
-  // resolution/aspect/weight at upload (an oversized hero is the #1 LCP killer). Warn-first
-  // (IMAGE_QUALITY_STRICT=1 / PORTER_REQUIRE_CONTENT=1 → BLOCK); SKIPS when there's no images dir.
-  { name: 'image-quality', number: 34, kind: 'static', runner: 'node', script: 'check-image-quality.mjs' },
-  // Gate 31 — design-review-board: mechanizes the governance-OS §5 8-role sign-off (any block / any
-  // confidence <70 / partial board → fail). Verifies the board-verdict artifact; warn-first (BLOCKS at
-  // publish-grade DS_REQUIRE_SCOPE/DRB_REQUIRE). Makes "the board ran" machine-checkable, not prose.
-  { name: 'design-review-board', number: 31, kind: 'static', runner: 'node', script: 'check-design-review-board.mjs' },
-  // Gate 32 — red-team: mechanizes governance-OS §6. A dedicated adversary (independent of the builder)
-  // attacks along 4 axes BEFORE the board; every finding must be resolved or accepted-with-rationale;
-  // an unanswered attack blocks. Verifies the red-team artifact; warn-first (BLOCKS at publish-grade).
-  { name: 'red-team', number: 32, kind: 'static', runner: 'node', script: 'check-red-team.mjs' },
-  // Gate 35 — mobile-layout: the DETERMINISTIC enforcer of the mobile-first protocol (viewport meta,
-  // font/tap-target floors, hover-only affordances, 100vw overflow guards, sticky mobile ATC) on the
-  // build's custom surface — the hermetic complement to Lens's visual mobile judgment. Warn-first
-  // (MOBILE_ENFORCE=1 / DS_REQUIRE_SCOPE → BLOCK on viewport-meta + sub-12px font); SKIPS when no custom
-  // surface. Covered by --static-only + --verify/--require-full.
-  { name: 'mobile-layout', number: 35, kind: 'static', runner: 'node', script: 'check-mobile-layout.mjs' },
-  // Placeholder / dev-leftover (#36, build-standards §7) — a shopper must never see a dev/test leftover
-  // ("© GPT TEST 1.0", lorem ipsum, rendered [CLAIM], "your-store-name"/example.com → BLOCK) or
-  // unreplaced theme-default copy ("Talk about your brand", "Button label" in SHIPPED settings/templates
-  // → WARN dev, BLOCK at DS_REQUIRE_SCOPE/PLACEHOLDER_ENFORCE). Scans templates/locales/settings_data +
-  // section/snippet Liquid; SKIPS when no content surfaces. Covered by --static-only + --verify/--require-full.
-  { name: 'placeholder', number: 36, kind: 'static', runner: 'node', script: 'check-placeholder-text.mjs' },
+  // ── SETUP · Prerequisites — must exist before quality matters ──
+  { name: 'discovery', number: 0.4, stage: 'setup', category: 'Prerequisites', kind: 'static', runner: 'node', script: 'check-discovery.mjs', desc: 'The client brief — goals + brand direction — exists before any build starts.' },
+  { name: 'foundation', number: 0.5, stage: 'setup', category: 'Prerequisites', kind: 'static', runner: 'node', script: 'check-bootstrap.mjs', desc: 'The design system + store identity are set up before QA can mean anything.' },
+  { name: 'secret-scan', number: 0.6, stage: 'setup', category: 'Prerequisites', kind: 'static', runner: 'node', script: 'check-secret-scan.mjs', desc: 'No API keys / tokens / secrets committed in the theme — a leak is a security incident.' },
+  // ── QUALITY · Performance & SEO ──
+  { name: 'performance', number: 1, stage: 'quality', category: 'Performance & SEO', kind: 'url', runner: 'node', script: 'gate-lighthouse.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'Page-speed budget (LCP/CLS) via Lighthouse — slow stores lose sales + ranking.' },
+  { name: 'seo', number: 6, stage: 'quality', category: 'Performance & SEO', kind: 'url', runner: 'node', script: 'gate-seo.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'Structured data, canonical + meta tags present — so Google can find + rank the store.' },
+  { name: 'social-assets', number: 39, stage: 'quality', category: 'Performance & SEO', kind: 'static', runner: 'node', script: 'check-social-assets.mjs', desc: 'Favicon + social-share (OG/Twitter) images — no broken icon, full preview on shares.' },
+  { name: 'link-health', number: 40, stage: 'quality', category: 'Performance & SEO', kind: 'url', runner: 'node', script: 'check-link-health.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'No broken internal links + a real 404 page with a way back — no dead ends.' },
+  { name: 'redirects', number: 25, stage: 'quality', category: 'Performance & SEO', kind: 'static', runner: 'node', script: 'check-redirects.mjs', desc: 'Migration redirect map is safe — no loops / dead targets that lose old URLs + SEO.' },
+  // ── QUALITY · Code Quality ──
+  { name: 'code-lint', number: 2, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'gate-theme-check.mjs', desc: 'Shopify theme-check passes — no Liquid/asset errors or bad-practice warnings.' },
+  { name: 'editability', number: 3, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'bash', script: 'gate-editability-greps.sh', desc: 'No hardcoded content — every text/image/color is merchant-editable in the admin.' },
+  { name: 'dead-code', number: 11, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-antipatterns.mjs', desc: 'No unused assets, orphan sections, or duplicate files bloating the theme.' },
+  { name: 'layout', number: 22, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-css-layout.mjs', desc: 'No CSS overflow / layout defects (100vw, no-wrap rows) that break the page width.' },
+  // ── QUALITY · Design System ──
+  { name: 'design-tokens', number: 8, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-design-system.mjs', desc: 'Colors / spacing / type stay on the design-system scale — no hardcoded hex/px.' },
+  { name: 'consistency', number: 9, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-consistency.mjs', desc: 'Store-wide style stays consistent — capped font sizes / weights / radii, no drift.' },
+  { name: 'design-quality', number: 12, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-design-quality.mjs', desc: "Hits the niche's premium taste bar (DNA pack) — looks designed, not generic." },
+  { name: 'render-check', number: 14, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-render-wiring.mjs', desc: 'The design tokens actually render on the page, not just declared on paper.' },
+  { name: 'section-reuse', number: 23, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-reuse-map.mjs', desc: '≥70% of sections reuse the theme base before going custom — no over-building.' },
+  { name: 'brand-sync', number: 30, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-ds-cascade.mjs', desc: 'A brand change regenerates the CSS so it cascades everywhere — edit once.' },
+  // ── QUALITY · Visual & Mobile ──
+  { name: 'visual-check', number: 18, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'check-visual-truth.mjs', desc: 'Lens vision-judges the real rendered pixels — catches what code checks can\'t.' },
+  { name: 'section-consistency', number: 19, stage: 'quality', category: 'Visual & Mobile', kind: 'url', runner: 'node', script: 'check-section-cohesion.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'Sections feel like one page — consistent type scale, rhythm, alignment.' },
+  { name: 'mobile', number: 35, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'check-mobile-layout.mjs', desc: 'Mobile-first: thumb-reach CTAs, tap-target sizes, no horizontal scroll.' },
+  // ── QUALITY · Accessibility ──
+  { name: 'accessibility', number: 5, stage: 'quality', category: 'Accessibility', kind: 'url', runner: 'node', script: 'gate-axe.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'Live WCAG check (axe) on the rendered page — usable by everyone, legal-safe.' },
+  { name: 'static-a11y', number: 16, stage: 'quality', category: 'Accessibility', kind: 'static', runner: 'node', script: 'check-a11y-static.mjs', desc: 'Pre-deploy a11y in the markup — alt text, labels, tap targets, before it ships.' },
+  // ── QUALITY · Commerce & Conversion ──
+  { name: 'conversion', number: 7, stage: 'quality', category: 'Commerce & Conversion', kind: 'url', runner: 'node', script: 'gate-conversion.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'CRO mechanics: hero+CTA, working buy-path, trust signals, sticky add-to-cart.' },
+  { name: 'price-binding', number: 38, stage: 'quality', category: 'Commerce & Conversion', kind: 'static', runner: 'node', script: 'check-price-binding.mjs', desc: 'Prices come from live Shopify data, never hardcoded — no fraud risk, multi-currency.' },
+  { name: 'imagery', number: 24, stage: 'quality', category: 'Commerce & Conversion', kind: 'static', runner: 'node', script: 'check-media-quality.mjs', desc: 'Image weight / format + art-direction — fast LCP, right crop per device.' },
+  { name: 'functionality', number: 10, stage: 'quality', category: 'Commerce & Conversion', kind: 'url', runner: 'node', script: 'gate-functional.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'The store actually works — clicks, add-to-cart, no JS / console errors.' },
+  // ── QUALITY · Content & Trust ──
+  { name: 'honesty', number: 13, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-honesty.mjs', desc: 'Blocks fake reviews / fabricated scarcity / fake countdowns — trustworthy + legal.' },
+  { name: 'content-quality', number: 36, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-placeholder-text.mjs', desc: 'No dev placeholders (lorem / TEST) + copy meets the quality bar.' },
+  { name: 'rule-pack', number: 43, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-rule-pack.mjs', desc: 'Data-driven rules (team + per-store, JSON) — adds enforcement by appending a rule; auto-grown from real defects.' },
+  // ── QUALITY · Localization & Tracking ──
+  { name: 'translations', number: 28, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-locale-completeness.mjs', desc: 'Every text key exists in every locale — no untranslated fallbacks.' },
+  { name: 'app-conflicts', number: 27, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-app-conflicts.mjs', desc: 'No clashing apps (popup wars, duplicate reviews) that break the storefront.' },
+  { name: 'email-triggers', number: 29, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-email-triggers.mjs', desc: 'Every declared lifecycle email actually has its trigger wired, or it never sends.' },
+  { name: 'analytics-wiring', number: 41, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-analytics-wiring.mjs', desc: 'GA4 / Meta pixel + commerce events wired — revenue is actually tracked.' },
+  // ── QUALITY · Legal & Privacy ──
+  { name: 'legal-pages', number: 37, stage: 'quality', category: 'Legal & Privacy', kind: 'static', runner: 'node', script: 'check-legal-pages.mjs', desc: 'Privacy / Terms / Refund / Shipping / Contact exist + are linked — launch-required.' },
+  { name: 'consent', number: 42, stage: 'quality', category: 'Legal & Privacy', kind: 'static', runner: 'node', script: 'check-consent.mjs', desc: 'GDPR cookie-consent present + not blocking the CTA — compliant for EU/UK/CA.' },
 ]
+
+// Back-compat: old gate names still resolve via --gate <old> and SKIP_<OLD> for one transition.
+// Maps every retired/renamed name → its current gate name. Built from scripts/gate-migration-map.json.
+const GATE_ALIAS = {
+  // round-2 abstract brand → loved purpose name
+  'anchor': 'theme-lock', 'brief': 'discovery', 'blueprint': 'foundation', 'syntax': 'code-lint',
+  'editable': 'editability', 'hygiene': 'dead-code', 'candor': 'honesty', 'cohesion': 'section-consistency',
+  'thumb': 'mobile', 'tokens': 'design-tokens', 'harmony': 'consistency', 'taste': 'design-quality',
+  'wiring': 'render-check', 'cards': 'library-cards', 'ladder': 'section-reuse', 'cascade': 'brand-sync',
+  'forms': 'static-a11y', 'apps': 'app-conflicts', 'locale': 'translations', 'lifecycle': 'email-triggers',
+  'speed': 'performance', 'access': 'accessibility', 'search': 'seo', 'flow': 'functionality',
+  'reroute': 'redirects', 'convert': 'conversion', 'media': 'imagery', 'proof': 'content-quality',
+  'tribunal': 'review-board', 'lens': 'visual-check',
+  // original pre-brand → loved purpose name
+  'bootstrap': 'foundation', 'theme-check': 'code-lint', 'antipatterns': 'dead-code', 'css-layout': 'layout',
+  'section-cohesion': 'section-consistency', 'mobile-layout': 'mobile', 'design-system': 'design-tokens',
+  'render-wiring': 'render-check', 'card-bindings': 'library-cards', 'reuse-map': 'section-reuse',
+  'ds-cascade': 'brand-sync', 'a11y-static': 'static-a11y', 'locale-completeness': 'translations',
+  'lighthouse': 'performance', 'axe': 'accessibility', 'functional': 'functionality',
+  'commerce-readiness': 'conversion', 'conversion-signoff': 'conversion', 'art-direction': 'imagery',
+  'image-quality': 'imagery', 'placeholder': 'content-quality', 'copy-quality': 'content-quality',
+  'design-review-board': 'review-board', 'red-team': 'review-board', 'visual-truth': 'visual-check',
+  'visual-quality': 'visual-check',
+}
+// new name → [old names], for honoring legacy SKIP_<OLD>=1 waivers during the transition.
+const GATE_ALIAS_REVERSE = Object.entries(GATE_ALIAS).reduce((m, [oldN, newN]) => { (m[newN] ||= []).push(oldN); return m }, {})
 
 // ── args ──────────────────────────────────────────────────────────────────
 function printHelp() {
@@ -455,7 +398,7 @@ async function runGates(args) {
   if (args.gates.length > 0) {
     mode = 'gate-subset'
     selected = args.gates.map(name => {
-      const gate = GATES.find(g => g.name === name)
+      const gate = GATES.find(g => g.name === name) || GATES.find(g => g.name === GATE_ALIAS[name])
       if (!gate) {
         console.error(`unknown gate: ${name} (valid: ${GATES.map(g => g.name).join(', ')})`)
         process.exit(2)
@@ -481,10 +424,12 @@ async function runGates(args) {
   const toSpawn = [] // gates needing a subprocess (after synchronous skip/waive pre-checks)
 
   for (const gate of selected) {
-    const skipEnv = skipEnvName(gate.name)
-    if (process.env[skipEnv] === '1') {
-      console.log(`  gate ${gate.name} ... WAIVED (${skipEnv}=1)`)
-      results[gate.name] = { pass: false, blockers: [], warnings: [], skipped: true, reason: `waived via ${skipEnv}=1`, waived: true }
+    // honor SKIP_<NEWNAME>=1 and any legacy SKIP_<OLDNAME>=1 (back-compat during the rename transition)
+    const skipEnvs = [skipEnvName(gate.name), ...(GATE_ALIAS_REVERSE[gate.name] || []).map(skipEnvName)]
+    const hitSkip = skipEnvs.find(e => process.env[e] === '1')
+    if (hitSkip) {
+      console.log(`  gate ${gate.name} ... WAIVED (${hitSkip}=1)`)
+      results[gate.name] = { pass: false, blockers: [], warnings: [], skipped: true, reason: `waived via ${hitSkip}=1`, waived: true }
       continue
     }
     const scriptPath = path.join(SCRIPTS_DIR, gate.script)
@@ -593,15 +538,24 @@ async function runGates(args) {
 // single source of truth for tooling that must reason about the gate stack (the stack-coherence
 // meta-test, the workspace dashboard). Additive; never read GATES[] by parsing this file's text.
 if (process.argv.includes('--list-json')) {
-  console.log(JSON.stringify(GATES.map(g => ({ number: g.number, name: g.name, kind: g.kind, runner: g.runner, script: g.script })), null, 2))
+  const json = JSON.stringify(GATES.map(g => ({ number: g.number, name: g.name, stage: g.stage, category: g.category, kind: g.kind, runner: g.runner, script: g.script, desc: g.desc })), null, 2)
+  // writeSync to fd 1 (not console.log + process.exit) — the manifest now exceeds the ~8KB stdout
+  // pipe-flush boundary, so an async console.log gets TRUNCATED when process.exit() fires first.
+  fs.writeSync(1, json + '\n')
   process.exit(0)
 }
 // --list prints the live gate manifest (number · name · kind · script). Ground any gap-audit
 // in THIS, not from memory — agent audits go stale fast (atrium's 2026-06-19 audit claimed gates
 // missing that already shipped). One command = the current source of truth.
 if (process.argv.includes('--list')) {
-  console.log(`Boldteq theme gate stack — ${GATES.length} gates (toolkit ${toolkitVersion()})`)
-  for (const g of GATES) console.log(`  #${String(g.number).padStart(2)} ${g.name.padEnd(20)} ${g.kind.padEnd(7)} ${g.script}`)
+  console.log(`Boldteq theme gate stack — ${GATES.length} gates · stage → category (toolkit ${toolkitVersion()})`)
+  for (const stage of ['setup', 'quality']) {
+    console.log(`\n══ ${stage.toUpperCase()} ══`)
+    for (const cat of [...new Set(GATES.filter(g => g.stage === stage).map(g => g.category))]) {
+      console.log(`  ▸ ${cat}`)
+      for (const g of GATES.filter(g => g.stage === stage && g.category === cat)) console.log(`     #${String(g.number).padStart(4)} ${g.name.padEnd(20)} ${g.desc}`)
+    }
+  }
   console.log(`
 Audit commands (the gates scan the CURRENT directory — run from the theme repo you're auditing):
   cd theme-toolkit            # the pnpm aliases live here

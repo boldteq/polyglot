@@ -24,7 +24,7 @@ function runGate(dir, extraEnv = {}, lens = undefined) {
   // point VISUAL_QUALITY_FILE at the fixture's committed artifact; report goes to a temp dir
   const file = path.join(dir, 'docs', 'visual-quality-review.json')
   // lens !== undefined → simulate gate #18's report in the temp REPORT_DIR (the #17→#18 dependency)
-  if (lens !== undefined) fs.writeFileSync(path.join(reportDir, 'visual-truth.json'), JSON.stringify({ pass: lens, blockers: lens ? [] : [{ id: 'vt.frame-fail' }] }))
+  if (lens !== undefined) fs.writeFileSync(path.join(reportDir, 'visual-check.json'), JSON.stringify({ pass: lens, blockers: lens ? [] : [{ id: 'vt.frame-fail' }] }))
   const env = { ...process.env, REPORT_DIR: reportDir, VISUAL_QUALITY_FILE: file, DS_REQUIRE_SCOPE: '', VISUAL_REQUIRE: '', ...extraEnv }
   const r = spawnSync('node', [GATE], { cwd: dir, env, encoding: 'utf-8' })
   let report = null

@@ -20,6 +20,9 @@
 
 import { writeReport } from './lib/report.mjs'
 import { resolvePages, EnvError, MANDATORY_PAGES } from './lib/pages.mjs'
+import { STATE_MATRIX } from './gate-axe.mjs' // reuse the cart-drawer open + assertOpen selectors (BUG-2/BUG-3)
+
+const CART_DRAWER = STATE_MATRIX.find(s => s.name === 'cart-drawer') || { open: [], assertOpen: [], settleMs: 600 }
 
 const started = Date.now()
 const reportDir = process.env.REPORT_DIR || 'gate-reports'
@@ -42,7 +45,7 @@ const warnings = []
 const checks = []
 
 function finish(code, data) {
-  const { file, report } = writeReport('functional', 10, { ...data, duration_ms: Date.now() - started }, reportDir)
+  const { file, report } = writeReport('functionality', 10, { ...data, duration_ms: Date.now() - started }, reportDir)
   console.log(`functional: ${report.pass ? 'PASS' : code === 2 ? 'ENV-ERROR' : 'BLOCK'} — ${report.blockers.length} blocker(s), ${report.warnings.length} warning(s)`)
   for (const b of report.blockers) console.log(`  BLOCK ${b.id} ${b.page}: ${b.detail}`)
   console.log(`report: ${file}`)
@@ -123,6 +126,63 @@ async function addToCartFlow(page, origin, password) {
   return { ok: false, reason: `add-to-cart clicked but /cart.js item_count did not increase (before=${before})` }
 }
 
+// BUG-3: drive + assert the cart DRAWER (the slide-out — the shopper's real checkout path, esp. on mobile).
+// Silently add an item (so the drawer shows a line item), open the drawer via the shared cart-drawer
+// selectors, ASSERT it opened, then check the checkout CTA is present + reachable + sized. A drawer that
+// won't open here is a WARNING (the theme may use a cart PAGE) — Lens gate #18 deterministically BLOCKS a
+// drawer that should open but doesn't; this gate proves the drawer INTERACTION works when it exists.
+async function openCartDrawerPW(page) {
+  const isOpen = async () => {
+    for (const sel of CART_DRAWER.assertOpen) {
+      try { const el = page.locator(sel).first(); if ((await el.count()) && (await el.isVisible())) { const b = await el.boundingBox(); if (b && b.width > 80 && b.height > 120) return true } } catch { /* next */ }
+    }
+    return false
+  }
+  if (await isOpen()) return { opened: true, via: 'already-open' }
+  for (const sel of CART_DRAWER.open) {
+    try {
+      const el = page.locator(sel).first()
+      if ((await el.count()) && (await el.isVisible())) { await el.click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(CART_DRAWER.settleMs); if (await isOpen()) return { opened: true, via: sel } }
+    } catch { /* next selector */ }
+  }
+  return { opened: false, reason: 'no cart toggle opened a visible drawer' }
+}
+
+async function cartDrawerCheck(page) {
+  // silent add (fetch) so the drawer renders a line item when opened — independent of the UI ATC flow
+  const added = await page.evaluate(async () => {
+    try {
+      const h = location.pathname.split('/products/')[1]?.split(/[?#]/)[0]
+      if (!h) return false
+      const pj = await (await fetch(`/products/${h}.js`)).json()
+      const vid = (pj.variants || []).find(v => v.available)?.id || pj.variants?.[0]?.id
+      if (!vid) return false
+      await fetch('/cart/add.js', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: vid, quantity: 1 }) })
+      return true
+    } catch { return false }
+  })
+  if (!added) return { drawer: 'skip', reason: 'could not add an item to exercise the drawer' }
+  const opened = await openCartDrawerPW(page)
+  if (!opened.opened) return { drawer: 'closed', reason: opened.reason }
+  const facts = await page.evaluate((assertSel) => {
+    const vis = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 40 && r.height > 80 && el.offsetParent !== null }
+    let drawer = null
+    for (const sel of assertSel) { for (const el of document.querySelectorAll(sel)) { if (vis(el)) { drawer = el; break } } if (drawer) break }
+    if (!drawer) { for (const el of document.querySelectorAll('aside, [role="dialog"], .drawer, [class*="cart" i]')) { if (/cart/i.test(`${el.id} ${el.className}`) && vis(el)) { const cs = getComputedStyle(el); if (cs.position === 'fixed' || cs.position === 'absolute') { drawer = el; break } } } }
+    if (!drawer) return { found: false }
+    const cta = [...drawer.querySelectorAll('a, button, input[type="submit"]')].find(el => /check\s*out/i.test(el.innerText || el.value || el.getAttribute('aria-label') || ''))
+    const r = cta ? cta.getBoundingClientRect() : null
+    return {
+      found: true,
+      hasCheckout: !!(cta && r && r.width > 0 && r.height > 0),
+      checkoutCutOff: !!(r && r.bottom > window.innerHeight + 4),
+      checkoutSmall: !!(r && r.height > 0 && r.height < 40),
+      hasItem: !!drawer.querySelector('img') && /\$|\d/.test(drawer.innerText || ''),
+    }
+  }, CART_DRAWER.assertOpen)
+  return { drawer: 'open', via: opened.via, ...facts }
+}
+
 async function main() {
   const args = parseArgs(process.argv)
   const previewUrl = process.env.THEME_PREVIEW_URL || null
@@ -189,6 +249,17 @@ async function main() {
               const entry = { id: 'fn.atc-flow', page: `${t.id}@${vp.name}`, detail: `add-to-cart flow did not confirm: ${atc.reason}`, evidence: t.url }
               if (SOFT_ATC) warnings.push(entry); else blockers.push(entry)
             }
+          }
+          // BUG-3: exercise the cart DRAWER per viewport (the real mobile checkout path) — open + assert
+          const d = await cartDrawerCheck(page)
+          checks.push({ check: 'cart-drawer', viewport: vp.name, ...d })
+          if (d.drawer === 'open') {
+            if (d.found && !d.hasCheckout) blockers.push({ id: 'fn.cart-drawer-no-checkout', page: `${t.id}@${vp.name}`, detail: 'cart drawer opened but NO Checkout button is present in it', evidence: t.url })
+            if (d.checkoutCutOff) blockers.push({ id: 'fn.cart-drawer-checkout-cutoff', page: `${t.id}@${vp.name}`, detail: 'cart drawer Checkout button is cut off / below the viewport — unreachable', evidence: t.url })
+            if (d.checkoutSmall && vp.width <= 600) warnings.push({ id: 'fn.cart-drawer-tap-target', page: `${t.id}@${vp.name}`, detail: 'cart drawer Checkout button is <40px tall on mobile (tap-target too small)', evidence: t.url })
+            if (d.found && !d.hasItem) warnings.push({ id: 'fn.cart-drawer-empty', page: `${t.id}@${vp.name}`, detail: 'cart drawer opened but shows no line item (the added product is not visible)', evidence: t.url })
+          } else if (d.drawer === 'closed') {
+            warnings.push({ id: 'fn.cart-drawer-no-open', page: `${t.id}@${vp.name}`, detail: `add-to-cart did not open a cart drawer (${d.reason}). OK if this theme uses a cart PAGE; if it should have a drawer, Lens gate #18 blocks a drawer that won't open.`, evidence: t.url })
           }
         }
         checks.push({ page: t.id, viewport: vp.name, overflow, brokenImgs: brokenImgs.length, consoleErrors: consoleErrors.length })

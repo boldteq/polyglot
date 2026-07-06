@@ -82,9 +82,9 @@ console.log('R3 — dispatch content_briefs_ready with no intake artifacts')
 console.log('R4 — converge-looking repo with NO Lens evidence; grade gate #18 at dev vs publish')
 {
   const d = repo(['goals', 'brand', 'ds', 'briefs', 'spec', 'lock', 'buildstate'])
-  const dev = sp('theme-gates.mjs', ['--gate', 'visual-truth'], {}, d)               // dev grade
-  const pub = sp('theme-gates.mjs', ['--gate', 'visual-truth'], { LENS_REQUIRE: '1' }, d) // publish grade
-  if (pub.status === 1 && dev.status === 0) ok('#18 visual-truth BLOCKS at publish grade (LENS_REQUIRE=1) but only WARNS at dev grade — exactly the linchpin')
+  const dev = sp('theme-gates.mjs', ['--gate', 'lens'], {}, d)               // dev grade
+  const pub = sp('theme-gates.mjs', ['--gate', 'lens'], { LENS_REQUIRE: '1' }, d) // publish grade
+  if (pub.status === 1 && dev.status === 0) ok('#18 lens BLOCKS at publish grade (LENS_REQUIRE=1) but only WARNS at dev grade — exactly the linchpin')
   else if (pub.status !== 1) bad(`#18 did NOT block at publish grade (exit ${pub.status}) — a no-Lens build could read as pass`)
   else { ok('#18 blocks at publish grade'); note(`(dev-grade exit was ${dev.status}, expected 0 — non-fatal)`) }
   rm(d)

@@ -30,7 +30,7 @@ const FONT_TOL = Number(process.env.COHESION_FONT_TOL || 0.6)
 const blockers = []
 const warnings = []
 const add = (list, id, page, detail, evidence = '') => list.push({ id, page, detail, evidence })
-const die = (code, msg) => { writeReport('section-cohesion', 19, { cwd, pass: false, blockers, warnings, evidence: { reason: msg }, duration_ms: Date.now() - t0 }, REPORT_DIR); console.error(`section-cohesion: ${code === 2 ? 'ENV-ERROR' : 'BLOCK'} — ${msg}`); process.exit(code) }
+const die = (code, msg) => { writeReport('section-consistency', 19, { cwd, pass: false, blockers, warnings, evidence: { reason: msg }, duration_ms: Date.now() - t0 }, REPORT_DIR); console.error(`section-cohesion: ${code === 2 ? 'ENV-ERROR' : 'BLOCK'} — ${msg}`); process.exit(code) }
 
 function loadContract() {
   let j = {}

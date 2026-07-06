@@ -15,7 +15,7 @@ const started = Date.now()
 const reportDir = process.env.REPORT_DIR || 'gate-reports'
 
 function finish(code, data) {
-  const { file, report } = writeReport('theme-check', 2, { ...data, duration_ms: Date.now() - started }, reportDir)
+  const { file, report } = writeReport('code-lint', 2, { ...data, duration_ms: Date.now() - started }, reportDir)
   console.log(`report: ${file} (pass=${report.pass}, blockers=${report.blockers.length}, warnings=${report.warnings.length})`)
   process.exit(code)
 }

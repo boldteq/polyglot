@@ -65,7 +65,7 @@ function changesWaives(word) {
 
 function finish(envError, evidence = {}) {
   const pass = !envError && blockers.length === 0
-  writeReport('render-wiring', 14, {
+  writeReport('render-check', 14, {
     cwd, pass, blockers, warnings,
     evidence: { contract: DS, baseRef: BASE_REF, reason: envError || undefined, ...evidence },
     duration_ms: Date.now() - t0,

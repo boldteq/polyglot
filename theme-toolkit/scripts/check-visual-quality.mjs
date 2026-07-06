@@ -58,10 +58,10 @@ function main() {
   // This is the literal "no independent eyes between the agent's claim and the merchant's eyes" fix:
   // a self-review can no longer count on its own. (Dev/warn mode skips this; only publish-grade gates.)
   if (REQUIRE) {
-    const vtPath = path.resolve(cwd, REPORT_DIR, 'visual-truth.json')
+    const vtPath = path.resolve(cwd, REPORT_DIR, 'visual-check.json')
     let vt = null
     try { vt = JSON.parse(fs.readFileSync(vtPath, 'utf-8')) } catch { /* missing/invalid → blocked just below */ }
-    if (!vt) add(blockers, 'vq.lens-missing', `no ${REPORT_DIR}/visual-truth.json — gate #18 (Lens visual-truth) must run + PASS before onyx's self-review counts (otherwise nothing independent looked at the render). Run Lens capture→judge→#18 first.`)
+    if (!vt) add(blockers, 'vq.lens-missing', `no ${REPORT_DIR}/visual-check.json — gate #18 (Lens visual-truth) must run + PASS before onyx's self-review counts (otherwise nothing independent looked at the render). Run Lens capture→judge→#18 first.`)
     else if (vt.pass !== true) add(blockers, 'vq.lens-not-passed', `gate #18 (Lens visual-truth) did NOT pass (${(vt.blockers || []).length} blocker(s)) — onyx's self-review is invalid without independent vision verification. Fix the Lens findings, then re-review.`)
   }
   const abs = path.resolve(cwd, FILE)

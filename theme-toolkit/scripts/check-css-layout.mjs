@@ -49,7 +49,7 @@ const lineAt = (text, i) => text.slice(0, i).split('\n').length
 
 function finish(envError, evidence = {}) {
   const pass = !envError && blockers.length === 0
-  writeReport('css-layout', 22, { cwd, pass, blockers, warnings, evidence: { strict: STRICT, reason: envError || undefined, ...evidence }, duration_ms: Date.now() - t0 })
+  writeReport('layout', 22, { cwd, pass, blockers, warnings, evidence: { strict: STRICT, reason: envError || undefined, ...evidence }, duration_ms: Date.now() - t0 })
   const code = envError ? 2 : pass ? 0 : 1
   const label = code === 2 ? 'ENV-ERROR' : code === 0 ? 'PASS' : 'BLOCK'
   console.log(`css-layout: ${label} — ${blockers.length} blocker(s), ${warnings.length} warning(s)`)

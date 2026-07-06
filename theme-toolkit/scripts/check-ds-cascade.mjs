@@ -51,7 +51,7 @@ const eligible = (id, page, detail, evidence = '') => (ENFORCE ? blockers : warn
 
 function finish(envError, evidence = {}) {
   const pass = !envError && blockers.length === 0
-  writeReport('ds-cascade', 30, { cwd, pass, blockers, warnings, evidence: { ds: DS, dsCss: DS_CSS, enforce: ENFORCE, reason: envError || undefined, ...evidence }, duration_ms: Date.now() - t0 }, REPORT_DIR)
+  writeReport('brand-sync', 30, { cwd, pass, blockers, warnings, evidence: { ds: DS, dsCss: DS_CSS, enforce: ENFORCE, reason: envError || undefined, ...evidence }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   const code = envError ? 2 : pass ? 0 : 1
   const label = code === 2 ? 'ENV-ERROR' : code === 0 ? 'PASS' : 'BLOCK'
   console.log(`ds-cascade: ${label} — ${blockers.length} blocker(s), ${warnings.length} warning(s)`)

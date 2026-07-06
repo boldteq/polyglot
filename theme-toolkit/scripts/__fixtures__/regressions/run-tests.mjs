@@ -43,7 +43,7 @@ console.log('#18 wiring — a recurring (previously-cleared) warning escalates t
   // seed: this finding was CLEARED on a prior run → its return is a regression
   fs.writeFileSync(path.join(tmp, '.lens-regressions.json'), JSON.stringify({ version: 1, entries: { 'spacing-rhythm::home-mobile': { check: 'spacing-rhythm', surface: 'home', status: 'cleared', recurrences: 0 } } }))
   const r = spawnSync(process.execPath, [VT], { cwd: tmp, encoding: 'utf-8', env: { ...process.env, DS_REQUIRE_SCOPE: '1', LENS_REGISTRY_DIR: tmp } })
-  let rep = null; try { rep = JSON.parse(fs.readFileSync(path.join(tmp, 'gate-reports', 'visual-truth.json'), 'utf-8')) } catch {}
+  let rep = null; try { rep = JSON.parse(fs.readFileSync(path.join(tmp, 'gate-reports', 'visual-check.json'), 'utf-8')) } catch {}
   const ids = new Set((rep?.blockers || []).map(b => b.id))
   r.status === 1 && ids.has('vt.regression') ? ok('cleared warning returns → exit 1 + vt.regression BLOCKER') : bad(`wiring: code ${r.status}, blockers ${[...ids]}`)
   // and the registry flipped the entry back to open

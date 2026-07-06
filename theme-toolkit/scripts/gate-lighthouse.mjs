@@ -44,7 +44,7 @@ const METRIC_AUDITS = {
 }
 
 function finish(code, data) {
-  const { file, report } = writeReport('lighthouse', 1, { ...data, duration_ms: Date.now() - started }, reportDir)
+  const { file, report } = writeReport('performance', 1, { ...data, duration_ms: Date.now() - started }, reportDir)
   console.log(`report: ${file} (pass=${report.pass}, blockers=${report.blockers.length}, warnings=${report.warnings.length})`)
   process.exit(code)
 }

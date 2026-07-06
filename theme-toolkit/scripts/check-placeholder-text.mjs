@@ -27,6 +27,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { writeReport } from './lib/report.mjs'
+import { runAbsorbed } from './lib/merge-spawn.mjs'
 
 // PURE: dev/test leftovers that must NEVER reach a shopper. Returns [{id, match}]. Always block-eligible.
 const DEV_PATTERNS = [
@@ -95,8 +96,15 @@ function walk(dir, exts, acc = []) {
 }
 
 function finish(envError, evidence = {}) {
+  // MERGED #26 copy-quality (hero formula / objection coverage / voice) — folded into proof's findings
+  if (!envError) {
+    try {
+      const m = runAbsorbed([{ script: 'check-copy-quality.mjs', report: 'copy-quality' }], { cwd, env: process.env })
+      blockers.push(...m.blockers); warnings.push(...m.warnings)
+    } catch { /* copy-quality fold best-effort */ }
+  }
   const pass = !envError && blockers.length === 0
-  writeReport('placeholder', 36, { cwd, pass, blockers, warnings, evidence: { strict: STRICT, reason: envError || undefined, ...evidence }, duration_ms: Date.now() - t0 }, REPORT_DIR)
+  writeReport('content-quality', 36, { cwd, pass, blockers, warnings, evidence: { strict: STRICT, reason: envError || undefined, ...evidence }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   const code = envError ? 2 : pass ? 0 : 1
   const label = code === 2 ? 'ENV-ERROR' : code === 0 ? 'PASS' : 'BLOCK'
   console.log(`placeholder: ${label} — ${blockers.length} blocker(s), ${warnings.length} warning(s)`)

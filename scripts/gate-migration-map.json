@@ -1,0 +1,360 @@
+{
+  "_doc": "Canonical old->new gate map for the brand-rename + consolidation. Drives apply-gate-renames.mjs (code) and migrate-gate-refs.mjs (docs/brain/daemon). Numbers stay stable; merges keep the lowest absorbed number. name is the contract (report file, --gate, SKIP_, fixture dir).",
+  "renames": [
+    {
+      "old": "theme-lock",
+      "new": "theme-lock",
+      "number": 0,
+      "family": "Bedrock",
+      "script": "shopify-theme-guard.mjs",
+      "fixture": "theme-lock"
+    },
+    {
+      "old": "discovery",
+      "new": "discovery",
+      "number": 0.4,
+      "family": "Bedrock",
+      "script": "check-discovery.mjs",
+      "fixture": "discovery"
+    },
+    {
+      "old": "bootstrap",
+      "new": "foundation",
+      "number": 0.5,
+      "family": "Bedrock",
+      "script": "check-bootstrap.mjs",
+      "fixture": "bootstrap"
+    },
+    {
+      "old": "theme-check",
+      "new": "code-lint",
+      "number": 2,
+      "family": "Forge",
+      "script": "gate-theme-check.mjs",
+      "fixture": null,
+      "exemptStatic": true
+    },
+    {
+      "old": "editability",
+      "new": "editability",
+      "number": 3,
+      "family": "Forge",
+      "script": "gate-editability-greps.sh",
+      "fixture": null,
+      "exemptStatic": true,
+      "noWriteReport": true
+    },
+    {
+      "old": "antipatterns",
+      "new": "dead-code",
+      "number": 11,
+      "family": "Forge",
+      "script": "check-antipatterns.mjs",
+      "fixture": "antipatterns"
+    },
+    {
+      "old": "css-layout",
+      "new": "layout",
+      "number": 22,
+      "family": "Forge",
+      "script": "check-css-layout.mjs",
+      "fixture": "css-layout"
+    },
+    {
+      "old": "honesty",
+      "new": "honesty",
+      "number": 13,
+      "family": "Integrity",
+      "script": "check-honesty.mjs",
+      "fixture": "honesty",
+      "highWire": true
+    },
+    {
+      "old": "section-cohesion",
+      "new": "section-consistency",
+      "number": 19,
+      "family": "Lens",
+      "script": "check-section-cohesion.mjs",
+      "fixture": null,
+      "kind": "url"
+    },
+    {
+      "old": "mobile-layout",
+      "new": "mobile",
+      "number": 35,
+      "family": "Lens",
+      "script": "check-mobile-layout.mjs",
+      "fixture": "mobile-layout"
+    },
+    {
+      "old": "design-system",
+      "new": "design-tokens",
+      "number": 8,
+      "family": "DNA",
+      "script": "check-design-system.mjs",
+      "fixture": "design-system"
+    },
+    {
+      "old": "consistency",
+      "new": "consistency",
+      "number": 9,
+      "family": "DNA",
+      "script": "check-consistency.mjs",
+      "fixture": "consistency"
+    },
+    {
+      "old": "design-quality",
+      "new": "design-quality",
+      "number": 12,
+      "family": "DNA",
+      "script": "check-design-quality.mjs",
+      "fixture": "design-quality"
+    },
+    {
+      "old": "render-wiring",
+      "new": "render-check",
+      "number": 14,
+      "family": "DNA",
+      "script": "check-render-wiring.mjs",
+      "fixture": "render-wiring"
+    },
+    {
+      "old": "card-bindings",
+      "new": "library-cards",
+      "number": 20,
+      "family": "DNA",
+      "script": "check-card-bindings.mjs",
+      "fixture": "card-bindings",
+      "kind": "library"
+    },
+    {
+      "old": "reuse-map",
+      "new": "section-reuse",
+      "number": 23,
+      "family": "DNA",
+      "script": "check-reuse-map.mjs",
+      "fixture": "reuse-map"
+    },
+    {
+      "old": "ds-cascade",
+      "new": "brand-sync",
+      "number": 30,
+      "family": "DNA",
+      "script": "check-ds-cascade.mjs",
+      "fixture": "ds-cascade"
+    },
+    {
+      "old": "a11y-static",
+      "new": "static-a11y",
+      "number": 16,
+      "family": "Press",
+      "script": "check-a11y-static.mjs",
+      "fixture": "a11y-static"
+    },
+    {
+      "old": "app-conflicts",
+      "new": "app-conflicts",
+      "number": 27,
+      "family": "Press",
+      "script": "check-app-conflicts.mjs",
+      "fixture": "app-conflicts"
+    },
+    {
+      "old": "locale-completeness",
+      "new": "translations",
+      "number": 28,
+      "family": "Press",
+      "script": "check-locale-completeness.mjs",
+      "fixture": "locale-completeness"
+    },
+    {
+      "old": "email-triggers",
+      "new": "email-triggers",
+      "number": 29,
+      "family": "Press",
+      "script": "check-email-triggers.mjs",
+      "fixture": "email-triggers"
+    },
+    {
+      "old": "lighthouse",
+      "new": "performance",
+      "number": 1,
+      "family": "Signal",
+      "script": "gate-lighthouse.mjs",
+      "fixture": null,
+      "kind": "url"
+    },
+    {
+      "old": "axe",
+      "new": "accessibility",
+      "number": 5,
+      "family": "Signal",
+      "script": "gate-axe.mjs",
+      "fixture": null,
+      "kind": "url"
+    },
+    {
+      "old": "seo",
+      "new": "seo",
+      "number": 6,
+      "family": "Signal",
+      "script": "gate-seo.mjs",
+      "fixture": null,
+      "kind": "url"
+    },
+    {
+      "old": "functional",
+      "new": "functionality",
+      "number": 10,
+      "family": "Signal",
+      "script": "gate-functional.mjs",
+      "fixture": null,
+      "kind": "url"
+    },
+    {
+      "old": "redirects",
+      "new": "redirects",
+      "number": 25,
+      "family": "Signal",
+      "script": "check-redirects.mjs",
+      "fixture": "redirects"
+    }
+  ],
+  "merges": [
+    {
+      "new": "conversion",
+      "number": 7,
+      "family": "Catalyst",
+      "kind": "url",
+      "script": "gate-conversion.mjs",
+      "absorbs": [
+        {
+          "old": "conversion",
+          "number": 7,
+          "script": "gate-conversion.mjs",
+          "fixture": null,
+          "isHost": true
+        },
+        {
+          "old": "commerce-readiness",
+          "number": 15,
+          "script": "check-commerce-readiness.mjs",
+          "fixture": "commerce-readiness"
+        },
+        {
+          "old": "conversion-signoff",
+          "number": 21,
+          "script": "check-conversion-signoff.mjs",
+          "fixture": "conversion-signoff"
+        }
+      ]
+    },
+    {
+      "new": "imagery",
+      "number": 24,
+      "family": "Press",
+      "kind": "static",
+      "script": "check-media-quality.mjs",
+      "absorbs": [
+        {
+          "old": "art-direction",
+          "number": 24,
+          "script": "check-art-direction.mjs",
+          "fixture": "art-direction",
+          "isHost": true
+        },
+        {
+          "old": "image-quality",
+          "number": 34,
+          "script": "check-image-quality.mjs",
+          "fixture": "image-quality"
+        }
+      ]
+    },
+    {
+      "new": "content-quality",
+      "number": 36,
+      "family": "Integrity",
+      "kind": "static",
+      "script": "check-placeholder-text.mjs",
+      "absorbs": [
+        {
+          "old": "placeholder",
+          "number": 36,
+          "script": "check-placeholder-text.mjs",
+          "fixture": "placeholder",
+          "isHost": true
+        },
+        {
+          "old": "copy-quality",
+          "number": 26,
+          "script": "check-copy-quality.mjs",
+          "fixture": "copy-quality"
+        }
+      ]
+    },
+    {
+      "new": "review-board",
+      "number": 31,
+      "family": "Tribunal",
+      "kind": "static",
+      "script": "check-governance.mjs",
+      "absorbs": [
+        {
+          "old": "design-review-board",
+          "number": 31,
+          "script": "check-design-review-board.mjs",
+          "fixture": "design-review-board",
+          "isHost": true
+        },
+        {
+          "old": "red-team",
+          "number": 32,
+          "script": "check-red-team.mjs",
+          "fixture": "red-team"
+        }
+      ]
+    },
+    {
+      "new": "visual-check",
+      "number": 18,
+      "family": "Lens",
+      "kind": "static",
+      "script": "check-visual-truth.mjs",
+      "absorbs": [
+        {
+          "old": "visual-truth",
+          "number": 18,
+          "script": "check-visual-truth.mjs",
+          "fixture": "visual-truth",
+          "isHost": true
+        },
+        {
+          "old": "visual-quality",
+          "number": 17,
+          "script": "check-visual-quality.mjs",
+          "fixture": "visual-quality"
+        }
+      ]
+    }
+  ],
+  "retiredNumbers": [
+    15,
+    17,
+    21,
+    26,
+    32,
+    34
+  ],
+  "families": [
+    "Bedrock",
+    "Forge",
+    "Catalyst",
+    "Integrity",
+    "Lens",
+    "DNA",
+    "Press",
+    "Signal",
+    "Tribunal"
+  ]
+}

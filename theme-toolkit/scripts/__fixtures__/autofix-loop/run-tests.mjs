@@ -68,6 +68,17 @@ console.log('E — store-data finding, porter opt-IN → fixPorter dispatched ea
   !r.converged && porterCount === 2 && r.rounds === 2 ? pass('porter dispatched each round (opt-in)') : fail(`got ${JSON.stringify({ porterCount, rounds: r.rounds })}`)
 }
 
+console.log('F — BUG-16: a fix that lands on the FINAL round is re-verified → converged (was escalated blind)')
+{
+  let n = 0
+  const r = await runAutofixLoop({
+    // fail rounds 1..3 (distinct, never persists); the TERMINAL re-verify after round 3's fix passes
+    runRound: () => { n += 1; return n <= 3 ? { enforcePass: false, findings: [f({ check: `hero${n}` })] } : { enforcePass: true, findings: [] } },
+    fix: async () => {},
+  }, { maxRounds: 3 })
+  r.converged && r.rounds === 3 ? pass('final-round fix re-verified → converged at round 3') : fail(`got ${JSON.stringify({ c: r.converged, rounds: r.rounds })}; expected converged:true rounds:3`)
+}
+
 console.log('guards')
 {
   let threw = false

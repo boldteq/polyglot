@@ -33,7 +33,7 @@ const block = (id, page, detail, evidence) => ALLOW_WAIVER ? add(warnings, `${id
 
 function finish(envError) {
   const pass = !envError && blockers.length === 0
-  writeReport('antipatterns', 11, { cwd, pass, blockers, warnings, evidence: { baseRef: BASE_REF, reason: envError || undefined }, duration_ms: Date.now() - t0 })
+  writeReport('dead-code', 11, { cwd, pass, blockers, warnings, evidence: { baseRef: BASE_REF, reason: envError || undefined }, duration_ms: Date.now() - t0 })
   const code = envError ? 2 : pass ? 0 : 1
   console.log(`antipatterns: ${code === 2 ? 'ENV-ERROR' : pass ? 'PASS' : 'BLOCK'} — ${blockers.length} blocker(s), ${warnings.length} warning(s)`)
   for (const b of blockers) console.log(`  BLOCK ${b.id} ${b.page}: ${b.detail}`)

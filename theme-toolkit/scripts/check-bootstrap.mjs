@@ -59,7 +59,7 @@ function parseShopifyJson(raw) {
 
 function finish(envError, evidence = {}) {
   const pass = !envError && blockers.length === 0
-  writeReport('bootstrap', 0.5, {
+  writeReport('foundation', 0.5, {
     cwd, pass, blockers, warnings,
     evidence: { required: REQUIRE, reason: envError || undefined, ...evidence },
     duration_ms: Date.now() - t0,

@@ -406,7 +406,7 @@ function finish(envError, cards) {
   const anyFail = cards.some(c => c.gates.some(g => !g.pass))
   const pass = !envError && !anyFail
   writeMarkdown(cards, pass, envError)
-  writeReport('card-bindings', null, {
+  writeReport('library-cards', null, {
     pass,
     blockers: cards.flatMap(c => c.gates.filter(g => !g.pass).flatMap(g =>
       (g.blockers.length ? g.blockers : [{ id: `${g.name}.exit-${g.code}`, page: c.section, detail: g.stderr || `gate ${g.name} exited ${g.code}`, evidence: '' }])

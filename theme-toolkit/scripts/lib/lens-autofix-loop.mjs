@@ -56,7 +56,18 @@ export async function runAutofixLoop(deps, opts = {}) {
     for (const [owner, list] of Object.entries(byOwner)) { log(`fix → ${owner}: ${list.length}`); await fix(owner, list) }
     if (data.length && porterOptIn) { log(`fix → porter: ${data.length}`); await fixPorter(data) }
 
-    if (round >= maxRounds) return { converged: false, rounds: round, escalation: { giveUp, data, findings }, affected }
+    // BUG-16 + BUG-18: the FINAL round's fix must be re-verified — the old loop escalated immediately after
+    // applying the last edit, so a fix that actually CONVERGED was reported "not converged". And the verify
+    // is FULL (runRound(null) = all surfaces), not scoped to `affected`: an in-loop fix is only re-captured
+    // on its own surface, so a fix that REGRESSED a previously-passing surface would otherwise ship unseen.
+    // The terminal full pass confirms the WHOLE rendered store agrees (and writes a complete manifest).
+    if (round >= maxRounds) {
+      log(`round ${round} fix applied — terminal FULL re-verify (all surfaces; was previously escalated blind / partial)`)
+      const final = await runRound(null)
+      if (final.enforcePass) { log(`converged after the round-${round} fix`); return { converged: true, rounds: round, escalation: null } }
+      const finalFindings = final.findings && final.findings.length ? final.findings : findings
+      return { converged: false, rounds: round, escalation: { giveUp, data, findings: finalFindings }, affected }
+    }
   }
   return { converged: false, rounds: maxRounds, escalation: { findings: prevFindings }, affected }
 }

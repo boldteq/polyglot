@@ -68,6 +68,9 @@ export function frameStates(surface, depth) {
 export function contentStates(surface, depth) {
   if (depth !== 'full') return []
   if (surface === 'cart') return ['populated']
+  // BUG-1: the cart DRAWER (slide-out) was never captured — only the /cart page. Open it from the PDP
+  // (add-to-cart → drawer), assert it opened, and capture it so the judge can SEE the real cart UX.
+  if (surface === 'pdp') return ['drawer']
   return []
 }
 // The capture matrix: surface × viewport × locale × theme. Pure. (Image states handled within a visit.)
@@ -163,6 +166,51 @@ async function addToCart(page, surfaces) {
   })
   if (!vid) throw new Error('no resolvable variant')
   await page.evaluate(async (id) => { await fetch('/cart/add.js', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, quantity: 1 }) }) }, vid)
+}
+
+// Open the cart DRAWER (slide-out) AND verify it actually opened — theme-agnostic (Dawn `<cart-drawer>`,
+// Minimog `<slide-cart>`/`data-cart-drawer-toggle`, custom headers). BUG-1/BUG-2: the drawer was never
+// captured, and the a11y gate clicked a toggle without asserting it opened (so it scanned a CLOSED drawer
+// on Dawn/custom headers). Returns { opened, via } or { opened:false, reason } — the caller records it as
+// a hard fact so a drawer that won't open is itself a finding, not a silent skip.
+async function openCartDrawer(page) {
+  return page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+    const isOpenDrawer = () => {
+      const SEL = 'cart-drawer[open], cart-drawer.active, cart-drawer.is-open, slide-cart[open], slide-cart.is-open, .cart-drawer.active, .cart-drawer.is-open, .cart-drawer.open, .drawer--cart.active, .mini-cart.is-open, .mini-cart.open, .cart-popup.open, #CartDrawer.active, [id*="cart" i][aria-hidden="false"][role="dialog"]'
+      for (const el of document.querySelectorAll(SEL)) {
+        const r = el.getBoundingClientRect()
+        if (r.width > 120 && r.height > 160 && el.offsetParent !== null) return true
+      }
+      // generic: a fixed/absolute, cart-named, visibly-large panel that's on-screen
+      for (const el of document.querySelectorAll('aside, dialog, [role="dialog"], .drawer, [class*="drawer" i], [class*="cart" i]')) {
+        const cartish = /cart/i.test(`${el.id} ${el.className}`)
+        if (!cartish || el.offsetParent === null) continue
+        const cs = getComputedStyle(el); const r = el.getBoundingClientRect()
+        if ((cs.position === 'fixed' || cs.position === 'absolute') && cs.visibility !== 'hidden' && cs.display !== 'none' && r.width > 200 && r.height > 240 && r.right > 0 && r.left < window.innerWidth) return true
+      }
+      return false
+    }
+    if (isOpenDrawer()) return { opened: true, via: 'already-open' }
+    const visible = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && el.offsetParent !== null }
+    const TOGGLES = ['[data-cart-drawer-toggle]', '#cart-icon-bubble', '.header__icon--cart', 'a[href="/cart"]', 'a[href$="/cart"]', '.cart-icon', '[data-cart-toggle]', '.js-cart-trigger', '[aria-controls*="cart" i]', '[aria-label*="cart" i]']
+    for (const sel of TOGGLES) {
+      for (const el of document.querySelectorAll(sel)) {
+        if (!visible(el)) continue
+        try { el.click() } catch { /* not clickable */ }
+        await sleep(450)
+        if (isOpenDrawer()) return { opened: true, via: sel }
+      }
+    }
+    // theme custom-element / event fallbacks (Dawn/Minimog dispatch their own open events)
+    try {
+      const cd = document.querySelector('cart-drawer, slide-cart')
+      if (cd && typeof cd.open === 'function') { cd.open(); await sleep(450); if (isOpenDrawer()) return { opened: true, via: 'element.open()' } }
+      for (const ev of ['cart:open', 'cart:toggle', 'cart-drawer:open', 'openCart']) document.dispatchEvent(new CustomEvent(ev))
+      await sleep(450); if (isOpenDrawer()) return { opened: true, via: 'event' }
+    } catch { /* no custom API */ }
+    return { opened: false, reason: 'no toggle/API opened a visible cart drawer (theme may lack a drawer, or uses a custom selector)' }
+  })
 }
 
 // Resolve the concrete URL for each requested surface against the live storefront.
@@ -312,6 +360,19 @@ async function main() {
     const key = frameKey({ surface, viewport: vp.name, state, locale })
     const tag = `${key}-${theme}`
     const shot = async (label) => { const p = path.join(dir, `${tag}-${label}.png`); await page.screenshot({ path: p }).catch(() => {}); return rel(p) }
+    // BUG-1/BUG-2: cart-drawer state — open the slide-out + ASSERT it opened, then capture that single
+    // frame (no scroll/hover/occluder-dismiss, which would close it). `drawerOpened` is a hard fact the
+    // judge/gate sees: a drawer that won't open is a finding, not a silent skip.
+    if (state === 'drawer') {
+      const drawerOpened = await openCartDrawer(page)
+      if (drawerOpened.opened) await page.waitForTimeout(500) // settle slide animation
+      const m = await domMetrics(page).catch(() => ({ overflowPx: 0, brokenImgs: [] }))
+      return {
+        surface, url: gotoUrl, key, state, locale, viewport: vp.name, theme, device: vp.device || null, width: vp.width, height: vp.height,
+        frames: { rest: await shot('rest') }, nav, renderError, cls: null,
+        overflowPx: m.overflowPx, brokenImages: m.brokenImgs || [], emptyShells: [], liquidError: null, drawerOpened,
+      }
+    }
     const imgStates = frameStates(surface, DEPTH)
     const imgs = {}
     const restMetrics = await domMetrics(page)
@@ -383,6 +444,7 @@ async function main() {
               try {
                 consoleErrors.length = 0; failedReq.length = 0
                 if (st === 'populated' && surface === 'cart') await addToCart(page, surfaces)
+                if (st === 'drawer' && surface === 'pdp') await addToCart(page, surfaces) // populate so the drawer shows an item + upsell
                 const cf = await captureVisit(page, { surface, url, vp, theme, locale, state: st })
                 cf.consoleErrors = [...consoleErrors].slice(0, 10); cf.failedRequests = [...failedReq].slice(0, 8)
                 frames.push(cf)

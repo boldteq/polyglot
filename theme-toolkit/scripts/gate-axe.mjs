@@ -26,17 +26,41 @@ const reportDir = process.env.REPORT_DIR || 'gate-reports'
 // OPEN interactive surfaces (cart drawer, mobile nav, search modal) — focus traps, unlabeled close
 // buttons, off-screen tab order. STATE_MATRIX is pure (the states + their open selectors) so it's
 // testable; the actual open+rescan runs in the browser behind AXE_STATE_MATRIX=1 (opt-in: it adds runtime).
+// Each state carries `assertOpen` selectors (BUG-2): proof the panel actually OPENED. Clicking a toggle
+// that exists but doesn't open the drawer (common on Dawn/custom headers, or a display:none cart icon that
+// still "clicks") must NOT count as open — else axe scans a CLOSED drawer and misses focus-trap /
+// unlabeled-close / tap-target bugs inside it. open = how to open; assertOpen = how we know it opened.
 export const STATE_MATRIX = [
-  { name: 'cart-drawer', open: ['[data-cart-drawer-toggle]', '#cart-icon-bubble', '.cart-icon', 'a[href="/cart"]', '[aria-controls*="cart" i]'], settleMs: 600 },
-  { name: 'mobile-nav', open: ['button[aria-label*="menu" i]', '.header__menu-toggle', '[data-mobile-nav-toggle]', 'summary[aria-haspopup]'], settleMs: 500 },
-  { name: 'search-modal', open: ['button[aria-label*="search" i]', '[data-search-toggle]', '.search-modal__toggle', 'a[href="/search"]'], settleMs: 500 },
+  { name: 'cart-drawer', open: ['[data-cart-drawer-toggle]', '#cart-icon-bubble', '.cart-icon', 'a[href="/cart"]', '[aria-controls*="cart" i]'],
+    assertOpen: ['cart-drawer[open]', 'cart-drawer.active', '.cart-drawer.active', '.cart-drawer.is-open', '.cart-drawer.open', '.drawer--cart.active', '.mini-cart.is-open', '.mini-cart.open', '#CartDrawer.active', '[id*="cart" i][role="dialog"][aria-hidden="false"]'], settleMs: 600 },
+  { name: 'mobile-nav', open: ['button[aria-label*="menu" i]', '.header__menu-toggle', '[data-mobile-nav-toggle]', 'summary[aria-haspopup]'],
+    assertOpen: ['.menu-drawer.active', '.mobile-nav.is-open', '.header__menu.is-open', 'details[open] .menu-drawer__menu', '[id*="menu" i][aria-hidden="false"]', 'nav[aria-expanded="true"]'], settleMs: 500 },
+  { name: 'search-modal', open: ['button[aria-label*="search" i]', '[data-search-toggle]', '.search-modal__toggle', 'a[href="/search"]'],
+    assertOpen: ['.search-modal.active', '.search-modal[open]', '.predictive-search.is-open', 'details[open] .search-modal', '[id*="search" i][aria-hidden="false"]'], settleMs: 500 },
 ]
+
+// BUG-2: did the state actually open? An open panel must be present + visibly sized. No assertOpen defined
+// → trust the click (back-compat). Returns false if the toggle clicked but nothing opened.
+async function stateDidOpen(page, state) {
+  if (!Array.isArray(state.assertOpen) || !state.assertOpen.length) return true
+  for (const sel of state.assertOpen) {
+    try {
+      const el = page.locator(sel).first()
+      if ((await el.count()) && (await el.isVisible())) { const box = await el.boundingBox(); if (box && box.width > 80 && box.height > 120) return true }
+    } catch { /* try next */ }
+  }
+  return false
+}
 
 async function openState(page, state) {
   for (const sel of state.open) {
     try {
       const el = page.locator(sel).first()
-      if ((await el.count()) && (await el.isVisible())) { await el.click({ timeout: 2000 }); await page.waitForTimeout(state.settleMs); return true }
+      if ((await el.count()) && (await el.isVisible())) {
+        await el.click({ timeout: 2000 }); await page.waitForTimeout(state.settleMs)
+        // BUG-2: only count it as open if the panel actually appeared — never scan a closed drawer as if open.
+        if (await stateDidOpen(page, state)) return true
+      }
     } catch { /* try the next selector */ }
   }
   return false
@@ -51,7 +75,7 @@ const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 const DEP_HINT = 'npm ci --prefix toolkit && npx --prefix toolkit playwright install chromium'
 
 function finish(code, data) {
-  const { file, report } = writeReport('axe', 5, { ...data, duration_ms: Date.now() - started }, reportDir)
+  const { file, report } = writeReport('accessibility', 5, { ...data, duration_ms: Date.now() - started }, reportDir)
   console.log(`report: ${file} (pass=${report.pass}, blockers=${report.blockers.length}, warnings=${report.warnings.length})`)
   process.exit(code)
 }

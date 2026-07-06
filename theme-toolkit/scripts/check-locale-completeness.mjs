@@ -28,6 +28,14 @@ export function flattenKeys(obj, prefix = '') {
   return keys
 }
 
+// PURE: parse a Shopify locale file. Shopify AUTO-GENERATES every locale (incl. en.default.json) with a
+// leading `/* ... auto-generated ... */` header comment — valid Shopify, but not strict JSON. Strip a
+// leading block comment (+ BOM) before JSON.parse so the real locale content parses. Throws on real errors.
+export function parseLocaleJson(text) {
+  const stripped = String(text).replace(/^﻿/, '').replace(/^\s*\/\*[\s\S]*?\*\/\s*/, '')
+  return JSON.parse(stripped)
+}
+
 // PURE: keys present in the default locale but MISSING in each other locale. locales = {loc: parsedJson}.
 export function localeParityGaps(locales, defaultLocale) {
   const def = locales?.[defaultLocale]
@@ -53,7 +61,7 @@ function main() {
   const warnings = []
   const finish = (evidence = {}) => {
     const pass = blockers.length === 0
-    writeReport('locale-completeness', 28, { cwd, pass, blockers, warnings, evidence: { enforce: ENFORCE, ...evidence }, duration_ms: Date.now() - t0 }, REPORT_DIR)
+    writeReport('translations', 28, { cwd, pass, blockers, warnings, evidence: { enforce: ENFORCE, ...evidence }, duration_ms: Date.now() - t0 }, REPORT_DIR)
     console.log(`locale-completeness: ${pass ? 'PASS' : 'BLOCK'} — ${blockers.length} blocker(s), ${warnings.length} warning(s)`)
     for (const b of blockers) console.log(`  BLOCK ${b.id} ${b.page}: ${b.detail}`)
     for (const w of warnings) console.log(`  warn  ${w.id} ${w.page}: ${w.detail}`)
@@ -70,7 +78,7 @@ function main() {
   for (const f of files) {
     const loc = f.replace(/\.default\.json$|\.json$/, '')
     if (f.endsWith('.default.json')) defaultLocale = loc
-    try { locales[loc] = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')) } catch (e) { warnings.push({ id: 'locale.unparseable', page: f, detail: `invalid JSON: ${e.message}`, evidence: '' }) }
+    try { locales[loc] = parseLocaleJson(fs.readFileSync(path.join(dir, f), 'utf-8')) } catch (e) { warnings.push({ id: 'locale.unparseable', page: f, detail: `invalid JSON: ${e.message}`, evidence: '' }) }
   }
   if (!defaultLocale) defaultLocale = Object.keys(locales)[0] // no *.default.json → first as reference
 

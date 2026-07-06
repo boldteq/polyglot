@@ -1,0 +1,77 @@
+[
+  {
+    "_doc": "Team-wide ENFORCED rules (gate #43 rule-pack). ADD a rule = append an object — no code. Grown automatically by scripts/quality-loop.mjs (a real caught defect becomes an enforced rule so it can never silently recur). Types: forbid-text · forbid-section-pattern · require-section · require-pattern · forbid-css-pattern · pin-design-system. severity: block | warn (default block). Entries without a `type` are skipped (so this _doc is inert)."
+  },
+  {
+    "id": "zindex-war",
+    "type": "forbid-css-pattern",
+    "pattern": "z-index\\s*:\\s*9{4,}",
+    "severity": "warn",
+    "message": "z-index >= 9999 — escalation war; use the design-system layer scale, don't out-bid",
+    "owner": "loom",
+    "source": "seed"
+  },
+  {
+    "id": "vague-link-text",
+    "type": "forbid-text",
+    "pattern": ">\\s*click here\\s*<",
+    "severity": "warn",
+    "message": "non-descriptive link text 'click here' — use a meaningful label (a11y 2.4.4 + SEO)",
+    "owner": "ink",
+    "source": "seed"
+  },
+  {
+    "id": "viewport-no-zoom",
+    "type": "forbid-text",
+    "pattern": "user-scalable\\s*=\\s*['\"]?no|maximum-scale\\s*=\\s*['\"]?1(?![0-9.])",
+    "severity": "block",
+    "message": "viewport blocks pinch-zoom (WCAG 1.4.4) — remove user-scalable=no / maximum-scale=1",
+    "owner": "loom",
+    "source": "audit-2026-06-27"
+  },
+  {
+    "id": "html-lang",
+    "type": "require-pattern",
+    "pattern": "<html[^>]*\\blang\\s*=",
+    "severity": "warn",
+    "message": "<html> missing a lang attribute — screen readers + SEO require it (warn: a partial build may not have theme.liquid yet)",
+    "owner": "loom",
+    "source": "audit-2026-06-27"
+  },
+  {
+    "id": "skip-link",
+    "type": "require-pattern",
+    "pattern": "skip[-_ ]?to[-_ ]?content|#MainContent",
+    "severity": "warn",
+    "message": "no skip-to-content link — keyboard users must tab through the whole nav on every page",
+    "owner": "loom",
+    "source": "audit-2026-06-27"
+  },
+  {
+    "id": "responsive-images",
+    "type": "require-pattern",
+    "pattern": "srcset|loading\\s*=\\s*[\"']lazy",
+    "severity": "warn",
+    "message": "theme uses no responsive/lazy images anywhere — add srcset + loading=lazy for LCP",
+    "owner": "loom",
+    "source": "audit-2026-06-27"
+  },
+  {
+    "id": "deprecated-tags",
+    "type": "forbid-text",
+    "pattern": "<(marquee|blink|center)\\b",
+    "severity": "warn",
+    "message": "deprecated HTML tag — use CSS / semantic markup",
+    "owner": "loom",
+    "source": "audit-2026-06-27"
+  },
+  {
+    "id": "document-write",
+    "type": "forbid-text",
+    "pattern": "document\\.write\\s*\\(",
+    "severity": "warn",
+    "message": "document.write blocks parsing + breaks async — use DOM APIs",
+    "owner": "loom",
+    "source": "audit-2026-06-27"
+  }
+]

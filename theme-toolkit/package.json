@@ -68,7 +68,8 @@
     "maestro:escalate": "node scripts/maestro-escalate.mjs",
     "aim:dogfood": "node scripts/aim-dogfood.mjs",
     "theme:publish": "node scripts/shopify-theme-publish.mjs",
-    "check:post-publish": "node scripts/check-post-publish.mjs"
+    "check:post-publish": "node scripts/check-post-publish.mjs",
+    "check:rule-pack": "node scripts/check-rule-pack.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",

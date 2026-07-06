@@ -58,6 +58,14 @@ function loadRubric(surface) {
   try { return JSON.parse(fs.readFileSync(p, 'utf-8')) } catch { return null }
 }
 
+// A frame's rubric is keyed by surface, EXCEPT a content state that has its own rubric (BUG-1: the cart
+// `drawer` state, captured on the PDP, is judged against the cart-drawer rubric — not the PDP rubric — so
+// the judge checks drawer-open / checkout-cta-in-drawer / upsell, the real slide-out UX).
+export function rubricKeyFor(frame) {
+  if (frame && frame.state === 'drawer') return 'cart-drawer'
+  return frame ? frame.surface : null
+}
+
 // Premium baseline (WS-B2): the niche's 2 reference brands' premium attributes, as a CALIBRATION ANCHOR
 // for premium-feel. Text-only (no images) → preserves the judge's independence guarantee. Computed once.
 function premiumBaseline(niche) {
@@ -170,7 +178,19 @@ async function main() {
   if (ver.error) die(2, `claude CLI not found (${CLAUDE_BIN}) — Lens-judge dispatches headless \`claude -p\`. Install Claude Code or set CLAUDE_BIN.`)
 
   const manifestPath = path.join(LENS_DIR, 'lens-manifest.json')
-  if (!fs.existsSync(manifestPath)) die(2, `no ${path.relative(cwd, manifestPath)} — run \`pnpm lens:capture\` first`)
+  if (!fs.existsSync(manifestPath)) {
+    // BUG-19: don't halt the loop on a missing manifest — SELF-START a capture when a preview URL is
+    // available (the standalone judge / theme-gates / maestro path may call judge before capture). The
+    // judge can't run blind, but "no manifest yet + a URL to capture" should auto-recover, not die.
+    if (process.env.THEME_PREVIEW_URL) {
+      console.error('lens-judge: no lens-manifest.json yet — self-starting lens-capture first…')
+      const surfaces = args().surfaces
+      const cap = spawnSync(process.execPath, [path.resolve(HERE, 'lens-capture.mjs'), ...(surfaces ? ['--surfaces', surfaces.join(',')] : [])], { cwd, stdio: 'inherit', env: process.env })
+      if (cap.status !== 0 || !fs.existsSync(manifestPath)) die(2, `lens-capture self-start failed (exit ${cap.status ?? '?'}) — run \`pnpm lens:capture\` manually and re-judge`)
+    } else {
+      die(2, `no ${path.relative(cwd, manifestPath)} and THEME_PREVIEW_URL not set — run \`pnpm lens:capture\` first (it needs the preview URL)`)
+    }
+  }
   let manifest
   try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) } catch (e) { die(2, `lens-manifest.json invalid: ${e.message}`) }
   let frames = Array.isArray(manifest.frames) ? manifest.frames : []
@@ -184,7 +204,8 @@ async function main() {
   const outFor = (f) => path.join(JUDGE_DIR, `${f.key || `${f.surface}-${f.viewport}`}.json`)
   // #9 — hash every frame, mark cache hits, then plan: fresh (judge now) · cached (reuse) · skipped (over budget)
   const items = frames.map(f => {
-    const rubric = rubricCache[f.surface] ?? (rubricCache[f.surface] = loadRubric(f.surface))
+    const rkey = rubricKeyFor(f)
+    const rubric = rubricCache[rkey] ?? (rubricCache[rkey] = loadRubric(rkey))
     const hash = NO_CACHE ? null : frameHash(f, rubric)
     const cached = !!(hash && fs.existsSync(path.join(JUDGE_CACHE, `${hash}.json`)))
     return { frame: f, rubric, hash, cached }

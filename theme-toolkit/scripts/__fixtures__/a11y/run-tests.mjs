@@ -23,7 +23,7 @@ function runGate(dir, extraEnv = {}) {
   const env = { ...process.env, REPORT_DIR: reportDir, BASE_REF: '__no_such_base__', DS_REQUIRE_SCOPE: '', A11Y_STRICT: '', ...extraEnv }
   const r = spawnSync('node', [GATE], { cwd: dir, env, encoding: 'utf-8' })
   let report = null
-  try { report = JSON.parse(fs.readFileSync(path.join(reportDir, 'a11y-static.json'), 'utf-8')) } catch { /* none */ }
+  try { report = JSON.parse(fs.readFileSync(path.join(reportDir, 'static-a11y.json'), 'utf-8')) } catch { /* none */ }
   fs.rmSync(reportDir, { recursive: true, force: true })
   return { code: r.status, report }
 }

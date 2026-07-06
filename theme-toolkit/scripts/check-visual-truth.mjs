@@ -25,6 +25,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { writeReport } from './lib/report.mjs'
+import { runAbsorbed } from './lib/merge-spawn.mjs'
 import { applyRegressionRegistry, readRegistry, writeRegistry } from './lib/lens-regressions.mjs'
 
 const t0 = Date.now()
@@ -47,9 +48,26 @@ const add = (list, id, page, detail, evidence = '') => list.push({ id, page, det
 function readJson(p) { return JSON.parse(fs.readFileSync(p, 'utf-8')) }
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 
+// BUG-20: a PRESENT but STALE capture must not pass #18 as if it reflects THIS build — the manifest can be
+// left over from a prior build/SHA, so "frames exist + judge clean" wouldn't mean THIS build was looked at.
+// Pure + nowMs-injected → deterministically testable (mirrors lib/report.mjs staleReportsByTtl).
+export function captureStale(manifest, nowMs, ttlMs) {
+  const at = Number(manifest && manifest.capturedAt_ms)
+  if (!Number.isFinite(at) || !Number.isFinite(ttlMs) || ttlMs <= 0) return false // no timestamp / no TTL → can't judge age (coverage+judge checks own it)
+  return (nowMs - at) > ttlMs
+}
+
 function finish(envError, evidence = {}) {
+  // MERGED #17 visual-quality (onyx self-attestation) — folded into lens's findings as a secondary signal
+  if (!envError) {
+    try {
+      const m = runAbsorbed([{ script: 'check-visual-quality.mjs', report: 'visual-quality' }], { cwd, env: process.env })
+      const _circ = new Set(['vq.lens-missing', 'vq.lens-not-passed']) // circular: visual-quality checks #18 — but it IS folded into #18
+      blockers.push(...m.blockers.filter(b => !_circ.has(b.id))); warnings.push(...m.warnings.filter(w => !_circ.has(w.id)))
+    } catch { /* visual-quality attestation fold best-effort */ }
+  }
   const pass = !envError && blockers.length === 0
-  writeReport('visual-truth', 18, { cwd, pass, blockers, warnings, evidence: { lensDir: path.relative(cwd, LENS_DIR), minConfidence: MIN_CONF, reason: envError || undefined, ...evidence }, duration_ms: Date.now() - t0 }, REPORT_DIR)
+  writeReport('visual-check', 18, { cwd, pass, blockers, warnings, evidence: { lensDir: path.relative(cwd, LENS_DIR), minConfidence: MIN_CONF, reason: envError || undefined, ...evidence }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   const code = envError ? 2 : pass ? 0 : 1
   const label = code === 2 ? 'ENV-ERROR' : code === 0 ? 'PASS' : 'BLOCK'
   console.log(`visual-truth: ${label} — ${blockers.length} blocker(s), ${warnings.length} warning(s)`)
@@ -95,6 +113,15 @@ function main() {
   const frames = Array.isArray(manifest.frames) ? manifest.frames : []
   if (!frames.length) return finish('lens-manifest.json has no frames')
 
+  // BUG-20: require a FRESH capture — a stale manifest (prior build) blocks at publish-grade, warns in dev.
+  const CAPTURE_TTL_MS = Number(process.env.LENS_CAPTURE_TTL_MS || 30 * 60_000)
+  if (captureStale(manifest, Date.now(), CAPTURE_TTL_MS)) {
+    const ageMin = Math.round((Date.now() - Number(manifest.capturedAt_ms)) / 60_000)
+    const msg = `the Lens capture is ~${ageMin} min old (TTL ${Math.round(CAPTURE_TTL_MS / 60_000)} min) — it may be from a PRIOR build. Re-run lens-capture so visual-truth grades THIS build's rendered pages, not a stale manifest.`
+    if (REQUIRE) add(blockers, 'vt.capture-stale', path.relative(cwd, LENS_DIR), msg, '')
+    else warnings.push({ id: 'vt.capture-stale', page: path.relative(cwd, LENS_DIR), detail: msg, evidence: '' })
+  }
+
   // ── Layer 1: deterministic facts the screenshot can't lie about ──
   for (const f of frames) {
     const at = `${f.surface} ${f.viewport}/${f.theme || 'light'}`
@@ -103,6 +130,9 @@ function main() {
     if (f.liquidError) add(blockers, 'vt.liquid-error', f.surface, `${at}: Liquid error rendered to the page — "${f.liquidError}"`, f.url)
     if (Number(f.overflowPx) > OVERFLOW_TOL) add(blockers, 'vt.overflow', f.surface, `${at}: horizontal overflow ${f.overflowPx}px — an element bleeds past the viewport (sideways scroll)`, f.url)
     if (Array.isArray(f.brokenImages) && f.brokenImages.length) add(blockers, 'vt.broken-image', f.surface, `${at}: ${f.brokenImages.length} broken image(s) (naturalWidth=0): ${f.brokenImages.slice(0, 3).join(', ')}`, f.url)
+    // BUG-1/BUG-2: a captured cart-DRAWER frame whose drawer never opened is a hard defect — the slide-out
+    // cart (the real mobile checkout path) is broken/unreachable. Deterministic, so it can't be vision-missed.
+    if (f.state === 'drawer' && f.drawerOpened && f.drawerOpened.opened === false) add(blockers, 'vt.cart-drawer-not-open', f.surface, `${at}: the cart drawer did NOT open — ${f.drawerOpened.reason || 'no toggle/API opened a visible drawer'}. The slide-out cart (the shopper's real checkout path, esp. on mobile) is broken or unreachable on this theme.`, f.url)
     if (Array.isArray(f.emptyShells) && f.emptyShells.length) warnings.push({ id: 'vt.empty-shell', page: f.surface, detail: `${at}: ${f.emptyShells.length} empty section shell(s) (heading over a void): ${f.emptyShells.slice(0, 3).join(', ')}`, evidence: f.url })
     if (Number(f.cls) > 0.1) warnings.push({ id: 'vt.layout-shift', page: f.surface, detail: `${at}: CLS ${f.cls} (>0.1) — visible layout shift on load`, evidence: f.url })
     if (Array.isArray(f.consoleErrors) && f.consoleErrors.length) warnings.push({ id: 'vt.console-error', page: f.surface, detail: `${at}: ${f.consoleErrors.length} console error(s): ${f.consoleErrors[0]?.slice(0, 100)}`, evidence: '' })

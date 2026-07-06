@@ -56,6 +56,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { writeReport } from './lib/report.mjs'
+import { runAbsorbed } from './lib/merge-spawn.mjs'
 import { resolvePages, authFetch, EnvError, MANDATORY_PAGES, OPTIONAL_PAGES } from './lib/pages.mjs'
 
 const started = Date.now()
@@ -150,6 +151,20 @@ const previewUrl = process.env.THEME_PREVIEW_URL || null
 const password = process.env.THEME_STORE_PASSWORD ?? process.env.STOREFRONT_PASSWORD ?? undefined
 
 function finish(code, data) {
+  // MERGED #15 commerce-readiness + #21 conversion-signoff (static) — folded into convert's report.
+  // (convert is url-kind, so these run at full/publish-grade with convert; best-effort, never throws.)
+  if (code !== 2) {
+    try {
+      const m = runAbsorbed([
+        { script: 'check-commerce-readiness.mjs', report: 'commerce-readiness' },
+        { script: 'check-conversion-signoff.mjs', report: 'conversion-signoff' },
+      ], { cwd: process.cwd(), env: process.env })
+      const blockers = [...(data.blockers || []), ...m.blockers]
+      const warnings = [...(data.warnings || []), ...m.warnings]
+      data = { ...data, blockers, warnings, pass: data.pass === true && blockers.length === 0 }
+      if (!data.pass && code === 0) code = 1
+    } catch { /* commerce/lift-target fold best-effort */ }
+  }
   const { file, report } = writeReport('conversion', 7, { url: previewUrl, ...data, duration_ms: Date.now() - started }, args.reportDir)
   console.log(`report: ${file} (pass=${report.pass}, blockers=${report.blockers.length}, warnings=${report.warnings.length})`)
   process.exit(code)
