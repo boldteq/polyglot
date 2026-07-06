@@ -75,6 +75,39 @@ test('GET /observability/policy-audit filters by decision', async () => {
   assert.equal(pa.items[0].agentId, 'koda');
 });
 
+test('GET /observability/trace/:runId assembles the nested tree + totals', async () => {
+  // Seed a parent run that delegated to a child run (the `before` block already
+  // added the orch1→r2 delegation + r1 cost); add the run rows + child cost.
+  db.insertAgentRun({ id: 'orch1', agentName: 'orchestration', prompt: 'build', source: 'orchestration', timestamp: '2026-06-27T00:00:00Z', duration: 5000, status: 'success', promptChars: 5, outputChars: 10, estimatedTokens: 0, estimatedCost: 0, error: null, metadata: {} });
+  db.insertAgentRun({ id: 'r2', agentName: 'loom', prompt: 'hero', source: 'orchestration', timestamp: '2026-06-27T00:00:01Z', duration: 2000, status: 'success', promptChars: 4, outputChars: 8, estimatedTokens: 0, estimatedCost: 0, error: null, metadata: {} });
+  db.logCost({ runId: 'r2', agentName: 'loom', model: 'claude-sonnet-4-6', inputTokens: 200, outputTokens: 100, costUsd: 0.01, estimated: false, source: 'test' });
+
+  const t = await get('/observability/trace/orch1');
+  assert.equal(t.tree.runId, 'orch1');
+  assert.equal(t.tree.agentName, 'orchestration');
+  assert.equal(t.tree.children.length, 1);
+  assert.equal(t.tree.children[0].runId, 'r2');
+  assert.equal(t.tree.children[0].agentName, 'loom');
+  assert.equal(t.tree.children[0].costUsd, 0.01);
+  assert.equal(t.totals.nodeCount, 2);
+  assert.ok(t.totals.spanMs >= 0);
+});
+
+test('GET /observability/trace/:runId does not double-count a shared child (diamond)', async () => {
+  // Two delegation edges from orch1 → the same childRunId r2 (fan-in). r2 must be
+  // counted once and appear once, not duplicated as a synthetic 'delegated' leaf.
+  db.trackDelegation({ parentRunId: 'orch1', parentAgent: 'orchestration', childAgent: 'loom', childRunId: 'r2', task: 'build hero again' });
+  const t = await get('/observability/trace/orch1');
+  assert.equal(t.tree.children.length, 1);        // r2 appears once
+  assert.equal(t.totals.nodeCount, 2);            // orch1 + r2, not 3
+});
+
+test('GET /observability/trace/:runId returns null tree for an unknown run', async () => {
+  const t = await get('/observability/trace/does-not-exist');
+  assert.equal(t.tree, null);
+  assert.equal(t.totals.nodeCount, 0);
+});
+
 test('GET /consolidation/report returns a valid shape', async () => {
   const r = await get('/consolidation/report?windowDays=30');
   assert.equal(typeof r.activeAgents, 'number');

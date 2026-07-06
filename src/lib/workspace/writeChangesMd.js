@@ -60,6 +60,44 @@ function addItem(changesPath, text) {
   return parseChangesMd(changesPath);
 }
 
+// Walk to the Nth non-waiver checkbox line and run fn(lineIndex, match) on it.
+// Centralizes the index logic shared by toggle/remove/edit. Returns the lines array.
+function withItem(changesPath, index, fn) {
+  const lines = readLines(changesPath);
+  let itemIdx = -1, inWaivers = false, done = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (WAIVERS_HEAD.test(line)) { inWaivers = true; continue; }
+    if (SECTION_HEAD.test(line)) inWaivers = false;
+    if (inWaivers) continue;
+    const m = line.match(CHECKBOX);
+    if (!m) continue;
+    itemIdx += 1;
+    if (itemIdx === index) { fn(i, m, lines); done = true; break; }
+  }
+  if (!done) throw new Error(`CHANGES item #${index} not found`);
+  writeLines(changesPath, lines);
+  return parseChangesMd(changesPath);
+}
+
+// Delete the Nth non-waiver item. Drops one immediately-following blank line if present,
+// so the file doesn't accumulate empty gaps.
+function removeItem(changesPath, index) {
+  return withItem(changesPath, index, (i, _m, lines) => {
+    const drop = (lines[i + 1] !== undefined && lines[i + 1].trim() === '') ? 2 : 1;
+    lines.splice(i, drop);
+  });
+}
+
+// Replace the text of the Nth non-waiver item, preserving its checked/unchecked state.
+function editItem(changesPath, index, text) {
+  const clean = String(text).replace(/\r?\n/g, ' ').trim();
+  if (!clean) throw new Error('item text required');
+  return withItem(changesPath, index, (i, m, lines) => {
+    lines[i] = `${m[1]}${m[2]}] ${clean}`;
+  });
+}
+
 // Add a waiver entry, creating the `## Waivers` section if missing.
 function addWaiver(changesPath, text) {
   const clean = String(text).replace(/\r?\n/g, ' ').trim();
@@ -81,4 +119,4 @@ function addWaiver(changesPath, text) {
   return parseChangesMd(changesPath);
 }
 
-module.exports = { toggleItem, addItem, addWaiver };
+module.exports = { toggleItem, addItem, removeItem, editItem, addWaiver };

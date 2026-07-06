@@ -46,7 +46,7 @@ function startDiskWatcher({ roots = [], bust = () => {} } = {}) {
       bust(); // recompute on next request
       const base = path.basename(file);
       if (base === 'CHANGES.md') bus.emit('event', { type: 'changes:update', file });
-      else if (base === 'visual-truth.json') bus.emit('event', { type: 'lens:update', file });
+      else if (base === 'lens.json') bus.emit('event', { type: 'lens:update', file });
       else bus.emit('event', { type: 'gate:update', file });
       bus.emit('event', { type: 'score:update', file });
     } catch (err) { console.error('[workspace] watcher onChange failed:', err.message); }

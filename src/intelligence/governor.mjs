@@ -29,6 +29,15 @@ export const AUTO_POLICY = {
 const NEVER_AUTO_FILES = new Set(['feedback.md'])
 const NEVER_AUTO_BLAST = new Set(['constitution', 'shared-memory', 'multi-agent'])
 
+// Client-facing SALES agents are human-approval-only (Yash, 2026-06-23): a change to
+// how a sales closer talks to real prospects must be reviewed before it applies, even
+// when the evidence/calibration/rollback gates would otherwise allow auto. Matched by
+// agent id or a `roleBand: 'sales'` proposal. They can still be PROPOSED to the review queue.
+const SALES_REVIEW_AGENTS = new Set(['sway'])
+function isSalesAgent(proposal) {
+  return SALES_REVIEW_AGENTS.has(proposal?.agent) || proposal?.roleBand === 'sales'
+}
+
 // Signals strong enough to clear the evidence bar on their own.
 const STRONG_KINDS = new Set(['yash_correction'])
 
@@ -95,6 +104,13 @@ export function decide(proposal = {}, ctx = {}) {
   //    auto-applied. It can still be PROPOSED, but only a human approve writes it.
   if (isConstitutional(proposal)) {
     reasons.push('constitution-human-only')
+    return { decision: 'review', reasons, evidence }
+  }
+
+  // 1b) SALES AGENTS are human-approval-only — a change to how a client-facing closer
+  //     talks to real prospects always waits for a human, never auto-applies.
+  if (isSalesAgent(proposal)) {
+    reasons.push('sales-human-approval')
     return { decision: 'review', reasons, evidence }
   }
 

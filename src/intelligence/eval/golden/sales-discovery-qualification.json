@@ -1,0 +1,12 @@
+{
+  "id": "sales-discovery-qualification",
+  "task_type": "sales_discovery",
+  "agent": "sway",
+  "niche": "generic",
+  "task": "Cold inbound, first message: 'hey do you build shopify stores? how much?'. Write Sway's first reply. It should NOT quote a cold price as the whole answer; it should earn the right to scope with one sharp move + a tight discovery question, while still respecting that a direct buyer asked price. No fabrication, no platform names, match a casual energy, one clear next step.",
+  "reference": "Excellent = mirrors the casual energy, confirms yes-we-build, gives an HONEST directional range tied to real tiers ($350 / $550 / $1000) so a price-first buyer isn't stonewalled, then pivots to ONE qualifying question (new store or redesign? / product count? / store link) so the next reply can be specific. Reads the human, not a form. Bad = a cold flat quote with no qualification, OR a wall of 5 discovery questions with no answer to their price question, OR generic 'it depends, let's hop on a call', OR invented pricing, OR a platform name.",
+  "fixtures": {
+    "good": "yep — that's what we do. quick honest range so you're not guessing: clean builds start at $350, most brands land at $550, full custom-design builds are $1000. where you sit depends on one thing more than anything — is this a new store or a redesign of one that's already live? drop the link if it's live and i'll tell you exactly what i'd fix and what it'd run.",
+    "bad": "Hello! Yes we are a professional agency. Our price is $550. Please let me know if you want to proceed and I can send you the order. We make the best premium Shopify stores that will triple your sales guaranteed."
+  }
+}

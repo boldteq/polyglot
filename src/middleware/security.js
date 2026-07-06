@@ -4,8 +4,9 @@
 function security(req, res, next) {
   // Prevent MIME sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  // Deny framing (clickjacking)
-  res.setHeader('X-Frame-Options', 'DENY');
+  // Block EXTERNAL framing (clickjacking) but allow same-origin iframes — the
+  // Design Library renders component previews in same-origin sandboxed iframes.
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   // Minimal referrer leakage
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Disable XSS auditor (deprecated but harmless)
@@ -23,8 +24,8 @@ function security(req, res, next) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self' ws://localhost:* wss://localhost:*", // SSE + Vite WS
-      "frame-src 'none'",
+      "connect-src 'self' ws://localhost:* wss://localhost:* https://fonts.googleapis.com https://fonts.gstatic.com", // SSE + Vite WS + Google Fonts (style/font-src already allow them; the stylesheet fetch is classified under connect-src)
+      "frame-src 'self'", // same-origin iframes only (Design Library component previews)
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

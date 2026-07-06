@@ -44,7 +44,7 @@ function discoverReportDirs(root, depth = 0, out = []) {
   let entries; try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { return out; }
   // direct hit: <root>/gate-reports/lens
   const gr = path.join(root, 'gate-reports');
-  if (fs.existsSync(path.join(gr, 'lens')) || fs.existsSync(path.join(gr, 'visual-truth.json'))) out.push(gr);
+  if (fs.existsSync(path.join(gr, 'lens')) || fs.existsSync(path.join(gr, 'lens.json'))) out.push(gr);
   // the bundled sample is itself a reports dir (no gate-reports wrapper)
   if (fs.existsSync(path.join(root, 'lens')) && path.basename(root) === 'lens-sample') out.push(root);
   for (const e of entries) {
@@ -73,7 +73,7 @@ router.get('/lens/runs', (_req, res) => {
       seen.add(abs);
       const lensDir = path.join(abs, 'lens');
       const manifest = readJson(path.join(lensDir, 'lens-manifest.json'));
-      const gate18 = readJson(path.join(abs, 'visual-truth.json')) || readJson(path.join(lensDir, 'visual-truth.json'));
+      const gate18 = readJson(path.join(abs, 'lens.json')) || readJson(path.join(lensDir, 'lens.json'));
       runs.push({
         dir: abs,
         client: clientLabel(abs),
@@ -100,7 +100,7 @@ router.get('/lens/latest', (req, res) => {
   }
   const lensDir = path.join(dir, 'lens');
   const manifest = readJson(path.join(lensDir, 'lens-manifest.json'));
-  const gate18 = readJson(path.join(dir, 'visual-truth.json')) || readJson(path.join(lensDir, 'visual-truth.json'));
+  const gate18 = readJson(path.join(dir, 'lens.json')) || readJson(path.join(lensDir, 'lens.json'));
 
   // judge verdicts keyed by surface-viewport(name)
   const verdicts = {};

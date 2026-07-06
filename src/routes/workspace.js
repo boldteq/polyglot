@@ -18,7 +18,7 @@ const lens = require('./lens');
 const { buildIdFor, dirFor, registerDirs } = require('../lib/workspace/buildId');
 const { readGateReports } = require('../lib/workspace/readGateReports');
 const { parseChangesMd } = require('../lib/workspace/parseChangesMd');
-const { toggleItem, addItem, addWaiver } = require('../lib/workspace/writeChangesMd');
+const { toggleItem, addItem, removeItem, editItem, addWaiver } = require('../lib/workspace/writeChangesMd');
 const { parseBaselineMd } = require('../lib/workspace/parseBaselineMd');
 const { readBuildFiles } = require('../lib/workspace/readBuildFiles');
 const { parseDesignSystem } = require('../lib/workspace/parseDesignSystem');
@@ -29,6 +29,22 @@ const { computeBuildScore } = require('../lib/workspace/computeBuildScore');
 const { platformAgentActivity, buildAgentActivity, rosterFor } = require('../lib/workspace/projectFilter');
 const gatesSpec = require('../lib/workspace/gatesSpec.json');
 const pipelineSpec = require('../lib/workspace/pipelineSpec.json');
+// loved gate name → historical report-file names (original + abstract), so an old build's report
+// still maps to its current gate row. Stale/non-gate reports are otherwise never shown.
+const GATE_REPORT_ALIASES = {
+  'theme-lock': ['anchor'], 'discovery': ['brief'], 'foundation': ['blueprint', 'bootstrap'],
+  'code-lint': ['syntax', 'theme-check'], 'editability': ['editable'], 'dead-code': ['hygiene', 'antipatterns'],
+  'layout': ['css-layout'], 'honesty': ['candor'], 'section-consistency': ['cohesion', 'section-cohesion'],
+  'mobile': ['thumb', 'mobile-layout'], 'design-tokens': ['tokens', 'design-system'], 'consistency': ['harmony'],
+  'design-quality': ['taste'], 'render-check': ['wiring', 'render-wiring'], 'library-cards': ['cards', 'card-bindings'],
+  'section-reuse': ['ladder', 'reuse-map'], 'brand-sync': ['cascade', 'ds-cascade'], 'static-a11y': ['forms', 'a11y-static'],
+  'app-conflicts': ['apps'], 'translations': ['locale', 'locale-completeness'], 'email-triggers': ['lifecycle'],
+  'performance': ['speed', 'lighthouse'], 'accessibility': ['access', 'axe'], 'seo': ['search'],
+  'functionality': ['flow', 'functional'], 'redirects': ['reroute'],
+  'conversion': ['convert', 'commerce-readiness', 'conversion-signoff'],
+  'imagery': ['media', 'art-direction', 'image-quality'], 'content-quality': ['proof', 'placeholder', 'copy-quality'],
+  'review-board': ['tribunal', 'design-review-board', 'red-team'], 'visual-check': ['lens', 'visual-truth', 'visual-quality'],
+};
 const { bus, startDiskWatcher } = require('../lib/workspace/diskWatcher');
 const { startGateHarvester } = require('../lib/gateFindings');
 const { startIndexer } = require('../lib/workspace/indexer');
@@ -127,7 +143,7 @@ function discoverBuilds() {
       seen.add(abs);
       const lensDir = path.join(abs, 'lens');
       const manifest = lens.readJson(path.join(lensDir, 'lens-manifest.json'));
-      const gate18 = lens.readJson(path.join(abs, 'visual-truth.json')) || lens.readJson(path.join(lensDir, 'visual-truth.json'));
+      const gate18 = lens.readJson(path.join(abs, 'lens.json')) || lens.readJson(path.join(lensDir, 'lens.json'));
       out.push({
         dir: abs,
         platform: platformForDir(abs),
@@ -200,7 +216,7 @@ function assembleBuild(dir) {
 
     const lensDir = path.join(abs, 'lens');
     const manifest = lens.readJson(path.join(lensDir, 'lens-manifest.json'));
-    const gate18 = lens.readJson(path.join(abs, 'visual-truth.json')) || lens.readJson(path.join(lensDir, 'visual-truth.json'));
+    const gate18 = lens.readJson(path.join(abs, 'lens.json')) || lens.readJson(path.join(lensDir, 'lens.json'));
     const lensVerdict = gate18 ? (gate18.pass ? 'pass' : 'block') : null;
 
     const gates = readGateReports(abs);
@@ -600,23 +616,22 @@ function resolveBuildDir(buildId) {
 function buildGatesDetail(dir) {
   const reports = readGateReports(dir); // [{ id, pass, findings[], reportFile, ts }]
   const byName = new Map(reports.map((r) => [r.id, r]));
+  // Show EXACTLY the canonical 38-gate set (gatesSpec) — never surface stray on-disk reports.
+  // A gate's report may sit under its current name OR a historical alias (an old build / pre-rename
+  // run wrote e.g. candor.json or lighthouse.json). Resolve via GATE_REPORT_ALIASES so the row maps;
+  // stale renamed reports + non-gate files (summary, render-verify) are NOT shown as gates.
   const gates = gatesSpec.gates.map((g) => {
-    const rep = byName.get(g.name) || byName.get(String(g.number)) || null;
+    let rep = byName.get(g.name) || byName.get(String(g.number)) || null;
+    if (!rep) for (const a of (GATE_REPORT_ALIASES[g.name] || [])) { rep = byName.get(a); if (rep) break; }
     const status = rep ? (rep.pass ? 'pass' : 'fail') : 'missing';
     return {
-      number: g.number, name: g.name, kind: g.kind, blocking: g.blocking,
+      number: g.number, name: g.name, stage: g.stage, category: g.category, desc: g.desc, kind: g.kind, blocking: g.blocking,
       status,
       findings: rep ? rep.findings : [],
       reportFile: rep ? rep.reportFile : g.reportFile,
       ts: rep ? rep.ts : null,
     };
   });
-  // include any on-disk report not in the spec (forward-compat) as extra rows
-  for (const r of reports) {
-    if (!gatesSpec.gates.some((g) => g.name === r.id || String(g.number) === r.id)) {
-      gates.push({ number: null, name: r.id, kind: 'unknown', blocking: false, status: r.pass ? 'pass' : 'fail', findings: r.findings, reportFile: r.reportFile, ts: r.ts });
-    }
-  }
   return {
     total: gates.length,
     reported: gates.filter((g) => g.status !== 'missing').length,
@@ -630,7 +645,7 @@ function buildGatesDetail(dir) {
 // Pipeline status: each of the 18 steps with reached/current + artifact presence.
 function buildPipelineDetail(dir) {
   const gateCount = readGateReports(dir).length;
-  const gate18 = lens.readJson(path.join(dir, 'visual-truth.json')) || lens.readJson(path.join(dir, 'lens', 'visual-truth.json'));
+  const gate18 = lens.readJson(path.join(dir, 'lens.json')) || lens.readJson(path.join(dir, 'lens', 'lens.json'));
   const step = deriveCurrentStep(dir, { gateReportCount: gateCount, lensPresent: !!gate18 });
   const steps = pipelineSpec.steps.map((s) => {
     const artifactPath = s.artifact ? path.join(dir, s.artifact) : null;
@@ -753,6 +768,35 @@ router.post('/workspace/builds/:buildId/changes/item', (req, res) => {
     res.json(addItem(p, text));
   } catch (err) {
     console.error('[workspace] changes/item failed:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// POST …/changes/remove {index} — delete one acceptance item (confirm-gated in UI).
+router.post('/workspace/builds/:buildId/changes/remove', (req, res) => {
+  try {
+    const { p, err } = changesPathFor(req.params.buildId);
+    if (err) return res.status(err).json({ error: 'build or CHANGES.md not found' });
+    const { index } = req.body || {};
+    if (!Number.isInteger(index) || index < 0) return res.status(400).json({ error: 'index (int ≥0) required' });
+    res.json(removeItem(p, index));
+  } catch (err) {
+    console.error('[workspace] changes/remove failed:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// POST …/changes/edit {index, text} — replace one item's text, preserving its checked state.
+router.post('/workspace/builds/:buildId/changes/edit', (req, res) => {
+  try {
+    const { p, err } = changesPathFor(req.params.buildId);
+    if (err) return res.status(err).json({ error: 'build or CHANGES.md not found' });
+    const { index, text } = req.body || {};
+    if (!Number.isInteger(index) || index < 0) return res.status(400).json({ error: 'index (int ≥0) required' });
+    if (!text || typeof text !== 'string' || text.length > 1000) return res.status(400).json({ error: 'text (≤1000 chars) required' });
+    res.json(editItem(p, index, text));
+  } catch (err) {
+    console.error('[workspace] changes/edit failed:', err.message);
     res.status(400).json({ error: err.message });
   }
 });

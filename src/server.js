@@ -119,9 +119,13 @@ const healthRouter = require('./routes/health');
 const dispatchRouter = require('./routes/dispatch');
 const logsRouter = require('./routes/logs');
 const observabilityRouter = require('./routes/observability');
+const evaluatorsRouter = require('./routes/evaluators');
+const experimentsRouter = require('./routes/experiments');
 const intelligenceRouter = require('./routes/intelligence');
 const ingestRouter = require('./routes/ingest');
 const systemRouter = require('./routes/system');
+const salesRouter = require('./routes/sales');
+const designLibraryRouter = require('./routes/designLibrary');
 
 app.use('/api', configRouter);
 app.use('/api', agentsRouter);
@@ -143,6 +147,8 @@ app.use('/api', webhooksRouter);
 app.use('/api', learningRouter);
 app.use('/api', brainRouter);
 app.use('/api', lensRouter);
+app.use('/api', salesRouter);
+app.use('/api', designLibraryRouter);
  app.use('/api', shopifyRouter);
 app.use('/api', workspaceRouter);
 app.use('/api', buildRouter);
@@ -152,6 +158,8 @@ app.use('/api', healthRouter);
 app.use('/api', dispatchRouter);
 app.use('/api', logsRouter);
 app.use('/api', observabilityRouter);
+app.use('/api', evaluatorsRouter);
+app.use('/api', experimentsRouter);
 app.use('/api', intelligenceRouter);
 app.use('/api', ingestRouter);
 app.use('/api', systemRouter);
@@ -426,9 +434,14 @@ app.listen(PORT, HOST, () => {
     { id: 'sys-learning-digest', hours: catchupHours },
     { id: 'sys-witness', hours: catchupHours },
     { id: 'sys-brain-aggregate', hours: catchupHours },
-    { id: 'sys-intel-eval', hours: WEEKLY_CATCHUP_HOURS }, // CALIBRATE the judge
-    { id: 'sys-tutor', hours: WEEKLY_CATCHUP_HOURS },       // ACT — apply auto-approved patches (was never invoked)
+    { id: 'sys-intel-eval', hours: WEEKLY_CATCHUP_HOURS }, // CALIBRATE the judge (still weekly)
+    { id: 'sys-tutor', hours: catchupHours },               // ACT — now DAILY (was weekly); apply auto-approved patches
     { id: 'sys-build-schedules', hours: 1 },                // run DUE post-publish checkpoints (watch + results) — catch up an asleep Mac
+    { id: 'sys-db-retention', hours: catchupHours },        // prune unbounded tables even after a sleep
+    { id: 'sys-stale-run-reconcile', hours: catchupHours }, // self-heal hung runs
+    { id: 'sys-cost-digest', hours: catchupHours },         // daily spend roll-up + anomaly
+    { id: 'sys-app-audit', hours: catchupHours },           // daily UX/a11y audit of the app
+    { id: 'sys-suite-health', hours: catchupHours },         // daily tsc + test sweep of committed HEAD
   ];
   const runCatchups = (phase) => {
     for (const { id, hours } of BOOT_CATCHUP) {

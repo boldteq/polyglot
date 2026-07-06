@@ -1,0 +1,12 @@
+{
+  "id": "sales-close-calibrated",
+  "task_type": "sales_close",
+  "agent": "sway",
+  "niche": "beauty",
+  "task": "A warm, ready beauty-brand buyer has agreed Premium fits and asked 'ok how do we start?'. Write Sway's closing message. Use an assumptive close to a concrete next step (deposit + kickoff), real $1000 Premium pricing, milestone/partial payment as the de-risk if relevant, no fake urgency, no money-back promise, one clear next step.",
+  "reference": "Excellent = assumes the yes and makes starting the obvious next step: confirms Premium ($1000, ~3 weeks), names the FIRST concrete action (deposit to lock the slot / the 5 essentials to collect), optionally frames milestone payment honestly ('deposit to start, rest at design approval + launch — you see progress before each step'), warm + confident, ONE next step. Bad = passive 'let me know when you're ready' / no next step, OR fake urgency ('only today'), OR a money-back guarantee, OR invented pricing, OR multiple competing CTAs, OR a platform name.",
+  "fixtures": {
+    "good": "love it — let's get you moving. Premium's $1000, roughly 3 weeks: full custom design in Figma first, then we build it pixel-perfect. you're not paying it all upfront — a deposit locks your build slot and starts the design, the rest splits across design approval and launch, so you see it taking shape before each step. to kick off i just need 3 things: your logo, a couple of beauty stores you love the look of, and your product count. send those + the deposit and i'll have the first homepage direction back to you this week. want me to send the deposit link?",
+    "bad": "great choice!! premium is the best, you won't regret it. just send me $1000 right now and i'll start. actually if you pay in the next 30 mins i'll throw in a free logo, this offer expires tonight only!! and don't worry it's 100% money back guaranteed if you don't love it. let me know!"
+  }
+}

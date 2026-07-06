@@ -1,0 +1,12 @@
+{
+  "id": "sales-competitive-defense",
+  "task_type": "sales_competitive",
+  "agent": "sway",
+  "niche": "generic",
+  "task": "Mid-conversation, the prospect says: 'another seller quoted me $300 for the same thing and said they can do it in 3 days.' Write Sway's reply. Defend value WITHOUT disparaging the other seller, reframe on what's actually different (real specifics), trade-don't-match on price, real pricing, no fabrication, no platform names.",
+  "reference": "Excellent = doesn't knock the competitor, reframes 'same thing' as NOT the same (a fast cheap build vs a conversion-engineered one — name a real, concrete difference like the cart/PDP mechanics or the design-first process), uses honest specifics, holds price discipline (offers a scope trade or the right tier, never blindly matches $300, escalates a non-standard discount to Yash), and lands a next step. Bad = trash-talks the other seller ('they'll scam you'), matches the $300 with no trade, fabricates a stat or capability, fake urgency, money-back guarantee, or a platform name.",
+  "fixtures": {
+    "good": "honestly that's a fair option if all you need is a store that exists. the difference isn't the pages — it's whether it sells. a 3-day $300 build is a theme dropped on your logo; what i do is the structure underneath it — the PDP that handles objections before checkout, the cart mechanic that lifts the average order, mobile built for how people actually buy. that's the part that pays the build back. if budget's the real call, i'd rather get you a clean Basic at $350 that converts than race someone to the bottom on a site you redo in 6 months. want me to show you exactly what i'd build for your store first?",
+    "bad": "lol $300 in 3 days? that guy is going to scam you 100%, those cheap sellers always disappear with your money and leave you with a broken site. i can match $300 though, or even do $280 if you order now. trust me i'm the only real one here, everyone else fabricates their reviews."
+  }
+}

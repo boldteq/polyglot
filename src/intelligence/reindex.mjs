@@ -66,8 +66,11 @@ export async function reindex(opts = {}) {
     if (embedded % 25 === 0) log(`  …${embedded} embedded`)
   }
   // Prune chunks for files that no longer exist — ONLY on a full-brain pass (a scoped
-  // drain hasn't seen the whole set, so it must not infer deletions).
-  const removed = (!scoped && store.deleteMissing) ? store.deleteMissing(sources.map((s) => s.source_ref)) : 0
+  // drain hasn't seen the whole set, so it must not infer deletions) AND ONLY when enumeration
+  // was complete (a swallowed readdir error would make present files look deleted → mass-prune,
+  // the silent loss that wiped the FAQ brain). store.deleteMissing has its own tripwire too.
+  if (sources.enumerationErrors) log(`reindex: SKIPPING prune — enumeration INCOMPLETE (${sources.enumerationErrors.length} dir(s) unreadable); refusing to infer deletions`)
+  const removed = (!scoped && !sources.enumerationErrors && store.deleteMissing) ? store.deleteMissing(sources.map((s) => s.source_ref)) : 0
   store.flush?.() // single write of the whole index
   const stats = await store.stats()
   // Phase E — stamp freshness into the manifest so a silently-stalled reindex is visible.

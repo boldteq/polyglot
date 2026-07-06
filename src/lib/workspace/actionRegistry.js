@@ -74,8 +74,8 @@ const ACTIONS = [
       { script: 'check-visual-truth.mjs', args: [] },
     ],
     requiresEnv: ['THEME_PREVIEW_URL'],
-    description: 'Captures the theme, judges it (vision), and enforces gate #18 visual-truth. Writes only to gate-reports/lens/. Needs a running preview URL.',
-    confirm: { title: 'Run Lens?', message: 'Captures → judges → enforces visual-truth against the preview URL. Writes only to gate-reports/lens/. Does NOT touch theme code or the store. Takes ~1–3 min.', confirmLabel: 'Run Lens' },
+    description: 'Captures the theme, judges it (vision), and enforces gate #18 lens. Writes only to gate-reports/lens/. Needs a running preview URL.',
+    confirm: { title: 'Run Lens?', message: 'Captures → judges → enforces lens against the preview URL. Writes only to gate-reports/lens/. Does NOT touch theme code or the store. Takes ~1–3 min.', confirmLabel: 'Run Lens' },
   },
   {
     id: 'store:preflight', label: 'Store preflight', tier: 'safe',

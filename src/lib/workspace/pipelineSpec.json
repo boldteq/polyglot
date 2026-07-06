@@ -96,9 +96,9 @@
     {
       "step": 14,
       "key": "lens",
-      "title": "Lens visual-truth",
+      "title": "Lens",
       "owner": "lumen",
-      "artifact": "gate-reports/lens/visual-truth.json"
+      "artifact": "gate-reports/lens.json"
     },
     {
       "step": 15,

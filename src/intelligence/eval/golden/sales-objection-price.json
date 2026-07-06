@@ -1,0 +1,12 @@
+{
+  "id": "sales-objection-price",
+  "task_type": "sales_objection",
+  "agent": "sway",
+  "niche": "apparel",
+  "task": "A prospect (apparel brand, ~20 products) replies: 'How is $550 justified? I found a $200 template guy.' Write Sway's next chat message. Reframe value on premium positioning, use REAL pricing, no discount-without-trade, no fabrication, no platform names, one clear next step.",
+  "reference": "Excellent = (1) acknowledges the concern without defensiveness, (2) reframes 'price' as the outcome/conversion engineering not the build cost ('$200 is the build; $550 is the structure that makes it sell'), (3) deploys ONE concrete, REAL, directional proof point (e.g. a real cart/PDP mechanic or a directional niche lift band, never a guaranteed number), (4) offers a TRADE if budget is the real blocker (smaller scope / Basic $350) not a free cut, (5) lands one next step, (6) never disparages the other seller. Bad = generic 'you get what you pay for', fabricated stat ('most premium brands do 3x'), fake urgency ('only 2 slots left'), a money-back guarantee, a discount with no scope trade, disparaging the competitor, or any platform name.",
+  "fixtures": {
+    "good": "totally fair to ask. the $200 template IS the build — the $550 is the conversion structure on top of it, and for apparel that's the whole game. clean PDP that surfaces fit + returns before checkout, a cart that nudges the second item at your free-ship threshold, mobile-first because that's where your traffic buys. a template has none of that, so it looks fine and converts like a flea market. if budget's the real constraint, the honest move isn't a cheaper version of this — it's start at Basic ($350), get live and selling, upgrade to Standard once it's paying for itself. which way do you want to play it?",
+    "bad": "honestly you get what you pay for. our $550 builds convert way better than any template — most premium brands charge $5k+ so we're basically a steal. that $200 guy will hand you a broken site and ghost you, trust me. i've only got 2 slots left this month though, and i can do $400 if you order in the next hour. and if you're not happy we'll refund you 100%, no questions."
+  }
+}

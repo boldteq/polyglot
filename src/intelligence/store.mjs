@@ -166,11 +166,28 @@ class LocalStore {
   upsert(records) { const recs = this._load(); for (const r of records) { const rec = this._toRec(r); delete rec.embedding; recs.set(rec.id, rec) } this._persist() }
   // prune ONLY file-sourced chunks whose file is gone. NEVER touch captured knowledge
   // (lesson/bug/decision/golden) — those have non-file source_refs and must survive reindex.
+  // TRIPWIRE: a partial/glitched enumeration would make present files look deleted and mass-prune
+  // them (the silent loss that wiped the FAQ brain). Refuse to prune when an implausibly large
+  // fraction of indexed file-sources would vanish in one pass — almost always an enumeration glitch,
+  // not real deletions. A genuine bulk delete can be reconciled with `reindex --full`.
   deleteMissing(presentSourceRefs) {
     const FILE_TYPES = new Set(['memory', 'agent', 'project'])
-    const recs = this._load(); const keep = new Set(presentSourceRefs); let removed = 0
-    for (const [id, r] of recs) if (FILE_TYPES.has(r.source_type) && !keep.has(r.source_ref)) { recs.delete(id); removed++ }
-    if (removed) this._persist(); return removed
+    const recs = this._load(); const keep = new Set(presentSourceRefs)
+    const haveRefs = new Set(); const doomed = []
+    for (const [id, r] of recs) {
+      if (!FILE_TYPES.has(r.source_type)) continue
+      haveRefs.add(r.source_ref)
+      if (!keep.has(r.source_ref)) doomed.push(id)
+    }
+    const doomedRefs = new Set(doomed.map((id) => recs.get(id).source_ref))
+    const refFrac = haveRefs.size ? doomedRefs.size / haveRefs.size : 0
+    if (haveRefs.size >= 20 && refFrac > 0.20) {
+      console.error(`[store] deleteMissing REFUSED — would prune ${doomedRefs.size}/${haveRefs.size} file-sources (${(refFrac * 100).toFixed(0)}%); present=${keep.size} refs. Looks like an incomplete enumeration, not real deletions. No deletion — run \`reindex --full\` if those files were truly removed.`)
+      return 0
+    }
+    for (const id of doomed) recs.delete(id)
+    if (doomed.length) this._persist()
+    return doomed.length
   }
   async search(queryVec, { topK = 8, filter = {} } = {}) {
     const recs = this._load(); const q = queryVec instanceof Float32Array ? queryVec : Float32Array.from(queryVec)

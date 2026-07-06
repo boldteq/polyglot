@@ -66,6 +66,18 @@ test('decide: miscalibrated judge HOLDS an otherwise-auto change → review', ()
   assert.ok(v.reasons.includes('eval-miscalibrated-hold'))
 })
 
+test('decide: SALES agent (sway) is human-approval-only → review even when otherwise auto', () => {
+  const v = decide({ ...STRONG, agent: 'sway', targetFile: '/Users/x/.claude/agents/sway.md' }, { evalCalibrated: true })
+  assert.equal(v.decision, 'review', v.reasons.join(','))
+  assert.ok(v.reasons.includes('sales-human-approval'))
+})
+
+test('decide: roleBand:sales is human-approval-only → review', () => {
+  const v = decide({ ...STRONG, roleBand: 'sales' }, { evalCalibrated: true })
+  assert.equal(v.decision, 'review')
+  assert.ok(v.reasons.includes('sales-human-approval'))
+})
+
 test('decide: unknown calibration (omitted) is fail-safe → review, not auto', () => {
   // ctx.evalCalibrated must be EXPLICITLY true to clear the gate.
   const v = decide(STRONG, {})

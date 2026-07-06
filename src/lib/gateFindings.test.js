@@ -34,8 +34,8 @@ function makeBuild(name) {
       { check: 'broken-state', severity: 'blocker', evidence: 'test store name in footer', fix_owner: 'onyx' }, // onyx not a Lens owner → skip
     ], passed_checks: [],
   }));
-  fs.writeFileSync(path.join(d, 'gate-reports', 'render-wiring.json'), JSON.stringify({
-    gate: 'render-wiring', gateNumber: 14, pass: false,
+  fs.writeFileSync(path.join(d, 'gate-reports', 'wiring.json'), JSON.stringify({
+    gate: 'wiring', gateNumber: 14, pass: false,
     blockers: [{ id: 'rw.scheme-unwired', detail: 'color-scheme referenced but the css is empty' }], warnings: [],
   }));
   fs.writeFileSync(path.join(d, 'gate-reports', 'some-unknown-gate.json'), JSON.stringify({ gate: 'some-unknown-gate', pass: false, blockers: [{ detail: 'whatever' }] }));

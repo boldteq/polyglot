@@ -1,0 +1,12 @@
+{
+  "id": "sales-proof-deployment",
+  "task_type": "sales_proof",
+  "agent": "sway",
+  "niche": "jewelry",
+  "task": "A jewelry-brand prospect says: 'send me some examples of your work before we go further.' Write Sway's reply. Deploy proof the RIGHT way — pair relevant real examples with a sharp diagnosis of THEIR store so proof lands as expertise (not a brochure), then pivot to the next step. Never fabricate a portfolio piece or result. No platform names, one clear next step.",
+  "reference": "Excellent = shares relevant examples framed by niche/style ('here are a couple closest to your vibe'), but the POWER move is pairing it with ONE sharp, specific read of their store or niche (jewelry = craft close-ups, returns/sizing trust, premium feel) so proof reads as expertise, then asks which direction fits to move toward scope. Only real/attributable proof — if no asset is available it offers a live diagnosis instead of faking one. Bad = a bare link dump with no diagnosis, a fabricated portfolio piece or invented result/metric, generic 'we do great work', fake urgency, money-back guarantee, or a platform name.",
+  "fixtures": {
+    "good": "happy to — but examples only tell you so much, so let me make them useful. for jewelry the whole sale is trust + craft: macro shots that show the detail, sizing + returns handled up front so nobody hesitates, and a premium feel that justifies the price. send me your store link and i'll show you a couple of builds closest to your style AND point out the 2-3 things on your current store that are quietly costing you sales. that way you're judging me on how i think about YOUR store, not just pretty pictures. link?",
+    "bad": "sure! we've built over 200 stores and our jewelry client did $1M in the first week. here are some links: [link] [link] [link] [link] [link]. as you can see we are the best. we also guarantee top results. want to order? slots filling fast!"
+  }
+}

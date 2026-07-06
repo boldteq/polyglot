@@ -266,6 +266,16 @@ const DEFINITIONS = [
     needsLlm: false,
     cancellable: true,
   },
+  {
+    id: 'sys-memory-snapshot',
+    name: 'Memory brain snapshot (every 2h)',
+    description: 'git-commit ~/.claude/memory (the agent brain — FAQ packs, decisions, lessons) so it has real version history + rollback. Replaces the ad-hoc 30-min file-copy backup loop, which died silently mid-session and nobody noticed (2026-07-02 SWT infra audit). No-ops cleanly when nothing changed. Local, no token cost.',
+    cron: '0 */2 * * *',
+    agentName: 'system',
+    handler: 'memorySnapshot',
+    needsLlm: false,
+    cancellable: false,
+  },
 ];
 
 const DEFAULT_ENABLED = true;
@@ -653,6 +663,31 @@ const HANDLERS = {
     }
     return {
       output: `Suite health @${rep.head || 'HEAD'}: tsc ${tscErr} errors · tests ${(rep.tests && rep.tests.pass) || 0}/${(rep.tests && rep.tests.total) || 0} (${testFail} fail)${actionable > prev && prev >= 0 ? ' — ⚠ rose' : ''}`,
+      metadata: rep,
+    };
+  },
+
+  // git-commit ~/.claude/memory on a schedule — real version history for the agent brain,
+  // replacing the ad-hoc backup loop that died silently (2026-07-02 SWT infra audit).
+  async memorySnapshot(def, ctx) {
+    const path = require('path');
+    const { spawn } = require('child_process');
+    const script = path.join(__dirname, '..', '..', 'scripts', 'memory-snapshot.mjs');
+    const raw = await new Promise((resolve) => {
+      let buf = '';
+      const proc = spawn(process.execPath, [script], { env: { ...process.env } });
+      if (ctx && typeof ctx.registerProc === 'function') ctx.registerProc(proc);
+      const timer = setTimeout(() => { try { proc.kill('SIGKILL'); } catch {} }, 60 * 1000);
+      proc.stdout.on('data', (d) => { buf += d.toString(); });
+      proc.stderr.on('data', () => {});
+      proc.on('close', () => { clearTimeout(timer); resolve(buf); });
+      proc.on('error', () => { clearTimeout(timer); resolve(''); });
+    });
+    let rep;
+    try { rep = JSON.parse(raw.trim().split('\n').pop()); } catch { rep = { error: 'memory-snapshot produced no parseable output' }; }
+    if (rep.error) return { output: `Memory snapshot error: ${rep.error}`, metadata: rep };
+    return {
+      output: rep.changed ? `Memory snapshot: committed ${rep.filesChanged} file(s) → ${rep.sha}` : 'Memory snapshot: no changes',
       metadata: rep,
     };
   },
