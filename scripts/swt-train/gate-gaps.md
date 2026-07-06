@@ -1,6 +1,6 @@
 # SWT gate-gap queue
 > Rules that cite an enforcing gate which does NOT exist in the toolkit registry — either build it or fix the citation.
-> 11 open. Updated 2026-07-03.
+> 11 open. Updated 2026-07-04.
 
 - `#20` (cited by FAQ-0010, imagery-art-direction/collection) — gate not in registry; mechanize or correct the citation.
 - `#20` (cited by FAQ-0075, spacing-rhythm/home) — gate not in registry; mechanize or correct the citation.

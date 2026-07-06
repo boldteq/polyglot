@@ -825,3 +825,5 @@
 [2026-07-03T10:24:46.446Z] cycle 161 verify: kept 21/21 (dropped 0)
 [2026-07-03T10:24:46.626Z] cycle 161 distributed → 5939 rules · 14/14 agents trained · 11 gate-gaps
 [2026-07-03T10:24:46.626Z] cycle 161 reindex: skipped (batched separately)
+[2026-07-03T10:24:46.753Z] cycle 161 ✓ +21 FAQs → 5941/5040 (117.9%) · 14/14 agents trained · committed
+[2026-07-03T10:26:16.796Z] gap plan empty — every slice at/above the 7-FAQ quota. Done.

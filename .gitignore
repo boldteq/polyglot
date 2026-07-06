@@ -41,3 +41,9 @@ package-lock.json
 # theme-toolkit gate run artifacts (per-client-repo evidence; never vendored)
 gate-reports/
 **/gate-reports/
+
+# swt-train runtime process artifacts (state.json/cycle.log/*.md stay tracked)
+scripts/swt-train/*.out
+scripts/swt-train/STOP
+scripts/swt-train/reindex*.log
+scripts/swt-train/quality-trend.jsonl

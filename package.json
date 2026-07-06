@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
+    "predev": "node scripts/kill-stale-dev.mjs",
     "dev": "concurrently \"node src/server.js\" \"cd client && npm run dev\"",
     "build": "cd client && npm run build",
     "preview": "npm run build && node src/server.js",
@@ -16,6 +17,9 @@
     "changes:check": "node scripts/check-changes-list.mjs",
     "audit:dead-pages": "node scripts/audit-dead-pages.mjs",
     "brain:run": "node scripts/brain-run.mjs",
+    "swt:cycle": "node scripts/swt-cycle.mjs",
+    "swt:quality": "node scripts/quality-loop.mjs",
+    "swt:trend": "node scripts/quality-trend.mjs",
     "results:register": "node scripts/register-build-schedules.mjs",
     "test": "node --test --test-force-exit src/",
     "test:brain": "node scripts/brain-proof.mjs"

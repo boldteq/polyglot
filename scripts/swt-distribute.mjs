@@ -12,23 +12,33 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 
 const HOME = process.env.HOME
 const BRAIN = path.join(HOME, '.claude/memory/patterns/good/shopify-website-faq-brain.md')
 const DIGEST = path.join(HOME, '.claude/memory/patterns/good/shopify-website-trained-rules.md')
+const PACKS_DIR = path.join(HOME, '.claude/memory/patterns/good/swt-rules') // deep per-agent rule packs (surface→concern)
 const AGENTS_DIR = path.join(HOME, '.claude/agents')
 const HERE = path.dirname(fileURLToPath(import.meta.url)) // fileURLToPath: repo path has a space
+const REPO = path.join(HERE, '..')
 const GATE_GAPS = path.join(HERE, 'swt-train/gate-gaps.md')
+const TODAY = () => new Date().toISOString().slice(0, 10)
+
+// The ~9 granular, hardcoded gates whose checks actually BLOCK a specific pattern (audited 2026-06-27):
+// a rule citing one of these is mechanically ENFORCED. Every other gate is broad/heuristic/proxy, so
+// its rules are prompt+retrieval GUIDELINES (best-effort), not hard guarantees. Honest labelling.
+const ENFORCING_GATES = new Set(['#2', '#6', '#13', '#16', '#22', '#28', '#36', '#37', '#38'])
+const isEnforced = (gate) => !!gate && ENFORCING_GATES.has(gate)
 
 const KNOWN_AGENTS = [
   'atrium', 'compass', 'drape', 'ink', 'beacon', 'stitch', 'loom', 'conduit',
   'lattice', 'keystone', 'porter', 'mantle', 'lumen', 'onyx',
 ]
+// 38 gates (loved names, stable numbers; +7 new: 0.6/37/38/39/40/41/42; retired 4/15/17/21/26/32/33/34).
 const KNOWN_GATES = new Set([
-  '#0', '#0.4', '#0.5', '#1', '#2', '#3', '#5', '#6', '#7', '#8', '#9', '#10',
-  '#11', '#12', '#13', '#14', '#15', '#16', '#17', '#18', '#19', '#20', '#21',
-  '#22', '#23', '#24', '#25', '#26', '#27', '#28', '#29', '#30', '#31', '#32',
-  '#34', '#35',
+  '#0.4', '#0.5', '#0.6', '#1', '#2', '#3', '#5', '#6', '#7', '#8', '#9', '#10',
+  '#11', '#12', '#13', '#14', '#16', '#18', '#19', '#22', '#23', '#24',
+  '#25', '#27', '#28', '#29', '#30', '#35', '#36', '#37', '#38', '#39', '#40', '#41', '#42',
 ])
 
 // ---- parse the FAQ brain into structured entries ----
@@ -54,16 +64,36 @@ export function parseFaqs() {
   return out
 }
 
+// Out-of-team strategists that FAQ solutions reference → the TEAM agent(s) that actually execute
+// their rules. Without this, a `sequence`/`ecom-cro`/`orbit` rule falls through and gets laundered
+// onto whoever is named next (audit 2026-06-27: 77 FAQs mis-filed this way).
+const STRATEGIST_MAP = {
+  sequence: ['conduit', 'ink'], 'ecom-cro': ['porter', 'loom'], catalyst: ['atrium'],
+  orbit: ['conduit'], decoder: ['drape'], merch: ['ink'], spark: ['ink'],
+}
+
 // ---- derive owners + gate + a one-line rule from a FAQ ----
 export function deriveRule(faq) {
-  const head = faq.solution.slice(0, 60).toLowerCase()
-  let owners = KNOWN_AGENTS.filter((a) => new RegExp(`\\b${a}\\b`).test(head))
-  if (owners.length === 0) {
-    // fall back: any known agent anywhere in the solution (first one)
-    const any = KNOWN_AGENTS.find((a) => new RegExp(`\\b${a}\\b`).test(faq.solution.toLowerCase()))
-    owners = any ? [any] : ['atrium']
+  const sol = faq.solution.toLowerCase()
+  const head = sol.slice(0, 60)
+  const tagged = `${faq.solution} ${faq.autofix || ''}`
+  // PRIMARY = team agents named in the head; CO-OWNERS = any team agent named anywhere in the
+  // solution (recovers lattice/stitch credit lost to the first-named builder). Head-first ordering
+  // so the cap keeps the primary owner.
+  const headAgents = KNOWN_AGENTS.filter((a) => new RegExp(`\\b${a}\\b`).test(head))
+  const allAgents = KNOWN_AGENTS.filter((a) => new RegExp(`\\b${a}\\b`).test(sol))
+  let owners = [...new Set([...headAgents, ...allAgents])]
+  // section-reuse / section-consistency is stitch's mandate regardless of who is named first
+  if (/#23\b|#19\b|section[- ]reuse|section[- ]consistency/i.test(tagged) && !owners.includes('stitch')) owners.push('stitch')
+  // no team agent in the head → map an out-of-team strategist to its executing team agent(s)
+  if (headAgents.length === 0) {
+    for (const [strat, team] of Object.entries(STRATEGIST_MAP)) {
+      if (new RegExp(`\\b${strat}\\b`).test(head)) { owners = [...new Set([...owners, ...team])]; break }
+    }
   }
-  const gateM = (faq.solution + ' ' + faq.autofix).match(/#\d+(?:\.\d+)?/)
+  if (owners.length === 0) owners = ['atrium']
+  owners = owners.slice(0, 3) // cap multi-owner spread; head-first ordering keeps the primary
+  const gateM = tagged.match(/#\d+(?:\.\d+)?/)
   const gate = gateM ? gateM[0] : ''
   // rule body = the directive — strip a leading "owner · " then a leading "#gate name —/·/: " preamble
   let body = faq.solution.replace(/\s+/g, ' ').trim()
@@ -116,32 +146,46 @@ function writeDigest(rules) {
   return seen.size
 }
 
-// ---- agent files: lean managed section, ≤1 rule per concern (defaults the agent applies) ----
+// deduped rules this agent owns
+function ownedRules(agentId, rules) {
+  const seen = new Set(); const owned = []
+  for (const r of rules) {
+    if (!r.owners.includes(agentId)) continue
+    const k = dedupeKey(r)
+    if (seen.has(k)) continue
+    seen.add(k); owned.push(r)
+  }
+  return owned
+}
+
+// ---- agent files: managed section = LOAD PROTOCOL (point at the surface-scoped pack + memory_search),
+// not a raw rule dump. The full owned rule set lives in the per-agent pack (writeAgentPacks). ----
 function updateAgent(agentId, rules) {
   const file = path.join(AGENTS_DIR, `${agentId}.md`)
   if (!fs.existsSync(file)) return false
   const original = fs.readFileSync(file, 'utf8')
   if (!original.startsWith('---')) return false // not a valid agent file — skip
 
-  // one representative rule per concern for this agent
-  const perConcern = {}
-  for (const r of rules) {
-    if (!r.owners.includes(agentId)) continue
-    if (!perConcern[r.concern]) perConcern[r.concern] = r
-  }
-  const concerns = Object.keys(perConcern).sort()
-  if (concerns.length === 0) return false
+  const owned = ownedRules(agentId, rules)
+  if (owned.length === 0) return false
+  const surfaces = [...new Set(owned.map((r) => r.surface))].sort()
+  const enf = owned.filter((r) => isEnforced(r.gate))
+  // teaser: up to 5 gate-ENFORCED rules spanning distinct concerns (the always-on highest-leverage set)
+  const tSeen = new Set(); const teasers = []
+  for (const r of enf) { if (tSeen.has(r.concern)) continue; tSeen.add(r.concern); teasers.push(r); if (teasers.length >= 5) break }
 
   const lines = [
     '## 🎓 SWT Trained Defaults (auto-maintained by swt-train-loop — do not hand-edit between markers)',
     '<!-- SWT-TRAINED:START -->',
-    `Apply these as defaults on every Shopify Website Team task. Full enforced set (your owned slice + all concerns): \`~/.claude/memory/patterns/good/shopify-website-trained-rules.md\`. Gates enforce them.`,
+    `You own **${owned.length} trained rules** (${enf.length} gate-ENFORCED) across ${surfaces.length} surfaces, distilled from the [[shopify-website-faq-brain]] — the team's accumulated gap→fix learnings.`,
     '',
+    `**Before building any surface:** (1) open your rule pack \`~/.claude/memory/patterns/good/swt-rules/${agentId}.md\` and read the \`## surface: <the surface you're building>\` section; (2) run \`memory_search("<your task>")\`. Treat \`[ENFORCED]\` rules as HARD requirements (a gate blocks them) and \`[guideline]\` rules as strong defaults. Do NOT bulk-load the 12k-line faq-brain — use the pack (scoped) + memory_search (semantic) instead.`,
+    `Surfaces you have rules for: ${surfaces.join(', ')}.`,
+    '',
+    '**Always-on (highest-leverage, gate-enforced):**',
   ]
-  for (const c of concerns) {
-    const r = perConcern[c]
-    lines.push(`- **${c}** (${r.surface}): ${r.body}${r.gate ? ` \`${r.gate}\`` : ''}`)
-  }
+  if (teasers.length) for (const r of teasers) lines.push(`- **${r.concern}** (${r.surface}): ${r.body}${r.gate ? ` \`${r.gate}\`` : ''}`)
+  else lines.push('_(your rules are guideline-level — load the pack for the full set)_')
   lines.push('<!-- SWT-TRAINED:END -->')
   const section = lines.join('\n')
 
@@ -192,18 +236,101 @@ function writeGateGaps(rules) {
   return gaps.length
 }
 
+// ---- per-agent rule packs: EVERY rule the agent owns, grouped surface → concern, gate-tagged.
+// This is the deep training the agent loads (scoped to the surface it's building). ----
+function writeAgentPacks(rules) {
+  fs.mkdirSync(PACKS_DIR, { recursive: true })
+  const counts = {}
+  for (const agentId of KNOWN_AGENTS) {
+    const owned = ownedRules(agentId, rules)
+    counts[agentId] = owned.length
+    if (owned.length === 0) continue
+    const bySurface = {}
+    for (const r of owned) { (bySurface[r.surface] ||= {})[r.concern] ||= []; bySurface[r.surface][r.concern].push(r) }
+    const enf = owned.filter((r) => isEnforced(r.gate)).length
+    const L = [
+      `# SWT Rule Pack — ${agentId}`,
+      '',
+      `> Auto-distributed from [[shopify-website-faq-brain]] by \`swt-distribute\`. EVERY rule **${agentId}** owns,`,
+      '> grouped **surface → concern**. Load the `## surface: <X>` section for the surface you are building.',
+      '> `[ENFORCED]` = a gate mechanically blocks it · `[guideline]` = apply as a strong default.',
+      `> **${owned.length} rules** (${enf} enforced · ${owned.length - enf} guideline) across ${Object.keys(bySurface).length} surfaces. Updated: ${TODAY()}.`,
+      '',
+    ]
+    for (const surface of Object.keys(bySurface).sort()) {
+      L.push(`## surface: ${surface}`, '')
+      for (const concern of Object.keys(bySurface[surface]).sort()) {
+        L.push(`### ${concern}`)
+        for (const r of bySurface[surface][concern]) {
+          L.push(`- ${isEnforced(r.gate) ? '[ENFORCED]' : '[guideline]'} ${r.body}${r.gate ? ` \`${r.gate}\`` : ''}`)
+        }
+        L.push('')
+      }
+    }
+    fs.writeFileSync(path.join(PACKS_DIR, `${agentId}.md`), L.join('\n'))
+  }
+  return counts
+}
+
+// ---- gate-coverage map: of all unique rules, which are gate-ENFORCED vs guideline. Honesty layer. ----
+function writeGateCoverage(rules) {
+  const seen = new Set(); const uniq = []
+  for (const r of rules) { const k = dedupeKey(r); if (seen.has(k)) continue; seen.add(k); uniq.push(r) }
+  const byGate = {}; let enf = 0, gl = 0, nogate = 0
+  for (const r of uniq) {
+    const key = r.gate || '(none)'
+    byGate[key] = (byGate[key] || 0) + 1
+    if (!r.gate) { nogate++; gl++ } else if (isEnforced(r.gate)) enf++; else gl++
+  }
+  const L = [
+    '# SWT Rule → Gate Coverage Map',
+    '',
+    '> Of the trained rules, which are MECHANICALLY ENFORCED by a hardcoded gate vs prompt/retrieval-only.',
+    `> Enforcing gates (granular hardcoded checks): ${[...ENFORCING_GATES].sort().join(' ')}.`,
+    `> **${uniq.length} unique rules — ${enf} \`[ENFORCED]\` · ${gl} \`[guideline]\`** (${nogate} cite no gate). Updated: ${TODAY()}.`,
+    '',
+    '## by gate (rule count · status)',
+    '',
+    ...Object.keys(byGate).sort((a, b) => byGate[b] - byGate[a]).map((g) =>
+      `- \`${g}\` — ${byGate[g]} rules · ${g === '(none)' ? 'no gate (guideline)' : isEnforced(g) ? 'ENFORCED' : 'guideline'}`),
+    '',
+  ]
+  fs.writeFileSync(path.join(PACKS_DIR, '_gate-coverage.md'), L.join('\n'))
+  return { unique: uniq.length, enforced: enf, guideline: gl }
+}
+
+// ---- semantic re-index so memory_search retrieves the new rules at runtime (the depth channel).
+// Guarded: Ollama/MCP may be down — log + continue (agents fall back to the static pack). ----
+function reindexSemantic(full = false) {
+  try {
+    const args = [path.join(REPO, 'src/intelligence/reindex.mjs')]
+    if (full) args.push('--full')
+    const r = spawnSync('node', args, { encoding: 'utf8', timeout: 180000, cwd: REPO })
+    if (r.status === 0) return { ok: true, out: (r.stdout || '').trim().split('\n').filter(Boolean).pop() || 'reindexed' }
+    return { ok: false, out: (r.stderr || r.stdout || 'reindex failed').toString().slice(0, 160) }
+  } catch (e) { return { ok: false, out: e.message } }
+}
+
 export function distribute() {
   const faqs = parseFaqs()
   const rules = faqs.map(deriveRule)
   const ruleCount = writeDigest(rules)
+  const packCounts = writeAgentPacks(rules)
   let agentsUpdated = 0
   for (const a of KNOWN_AGENTS) if (updateAgent(a, rules)) agentsUpdated++
   const gateGaps = writeGateGaps(rules)
-  return { faqs: faqs.length, rules: ruleCount, agentsUpdated, gateGaps }
+  const coverage = writeGateCoverage(rules)
+  // keep the semantic index fresh so the new rules are retrievable (skip with SWT_REINDEX=0).
+  const reindex = process.env.SWT_REINDEX === '0' ? { ok: null, out: 'skipped' } : reindexSemantic(false)
+  return { faqs: faqs.length, rules: ruleCount, agentsUpdated, gateGaps, packCounts, coverage, reindex }
 }
 
 // run standalone
 if (process.argv[1] && process.argv[1].endsWith('swt-distribute.mjs')) {
   const r = distribute()
   console.log(`distributed: ${r.faqs} FAQs → ${r.rules} deduped rules · ${r.agentsUpdated}/14 agents trained · ${r.gateGaps} gate-gaps`)
+  console.log(`coverage: ${r.coverage.enforced} ENFORCED · ${r.coverage.guideline} guideline (of ${r.coverage.unique} unique)`)
+  const packs = Object.entries(r.packCounts).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).map(([a, n]) => `${a}:${n}`).join(' ')
+  console.log(`packs: ${packs}`)
+  console.log(`reindex: ${r.reindex.ok === null ? 'skipped' : r.reindex.ok ? 'OK — ' + r.reindex.out : 'FAILED (Ollama down?) — ' + r.reindex.out}`)
 }

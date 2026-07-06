@@ -1,0 +1,1641 @@
+- cycle 11 [edge-cases/pdp] "Product has 0g of weight (digital, service) but theme calculates shipping in the" — DROPPED: duplicates rule 18 fulfillment_type
+- cycle 11 [nav-ia/pdp] "PDP arrival from a paid ad with no collection context — "continue shopping" link" — DROPPED: duplicates rule 44 collection-context fallback
+- cycle 14 [i18n-currency-rtl/cart] "Cart discount codes input — how do we handle locale-specific code formatting (e." — DROPPED: Trivial input attributes, not Shopify-specific design rule
+- cycle 14 [i18n-currency-rtl/cart] "Number formatting (1,000.00 vs 1.000,00) breaks customer trust in EU — how do we" — DROPPED: Generic Intl advice, not Shopify-specific
+- cycle 15 [forms-validation/cart] "How do we validate gift-card recipient email fields when 'send as gift' is check" — DROPPED: double-underscore convention is incorrect; single _ hides
+- cycle 23 [imagery-art-direction/search] "A new product has no images yet but appears in search results — what's the place" — DROPPED: filter syntax invalid; hiding products hurts merchandising
+- cycle 24 [i18n-currency-rtl/search] "How do we ensure the search-input placeholder shows the right language per marke" — DROPPED: duplicates entry 3 placeholder t-key rule
+- cycle 24 [i18n-currency-rtl/search] "How do filter facets like 'Color: red' show as 'Couleur: rouge' in French withou" — DROPPED: duplicates entry 19 metaobject translation rule
+- cycle 24 [states-empty-loading-error/search] "What renders in the search drawer the instant it opens with no typed query?" — DROPPED: duplicates entry 0 drawer empty state
+- cycle 24 [states-empty-loading-error/search] "What does the 'no results' state actually render (beyond the headline)?" — DROPPED: duplicates entry 1 no-results rendering
+- cycle 26 [motion/search-empty] "If the page mounts after a typo correction (predictive-search → submitted), shou" — DROPPED: autofocus harms screen-reader users
+- cycle 27 [data-binding/search-empty] "How do we bind 'free shipping over $X' badge to the actual shipping threshold fr" — DROPPED: shop.shipping not a real Liquid object
+- cycle 28 [i18n-currency-rtl/search-empty] "Currency switcher is set to EUR but empty-search recommendation grid shows USD p" — DROPPED: money_with_currency does not fix Markets currency display
+- cycle 29 [nav-ia/search-empty] "Search returns results from a draft/hidden product because Shopify's indexer has" — DROPPED: published_at filter redundant; unavailable_products handles drafts
+- cycle 30 [motion/account] "While fetching orders from the Storefront API, what shows on /account/orders?" — DROPPED: customer orders fetched server-side via Liquid
+- cycle 31 [seo-structured-data/account] "Login page IS indexable as a brand search landing — what JSON-LD should /account" — DROPPED: contradicts entry 22 noindex rule
+- cycle 32 [merchandising/account] "Cross-sell module on /account/orders/:id — what's the rule for picking products?" — DROPPED: recommendations API has no intent param
+- cycle 33 [typography/article] "Body copy in dark mode looks anemic at the same weight as light mode because thi" — DROPPED: per-scheme weight bump is fabricated micro-rule
+- cycle 34 [honesty-claims/article] "'Limited time — 24 hours only' countdown on an evergreen article?" — DROPPED: duplicates entry 5 fake-countdown rule
+- cycle 38 [performance-cwv/blog] "Article page loads Klaviyo + reviews + GA4 + Meta pixel — INP is 480ms. What's t" — DROPPED: Liquid has no {% defer %} tag — wrong
+- cycle 38 [seo-structured-data/blog] "How do tags affect URL structure and indexability on Shopify blog?" — DROPPED: blog.tags_count not a real Liquid property
+- cycle 38 [edge-cases/blog] "An article gets shared on Reddit and goes viral — does the theme handle 50k conc" — DROPPED: Generic CDN advice, not Shopify-specific design rule
+- cycle 39 [layout/policy] "On mobile, the sticky nav covers the heading when a user lands via a `#section` " — DROPPED: duplicates entry 39 scroll-margin guidance
+- cycle 41 [honesty-claims/policy] "What governs 'free shipping' / '30-day returns' badges in cart and PDP?" — DROPPED: duplicates entry 5 badge-policy rule
+- cycle 42 [search-filtering/policy] "Synonym mapping: 'refund' should match the 'returns policy' page — how to wire i" — DROPPED: predictive_search lacks metaobject synonym field support
+- cycle 44 [honesty-claims/404] "Can the 404 surface 'Customers also bought' on featured products without a refer" — DROPPED: duplicates entry 22 on referent-required modules
+- cycle 45 [performance-cwv/404] "Should the 404 page use Shopify's `Cache-Control` differently than product pages" — DROPPED: Shopify Cache-Control not theme-controllable via Liquid
+- cycle 45 [i18n-currency-rtl/404] "How should 404.liquid handle RTL languages like Arabic or Hebrew?" — DROPPED: rtl_check is not a real Liquid filter
+- cycle 47 [spacing-rhythm/order-confirmation] "a 3rd-party post-purchase app injects 48px margin above its block and shoves the" — DROPPED: !important via :where() is contradictory; specificity logic wrong
+- cycle 49 [edge-cases/order-confirmation] "How should the order-confirmation (thank-you) page render when the customer plac" — DROPPED: checkout.line_items.properties is buyer input, not porter metafield
+- cycle 51 [trust-social-proof/subscription] "Frequency selector wants a 'Most popular' badge on the 30-day option — when is t" — DROPPED: duplicates entry 30 most-popular badge
+- cycle 51 [honesty-claims/subscription] "Subscribe section advertises 'Money-back guarantee on first delivery' — how do w" — DROPPED: duplicates entry 18 refund policy check
+- cycle 53 [forms-validation/subscription] "How do we handle email validation on the subscription signup gate so typos don't" — DROPPED: DNS-MX check generic, not Shopify-specific
+- cycle 55 [edge-cases/gift-card] "Buyer adds a gift card and applies discount code WELCOME10 at checkout — Shopify" — DROPPED: discount exclusion is Shopify-config not metafield-driven
+- cycle 55 [edge-cases/gift-card] "Can a buyer pay for a gift card using a gift card?" — DROPPED: factually wrong: Shopify blocks gift-card-buys-gift-card
+- cycle 56 [legal-compliance/gift-card] "Recipient lives in EU, sender in US — must we display GC value in EUR on the red" — DROPPED: truncated rule, incomplete guidance
+- cycle 56 [search-filtering/gift-card] "Holidays approaching — should we boost GCs to the top of /search results?" — DROPPED: searchAndDiscoveryBoost mutation not real API
+- cycle 57 [mobile/contact] "iOS zooms when tapping any contact input — root cause and rule?" — DROPPED: duplicates entry 1
+- cycle 59 [edge-cases/contact] "Bots spam the contact form 1000x/hour — Shopify doesn't gate it. How to defend w" — DROPPED: Shopify native recaptcha config inaccurate
+- cycle 60 [forms-validation/contact] "How do we prevent the contact form from accepting obviously-bad emails without s" — DROPPED: generic HTML5 validation, not Shopify-specific
+- cycle 60 [forms-validation/contact] "Should the contact form include a phone field, and how do we validate internatio" — DROPPED: generic phone input advice, no Shopify mechanism
+- cycle 60 [forms-validation/contact] "How do we stop bot spam on the contact form without breaking accessibility with " — DROPPED: Shopify form tag has no built-in honeypot
+- cycle 60 [email-lifecycle/contact] "Should we send a customer-facing acknowledgement email after contact-form submis" — DROPPED: generic ack-email advice, no Shopify mechanism
+- cycle 60 [email-lifecycle/contact] "How do we keep the contact-acknowledgement email HONEST when the merchant has no" — DROPPED: generic copy honesty rule, not Shopify-specific
+- cycle 60 [email-lifecycle/contact] "What is the canonical pattern for the merchant-facing notification template so i" — DROPPED: generic email template advice
+- cycle 60 [layout/about] "What's the right maximum content width for the about page on desktop so long-for" — DROPPED: generic typography max-width advice
+- cycle 60 [layout/about] "Should the about page have a sticky in-page nav for long stories, and when does " — DROPPED: generic sticky nav heuristic
+- cycle 60 [layout/about] "What's the right pattern for breaking up dense brand-story prose so it doesn't f" — DROPPED: generic prose pacing advice
+- cycle 60 [layout/about] "How should the about page handle the CTA at the end — shop CTA, newsletter, or b" — DROPPED: generic CTA-at-end advice
+- cycle 60 [typography/about] "What is the canonical type scale for the about page so headings feel composed no" — DROPPED: generic modular type scale
+- cycle 60 [typography/about] "How do we handle long prose line-length on the about page so it stays in the rea" — DROPPED: generic line-length advice
+- cycle 60 [typography/about] "What font-weight should body prose use, and when do we need a non-default weight" — DROPPED: generic font-weight advice
+- cycle 60 [typography/about] "How do we handle italics on the about page — for emphasis, quotes, or both?" — DROPPED: generic italics usage rules
+- cycle 60 [typography/about] "What's the right line-height for the about page's long-form prose, and does it c" — DROPPED: generic line-height advice
+- cycle 60 [color-contrast/about] "What's the canonical body-text color on a light background to pass AA without lo" — DROPPED: generic body-text color advice
+- cycle 60 [color-contrast/about] "How do we handle the about page when the brand palette has a low-contrast accent" — DROPPED: generic accent contrast handling
+- cycle 60 [color-contrast/about] "What contrast ratio do we hold pull-quotes and large display text to — is 3:1 ac" — DROPPED: generic WCAG large-text restatement
+- cycle 60 [color-contrast/about] "What do we do about link contrast within prose — underline-only vs color-only vs" — DROPPED: generic link contrast WCAG basics
+- cycle 60 [spacing-rhythm/about] "What is the canonical vertical-spacing scale between sections on the about page " — DROPPED: generic section padding scale
+- cycle 60 [spacing-rhythm/about] "What is the right spacing between a section heading and its body content so it f" — DROPPED: generic heading-to-body spacing
+- cycle 60 [spacing-rhythm/about] "How do we handle mobile spacing on the about page so the same desktop rhythm doe" — DROPPED: generic mobile spacing clamp
+- cycle 60 [spacing-rhythm/about] "What about spacing inside a 3-up multicolumn 'values' section — how do we keep g" — DROPPED: generic multicolumn gutter advice
+- cycle 60 [spacing-rhythm/about] "How do we space pull-quotes from surrounding prose so they feel emphasized but n" — DROPPED: generic pull-quote spacing
+- cycle 60 [spacing-rhythm/about] "What's the right spacing between the final about-page CTA section and the footer" — DROPPED: generic footer spacing advice
+- cycle 60 [imagery-art-direction/about] "Should the about page use stock photography for atmosphere shots, and if so unde" — DROPPED: generic stock photography guidance
+- cycle 60 [imagery-art-direction/about] "How do we ensure alt text on about-page images is meaningful for SEO and accessi" — DROPPED: generic alt-text WCAG basics
+- cycle 60 [imagery-art-direction/about] "What's the canonical aspect ratio for hero and inline images on the about page s" — DROPPED: generic aspect ratio advice
+- cycle 61 [motion/about] "About page hero uses parallax background scroll — what happens for visitors with" — DROPPED: generic CSS prefers-reduced-motion advice
+- cycle 61 [motion/about] "Should the founder-story video autoplay with sound on the About page?" — DROPPED: generic HTML5 video attributes
+- cycle 61 [motion/about] "Brand-story timeline uses horizontal scroll-snap milestones — does this break on" — DROPPED: generic CSS scroll-snap pattern
+- cycle 61 [motion/about] "About page wants animated counters ('5 years', '12 team members') — should the n" — DROPPED: generic animation honesty
+- cycle 61 [motion/about] "Team-member cards have a 3D tilt + scale on hover — what about touch and keyboar" — DROPPED: generic hover/focus CSS
+- cycle 61 [motion/about] "Design wants a Lottie animation for the About-page hero icon — what's the perfor" — DROPPED: generic Lottie perf budget
+- cycle 61 [motion/about] "Brand values are presented as an infinite-scroll marquee — is that ever the righ" — DROPPED: generic UX rejection of marquee
+- cycle 61 [mobile/about] "Long mission statement wraps to 12 lines on a 360px viewport — how is line-lengt" — DROPPED: generic char-cap and clamp
+- cycle 61 [mobile/about] "Horizontal timeline on mobile causes accidental swipe back/forward browser navig" — DROPPED: generic overflow-x CSS
+- cycle 61 [mobile/about] "Team grid renders 4 columns on desktop — how does it scale on mobile without ugl" — DROPPED: generic CSS grid auto-fill
+- cycle 61 [mobile/about] "Should the About page show a sticky 'Shop' CTA on mobile after the founder story" — DROPPED: generic position:sticky + safe-area
+- cycle 61 [mobile/about] "Team-card social icons (LinkedIn/Instagram) are 16px SVGs on mobile — how does t" — DROPPED: universal WCAG 44px tap target
+- cycle 61 [mobile/about] "About hero headline ('We make X for Y') drops to 14px on mobile and looks weak —" — DROPPED: generic typography clamp scaling
+- cycle 61 [a11y/about] "Founder portrait alt text — what should it actually say?" — DROPPED: universal alt-text rule
+- cycle 61 [a11y/about] "Designer added a swirly decorative divider between About sections — does it get " — DROPPED: universal aria-hidden decorative SVG
+- cycle 61 [a11y/about] "Brand-timeline milestones are rendered as `<div>`s — what's the correct semantic" — DROPPED: generic semantic ol/li/time HTML
+- cycle 61 [a11y/about] "Founder-story video has no captions — is shipping it blocked?" — DROPPED: universal video captions requirement
+- cycle 61 [a11y/about] "Team-card hover lifts the card — but tabbing through the page shows no focus ind" — DROPPED: universal focus-visible advice
+- cycle 61 [cro/about] "Where should the primary 'Shop' CTA live on an About page?" — DROPPED: generic CRO CTA placement
+- cycle 61 [cro/about] "Should About include a newsletter signup, and where?" — DROPPED: generic newsletter placement
+- cycle 61 [cro/about] "Should press logos on About link to the source article or stay un-linked?" — DROPPED: generic external link target+rel
+- cycle 61 [cro/about] "Long-form About pages (founder story + team + values + press) make the shop CTA " — DROPPED: generic sticky-CTA dismissal
+- cycle 61 [cro/about] "Should About fire an exit-intent popup (10% off first order) when the visitor's " — DROPPED: generic exit-intent policy
+- cycle 61 [cro/about] "What's the structural CRO requirement for the founder-story section on About?" — DROPPED: generic AIDA copywriting
+- cycle 61 [trust-social-proof/about] "Can About say 'trusted by 50,000 customers' when the brand has 47,213 orders?" — DROPPED: orders.count not Liquid-accessible; duplicates 43
+- cycle 61 [trust-social-proof/about] "How does the build stop ink/porter from using stock photos of 'happy customers' " — DROPPED: stock-photo hash fingerprinting infeasible/generic
+- cycle 61 [copy-voice/about] "Founder origin stories on About read like the same Mad-Lib template across brand" — DROPPED: generic voice-lever copywriting
+- cycle 61 [copy-voice/about] "How long should the About-page mission statement be?" — DROPPED: generic 240-char mission cap
+- cycle 61 [copy-voice/about] "Solo founder brand vs team brand — should About use 'I' or 'we'?" — DROPPED: generic POV consistency
+- cycle 61 [copy-voice/about] "Skincare brand About uses 'niacinamide-buffered ceramide complex' — is that the " — DROPPED: generic Flesch readability target
+- cycle 61 [copy-voice/about] "How are About-page section headlines kept on-brand and not generic ('Our Story'," — DROPPED: generic banned-headline list
+- cycle 61 [copy-voice/about] "Shop CTA on About reads 'Shop Now' but the brand voice is warm — what's the rule" — DROPPED: generic CTA lexicon mapping
+- cycle 62 [data-binding/about] "Brand timeline (2019 founded, 2021 Series A, 2024 expanded to EU) — section sett" — DROPPED: sort_by on metaobject list not standard Liquid
+- cycle 62 [data-binding/about] "Founder quote includes em-dash and curly quotes — admin paste from Word renders " — DROPPED: Mischaracterizes rich_text/escape behavior; misleading
+- cycle 62 [performance-cwv/about] "About page imports a 180KB founder-video autoplay loop that blocks main thread —" — DROPPED: Generic video advice, no Shopify-specific binding
+- cycle 62 [performance-cwv/about] "Lighthouse flags 'unused JavaScript' 89KB on About — but global.js is shared wit" — DROPPED: Wrong: {% javascript %} not auto-bundled per-template
+- cycle 62 [performance-cwv/about] "About hero parallax-scroll JS causes 240ms long task on mid-tier Android, breaki" — DROPPED: Invented Moto G Power gate threshold; generic
+- cycle 62 [seo-structured-data/about] "Canonical URL on About — multiple language variants exist, hreflang or self-cano" — DROPPED: shop.published_locales iteration shape unverified
+- cycle 62 [i18n-currency-rtl/about] "About has translated copy via Shopify Translate & Adapt, but founder name 'José'" — DROPPED: Misdiagnoses encoding; double-escape rarely produces Atilde
+- cycle 62 [i18n-currency-rtl/about] "Japanese About page uses long compound nouns that overflow the founder-quote car" — DROPPED: word-break auto-phrase not widely supported; generic
+- cycle 62 [i18n-currency-rtl/about] "German translation of 'Our Mission' renders as 'Unsere Mission' — 18 chars vs 12" — DROPPED: Generic typography advice, no Shopify mechanism
+- cycle 62 [states-empty-loading-error/about] "Newsletter signup form on About — what should the loading state look like and ho" — DROPPED: No /contact JSON API; misstates Shopify customer form
+- cycle 62 [states-empty-loading-error/about] "Team-grid section has 3 members defined but design-spec called for 6 — should we" — DROPPED: Generic CSS grid advice, not Shopify-specific
+- cycle 62 [states-empty-loading-error/about] "About page hero portrait fails to load (network error / Shopify CDN hiccup) — wh" — DROPPED: Generic alt-text/bg-color advice, redundant
+- cycle 62 [states-empty-loading-error/about] "Founder video embed (Vimeo) fails to load behind some corporate firewalls — fall" — DROPPED: Generic iframe fallback, not Shopify-specific
+- cycle 62 [states-empty-loading-error/about] "Newsletter form returns Shopify API 422 (invalid email format) — what error does" — DROPPED: form.errors shape misstated; generic copy advice
+- cycle 62 [edge-cases/about] "Founder changes (acquisition, departure) — how do we sunset their photo+bio with" — DROPPED: Metaobject entries lack status:draft/active field
+- cycle 62 [edge-cases/about] "About hero loads on Internet Explorer 11 (B2B buyer corporate machine) — CSS gri" — DROPPED: IE11 long dead; advice obsolete
+- cycle 62 [edge-cases/about] "About page is loaded inside an iframe by a partner site — should we allow this?" — DROPPED: X-Frame-Options not Shopify default; meta CSP wrong
+- cycle 62 [edge-cases/about] "Customer prints the About page — branded backgrounds + dark-on-dark sections ren" — DROPPED: Generic print-CSS advice, not Shopify-specific
+- cycle 62 [legal-compliance/about] "About page mentions founder's medical/health condition (Crohn's disease was the " — DROPPED: Generic GDPR advice, no real Shopify mechanism
+- cycle 62 [legal-compliance/about] "Press mentions on About cite article titles — fair use or do we need permission?" — DROPPED: Generic legal advice, not Shopify-specific
+- cycle 62 [legal-compliance/about] "Team photos on About — do we need each employee's consent and what about ex-empl" — DROPPED: Generic consent advice; archived-workflow vague
+- cycle 62 [legal-compliance/about] "Newsletter signup on About — what consent text is required and where do we store" — DROPPED: Generic newsletter consent copy, not Shopify-bound
+- cycle 63 [merchandising/about] "Founder pick card on About uses a hand-cropped lifestyle photo that's 2.4MB JPEG" — DROPPED: generic image-perf, no Shopify mechanism specifics
+- cycle 63 [search-filtering/about] "Should About-page rich text (timeline, founder bio) be indexed by the theme's pr" — DROPPED: generic predictive search default, not actionable
+- cycle 63 [search-filtering/about] "Brand has only 2 team members and the designer drafted a 'Filter by department' " — DROPPED: generic design rule, not Shopify-specific
+- cycle 63 [search-filtering/about] "Designer wants a 'Search our story' input that filters milestones on the About t" — DROPPED: generic client filter, no Shopify mechanism
+- cycle 63 [search-filtering/about] "Header search modal opens BELOW the About hero's z-index 50 sticky badge — searc" — DROPPED: generic z-index token advice, not Shopify
+- cycle 63 [search-filtering/about] "A visitor types the brand name into header search from the About page — the Abou" — DROPPED: generic SEO meta advice
+- cycle 63 [nav-ia/about] "Does About belong in primary nav, secondary nav, or footer-only?" — DROPPED: discovery process, not technical Shopify rule
+- cycle 63 [nav-ia/about] "Long About has Story, Team, Press, Sustainability — flat single page or nested s" — DROPPED: generic IA guidance, not Shopify-specific
+- cycle 63 [nav-ia/about] "Breadcrumb on About page — Home › About — needed or noise?" — DROPPED: generic breadcrumb/JSON-LD advice
+- cycle 63 [nav-ia/about] "About is 4200 words long — does it need a sticky in-page jump nav?" — DROPPED: generic UX rule, no Shopify binding
+- cycle 63 [nav-ia/about] "Where does 'Shop the story' CTA go — top of About, end, or both?" — DROPPED: generic CTA placement advice
+- cycle 63 [nav-ia/about] "Mobile drawer nav — does About sit alongside Shop / Collections, or in a 'Brand'" — DROPPED: generic nav IA, no Shopify mechanism
+- cycle 63 [forms-validation/about] "'Contact our founder' form on About — which fields are required, and how are req" — DROPPED: generic a11y form advice
+- cycle 63 [forms-validation/about] "Bot signups are flooding the About newsletter — add reCAPTCHA or honeypot?" — DROPPED: generic honeypot/captcha advice
+- cycle 63 [forms-validation/about] "Form error styling — red text + red border — accessible?" — DROPPED: generic accessibility error styling
+- cycle 63 [forms-validation/about] "After 'Contact our founder' submit, what is the success state?" — DROPPED: generic form success UX
+- cycle 63 [forms-validation/about] "International contact form needs a phone field — free text or formatted picker?" — DROPPED: shop.enabled_currencies for phone is wrong/invented
+- cycle 63 [email-lifecycle/about] "About-page signups should trigger a welcome immediately or after 24h?" — DROPPED: generic email timing advice
+- cycle 63 [email-lifecycle/about] "Double opt-in (confirm email) or single opt-in for About-page signups?" — DROPPED: generic opt-in policy, not Shopify-bound
+- cycle 63 [email-lifecycle/about] "Sender domain — should newsletter go from hello@brand.com or noreply@brand.com?" — DROPPED: generic sender domain advice
+- cycle 63 [email-lifecycle/about] "Every email needs an unsubscribe link — does the welcome series from About-signu" — DROPPED: generic unsubscribe compliance
+- cycle 63 [email-lifecycle/about] "Founder-story drip — how many emails, how spaced?" — DROPPED: generic email cadence advice
+- cycle 63 [layout/faq-page] "Single column or two-column (sticky category sidebar + content) FAQ layout?" — DROPPED: generic layout breakpoint advice
+- cycle 63 [layout/faq-page] "FAQ has 60+ questions in 7 categories — should all categories be on one page, or" — DROPPED: generic IA/SEO advice
+- cycle 63 [layout/faq-page] "Search box placement — sticky at top of page or only in hero?" — DROPPED: generic sticky search UX
+- cycle 63 [layout/faq-page] "Mobile FAQ — single accordion list or category-tabs at top?" — DROPPED: generic mobile layout pattern
+- cycle 63 [layout/faq-page] "Answer contains a 6-column shipping rates table — what happens on a 360px viewpo" — DROPPED: generic responsive table advice
+- cycle 63 [layout/faq-page] "CTA at end of FAQ — 'Still need help?' contact card — where exactly?" — DROPPED: generic CTA placement
+- cycle 63 [typography/faq-page] "Question (h3) vs answer (body) — what size/weight hierarchy?" — DROPPED: generic typography hierarchy
+- cycle 63 [typography/faq-page] "Long answers — what's the max line-length for readability?" — DROPPED: generic readability rule
+- cycle 63 [typography/faq-page] "Anchor links inside answers — underline always or only on hover?" — DROPPED: generic WCAG link affordance
+- cycle 63 [typography/faq-page] "Bold/italic emphasis inside answers — how does ink author it without breaking de" — DROPPED: generic rich-text emphasis advice
+- cycle 63 [typography/faq-page] "FAQ answer contains a bullet list — what's the list typography spec?" — DROPPED: generic list typography
+- cycle 63 [typography/faq-page] "Category headings — H2 or H3, and how do they relate to question H3s?" — DROPPED: generic heading hierarchy SEO
+- cycle 64 [color-contrast/faq-page] "Search-FAQ input placeholder is #BBB on white — Lighthouse flags it?" — DROPPED: generic placeholder contrast, not Shopify-specific
+- cycle 64 [color-contrast/faq-page] "Sticky 'Still need help? Contact us' CTA at FAQ bottom uses ghost-button (border" — DROPPED: generic ghost-button contrast rule
+- cycle 64 [spacing-rhythm/faq-page] "Hero of FAQ page hugs the global header with 0px gap — looks broken?" — DROPPED: generic typography line-height advice
+- cycle 64 [imagery-art-direction/faq-page] "FAQ uses an empty hero illustration slot because the asset_pack didn't supply on" — DROPPED: generic alt-text guidance
+- cycle 64 [motion/faq-page] "Accordion uses a bounce/spring animation — fun but disorienting for assistive te" — DROPPED: generic hover transform advice
+- cycle 64 [motion/faq-page] "FAQ search input shows a typing animation that auto-types example queries — dist" — DROPPED: generic scroll fade-in guidance
+- cycle 64 [motion/faq-page] "On-scroll, FAQ rows fade-in one-by-one — but it delays visibility for users scro" — DROPPED: generic chevron transition advice
+- cycle 64 [a11y/faq-page] "Screen reader announces 'expanded' but never announces the answer content automa" — DROPPED: generic search label guidance
+- cycle 65 [trust-social-proof/faq-page] "FAQ page ships a 'Customers love these answers' review widget but the store has " — DROPPED: reviews.count is not a Shopify Liquid global
+- cycle 65 [copy-voice/faq-page] "Hero copy is warm-conversational ('Hey, glad you're here') but the FAQ answers d" — DROPPED: generic brand voice tone advice
+- cycle 65 [copy-voice/faq-page] "FAQ answers all start with 'We strive to...' / 'At [brand], we believe...' — cla" — DROPPED: generic forbidden-phrase copy advice
+- cycle 65 [copy-voice/faq-page] "Compass wrote FAQ questions in marketing voice ('How does our revolutionary form" — DROPPED: generic UX research advice
+- cycle 65 [copy-voice/faq-page] "FAQ answer for 'What's in it?' is a verbatim paste of the PDP body — should FAQ " — DROPPED: arbitrary word/similarity limits, generic
+- cycle 65 [copy-voice/faq-page] "German translation of FAQ drops every contraction and adds 'Sehr geehrte Damen u" — DROPPED: generic translation voice guidance
+- cycle 65 [copy-voice/faq-page] "FAQ for a beauty brand reads at Grade 14 reading level (Flesch-Kincaid) — too cl" — DROPPED: generic readability grade rule
+- cycle 65 [copy-voice/faq-page] "FAQ answer mixes 'we/our' (1st-person company) and 'they/the brand' (3rd-person)" — DROPPED: generic POV consistency copy rule
+- cycle 65 [performance-cwv/faq-page] "All 30 FAQ answers expanded by default — page weight + CLS as fonts load. Defaul" — DROPPED: generic CLS/default-state advice
+- cycle 65 [performance-cwv/faq-page] "FAQ category icons loaded from FontAwesome Pro (180kb) for 6 categories. Bloat?" — DROPPED: generic icon-font bloat rule
+- cycle 65 [performance-cwv/faq-page] "FAQ search box loads Algolia (~120kb + network) for a 20-question FAQ. Worth it?" — DROPPED: generic 3rd-party search perf advice
+- cycle 65 [performance-cwv/faq-page] "FAQ has inline images (sizing chart, product comparison) — all loaded eager with" — DROPPED: generic image width/height/lazy advice
+- cycle 65 [performance-cwv/faq-page] "FAQ page's LCP element ends up being a decorative hero illustration (~250kb PNG)" — DROPPED: generic LCP element guidance
+- cycle 65 [performance-cwv/faq-page] "User opens an FAQ answer — content shifts the entire page down, pushing footer l" — DROPPED: generic CLS accordion advice
+- cycle 65 [seo-structured-data/faq-page] "FAQPage answers in JSON-LD are full HTML with `<p>`, `<a>` tags — does Google ac" — DROPPED: generic schema.org HTML acceptance rule
+- cycle 65 [seo-structured-data/faq-page] "Designer used `<h1>FAQ</h1>` then `<h1>Shipping</h1>` for each category — multip" — DROPPED: generic single-H1 SEO/a11y rule
+- cycle 65 [i18n-currency-rtl/faq-page] "Store ships to Saudi Arabia + UAE — Arabic locale active. FAQ accordion chevron " — DROPPED: generic RTL logical-properties CSS rule
+- cycle 66 [states-empty-loading-error/faq-page] "Custom JS accordion fails (CSP, slow connection, JS error) and FAQ becomes a wal" — DROPPED: generic HTML, not Shopify-specific
+- cycle 66 [states-empty-loading-error/faq-page] "In-page search returns zero matches — what gets rendered?" — DROPPED: generic empty-state copy advice
+- cycle 66 [states-empty-loading-error/faq-page] "Answer body contains an image that 404s — broken-image icon ships to prod." — DROPPED: generic img/alt/lazy advice
+- cycle 66 [edge-cases/faq-page] "Customer arrives via email-campaign deep-link `#shipping-international` but that" — DROPPED: Shopify URL Redirects don't handle anchors
+- cycle 66 [edge-cases/faq-page] "200+ FAQs all expanded in DOM bloats the page to 2MB and tanks Lighthouse." — DROPPED: generic CSS performance
+- cycle 66 [edge-cases/faq-page] "Anchor-link scroll lands the heading behind the sticky header." — DROPPED: generic CSS scroll-margin trick
+- cycle 66 [edge-cases/faq-page] "Arabic / Hebrew store — accordion chevron sits on the wrong side and rotates the" — DROPPED: generic logical-CSS for RTL
+- cycle 66 [edge-cases/faq-page] "FAQ answer links to a product handle that porter unpublished last week — 404 in " — DROPPED: generic broken-link advice
+- cycle 66 [legal-compliance/faq-page] "International shipping FAQ doesn't mention import duties — customer charged at d" — DROPPED: generic ecommerce duties advice
+- cycle 66 [legal-compliance/faq-page] "FAQ proudly claims 'guaranteed lowest price online' with no monitoring or refund" — DROPPED: generic superlatives copy rule
+- cycle 66 [legal-compliance/faq-page] "Age-restricted store (CBD, alcohol, nicotine) FAQ has no age-gate disclosure or " — DROPPED: mostly generic compliance, metaobject incidental
+- cycle 66 [merchandising/faq-page] "FAQ answers never link to a product or collection — it's a dead-end help silo." — DROPPED: generic CRO advice
+- cycle 66 [merchandising/faq-page] "'How do I place an order?' answer has no link to start shopping." — DROPPED: generic CTA-on-FAQ advice
+- cycle 66 [merchandising/faq-page] "Holiday-shipping FAQ ('Order by Dec 18 for Christmas') still showing in February" — DROPPED: invented where '>=' comparison syntax
+- cycle 66 [merchandising/faq-page] "Customers reading the 'Sizing' FAQ category don't see complementary product reco" — DROPPED: invented take filter; Liquid uses limit
+- cycle 66 [search-filtering/faq-page] "Client-side search on 300 FAQ items runs on keyup synchronously — input lags 400" — DROPPED: generic JS debounce/INP advice
+- cycle 66 [search-filtering/faq-page] "Search for 'cafe' doesn't match 'café'; French/Spanish visitors get zero results" — DROPPED: generic JS diacritic normalization
+- cycle 66 [search-filtering/faq-page] "User filters by 'Shipping' chip, refreshes page, filter is gone." — DROPPED: generic URL pushState state
+- cycle 66 [search-filtering/faq-page] "Keyboard user can't navigate search-results dropdown — arrow keys do nothing." — DROPPED: generic ARIA combobox pattern
+- cycle 66 [search-filtering/faq-page] "On mobile, filter pills overflow the viewport and second row is clipped." — DROPPED: generic mobile pill-rail CSS
+- cycle 66 [search-filtering/faq-page] "Filter URLs `?category=shipping&q=tracking` get indexed by Google — duplicate-co" — DROPPED: generic canonical/noindex SEO
+- cycle 66 [search-filtering/faq-page] "Search input uses placeholder as the only label — screen reader announces nothin" — DROPPED: generic label/placeholder a11y
+- cycle 66 [nav-ia/faq-page] "FAQ page exists but isn't linked from footer — only reachable from account-menu " — DROPPED: generic footer-link/sitemap SEO
+- cycle 66 [nav-ia/faq-page] "Mega-FAQ page is 6,000 words on one URL — bad UX and Google indexes only top hal" — DROPPED: generic JSON-LD/TOC SEO
+- cycle 66 [nav-ia/faq-page] "Visitor lands on a deep FAQ category — no breadcrumb back to Home or Help index." — DROPPED: generic BreadcrumbList JSON-LD
+- cycle 66 [nav-ia/faq-page] "Category order is alphabetical — but customer data shows 'Shipping' should be fi" — DROPPED: generic prioritization advice
+- cycle 66 [nav-ia/faq-page] "Mobile nav drawer buries FAQ under Account › Help › FAQ — three taps deep." — DROPPED: generic mobile-nav IA
+- cycle 66 [nav-ia/faq-page] "User reads a FAQ category but still has a question — no escape to live support." — DROPPED: generic still-need-help CTA
+- cycle 66 [forms-validation/faq-page] "'Ask a question' form has no client-side validation — invalid submissions bounce" — DROPPED: generic HTML5 form validation
+- cycle 66 [forms-validation/faq-page] "Email field accepts 'asdf' as valid because there's no format check." — DROPPED: generic email-format validation
+- cycle 66 [forms-validation/faq-page] "User double-clicks Submit, two duplicate inquiries get sent." — DROPPED: generic double-submit prevention
+- cycle 66 [forms-validation/faq-page] "On network failure the form does nothing visible — user assumes it worked, walks" — DROPPED: generic fetch-error UI advice
+- cycle 66 [forms-validation/faq-page] "Form labels render visually but aren't programmatically associated — screen read" — DROPPED: generic label-for a11y rule
+- cycle 68 [mobile/lookbook] "How should a Shopify lookbook section render on mobile when the desktop layout i" — DROPPED: generic responsive CSS, no Shopify mechanism
+- cycle 68 [mobile/lookbook] "Lookbook hotspots (product-pin dots over a lifestyle shot) become impossible to " — DROPPED: generic mobile a11y/UX advice
+- cycle 68 [mobile/lookbook] "Mobile lookbook with horizontal scroll-snap carousel — how do we stop iOS Safari" — DROPPED: generic CSS scroll-snap
+- cycle 68 [mobile/lookbook] "Lookbook product-drawer that slides up from the bottom on mobile gets covered by" — DROPPED: generic mobile viewport CSS
+- cycle 68 [mobile/lookbook] "Mobile lookbook tile captions ('Shop the Look — Look 03') wrap awkwardly to 4 li" — DROPPED: max_length is not a real Shopify schema attribute
+- cycle 68 [a11y/lookbook] "Lookbook image carousel passes static a11y but fails real screen-reader use — wh" — DROPPED: generic ARIA carousel pattern
+- cycle 68 [a11y/lookbook] "Lookbook hotspot product pins are `<div onclick>` — how to make them keyboard + " — DROPPED: generic button vs div a11y
+- cycle 68 [a11y/lookbook] "Lookbook editorial shots use white-text-on-photo for captions — contrast fails a" — DROPPED: generic text-on-image CSS guidance
+- cycle 68 [a11y/lookbook] "Lookbook 'Shop the Look' drawer opens but focus stays on the trigger button — wh" — DROPPED: generic modal focus-trap a11y
+- cycle 68 [a11y/lookbook] "Lookbook product names in hotspot popovers are displayed as `<span>` with no sem" — DROPPED: generic semantic HTML structure
+- cycle 68 [a11y/lookbook] "Lookbook background video (designer at the loom, autoplay-muted) — how to handle" — DROPPED: generic prefers-reduced-motion CSS
+- cycle 68 [cro/lookbook] "Lookbook gets traffic but no ATC — what's the conversion mechanic that beats 'sh" — DROPPED: generic CRO mechanic, no concrete binding
+- cycle 68 [cro/lookbook] "Should the lookbook page have its own ATC analytics, separate from PDP ATC, to m" — DROPPED: GA4 event spec, not Shopify-specific
+- cycle 68 [cro/lookbook] "What's the right hero ratio for a lookbook page — full-bleed editorial or above-" — DROPPED: generic hero ratio design guidance
+- cycle 68 [cro/lookbook] "Lookbook drives consideration but discount-driven shoppers bounce — should we ad" — DROPPED: generic honesty/no-fake-urgency principle
+- cycle 68 [cro/lookbook] "Lookbook section is great but mobile users never tap the hotspots — how to surfa" — DROPPED: generic details element UX
+- cycle 68 [cro/lookbook] "Lookbook 'Shop the Look' drawer ATC succeeds but user doesn't see the cart-updat" — DROPPED: generic optimistic cart UX
+- cycle 68 [trust-social-proof/lookbook] "Should we show 'liveviewers' count ('14 people viewing this look') on the lookbo" — DROPPED: generic dark-pattern prohibition
+- cycle 68 [trust-social-proof/lookbook] "Lookbook page wants a 'Trustpilot 4.8 ★' badge — should it appear here?" — DROPPED: generic Trustpilot badge criteria
+- cycle 68 [copy-voice/lookbook] "Lookbook page intro copy reads as a product list ('shop our new collection') — w" — DROPPED: generic editorial copy voice guidance
+- cycle 68 [copy-voice/lookbook] "Per-look captions ('Look 03') feel sterile — what's the format?" — DROPPED: generic caption formatting advice
+- cycle 68 [copy-voice/lookbook] "Lookbook page meta description — what's the format and length?" — DROPPED: generic meta description SEO guidance
+- cycle 68 [copy-voice/lookbook] "Lookbook localization — should we machine-translate look themes for ES/FR/DE mar" — DROPPED: generic translation advice, weak Markets binding
+- cycle 68 [honesty-claims/lookbook] "Lookbook caption says 'sustainable linen sourced from Portugal' — what's the pro" — DROPPED: generic regulatory/sustainability compliance
+- cycle 68 [honesty-claims/lookbook] "Lookbook page says 'free shipping worldwide' — but reality is free shipping over" — DROPPED: generic shipping-copy honesty
+- cycle 68 [honesty-claims/lookbook] "Lookbook mentions 'as worn by [Celebrity Name]' — what's the verification?" — DROPPED: generic celebrity-claim verification
+- cycle 68 [honesty-claims/lookbook] "Lookbook product drawer claims 'restocks rarely' — is this allowed?" — DROPPED: generic restock honesty principle
+- cycle 69 [performance-cwv/lookbook] "Designer wants a parallax-scroll lookbook with 8 full-viewport scenes. Mobile FP" — DROPPED: generic CSS parallax advice
+- cycle 69 [performance-cwv/lookbook] "Lookbook video hero autoplays a 18MB MP4. LCP element is the video poster but TB" — DROPPED: generic HTML5 video attributes
+- cycle 69 [performance-cwv/lookbook] "Lookbook section uses 6 custom Google Fonts for editorial captions. FOIT is 1.8s" — DROPPED: generic typography rule
+- cycle 69 [performance-cwv/lookbook] "Lookbook hero uses CSS `clip-path` + `filter: blur()` for editorial mood — drops" — DROPPED: generic CSS perf advice
+- cycle 69 [seo-structured-data/lookbook] "Lookbook is paginated (12 scenes per page, 3 pages). Self-canonical each page or" — DROPPED: generic SEO pagination advice
+- cycle 69 [seo-structured-data/lookbook] "Lookbook hero has an editorial video (not a product video). Use `VideoObject` JS" — DROPPED: generic schema.org VideoObject rule
+- cycle 69 [i18n-currency-rtl/lookbook] "Lookbook ships in EN, but client expands to AR (Arabic, RTL) next month. What mu" — DROPPED: rtl_dir filter does not exist
+- cycle 69 [i18n-currency-rtl/lookbook] "Lookbook scene captions are translated EN→FR→AR. The English caption is 'Effortl" — DROPPED: generic i18n CSS rule
+- cycle 69 [i18n-currency-rtl/lookbook] "Lookbook uses a custom display font that has no Arabic glyphs. Browser falls bac" — DROPPED: Polyglot-only design-system.json convention
+- cycle 69 [i18n-currency-rtl/lookbook] "Lookbook has a CTA 'Shop the look' positioned bottom-right. In RTL it should be " — DROPPED: generic CSS logical properties
+- cycle 69 [i18n-currency-rtl/lookbook] "Lookbook video has burned-in English subtitles. Client expanding to JP/AR. Re-re" — DROPPED: generic HTML5 track element
+- cycle 69 [states-empty-loading-error/lookbook] "Lookbook page on slow 3G — first scene loads in 1.2s but scenes 2-12 take 8s. Wh" — DROPPED: generic lazy loading advice
+- cycle 69 [states-empty-loading-error/lookbook] "Lookbook 'Shop the look' modal opens, but Storefront API throws on product varia" — DROPPED: generic modal UX state advice
+- cycle 69 [edge-cases/lookbook] "Lookbook hotspot product has 47 variants (size × color × material). Modal varian" — DROPPED: generic variant picker UX
+- cycle 69 [edge-cases/lookbook] "Lookbook page is opened in Shopify Inbox or Instagram in-app browser (limited we" — DROPPED: generic browser compat advice
+- cycle 69 [edge-cases/lookbook] "Lookbook is viewed on a printed-out version (someone hits Ctrl+P). Hotspots are " — DROPPED: generic print CSS rule
+- cycle 69 [edge-cases/lookbook] "Lookbook video is muted+autoplay+loop but iOS Safari shows the play button overl" — DROPPED: generic iOS playsinline advice
+- cycle 69 [legal-compliance/lookbook] "Lookbook hero video has background music — is the brand's commercial license cov" — DROPPED: generic legal/license process advice
+- cycle 69 [legal-compliance/lookbook] "Lookbook is shareable via 'Save as PDF' export — does that PDF need to carry the" — DROPPED: hypothetical PDF export, generic
+- cycle 69 [merchandising/lookbook] "Lookbook drives discovery, but conversion is on the PDP. How do we measure lookb" — DROPPED: generic GA4 analytics advice
+- cycle 69 [merchandising/lookbook] "Lookbook hotspot products span 4 collections. Should the lookbook bring the user" — DROPPED: generic CRO routing advice
+- cycle 69 [merchandising/lookbook] "Lookbook hotspot product has a sister-product in another color/material. Surface" — DROPPED: generic CRO variant choice advice
+- cycle 69 [merchandising/lookbook] "Lookbook is the brand's seasonal moment — but conversion data shows users skip i" — DROPPED: generic merchandising strategy
+- cycle 69 [merchandising/lookbook] "Lookbook ships globally — but the SS26 collection isn't available in JP yet (lat" — DROPPED: published_in_market? method invented
+- cycle 71 [spacing-rhythm/store-locator] "What vertical rhythm between hero, search, filter chips, map, and result list ke" — DROPPED: generic vertical rhythm advice, not Shopify-specific
+- cycle 71 [spacing-rhythm/store-locator] "Should the map/list use a 60/40 desktop split, or a sticky list with a full-blee" — DROPPED: generic layout split percentage, not Shopify-bound
+- cycle 71 [spacing-rhythm/store-locator] "How should empty-state spacing behave when search returns zero locations so the " — DROPPED: generic empty-state advice, applies anywhere
+- cycle 71 [spacing-rhythm/store-locator] "How are name, address, hours, distance, and CTA spaced inside one location card?" — DROPPED: generic card spacing, not Shopify mechanism
+- cycle 71 [spacing-rhythm/store-locator] "Where does the distance pill sit, and how do I keep it from colliding with long " — DROPPED: generic flexbox overflow CSS
+- cycle 71 [imagery-art-direction/store-locator] "What map style — light, dark, or branded — fits the theme without breaking contr" — DROPPED: generic contrast advice for maps
+- cycle 71 [imagery-art-direction/store-locator] "Should pin markers be the default Google pin or a branded SVG?" — DROPPED: generic branding advice, no Shopify mechanism
+- cycle 71 [imagery-art-direction/store-locator] "What aspect ratio must every location-card photo share?" — DROPPED: generic aspect-ratio CSS advice
+- cycle 71 [motion/store-locator] "When a user clicks a list result, should the map pan/zoom smoothly or jump?" — DROPPED: generic map pan timing
+- cycle 71 [motion/store-locator] "What hover/focus motion should a result card use?" — DROPPED: generic hover motion CSS
+- cycle 71 [motion/store-locator] "How should the geolocation request loading state animate?" — DROPPED: generic loading timeout pattern
+- cycle 71 [motion/store-locator] "Should pins drop with an animation on first map load?" — DROPPED: generic motion + reduced-motion advice
+- cycle 71 [motion/store-locator] "How does a selected filter chip animate to communicate state?" — DROPPED: generic chip toggle animation
+- cycle 71 [motion/store-locator] "How do I avoid flicker in the result list on every keystroke?" — DROPPED: generic debounce/skeleton pattern
+- cycle 71 [motion/store-locator] "How do I honor prefers-reduced-motion across the locator without killing essenti" — DROPPED: generic reduced-motion handling
+- cycle 71 [mobile/store-locator] "What height should the map take on mobile so it's useful but doesn't bury the li" — DROPPED: generic mobile map height advice
+- cycle 71 [mobile/store-locator] "Should the search bar stick to the top on scroll?" — DROPPED: generic sticky search bar pattern
+- cycle 71 [mobile/store-locator] "What is the minimum tap-target for the call/directions CTAs on a location card?" — DROPPED: universal WCAG tap-target rule
+- cycle 71 [mobile/store-locator] "Should selecting a location open an inline expand, a new page, or a bottom-sheet" — DROPPED: generic bottom-sheet pattern
+- cycle 71 [mobile/store-locator] "Should phone numbers tap-to-call or copy?" — DROPPED: generic tel-link mobile pattern
+- cycle 71 [a11y/store-locator] "What landmarks and headings does the locator page need so a screen reader can na" — DROPPED: universal landmark/heading a11y basics
+- cycle 71 [a11y/store-locator] "Result count changes on every keystroke. How do I announce it without spamming?" — DROPPED: generic aria-live debounce pattern
+- cycle 71 [a11y/store-locator] "Map markers and clusters fail contrast on a light Google style. How is that ever" — DROPPED: generic contrast/cluster pin advice
+- cycle 71 [a11y/store-locator] "When the user clicks a result, where does focus go?" — DROPPED: generic focus management pattern
+- cycle 71 [a11y/store-locator] "Form labels on the ZIP/city search input — placeholder isn't enough, right?" — DROPPED: universal label-not-placeholder a11y rule
+- cycle 71 [a11y/store-locator] "Geolocation prompt and 'Use my location' button — what a11y rules apply?" — DROPPED: generic geolocation button a11y
+- cycle 71 [cro/store-locator] "What trust signals near the locator are CRO-positive without being fake?" — DROPPED: uses invented time_ago filter implicitly
+- cycle 71 [trust-social-proof/store-locator] "How do I prove the hours on each card are current?" — DROPPED: uses invented time_ago filter
+- cycle 72 [copy-voice/store-locator] "How should the store-locator page H1 read when the merchant has only one physica" — DROPPED: generic copy advice, no Shopify mechanism
+- cycle 72 [copy-voice/store-locator] "What tone does the 'no stores in your area' empty-state copy take so it doesn't " — DROPPED: generic empty-state copy
+- cycle 72 [copy-voice/store-locator] "How are store-hour labels written when a location has irregular weekend hours or" — DROPPED: generic hours formatting copy
+- cycle 72 [copy-voice/store-locator] "What's the rule for CTA copy on each location card — 'Get directions', 'View sto" — DROPPED: generic CTA wording advice
+- cycle 72 [copy-voice/store-locator] "How does the locator page intro paragraph differ for a DTC brand selling in stoc" — DROPPED: generic DTC/retail copy mode
+- cycle 72 [copy-voice/store-locator] "What microcopy goes on the search input placeholder and submit button?" — DROPPED: generic placeholder copy advice
+- cycle 72 [copy-voice/store-locator] "How are 'appointment only' or 'showroom' locations labeled so visitors don't sho" — DROPPED: generic appointment label copy
+- cycle 72 [honesty-claims/store-locator] "What about partnership/retailer logos shown on the locator — can we display 'as " — DROPPED: generic legal/permission, project-specific config
+- cycle 72 [performance-cwv/store-locator] "How do we keep LCP under 2.5s when the locator has a map that loads Google Maps " — DROPPED: generic map lazy-load advice
+- cycle 72 [performance-cwv/store-locator] "What's the JS budget for the locator section and how do we avoid bloating it wit" — DROPPED: generic JS budget rule
+- cycle 72 [performance-cwv/store-locator] "How do we handle the Cumulative Layout Shift when an embedded Google Map loads a" — DROPPED: generic aspect-ratio CLS pattern
+- cycle 72 [performance-cwv/store-locator] "What's the strategy for prefetching location detail pages without wasting bandwi" — DROPPED: generic prefetch-on-hover web pattern
+- cycle 72 [performance-cwv/store-locator] "How is the geocoding API call rate-limited to avoid hitting Nominatim's 1-req/se" — DROPPED: generic debounce/rate-limit advice
+- cycle 72 [seo-structured-data/store-locator] "How do we handle canonical URLs when the locator has filter/search query params?" — DROPPED: generic canonical URL advice
+- cycle 72 [seo-structured-data/store-locator] "What goes in the locator page's <title> and meta description when there are 50 l" — DROPPED: generic title/meta description copy
+- cycle 72 [seo-structured-data/store-locator] "How are location photos optimized for image-search visibility?" — DROPPED: generic alt-text/filename SEO
+- cycle 72 [seo-structured-data/store-locator] "What's the right approach for breadcrumb schema on locator detail pages?" — DROPPED: generic BreadcrumbList schema rule
+- cycle 72 [i18n-currency-rtl/store-locator] "How is the address formatted for international locations (US vs DE vs JP)?" — DROPPED: generic per-country address format
+- cycle 72 [i18n-currency-rtl/store-locator] "Does the locator need RTL layout support for Arabic/Hebrew markets?" — DROPPED: generic RTL handling
+- cycle 72 [i18n-currency-rtl/store-locator] "How are phone numbers formatted/displayed for international vs local visitors?" — DROPPED: generic phone E.164/locale format
+- cycle 72 [i18n-currency-rtl/store-locator] "How does the time-zone-aware 'open now' status display when the visitor's locale" — DROPPED: generic open-now timezone UX
+- cycle 72 [i18n-currency-rtl/store-locator] "What happens when the locator search input gets a non-Latin postcode (e.g. Japan" — DROPPED: generic Unicode postcode handling
+- cycle 72 [states-empty-loading-error/store-locator] "How is the empty-state designed when a visitor searches a postcode with no store" — DROPPED: generic no-results threshold copy
+- cycle 72 [states-empty-loading-error/store-locator] "What happens visually when the geocoding API errors out (network failure, 429 ra" — DROPPED: generic geocoding error UX
+- cycle 72 [states-empty-loading-error/store-locator] "How is the loading state shown for embedded interactive map when it takes >1s to" — DROPPED: generic map loading-state UX
+- cycle 73 [edge-cases/store-locator] "Holiday hours override regular weekly hours — how is today's row rendered correc" — DROPPED: shop.timezone not a real Liquid property
+- cycle 73 [edge-cases/store-locator] "User denies the browser geolocation prompt — does the 'Find nearest' button hang" — DROPPED: generic geolocation web JS, not Shopify
+- cycle 73 [edge-cases/store-locator] "A bar/restaurant location closes at 2am — how does 'Open now' compute across mid" — DROPPED: shop.timezone invented; generic time math
+- cycle 73 [legal-compliance/store-locator] "Screen-reader users can't navigate Google Maps with keyboard — does the locator " — DROPPED: generic web a11y, not Shopify-specific
+- cycle 73 [legal-compliance/store-locator] "Geolocation prompt fires with no disclosure — what's the canonical disclosure co" — DROPPED: generic copy/privacy, not Shopify mechanism
+- cycle 73 [legal-compliance/store-locator] "A location lists `manager@firstname.lastname.com` as contact — is that PII expos" — DROPPED: generic PII regex, no Shopify binding
+- cycle 73 [search-filtering/store-locator] "ZIP/postal radius search — what radii defaults and what units?" — DROPPED: generic haversine/JS, not Shopify-specific
+- cycle 73 [search-filtering/store-locator] "Multi-country brand — country/region filter UI for 80 locations across 12 countr" — DROPPED: generic country selector UX
+- cycle 73 [search-filtering/store-locator] "'Open now' filter — whose local time is the source of truth?" — DROPPED: shop.timezone not a real property
+- cycle 73 [search-filtering/store-locator] "Free-text city search — autocomplete suggestions for cities without a store?" — DROPPED: generic fuzzy-match JS, not Shopify
+- cycle 73 [search-filtering/store-locator] "Zero results for 'stores within 5 mi of 90210' — what does the empty state say?" — DROPPED: generic empty-state copy
+- cycle 73 [search-filtering/store-locator] "Map and list views drift out of sync as user filters — how do they stay coupled?" — DROPPED: generic map/list sync JS
+- cycle 73 [nav-ia/store-locator] "Should 'Stores' live in the main nav, the footer, or a top utility bar?" — DROPPED: generic IA heuristic, not Shopify mechanism
+- cycle 73 [nav-ia/store-locator] "On mobile, where does 'Stores' sit in the drawer — top-level or nested under 'Ab" — DROPPED: generic mobile drawer UX
+- cycle 73 [nav-ia/store-locator] "Should the homepage surface 'Find a store' if BOPIS is core to the brand?" — DROPPED: generic homepage heuristic, no Shopify binding
+- cycle 73 [forms-validation/store-locator] "ZIP format varies (US 5-digit, CA A1A 1A1, UK SW1A 1AA) — how do we validate?" — DROPPED: generic ZIP regex, not Shopify
+- cycle 73 [forms-validation/store-locator] "Phone number international format — what library and when do we load it?" — DROPPED: generic JS library choice
+- cycle 73 [forms-validation/store-locator] "Inline error vs summary banner — which pattern for form errors?" — DROPPED: generic form a11y pattern
+- cycle 73 [forms-validation/store-locator] "Should required fields be marked with an asterisk or a 'Required' label?" — DROPPED: generic a11y label convention
+- cycle 73 [forms-validation/store-locator] "Spam protection — reCAPTCHA, hCaptcha, or honeypot?" — DROPPED: generic spam-protection choice
+- cycle 73 [email-lifecycle/store-locator] "New store opens in Brooklyn — who gets the announcement email?" — DROPPED: generic Klaviyo segmentation
+- cycle 73 [email-lifecycle/store-locator] "A store is closing/relocating — how do we notify only the affected BOPIS custome" — DROPPED: generic email targeting logic
+- cycle 73 [email-lifecycle/store-locator] "Holiday hours reminder email — who triggers it and what does ink write?" — DROPPED: generic holiday reminder copy
+- cycle 73 [email-lifecycle/store-locator] "Workshop at the Brooklyn store next Friday — how to invite the right list?" — DROPPED: generic workshop email segmentation
+- cycle 75 [a11y/comparison] "How should the 'vs competitor' comparison handle screen-reader focus order when " — DROPPED: generic DOM-order advice, not Shopify-specific
+- cycle 75 [cro/comparison] "How many products should a comparison table show before choice paralysis tanks c" — DROPPED: generic CRO advice, no Shopify mechanism
+- cycle 75 [cro/comparison] "What CTA copy works on a comparison-table column when the buyer is mid-evaluatio" — DROPPED: generic CTA copy advice, not Shopify-bound
+- cycle 75 [cro/comparison] "Where should price sit in a comparison column to optimize for value perception, " — DROPPED: generic pricing-placement CRO advice
+- cycle 75 [cro/comparison] "Should the comparison table include a 'why we win' row that lists competitor wea" — DROPPED: generic copy/legal honesty, not Shopify-specific
+- cycle 75 [cro/comparison] "How do we handle the comparison table when one of your own SKUs is objectively w" — DROPPED: generic ladder-pricing advice, no Shopify hook
+- cycle 75 [cro/comparison] "Should a comparison block on the PDP open in a modal or render inline?" — DROPPED: generic layout advice, no Shopify mechanism
+- cycle 75 [trust-social-proof/comparison] "Should customer-quote testimonials sit inside comparison columns or in a separat" — DROPPED: generic layout opinion, no Shopify mechanism
+- cycle 75 [copy-voice/comparison] "How long should a feature-row label be in a comparison table on mobile?" — DROPPED: generic copy-length rule, not Shopify-specific
+- cycle 75 [copy-voice/comparison] "Should the comparison use second-person ('Your skin') or third-person ('The form" — DROPPED: generic copy voice guidance
+- cycle 75 [copy-voice/comparison] "What tone should the comparison's column headers (product names) carry — clever " — DROPPED: generic naming/positioning copy advice
+- cycle 75 [copy-voice/comparison] "How do we phrase a competitor's name in our comparison without sounding defensiv" — DROPPED: generic competitor-naming advice
+- cycle 75 [copy-voice/comparison] "Should the comparison's CTA copy vary per column ('Add to cart' vs 'Visit their " — DROPPED: generic CTA-copy advice
+- cycle 75 [copy-voice/comparison] "How do we phrase a row where the answer is 'partial' (e.g. some ingredients are " — DROPPED: generic honesty/qualifier copy advice
+- cycle 75 [copy-voice/comparison] "What's the right voice for the comparison's intro/H2 above the table?" — DROPPED: generic H2 copy advice
+- cycle 75 [honesty-claims/comparison] "How do we handle '0 chemicals' or 'chemical-free' marketing claims competitors u" — DROPPED: generic copy/claims advice, not Shopify-bound
+- cycle 75 [honesty-claims/comparison] "Can we show '50% more [ingredient]' in a comparison row?" — DROPPED: generic substantiation, weak Shopify binding
+- cycle 75 [performance-cwv/comparison] "How do we handle the comparison table's interactive JS (tooltips, expand-rows) w" — DROPPED: generic JS perf advice, weak Shopify binding
+- cycle 75 [performance-cwv/comparison] "How do we keep a sticky-column comparison table from triggering layout-thrash on" — DROPPED: generic CSS sticky advice, not Shopify-specific
+- cycle 75 [performance-cwv/comparison] "Should we render a comparison table on mobile if data shows mobile buyers skip i" — DROPPED: generic responsive variant advice
+- cycle 76 [i18n-currency-rtl/comparison] "Comparison page in Arabic — does the comparison TABLE flip column order RTL or s" — DROPPED: generic CSS/HTML RTL advice, not Shopify-bound
+- cycle 76 [i18n-currency-rtl/comparison] "Feature label 'Pro Plan – 12 months' translates to a 38-character German phrase " — DROPPED: generic responsive CSS, not Shopify-specific
+- cycle 76 [i18n-currency-rtl/comparison] "Comparison CTA 'Add both to cart' — in RTL Arabic does the button icon flip too?" — DROPPED: generic CSS RTL mirroring advice
+- cycle 76 [states-empty-loading-error/comparison] "User opens /pages/compare with no products selected (?ids=) — what shows?" — DROPPED: generic empty-state UX advice
+- cycle 76 [states-empty-loading-error/comparison] "Two compared products have wildly different feature sets — half the rows are emp" — DROPPED: generic a11y/UX em-dash advice
+- cycle 76 [legal-compliance/comparison] "Comparing your product to a competitor by name — what's the legal/honesty rule?" — DROPPED: generic legal/marketing comparison advice
+- cycle 76 [legal-compliance/comparison] "Comparison page in EU — cookie banner blocks first-paint of the table. GDPR or U" — DROPPED: generic GDPR cookie banner advice
+- cycle 76 [legal-compliance/comparison] "User in California — does the comparison page need a 'Do Not Sell My Info' link?" — DROPPED: generic CCPA legal advice
+- cycle 76 [legal-compliance/comparison] "Price-comparison page implies a price advantage that's only true with a coupon —" — DROPPED: generic price-honesty rule, no Shopify mechanism
+- cycle 76 [legal-compliance/comparison] "Comparison page accessible to screen-reader users — what's the legal a11y baseli" — DROPPED: generic WCAG/ADA a11y baseline
+- cycle 76 [merchandising/comparison] "Best product to anchor on the LEFT or RIGHT of the comparison table?" — DROPPED: generic CRO position-bias claim
+- cycle 76 [merchandising/comparison] "Should compared products' 'Add to cart' buttons offer variant selection inline, " — DROPPED: generic ecom variant picker UX
+- cycle 76 [merchandising/comparison] "Should sold-out products in the comparison table be sortable to the bottom?" — DROPPED: generic OOS merchandising UX
+- cycle 76 [search-filtering/comparison] "Sort options inside the comparison table — alphabetical, price ascending, or 'be" — DROPPED: generic sort-option UX advice
+- cycle 76 [search-filtering/comparison] "Comparison facets show 0 results for a combination ('vegan + under $20 + sensiti" — DROPPED: generic empty-filter state UX
+- cycle 78 [imagery-art-direction/bundle-builder] "What aspect ratio should picker tile thumbnails use across a mixed-category bund" — DROPPED: generic CSS aspect-ratio, not Shopify-specific
+- cycle 78 [imagery-art-direction/bundle-builder] "For the bundle landing hero, do we show the finished assembled bundle or the ing" — DROPPED: generic art direction advice
+- cycle 78 [motion/bundle-builder] "Should picker tiles animate when a customer taps to select them?" — DROPPED: generic motion/CSS advice
+- cycle 78 [motion/bundle-builder] "How does the progress bar animate when an item is added?" — DROPPED: generic transition + aria-live advice
+- cycle 78 [motion/bundle-builder] "Should we trigger confetti or a celebratory burst when the bundle reaches its co" — DROPPED: generic confetti UX rule
+- cycle 78 [motion/bundle-builder] "Do we support drag-and-drop reordering of picked items in the bundle summary?" — DROPPED: generic DnD a11y advice
+- cycle 78 [motion/bundle-builder] "Should the bundle summary slide in from the side on scroll?" — DROPPED: generic mobile slide-in UX
+- cycle 78 [motion/bundle-builder] "Can a 'Choose 3' badge pulse continuously to draw attention?" — DROPPED: generic anti-pulse UX rule
+- cycle 78 [motion/bundle-builder] "How does the quantity stepper animate inside a bundle slot?" — DROPPED: generic perf/no-library advice
+- cycle 78 [mobile/bundle-builder] "How does the picker grid lay out at viewports <375px (iPhone SE / mini)?" — DROPPED: generic mobile grid + tap-size advice
+- cycle 78 [mobile/bundle-builder] "Where does the bundle progress + ATC live on mobile?" — DROPPED: generic sticky bottom-bar pattern
+- cycle 78 [mobile/bundle-builder] "How is the variant picker (size/flavor) opened inside a tile on mobile?" — DROPPED: generic bottom-sheet vs select pattern
+- cycle 78 [mobile/bundle-builder] "How do we prevent the sticky bundle bar colliding with the cart drawer on iOS Sa" — DROPPED: generic iOS safe-area CSS
+- cycle 78 [mobile/bundle-builder] "Should each picker tile contain its own image carousel on mobile?" — DROPPED: generic per-tile carousel UX
+- cycle 78 [mobile/bundle-builder] "How do we stop iOS long-press flicker / text-select when swiping over picker til" — DROPPED: generic touch-action CSS
+- cycle 78 [a11y/bundle-builder] "How is bundle-progress state communicated to screen-reader users?" — DROPPED: generic aria-live a11y basic
+- cycle 78 [a11y/bundle-builder] "What are picker tiles semantically — buttons, checkboxes, or radios?" — DROPPED: generic semantic checkbox/radio a11y
+- cycle 78 [a11y/bundle-builder] "How does keyboard navigation work across a 12-tile picker grid?" — DROPPED: generic keyboard grid nav pattern
+- cycle 78 [a11y/bundle-builder] "How is focus managed when tapping a tile opens a variant bottom-sheet?" — DROPPED: generic focus-trap a11y
+- cycle 78 [a11y/bundle-builder] "Are selected-tile cues relying on color alone?" — DROPPED: generic WCAG contrast restatement
+- cycle 78 [a11y/bundle-builder] "How is the disabled ATC reason announced to assistive tech?" — DROPPED: generic aria-disabled vs disabled rule
+- cycle 78 [a11y/bundle-builder] "How is the 'X items selected' string pluralized + localized for screen readers?" — DROPPED: ICU MessageFormat not Shopify theme i18n
+- cycle 78 [cro/bundle-builder] "How do we show bundle savings without faking an MSRP?" — DROPPED: generic CRO honesty, no Shopify mechanism
+- cycle 78 [cro/bundle-builder] "Should we show an 'Add 1 more to save $10' upsell hint?" — DROPPED: generic CRO upsell hint advice
+- cycle 78 [cro/bundle-builder] "Should subscription be the default on a subscribable bundle, or one-time?" — DROPPED: generic subscription default-off CRO
+- cycle 78 [copy-voice/bundle-builder] "What does the empty-state copy say in an unfilled bundle slot?" — DROPPED: generic empty-state copy advice
+- cycle 78 [copy-voice/bundle-builder] "What tone should an upsell hint use if the user pauses for 30s without adding?" — DROPPED: generic anti-timed-nudge UX
+- cycle 78 [copy-voice/bundle-builder] "What voice register does the 'Build your bundle' headline use?" — DROPPED: generic brand voice register advice
+- cycle 78 [copy-voice/bundle-builder] "What error copy appears when a chosen item exceeds inventory?" — DROPPED: generic inventory error copy advice
+- cycle 78 [copy-voice/bundle-builder] "What does the bundle-complete confirmation copy say — celebratory or functional?" — DROPPED: generic completion copy advice
+- cycle 79 [performance-cwv/bundle-builder] "Bundle JS recalcs total on every click and causes layout shift on the price node" — DROPPED: generic CSS CLS technique, not Shopify-specific
+- cycle 79 [performance-cwv/bundle-builder] "Bundle page fonts flash because each slot label uses a different weight — how do" — DROPPED: generic font perf, not Shopify-specific
+- cycle 79 [performance-cwv/bundle-builder] "Mobile bundle page has 8 slot tiles stacked — scroll jank on cheap Androids — wh" — DROPPED: generic CSS content-visibility, not Shopify
+- cycle 79 [i18n-currency-rtl/bundle-builder] "Arabic/Hebrew market — does the bundle layout mirror correctly?" — DROPPED: generic CSS logical properties, not Shopify
+- cycle 79 [i18n-currency-rtl/bundle-builder] "Tier label 'Build 5+' has 'Compré 5+' in Spanish but the quantity badge shows '+" — DROPPED: pluralize filter does not exist in Liquid
+- cycle 79 [i18n-currency-rtl/bundle-builder] "Date in 'Promo ends Dec 31' — how is that localized?" — DROPPED: abbreviated_date not a real Shopify date format
+- cycle 79 [states-empty-loading-error/bundle-builder] "Cart-add for the bundle fails (network, OOS race) — what does the user see?" — DROPPED: generic error toast, not Shopify-specific
+- cycle 79 [states-empty-loading-error/bundle-builder] "Loading state while bundle totals recalculate — what's the visual?" — DROPPED: generic opacity transition, not Shopify
+- cycle 79 [states-empty-loading-error/bundle-builder] "User clicks ATC while quantity selector is still updating — race condition?" — DROPPED: generic aria-disabled+debounce, not Shopify
+- cycle 79 [states-empty-loading-error/bundle-builder] "Discount-code app outage — bundle savings copy shows but code doesn't apply at c" — DROPPED: themes cannot call Admin GraphQL at render
+- cycle 80 [legal-compliance/bundle-builder] "A subscription bundle locks the customer in but the renewal terms are buried — h" — DROPPED: mostly legal policy, invented metafield
+- cycle 80 [legal-compliance/bundle-builder] "A shopper picks a bundle that includes an alcohol/hazmat item but their shipping" — DROPPED: invented checkout shipping_rates endpoint
+- cycle 80 [merchandising/bundle-builder] "A bundle step shows a variant that is sold-out — should it disappear, gray out, " — DROPPED: mostly generic a11y, soft Shopify hook
+- cycle 80 [merchandising/bundle-builder] "How do we compute and display the bundle's % savings without lying when items ha" — DROPPED: redundant with #3 savings math
+- cycle 80 [merchandising/bundle-builder] "The bundle has a 'min 3 items' rule but the 'Add to cart' CTA is enabled when on" — DROPPED: generic disabled-CTA a11y advice
+- cycle 80 [merchandising/bundle-builder] "Should we surface cross-sell add-ons (e.g. 'add gift wrap') inside the bundle-bu" — DROPPED: generic upsell CRO, fabricated metaobject
+- cycle 80 [search-filtering/bundle-builder] "A bundle step has many products — should we add a search-as-you-type input or re" — DROPPED: generic search-as-you-type UX
+- cycle 80 [search-filtering/bundle-builder] "When the shopper applies a filter that excludes every product in this bundle ste" — DROPPED: generic empty-state UX
+- cycle 80 [search-filtering/bundle-builder] "Should a shopper's bundle-step filter state persist when they go to step 3 and b" — DROPPED: generic sessionStorage persistence
+- cycle 80 [search-filtering/bundle-builder] "How do we make a filtered view of a bundle step shareable via URL?" — DROPPED: generic URL-state advice
+- cycle 80 [search-filtering/bundle-builder] "On mobile, where do the bundle-step filters live without crowding the picker?" — DROPPED: generic mobile bottom-sheet pattern
+- cycle 80 [search-filtering/bundle-builder] "Filter chips can stack to 3+ rows on a small screen — how do we let shoppers cle" — DROPPED: generic removable-chip UI
+- cycle 80 [nav-ia/bundle-builder] "Should 'Build a Bundle' live in the main nav, under a category, or in a promo st" — DROPPED: generic IA strategy, not Shopify mechanism
+- cycle 80 [nav-ia/bundle-builder] "How do breadcrumbs work inside a multi-step bundle flow?" — DROPPED: generic breadcrumb advice
+- cycle 80 [nav-ia/bundle-builder] "What's the spec for the step indicator (1 of 4) on a bundle builder?" — DROPPED: generic stepper a11y
+- cycle 80 [nav-ia/bundle-builder] "When a shopper hits the browser back button mid-bundle, should we keep their sel" — DROPPED: generic browser-back persistence
+- cycle 80 [nav-ia/bundle-builder] "Should the bundle-builder appear in footer utility nav as well?" — DROPPED: generic footer IA placement
+- cycle 80 [nav-ia/bundle-builder] "Should the bundle-builder open as a drawer/modal or as a full page on mobile?" — DROPPED: generic page-vs-modal decision
+- cycle 80 [forms-validation/bundle-builder] "How do we validate a required selection on a step before letting the shopper con" — DROPPED: generic form-validation a11y
+- cycle 80 [forms-validation/bundle-builder] "A bundle has a pick-3-to-5 rule — how do we enforce min and max as the shopper s" — DROPPED: generic min/max counter UX
+- cycle 80 [forms-validation/bundle-builder] "How do quantity inputs inside a bundle step validate (integer only, bounds)?" — DROPPED: generic number-input attributes
+- cycle 80 [forms-validation/bundle-builder] "A bundle item allows personalization (engraving text) — how do we validate lengt" — DROPPED: generic input maxlength/pattern
+- cycle 80 [forms-validation/bundle-builder] "On Continue with multiple errors, where does focus go and how do we list errors?" — DROPPED: generic + duplicates #30 focus
+- cycle 80 [forms-validation/bundle-builder] "A bundle step asks 'any dietary requirements?' as a checkbox group — what's the " — DROPPED: generic mutually-exclusive checkbox
+- cycle 80 [forms-validation/bundle-builder] "Should the Continue button be always-enabled-with-error or disabled-until-valid?" — DROPPED: generic aria-disabled vs disabled
+- cycle 80 [email-lifecycle/bundle-builder] "When a bundle is abandoned in cart, how should the email show the bundle (one li" — DROPPED: generic abandon-email card design
+- cycle 80 [email-lifecycle/bundle-builder] "After a bundle order ships, which products do we recommend in the post-purchase " — DROPPED: generic post-purchase email logic
+- cycle 80 [email-lifecycle/bundle-builder] "A shopper saves a bundle to wishlist — what does the reminder email look like?" — DROPPED: generic wishlist email refresh
+- cycle 80 [email-lifecycle/bundle-builder] "A subscription bundle is about to renew — when and how do we email the pre-renew" — DROPPED: generic pre-renewal email content
+- cycle 80 [layout/quiz-finder] "Should a quiz finder show one question per screen or scroll through all question" — DROPPED: generic mobile quiz layout
+- cycle 80 [layout/quiz-finder] "Where does the quiz progress bar live and does it stay visible while shoppers sc" — DROPPED: generic progressbar a11y
+- cycle 80 [layout/quiz-finder] "On the quiz result page, what's the layout — single winner, top-3 carousel, or c" — DROPPED: generic quiz-result CRO layout
+- cycle 80 [layout/quiz-finder] "How do we lay out a question that has an image per answer option vs text-only?" — DROPPED: generic image-grid layout
+- cycle 80 [layout/quiz-finder] "Mobile open-ended quiz question opens the keyboard and hides the Continue button" — DROPPED: generic mobile keyboard handling
+- cycle 82 [cro/quiz-finder] "How many questions should the quiz ask before fatigue tanks completion?" — DROPPED: generic CRO benchmark, no Shopify mechanism
+- cycle 82 [cro/quiz-finder] "Should the progress indicator show step count, percentage, or a visual bar on mo" — DROPPED: generic mobile UX advice
+- cycle 82 [cro/quiz-finder] "Where does the primary CTA sit on the result page so the recommended product act" — DROPPED: generic CRO, no specific Shopify hook
+- cycle 82 [cro/quiz-finder] "On mobile, where should answer chips sit so the thumb actually reaches the prima" — DROPPED: generic mobile thumb-zone advice
+- cycle 82 [copy-voice/quiz-finder] "Should questions be phrased in 2nd person, 1st person, or neutral?" — DROPPED: generic copy advice, metaobject sidecar
+- cycle 82 [copy-voice/quiz-finder] "How do we write the `Why this product?` reveal microcopy?" — DROPPED: generic answer-mapping copy advice
+- cycle 82 [honesty-claims/quiz-finder] "Can we show a `97% match` percentage on the result?" — DROPPED: copy honesty, no Shopify hook
+- cycle 82 [honesty-claims/quiz-finder] "Can we say `Personalised for you` if every user with the same answers gets the s" — DROPPED: copy advice, no Shopify mechanism
+- cycle 82 [data-binding/quiz-finder] "Should the quiz state persist across refresh / page reload?" — DROPPED: generic localStorage persistence
+- cycle 82 [performance-cwv/quiz-finder] "How do we keep CLS=0 as the progress bar updates between questions?" — DROPPED: generic CSS performance
+- cycle 82 [performance-cwv/quiz-finder] "How do we keep INP <200ms on option tap?" — DROPPED: generic INP/web perf advice
+- cycle 82 [performance-cwv/quiz-finder] "What's the JS budget for the quiz library itself?" — DROPPED: redundant with 35, generic budget
+- cycle 83 [states-empty-loading-error/quiz-finder] "How does the quiz render before its metaobject data has loaded on slow 3G?" — DROPPED: generic perf advice, products.json speculative
+- cycle 83 [states-empty-loading-error/quiz-finder] "How does the quiz handle a Storefront API timeout when fetching result products?" — DROPPED: generic timeout/retry advice, not Shopify-specific
+- cycle 83 [states-empty-loading-error/quiz-finder] "How does the quiz show progress while the result page is computing recommendatio" — DROPPED: generic aria-live loading pattern
+- cycle 83 [states-empty-loading-error/quiz-finder] "How does the quiz handle a visitor who refreshes mid-quiz?" — DROPPED: generic sessionStorage persistence advice
+- cycle 83 [states-empty-loading-error/quiz-finder] "How does the quiz render when JavaScript is disabled or fails to parse?" — DROPPED: generic no-JS fallback, /search action speculative
+- cycle 83 [edge-cases/quiz-finder] "How does the quiz behave when a returning visitor has already completed it once?" — DROPPED: generic localStorage returning-visitor pattern
+- cycle 83 [edge-cases/quiz-finder] "How does the quiz handle a visitor on a mobile device in landscape with the iOS " — DROPPED: generic mobile viewport/safe-area CSS
+- cycle 83 [edge-cases/quiz-finder] "How does the quiz handle a visitor who answers contradictory questions (e.g. Q2 " — DROPPED: generic contradiction-resolution logic
+- cycle 83 [edge-cases/quiz-finder] "How does the quiz handle a visitor on the result page who wants to email their m" — DROPPED: /contact form forwarding behavior unverified
+- cycle 83 [legal-compliance/quiz-finder] "How does the quiz collect email at the end without violating GDPR consent?" — DROPPED: generic GDPR consent checkbox advice
+- cycle 83 [legal-compliance/quiz-finder] "How does the quiz handle an under-13 visitor (COPPA) for stores that sell to all" — DROPPED: generic age-gate advice, not Shopify mechanism
+- cycle 83 [legal-compliance/quiz-finder] "How does the quiz handle a quiz that captures sensitive health data (e.g. skin c" — DROPPED: generic sensitive-data disclosure advice
+- cycle 83 [search-filtering/quiz-finder] "How does the quiz integrate with a 3rd-party search app (Algolia, Searchanise, B" — DROPPED: generic third-party app integration advice
+- cycle 83 [search-filtering/quiz-finder] "How does the quiz handle a multi-select question (e.g. 'pick up to 3 concerns')?" — DROPPED: generic checkbox fieldset accessibility
+- cycle 83 [nav-ia/quiz-finder] "Where does the quiz live in the navigation IA — header, hero, footer, or all thr" — DROPPED: generic IA placement advice
+- cycle 83 [nav-ia/quiz-finder] "How does the quiz appear in the mobile bottom navigation (if the theme has one)?" — DROPPED: generic mobile bottom-nav advice
+- cycle 83 [nav-ia/quiz-finder] "How does the homepage hero promote the quiz without becoming the only thing visi" — DROPPED: generic hero hierarchy CRO advice
+- cycle 83 [nav-ia/quiz-finder] "How does the quiz handle deep navigation from a blog post (e.g. 'How to find you" — DROPPED: generic blog deep-linking + link-check
+- cycle 84 [forms-validation/quiz-finder] "Multi-step quiz: shopper hits browser Back between steps — answers lost. How do " — DROPPED: generic sessionStorage pattern, not Shopify
+- cycle 84 [forms-validation/quiz-finder] "Quiz radio-group has 6 options and zero is selected — how is the error announced" — DROPPED: redundant universal WCAG fieldset rule
+- cycle 84 [forms-validation/quiz-finder] "Quiz embedded as a Liquid section — merchant edits the JSON questions in the cus" — DROPPED: section schemas can't regex; Liquid can't throw
+- cycle 84 [layout/landing-advertorial] "Advertorial editorial layout: how wide is the readable column on desktop, and wh" — DROPPED: generic typography column width
+- cycle 84 [layout/landing-advertorial] "Advertorial has 5 sections (hook, problem, story, proof, CTA) — how is vertical " — DROPPED: generic vertical rhythm tokens
+- cycle 84 [layout/landing-advertorial] "Inline product card mid-advertorial — does it break out of the 65ch column or st" — DROPPED: generic CSS grid breakout pattern
+- cycle 84 [layout/landing-advertorial] "Advertorial sticky CTA bar — when does it appear, and does it cover content?" — DROPPED: generic sticky CTA + IntersectionObserver
+- cycle 84 [layout/landing-advertorial] "Advertorial has a 'before/after' image pair — how is the layout responsive witho" — DROPPED: generic responsive picture pattern
+- cycle 84 [layout/landing-advertorial] "Footer CTA repeats the hero CTA — does the page have 2 identical primary buttons" — DROPPED: generic CRO duplicate-CTA advice
+- cycle 84 [typography/landing-advertorial] "What's the H1 size on advertorial, and how does it scale from 360px → 1440px?" — DROPPED: generic clamp() typography scale
+- cycle 84 [typography/landing-advertorial] "Advertorial body uses serif for editorial feel — but brand sans is the system fo" — DROPPED: generic font-pairing advice
+- cycle 84 [typography/landing-advertorial] "Body line-length and line-height on advertorial — what passes premium bar?" — DROPPED: generic line-height/length rule
+- cycle 84 [typography/landing-advertorial] "Pull-quote in the middle of the advertorial — what size, weight, and treatment w" — DROPPED: generic pull-quote typography
+- cycle 84 [typography/landing-advertorial] "All-caps eyebrow label above each section title — what tracking and size keep it" — DROPPED: generic eyebrow typography
+- cycle 84 [typography/landing-advertorial] "Advertorial loads 3 Google Fonts files — LCP regresses. What's the rule?" — DROPPED: generic webfont performance advice
+- cycle 84 [typography/landing-advertorial] "Numerals in body (prices, dosages, stats) — proportional or tabular?" — DROPPED: generic tabular-nums CSS rule
+- cycle 84 [color-contrast/landing-advertorial] "Advertorial uses a tinted background (`#FAF6F0` warm cream) — does body text on " — DROPPED: redundant WCAG contrast basic
+- cycle 84 [color-contrast/landing-advertorial] "Quote section uses a dark image bg behind white text — but the image varies. How" — DROPPED: generic image overlay gradient
+- cycle 84 [color-contrast/landing-advertorial] "Link color in body prose — underline or color-only? What contrast vs surrounding" — DROPPED: redundant universal link a11y
+- cycle 84 [color-contrast/landing-advertorial] "Disabled state of the advertorial CTA (e.g. waiting on quiz answer) — what color" — DROPPED: generic disabled-state a11y
+- cycle 84 [color-contrast/landing-advertorial] "Section divider — a 1px hairline at low contrast that disappears on retina. Is i" — DROPPED: generic divider CSS
+- cycle 84 [spacing-rhythm/landing-advertorial] "What's the spacing scale — and why does the advertorial only get to use 6 values" — DROPPED: generic spacing token scale
+- cycle 84 [spacing-rhythm/landing-advertorial] "Stack between paragraphs in prose — `margin-bottom` on `p` or grid `gap`?" — DROPPED: generic owl-selector CSS pattern
+- cycle 84 [spacing-rhythm/landing-advertorial] "Section padding-block on mobile vs desktop — how does it scale without jarring j" — DROPPED: generic clamp() padding rule
+- cycle 84 [spacing-rhythm/landing-advertorial] "Tap-target spacing — CTA buttons next to each other can be mis-tapped. What's th" — DROPPED: redundant universal tap-target WCAG
+- cycle 84 [spacing-rhythm/landing-advertorial] "Hero CTA distance from hero copy — too close = cramped, too far = disconnected. " — DROPPED: generic CRO hero spacing
+- cycle 84 [spacing-rhythm/landing-advertorial] "Sticky CTA bar appearing 'jumps' the page — can we animate it without violating " — DROPPED: redundant universal reduced-motion rule
+- cycle 84 [spacing-rhythm/landing-advertorial] "Multi-column proof block (3 testimonials on desktop, 1 on mobile) — what gap and" — DROPPED: generic auto-fit grid pattern
+- cycle 84 [imagery-art-direction/landing-advertorial] "Body images mid-prose — full-bleed, contained, or floated? And alt text rule?" — DROPPED: redundant universal alt-text rule
+- cycle 84 [imagery-art-direction/landing-advertorial] "Section-bg image with text overlay — what art direction prevents the text crashi" — DROPPED: generic object-position overlay
+- cycle 86 [performance-cwv/landing-advertorial] "Autoplay hero video kills LCP — but the design needs motion above the fold. What" — DROPPED: generic web perf, not Shopify-bound
+- cycle 86 [performance-cwv/landing-advertorial] "Star-rating block injects late and shifts the headline — what's enforced?" — DROPPED: generic CLS/CSS reservation advice
+- cycle 86 [performance-cwv/landing-advertorial] "Sticky bar uses a setTimeout-driven scroll handler — INP regression. Pattern?" — DROPPED: generic INP/rAF/passive listener advice
+- cycle 86 [seo-structured-data/landing-advertorial] "`page.advertorial.liquid` ships without OG/Twitter tags — share previews are bla" — DROPPED: generic OG meta spec, not Shopify-specific
+- cycle 86 [seo-structured-data/landing-advertorial] "Two H1s appear on the advertorial — a hero H1 and a section H1 — what enforces h" — DROPPED: generic WCAG H1 rule
+- cycle 86 [i18n-currency-rtl/landing-advertorial] "Store added Arabic — sticky ATC arrow flipped wrong, padding misaligned. Pattern" — DROPPED: generic logical CSS properties advice
+- cycle 86 [states-empty-loading-error/landing-advertorial] "Section fetches Storefront API data async — no skeleton, shifts content as it lo" — DROPPED: generic skeleton/CLS web pattern
+- cycle 86 [edge-cases/landing-advertorial] "Some product titles are 80 chars and overflow the hero — what's enforced?" — DROPPED: generic CSS overflow/wrap advice
+- cycle 86 [edge-cases/landing-advertorial] "Sticky ATC collides with the Shop Pay installments banner at bottom — z-index wa" — DROPPED: generic z-index/safe-area advice
+- cycle 86 [legal-compliance/landing-advertorial] "GA4 and Meta pixels fire on first paint regardless of consent — wiring fix?" — DROPPED: redundant with entry 43 consent wiring
+- cycle 87 [merchandising/landing-advertorial] "How do we feature 3–6 hero benefits without making them look like a generic feat" — DROPPED: generic editorial design, arbitrary word counts
+- cycle 87 [merchandising/landing-advertorial] "Sticky 'Add to bag' bar on the advertorial — when do we show it and what does it" — DROPPED: generic sticky-ATC CRO pattern
+- cycle 87 [search-filtering/landing-advertorial] "Should an advertorial have a search box?" — DROPPED: generic IA opinion, no Shopify mechanism
+- cycle 87 [search-filtering/landing-advertorial] "FAQ accordion at the bottom of the advertorial — how do we let users 'search' ac" — DROPPED: generic details/Cmd-F web pattern
+- cycle 87 [nav-ia/landing-advertorial] "Should the global mega-menu render on a paid advertorial?" — DROPPED: generic LP-header doctrine
+- cycle 87 [nav-ia/landing-advertorial] "Breadcrumbs on an advertorial — yes or no?" — DROPPED: generic SEO breadcrumb advice
+- cycle 87 [nav-ia/landing-advertorial] "User clicks logo on the LP — should it go to home or stay on page?" — DROPPED: universal web convention, no value
+- cycle 87 [nav-ia/landing-advertorial] "In-page jump-nav (Why / How / Reviews / Buy) — when do we add it and how does it" — DROPPED: generic scroll-margin/sticky-nav pattern
+- cycle 87 [nav-ia/landing-advertorial] "Footer on an advertorial — should it match site footer or be stripped?" — DROPPED: generic LP footer stripping
+- cycle 87 [nav-ia/landing-advertorial] "Cart icon on the LP — open mini-cart or go to /cart?" — DROPPED: generic mini-cart drawer pattern
+- cycle 87 [forms-validation/landing-advertorial] "Newsletter signup at the LP foot — what fields, what validation, and what list d" — DROPPED: generic email signup validation
+- cycle 87 [forms-validation/landing-advertorial] "Quiz form posts answers — how do we validate required questions without a noisy " — DROPPED: generic HTML5 form a11y
+- cycle 87 [forms-validation/landing-advertorial] "Back-in-stock notify form on a sold-out hero variant — what's the contract?" — DROPPED: generic 3rd-party form contract
+- cycle 87 [forms-validation/landing-advertorial] "GDPR consent checkbox on email capture — required, pre-checked, or hidden?" — DROPPED: request.country_code does not exist in Liquid
+- cycle 87 [forms-validation/landing-advertorial] "Honeypot vs reCAPTCHA on LP forms — which and when?" — DROPPED: generic honeypot/captcha pattern
+- cycle 87 [forms-validation/landing-advertorial] "Form submit success — toast, inline state, or redirect?" — DROPPED: generic form success UX
+- cycle 87 [email-lifecycle/landing-advertorial] "Which Klaviyo flow does an advertorial newsletter signup enter, and how do we di" — DROPPED: generic Klaviyo attribution properties
+- cycle 87 [email-lifecycle/landing-advertorial] "LP newsletter capture but visitor never purchases — when do we stop emailing?" — DROPPED: generic email sunset lifecycle
+- cycle 87 [layout/header-nav] "Header height on mobile vs desktop — what does the spec lock and how does sticky" — DROPPED: generic design tokens, arbitrary values
+- cycle 87 [layout/header-nav] "How do we prevent the header from causing CLS at first paint when fonts/menus lo" — DROPPED: generic CLS/font-display web perf
+- cycle 87 [layout/header-nav] "Mobile hamburger placement — left or right, and what does cart icon do alongside" — DROPPED: generic mobile hamburger placement
+- cycle 87 [layout/header-nav] "Sticky header overlays anchor-link content — how do we keep section jumps landin" — DROPPED: generic scroll-margin CSS pattern
+- cycle 87 [layout/header-nav] "Announcement bar above header — when to include, and how does it interact with s" — DROPPED: generic announcement bar pattern
+- cycle 87 [layout/header-nav] "Desktop mega-menu — how wide, where anchored, how do we keep it inside the viewp" — DROPPED: generic mega-menu width math
+- cycle 87 [layout/header-nav] "How does the header behave during the cart drawer being open — hide, dim, or sta" — DROPPED: generic modal focus-trap a11y
+- cycle 87 [typography/header-nav] "Which font and weight does nav use, and how is it tokenized?" — DROPPED: generic CSS custom-property tokenization
+- cycle 87 [typography/header-nav] "Logo wordmark vs SVG file — which, and what fallback for old browsers?" — DROPPED: generic inline-SVG perf advice
+- cycle 87 [typography/header-nav] "What font-size and line-height keep nav items readable but tight enough for 7-it" — DROPPED: arbitrary nav typography numbers
+- cycle 87 [typography/header-nav] "Uppercase nav: brand-correct but bad for screen readers and scanning — when do w" — DROPPED: generic uppercase text-transform a11y
+- cycle 87 [typography/header-nav] "Active/current page nav item — how do we style without relying on color alone?" — DROPPED: generic aria-current+underline a11y
+- cycle 87 [typography/header-nav] "Nav dropdown body text — what hierarchy keeps a 4-column mega-menu legible witho" — DROPPED: generic typographic hierarchy
+- cycle 89 [data-binding/header-nav] "Header search submits to `/search?q=` but client wants to use Searchanise — whic" — DROPPED: shop.installed_apps not a real object
+- cycle 89 [data-binding/header-nav] "Cart icon count comes from `cart.item_count` but Recharge subscription line item" — DROPPED: reject filter nested-path syntax invented
+- cycle 89 [i18n-currency-rtl/header-nav] "Arabic store layout — header keeps left-aligned logo, right-aligned nav, breakin" — DROPPED: rtl_aware filter does not exist
+- cycle 90 [states-empty-loading-error/header-nav] "Mini-cart drawer opened with 0 items — what's the state?" — DROPPED: generic empty-state advice
+- cycle 90 [edge-cases/header-nav] "Cart count exceeds 99 — does the bubble overflow the header pill?" — DROPPED: generic CSS, not Shopify-specific
+- cycle 90 [edge-cases/header-nav] "RTL language (Arabic, Hebrew) flips the header — does the logo stay left or move" — DROPPED: generic RTL CSS advice
+- cycle 90 [edge-cases/header-nav] "Merchant has 60+ collections — mega-menu becomes unscannable?" — DROPPED: generic IA cap
+- cycle 90 [edge-cases/header-nav] "Sticky header on iOS Safari with rubber-band scroll causes the header to detach " — DROPPED: generic CSS sticky advice
+- cycle 90 [edge-cases/header-nav] "Cart bubble flickers when customer clicks Buy with Shop Pay (no header re-render" — DROPPED: shopify:cart:update postMessage not standard
+- cycle 90 [edge-cases/header-nav] "Header on a password-protected (pre-launch) store — does the nav even show?" — DROPPED: shop.password_protected not a real property
+- cycle 90 [edge-cases/header-nav] "User has reduced-motion OS preference — does the mega-menu still slide-down anim" — DROPPED: generic reduced-motion rule
+- cycle 90 [legal-compliance/header-nav] "GDPR cookie banner from Shopify Customer Privacy API overlaps the sticky header " — DROPPED: generic CSS-var, no Shopify hook
+- cycle 90 [legal-compliance/header-nav] "Footer legal pages exist but header has no quick path to Privacy/Terms — require" — DROPPED: jurisdiction legal, not Shopify mechanism
+- cycle 90 [legal-compliance/header-nav] "Age-gate modal for alcohol/CBD stores — does it block the header or layer above " — DROPPED: generic modal focus-trap
+- cycle 90 [legal-compliance/header-nav] "Logo image in header missing alt text — WCAG violation?" — DROPPED: generic WCAG alt-text
+- cycle 90 [legal-compliance/header-nav] "Header search input on iOS triggers a different keyboard than expected — accessi" — DROPPED: generic input attributes
+- cycle 90 [merchandising/header-nav] "Free shipping announcement bar — what if merchant ships to multiple countries wi" — DROPPED: shop metafields not market-scoped
+- cycle 90 [merchandising/header-nav] "Mega-menu 'Bestsellers' column — what defines bestseller without faking it?" — DROPPED: sold_count is not a real property
+- cycle 90 [search-filtering/header-nav] "Predictive-search results — show products, collections, pages, or all?" — DROPPED: generic configuration default
+- cycle 90 [search-filtering/header-nav] "Header search input — does it submit on every keystroke or debounced?" — DROPPED: generic debounce advice
+- cycle 90 [search-filtering/header-nav] "Header search keyboard navigation — arrow keys to traverse results?" — DROPPED: generic a11y combobox pattern
+- cycle 90 [search-filtering/header-nav] "Header search drawer on mobile takes over the whole viewport — how does the user" — DROPPED: generic mobile tap target
+- cycle 90 [search-filtering/header-nav] "Search results URL — preserve query for analytics and back-button?" — DROPPED: generic form submission advice
+- cycle 90 [nav-ia/header-nav] "Should the cart icon be on the right edge or left of utility nav?" — DROPPED: generic UX placement
+- cycle 90 [nav-ia/header-nav] "Should the logo be centered or left-aligned in header?" — DROPPED: generic design advice
+- cycle 90 [nav-ia/header-nav] "Mega-menu or simple dropdown — when to use which?" — DROPPED: generic IA decision
+- cycle 90 [nav-ia/header-nav] "Top-level nav order — Shop / Collections / About / Contact?" — DROPPED: generic nav ordering
+- cycle 90 [nav-ia/header-nav] "How deep should nav go — 2 levels or 3?" — DROPPED: generic nav depth advice
+- cycle 90 [nav-ia/header-nav] "Should social-icons live in the header or footer?" — DROPPED: generic placement convention
+- cycle 90 [nav-ia/header-nav] "Mobile hamburger menu — does it slide from left or full-screen overlay?" — DROPPED: generic mobile drawer pattern
+- cycle 90 [forms-validation/header-nav] "Header search input validation — block empty submissions?" — DROPPED: generic empty-input guard
+- cycle 90 [forms-validation/header-nav] "Currency/country selector form — what happens on submit error (Markets API 4xx)?" — DROPPED: generic form error toast
+- cycle 90 [forms-validation/header-nav] "Newsletter signup success state — inline message or redirect?" — DROPPED: generic inline success pattern
+- cycle 90 [forms-validation/header-nav] "Newsletter form double-submission via fast clicks?" — DROPPED: generic double-submit prevention
+- cycle 92 [mobile/footer] "Footer accordion columns collapse on mobile but tap targets are <44px and chevro" — DROPPED: generic CSS tap-target/padding advice
+- cycle 92 [mobile/footer] "Newsletter input + submit button stack awkwardly on 360px Android, button gets c" — DROPPED: generic responsive form CSS
+- cycle 92 [mobile/footer] "Footer payment-icon row wraps to 3 lines on iPhone SE and pushes copyright off-s" — DROPPED: generic flex-wrap CSS
+- cycle 92 [mobile/footer] "Footer social icons render as 32px squares on mobile failing Apple HIG 44px targ" — DROPPED: generic a11y tap-target sizing
+- cycle 92 [mobile/footer] "Long footer link lists (20+ items per column) create a 4000px scroll on mobile —" — DROPPED: generic IA/accordion advice
+- cycle 92 [mobile/footer] "Footer sits behind iOS Safari bottom URL bar so 'Back to top' button is unreacha" — DROPPED: generic iOS safe-area CSS
+- cycle 92 [mobile/footer] "Footer language/currency selectors are native <select> on mobile — they look bro" — DROPPED: generic select styling
+- cycle 92 [a11y/footer] "Footer accordion <details> summaries don't announce expanded state to VoiceOver " — DROPPED: generic a11y details/summary
+- cycle 92 [a11y/footer] "Footer link text 'Click here' / 'Learn more' is repeated 8x — fails axe link-nam" — DROPPED: generic link-name a11y rule
+- cycle 92 [a11y/footer] "Footer newsletter form has no <label> — input only has placeholder='Email' — fai" — DROPPED: generic form label a11y
+- cycle 92 [a11y/footer] "Footer social icons have no accessible name — VoiceOver reads 'link, link, link'" — DROPPED: generic aria-label a11y
+- cycle 92 [a11y/footer] "Footer text on dark background has color-contrast 3.8:1 (link-on-bg) — fails WCA" — DROPPED: generic WCAG contrast rule
+- cycle 92 [a11y/footer] "Footer 'Back to top' link uses CSS arrow (▲) — screen readers say 'black up-poin" — DROPPED: generic aria-hidden glyph rule
+- cycle 92 [a11y/footer] "Footer columns inside <nav> elements all use aria-label='Footer' — duplicate lan" — DROPPED: generic landmark labeling
+- cycle 92 [cro/footer] "Footer has 14 columns of links — analytics shows 92% of footer clicks go to 4 li" — DROPPED: generic CRO IA advice
+- cycle 92 [cro/footer] "Footer has no 'Contact us' visible above the fold of the column — buried under 6" — DROPPED: generic CRO placement advice
+- cycle 92 [cro/footer] "Footer 'Sign up for 10% off' uses a single email field but our checkout requires" — DROPPED: generic CRO email vs SMS
+- cycle 92 [trust-social-proof/footer] "Footer trust badge 'Secure checkout SSL' is generic — Shopify already secures ch" — DROPPED: generic trust-badge CRO advice
+- cycle 92 [trust-social-proof/footer] "Footer wants trust signals but client is brand-new — no reviews, no press, no cu" — DROPPED: generic brand content advice
+- cycle 92 [trust-social-proof/footer] "Footer has BBB Accredited badge but BBB rating is only B+ — should we still show" — DROPPED: generic third-party badge honesty
+- cycle 92 [copy-voice/footer] "Footer newsletter CTA 'SUBSCRIBE' is shouty caps but brand voice is warm/lowerca" — DROPPED: generic copy voice rule
+- cycle 92 [copy-voice/footer] "Footer 'About us' tagline is two paragraphs of generic mission copy — should the" — DROPPED: generic copy length advice
+- cycle 92 [copy-voice/footer] "Footer disclaimer text is legalese boilerplate not in brand voice — should we re" — DROPPED: generic legal copy voice
+- cycle 92 [copy-voice/footer] "Footer column links use Title Case but mid-page nav uses sentence case — which w" — DROPPED: generic case-style design choice
+- cycle 92 [honesty-claims/footer] "Footer newsletter says 'No spam, ever' but Klaviyo flow sends 4 emails/week — cl" — DROPPED: generic email cadence honesty
+- cycle 92 [honesty-claims/footer] "Footer says 'Carbon-neutral shipping' but client only offsets via a $0.10/order " — DROPPED: generic sustainability claim honesty
+- cycle 92 [honesty-claims/footer] "Footer 'Only X left' counter is requested but no real inventory binding — should" — DROPPED: generic surface-placement rule
+- cycle 92 [honesty-claims/footer] "Footer 'Trusted by 100,000+ customers' is from 3 years ago, lifetime cumulative " — DROPPED: generic claim-framing honesty
+- cycle 92 [honesty-claims/footer] "Footer 'Award-winning' tagline but the award is a 2019 single-category mention —" — DROPPED: generic award-claim honesty
+- cycle 92 [honesty-claims/footer] "Footer 'Free returns' badge but actual policy charges return shipping unless def" — DROPPED: generic returns wording honesty
+- cycle 92 [data-binding/footer] "Footer 'Free shipping over $X' threshold needs to match what cart drawer says — " — DROPPED: redundant with entry 19
+- cycle 92 [data-binding/footer] "Footer payment-icon SVGs are inline literal markup — adding/removing a gateway n" — DROPPED: redundant with entry 21
+- cycle 93 [performance-cwv/footer] "Footer payment icons ship as 12 separate PNGs that the LCP image waits behind on" — DROPPED: generic web perf, not Shopify-specific
+- cycle 93 [performance-cwv/footer] "The Instagram-feed app embed in the footer pulls a 600KB SDK and tanks INP — kee" — DROPPED: generic lazy-hydration advice
+- cycle 93 [performance-cwv/footer] "Footer newsletter section reflows on mobile when the consent checkbox wraps, bre" — DROPPED: generic CSS layout fix
+- cycle 93 [performance-cwv/footer] "Custom webfont used only in the footer copyright line loads a 90KB woff2 — worth" — DROPPED: generic font-loading advice
+- cycle 93 [performance-cwv/footer] "Footer 'recently viewed' grid renders 4 product cards with full images on first " — DROPPED: generic lazy-load pattern
+- cycle 93 [performance-cwv/footer] "Footer accordion JS (mobile column collapse) is 14KB of jQuery-style code — repl" — DROPPED: generic native HTML advice
+- cycle 93 [i18n-currency-rtl/footer] "In RTL locales (Arabic, Hebrew), the footer 4-column grid stacks wrong — what's " — DROPPED: generic RTL CSS, truncated
+- cycle 93 [i18n-currency-rtl/footer] "Newsletter consent text differs per region (GDPR vs CAN-SPAM vs nothing) — where" — DROPPED: generic consent matrix advice
+- cycle 93 [states-empty-loading-error/footer] "Newsletter submit fires but Klaviyo is down — what does the user see?" — DROPPED: generic fetch error handling
+- cycle 93 [states-empty-loading-error/footer] "Footer has empty 'recently viewed' on first visit — what should render?" — DROPPED: recently_viewed is not native Liquid object
+- cycle 93 [states-empty-loading-error/footer] "Newsletter form double-submits when user mashes Enter on slow 3G — duplicate Kla" — DROPPED: generic double-submit pattern
+- cycle 93 [states-empty-loading-error/footer] "Social icon row has 3 of 5 socials configured — render 5 with broken links or 3?" — DROPPED: generic metafield iteration
+- cycle 93 [states-empty-loading-error/footer] "Instagram embed fails to load (rate limit) — leave a broken iframe?" — DROPPED: generic try/catch advice
+- cycle 93 [states-empty-loading-error/footer] "Footer 'Store Locator' link shows on a single-store brand — should it appear?" — DROPPED: generic content-source advice
+- cycle 93 [states-empty-loading-error/footer] "User submits newsletter then immediately navigates — does the in-flight request " — DROPPED: generic sendBeacon pattern
+- cycle 93 [edge-cases/footer] "Print stylesheet — does the footer print on order confirmation pages?" — DROPPED: generic print stylesheet advice
+- cycle 93 [edge-cases/footer] "Very long brand name overflows the footer brand row on iPhone SE (320px) — how d" — DROPPED: generic responsive CSS
+- cycle 93 [legal-compliance/footer] "Privacy, terms, refund, shipping — all four required in footer or just whichever" — DROPPED: generic legal-pages compliance
+- cycle 93 [legal-compliance/footer] "GDPR cookie consent — does the footer carry the 'manage cookies' re-open link?" — DROPPED: unverified Shopify.customerPrivacy method name
+- cycle 93 [legal-compliance/footer] "ADA/AODA: is the footer keyboard-traversable and announces sections?" — DROPPED: generic a11y/ARIA basics
+- cycle 93 [legal-compliance/footer] "Newsletter signup without explicit consent in California — CCPA risk?" — DROPPED: generic CCPA legal advice
+- cycle 93 [legal-compliance/footer] "Business address required in commercial email per CAN-SPAM — where does it live?" — DROPPED: generic CAN-SPAM legal advice
+- cycle 93 [legal-compliance/footer] "Age-gated products (alcohol, CBD) — does the footer need a disclosure?" — DROPPED: generic regulatory disclosure advice
+- cycle 93 [legal-compliance/footer] "DSAR (Data Subject Access Request) link — is it required in footer?" — DROPPED: generic DSAR legal advice
+- cycle 93 [merchandising/footer] "Should the footer feature a 'Best Sellers' product list?" — DROPPED: generic CRO opinion, not enforceable
+- cycle 93 [merchandising/footer] "App-store badges (App Store, Google Play) in footer — only if a real app exists?" — DROPPED: generic link-health check
+- cycle 93 [merchandising/footer] "Promotional banner ('Free shipping over $50') in footer — should it dynamically " — DROPPED: metafield doesn't mirror real shipping rate
+- cycle 93 [merchandising/footer] "Affiliate/Referral program link — surface in footer or hide?" — DROPPED: generic conditional-render advice
+- cycle 95 [spacing-rhythm/mega-menu] "How tight should the panel's top edge sit below the sticky header — flush, gap, " — DROPPED: generic spacing rule, not Shopify-specific
+- cycle 95 [spacing-rhythm/mega-menu] "How do we handle rhythm when a featured image block sits next to 3 link columns " — DROPPED: generic design spec, not Shopify mechanism
+- cycle 95 [spacing-rhythm/mega-menu] "What rhythm rule prevents a 1-link 'New' column from looking like a typo next to" — DROPPED: generic design heuristic, not Shopify-specific
+- cycle 95 [imagery-art-direction/mega-menu] "Should the mega-menu featured image be a product hero or a lifestyle/category sh" — DROPPED: generic art direction, not Shopify-bound
+- cycle 95 [imagery-art-direction/mega-menu] "What art-direction rule prevents a featured menu image from clashing with the pa" — DROPPED: generic visual contrast advice
+- cycle 95 [motion/mega-menu] "How fast should the panel open on hover, and what easing matches a premium feel " — DROPPED: generic motion timing, not Shopify-specific
+- cycle 95 [motion/mega-menu] "How do we handle prefers-reduced-motion users on the mega-menu?" — DROPPED: universal reduced-motion rule
+- cycle 95 [motion/mega-menu] "Should the chevron next to a mega-menu trigger animate, and how?" — DROPPED: generic chevron animation spec
+- cycle 95 [motion/mega-menu] "What's the right way to animate the featured image inside the panel without comp" — DROPPED: generic motion guidance
+- cycle 95 [motion/mega-menu] "Is hover-to-open OK for the mega-menu, or must click-to-open be the only model?" — DROPPED: universal a11y disclosure rule
+- cycle 95 [mobile/mega-menu] "How should the mega-menu collapse for mobile — drawer, accordion, or full-screen" — DROPPED: generic mobile drawer pattern
+- cycle 95 [mobile/mega-menu] "What's the minimum tap-target for a mega-menu link inside the mobile drawer?" — DROPPED: universal WCAG tap-target rule
+- cycle 95 [mobile/mega-menu] "Where do featured imagery blocks belong in the mobile mega-menu?" — DROPPED: generic mobile layout opinion
+- cycle 95 [mobile/mega-menu] "How does the mobile mega-menu drawer handle a notched/safe-area iPhone?" — DROPPED: generic safe-area CSS, not Shopify
+- cycle 95 [mobile/mega-menu] "What's the rule for landscape phones / tablets where the drawer + content both c" — DROPPED: generic responsive drawer rule
+- cycle 95 [mobile/mega-menu] "How do we handle a mobile mega-menu when the merchant configured 6+ top-level it" — DROPPED: generic mobile scroll handling
+- cycle 95 [a11y/mega-menu] "What ARIA pattern must the mega-menu use — menubar, disclosure, or nav+button?" — DROPPED: universal ARIA disclosure pattern
+- cycle 95 [a11y/mega-menu] "How must keyboard focus behave when a mega-menu panel opens?" — DROPPED: universal keyboard a11y rule
+- cycle 95 [a11y/mega-menu] "What contrast ratio must mega-menu link text + hover state meet, and how do we v" — DROPPED: universal WCAG contrast rule
+- cycle 95 [a11y/mega-menu] "How should the mega-menu announce 'New' or 'Sale' badges to screen readers witho" — DROPPED: generic ARIA badge pattern
+- cycle 95 [a11y/mega-menu] "How does the mobile drawer mega-menu handle focus trap + return-on-close?" — DROPPED: universal focus trap pattern
+- cycle 95 [a11y/mega-menu] "What's the rule for the mega-menu when the user has prefers-color-scheme: dark a" — DROPPED: generic color-scheme handling
+- cycle 95 [cro/mega-menu] "How do we expose 'Best Sellers' inside the mega-menu without hardcoding products" — DROPPED: Storefront API has no sales_rank sort
+- cycle 95 [cro/mega-menu] "What's the CRO rule for the order of top-level mega-menu items?" — DROPPED: generic IA ordering opinion
+- cycle 95 [cro/mega-menu] "Should we put a search input directly inside the mega-menu, and what does that c" — DROPPED: generic search placement opinion
+- cycle 95 [cro/mega-menu] "How do we A/B test mega-menu structure without breaking the design system?" — DROPPED: generic A/B testing guidance
+- cycle 95 [trust-social-proof/mega-menu] "Should we show a 'Recently viewed' or 'Customers also bought' module in the mega" — DROPPED: generic merchandising opinion
+- cycle 96 [copy-voice/mega-menu] "What tone should top-level mega-menu labels use — clever brand-y phrases or plai" — DROPPED: generic copy advice, not Shopify-specific
+- cycle 96 [copy-voice/mega-menu] "Column headers in the mega-menu — how many words and what part of speech?" — DROPPED: generic copy rule
+- cycle 96 [copy-voice/mega-menu] "Promo-tile CTAs inside the mega-menu — 'Shop now' vs benefit-led copy?" — DROPPED: generic CTA copy advice
+- cycle 96 [copy-voice/mega-menu] "Should mega-menu copy be sentence-case or title-case across labels, tiles, and C" — DROPPED: generic case convention
+- cycle 96 [copy-voice/mega-menu] "How should sale/clearance labels in the menu read without screaming?" — DROPPED: generic anti-shouty copy rule
+- cycle 96 [copy-voice/mega-menu] "Mobile drawer 'Back' and 'Close' affordances — what's the canonical wording?" — DROPPED: generic mobile UX wording
+- cycle 96 [copy-voice/mega-menu] "Can mega-menu copy reference the user ('your routine', 'for you') without a pers" — DROPPED: generic voice rule
+- cycle 96 [performance-cwv/mega-menu] "Mega-menu opens on hover — does it cause CLS on the page below?" — DROPPED: generic CSS/CLS pattern
+- cycle 96 [performance-cwv/mega-menu] "How much JS is allowed for mega-menu interactivity?" — DROPPED: generic JS budget
+- cycle 96 [performance-cwv/mega-menu] "Menu uses a custom font for headers — what's the loading strategy?" — DROPPED: generic font-loading advice
+- cycle 96 [performance-cwv/mega-menu] "Mobile drawer animation — what's the acceptable transition cost?" — DROPPED: generic CSS animation perf
+- cycle 96 [seo-structured-data/mega-menu] "BreadcrumbList from the menu — should hover state generate breadcrumbs?" — DROPPED: generic SEO clarification
+- cycle 96 [seo-structured-data/mega-menu] "Internal anchor text for menu links — same as page title or marketing copy?" — DROPPED: generic SEO anchor-text rule
+- cycle 96 [seo-structured-data/mega-menu] "Menu has a 'Blog' L1 — should it emit any article schema?" — DROPPED: generic SEO clarification
+- cycle 96 [seo-structured-data/mega-menu] "Should sale/promo tiles in the menu use Offer schema?" — DROPPED: generic SEO clarification
+- cycle 96 [seo-structured-data/mega-menu] "Search Console flags 'discovered, currently not indexed' on menu-only pages — wh" — DROPPED: generic noindex SEO advice
+- cycle 96 [i18n-currency-rtl/mega-menu] "Does the mega-menu flip layout in RTL locales (Arabic, Hebrew)?" — DROPPED: request.locale auto-dir unverified
+- cycle 96 [i18n-currency-rtl/mega-menu] "Promo tile copy in RTL — how is bilingual quote/punctuation handled?" — DROPPED: generic i18n advice
+- cycle 96 [i18n-currency-rtl/mega-menu] "Free-shipping threshold in the menu — does the amount localize?" — DROPPED: shop.shipping_profiles not a Liquid object
+- cycle 96 [states-empty-loading-error/mega-menu] "Mobile drawer opens before JS hydrates — what state does the user see?" — DROPPED: generic no-JS web pattern
+- cycle 97 [edge-cases/mega-menu] "On a 1366×768 laptop the mega-menu panel is taller than the viewport and the bot" — DROPPED: generic CSS overflow, not Shopify
+- cycle 97 [edge-cases/mega-menu] "Featured product card inside the mega-menu points to a product that has been set" — DROPPED: product.status not storefront Liquid property
+- cycle 97 [edge-cases/mega-menu] "iPad / touch laptop: hover never fires, so the mega-menu panel never opens — ent" — DROPPED: generic touch handling
+- cycle 97 [edge-cases/mega-menu] "Third-party app (Wishlist / Currency converter / Search) injects DOM into the he" — DROPPED: generic z-index/isolation CSS
+- cycle 97 [legal-compliance/mega-menu] "GDPR consent banner overlaps the mega-menu on first visit — user clicks 'Shop' a" — DROPPED: generic consent banner z-index
+- cycle 97 [legal-compliance/mega-menu] "Mega-menu has no Shipping or Returns link — EU Consumer Rights Directive require" — DROPPED: generic IA/legal advice
+- cycle 97 [legal-compliance/mega-menu] "EAA 2025 (European Accessibility Act, June 2025 enforcement) — does the mega-men" — DROPPED: generic compliance, link rel filler
+- cycle 97 [merchandising/mega-menu] "'New Arrivals' column — define 'new' without a manual tag" — DROPPED: not a valid smart-collection condition
+- cycle 97 [merchandising/mega-menu] "Limited-edition / drop product promoted in mega-menu — what happens when it sell" — DROPPED: generic honesty restatement
+- cycle 97 [search-filtering/mega-menu] "Search bar autofocuses when mega-menu opens — keyboard users get focus-stolen, s" — DROPPED: generic autofocus a11y
+- cycle 97 [search-filtering/mega-menu] "Mega-menu 'Recently Viewed' column — comes from where, and what shows on first v" — DROPPED: generic localStorage pattern
+- cycle 97 [search-filtering/mega-menu] "Analytics: how do we separate 'mega-menu search' clicks from 'header search icon" — DROPPED: generic GTM dataLayer advice
+- cycle 97 [nav-ia/mega-menu] "Catalog has 12 collections — does this store get a mega-menu or a flat dropdown?" — DROPPED: generic IA decision rule
+- cycle 97 [nav-ia/mega-menu] "At what breakpoint does mega-menu collapse to a mobile drawer? iPad portrait is " — DROPPED: generic responsive breakpoint
+- cycle 97 [nav-ia/mega-menu] "Sticky header vs static — sticky keeps mega-menu always accessible but costs pai" — DROPPED: generic sticky header perf
+- cycle 97 [nav-ia/mega-menu] "What order do mega-menu categories appear — alphabetical, traffic-driven, manual" — DROPPED: generic merchandising order advice
+- cycle 97 [nav-ia/mega-menu] "Wellness / skincare store wants both 'Shop by Concern' (acne, dryness) AND 'Shop" — DROPPED: generic dual-taxonomy IA
+- cycle 97 [forms-validation/mega-menu] "Email field validation in compact mega-menu signup — HTML5 `type=email` is loose" — DROPPED: generic HTML5 validation
+- cycle 97 [forms-validation/mega-menu] "Search form inside mega-menu — should every keystroke fire a request, and what's" — DROPPED: generic debounce/abort advice
+- cycle 97 [forms-validation/mega-menu] "Newsletter consent checkbox — EU requires explicit opt-in, but a checked-by-defa" — DROPPED: generic GDPR consent UX
+- cycle 97 [forms-validation/mega-menu] "User submits newsletter form, mega-menu must show success — but a hover-opened p" — DROPPED: generic menu-lock UX
+- cycle 97 [forms-validation/mega-menu] "Error messaging inside a compact mega-menu form — how to show 'Email already sub" — DROPPED: generic a11y error pattern
+- cycle 97 [email-lifecycle/mega-menu] "Double opt-in flow — Shopify defaults to single opt-in but Klaviyo / German law " — DROPPED: Shopify opt-in is store-wide not per-market
+- cycle 97 [email-lifecycle/mega-menu] "Klaviyo embed script inside mega-menu — how to avoid tanking LCP from a third-pa" — DROPPED: generic third-party JS defer advice
+- cycle 97 [email-lifecycle/mega-menu] "Account login link in mega-menu — when customer logs in, should a 'welcome-back'" — DROPPED: generic email trigger commentary
+- cycle 97 [email-lifecycle/mega-menu] "Mega-menu 'Refer a friend' link — should referral email flow be Shopify-native o" — DROPPED: vague provider-routing decision
+- cycle 99 [a11y/announcement-bar] "Bar is dismissible but focus jumps to <body> on close, dumping keyboard users at" — DROPPED: generic a11y focus-management advice
+- cycle 99 [a11y/announcement-bar] "Bar rotates 3 messages every 4s — screen readers either spam every change or mis" — DROPPED: generic aria-live rotation pattern
+- cycle 99 [a11y/announcement-bar] "Multi-message slider has prev/next arrows but only mouse-clickable — keyboard us" — DROPPED: generic keyboard a11y, not Shopify-specific
+- cycle 99 [a11y/announcement-bar] "Auto-rotating bar ignores prefers-reduced-motion — vestibular users get continuo" — DROPPED: generic prefers-reduced-motion advice
+- cycle 99 [a11y/announcement-bar] "Close (×) button is 18×18px on mobile — fails WCAG 2.5.5 (24×24 minimum) and is " — DROPPED: generic WCAG tap-target rule
+- cycle 99 [a11y/announcement-bar] "Countdown timer updates every second inside the bar — VoiceOver re-reads the who" — DROPPED: generic screen-reader countdown pattern
+- cycle 99 [cro/announcement-bar] "Should the offer in the bar say '20% off' or '$20 off your first order' — both, " — DROPPED: generic CRO copy heuristic
+- cycle 99 [cro/announcement-bar] "Does adding an inline CTA ('Shop sale →') in the bar lift CTR, or does it cannib" — DROPPED: generic CTA placement advice
+- cycle 99 [cro/announcement-bar] "Place the bar above the header, or below it?" — DROPPED: generic header placement preference
+- cycle 99 [cro/announcement-bar] "Does making the bar dismissible hurt conversion (offer disappears) or help (less" — DROPPED: generic dismissibility CRO opinion
+- cycle 99 [trust-social-proof/announcement-bar] "Live 'X people shopping right now' counter in the bar — yes or no?" — DROPPED: no real Shopify mechanism named
+- cycle 99 [trust-social-proof/announcement-bar] "Show 'Secure checkout' / payment-icon row in the announcement bar?" — DROPPED: generic UX placement advice
+- cycle 99 [copy-voice/announcement-bar] "Emojis in the announcement bar — yes, no, or niche-conditional?" — DROPPED: generic emoji-by-voice copy advice
+- cycle 99 [copy-voice/announcement-bar] "Should announcement bar copy use ALL CAPS for emphasis?" — DROPPED: generic typography rule
+- cycle 99 [copy-voice/announcement-bar] "Localization tone — should '20% off' translate literally in every market, or ada" — DROPPED: generic localization tone advice
+- cycle 99 [copy-voice/announcement-bar] "Punctuation in the bar — exclamation marks, em-dashes, ellipses?" — DROPPED: generic punctuation copy rule
+- cycle 99 [copy-voice/announcement-bar] "Should the bar copy lead with feature ('Code SUMMER20') or benefit ('Save 20% th" — DROPPED: generic benefit-first CRO copy
+- cycle 99 [data-binding/announcement-bar] "Countdown timer — render server-side (Liquid 'now') or client-side (JS Date.now)" — DROPPED: generic timer-rendering advice
+- cycle 99 [performance-cwv/announcement-bar] "Bar uses a custom font weight that triggers FOIT, making the bar text invisible " — DROPPED: generic font-loading perf advice
+- cycle 99 [performance-cwv/announcement-bar] "Rotation script is a 12KB JS lib loaded synchronously — delays LCP by 300ms." — DROPPED: generic JS-bundle perf advice
+- cycle 99 [performance-cwv/announcement-bar] "Bar uses an SVG icon (truck for shipping) — 8KB inline SVG bloats the critical H" — DROPPED: generic SVG sprite perf advice
+- cycle 99 [performance-cwv/announcement-bar] "Should bar CSS be inlined in <head> or shipped in theme.css?" — DROPPED: wrong: {% stylesheet %} not inlined in head
+- cycle 99 [performance-cwv/announcement-bar] "Bar height differs between mobile (36px) and desktop (40px) — CLS triggers at th" — DROPPED: generic CSS min-height advice
+- cycle 99 [performance-cwv/announcement-bar] "User dismisses bar on home → navigates to PDP → bar reappears, causing CLS on ev" — DROPPED: generic sessionStorage dismissal pattern
+- cycle 100 [seo-structured-data/announcement-bar] "Bar copy 'FREE SHIPPING $50+' is being concatenated into Google SERP title/descr" — DROPPED: generic SEO h1/h2 advice, not Shopify-specific
+- cycle 100 [seo-structured-data/announcement-bar] "Bar has a 'shop the sale' link — does it need to appear in sitemap.xml or carry " — DROPPED: generic, wrong nofollow advice for internal links
+- cycle 100 [seo-structured-data/announcement-bar] "Bar is wrapped in a <section> with no landmark role — does that hurt SEO/a11y cr" — DROPPED: generic a11y landmark/skip-link advice
+- cycle 100 [i18n-currency-rtl/announcement-bar] "Arabic/Hebrew storefront — bar text + arrow icon direction?" — DROPPED: request.locale.dir property does not exist
+- cycle 100 [i18n-currency-rtl/announcement-bar] "German translation 'KOSTENLOSER VERSAND AB 50€' is ~40% longer than English and " — DROPPED: generic mobile typography/length advice
+- cycle 100 [states-empty-loading-error/announcement-bar] "FOUC — bar text flashes for 200ms then disappears because a JS hook removes it a" — DROPPED: generic FOUC/localStorage pattern, not Shopify
+- cycle 100 [states-empty-loading-error/announcement-bar] "Dismissed by user — persistence across pages + how do we re-show after a new pro" — DROPPED: generic localStorage dismissal pattern
+- cycle 100 [edge-cases/announcement-bar] "Bar overlays vs pushes content — which one and what's the CLS cost?" — DROPPED: generic CLS/positioning advice
+- cycle 100 [edge-cases/announcement-bar] "Marquee/scrolling bar — what's the a11y rule?" — DROPPED: generic prefers-reduced-motion a11y
+- cycle 100 [edge-cases/announcement-bar] "Cookie consent banner + announcement bar both want the top of screen — Z-index w" — DROPPED: generic z-index/consent layering
+- cycle 100 [edge-cases/announcement-bar] "Carousel autoplay — does it pause on user interaction?" — DROPPED: generic autoplay-pause a11y rule
+- cycle 100 [legal-compliance/announcement-bar] "'FREE SHIPPING' but actually only on orders >$50 — is the bar misleading?" — DROPPED: mostly generic copy guidance
+- cycle 100 [merchandising/announcement-bar] "BFCM peak — 4 messages need rotation strategy (shipping + discount + loyalty + p" — DROPPED: generic rotation/sequencing CRO advice
+- cycle 100 [merchandising/announcement-bar] "Bar promo gives 15% off but a PDP already shows a 20% sale price — which wins? D" — DROPPED: generic copy-conflict guidance
+- cycle 100 [search-filtering/announcement-bar] "Predictive search dropdown opens beneath the announcement bar — does z-index/ove" — DROPPED: generic z-index/overlay layering
+- cycle 100 [search-filtering/announcement-bar] "Bar promotes 'SALE' — should the collection page expose an 'On Sale' filter face" — DROPPED: filter.v.price.compare_at_gt is not a real filter
+- cycle 103 [performance-cwv/password-page] "Countdown timer's setInterval(100ms) is causing CLS via reflowing digits" — DROPPED: generic CSS/CLS advice
+- cycle 103 [performance-cwv/password-page] "Klaviyo/Mailchimp embed JS is render-blocking on the password page" — DROPPED: generic defer/no-JS pattern
+- cycle 103 [performance-cwv/password-page] "Video background hero auto-plays a 12MB MP4 on mobile" — DROPPED: generic video performance
+- cycle 103 [performance-cwv/password-page] "Web fonts cause FOIT/FOUT flash on password page" — DROPPED: generic font preload advice
+- cycle 103 [performance-cwv/password-page] "Multiple third-party pixels (Meta+TikTok+Pinterest+GA4) all firing on page load " — DROPPED: generic consent-gated pixel loader
+- cycle 103 [performance-cwv/password-page] "Custom cursor + parallax + intersection-observer animations cause jank on mid-ti" — DROPPED: generic prefers-reduced-motion advice
+- cycle 103 [seo-structured-data/password-page] "Favicon is still Shopify's default S-icon when password page goes live" — DROPPED: generic favicon requirement
+- cycle 103 [i18n-currency-rtl/password-page] "Arabic launch — password page layout breaks in RTL mode" — DROPPED: locale_direction filter does not exist
+- cycle 103 [i18n-currency-rtl/password-page] "CJK languages overflow the hero CTA button on Japanese password page" — DROPPED: generic CSS overflow advice
+- cycle 103 [states-empty-loading-error/password-page] "Visitor submits invalid email — what error is shown?" — DROPPED: generic ARIA inline error
+- cycle 103 [states-empty-loading-error/password-page] "Submit button has no loading state during email POST" — DROPPED: generic aria-busy loading state
+- cycle 103 [states-empty-loading-error/password-page] "Empty newsletter form before submit — does the section have an idle/empty restin" — DROPPED: generic idle-state UX rule
+- cycle 103 [states-empty-loading-error/password-page] "What happens when Klaviyo/Mailchimp endpoint returns 500?" — DROPPED: generic 5xx retry handling
+- cycle 103 [edge-cases/password-page] "Search engine crawler ignores noindex and shows password page in SERP" — DROPPED: themes cannot set HTTP response headers
+- cycle 103 [edge-cases/password-page] "Press visitor with the password types it on mobile but autocorrect mangles it" — DROPPED: generic HTML input attributes
+- cycle 103 [edge-cases/password-page] "Cookie/consent banner shows on the password page, blocking the email form on mob" — DROPPED: generic consent banner positioning
+- cycle 104 [legal-compliance/password-page] "The coming-soon email signup needs explicit opt-in — checkbox or single-action?" — DROPPED: marketing_opt_in not a real Shopify field
+- cycle 104 [legal-compliance/password-page] "Does the accessibility statement link belong on the password page?" — DROPPED: generic WCAG, not Shopify-specific
+- cycle 104 [legal-compliance/password-page] "Can Terms of Service link be omitted when no transaction is possible on the pass" — DROPPED: generic legal opinion
+- cycle 104 [merchandising/password-page] "Lookbook/editorial imagery — how much weight before LCP tanks?" — DROPPED: generic LCP budget, not Shopify-specific
+- cycle 104 [search-filtering/password-page] "Search-bar icon visible in header but functionally disabled on password page — U" — DROPPED: generic UX, no Shopify mechanism
+- cycle 104 [nav-ia/password-page] "Footer menu links on password page — full footer or stripped?" — DROPPED: generic stripped-footer legal list
+- cycle 104 [nav-ia/password-page] "Logo click on password page — link to / (self-loop) or no link at all?" — DROPPED: generic self-loop link claim
+- cycle 104 [nav-ia/password-page] "Skip-to-content link target when the page is essentially one form?" — DROPPED: generic skip-link a11y rule
+- cycle 104 [nav-ia/password-page] "Breadcrumbs on password page when there's no parent route?" — DROPPED: generic IA rule, no Shopify hook
+- cycle 104 [forms-validation/password-page] "Password input — autocomplete behavior, show/hide toggle, browser autofill?" — DROPPED: generic form a11y, not Shopify-specific
+- cycle 104 [forms-validation/password-page] "Email signup validation — client-side regex vs server validation?" — DROPPED: generic form validation advice
+- cycle 104 [forms-validation/password-page] "Form error messages — where do they render and are they announced to screen read" — DROPPED: generic aria-live form-error rule
+- cycle 104 [forms-validation/password-page] "Bot-signup protection — honeypot vs CAPTCHA on the coming-soon email form?" — DROPPED: invented Shopify built-in bot protection
+- cycle 104 [forms-validation/password-page] "Success state after email signup — inline confirmation vs redirect to thank-you?" — DROPPED: generic CRO inline-success advice
+- cycle 104 [forms-validation/password-page] "Required field markers (asterisk, 'required' text) — visual + assistive tech par" — DROPPED: generic required-field a11y
+- cycle 104 [forms-validation/password-page] "Submit button — loading state + double-submit prevention?" — DROPPED: generic submit-button loading UX
+- cycle 104 [email-lifecycle/password-page] "Launch-announcement email — who pulls the trigger and what's the segment?" — DROPPED: generic launch-email operational timing
+- cycle 104 [email-lifecycle/password-page] "Confirmation-page copy — what expectations does it set?" — DROPPED: generic confirmation copy spec
+- cycle 104 [email-lifecycle/password-page] "Unsubscribe link in coming-soon emails — required when there's no transactional " — DROPPED: generic CAN-SPAM/GDPR unsubscribe rule
+- cycle 107 [forms-validation/bundle-builder] "A required custom engraving text field inside the bundle is submitted blank — ho" — DROPPED: Generic HTML form validation, no Shopify mechanism
+- cycle 107 [forms-validation/bundle-builder] "When a customer changes a variant selection mid-flow, do stale validation errors" — DROPPED: Generic JS state-map pattern, not Shopify-specific
+- cycle 107 [layout/quiz-finder] "As quiz answer options load or transition between questions, the question contai" — DROPPED: Generic CSS min-height anti-CLS, not Shopify-specific
+- cycle 107 [layout/quiz-finder] "On mobile, a quiz uses image-based answer tiles — how should the grid reflow at " — DROPPED: Generic CSS grid responsive advice
+- cycle 107 [layout/quiz-finder] "On a long quiz (8+ steps), if the user scrolls while a step-transition animation" — DROPPED: Generic JS animation/transition overflow advice
+- cycle 107 [layout/quiz-finder] "When the quiz inserts an email-capture step between questions, how should the fo" — DROPPED: Generic UX advice: render as step not modal
+- cycle 107 [typography/landing-advertorial] "A long-form advertorial has multiple H2 sections with no navigation — how should" — DROPPED: Generic SEO heading hierarchy, no Shopify mechanism
+- cycle 107 [typography/landing-advertorial] "A pull-quote callout block should feel typographically consistent with the theme" — DROPPED: Generic CSS custom property advice, not Shopify-specific
+- cycle 107 [typography/landing-advertorial] "The advertorial embeds a product recommendation card mid-article — how is font s" — DROPPED: Generic CSS variable consistency advice
+- cycle 107 [typography/landing-advertorial] "How should body copy line-length be constrained to maintain optimal readability " — DROPPED: Generic prose line-length advice (65ch = universal)
+- cycle 107 [spacing-rhythm/landing-advertorial] "How much spacing should separate a pull-quote block from the adjacent text secti" — DROPPED: Generic CSS spacing calculation, no Shopify mechanism
+- cycle 107 [spacing-rhythm/landing-advertorial] "A multi-chapter advertorial needs a visual chapter break — how should the spacin" — DROPPED: Generic CSS margin/border chapter-break advice
+- cycle 107 [spacing-rhythm/landing-advertorial] "An inline product CTA button sits inside editorial prose — how should its vertic" — DROPPED: Generic CSS clamp spacing for inline CTA
+- cycle 107 [spacing-rhythm/landing-advertorial] "How should the hero stack (headline + sub-headline + CTA button) spacing be gove" — DROPPED: Hardcoded 16px/32px contradicts token approach; generic scale
+- cycle 107 [spacing-rhythm/landing-advertorial] "A thin press-logo strip is embedded between sections — should it receive full se" — DROPPED: Generic section padding + logo sizing advice
+- cycle 107 [spacing-rhythm/landing-advertorial] "Multiple sections with large padding-top and padding-bottom make the advertorial" — DROPPED: Generic CSS clamp for responsive padding
+- cycle 107 [layout/header-nav] "A search bar expands on click inside the header — how is layout shift prevented " — DROPPED: Generic CSS absolute-position search bar advice
+- cycle 107 [layout/header-nav] "The cart count badge in the header clips or overflows outside the header boundar" — DROPPED: Generic CSS badge positioning, no Shopify mechanism
+- cycle 107 [typography/header-nav] "Nav link typography must feel consistent with the body font but clearly distinct" — DROPPED: Generic web typography specs, not Shopify-specific
+- cycle 107 [typography/header-nav] "Announcement bar promotional text above the header must not compete visually wit" — DROPPED: Generic typographic hierarchy, not Shopify-specific
+- cycle 107 [typography/header-nav] "Dropdown submenu items must read as subordinate to top-level nav links — what ty" — DROPPED: Generic dropdown nav typography advice
+- cycle 107 [edge-cases/header-nav] "The header nav includes an external link to a blog on a subdomain — how should i" — DROPPED: does not contain is invalid Liquid operator syntax
+- cycle 107 [edge-cases/header-nav] "When a user prints a page, does the sticky header appear twice — once in-flow an" — DROPPED: Generic print CSS advice, not Shopify-specific
+- cycle 108 [states-empty-loading-error/footer] "On a slow 3G connection the footer Klaviyo newsletter widget (JS-injected embed)" — DROPPED: min-height skeleton is generic web perf, not Shopify-specific
+- cycle 108 [copy-voice/mega-menu] "Mega-menu navigation uses Shopify collection titles verbatim (e.g., 'WOMEN-TOPS-" — DROPPED: mega_menu_label block name unverifiable; could be wrong
+- cycle 108 [copy-voice/mega-menu] "Mega-menu featured product block CTA defaults to 'Shop Now' — generic, low-inten" — DROPPED: CTA copy advice is generic, not Shopify-specific
+- cycle 108 [copy-voice/mega-menu] "Mega-menu promotional banner reads '20% off this weekend only!' but the promotio" — DROPPED: honesty/copy rule applies to any site, no Shopify mechanism
+- cycle 108 [copy-voice/mega-menu] "Predictive search input inside the mega-menu has placeholder text 'Search...' — " — DROPPED: placeholder text advice is generic UX, no Shopify mechanism cited
+- cycle 108 [copy-voice/mega-menu] "Mega-menu uses standard category labels ('Men', 'Women', 'Kids') from Shopify co" — DROPPED: nav block text settings vague; mechanism unspecified and unverifiable
+- cycle 108 [forms-validation/password-page] "The password page form allows empty submit — the theme's custom submit handler s" — DROPPED: reportValidity() is generic JS, not Shopify-specific
+- cycle 108 [forms-validation/password-page] "Shopify silently IP-locks the storefront after 5 failed password attempts. Users" — DROPPED: IP-lock-after-5-attempts claim is unverified Shopify behavior
+- cycle 108 [forms-validation/password-page] "Password input uses type=text toggled by a custom show/hide control, so iOS pres" — DROPPED: type attribute toggle is generic HTML, not Shopify-specific
+- cycle 108 [forms-validation/password-page] "The storefront password page ships without a skip-navigation link, <main> landma" — DROPPED: skip-nav / main / h1 are generic a11y, not Shopify-specific
+- cycle 108 [forms-validation/password-page] "The show/hide password toggle is a clickable <img> — no keyboard access, no ARIA" — DROPPED: aria-pressed button pattern is generic ARIA, not Shopify-specific
+- cycle 110 [typography/faq-page] "At 320px viewport the FAQ question text overflows its container. How should this" — DROPPED: Generic CSS; clamp values hardcoded despite token intent
+- cycle 110 [performance-cwv/faq-page] "The FAQ accordion open/close transition uses CSS. Does the expand animation caus" — DROPPED: Generic CSS accordion animation; no Shopify mechanism
+- cycle 110 [performance-cwv/faq-page] "Merchant embeds a YouTube video inside a FAQ answer rich-text block. What is the" — DROPPED: Rule truncated; solution ('lite-e...') is incomplete
+- cycle 110 [performance-cwv/faq-page] "A FAQ page has 50+ items across 6 categories. Does the large DOM cause high Tota" — DROPPED: Generic JS IntersectionObserver; not Shopify-specific
+- cycle 110 [nav-ia/faq-page] "Should the FAQ page appear in the main header navigation or only in the footer?" — DROPPED: Generic IA advice; no Shopify mechanism named
+- cycle 110 [nav-ia/faq-page] "The FAQ has 6 topic categories with ~12 items each. Should they be separate page" — DROPPED: Generic IA architecture; no Shopify mechanism
+- cycle 110 [nav-ia/faq-page] "On mobile, where should the FAQ category navigation sit — top sticky bar, collap" — DROPPED: -webkit-overflow-scrolling deprecated; rest generic CSS
+- cycle 110 [a11y/lookbook] "A lookbook image shows a model wearing 4 products. What should the `alt` text de" — DROPPED: Generic alt-text guidance; not Shopify-specific
+- cycle 110 [a11y/lookbook] "'Shop this look' product pins are revealed only on hover over the lookbook image" — DROPPED: Generic a11y CSS technique; no Shopify mechanism
+- cycle 110 [a11y/lookbook] "The lookbook carousel auto-advances every 4 seconds on mobile. Is this WCAG comp" — DROPPED: Generic WCAG 2.2.2; no Shopify-specific implementation
+- cycle 110 [a11y/lookbook] "A lookbook section uses a full-screen muted video background behind the product " — DROPPED: Generic HTML video a11y; not Shopify-specific
+- cycle 110 [a11y/lookbook] "The pin popover on a lookbook shows product name, price, and a Quick Add button." — DROPPED: Generic focus management; not Shopify-specific
+- cycle 110 [a11y/lookbook] "Text labels overlay lifestyle images with a semi-transparent white background at" — DROPPED: Generic WCAG contrast rule; not Shopify-specific
+- cycle 110 [a11y/lookbook] "Twelve lookbook `<img>` elements have no explicit `width` and `height` attribute" — DROPPED: Generic CLS / img-sizing advice; not Shopify-specific
+- cycle 110 [cro/lookbook] "Should the 'Shop This Look' CTA on a pin navigate to the PDP or open a quick-add" — DROPPED: Generic UX/CRO; no Shopify Liquid mechanism cited
+- cycle 110 [cro/lookbook] "Analytics show the lookbook section placed below the product grid on a collectio" — DROPPED: Generic CRO placement advice; no Shopify mechanism
+- cycle 110 [cro/lookbook] "Can ink write 'As worn by [celebrity name]' in the lookbook caption to drive asp" — DROPPED: Generic honesty/legal advice; not Shopify-specific
+- cycle 110 [cro/lookbook] "Should the lookbook include a 'Shop the full look' CTA that adds all pinned prod" — DROPPED: No Liquid mechanism cited to check variant eligibility
+- cycle 110 [merchandising/lookbook] "Merchant wants to use Instagram UGC images from customers in the lookbook instea" — DROPPED: Generic legal/rights advice; CHANGES.md is internal artifact
+- cycle 110 [a11y/store-locator] "The store locator section embeds a Google Maps `<iframe>`. Does it need an acces" — DROPPED: Generic iframe title a11y; not Shopify-specific
+- cycle 110 [a11y/store-locator] "A visitor with JavaScript disabled lands on the store locator page. What do they" — DROPPED: Generic progressive enhancement; no Shopify mechanism
+- cycle 110 [a11y/store-locator] "The store locator has a search-by-postcode field. Are the label, autocomplete at" — DROPPED: Generic HTML form a11y; not Shopify-specific
+- cycle 110 [a11y/store-locator] "The browser geolocation prompt is denied by the user. What does the store locato" — DROPPED: Generic browser geolocation API handling; not Shopify-specific
+- cycle 110 [a11y/store-locator] "Store cards display opening hours as 'Mon-Fri 9am-5pm, Sat 10am-4pm, Sun Closed'" — DROPPED: Generic HTML time element; not Shopify-specific
+- cycle 110 [a11y/store-locator] "Phone numbers and email addresses appear in store cards as plain text. What is t" — DROPPED: Generic tel/mailto markup; not Shopify-specific
+- cycle 110 [a11y/store-locator] "When a user clicks a map pin or a list item, the store detail panel updates with" — DROPPED: Generic focus management JS; not Shopify-specific
+- cycle 111 [cro/comparison] "The comparison CTA under the merchant column reads 'We win — Shop Now' — does th" — DROPPED: Generic CRO copy advice; shop.name in a CTA is incidental
+- cycle 111 [mobile/bundle-builder] "A bundle builder with 5 product slots stacks vertically on mobile creating exces" — DROPPED: Generic responsive UX wizard pattern; no Shopify mechanism cited
+- cycle 111 [mobile/bundle-builder] "Bundle builder slot images on mobile need to be small enough not to dominate the" — DROPPED: Generic image sizing; omits real Shopify image_url filter / image_tag
+- cycle 111 [mobile/bundle-builder] "The bundle 'Add to Cart' CTA must be persistently visible on mobile while scroll" — DROPPED: Generic CSS sticky bar; env() safe-area is universal mobile CSS
+- cycle 111 [mobile/bundle-builder] "Bundle builder slot quantity increment and decrement buttons are too small for r" — DROPPED: Universal WCAG 2.5.5; no Shopify-specific mechanism
+- cycle 111 [mobile/bundle-builder] "Slot product images lazy-loaded in a mobile carousel cause layout shift as they " — DROPPED: Generic web CLS advice; no Shopify image_tag / explicit dimensions pattern cited
+- cycle 111 [nav-ia/bundle-builder] "A 'Start Over' action clears all selected bundle slots — where should this live " — DROPPED: Generic UX confirmation pattern; no Shopify mechanism
+- cycle 111 [nav-ia/bundle-builder] "A multi-category bundle builder (protein + accessories + apparel) needs in-secti" — DROPPED: Generic ARIA tablist pattern; no Shopify section schema tie-in
+- cycle 111 [nav-ia/bundle-builder] "After the user adds a complete bundle to cart there is no path back to the build" — DROPPED: Generic post-ATC UX; no Shopify Ajax cart API cited
+- cycle 111 [nav-ia/bundle-builder] "Should 'Build Your Bundle' appear in the main site navigation and how to justify" — DROPPED: Generic nav slot prioritisation; no Shopify-specific mechanism
+- cycle 111 [nav-ia/quiz-finder] "A product-recommendation quiz lives at /pages/quiz — should it appear in the mai" — DROPPED: Generic nav UX advice; no Shopify mechanism
+- cycle 111 [nav-ia/quiz-finder] "A quiz is mid-session when the user navigates away and returns — should the quiz" — DROPPED: Generic sessionStorage JS; not Shopify-specific
+- cycle 111 [nav-ia/quiz-finder] "A quiz with 8 questions has a back button — how should in-quiz back navigation i" — DROPPED: Generic history.pushState JS; not Shopify-specific
+- cycle 111 [nav-ia/quiz-finder] "A quiz results page recommends 3 products — should results have their own URL fo" — DROPPED: Wrong: Shopify Liquid cannot read query params server-side for OG meta tags
+- cycle 111 [nav-ia/quiz-finder] "During the quiz, the site nav competes with the quiz funnel for user attention —" — DROPPED: Generic quiz-funnel nav suppression; no Shopify mechanism
+- cycle 111 [nav-ia/quiz-finder] "A quiz captures email to 'Get your results' — what UX pattern satisfies GDPR wit" — DROPPED: Generic GDPR consent advice; not Shopify-specific
+- cycle 111 [nav-ia/quiz-finder] "A quiz returns no match for a rare answer combination — what must the UX display" — DROPPED: Generic empty-state UX advice; no Shopify mechanism
+- cycle 113 [forms-validation/landing-advertorial] "When should email validation on an advertorial lead-capture form fire — on blur," — DROPPED: Generic web form validation; no Shopify mechanism
+- cycle 113 [forms-validation/landing-advertorial] "Mobile users on the advertorial email field see a standard keyboard instead of a" — DROPPED: Generic HTML inputmode attribute; not Shopify-specific
+- cycle 113 [forms-validation/landing-advertorial] "The advertorial form is being hit by bots submitting fake email leads. What anti" — DROPPED: Generic honeypot technique; not Shopify-specific
+- cycle 113 [forms-validation/landing-advertorial] "After a successful email submit on the advertorial, should the page redirect to " — DROPPED: Generic form success UX; no Shopify mechanism
+- cycle 113 [nav-ia/header-nav] "The client wants a mega menu with nested collections and a featured hero image. " — DROPPED: Generic CSS mega menu pattern; not Shopify-specific
+- cycle 113 [nav-ia/header-nav] "The client wants a sticky header. How does sticky header implementation impact L" — DROPPED: Generic CSS position:sticky advice; not Shopify-specific
+- cycle 113 [nav-ia/header-nav] "Should the header include a 'Shop Now' CTA button alongside standard nav links, " — DROPPED: Generic CTA placement; no Shopify mechanism
+- cycle 113 [forms-validation/header-nav] "The header announcement bar embeds a single-field newsletter form (email only). " — DROPPED: Generic narrow-bar form UX; no Shopify mechanism
+- cycle 113 [forms-validation/header-nav] "The header has a country and region selector form that posts to Shopify's locali" — DROPPED: shop.published_locales doesn't exist; use localization.*
+- cycle 113 [forms-validation/header-nav] "The client sells age-restricted products and wants an age verification gate trig" — DROPPED: Generic age gate cookie pattern; not Shopify-specific
+- cycle 113 [forms-validation/header-nav] "The header contains a login link that opens an inline account drawer. How should" — DROPPED: customer.errors is wrong; correct object is form.errors
+- cycle 113 [forms-validation/header-nav] "The announcement bar newsletter form is 320px wide on mobile. The error message " — DROPPED: Generic responsive error message copy advice
+- cycle 113 [a11y/footer] "The footer has a multi-column link grid. What is the correct keyboard navigation" — DROPPED: Generic footer nav ARIA; not Shopify-specific
+- cycle 113 [a11y/footer] "The footer newsletter form has a visually styled floating label that overlays th" — DROPPED: Generic floating label a11y; not Shopify-specific
+- cycle 113 [a11y/footer] "The footer has icon-only social media links (Instagram, TikTok, Pinterest icons " — DROPPED: Generic icon-only link a11y; not Shopify-specific
+- cycle 113 [a11y/footer] "On mobile, the footer link columns collapse into accordions. What ARIA pattern i" — DROPPED: Generic accordion ARIA disclosure pattern
+- cycle 113 [a11y/footer] "The footer includes a row of payment method icons (Visa, Mastercard, PayPal). Sh" — DROPPED: Generic decorative icon a11y; not Shopify-specific
+- cycle 113 [a11y/footer] "The footer copyright line and legal links appear at the very bottom of the page." — DROPPED: Generic HTML footer semantics; not Shopify-specific
+- cycle 113 [honesty-claims/footer] "The client wants 'As Seen In: Forbes, Vogue, TechCrunch' logos in the footer but" — DROPPED: Ethics rule only; no Shopify-specific mechanism
+- cycle 113 [honesty-claims/footer] "The footer says 'Free Shipping Worldwide' but the store only offers free shippin" — DROPPED: Generic copy accuracy; no Shopify mechanism
+- cycle 113 [honesty-claims/footer] "The client wants a 'Today's Offer Ends In: [countdown timer]' in the footer that" — DROPPED: Generic countdown dark pattern; not Shopify-specific
+- cycle 113 [honesty-claims/footer] "The footer has an 'Award-Winning Formula' claim for a skincare product that has " — DROPPED: Generic ad-claims advice; no Shopify mechanism
+- cycle 113 [performance-cwv/footer] "The footer loads Klaviyo, a live chat widget, and a reviews widget — all via bar" — DROPPED: Generic script defer advice; not Shopify-specific
+- cycle 113 [performance-cwv/footer] "The footer has a social-proof ticker — a CSS-animated scrolling marquee of custo" — DROPPED: Generic CSS transform/CLS advice; not Shopify-specific
+- cycle 113 [performance-cwv/footer] "The footer has a large full-width decorative background image. If a page is very" — DROPPED: Generic image lazy-loading advice; not Shopify-specific
+- cycle 113 [performance-cwv/footer] "Google Tag Manager is injected via a <script> tag inside footer.liquid. Is foote" — DROPPED: Generic GTM head placement; not Shopify-specific
+- cycle 113 [performance-cwv/footer] "The footer includes a Mailchimp embedded form via their mc-validate.js script. T" — DROPPED: Generic Mailchimp-embed replacement; not Shopify-specific
+- cycle 113 [performance-cwv/footer] "A third-party live chat widget (Tidio, Gorgias) loaded via a footer <script> add" — DROPPED: Generic deferred chat widget; not Shopify-specific
+- cycle 113 [states-empty-loading-error/footer] "The footer has a 'Recently Viewed' section built in Liquid using localStorage. W" — DROPPED: Generic localStorage empty state; not Shopify-specific
+- cycle 113 [states-empty-loading-error/footer] "The footer has an Instagram feed widget from a third-party app that shows broken" — DROPPED: settings.instagram_connected is not a built-in Shopify property
+- cycle 113 [states-empty-loading-error/footer] "The footer newsletter form has three distinct states: idle, submitting, and resu" — DROPPED: Generic form state machine; not Shopify-specific
+- cycle 114 [legal-compliance/footer] "Client's refund policy says 'No refunds under any circumstances' — does this blo" — DROPPED: '30-day minimum' Shopify Payments requirement is invented
+- cycle 114 [a11y/mega-menu] "Mega-menu links have outline: none in theme CSS — keyboard users see no focus in" — DROPPED: Generic CSS a11y rule, not Shopify-specific
+- cycle 114 [a11y/mega-menu] "A mega-menu feature tile has <a href='...'><button>Shop Now</button></a> — inter" — DROPPED: Generic HTML validity rule, not Shopify-specific
+- cycle 114 [a11y/announcement-bar] "Announcement bar is hidden on scroll via opacity: 0 only — links inside remain i" — DROPPED: Generic a11y: visibility vs opacity applies everywhere
+- cycle 114 [typography/about] "About page places the decorative 'Our Story' script heading as an H1, while the " — DROPPED: Generic SEO heading-hierarchy rule, not Shopify-specific
+- cycle 114 [typography/about] "About page prose section spans the full 1440 px viewport on desktop — line lengt" — DROPPED: 65ch prose width is generic typography, not Shopify-specific
+- cycle 114 [typography/about] "About page hero heading uses a premium brand font (Canela, Bureau Grot) that loa" — DROPPED: Wrong: JSON templates cannot contain HTML link preload tags
+- cycle 114 [a11y/about] "drape designed a pull-quote with the quote text baked into a JPG image — text is" — DROPPED: Generic WCAG 1.4.5 rule, not Shopify-specific
+- cycle 114 [a11y/about] "About page timeline uses absolute CSS positioning to alternate left/right layout" — DROPPED: Generic a11y/CSS grid DOM-order rule, not Shopify-specific
+- cycle 114 [a11y/about] "About page hero background video plays on load with no pause control — fails WCA" — DROPPED: Generic WCAG 2.2.2 video autoplay rule, not Shopify-specific
+- cycle 114 [a11y/about] "About page heading hierarchy jumps from H1 (page title) directly to H4 (team sec" — DROPPED: Generic heading-hierarchy rule, not Shopify-specific
+- cycle 115 [states-empty-loading-error/about] "A team-member avatar image 404s on the About page after the source file was dele" — DROPPED: Type mismatch: .src string then image_url expects image object
+- cycle 115 [states-empty-loading-error/about] "A CLS spike occurs on the About page values-icon grid because icons shift text b" — DROPPED: Generic CSS/SVG width-height advice, not Shopify-specific
+- cycle 115 [search-filtering/about] "The About page has a Press/Media section with 20 clips from different years. Doe" — DROPPED: Generic content threshold rule, no Shopify mechanism
+- cycle 115 [search-filtering/about] "A team name search input is added to the About page. What must render when a que" — DROPPED: Generic JavaScript empty-state injection, not Shopify-specific
+- cycle 115 [search-filtering/about] "The About page team department filter uses clickable pills. When a filter is act" — DROPPED: Generic URLSearchParams persistence, not Shopify-specific
+- cycle 115 [search-filtering/about] "A client wants the About page testimonials to be filterable by product category." — DROPPED: Generic content routing strategy, no Shopify mechanism
+- cycle 115 [forms-validation/about] "The About page has a partnership inquiry form. What fields require client-side v" — DROPPED: Generic HTML form validation, not Shopify-specific
+- cycle 115 [forms-validation/about] "The About page contact form submits successfully but the success message disappe" — DROPPED: Generic sessionStorage back-nav trick, not Shopify-specific
+- cycle 115 [forms-validation/about] "A user pastes a 5,000-character message into the About page contact form message" — DROPPED: Generic maxlength + character counter, not Shopify-specific
+- cycle 115 [forms-validation/about] "A user double-clicks the About page contact form submit button on a slow connect" — DROPPED: Generic double-submit prevention JavaScript pattern
+- cycle 115 [forms-validation/about] "The About page has a newsletter signup field. What validation is needed for GDPR" — DROPPED: Generic GDPR/honeypot advice, not Shopify-specific
+- cycle 115 [forms-validation/about] "The About page contact form's inquiry type select returns a server-side 422 beca" — DROPPED: Generic option-value slug matching, not Shopify-specific
+- cycle 115 [forms-validation/about] "A mobile user taps the About page contact form email field and the keyboard does" — DROPPED: Generic HTML input type/inputmode attributes
+- cycle 115 [email-lifecycle/about] "What Klaviyo event should conduit fire when a user subscribes via the About page" — DROPPED: Klaviyo JS API call, not a Shopify Liquid mechanism
+- cycle 115 [email-lifecycle/about] "The About page has a partnership inquiry form. What email triggers should fire a" — DROPPED: Klaviyo Transactional Flow, no Shopify Liquid mechanism
+- cycle 115 [email-lifecycle/about] "A visitor signs up via the About page newsletter but never purchases. Should the" — DROPPED: Generic email sequence categorization, not Shopify-specific
+- cycle 115 [email-lifecycle/about] "A visitor submits the About page contact form without checking the newsletter op" — DROPPED: Generic GDPR consent rule, not Shopify-specific
+- cycle 115 [email-lifecycle/about] "The About page has a job applications section with a form. What email lifecycle " — DROPPED: Generic GDPR legal advice, no Shopify mechanism
+- cycle 115 [edge-cases/faq-page] "A user navigates directly to /pages/faq#return-policy-2 (a deep link shared in a" — DROPPED: Generic JavaScript hash-based accordion expand
+- cycle 115 [edge-cases/faq-page] "The FAQ page's FAQPage JSON-LD contains an entry where the merchant left the ans" — DROPPED: Google FAQ structured data spec, not Shopify Liquid
+- cycle 115 [edge-cases/faq-page] "Two FAQ entries in different categories have identical question text (e.g. 'What" — DROPPED: Generic SEO de-dupe + duplicate anchor ID issue
+- cycle 115 [edge-cases/faq-page] "The FAQ page has 150 questions across 12 categories. Does this create a performa" — DROPPED: Generic JavaScript event delegation optimization
+- cycle 115 [edge-cases/faq-page] "An FAQ answer contains a link to a product ('See our [Product X] page') but that" — DROPPED: Gate #40 unverified; broken-link crawl is generic
+- cycle 115 [forms-validation/faq-page] "The FAQ page has an 'Ask a question' form at the bottom. What happens if a user " — DROPPED: Generic HTML minlength form validation
+- cycle 115 [forms-validation/faq-page] "The FAQ page has a 'Was this helpful?' thumbs-up/down widget. Should it require " — DROPPED: Generic anonymous vote widget, no Shopify mechanism
+- cycle 115 [forms-validation/faq-page] "The FAQ page search input is submitted with a query containing <script>alert(1)<" — DROPPED: Generic textContent XSS prevention JavaScript
+- cycle 115 [forms-validation/faq-page] "A user submits the FAQ 'Ask a question' form and the page does nothing — no spin" — DROPPED: Generic JavaScript silent-failure debugging advice
+- cycle 115 [forms-validation/faq-page] "The FAQ page 'Ask a question' form collects the user's email for a follow-up ans" — DROPPED: Generic GDPR Article 6 consent requirement
+- cycle 115 [forms-validation/faq-page] "A user presses Escape while focused in the FAQ search input. Should the search c" — DROPPED: Generic keyboard UX for search input, not Shopify-specific
+- cycle 115 [mobile/lookbook] "Lookbook product hotspots (position:absolute dots) are too small to tap accurate" — DROPPED: Generic WCAG 44×44px tap target rule
+- cycle 115 [mobile/lookbook] "The lookbook section uses a horizontal scroll grid on desktop. On mobile it stac" — DROPPED: Generic CSS aspect-ratio breakpoint override
+- cycle 115 [mobile/lookbook] "The lookbook uses a video background (autoplay, muted, loop) behind hero text. O" — DROPPED: Generic video playsinline attribute, applies to any site
+- cycle 115 [mobile/lookbook] "The lookbook has a swipeable carousel on mobile with no visual swipe affordance " — DROPPED: Generic CSS scroll-snap carousel pattern
+- cycle 115 [mobile/lookbook] "A user taps a lookbook hotspot on mobile and a product card overlay covers the e" — DROPPED: Generic mobile bottom-sheet UX pattern
+- cycle 117 [states-empty-loading-error/store-locator] "The store-locator uses the Google Distance Matrix API client-side to sort stores" — DROPPED: Generic JS: AbortController + alphabetical fallback, no Shopify mechanism
+- cycle 117 [states-empty-loading-error/store-locator] "When the user clicks a store card to expand its details panel, the panel briefly" — DROPPED: Generic JS UI: clear-before-fetch + skeleton, no Shopify mechanism
+- cycle 117 [forms-validation/store-locator] "The store-locator search form submits with an empty field, triggering an API cal" — DROPPED: Generic HTML form validation; nothing Shopify-specific
+- cycle 117 [forms-validation/store-locator] "A bot sends 'SELECT * FROM stores' and '<script>alert(1)</script>' via the store" — DROPPED: Generic web XSS prevention; no Liquid/section/metafield
+- cycle 117 [forms-validation/store-locator] "The store-locator search must support city name, postal code, and country as uni" — DROPPED: Generic responsive UX advice; 375px multi-field is not Shopify-specific
+- cycle 117 [forms-validation/store-locator] "The store-locator has a 'Search within X km' radius input. If the user types '99" — DROPPED: Generic HTML range input; no Shopify mechanism
+- cycle 117 [forms-validation/store-locator] "The store-locator has filter checkboxes for store type and amenities. If ALL che" — DROPPED: Generic filter UX convention; nothing Shopify-specific
+- cycle 117 [forms-validation/store-locator] "The 'Find stores near me' button calls navigator.geolocation, which constitutes " — DROPPED: GDPR claim oversimplified/wrong; gate #42 unverified (manifest ends at 36)
+- cycle 117 [forms-validation/store-locator] "Keyboard-only users tab to the store-locator search input, type a query, press E" — DROPPED: Generic AJAX a11y focus management; no Shopify mechanism
+- cycle 118 [i18n-currency-rtl/store-locator] "Store locator displays distances in miles for all locales, confusing buyers in m" — DROPPED: en-GB is metric (km); imperial list factually wrong
+- cycle 118 [i18n-currency-rtl/store-locator] "Store phone numbers are displayed as raw E.164 strings (+15551234567) regardless" — DROPPED: Intl API has no phone formatter; solution is generic/unverifiable
+- cycle 118 [i18n-currency-rtl/store-locator] "In RTL locales the store locator renders the map on the right and the store list" — DROPPED: request.locale.text_direction does not exist in Liquid
+- cycle 119 [forms-validation/about] "How do you protect the About page contact form from spam bots in a Liquid theme " — DROPPED: Shopify contact form never natively filters honeypot fields
+- cycle 119 [forms-validation/about] "The About page contact form has an optional phone field — how do you validate in" — DROPPED: Generic HTML5 type=tel + pattern, no Shopify mechanism
+- cycle 119 [forms-validation/about] "The About page contact textarea has no character limit, allowing 10,000-characte" — DROPPED: Generic: maxlength + JS counter, not Shopify-specific
+- cycle 119 [i18n-currency-rtl/lookbook] "A lookbook section uses a flex row layout with image left and caption right — ho" — DROPPED: Wrong: Shopify Markets does not auto-set dir=rtl on html
+- cycle 119 [i18n-currency-rtl/lookbook] "The lookbook hero image shows a model looking right with text anchored left — in" — DROPPED: design-system.json is internal tooling; scaleX(-1) is generic CSS
+- cycle 119 [i18n-currency-rtl/lookbook] "A Shopify Markets store has a currency switcher in the header — when the visitor" — DROPPED: currency:changed is not a documented Shopify native DOM event
+- cycle 119 [i18n-currency-rtl/lookbook] "The lookbook uses a decorative Latin serif font for captions that has no Arabic " — DROPPED: design-system.json internal tooling; font-family stack is generic CSS
+- cycle 119 [mobile/store-locator] "The store locator embeds an interactive map — on mobile, single-finger scroll hi" — DROPPED: Generic: Google Maps gestureHandling, not a Shopify mechanism
+- cycle 119 [mobile/store-locator] "Should the store locator default to a map view or a list view on mobile, and how" — DROPPED: Generic mobile UX list-vs-map advice, no Shopify mechanism
+- cycle 119 [mobile/store-locator] "Store location pins on the embedded map are 16x16px icons — too small for accura" — DROPPED: Generic WCAG 44px touch target, no Shopify mechanism
+- cycle 119 [mobile/store-locator] "The store detail panel (showing address, hours, phone) opens as a sidebar on des" — DROPPED: Generic CSS bottom-sheet pattern, not Shopify-specific
+- cycle 119 [mobile/store-locator] "The 'Use My Location' button fires a geolocation request — what happens on mobil" — DROPPED: Generic web Geolocation API error handling, not Shopify-specific
+- cycle 119 [mobile/store-locator] "The store locator map tiles load slowly on throttled 3G mobile connections leavi" — DROPPED: Generic CSS shimmer skeleton, not Shopify-specific
+- cycle 119 [performance-cwv/store-locator] "The store list cards populate asynchronously below the search form, causing a la" — DROPPED: Generic CLS skeleton technique, no Shopify mechanism
+- cycle 119 [performance-cwv/store-locator] "The store locator has a ZIP code search input that fires an API query on every k" — DROPPED: Generic JS debounce pattern, no Shopify mechanism
+- cycle 119 [performance-cwv/store-locator] "The Google Maps JavaScript API or Mapbox GL JS SDK adds 150 to 300KB to the stor" — DROPPED: Generic: defer + type=module script loading, not Shopify-specific
+- cycle 119 [forms-validation/store-locator] "The store locator search returns zero results — what empty state messaging and r" — DROPPED: Liquid | escape can't sanitize client-side JS search terms
+- cycle 119 [forms-validation/store-locator] "The distance radius filter goes up to 100 miles but stores in rural areas may st" — DROPPED: Generic empty-state UX logic, no Shopify mechanism
+- cycle 119 [forms-validation/store-locator] "As the user applies filters on the store locator, screen reader users receive no" — DROPPED: Generic ARIA aria-live pattern, not Shopify-specific
+- cycle 119 [forms-validation/store-locator] "Filter state (radius, store type) is lost when the user clicks a store detail li" — DROPPED: Generic: sessionStorage persistence, no Shopify mechanism
+- cycle 119 [forms-validation/store-locator] "The 'Filter by store type' checkbox group allows the user to uncheck all options" — DROPPED: Generic checkbox UX logic, no Shopify mechanism
+- cycle 119 [legal-compliance/comparison] "The comparison table displays a competitor's retail price — what are the legal r" — DROPPED: Generic marketing law, no Shopify mechanism
+- cycle 119 [legal-compliance/comparison] "The comparison page headline reads 'Best Rated in [Category]' — what substantiat" — DROPPED: Generic advertising law superlative claims, not Shopify-specific
+- cycle 119 [legal-compliance/comparison] "The comparison page uses hover-tracking analytics to record which competitor pro" — DROPPED: Generic GDPR third-party analytics consent, not Shopify-specific
+- cycle 119 [legal-compliance/comparison] "The comparison table lists 'Lifetime Warranty' as a feature advantage for the br" — DROPPED: Generic warranty legal copy advice, no Shopify mechanism
+- cycle 119 [legal-compliance/comparison] "The comparison page aggregates and displays user-submitted star ratings for comp" — DROPPED: Generic defamation law, no Shopify mechanism
+- cycle 119 [legal-compliance/comparison] "The comparison page uses anchor fragment links to jump to specific competitor se" — DROPPED: Generic SEO truth (fragments not indexed), not Shopify-specific
+- cycle 119 [legal-compliance/comparison] "The comparison page claims the brand's product uses 'Carbon Neutral Manufacturin" — DROPPED: Generic environmental marketing compliance, not Shopify-specific
+- cycle 119 [copy-voice/bundle-builder] "Each product in the bundle builder needs a short contextual description — how do" — DROPPED: Generic copy strategy advice, no Shopify mechanism
+- cycle 119 [copy-voice/bundle-builder] "The bundle builder's primary 'Add All to Cart' CTA is the highest-stakes copy on" — DROPPED: Generic CTA copy choices, no Shopify mechanism
+- cycle 119 [copy-voice/bundle-builder] "The bundle builder uses a step-by-step selection flow with generic labels like '" — DROPPED: Generic step-label copy advice, no Shopify mechanism
+- cycle 119 [copy-voice/bundle-builder] "One required item in the bundle is out of stock — how do you write the unavailab" — DROPPED: Generic OOS copy patterns, no Shopify mechanism
+- cycle 119 [copy-voice/bundle-builder] "The bundle builder surfaces a 'premium upgrade' add-on mid-flow — how do you wri" — DROPPED: Generic upsell copy honesty rule, no Shopify mechanism
+- cycle 120 [legal-compliance/comparison] "Comparison page makes sustainability superiority claims ('greener than X') — how" — DROPPED: Core rule is generic legal/content policy; metafield wrapper is trivial
+- cycle 122 [forms-validation/mega-menu] "A quick-add quantity input lives inside a mega-menu flyout. What prevents a cust" — DROPPED: Liquid cannot server-side reject cart quantity; wrong mechanism
+- cycle 122 [forms-validation/mega-menu] "The mega-menu search field submits on Enter. What prevents empty-string searches" — DROPPED: Generic search validation, not Shopify-specific
+- cycle 122 [forms-validation/mega-menu] "Mega-menu has linked image tiles with an overlaid 'Shop Now' CTA. Are these imag" — DROPPED: Generic HTML nesting rule, not Shopify-specific
+- cycle 122 [copy-voice/announcement-bar] "The announcement bar rotates three slides: a free-shipping threshold, a sale pro" — DROPPED: Generic copy-voice advice; internal gate number, no Liquid object
+- cycle 122 [copy-voice/announcement-bar] "The announcement bar is present on the password/coming-soon page and the main st" — DROPPED: Generic copy differentiation advice, not Shopify-specific
+- cycle 122 [copy-voice/announcement-bar] "The bar displays 'Free shipping on orders over $50' but the store's shipping rat" — DROPPED: Generic process/workflow advice, no Shopify mechanism
+- cycle 122 [copy-voice/announcement-bar] "The announcement bar was dismissed by the customer and set to not reappear for 7" — DROPPED: Generic JS cookie versioning, not Shopify-specific
+- cycle 122 [performance-cwv/password-page] "The password page includes an auto-playing muted background video. What CWV risk" — DROPPED: Generic video preload/poster advice, not Shopify-specific
+- cycle 122 [performance-cwv/password-page] "The password page loads a custom display font for a brand-forward coming-soon he" — DROPPED: Generic CSS font-display advice, not Shopify-specific
+- cycle 122 [performance-cwv/password-page] "The brand wants GA4 and Meta Pixel firing on the password page to track waitlist" — DROPPED: Generic async script loading advice
+- cycle 122 [performance-cwv/password-page] "The password page shows an animated SVG logo that plays on load. How does this a" — DROPPED: Generic SVG inline size advice, not Shopify-specific
+- cycle 122 [performance-cwv/password-page] "The client wants a countdown timer to the store's launch date displayed on the p" — DROPPED: Generic countdown timer JS advice, not Shopify-specific
+- cycle 122 [performance-cwv/password-page] "The password page has OG/social sharing meta tags with a hero image. The OG imag" — DROPPED: Internal gate number; OG image advice is generic
+- cycle 122 [forms-validation/password-page] "The password page email capture form submits to a Klaviyo list. The input accept" — DROPPED: Generic email validation + Klaviyo API; no Liquid mechanism
+- cycle 122 [forms-validation/password-page] "The password page has a 'Name + Email' two-field waitlist form. The name field i" — DROPPED: Generic HTML a11y label pattern, not Shopify-specific
+- cycle 122 [forms-validation/password-page] "The password page form's success state shows a static 'Thank you!' text but neve" — DROPPED: Generic JS form reset UX, not Shopify-specific
+- cycle 122 [forms-validation/password-page] "The password page email capture is in a GDPR-scoped market (EU). Does the form n" — DROPPED: Generic GDPR consent checkbox advice
+- cycle 122 [layout/about] "The About page team grid has 5 members displayed in a 3-column desktop layout, c" — DROPPED: Generic CSS grid orphan fix, not Shopify-specific
+- cycle 122 [layout/about] "The About page has a horizontal timeline section. On mobile (375px viewport), th" — DROPPED: Generic responsive CSS media query advice
+- cycle 122 [layout/about] "The About page hero section has a founder photo floated right with text wrapping" — DROPPED: Generic breakpoint/collapse advice, not Shopify-specific
+- cycle 122 [layout/about] "The About page has a brand-values section with icon + label + description cards." — DROPPED: Generic CSS Grid card layout, not Shopify-specific
+- cycle 122 [layout/about] "The About page embeds a YouTube video in an iframe. On mobile, the iframe is fix" — DROPPED: Generic aspect-ratio iframe embed, not Shopify-specific
+- cycle 122 [layout/about] "The About page shows a row of press/media logos. When the number of logos increa" — DROPPED: Generic flexbox wrap advice, not Shopify-specific
+- cycle 122 [layout/about] "The About page stats section shows numbers like '10,000+ customers' and '99% sat" — DROPPED: Generic CSS i18n sizing advice, not Shopify-specific
+- cycle 122 [color-contrast/about] "The About page hero has white headline text overlaid on a founder photograph. Th" — DROPPED: Generic gradient overlay a11y advice, not Shopify-specific
+- cycle 122 [color-contrast/about] "The About page values section uses the brand's primary color (a medium-saturatio" — DROPPED: Generic WCAG contrast computation advice
+- cycle 122 [color-contrast/about] "Team member cards show the member's role in a light gray (`#aaaaaa`) on a white " — DROPPED: Generic WCAG contrast ratio fact, not Shopify-specific
+- cycle 122 [color-contrast/about] "The About page timeline uses colored dot markers (brand teal) connected by thin " — DROPPED: Generic WCAG decorative element rule
+- cycle 122 [color-contrast/about] "The About page stats section shows large numbers (e.g. '10K+') in the brand's ac" — DROPPED: Generic WCAG contrast failure, not Shopify-specific
+- cycle 122 [color-contrast/about] "The About page has a CTA button ('Shop Our Story') placed on a dark brand-colore" — DROPPED: Generic WCAG dual-contrast check, not Shopify-specific
+- cycle 122 [color-contrast/about] "The About page uses a split-screen layout: left half is a white background with " — DROPPED: Generic color contrast verification advice
+- cycle 122 [edge-cases/about] "The store is a solo-founder brand with exactly one team member. The team grid re" — DROPPED: Generic content/layout strategy, no Shopify mechanism
+- cycle 122 [edge-cases/about] "The brand assets (founder photo, team photos) are not yet available at build tim" — DROPPED: Internal gate number; placeholder domain scan not a Shopify mechanism
+- cycle 123 [color-contrast/about] "The values section uses colored icon cards (one per value) with body text in a m" — DROPPED: Wrong ratio: #767676 on white is ~4.54:1, actually passes AA
+- cycle 123 [color-contrast/about] "The About page press-logos section renders brand logos on a white background. Se" — DROPPED: Generic a11y (aria-hidden, alt text), nothing Shopify-specific
+- cycle 123 [color-contrast/about] "The About page timeline uses alternating row backgrounds (white, then #F8F8F8) w" — DROPPED: Speculative axe stacking-context diagnosis, vague and unverifiable
+- cycle 123 [color-contrast/about] "The About page CTA button uses the theme's primary action color (e.g. #4CAF50 gr" — DROPPED: Generic CSS focus ring advice, not a Shopify mechanism
+- cycle 123 [legal-compliance/about] "The About page includes a 'Our Story' section with a form to 'Join our community" — DROPPED: Generic GDPR consent advice, no Shopify-specific mechanism cited
+- cycle 123 [legal-compliance/about] "The About page features real customer testimonials with names and photos. The me" — DROPPED: Generic legal advice on testimonial permissions, any website
+- cycle 123 [legal-compliance/about] "The About page copy includes the phrase 'Certified Organic' for a skincare brand" — DROPPED: Generic regulatory compliance, applies to any website
+- cycle 123 [legal-compliance/about] "The About page has a 'Press' section with logos from publications that reviewed " — DROPPED: Generic FTC/marketing ethics, not Shopify-specific
+- cycle 123 [legal-compliance/about] "The store ships to California. The About page does not have a 'Do Not Sell My Pe" — DROPPED: Generic CCPA compliance, footer link applies to any site
+- cycle 123 [legal-compliance/about] "The About page references the founding year (e.g. 'Since 2019'). The merchant wa" — DROPPED: Generic copy honesty about founding dates, not Shopify-specific
+- cycle 123 [merchandising/faq-page] "The FAQ page is structured as a flat list of 40+ questions. Analytics will show " — DROPPED: Generic UX advice (category tabs for long lists), not Shopify-specific
+- cycle 123 [forms-validation/faq-page] "The FAQ page has an inline search input that filters FAQ answers client-side. If" — DROPPED: Generic progressive enhancement JS injection, not Shopify-specific
+- cycle 123 [copy-voice/lookbook] "The lookbook page is built as a lifestyle editorial with long-form editorial cap" — DROPPED: Generic editorial vs product copy distinction, any website
+- cycle 123 [copy-voice/lookbook] "The lookbook page has a 'Shop This Look' button under each editorial image. The " — DROPPED: Generic CTA copy advice, not bound to any Shopify mechanism
+- cycle 123 [copy-voice/lookbook] "The brand has a distinct second-person editorial voice ('You wake to fog-soft li" — DROPPED: Generic placeholder string detection, not Shopify-specific
+- cycle 123 [copy-voice/lookbook] "The lookbook includes seasonal editorial copy ('This winter, we…'). The lookbook" — DROPPED: Generic evergreen copy advice, applies to any website
+- cycle 123 [honesty-claims/lookbook] "The lookbook editorial copy includes the phrase 'Our best-selling serum' to desc" — DROPPED: Generic 'verify best-seller claim' advice, not Shopify-specific
+- cycle 123 [honesty-claims/lookbook] "The lookbook features a model wearing a garment. The model's skin has been signi" — DROPPED: Generic UK ASA law; rule itself acknowledges ambiguous applicability
+- cycle 123 [honesty-claims/lookbook] "The lookbook includes the tagline 'Dermatologist-tested and approved' as an over" — DROPPED: Generic endorsement claim compliance, any website
+- cycle 123 [honesty-claims/lookbook] "The lookbook editorial includes the line 'As featured in Vogue.' A closer look r" — DROPPED: Generic press claim honesty, not bound to any Shopify mechanism
+- cycle 124 [performance-cwv/lookbook] "A third-party carousel library (Swiper.js, Flickity) powers the lookbook — how d" — DROPPED: Generic CSS scroll-snap; no Shopify mechanism named
+- cycle 124 [performance-cwv/lookbook] "Two custom typefaces (4 weights each) are loaded in the lookbook section header " — DROPPED: Generic font-display/preload advice; 'in theme.liquid' trivial
+- cycle 124 [mobile/store-locator] "The store-locator map iframe overflows horizontally on 375px viewport — how is t" — DROPPED: Generic CSS overflow rule; no Shopify mechanism
+- cycle 124 [mobile/store-locator] "The store-locator search input triggers the iOS keyboard and the map/list shifts" — DROPPED: Generic CSS/HTML mobile input advice
+- cycle 124 [mobile/store-locator] "Store location pins are 16px tap targets — users miss them on mobile. What is th" — DROPPED: Generic WCAG tap-target + Google Maps API, not Shopify
+- cycle 124 [mobile/store-locator] "The store list sidebar is a fixed panel on desktop but must collapse to a bottom" — DROPPED: Generic CSS drawer/sidebar pattern
+- cycle 124 [mobile/store-locator] "Geolocation getCurrentPosition() fires on section mount — this shows a permissio" — DROPPED: Generic geolocation UX best practice
+- cycle 124 [mobile/store-locator] "Store hours in a multi-row table (day | open | close) wraps badly on 320px scree" — DROPPED: Generic CSS grid for table display
+- cycle 124 [mobile/bundle-builder] "A multi-step bundle builder renders as a horizontal tab bar with 4 steps — tabs " — DROPPED: Generic responsive CSS flex-direction change
+- cycle 124 [mobile/bundle-builder] "Product color swatches in a bundle builder step are 20×20px circles — they fail " — DROPPED: Generic WCAG tap-target size; no Shopify mechanism
+- cycle 124 [mobile/bundle-builder] "The sticky 'Add Bundle to Cart' bar at the bottom conflicts with the iOS safe-ar" — DROPPED: Generic CSS env(safe-area-inset-bottom)
+- cycle 124 [mobile/bundle-builder] "A product image carousel per bundle step allows horizontal swipe — but swipe ges" — DROPPED: Generic CSS touch-action; applies to any website
+- cycle 124 [mobile/bundle-builder] "A bundle builder step renders a 3-column product grid — on 375px, cards are ~100" — DROPPED: Generic CSS grid-template-columns advice
+- cycle 124 [mobile/bundle-builder] "Bundle quantity steppers (+/- buttons) are implemented as <span> elements with c" — DROPPED: Generic a11y: button vs span, aria-label
+- cycle 124 [mobile/bundle-builder] "The bundle summary sidebar (selected items + total price) disappears entirely on" — DROPPED: Generic mobile mini-bar + bottom-sheet UX pattern
+- cycle 124 [states-empty-loading-error/bundle-builder] "A customer clicks 'Start over' to reset their bundle — how does the empty-select" — DROPPED: Generic UX state distinction; no Shopify mechanism
+- cycle 124 [edge-cases/bundle-builder] "The customer navigates away mid-bundle build and returns via the browser back bu" — DROPPED: Generic sessionStorage vs localStorage advice
+- cycle 124 [edge-cases/bundle-builder] "The bundle section hero shows a '20% off' badge — but the discount only applies " — DROPPED: Generic copy-honesty advice; no Shopify mechanism
+- cycle 125 [mobile/bundle-builder] "Does the bundle option product grid cause horizontal scroll on narrow viewports " — DROPPED: generic CSS grid layout, not Shopify-specific
+- cycle 125 [mobile/bundle-builder] "Are product thumbnail images in the bundle grid causing slow LCP or CLS on mobil" — DROPPED: generic fetchpriority/lazy-load, not Shopify-specific
+- cycle 125 [mobile/bundle-builder] "Should a multi-slot bundle use a step-by-step wizard or a single-page layout on " — DROPPED: generic UX wizard; references internal Boldteq artifact
+- cycle 125 [mobile/bundle-builder] "When a bundle section includes a text input (gift message or engraving), does th" — DROPPED: generic iOS keyboard UX, not Shopify-specific
+- cycle 125 [layout/quiz-finder] "Does the quiz progress bar overflow or get clipped on 320px viewports when step " — DROPPED: generic CSS overflow rule, not Shopify-specific
+- cycle 125 [layout/quiz-finder] "Do answer option cards within a single quiz step wrap and align inconsistently w" — DROPPED: generic CSS grid/line-clamp, not Shopify-specific
+- cycle 125 [layout/quiz-finder] "Should the quiz result page use a single hero product recommendation layout or a" — DROPPED: references internal Boldteq artifacts, not real Shopify objects
+- cycle 125 [layout/quiz-finder] "Do answer option images render at inconsistent aspect ratios when different prod" — DROPPED: design-system.json is internal artifact, not real Shopify object
+- cycle 125 [layout/quiz-finder] "When answer option button text is very long, should it truncate with an ellipsis" — DROPPED: generic CSS word-wrap advice, not Shopify-specific
+- cycle 125 [cro/quiz-finder] "Should quiz results be gated behind an email capture form, or shown immediately " — DROPPED: generic email-gate CRO strategy, not Shopify-specific
+- cycle 125 [cro/quiz-finder] "Should a bundle/cross-sell upsell row appear on the quiz result page alongside t" — DROPPED: generic above-fold CRO layout, not Shopify-specific
+- cycle 125 [cro/quiz-finder] "How should skip logic be implemented to reduce quiz drop-off without creating a " — DROPPED: generic JavaScript skip-logic, not Shopify-specific
+- cycle 125 [cro/quiz-finder] "What CTA label copy and button placement on the result page best captures purcha" — DROPPED: generic CRO copy advice, not Shopify-specific
+- cycle 125 [cro/quiz-finder] "How do you prevent the GA4 quiz_complete event from double-firing when a user la" — DROPPED: generic analytics deduplication, not Shopify-specific
+- cycle 125 [states-empty-loading-error/quiz-finder] "What should display while the Storefront API is fetching the quiz recommendation" — DROPPED: generic CSS skeleton loader, not Shopify-specific
+- cycle 125 [states-empty-loading-error/quiz-finder] "What happens to quiz answer state when the user presses the browser back button " — DROPPED: generic sessionStorage quiz state, not Shopify-specific
+- cycle 125 [states-empty-loading-error/quiz-finder] "When a user reloads mid-quiz, should the quiz auto-resume silently or prompt the" — DROPPED: generic sessionStorage resume pattern, not Shopify-specific
+- cycle 125 [states-empty-loading-error/quiz-finder] "How should answer option images be handled when an image src is missing, empty, " — DROPPED: generic alt-text rule, redundant universal a11y guidance
+- cycle 125 [typography/landing-advertorial] "What is the correct body text column width on desktop for advertorial long-form " — DROPPED: generic prose column width typography, not Shopify-specific
+- cycle 125 [typography/landing-advertorial] "How should a pull quote be styled so it is visually distinct from body copy with" — DROPPED: design-system.json is internal Boldteq artifact, not Shopify
+- cycle 125 [typography/landing-advertorial] "What is the minimum body font size on mobile for long-form advertorial prose wit" — DROPPED: generic iOS 16px zoom prevention, not Shopify-specific
+- cycle 125 [typography/landing-advertorial] "What heading hierarchy must a landing advertorial follow for SEO crawlability an" — DROPPED: generic heading hierarchy SEO, not Shopify-specific
+- cycle 125 [typography/landing-advertorial] "How must legal disclaimers or footnotes be typeset on an advertorial page to com" — DROPPED: generic WCAG contrast/legal compliance, not Shopify-specific
+- cycle 125 [typography/landing-advertorial] "If the advertorial design calls for a drop cap on the opening paragraph, how sho" — DROPPED: generic CSS ::first-letter advice, not Shopify-specific
+- cycle 125 [legal-compliance/header-nav] "Does the cookie consent banner z-index conflict with the sticky header nav, maki" — DROPPED: generic z-index token management, not Shopify-specific
+- cycle 125 [legal-compliance/header-nav] "For a store selling age-restricted products (alcohol, tobacco), should the navig" — DROPPED: generic overlay z-index/keyboard trap, no real Shopify mechanism
+- cycle 125 [legal-compliance/header-nav] "Must required legal page links (Privacy Policy, Terms, Refund, Shipping) appear " — DROPPED: generic legal page placement, not Shopify-specific
+- cycle 125 [legal-compliance/header-nav] "For an alcohol or tobacco store, can collection names in the header nav use urge" — DROPPED: generic marketing compliance copy, not Shopify-specific
+- cycle 125 [legal-compliance/header-nav] "Is the header mega-menu keyboard-navigable with correct ARIA roles so screen rea" — DROPPED: generic ARIA mega-menu pattern, not Shopify-specific
+- cycle 125 [search-filtering/header-nav] "Does the mobile search overlay conflict with the sticky header z-index or cause " — DROPPED: generic CSS fixed/inset positioning, not Shopify-specific
+- cycle 125 [search-filtering/header-nav] "Is the search trigger button and results dropdown keyboard-navigable with correc" — DROPPED: generic ARIA button pattern, not Shopify-specific
+- cycle 125 [search-filtering/header-nav] "How do you prevent the GA4 search event from double-firing when a user selects a" — DROPPED: generic GA4 event deduplication, not Shopify-specific
+- cycle 126 [forms-validation/header-nav] "Header search input has no inline validation — users hit Enter with empty string" — DROPPED: generic HTML form validation, not Shopify-specific
+- cycle 126 [forms-validation/header-nav] "Header newsletter capture (mini form in announcement bar) accepts 'yash@' as ema" — DROPPED: generic email regex validation
+- cycle 126 [forms-validation/header-nav] "Mobile hamburger opens a drawer with a search input that autofocuses — iOS Safar" — DROPPED: generic iOS 16px zoom rule
+- cycle 126 [forms-validation/header-nav] "Announcement-bar promo-code form (rare pattern) POSTs to `/discount/{{code}}` — " — DROPPED: generic input length validation
+- cycle 126 [copy-voice/footer] "Footer newsletter block says 'Join our exclusive VIP insider community' — client" — DROPPED: generic copy voice advice
+- cycle 126 [copy-voice/footer] "Footer 'About' blurb is 4 paragraphs of founder story — pushes legal links below" — DROPPED: generic mobile content-length advice
+- cycle 126 [copy-voice/footer] "Footer trust row shows '10,000+ happy customers' — client has 1,247 orders and n" — DROPPED: generic honesty rule, no specific mechanism
+- cycle 126 [copy-voice/footer] "Footer link labels: 'Shipping Info', 'Returns Policy', 'Contact Us' — inconsiste" — DROPPED: generic label casing style guide
+- cycle 126 [copy-voice/footer] "Client wrote footer tagline 'Revolutionizing skincare since 2024' — 'revolutioni" — DROPPED: generic banned-words linting
+- cycle 126 [merchandising/footer] "Footer 'Recently Viewed' block on desktop is empty for first-time visitors — sho" — DROPPED: generic localStorage recently-viewed pattern
+- cycle 126 [merchandising/footer] "Footer social row shows Instagram + TikTok + Facebook + Twitter — client only ac" — DROPPED: live-check social handle is invented mechanism
+- cycle 126 [merchandising/footer] "Footer 'Featured In' press logo row — client says 'we were mentioned in Vogue on" — DROPPED: generic press-claim honesty, no real mechanism
+- cycle 126 [cro/mega-menu] "Mega-menu opens on hover but closes if cursor drifts 2px outside — users lose th" — DROPPED: generic hover-intent UX pattern
+- cycle 126 [cro/mega-menu] "Mega-menu has 5 columns × 8 links = 40 links per menu — analytics show 90% of cl" — DROPPED: generic IA/link-count heuristic
+- cycle 126 [cro/mega-menu] "Mega-menu 'Featured Product' image tile — CTA says 'Shop Now' but doesn't commun" — DROPPED: generic copy structure advice
+- cycle 126 [cro/mega-menu] "Mega-menu column labels are collection names ('Womens Tops', 'Womens Bottoms') —" — DROPPED: generic IA taxonomy advice
+- cycle 126 [performance-cwv/mega-menu] "Mega-menu images (6 featured tiles) all load on page-load even though menu is hi" — DROPPED: generic lazy-loading web perf
+- cycle 126 [performance-cwv/mega-menu] "Mega-menu JS is 18KB of hover-intent + close-delay + keyboard-nav — blocks main " — DROPPED: generic <details> progressive-enhancement advice
+- cycle 126 [performance-cwv/mega-menu] "Mega-menu opening triggers CLS 0.18 because panel pushes header down when it dro" — DROPPED: generic CLS/position CSS advice
+- cycle 126 [performance-cwv/mega-menu] "Mega-menu accordion animation uses `height: auto` transitions — jank on low-end " — DROPPED: generic GPU-composited animation advice
+- cycle 126 [performance-cwv/mega-menu] "Mega-menu on iPad Safari (touch pointer) opens on tap-1 then requires tap-2 to c" — DROPPED: generic touch-vs-hover media query
+- cycle 126 [seo-structured-data/mega-menu] "Mega-menu links to 40 collections but none of them appear in a sitemap-linkable " — DROPPED: generic BreadcrumbList SEO advice
+- cycle 126 [seo-structured-data/mega-menu] "Mega-menu 'Featured Products' tiles render Product cards — should they carry Pro" — DROPPED: generic JSON-LD duplication advice
+- cycle 126 [seo-structured-data/mega-menu] "Mega-menu is client-side JS-toggled — Googlebot might not render it as a `<nav>`" — DROPPED: generic SSR-for-crawlers SEO advice
+- cycle 126 [seo-structured-data/mega-menu] "Mega-menu contains 'View all' links that go to `/collections/all` — but canonica" — DROPPED: generic canonical URL SEO advice
+- cycle 126 [seo-structured-data/mega-menu] "Mega-menu has an image-only 'Featured' tile with a CTA — no text alt describes t" — DROPPED: generic alt-text a11y rule
+- cycle 126 [seo-structured-data/mega-menu] "Mega-menu opens with 40 links — is this a `SiteNavigationElement` schema opportu" — DROPPED: generic SEO trivia, no Shopify mechanism
+- cycle 126 [edge-cases/mega-menu] "Third-party app (Yotpo, Judge.me) injects a floating widget that overlaps the me" — DROPPED: per-store z-index registry is invented
+- cycle 126 [edge-cases/mega-menu] "On very narrow desktops (1024-1200px) mega-menu's 5 columns overflow horizontall" — DROPPED: generic responsive breakpoint CSS
+- cycle 129 [email-lifecycle/about] "An About page opt-in promises '10% off your first order' — how do we make sure t" — DROPPED: shopify_discount_codes.list is not real Liquid
+- cycle 129 [motion/faq-page] "FAQ accordions on Dawn/Minimog: should the expand/collapse animate, and if so ho" — DROPPED: generic CSS technique, not Shopify-specific
+- cycle 129 [motion/faq-page] "Users with prefers-reduced-motion set — do we still animate the FAQ accordion?" — DROPPED: generic prefers-reduced-motion web a11y
+- cycle 129 [motion/faq-page] "The FAQ page has 40+ questions grouped by category — should each category header" — DROPPED: generic motion/scroll reveal advice
+- cycle 129 [motion/faq-page] "When a user clicks a category anchor in the FAQ sidebar (e.g. #shipping), do we " — DROPPED: generic CSS scroll-behavior guidance
+- cycle 129 [motion/faq-page] "Should the chevron icon rotate when an FAQ opens, and how do we keep it from re-" — DROPPED: generic disclosure CSS pattern
+- cycle 129 [motion/faq-page] "When multiple FAQ items are open at once, should closing one animate the others," — DROPPED: generic accordion UX opinion
+- cycle 129 [states-empty-loading-error/faq-page] "User types in the FAQ search box and no questions match — what's the empty state" — DROPPED: shop.support_email is not a real property
+- cycle 129 [states-empty-loading-error/faq-page] "The FAQ search input has an async debounce for large FAQ sets — what shows durin" — DROPPED: generic debounce UX guidance
+- cycle 129 [states-empty-loading-error/faq-page] "An FAQ answer embeds a YouTube video — what shows while the iframe loads, and wh" — DROPPED: generic lite-youtube-embed web technique
+- cycle 129 [edge-cases/faq-page] "A returning customer visits FAQ from an order-status email — should we show a pe" — DROPPED: signed order_token pattern not standard
+- cycle 129 [edge-cases/faq-page] "The FAQ page is deep-linked from an email with a hash (#returns) — but the targe" — DROPPED: generic hash-scroll disclosure pattern
+- cycle 129 [edge-cases/faq-page] "What if the merchant's FAQ has 200+ questions — does the page still pass Lightho" — DROPPED: generic content-visibility perf advice
+- cycle 129 [legal-compliance/faq-page] "The FAQ needs to include an accessibility statement — does it belong on the FAQ " — DROPPED: generic a11y statement page advice
+- cycle 129 [legal-compliance/faq-page] "FAQ has an 'International orders' answer — do we need to disclose customs/duties" — DROPPED: generic legal copy, no Shopify binding
+- cycle 129 [mobile/lookbook] "Lookbook grid on mobile: 3 columns is too dense, but 1 column feels like an infi" — DROPPED: generic responsive grid opinion
+- cycle 129 [mobile/lookbook] "Hotspot dots on shoppable lookbook images — how big should tap targets be on mob" — DROPPED: generic WCAG 2.5.5 tap target rule
+- cycle 129 [mobile/lookbook] "Lookbook tile taps: does it go to PDP, or open an inline product-card overlay?" — DROPPED: generic bottom-sheet UX opinion
+- cycle 129 [mobile/lookbook] "Swipe gesture on mobile lookbook: horizontal carousel or vertical scroll — which" — DROPPED: generic mobile layout opinion
+- cycle 129 [mobile/lookbook] "iOS Safari address bar changes viewport height mid-scroll on lookbook — how do w" — DROPPED: generic 100dvh CSS advice
+- cycle 129 [cro/lookbook] "Should lookbook tiles show price on hover/tap, or keep the editorial feel with p" — DROPPED: generic price-visibility design opinion
+- cycle 129 [cro/lookbook] "How do we prevent the lookbook from becoming a slow, image-heavy dead-end that v" — DROPPED: redundant with #35 image_url perf
+- cycle 130 [imagery-art-direction/store-locator] "Location photos were shot by 4 different photographers over 3 years — color grad" — DROPPED: generic CSS filter advice, not Shopify-specific
+- cycle 130 [imagery-art-direction/store-locator] "Store-locator card needs a 'Directions' CTA but the location photo already has a" — DROPPED: generic contrast/CTA placement advice
+- cycle 130 [edge-cases/store-locator] "A location's address contains special characters (Ñ, é, ü) — the address renders" — DROPPED: generic UTF-8/escape advice, not Shopify-specific gap
+- cycle 130 [legal-compliance/store-locator] "Merchant's store-locator page has no accessibility statement despite serving mul" — DROPPED: generic ADA accessibility statement advice
+- cycle 130 [nav-ia/store-locator] "Footer has both 'Store Locator' and 'Contact Us' as separate links — shoppers co" — DROPPED: generic IA disambiguation, not Shopify-specific
+- cycle 131 [forms-validation/store-locator] "How should the store-locator ZIP/postal input validate across US/CA/UK/AU withou" — DROPPED: generic form-validation regex, not Shopify-specific
+- cycle 131 [forms-validation/store-locator] "What happens when the geocoding API returns zero results or times out mid-search" — DROPPED: generic AbortController pattern, not Shopify
+- cycle 131 [forms-validation/store-locator] "How do we prevent the 'use my location' button from silently failing when the us" — DROPPED: generic Geolocation API handling
+- cycle 131 [forms-validation/store-locator] "How should the radius filter be validated so users can't request 9999-mile searc" — DROPPED: generic clamping, settings_schema mention thin
+- cycle 131 [forms-validation/store-locator] "How do we handle the 'contact this store' form so it doesn't leak PII into conso" — DROPPED: generic PII hygiene, Shopify hook thin
+- cycle 131 [forms-validation/store-locator] "How do we make sure required field errors are announced to screen readers, not j" — DROPPED: generic WCAG form-error a11y
+- cycle 131 [forms-validation/store-locator] "What if the merchant hasn't uploaded any store locations yet — should the sectio" — DROPPED: {% return %} is not a real Liquid tag
+- cycle 131 [cro/comparison] "How should a product comparison table order columns to maximize the target produ" — DROPPED: generic F-pattern CRO framing
+- cycle 131 [cro/comparison] "Which product attributes belong in the comparison rows — how do we avoid cherry-" — DROPPED: generic anti-cherry-pick, no Shopify mechanic
+- cycle 131 [cro/comparison] "How do sticky column headers and product images behave on scroll without breakin" — DROPPED: generic sticky/responsive CSS
+- cycle 131 [cro/comparison] "How should the CTA in the anchor column differ from a generic PDP add-to-cart to" — DROPPED: generic PDP CTA copy pattern
+- cycle 131 [cro/comparison] "How do we handle a comparison page for a product that has 8+ competitors without" — DROPPED: generic column-cap UX
+- cycle 131 [cro/comparison] "What guarantees does the 'best for you' recommendation logic need so it isn't ju" — DROPPED: generic recommendation transparency
+- cycle 131 [performance-cwv/comparison] "How do we prevent CLS spikes when the comparison table renders variable-height r" — DROPPED: generic CLS min-height CSS
+- cycle 131 [performance-cwv/comparison] "How do we keep the comparison page interactive on low-end Android (mid-tier BM 3" — DROPPED: generic critical-JS/idle-callback perf
+- cycle 131 [i18n-currency-rtl/comparison] "How does the comparison table lay out in RTL (Arabic/Hebrew) markets without bre" — DROPPED: generic RTL logical-properties CSS
+- cycle 131 [i18n-currency-rtl/comparison] "How do we handle a comparison page URL structure so hreflang stays consistent ac" — DROPPED: generic hreflang, Markets does this
+- cycle 131 [i18n-currency-rtl/comparison] "How do we format decimal separators (1,299.00 vs 1.299,00) in comparison spec ce" — DROPPED: redundant with #22 money filter
+- cycle 131 [search-filtering/comparison] "How do we filter the comparison table itself (e.g. 'only show rows where store p" — DROPPED: generic honesty framing
+- cycle 131 [search-filtering/comparison] "How should the search box on comparison hub handle typos and product aliases (iP" — DROPPED: redundant with #29, alias metafield thin
+- cycle 131 [search-filtering/comparison] "When a search returns zero comparison matches, what's shown?" — DROPPED: generic empty-state copy
+- cycle 131 [search-filtering/comparison] "How do we filter comparison table rows for accessibility (skip decorative rows, " — DROPPED: generic table a11y region/skip-nav
+- cycle 131 [search-filtering/comparison] "How do collection pages surface 'Compare with…' links so users discover the comp" — DROPPED: generic compare-drawer UX
+- cycle 131 [cro/bundle-builder] "How many steps should a bundle builder have — is a single-page picker better tha" — DROPPED: generic single-page vs wizard UX
+- cycle 131 [cro/bundle-builder] "How should the sticky footer 'Add bundle to cart' CTA behave when the bundle is " — DROPPED: generic disabled-CTA form UX
+- cycle 131 [copy-voice/bundle-builder] "How does the bundle-builder headline copy speak to the shopper without generic '" — DROPPED: generic outcome-headline copy
+- cycle 131 [copy-voice/bundle-builder] "How should microcopy on category section headers guide the shopper without being" — DROPPED: generic verb+object microcopy
+- cycle 131 [copy-voice/bundle-builder] "What's the right CTA text on the final 'add bundle to cart' button — does it cha" — DROPPED: generic CTA-with-price copy
+- cycle 131 [copy-voice/bundle-builder] "How do we write the empty-state copy when shopper starts the builder with zero s" — DROPPED: generic empty-state UX copy
+- cycle 131 [copy-voice/bundle-builder] "How do product cards within the bundle picker describe each option — full PDP co" — DROPPED: generic card copy, metafield wrapper thin
+- cycle 131 [copy-voice/bundle-builder] "How does copy explain a real bundle discount without dishonest 'was $X now $Y' w" — DROPPED: generic honesty framing, no Shopify mechanic
+- cycle 132 [forms-validation/store-locator] "User searches for a ZIP with zero stores in radius — what does the form return a" — DROPPED: generic empty-state copy advice
+- cycle 132 [forms-validation/store-locator] "How do we prevent the locator form from causing a CLS spike when the map iframe/" — DROPPED: generic aspect-ratio CLS advice
+- cycle 132 [forms-validation/store-locator] "User submits the locator form with a valid ZIP but the geocode API is rate-limit" — DROPPED: generic API error handling
+- cycle 132 [forms-validation/store-locator] "Should the locator form's 'get directions' link deep-link to Apple Maps on iOS a" — DROPPED: generic UA-sniff maps deep-link
+- cycle 132 [copy-voice/bundle-builder] "How does ink write the bundle-builder's step headings so they sell benefits, not" — DROPPED: generic benefits-not-features copy rule
+- cycle 132 [copy-voice/bundle-builder] "Should the 'add to bundle' button change copy per selection state, and what stri" — DROPPED: generic button-state microcopy
+- cycle 132 [copy-voice/bundle-builder] "How does ink handle the empty-bundle state without a fake-urgency 'Only 3 spots " — DROPPED: restates universal honesty gate
+- cycle 132 [copy-voice/bundle-builder] "Should bundle-builder microcopy use exclamation marks and emojis, and how does d" — DROPPED: generic brand-voice tone matrix
+- cycle 132 [copy-voice/bundle-builder] "How does ink write the checkout-transition CTA copy to reduce cart abandonment s" — DROPPED: generic CTA microcopy
+- cycle 132 [copy-voice/bundle-builder] "What copy does ink write for the 'this item is out of stock in your selected bun" — DROPPED: generic OOS copy advice
+- cycle 132 [i18n-currency-rtl/bundle-builder] "The merchant sells to Saudi Arabia and Israel — how does the bundle-builder flip" — DROPPED: generic logical-properties CSS
+- cycle 132 [i18n-currency-rtl/bundle-builder] "When the bundle-builder is loaded in Hebrew (RTL), the 'next step' arrow icon po" — DROPPED: generic RTL CSS transform
+- cycle 132 [i18n-currency-rtl/bundle-builder] "How do we handle bundle-savings copy in languages where '20% off' has different " — DROPPED: generic i18n no-concat rule
+- cycle 132 [merchandising/bundle-builder] "Should the bundle-builder show product variants (colors, sizes) inline or in a m" — DROPPED: generic variant-picker UX
+- cycle 132 [nav-ia/bundle-builder] "Where should the bundle-builder live in the main navigation — under Shop, as its" — DROPPED: generic IA placement advice
+- cycle 132 [nav-ia/bundle-builder] "How does the bundle-builder relate to individual PDPs — should PDPs link into th" — DROPPED: generic cross-link UX
+- cycle 132 [nav-ia/bundle-builder] "Should the bundle-builder be reachable from the cart drawer (upsell) or only fro" — DROPPED: generic cart-drawer upsell advice
+- cycle 132 [nav-ia/bundle-builder] "How does the bundle-builder appear in the footer nav — should it be duplicated f" — DROPPED: generic footer-nav mirroring
+- cycle 132 [nav-ia/bundle-builder] "When a user lands on a bundle-builder shared link (?preset=xyz), does the sticky" — DROPPED: generic sticky-nav a11y
+- cycle 132 [nav-ia/bundle-builder] "Should the bundle-builder be search-indexed in the internal site-search, and how" — DROPPED: invented internal-search weighting mechanism
+- cycle 132 [performance-cwv/quiz-finder] "The quiz-finder has 8 questions with image-heavy answer options — how do we keep" — DROPPED: generic eager/lazy image loading
+- cycle 132 [performance-cwv/quiz-finder] "The quiz-finder's product-match algorithm needs to run client-side but the scori" — DROPPED: generic JS code-split advice
+- cycle 132 [performance-cwv/quiz-finder] "How do we avoid CLS when the quiz transitions between questions and answer optio" — DROPPED: generic min-height CLS advice
+- cycle 132 [performance-cwv/quiz-finder] "Should the quiz-finder track answers via URL params (?q1=a&q2=b) or client-side " — DROPPED: generic sessionStorage state advice
+- cycle 132 [performance-cwv/quiz-finder] "The quiz-finder's result page shows 3-5 matched products with full images — how " — DROPPED: generic LCP image priority
+- cycle 132 [performance-cwv/quiz-finder] "Quiz-finder uses a progress bar animation — how do we keep it smooth without hur" — DROPPED: generic CSS transition advice
+- cycle 132 [performance-cwv/quiz-finder] "The quiz-finder loads a 3rd-party analytics script (Klaviyo Onsite) for tracking" — DROPPED: strategy='afterInteractive' is Next.js not theme
+- cycle 132 [edge-cases/quiz-finder] "What happens when the quiz-finder's matching algorithm returns zero product matc" — DROPPED: generic zero-state copy
+- cycle 132 [edge-cases/quiz-finder] "User answers Q1-Q3 then closes the browser — do we save their progress?" — DROPPED: generic sessionStorage persistence
+- cycle 132 [edge-cases/quiz-finder] "What if the merchant deletes a product that's a possible quiz answer or match — " — DROPPED: Storefront API in Liquid theme is muddled
+- cycle 132 [edge-cases/quiz-finder] "User rapid-clicks 'next' before the animation completes — does the quiz skip que" — DROPPED: generic debounce UX advice
+- cycle 132 [edge-cases/quiz-finder] "Screen reader user navigates the quiz with keyboard — does the answer-selection " — DROPPED: redundant native-button a11y basic
+- cycle 132 [edge-cases/quiz-finder] "User's JS is disabled (2% of traffic) — does the quiz-finder show anything usefu" — DROPPED: generic noscript fallback
+- cycle 132 [edge-cases/quiz-finder] "What happens if the quiz-finder is embedded on a page with an ad-blocker that st" — DROPPED: unsupported ad-blocker /products.json claim
+- cycle 134 [typography/header-nav] "How should nav link font-size scale between desktop (≥1024px) and mobile drawer " — DROPPED: generic typography tokens, no real Shopify mechanism
+- cycle 134 [typography/header-nav] "Client's brand font is a 340KB custom .woff2 — how do we load it in header nav w" — DROPPED: generic web font perf, not Shopify-specific
+- cycle 134 [typography/header-nav] "Merchant renamed 'Shop' to 'Boutique de Luxe Édition Limitée' in the customizer " — DROPPED: generic overflow/ellipsis CSS advice
+- cycle 134 [typography/header-nav] "Sticky header shrinks on scroll — how should nav typography change so it doesn't" — DROPPED: generic sticky-header typography tweak
+- cycle 134 [typography/header-nav] "Announcement bar above the nav uses a different type scale than the main nav — h" — DROPPED: generic type-scale ratio advice
+- cycle 134 [typography/header-nav] "How should mega-menu column headers relate typographically to the primary nav li" — DROPPED: generic typographic hierarchy tokens
+- cycle 134 [cro/footer] "Client wants an email capture in the footer — where does it go and what's the mi" — DROPPED: generic CRO email-capture advice
+- cycle 134 [cro/footer] "Should the footer show a 'Back to top' button, and if so how do we avoid it conf" — DROPPED: generic back-to-top button UX
+- cycle 134 [cro/footer] "Footer has 4 link columns — how many links per column maximize discoverability w" — DROPPED: GA4 ordering generic, empty-column hide trivial
+- cycle 134 [cro/footer] "Where do we place payment-badge icons for maximum trust without slowing LCP?" — DROPPED: generic SVG sprite perf advice
+- cycle 134 [data-binding/footer] "Support email in the footer needs to obfuscate to avoid scraping but stay clicka" — DROPPED: generic email obfuscation JS pattern
+- cycle 134 [spacing-rhythm/mega-menu] "Mega-menu panel opens with columns of uneven heights — how do we enforce vertica" — DROPPED: generic spacing tokens, no Shopify specificity
+- cycle 134 [spacing-rhythm/mega-menu] "Featured product/collection image in the mega-menu is a different height than ad" — DROPPED: generic grid/aspect-ratio layout advice
+- cycle 134 [spacing-rhythm/mega-menu] "How much horizontal padding should the mega-menu have relative to the announceme" — DROPPED: generic container padding tokens
+- cycle 134 [spacing-rhythm/mega-menu] "Vertical gap between mega-menu links feels either cramped (12px) or floaty (24px" — DROPPED: generic tap-target sizing advice
+- cycle 134 [spacing-rhythm/mega-menu] "Mega-menu on a 3-column vs 5-column layout — how do we keep column widths visual" — DROPPED: generic CSS grid column advice
+- cycle 134 [spacing-rhythm/mega-menu] "When a shopper hovers a nav item, how much padding should the mega-menu leave fr" — DROPPED: generic panel offset/padding tokens
+- cycle 134 [spacing-rhythm/mega-menu] "How do we prevent mega-menu overflow when it pushes below the viewport (short la" — DROPPED: generic viewport overflow CSS pattern
+- cycle 134 [seo-structured-data/mega-menu] "Should the mega-menu use <nav> semantics or ARIA landmarks for search-engine + a" — DROPPED: generic ARIA landmark advice, not Shopify-specific
+- cycle 136 [nav-ia/password-page] "Where do legal links (privacy/terms/refund) live on the password page when there" — DROPPED: Policy pages behind password claim unverified
+- cycle 136 [nav-ia/password-page] "Client asks for social media icons in the password page footer — allow it?" — DROPPED: Metafield social-post-count check is invented
+- cycle 136 [nav-ia/password-page] "Should the password page load web fonts, analytics, and pixels the same as the l" — DROPPED: Generic performance advice, not Shopify-specific
+- cycle 136 [forms-validation/password-page] "Email-capture form on password page — should we validate email format client-sid" — DROPPED: Generic HTML5 form validation advice
+- cycle 136 [forms-validation/password-page] "What happens when email-capture submission succeeds — inline success message or " — DROPPED: Generic UX advice, no Shopify mechanism
+- cycle 136 [forms-validation/password-page] "How to handle Shopify's 5-attempt rate limit on password submissions before it s" — DROPPED: 5-attempt limit number likely invented
+- cycle 136 [forms-validation/password-page] "Placeholder text vs label on the password/email inputs — which wins for a11y?" — DROPPED: Generic a11y placeholder-vs-label advice
+- cycle 136 [nav-ia/pdp] "Should the PDP header collapse to a minimal 'buy bar' variant on scroll like Nik" — DROPPED: Vague design preference, no mechanism
+- cycle 136 [nav-ia/pdp] "Client wants 'You may also like' rail INSIDE the main PDP nav, above the fold — " — DROPPED: Generic above-fold layout advice
+- cycle 136 [nav-ia/pdp] "How do we handle PDP → related-product navigation without losing scroll position" — DROPPED: Generic web navigation/scroll advice
+- cycle 136 [nav-ia/pdp] "Should the cart drawer open on ATC click, or should we navigate to /cart?" — DROPPED: 12% conversion stat likely fabricated
+- cycle 136 [nav-ia/pdp] "'Continue shopping' button in cart drawer — where should it go?" — DROPPED: Generic drawer UX behavior
+- cycle 136 [nav-ia/pdp] "Sticky nav header on mobile PDP — should the cart icon show item count badge?" — DROPPED: Generic cart badge a11y pattern
+- cycle 136 [i18n-currency-rtl/cart] "Arabic customer opens cart drawer — does it slide from left instead of right?" — DROPPED: localization.language.direction property unverified
+- cycle 136 [i18n-currency-rtl/cart] "RTL cart: 'Remove' icon (trash) — should it flip horizontally in Arabic?" — DROPPED: Generic RTL icon-mirroring CSS advice
+- cycle 136 [color-contrast/search] "Search input placeholder 'Search products…' — what's the minimum contrast ratio?" — DROPPED: Generic WCAG placeholder contrast rule
+- cycle 136 [color-contrast/search] "Search results page — 'No results for X' message color?" — DROPPED: Generic design-token foreground advice
+- cycle 136 [color-contrast/search] "Predictive search dropdown suggestions on hover — hover state contrast?" — DROPPED: Generic hover contrast pattern
+- cycle 136 [color-contrast/search] "Search suggestion 'category tag' pill (e.g. 'Skincare') color?" — DROPPED: Generic WCAG pill contrast pair
+- cycle 136 [color-contrast/search] "'Popular searches' chip row — link color on default background?" — DROPPED: Generic link/chip contrast advice
+- cycle 136 [color-contrast/search] "Search close (X) icon in top-right of search modal — icon contrast?" — DROPPED: Generic WCAG icon + tap-target rule
+- cycle 136 [color-contrast/search] "Search result card price color when discounted (compare-at price strikethrough)?" — DROPPED: Generic strikethrough color guidance
+- cycle 136 [i18n-currency-rtl/search] "Search input in RTL Arabic — cursor starts on the right edge?" — DROPPED: Generic logical-property CSS advice
+- cycle 136 [i18n-currency-rtl/search] "Empty search results in Japanese ('検索結果が見つかりませんでした') — line-height correct?" — DROPPED: Generic CJK typography line-height rule
+- cycle 136 [i18n-currency-rtl/search] "Search modal 'Cancel' button label in RTL — position and text?" — DROPPED: Generic RTL button positioning advice
+- cycle 137 [color-contrast/search] "Search input placeholder text on the predictive search modal reads at 2.8:1 agai" — DROPPED: generic WCAG contrast, not Shopify-specific
+- cycle 137 [color-contrast/search] "Highlighted matched substring in predictive-search results uses <mark> with a ye" — DROPPED: generic HTML mark styling advice
+- cycle 137 [color-contrast/search] "Search results page shows product cards with a 'Sale' pill in brand red on a ros" — DROPPED: generic 3:1 non-text contrast rule
+- cycle 137 [color-contrast/search] "Search results 'No results found' heading uses --color-foreground-subtle which i" — DROPPED: generic WCAG text contrast advice
+- cycle 137 [color-contrast/search] "Predictive-search suggestion row hover state is #F5F5F5 on #FFFFFF background — " — DROPPED: generic hover-state contrast rule
+- cycle 137 [color-contrast/search] "Search filter facet checkboxes render as browser-default gray — do they meet con" — DROPPED: generic form control skinning advice
+- cycle 137 [color-contrast/search] "Search page price-range slider track and thumb use --color-brand at 40% opacity " — DROPPED: generic slider/opacity contrast rule
+- cycle 137 [states-empty-loading-error/search] "Predictive search shows nothing for 900ms while the Ajax call is in flight — use" — DROPPED: generic skeleton-loading UX pattern
+- cycle 137 [states-empty-loading-error/search] "Search results page 500s from Shopify — theme currently shows a blank white grid" — DROPPED: generic retry+fallback error UX
+- cycle 137 [states-empty-loading-error/search] "User types <2 characters — should predictive search fire?" — DROPPED: generic debounce/min-char pattern
+- cycle 137 [states-empty-loading-error/search] "Search page is landed on directly with `?q=` empty — Shopify returns all product" — DROPPED: generic empty-search-state UX
+- cycle 137 [states-empty-loading-error/search] "Search results are loading a second page via infinite scroll — network fails mid" — DROPPED: generic infinite-scroll error UX
+- cycle 137 [edge-cases/gift-card] "Gift-card recipient country doesn't match store currency — do we send the card i" — DROPPED: giftCard.currencies field appears invented
+- cycle 137 [search-filtering/gift-card] "Gift-card collection page has 8 denominations — should we expose price filters h" — DROPPED: gift_card_type collection filter not real
+- cycle 137 [search-filtering/gift-card] "Search results for query 'gift' return 40 mixed products — how do we surface the" — DROPPED: gift_card_boost metafield appears invented
+- cycle 137 [search-filtering/gift-card] "User applies 'occasion: birthday' + 'price: $50-$100' filter combo returning zer" — DROPPED: generic zero-result copy advice
+- cycle 137 [search-filtering/gift-card] "Search reveals gift cards in results but user is on an unsupported market — do w" — DROPPED: giftCard.enabledMarkets field appears invented
+- cycle 137 [forms-validation/contact] "Contact form email field accepts 'user@' as valid because Shopify's built-in val" — DROPPED: wrong: Shopify does validate email format
+- cycle 137 [forms-validation/contact] "Contact form has no honeypot — merchant is drowning in bot spam. Do we add a cap" — DROPPED: Shopify server does not drop honeypots
+- cycle 137 [forms-validation/contact] "User pastes 5000 characters into the message field — Shopify accepts and truncat" — DROPPED: generic maxlength/counter UX
+- cycle 137 [forms-validation/contact] "Contact form error state currently shows all errors at the top in a single alert" — DROPPED: generic aria-describedby a11y advice
+- cycle 137 [forms-validation/contact] "Contact form success state disappears after 3 seconds — what if user missed it (" — DROPPED: Shopify contact form returns no reference-id
+- cycle 137 [a11y/about] "About page hero has a full-width video background with no captions and no reduce" — DROPPED: generic prefers-reduced-motion advice
+- cycle 137 [a11y/about] "About page 'Our team' grid uses img with alt=' ' (empty) for decorative reasons " — DROPPED: generic figure/figcaption HTML pattern
+- cycle 137 [a11y/about] "About page timeline uses horizontal scroll on desktop — keyboard users can't rea" — DROPPED: generic horizontal-scroll a11y pattern
+- cycle 137 [a11y/about] "About page 'Founder story' uses a decorative script font at 32px — legible for d" — DROPPED: generic typography/dyslexia advice
+- cycle 137 [a11y/about] "About page has a Google Maps embed with no title attribute — a11y violation?" — DROPPED: generic iframe title a11y rule
+- cycle 137 [a11y/about] "About page 'Values' section uses icon-only chips with no visible text label ('le" — DROPPED: generic icon-only a11y rule
+- cycle 137 [a11y/about] "About page skip-to-content link exists but is invisible until keyboard focus — i" — DROPPED: generic skip-link a11y pattern
+- cycle 137 [trust-social-proof/about] "About page shows Instagram feed embed for social proof — feed is empty or accoun" — DROPPED: generic empty-feed hide pattern
+- cycle 139 [seo-structured-data/faq-page] "Should product-specific FAQs on PDPs be duplicated on the central FAQ page, and " — DROPPED: Product.mainEntity→FAQPage invalid schema nesting
+- cycle 139 [seo-structured-data/faq-page] "What if a merchant enables Shopify Markets and the FAQ page auto-translates — do" — DROPPED: request.locale.iso_code path unreliable, non-standard filter
+- cycle 139 [nav-ia/faq-page] "Where does the FAQ link live in the IA — footer only, main nav, or both?" — DROPPED: generic IA advice, not Shopify-specific
+- cycle 139 [nav-ia/faq-page] "Should the FAQ page use in-page tab navigation, jump-to-anchor sidebar, or a sin" — DROPPED: generic UX pattern, not Shopify-bound
+- cycle 139 [nav-ia/faq-page] "Should the FAQ page have breadcrumbs when it's a top-level page reachable in one" — DROPPED: generic breadcrumb advice
+- cycle 139 [nav-ia/faq-page] "What about the cart drawer's 'Need help?' link — where should it point when ther" — DROPPED: generic CRO, not Shopify-mechanism-bound
+- cycle 139 [nav-ia/faq-page] "How does the FAQ page connect to the contact page and returns portal — one Help " — DROPPED: generic IA/hub decision
+- cycle 139 [trust-social-proof/lookbook] "Should lookbook photos display product-review star ratings on hover, or keep the" — DROPPED: generic design opinion
+- cycle 139 [trust-social-proof/lookbook] "Where do we place testimonials on a lookbook — inline between shots, as a bottom" — DROPPED: generic testimonial placement advice
+- cycle 139 [i18n-currency-rtl/lookbook] "What happens to the lookbook layout when Shopify Translate & Adapt flips the sto" — DROPPED: | direction filter does not exist
+- cycle 139 [i18n-currency-rtl/lookbook] "How do fonts handle Arabic + Latin in the same lookbook headline?" — DROPPED: generic typography advice
+- cycle 139 [i18n-currency-rtl/lookbook] "How do we handle the 'Shop the Look' hotspot popover position when RTL flips the" — DROPPED: generic Floating UI popover advice
+- cycle 139 [states-empty-loading-error/lookbook] "What does the lookbook show when the merchant has published the page but hasn't " — DROPPED: generic empty-state copy advice
+- cycle 139 [states-empty-loading-error/lookbook] "What renders if a scene's hero image fails to load (404 or Shopify CDN outage)?" — DROPPED: generic image fallback advice
+- cycle 139 [states-empty-loading-error/lookbook] "How do we show the loading state when a shopper opens a hotspot popover on slow " — DROPPED: generic skeleton loading advice
+- cycle 139 [states-empty-loading-error/lookbook] "What if the lookbook filter (e.g., 'By Season') has zero matching scenes for a c" — DROPPED: generic zero-state filter UX
+- cycle 139 [legal-compliance/lookbook] "Do we need alt-text on every lookbook image for ADA/WCAG compliance?" — DROPPED: redundant universal alt-text rule
+- cycle 139 [legal-compliance/lookbook] "Do we need to disclose paid stylist/photographer credits on the lookbook page un" — DROPPED: generic FTC disclosure, not Shopify-specific
+- cycle 140 [cro/comparison] "How should a comparison table order rows and columns to maximize choice-clarity " — DROPPED: generic price-ordering CRO advice
+- cycle 140 [cro/comparison] "Should the comparison table sticky the header row and the first column on mobile" — DROPPED: generic CSS sticky pattern
+- cycle 140 [cro/comparison] "What CTA density is right on a comparison table — one Add-to-Cart per column, on" — DROPPED: generic sticky-CTA CSS
+- cycle 140 [cro/comparison] "How do we handle the 'no meaningful difference' problem where two products share" — DROPPED: generic quiz-block CRO
+- cycle 140 [cro/comparison] "Should comparison rows use ✓/✗ icons or written values, and what happens with pa" — DROPPED: generic icon vs value design
+- cycle 140 [states-empty-loading-error/comparison] "How should the comparison table load when spec metafields are fetched async from" — DROPPED: generic async skeleton CSS pattern
+- cycle 140 [states-empty-loading-error/comparison] "What if the Storefront API errors (rate limit, network fail) mid-comparison load" — DROPPED: generic try/catch error UX
+- cycle 140 [states-empty-loading-error/comparison] "What if a shopper filters the comparison down to 0 products via variant selector" — DROPPED: generic filter-chip UX
+- cycle 140 [states-empty-loading-error/comparison] "Sold-out on ALL comparison products simultaneously — what UX?" — DROPPED: generic notify-me email capture
+- cycle 140 [states-empty-loading-error/comparison] "How do we handle price-changed-since-page-load (shopper opens comparison, curren" — DROPPED: shopify-money custom element likely invented
+- cycle 140 [legal-compliance/comparison] "Do we need a disclosure that the comparison is 'sponsored' or 'affiliate' if we'" — DROPPED: fabricated policy route + generic FTC
+- cycle 140 [legal-compliance/comparison] "How do we handle GDPR consent for the analytics tracking of comparison-column cl" — DROPPED: generic GA4 consent gating
+- cycle 140 [legal-compliance/comparison] "Can we show tax-inclusive vs tax-exclusive prices in the same comparison table a" — DROPPED: cart.taxes_included not a real property
+- cycle 140 [legal-compliance/comparison] "How do we handle CCPA 'Do Not Sell' opt-out for shoppers viewing the comparison " — DROPPED: generic CCPA consent handling
+- cycle 140 [legal-compliance/comparison] "What if a comparison row cites a certification (e.g. 'Organic', 'Fair Trade') th" — DROPPED: where filter does not support > operator
+- cycle 140 [merchandising/comparison] "Which products should be in the comparison collection by default — top 3 by sale" — DROPPED: generic curation-vs-auto CRO
+- cycle 140 [merchandising/comparison] "How many products in a comparison table before it becomes overwhelming?" — DROPPED: generic max-columns UX cap
+- cycle 140 [merchandising/comparison] "Should product images in the comparison be identical background (studio) or life" — DROPPED: generic imagery consistency rule
+- cycle 140 [merchandising/comparison] "Should the recommended column be visually 'raised' or 'bordered' or just badged?" — DROPPED: generic border-lift design
+- cycle 140 [merchandising/comparison] "How do we position the comparison against the primary PDP hero — before or after" — DROPPED: generic PDP section-order advice
+- cycle 140 [imagery-art-direction/bundle-builder] "How do we handle the 'assembled bundle preview' image — auto-composite or hand-s" — DROPPED: generic photoshoot-vs-composite advice
+- cycle 140 [imagery-art-direction/bundle-builder] "Should we show a 'bundle assembled' hero at the top of the builder or after sele" — DROPPED: generic stateful-preview UX
+- cycle 140 [imagery-art-direction/bundle-builder] "How do we handle alt text for bundle-builder thumbnails without spamming screen " — DROPPED: restates alt-text a11y basics
+- cycle 140 [motion/bundle-builder] "How should the 'add to bundle' animation feel — flying-thumbnail, pop, or crossf" — DROPPED: generic FLIP animation advice
+- cycle 140 [motion/bundle-builder] "When bundle-total-price updates, should the number tick up or snap to new value?" — DROPPED: generic counter animation UX
+- cycle 140 [motion/bundle-builder] "Should the bundle-builder use scroll-triggered reveal animations?" — DROPPED: generic scroll-reveal UX
+- cycle 140 [motion/bundle-builder] "How do we handle motion for shoppers with `prefers-reduced-motion: reduce`?" — DROPPED: generic prefers-reduced-motion a11y
+- cycle 140 [motion/bundle-builder] "CTA button 'Add bundle to cart' — should it have a loading spinner during Ajax a" — DROPPED: generic Ajax spinner UX
+- cycle 140 [motion/bundle-builder] "Progress indicator — should we animate 'Add 2 more to save 15%' when shopper is " — DROPPED: generic progress-bar UX
+- cycle 141 [motion/bundle-builder] "Bundle-builder step transitions on Dawn feel janky on mid-range Android — should" — DROPPED: generic motion advice, no Shopify mechanism
+- cycle 141 [motion/bundle-builder] "Selected-product tiles jump in the bundle summary drawer when a customer adds/re" — DROPPED: generic FLIP animation, not Shopify-specific
+- cycle 141 [motion/bundle-builder] "Discount badge on the bundle CTA — should it pulse/bounce to draw the eye?" — DROPPED: generic no-pulse motion rule
+- cycle 141 [motion/bundle-builder] "Step-progress bar — animate fill on step complete or snap?" — DROPPED: generic a11y motion pattern
+- cycle 141 [motion/bundle-builder] "When a variant is out of stock mid-flow, do we animate its tile to a disabled st" — DROPPED: generic UI transition advice
+- cycle 141 [copy-voice/bundle-builder] "Empty bundle-builder headline — what does it say when the customer arrives with " — DROPPED: generic copy advice
+- cycle 141 [copy-voice/bundle-builder] "Should each step have a mini-headline, or just a number?" — DROPPED: generic copy microcopy rule
+- cycle 141 [copy-voice/bundle-builder] "Bundle savings pill — "Save 20%" vs "Save $12" vs "Best value" — which and when?" — DROPPED: bundle.discount_amount not a real Liquid object
+- cycle 141 [copy-voice/bundle-builder] "Confirmation microcopy after adding the bundle to cart — what tone?" — DROPPED: generic confirmation microcopy
+- cycle 141 [copy-voice/bundle-builder] "Error copy when a step is skipped or invalid — how blunt?" — DROPPED: generic a11y error copy
+- cycle 141 [performance-cwv/bundle-builder] "Sticky bundle summary bar on mobile — does it hurt CLS?" — DROPPED: generic sticky/CLS CSS pattern
+- cycle 141 [performance-cwv/bundle-builder] "Font loading on the bundle-builder — CDN fonts blocking LCP?" — DROPPED: generic font-display swap advice
+- cycle 141 [legal-compliance/bundle-builder] "Does the bundle-builder need a WCAG 2.2 statement or an accessibility link?" — DROPPED: generic accessibility page link
+- cycle 141 [nav-ia/bundle-builder] "Do we need a step-by-step URL for each bundle step (e.g. /build?step=2) for back" — DROPPED: generic history.replaceState pattern
+- cycle 141 [nav-ia/bundle-builder] "Breadcrumb inside the bundle-builder — show Home>Shop>Build a Bundle or the step" — DROPPED: generic breadcrumb + progress pattern
+- cycle 141 [nav-ia/bundle-builder] "Should the bundle-builder surface the customer's cart contents inline or link to" — DROPPED: generic cart drawer UX advice
+- cycle 141 [nav-ia/bundle-builder] "Do we let customers skip a step, or must they progress linearly?" — DROPPED: generic step-navigation UX
+- cycle 141 [forms-validation/bundle-builder] "Where should validation errors appear — inline per step, at CTA click, or both?" — DROPPED: generic form validation UX
+- cycle 141 [forms-validation/bundle-builder] "Customer types a gift-message with 500+ chars — how do we handle over-limit?" — DROPPED: generic textarea maxlength pattern
+- cycle 141 [forms-validation/bundle-builder] "Discount-code field inside the builder — is it a good idea?" — DROPPED: generic Baymard CRO advice
+- cycle 141 [forms-validation/bundle-builder] "Email capture for "save my bundle" — required, optional, or offer only after CTA" — DROPPED: generic email capture UX
+- cycle 141 [forms-validation/bundle-builder] "Quantity stepper on a bundle tile — how do we prevent negative values, decimals," — DROPPED: generic number input pattern
+- cycle 141 [forms-validation/bundle-builder] "Autofocus behavior — should the first empty step field auto-focus on page load?" — DROPPED: generic WCAG focus advice
+- cycle 141 [layout/quiz-finder] "Quiz question layout on mobile — full-screen per question, or scrollable multi-q" — DROPPED: generic mobile quiz layout
+- cycle 141 [layout/quiz-finder] "Answer tiles — grid, list, or carousel?" — DROPPED: generic grid vs list UX
+- cycle 141 [layout/quiz-finder] "Where does the quiz progress indicator sit — top, bottom, floating?" — DROPPED: generic progress indicator position
+- cycle 141 [layout/quiz-finder] "Skip/back buttons — where and how prominent?" — DROPPED: generic skip/back button UX
+- cycle 141 [layout/quiz-finder] "Result page layout — one hero product recommendation or a ranked list?" — DROPPED: generic result page layout
+- cycle 143 [layout/header-nav] "How does the header handle a mega-menu that must show up to 6 collections + a pr" — DROPPED: generic CSS grid, not Shopify-specific
+- cycle 143 [layout/header-nav] "Sticky header covers hero content on anchor-link navigation — how do we prevent " — DROPPED: generic scroll-margin-top CSS, not Shopify
+- cycle 143 [layout/header-nav] "How does the header behave when the announcement bar has a long i18n string that" — DROPPED: generic ResizeObserver CSS custom props
+- cycle 143 [layout/header-nav] "Mobile hamburger drawer opens but header stays sticky under it — how do we preve" — DROPPED: generic mobile viewport CSS fix
+- cycle 143 [layout/header-nav] "How does the header render when the cart drawer is open — does the sticky header" — DROPPED: generic z-index UI advice
+- cycle 143 [layout/header-nav] "How does the header layout adapt when the customer is logged in and we need to s" — DROPPED: generic text-overflow ellipsis CSS
+- cycle 143 [typography/header-nav] "How do we prevent the header's brand wordmark from swapping fonts (FOUT/FOIT) an" — DROPPED: generic web font preload perf
+- cycle 143 [typography/header-nav] "Nav items have varying label lengths (Shop, New Arrivals, About Our Craftsmanshi" — DROPPED: generic clamp typography rhythm
+- cycle 143 [typography/header-nav] "Announcement bar text uses uppercase in EN — how does it render in DE/RU where u" — DROPPED: generic text-transform i18n advice
+- cycle 143 [typography/header-nav] "Mobile hamburger drawer nav uses larger type than desktop — how do we ensure tap" — DROPPED: generic WCAG tap target baseline
+- cycle 143 [typography/header-nav] "How do we handle a customer name in the header that contains emoji or combining " — DROPPED: mostly generic CSS unicode handling
+- cycle 143 [typography/header-nav] "How does the header title/logo scale during a promotional 'sale' state where the" — DROPPED: generic CSS clamp logo sizing
+- cycle 143 [i18n-currency-rtl/header-nav] "How does the header layout mirror correctly for RTL languages (Arabic, Hebrew) w" — DROPPED: generic RTL CSS logical properties
+- cycle 143 [i18n-currency-rtl/header-nav] "RTL nav: how do we handle the sticky mega-menu opening direction — should it ope" — DROPPED: generic inset-inline-start CSS RTL
+- cycle 143 [edge-cases/header-nav] "What does the header render when the shop is in Password/Preview mode (pre-launc" — DROPPED: shop.password_page not a real Liquid property
+- cycle 143 [edge-cases/header-nav] "A third-party app (Judge.me, Recharge) injects a badge into the header — how do " — DROPPED: generic CSS containment app-slot advice
+- cycle 144 [legal-compliance/header-nav] "Announcement bar claims 'Free shipping worldwide' — is that legal if the store e" — DROPPED: generic copy honesty, not Shopify-specific
+- cycle 144 [legal-compliance/header-nav] "Where does the accessibility statement link live — header, footer, or both?" — DROPPED: generic a11y placement advice
+- cycle 144 [merchandising/header-nav] "How many top-level nav items should the header expose before it becomes a cognit" — DROPPED: generic nav item count advice
+- cycle 144 [merchandising/header-nav] "Should the mega-menu feature a promotional image tile, and does it steal clicks " — DROPPED: generic mega-menu merchandising
+- cycle 144 [merchandising/header-nav] "'New Arrivals' link — how do we prevent it from showing the same 6 products for " — DROPPED: smart collections don't support published_at date rules
+- cycle 144 [merchandising/header-nav] "Sale/Outlet nav item — how do we handle it when there are no active markdowns?" — DROPPED: smart collection cross-field comparison not supported
+- cycle 144 [merchandising/header-nav] "Search bar — inline in header vs icon-triggered overlay, which wins for ecom?" — DROPPED: generic search UX advice
+- cycle 144 [nav-ia/header-nav] "How deep can the mega-menu tree go before shoppers get lost?" — DROPPED: generic IA depth advice
+- cycle 144 [nav-ia/header-nav] "Should sub-collections appear in the mega-menu OR only on the parent collection " — DROPPED: generic sub-collection UX
+- cycle 144 [nav-ia/header-nav] "Breadcrumb — should it live in the header stack or under the H1 on collection/PD" — DROPPED: generic breadcrumb placement guidance
+- cycle 144 [nav-ia/header-nav] "Sticky header on scroll — does it improve or hurt conversion?" — DROPPED: generic sticky header UX
+- cycle 144 [nav-ia/header-nav] "Mobile hamburger — should it slide from left or right, and does it matter?" — DROPPED: generic hamburger direction advice
+- cycle 144 [nav-ia/header-nav] "Should we surface account/login in the primary header nav or hide it behind an i" — DROPPED: generic account icon UX
+- cycle 144 [nav-ia/header-nav] "Announcement bar with rotating messages — how many, how fast, and does it hurt L" — DROPPED: generic announcement bar UX
+- cycle 144 [copy-voice/footer] "Do we write 'Sign up for our newsletter' or something on-brand and specific?" — DROPPED: generic newsletter copy advice
+- cycle 144 [copy-voice/footer] "Footer tagline under the logo — should we include a brand statement or leave it " — DROPPED: generic brand-tagline honesty
+- cycle 144 [copy-voice/footer] "Should footer copy match the header's playful voice or be more formal/legal?" — DROPPED: generic voice-consistency guidance
+- cycle 144 [copy-voice/footer] "Social proof line in the footer ('Trusted by 10,000+ customers') — do we include" — DROPPED: generic social-proof honesty
+- cycle 144 [copy-voice/footer] "Do we call the shipping page 'Shipping', 'Delivery', 'Shipping & Returns', or so" — DROPPED: fabricated terminology_pack metafield
+- cycle 144 [copy-voice/footer] "Footer 'About Us' link — is one-liner or full-column snippet better?" — DROPPED: generic footer info-architecture
+- cycle 144 [i18n-currency-rtl/footer] "Newsletter form — how do we handle non-Latin character sets in the email field?" — DROPPED: generic web email input advice
+- cycle 144 [states-empty-loading-error/footer] "Instagram feed widget in footer — what if the account has 0 posts or IG API is b" — DROPPED: generic IG widget failover pattern
+- cycle 144 [states-empty-loading-error/footer] "Live chat widget (Gorgias/Tidio) in footer — what happens if it fails to load?" — DROPPED: generic chat widget failover
+- cycle 144 [states-empty-loading-error/footer] "Newsletter form shows validation errors — how do we handle the loading state bet" — DROPPED: generic form loading state UX
+- cycle 144 [states-empty-loading-error/footer] "How do we handle a footer widget (recently-viewed products) with 0 products for " — DROPPED: generic localStorage recently-viewed pattern
+- cycle 144 [edge-cases/footer] "Merchant uploads a low-contrast logo that fails a11y in the footer's dark backgr" — DROPPED: generic logo contrast advice
+- cycle 144 [edge-cases/footer] "Store has 40+ collection links — footer becomes a scroll-of-death; how do we pru" — DROPPED: generic footer link pruning
+- cycle 144 [edge-cases/footer] "Merchant is in a regulated niche (CBD, firearms, adult) — what disclosures does " — DROPPED: fabricated compliance metafield structure
+- cycle 144 [edge-cases/footer] "Footer contains a 'Careers' link but the merchant hasn't posted jobs — dead link" — DROPPED: generic dead-link guard advice
+- cycle 145 [imagery-art-direction/mega-menu] "Featured product thumbnails in mega-menu are pulling the first product image — b" — DROPPED: 'single_line image ref' is not a real metafield type
+- cycle 145 [imagery-art-direction/mega-menu] "How do we prevent mega-menu images from tanking Lighthouse when the panel opens " — DROPPED: generic HTML lazy-load, no Shopify mechanism
+- cycle 145 [imagery-art-direction/mega-menu] "Mobile drawer opens the mega-menu — how should imagery collapse without breaking" — DROPPED: generic mobile tap-target advice
+- cycle 145 [cro/mega-menu] "Where in the mega-menu should 'New Arrivals' vs 'Best Sellers' vs 'Sale' live fo" — DROPPED: generic F-pattern CRO ordering advice
+- cycle 145 [cro/mega-menu] "Do we show prices on featured products inside the mega-menu, or is that friction" — DROPPED: fabricated +2% ATC benchmark, honesty violation
+- cycle 145 [cro/mega-menu] "How do we track mega-menu clicks for CRO analysis without adding a 3rd-party tag" — DROPPED: generic GTM dataLayer, not Shopify-specific
+- cycle 145 [cro/mega-menu] "Mega-menu on mobile — is it worth the DOM cost, or does a simple drawer convert " — DROPPED: fabricated 4% vs 11% CTR benchmarks
+- cycle 145 [cro/mega-menu] "Should hover-to-open or click-to-open be the mega-menu trigger on desktop for co" — DROPPED: generic hover-intent UX, no Shopify hook
+- cycle 145 [states-empty-loading-error/mega-menu] "Category image failed to upload or was deleted from Shopify Files — what does th" — DROPPED: 'dominant_hex' color-analysis not real Shopify
+- cycle 145 [states-empty-loading-error/mega-menu] "On slow 3G the mega-menu panel opens before its images load — what's the loading" — DROPPED: fabricated Shopify image color-analysis API
+- cycle 145 [states-empty-loading-error/mega-menu] "What if the entire header (including mega-menu JS) fails to load — does nav stil" — DROPPED: generic progressive-enhancement principle
+- cycle 145 [merchandising/mega-menu] "How to merchandise product bundles or sets from the mega-menu without confusing " — DROPPED: generic bundle merchandising advice
+- cycle 145 [merchandising/mega-menu] "Do we surface subcategories at 2 levels deep (Women > Dresses > Midi Dresses) or" — DROPPED: fabricated 30% CTR drop benchmark
+- cycle 145 [trust-social-proof/announcement-bar] "Should trust badges (Free Shipping, 30-day returns, Secure Checkout) live in the" — DROPPED: generic benefits-bar CRO placement
+- cycle 145 [trust-social-proof/announcement-bar] "Real-time review count / star rating in announcement bar — smart or noisy?" — DROPPED: generic rating threshold, not Shopify mechanism
+- cycle 145 [trust-social-proof/announcement-bar] "Can we embed a rotating customer testimonial in the announcement bar?" — DROPPED: generic no-testimonials-in-nav advice
+- cycle 145 [copy-voice/announcement-bar] "How do we prevent generic 'FREE SHIPPING ON ORDERS OVER $50' copy from feeling l" — DROPPED: generic brand-voice copy signal
+- cycle 145 [copy-voice/announcement-bar] "Character limit for announcement bar copy — what's the constraint per breakpoint" — DROPPED: generic responsive char-limit advice
+- cycle 145 [copy-voice/announcement-bar] "How should ink handle multiple concurrent promos (BFCM sale + free shipping + gi" — DROPPED: generic rotation UX advice
+- cycle 145 [copy-voice/announcement-bar] "CTA in the announcement bar — should there be one, and what verb?" — DROPPED: generic action-verb CTA copywriting
+- cycle 145 [copy-voice/announcement-bar] "Should copy include emojis in the announcement bar? (🎉 SALE 🎉)" — DROPPED: generic emoji brand-voice rule
+- cycle 145 [copy-voice/announcement-bar] "How do we handle voice consistency between announcement bar promos and rest-of-s" — DROPPED: generic voice-consistency audit
+- cycle 145 [i18n-currency-rtl/announcement-bar] "How does the announcement bar render in RTL languages (Arabic, Hebrew) without b" — DROPPED: generic CSS logical properties for RTL
+- cycle 145 [i18n-currency-rtl/announcement-bar] "Store ships to Japan and translated message needs to fit 40 chars but Japanese c" — DROPPED: generic per-locale character budget
+- cycle 145 [i18n-currency-rtl/announcement-bar] "Rotating messages have different lengths in different languages — how does the b" — DROPPED: generic min-height layout-jump CSS
+- cycle 146 [states-empty-loading-error/announcement-bar] "If a customer dismisses the bar (X button) and localStorage is blocked (Safari p" — DROPPED: generic localStorage advice, not Shopify
+- cycle 146 [merchandising/announcement-bar] "Merchant wants the bar to promote a discount code — do we show the code inline o" — DROPPED: generic copy-button CRO advice
+- cycle 146 [merchandising/announcement-bar] "Can the bar rotate multiple messages, and if so what's the default cadence?" — DROPPED: generic motion timing
+- cycle 146 [merchandising/announcement-bar] "Should the bar appear on checkout pages?" — DROPPED: checkout.liquid non-universal; misleading
+- cycle 146 [merchandising/announcement-bar] "Can the bar A/B test two messages to measure CTR?" — DROPPED: generic dataLayer analytics advice
+- cycle 146 [search-filtering/announcement-bar] "On a filtered collection page (?filter.v.color=red), do we show the same announc" — DROPPED: generic non-rule statement
+- cycle 146 [search-filtering/announcement-bar] "If search returns 0 results, does the bar change to help the customer?" — DROPPED: generic honesty, no Shopify mechanism
+- cycle 146 [search-filtering/announcement-bar] "Predictive search dropdown covers the announcement bar visually on mobile — is t" — DROPPED: generic z-index UI advice
+- cycle 146 [search-filtering/announcement-bar] "Should the bar's link show as a suggestion in the predictive search dropdown?" — DROPPED: factual explanation, not a rule
+- cycle 146 [i18n-currency-rtl/password-page] "When RTL locale loads password page, does the logo flip too?" — DROPPED: generic RTL logo advice
+- cycle 146 [i18n-currency-rtl/password-page] "Password entry has failed 3 times — do we translate the error, and does the erro" — DROPPED: generic RTL CSS advice
+- cycle 146 [i18n-currency-rtl/password-page] "OG image on password page — does it need to be locale-specific (Arabic text bake" — DROPPED: generic OG image advice
+- cycle 146 [mobile/home] "Home page hero video autoplays on desktop — should it autoplay on mobile too?" — DROPPED: generic video autoplay perf advice
+- cycle 146 [mobile/home] "Product grid on home shows 4 columns desktop, 2 columns mobile — do we ever go 1" — DROPPED: generic responsive grid advice
+- cycle 146 [mobile/home] "Sticky ATC bar (from a home-page featured product) overlaps with iOS Safari's bo" — DROPPED: generic safe-area CSS advice
+- cycle 146 [mobile/home] "Home has a horizontal-scroll carousel (categories) — is horizontal scroll okay o" — DROPPED: generic scroll-snap UX advice
+- cycle 146 [mobile/home] "Hero copy is 8 words on desktop but wraps to 4 lines on 320px mobile — how do we" — DROPPED: generic mobile copy budget
+- cycle 146 [mobile/home] "Home page loads at 5.2s LCP on 4G-throttled mobile — where do we cut?" — DROPPED: generic web perf audit list
+- cycle 146 [mobile/home] "Testimonials section on home shows 3 side-by-side cards desktop — mobile behavio" — DROPPED: generic responsive carousel advice
+- cycle 146 [mobile/home] "Mobile menu (hamburger) — where does the cart icon live and does it stay accessi" — DROPPED: generic mobile nav layout
+- cycle 146 [copy-voice/home] "Every section headline on home is written in ALL CAPS — is this a voice issue?" — DROPPED: generic typography consistency
+- cycle 146 [copy-voice/home] "Product benefit bullets are 12 words each — is that too long for scanning?" — DROPPED: generic bullet word-count advice
+- cycle 146 [copy-voice/home] "Section headline is 'Why choose us' — is that copy weak?" — DROPPED: generic filler-copy advice
+- cycle 146 [copy-voice/home] "CTA on hero says 'Learn more' — is that acceptable?" — DROPPED: generic CTA copy advice
+- cycle 146 [nav-ia/pdp] "Header nav on PDP — does it stay full or collapse to logo+cart to reduce distrac" — DROPPED: generic header consistency UX
+- cycle 146 [nav-ia/pdp] "On PDP, if customer clicks back-to-collection breadcrumb, do we preserve the col" — DROPPED: generic sessionStorage state advice
+- cycle 146 [nav-ia/pdp] "Sticky ATC bar appears on scroll — does it overlap the footer when customer scro" — DROPPED: generic IntersectionObserver footer pattern
+- cycle 147 [mobile/home] "What happens when the home page has 8 sections and mobile users bounce at 62% be" — DROPPED: generic CRO section ordering, invented config field
+- cycle 147 [mobile/home] "How should tap targets on the home page's product tiles behave when tiles are la" — DROPPED: redundant WCAG 44x44 tap target basic
+- cycle 147 [mobile/home] "How do horizontal scroll rows (best-sellers carousel) behave on mobile without b" — DROPPED: generic CSS scroll-snap carousel pattern
+- cycle 147 [forms-validation/cart] "Merchant enables gift-note field; what happens when a customer pastes 5000 chars" — DROPPED: arbitrary char limits, unverified 5000 claim
+- cycle 147 [forms-validation/cart] "Cart shipping-estimator asks for country/zip — how do we prevent a broken free-s" — DROPPED: shipping_rates.json deprecation claim unverified
+- cycle 147 [forms-validation/cart] "Customer tries to remove the last item in cart via qty=0 — what state does the c" — DROPPED: generic empty-cart UX pattern
+- cycle 147 [cro/cart-drawer] "Cart drawer opens on ATC but shopper is on a PDP variant picker — should we auto" — DROPPED: generic drawer UX + a11y basics
+- cycle 147 [cro/cart-drawer] "Should the cart drawer show upsells? How do we avoid it becoming a spam wall tha" — DROPPED: generic upsell limit as arbitrary config
+- cycle 147 [cro/cart-drawer] "Free-shipping progress bar in the drawer: when threshold is met, does it stay or" — DROPPED: arbitrary design timing, not Shopify mechanism
+- cycle 147 [cro/cart-drawer] "Drawer needs to show shipping estimate — but shopper is anonymous with no addres" — DROPPED: generic microcopy honesty advice
+- cycle 147 [cro/cart-drawer] "Drawer opens on mobile and covers the entire screen — how does the shopper get b" — DROPPED: redundant drawer a11y basics
+- cycle 147 [data-binding/checkout-reassurance] "Reassurance icons — where do they come from and how do we prevent inconsistent i" — DROPPED: generic icon-consistency design advice
+- cycle 147 [data-binding/checkout-reassurance] "Reassurance block on cart shows "Ships from California" — where does location bi" — DROPPED: invented setting + generic honesty rule
+- cycle 147 [imagery-art-direction/search] "Search results page shows product thumbnails — what aspect ratio and how do we p" — DROPPED: generic CSS aspect-ratio CLS pattern
+- cycle 147 [imagery-art-direction/search] "Search returns 50 results — how do we avoid loading 50 full-resolution images on" — DROPPED: generic image loading performance advice
+- cycle 147 [imagery-art-direction/search] "Search results show product with badge overlay ("New", "Sale") — where does the " — DROPPED: generic badge positioning UI
+- cycle 147 [imagery-art-direction/search] "Search page hero banner (top of results) — does one exist by default and what if" — DROPPED: generic content honesty rule
+- cycle 147 [email-lifecycle/search] "Search page collects zero-result queries — how do we feed those to email lifecyc" — DROPPED: generic zero-result email capture UX
+- cycle 147 [email-lifecycle/search] "Search page has a newsletter opt-in in the footer — but shopper just signed up 5" — DROPPED: generic newsletter cookie dedup
+- cycle 147 [email-lifecycle/search] "Search-page browsers who leave without adding to cart — should they trigger a br" — DROPPED: generic ESP lifecycle logic
+- cycle 147 [email-lifecycle/search] "Search results contain a newsletter-only discount code teaser — is this allowed?" — DROPPED: generic discount honesty microcopy
+- cycle 147 [email-lifecycle/search] "How do we prevent search-triggered emails from firing during a customer's active" — DROPPED: generic ESP exit-event logic
+- cycle 147 [motion/search-empty] "Shopper searches "foo" and gets zero results — what motion, if any, should the e" — DROPPED: generic empty-state motion timing
+- cycle 147 [motion/search-empty] "Shopper with `prefers-reduced-motion: reduce` searches and gets empty state — do" — DROPPED: redundant prefers-reduced-motion basic
+- cycle 147 [motion/search-empty] "Empty state has 3 suggested-search chips ("Try 'shirt', 'jacket', 'sale'") — how" — DROPPED: generic chip press animation
+- cycle 147 [motion/search-empty] "When the empty state loads, the search input auto-focuses to retry — should the " — DROPPED: redundant :focus-visible a11y basic
+- cycle 147 [motion/search-empty] "How does the transition from "searching…" spinner to "no results" empty state av" — DROPPED: generic loading crossfade UI
+- cycle 147 [motion/search-empty] "On the empty state we show "Popular right now" carousel — should items animate i" — DROPPED: generic stagger animation pattern
+- cycle 147 [motion/search-empty] "If the search input contains a typo ("jaket") and we do fuzzy correction to "jac" — DROPPED: generic UI text correction pattern
+- cycle 149 [merchandising/account] "Order history page — do we cross-sell 'buy again' items and how do we avoid push" — DROPPED: product.status not exposed in Liquid
+- cycle 149 [typography/article] "Blog article body — what's the max line-length for readability and how do we enf" — DROPPED: generic typography, not Shopify-specific
+- cycle 149 [typography/article] "H2 and H3 spacing inside a long-form article — what's the vertical rhythm and ho" — DROPPED: generic vertical rhythm advice
+- cycle 149 [typography/article] "Article intro paragraph — should we style it larger than body copy and how do we" — DROPPED: forloop.first on article.content HTML is invented
+- cycle 149 [typography/article] "Blockquotes inside articles — what typography treatment is honest (not decorativ" — DROPPED: generic blockquote typography
+- cycle 149 [typography/article] "Article body has code snippets or product SKU callouts — what monospace font sta" — DROPPED: generic monospace font stack advice
+- cycle 149 [typography/article] "Long article on mobile — the reading experience drifts because font-size and lin" — DROPPED: generic mobile typography tokens
+- cycle 149 [typography/article] "The article has author byline + published/updated dates — what typography differ" — DROPPED: generic metadata typography
+- cycle 149 [a11y/article] "Article body contains images with captions — how do we structure alt text vs. fi" — DROPPED: universal figure/figcaption pattern
+- cycle 149 [a11y/article] "Article has embedded YouTube/Vimeo video — how do we make the iframe accessible " — DROPPED: generic lite-embed web pattern
+- cycle 149 [a11y/article] "Article body has 'jump to section' anchor links — how do we handle focus managem" — DROPPED: universal anchor focus a11y pattern
+- cycle 149 [a11y/article] "Related articles rail at the end of an article — how do we make card links acces" — DROPPED: universal card-link a11y pattern
+- cycle 149 [a11y/article] "Article table of contents auto-generated from H2s — how do we make it discoverab" — DROPPED: universal nav aria-label pattern
+- cycle 149 [a11y/article] "Article uses accordion FAQ blocks at the end — what's the accessible pattern in " — DROPPED: universal details/summary HTML
+- cycle 149 [a11y/article] "Article has social share buttons in a sticky sidebar — how do we ensure they don" — DROPPED: generic responsive sticky sidebar
+- cycle 149 [performance-cwv/blog] "Blog listing page shows 12+ article cards each with hero images — how do we keep" — DROPPED: generic LCP loading pattern
+- cycle 149 [performance-cwv/blog] "Blog article has embedded Instagram/TikTok posts — these load massive JS that ta" — DROPPED: generic social embed thumbnails
+- cycle 149 [performance-cwv/blog] "Blog listing has infinite scroll or 'load more' pagination — how do we avoid CLS" — DROPPED: generic pagination min-height CLS advice
+- cycle 149 [performance-cwv/blog] "Blog page includes analytics scripts (GA4, Meta Pixel, Klaviyo) — how do we prev" — DROPPED: generic Partytown analytics loading
+- cycle 149 [performance-cwv/blog] "Blog cards each have a hover animation that causes jank on scroll — how do we ma" — DROPPED: universal transform/opacity perf rule
+- cycle 149 [legal-compliance/blog] "Article has affiliate links to external retailers — what disclosure is legally r" — DROPPED: generic FTC affiliate disclosure copy
+- cycle 149 [legal-compliance/blog] "Blog article includes a lead-capture form (newsletter signup) — what GDPR/CCPA f" — DROPPED: generic GDPR consent checkbox rule
+- cycle 149 [legal-compliance/blog] "Article contains user-generated comments (via a Shopify app) — how do we handle " — DROPPED: generic comment moderation legal advice
+- cycle 151 [performance-cwv/404] "How do we keep the 404 page's LCP under 2.5s when merchants often bloat it with " — DROPPED: Generic web perf advice, not Shopify-specific
+- cycle 151 [performance-cwv/404] "How do we prevent CLS on the 404 when the search input renders before the hero g" — DROPPED: Generic CSS aspect-ratio, not Shopify mechanism
+- cycle 151 [performance-cwv/404] "Should the 404 page prefetch links to /collections/all or /products so bounced u" — DROPPED: Generic prefetch strategy, universal web advice
+- cycle 151 [performance-cwv/404] "When the 404 hero uses a background image, how do we keep it from becoming the L" — DROPPED: Generic font-display/preload advice
+- cycle 151 [performance-cwv/404] "How do we test that the 404 page's CWV don't silently regress after theme update" — DROPPED: Generic Lighthouse testing on 404
+- cycle 151 [i18n-currency-rtl/404] "How does the 404 page render for a customer whose Shopify Markets locale is Arab" — DROPPED: Invented Liquid filter syntax (| if:)
+- cycle 151 [i18n-currency-rtl/404] "How does the 404 handle date/relative-time strings (e.g. 'Recently viewed produc" — DROPPED: Redundant with #8 translation pattern
+- cycle 151 [i18n-currency-rtl/404] "How do we ensure the search input on 404 accepts and correctly submits non-Latin" — DROPPED: Generic browser Unicode form behavior
+- cycle 151 [merchandising/404] "Should the 404 push newsletter signup instead of products for visitors who arriv" — DROPPED: Generic CRO config, no Shopify mechanism
+- cycle 151 [spacing-rhythm/order-confirmation] "How do we set consistent vertical rhythm between order-summary, shipping-address" — DROPPED: Generic design-token spacing scale, not Shopify
+- cycle 151 [spacing-rhythm/order-confirmation] "How do we prevent the order-confirmation page from looking crammed on mobile whe" — DROPPED: Generic mobile spacing and tap-target advice
+- cycle 151 [spacing-rhythm/order-confirmation] "How do we handle spacing when the visitor's order has a mix of subscription and " — DROPPED: Generic layout grouping advice
+- cycle 151 [spacing-rhythm/order-confirmation] "How do we ensure the order-confirmation 'Continue shopping' CTA has enough breat" — DROPPED: Generic CTA spacing advice
+- cycle 151 [spacing-rhythm/order-confirmation] "What is the spacing rule when an order has bundle products (parent + children) o" — DROPPED: Generic bundle display spacing
+- cycle 151 [spacing-rhythm/order-confirmation] "How do we space the order-confirmation when there's a gift-wrap add-on, gift-mes" — DROPPED: Generic conditional card spacing advice
+- cycle 151 [spacing-rhythm/order-confirmation] "How should whitespace scale in the order-confirmation email vs the on-page thank" — DROPPED: Generic email spacing token advice
+- cycle 151 [trust-social-proof/order-confirmation] "Is it appropriate to show reviews or star ratings on the order-confirmation page" — DROPPED: Generic review-request email marketing timing
+- cycle 151 [trust-social-proof/order-confirmation] "Should we show 'Recently purchased by X other customers' or order-count social p" — DROPPED: Generic honesty/anti-FOMO copy advice
+- cycle 151 [trust-social-proof/order-confirmation] "How do we display trust badges (payment security, shipping guarantee) on order-c" — DROPPED: Generic trust copy, no Shopify mechanism
+- cycle 151 [trust-social-proof/order-confirmation] "How do we handle customer testimonials on order-confirmation for a first-time bu" — DROPPED: Generic testimonial copy advice
+- cycle 151 [edge-cases/order-confirmation] "How does order-confirmation render for a $0 order (free sample, all-discount pro" — DROPPED: Generic display copy, not Shopify mechanism
+- cycle 151 [edge-cases/order-confirmation] "What happens on order-confirmation if the customer's email failed to send (SMTP " — DROPPED: Generic email-failure notice pattern
+- cycle 151 [trust-social-proof/subscription] "How do we display 'flexibility guarantees' (pause anytime, cancel anytime) on su" — DROPPED: Generic 3-icon-lockup CRO advice
+- cycle 151 [trust-social-proof/subscription] "How do we handle 'as-featured-in' press logos on subscription landing pages — th" — DROPPED: Redundant with #32 press-logo rule
+- cycle 151 [trust-social-proof/subscription] "How do we handle subscriber testimonials that talk about long-term results (e.g." — DROPPED: Generic testimonial disclosure advice
+- cycle 154 [cro/faq-page] "How do we handle the 'Do you ship to X country?' question without lying when we " — DROPPED: Shopify.country is shop not user country
+- cycle 154 [cro/faq-page] "Should the FAQ include a search box, and if so how do we prevent zero-result dea" — DROPPED: generic client-side search UX
+- cycle 154 [i18n-currency-rtl/faq-page] "How does the FAQ page render in RTL (Arabic/Hebrew) markets?" — DROPPED: generic RTL CSS not Shopify-specific
+- cycle 154 [i18n-currency-rtl/faq-page] "Do we swap the FAQ order/priority for different markets?" — DROPPED: market-scoped priority metafield fabricated
+- cycle 154 [i18n-currency-rtl/faq-page] "How do we handle date/time formats in FAQ answers ('We ship within 24 hours')?" — DROPPED: generic copy advice about relative time
+- cycle 154 [motion/lookbook] "Should the lookbook use auto-playing hero videos or static hero images?" — DROPPED: generic web perf, not Shopify-specific
+- cycle 154 [motion/lookbook] "How aggressive should scroll-triggered animations be on the lookbook?" — DROPPED: generic motion/CRO not Shopify-bound
+- cycle 154 [motion/lookbook] "Can we auto-advance a lookbook carousel every N seconds?" — DROPPED: generic WCAG 2.2.2 restatement
+- cycle 154 [motion/lookbook] "How do we handle GIF vs video for a small motion accent (e.g. a swaying dress)?" — DROPPED: generic video vs GIF perf advice
+- cycle 154 [motion/lookbook] "Should the lookbook have a scroll progress indicator or scroll snapping?" — DROPPED: generic CSS scroll-snap advice
+- cycle 154 [motion/lookbook] "How do we animate the shop-the-look hotspots that overlay a lookbook image?" — DROPPED: generic hotspot UX guidance
+- cycle 154 [motion/lookbook] "Can we use Lottie animations for lookbook loading states or transitions?" — DROPPED: generic Lottie perf advice
+- cycle 154 [mobile/lookbook] "Should lookbook images be a horizontal swipe carousel or vertical scroll on mobi" — DROPPED: generic mobile carousel UX
+- cycle 154 [mobile/lookbook] "How do we prevent lookbook zoom pinch from breaking layout on iOS?" — DROPPED: generic viewport a11y advice
+- cycle 154 [mobile/lookbook] "How do we handle the lookbook 'shop the look' button placement on mobile without" — DROPPED: generic sticky safe-area CSS
+- cycle 154 [mobile/lookbook] "What image weights are acceptable per lookbook scene on mobile 3G?" — DROPPED: AVIF auto-negotiation not standard Shopify
+- cycle 154 [mobile/lookbook] "How do we handle the swipe-to-next-scene gesture without hijacking mobile browse" — DROPPED: generic touch gesture advice
+- cycle 154 [copy-voice/lookbook] "How long should lookbook scene captions be, and where do they sit?" — DROPPED: generic caption length copy rule
+- cycle 154 [copy-voice/lookbook] "How do we write CTA microcopy for 'Shop the look' without sounding pushy?" — DROPPED: generic CTA microcopy advice
+- cycle 154 [copy-voice/lookbook] "Should lookbook body copy use first-person, third-person, or brand-name-as-noun?" — DROPPED: generic voice-person copy convention
+- cycle 154 [copy-voice/lookbook] "How do we avoid 'stock content marketing' phrases like 'timeless elegance' or 'm" — DROPPED: generic banned-phrase lint rule
+- cycle 154 [copy-voice/lookbook] "How do we handle the 'about this collection' intro paragraph without stock-photo" — DROPPED: generic intro paragraph copy structure
+- cycle 154 [copy-voice/lookbook] "How do we write alt text for lookbook imagery that serves both a11y and SEO hone" — DROPPED: generic alt text length rule
+- cycle 156 [performance-cwv/store-locator] "How do we render a store locator with 500+ retail locations without blowing LCP " — DROPPED: paginate misused; distance-sorted 20 isn't a paginate use case
+- cycle 156 [performance-cwv/store-locator] "Google Maps JS API adds 450KB and tanks CLS when the iframe loads late — can we " — DROPPED: generic Leaflet/OSM advice, not Shopify-specific
+- cycle 156 [performance-cwv/store-locator] "Storefront geolocation API + reverse geocoding blocks TTI for 2+ seconds while b" — DROPPED: generic geolocation UX, applies to any site
+- cycle 156 [performance-cwv/store-locator] "Autocomplete on the zip/city input fires an API call on every keystroke — how do" — DROPPED: generic debounce/abort advice
+- cycle 156 [i18n-currency-rtl/store-locator] "Phone numbers, hours, and addresses format differently per locale — how do we av" — DROPPED: generic phone-format advice; metaobject wrapper thin
+- cycle 156 [i18n-currency-rtl/store-locator] "'Get Directions' button opens Google Maps with English street names for a Japane" — DROPPED: generic Maps deep-link; maps:// isn't Shopify
+- cycle 156 [i18n-currency-rtl/store-locator] "RTL locales flip the map controls (zoom buttons on the left instead of right) — " — DROPPED: generic RTL UI advice, no Shopify hook
+- cycle 156 [i18n-currency-rtl/store-locator] "The 'Open now' badge uses store's local timezone but a UK shopper viewing a Sydn" — DROPPED: generic timezone handling, thin metafield wrapper
+- cycle 156 [a11y/comparison] "Product comparison table has 8 columns × 20 rows and screen readers can't announ" — DROPPED: generic WCAG table semantics
+- cycle 156 [a11y/comparison] "'Add to Compare' checkboxes on a collection page have no visible focus indicator" — DROPPED: generic focus-visible advice
+- cycle 156 [a11y/comparison] "Comparison modal opens over the collection page but keyboard focus stays behind " — DROPPED: generic modal focus-trap pattern
+- cycle 156 [a11y/comparison] "'Remove from comparison' × buttons on each column are 24×24px — too small for to" — DROPPED: generic 44x44 WCAG rule
+- cycle 156 [a11y/comparison] "Comparison table uses color alone (green ✓ / red ✗) to show feature presence — c" — DROPPED: generic color-not-alone WCAG rule
+- cycle 156 [a11y/comparison] "Sort controls ('Sort by price / rating / name') are <div> elements with click ha" — DROPPED: generic div-vs-button a11y basic
+- cycle 156 [a11y/comparison] "Screen reader users on the comparison page have no way to hear 'you've selected " — DROPPED: generic aria-live sr-only pattern
+- cycle 156 [trust-social-proof/comparison] "Comparison page shows a testimonial 'The best purchase I made all year — Sarah K" — DROPPED: generic testimonial-source honesty, universal
+- cycle 156 [search-filtering/comparison] "Shopper wants to add a 4th product to comparison but the limit is 3 — where does" — DROPPED: generic swap-limit UX
+- cycle 156 [search-filtering/comparison] "Comparison-eligible products span multiple collections but shopper is filtering " — DROPPED: generic localStorage filter-state pattern
+- cycle 156 [search-filtering/comparison] "Comparison table has a 'Filter columns' UI (hide 'Weight', 'Warranty' etc.) — sh" — DROPPED: generic localStorage prefs pattern
+- cycle 156 [search-filtering/comparison] "Shopify's native search relevance ranks by title match but comparison-eligible p" — DROPPED: invalid predictive-search query syntax (no boolean AND)
+- cycle 156 [search-filtering/comparison] "Shopper clears all filters on comparison and now sees 0 products — what's the co" — DROPPED: generic empty-state copy guidance
+- cycle 156 [mobile/bundle-builder] "Bundle builder on mobile (390px) has 6 product slots but each slot's variant sel" — DROPPED: generic mobile CSS (scroll-snap, stack)
+- cycle 156 [mobile/bundle-builder] "Sticky 'Add Bundle to Cart' CTA covers the last product slot on iPhone SE (568px" — DROPPED: generic safe-area-inset mobile pattern
+- cycle 156 [mobile/bundle-builder] "Product image swatches (2x2 grid, 60px each) fail the 44×44 tap target rule when" — DROPPED: generic WCAG tap-target rule
+- cycle 156 [mobile/bundle-builder] "Bundle builder needs a 'save & continue' flow but mobile users abandon when sess" — DROPPED: generic localStorage session persistence
+- cycle 156 [mobile/bundle-builder] "On mobile the running total price ('$47 of $80 goal') needs to be always visible" — DROPPED: generic sticky-progress UX
+- cycle 156 [mobile/bundle-builder] "iOS Safari zooms the viewport when a shopper taps the quantity input field — how" — DROPPED: generic iOS 16px zoom-prevention
+- cycle 156 [mobile/bundle-builder] "Bundle preview thumbnails stack differently on 320px (iPhone SE 1st gen) vs 390p" — DROPPED: generic responsive-width testing advice
+- cycle 156 [forms-validation/bundle-builder] "Bundle builder requires 3-of-6 slots minimum but shopper clicks 'Add to Cart' wi" — DROPPED: generic aria-disabled form-validation pattern
+- cycle 156 [forms-validation/bundle-builder] "Shopper enters '0' or '-1' in a bundle-quantity input — how do we prevent invali" — DROPPED: generic HTML input constraints
+- cycle 156 [forms-validation/bundle-builder] "Free-text input for 'gift message' allows any characters including emoji and RTL" — DROPPED: generic UTF-8 sanitization advice
+- cycle 158 [legal-compliance/landing-advertorial] "Advertorial page collects email for 'launch list' — GDPR/CAN-SPAM/CASL complianc" — DROPPED: generic GDPR consent, not Shopify-specific
+- cycle 158 [search-filtering/landing-advertorial] "Should advertorial show up in the storefront's predictive-search dropdown?" — DROPPED: template_suffix opt-out of suggest.json invented
+- cycle 158 [search-filtering/landing-advertorial] "Advertorial contains long-form ingredient/spec content — how to make in-page 'fi" — DROPPED: generic semantic HTML/anchor advice
+- cycle 158 [search-filtering/landing-advertorial] "Advertorial URL is /pages/why-our-formula-works — should it appear in sitemap.xm" — DROPPED: can't filter Shopify auto-sitemap.xml
+- cycle 158 [layout/header-nav] "Header nav must fit brand logo + 5 top-level items + search + cart + account on " — DROPPED: generic layout, no Shopify mechanism
+- cycle 158 [layout/header-nav] "Sticky header on scroll — how much can it shrink and what stays visible?" — DROPPED: generic sticky-header shrink CSS
+- cycle 158 [layout/header-nav] "Multi-line announcement bar (e.g. free shipping + return policy) — how to render" — DROPPED: generic announcement-bar CSS numbers
+- cycle 158 [layout/header-nav] "Mega menu with product images inside header dropdown — how many items and what i" — DROPPED: generic mega-menu grid sizing
+- cycle 158 [layout/header-nav] "Search icon vs search input in header — expand-on-click vs always-visible?" — DROPPED: generic responsive breakpoint advice
+- cycle 158 [layout/header-nav] "Cart icon with item count badge — how does badge sit visually without shifting l" — DROPPED: generic badge CSS positioning
+- cycle 158 [layout/header-nav] "Header height must not shift when user scrolls to sticky mode (CLS violation) — " — DROPPED: generic CSS var CLS technique
+- cycle 158 [typography/header-nav] "Header nav font size on mobile vs desktop — what values and why?" — DROPPED: generic typography sizes
+- cycle 158 [typography/header-nav] "Logo is a wordmark not an image — what font loads first and how to avoid FOIT/FO" — DROPPED: generic font-display:swap advice
+- cycle 158 [typography/header-nav] "Announcement bar text contrast against colored background — how to guarantee WCA" — DROPPED: generic WCAG contrast rule
+- cycle 158 [typography/header-nav] "Mega menu category headers vs items — typography hierarchy?" — DROPPED: generic typography hierarchy
+- cycle 158 [typography/header-nav] "Multi-language store (English + French) — nav item length varies 30-60% — how do" — DROPPED: generic text-overflow ellipsis technique
+- cycle 158 [typography/header-nav] "Hover/focus state typography change for nav items — underline vs weight vs color" — DROPPED: generic hover/focus a11y basics
+- cycle 158 [states-empty-loading-error/header-nav] "Mega menu image fails to load (Shopify CDN hiccup) — what shows?" — DROPPED: generic img onerror fallback pattern
+- cycle 158 [nav-ia/header-nav] "Merchant has 47 collections — how many surface in top-level nav vs mega menu vs " — DROPPED: generic IA nav-count rule
+- cycle 158 [nav-ia/header-nav] "Where does 'Track Order' link live — header, footer, or account menu?" — DROPPED: generic IA placement advice
+- cycle 158 [nav-ia/header-nav] "Where does 'Blog' or 'Journal' link go in nav IA?" — DROPPED: generic content vs commerce IA advice
+- cycle 159 [layout/header-nav] "Store has announcement bar + header + free-shipping strip stacking to 180px on m" — DROPPED: generic IntersectionObserver perf, no Liquid ref
+- cycle 159 [layout/header-nav] "How do we prevent header logo + nav from wrapping to two rows at 1024–1180px tab" — DROPPED: generic responsive CSS advice
+- cycle 159 [layout/header-nav] "Sticky header covers the anchor target when a PDP jump-link scrolls to #reviews " — DROPPED: generic scroll-margin-top CSS technique
+- cycle 159 [layout/header-nav] "Cart bubble count overflows to 3+ digits (subscription box store) breaking the h" — DROPPED: generic badge CSS, no Shopify mechanism
+- cycle 159 [layout/header-nav] "How should search input expand on desktop without pushing nav items into wrap?" — DROPPED: generic search UX pattern
+- cycle 159 [forms-validation/header-nav] "Newsletter signup in header footer collects email but no consent checkbox for EU" — DROPPED: generic GDPR consent advice
+- cycle 159 [forms-validation/header-nav] "Search submission with empty query redirects to /search?q= with 'No results' pag" — DROPPED: generic form validation
+- cycle 159 [forms-validation/header-nav] "Search suggestions dropdown steals focus from screen readers when user is still " — DROPPED: generic ARIA live region pattern
+- cycle 159 [copy-voice/footer] "Footer newsletter CTA reads 'Subscribe' — how do we lift with brand-adaptive voi" — DROPPED: generic copywriting advice
+- cycle 159 [copy-voice/footer] "Footer 'About us' blurb was pulled from an old landing page and is 3 paragraphs " — DROPPED: generic content-length rule
+- cycle 159 [copy-voice/footer] "Footer link labels are 'FAQ / Shipping / Returns / Contact' — how do we make the" — DROPPED: generic SEO link labels
+- cycle 159 [copy-voice/footer] "Store selling supplements has footer disclaimer copy — what's required and what'" — DROPPED: generic FDA/legal disclaimer content
+- cycle 159 [a11y/mega-menu] "Mega-menu opens on hover but keyboard user can't reach nested links — how to fix" — DROPPED: generic WAI-ARIA menu pattern
+- cycle 159 [a11y/mega-menu] "Mega-menu column headings are styled `<div class='heading'>` — is that acceptabl" — DROPPED: generic semantic-heading a11y
+- cycle 159 [a11y/mega-menu] "Mega-menu contains a featured image + product card — how do we make it accessibl" — DROPPED: generic anchor-wrap a11y pattern
+- cycle 159 [a11y/mega-menu] "Focus indicator on mega-menu links is invisible against dark panel background — " — DROPPED: generic WCAG focus contrast
+- cycle 159 [a11y/mega-menu] "On mobile, mega-menu becomes an accordion — how do we announce open/close state " — DROPPED: generic aria-expanded accordion pattern
+- cycle 159 [a11y/mega-menu] "Language selector inside mega-menu uses flag icons only — is that okay?" — DROPPED: generic i18n endonym advice
+- cycle 159 [a11y/mega-menu] "Mega-menu closes when user tabs to next header link — should it stay open?" — DROPPED: generic focus-management UX
+- cycle 159 [performance-cwv/mega-menu] "Mega-menu ships 40 product images across 5 columns adding 800KB to homepage — ho" — DROPPED: generic loading/fetchpriority HTML attrs
+- cycle 159 [performance-cwv/mega-menu] "Mega-menu JS adds 60KB parse time on homepage — is that acceptable?" — DROPPED: generic modern CSS disclosure pattern
+- cycle 159 [performance-cwv/mega-menu] "Mega-menu contains a video autoplay preview — how do we avoid CLS + bandwidth sp" — DROPPED: generic video aspect-ratio perf
+- cycle 159 [performance-cwv/mega-menu] "Custom web font used in mega-menu column headings adds 60KB and delays FCP — how" — DROPPED: font_modify does not do subsetting
+- cycle 159 [performance-cwv/mega-menu] "Mega-menu preloads next-page prefetch on hover — is that always safe for CWV?" — DROPPED: generic hover-prefetch advice
+- cycle 159 [forms-validation/mega-menu] "Store-locator search embedded in mega-menu — how do we validate zip/postal code " — DROPPED: Admin API has no zip location search
+- cycle 159 [forms-validation/mega-menu] "Sign-in form in mega-menu — should we show it inline or link to /account/login?" — DROPPED: generic inline-form security advice
+- cycle 159 [forms-validation/mega-menu] "Gift-card lookup form ('check balance') linked from mega-menu — how do we valida" — DROPPED: gift card format not strict, generic pattern

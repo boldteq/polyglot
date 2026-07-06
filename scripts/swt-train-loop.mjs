@@ -49,6 +49,11 @@ const FAQS_PER_SLICE = 7
 const TARGET = 5040
 const MODEL = process.env.SWT_MODEL || '' // empty = inherit CLI default
 const STORE_SCAN = process.env.SWT_STORE_SCAN !== '0'
+// Round 2 (topup): the linear plan is breadth-only — once slicePointer reaches 720 it's "done"
+// even though the critic dropped enough entries that ~35% of slices never reached the 7-FAQ
+// quota. Gap mode re-walks the brain's REAL per-slice counts every cycle (self-correcting: a
+// slice the critic guts this cycle just reappears next cycle) instead of trusting a stale pointer.
+const GAP_MODE = process.env.SWT_MODE === 'topup'
 
 const CONCERNS = [
   'layout', 'typography', 'color-contrast', 'spacing-rhythm',
@@ -88,15 +93,39 @@ const AGENTS =
   'lattice(metafields/metaobjects) · keystone(store access) · porter(store data/products/images) · ' +
   'mantle(CLI deploy/publish) · lumen(QA gates/Lighthouse/axe) · onyx(final review/visual-quality)'
 
+// Gate stack — 35 quality gates · 2 levels (setup/quality → category). Loved names. (theme-lock/library-cards/review-board removed.)
 const GATES =
-  '#0 theme-lock, #0.4 discovery, #0.5 bootstrap, #1 lighthouse(LCP/CLS), #2 theme-check, ' +
-  '#3 editability(no-hardcode), #5 axe(live a11y), #6 seo(JSON-LD/canonical/meta), ' +
-  '#7 conversion, #8 design-system, #9 consistency, #10 functional, #11 antipatterns, ' +
-  '#12 design-quality(premium), #13 honesty(no fabrication/fake-urgency), #14 render-wiring, ' +
-  '#15 commerce-readiness, #16 a11y-static, #17 visual-quality, #18 visual-truth(Lens screenshots), ' +
-  '#19 section-cohesion, #20 card-bindings, #21 conversion-signoff, #22 css-layout, ' +
-  '#23 reuse-map, #24 art-direction, #25 redirects, #26 copy-quality, #27 app-conflicts, ' +
-  '#28 locale-completeness, #29 email-triggers, #30 ds-cascade, #34 image-quality, #35 mobile-layout'
+  '#0.4 discovery, #0.5 foundation, #0.6 secret-scan, ' +
+  '#1 performance(LCP/CLS), #5 accessibility(live a11y), #6 seo(JSON-LD/canonical/meta), ' +
+  '#10 functionality(clicks/ATC/no-JS-errors), #25 redirects, #39 social-assets(favicon/OG), #40 link-health(404/broken-links), ' +
+  '#2 code-lint, #3 editability(no-hardcode), #11 dead-code, #22 layout(overflow), ' +
+  '#7 conversion(CRO+can-transact+lift), #38 price-binding(no-hardcoded-prices), ' +
+  '#13 honesty(no fabrication/fake-urgency), #36 content-quality(no-placeholder+copy), ' +
+  '#18 visual-check(Lens vision-judge), #19 section-consistency, #35 mobile, ' +
+  '#8 design-tokens, #9 consistency, #12 design-quality(premium), #14 render-check, #23 section-reuse, #30 brand-sync, ' +
+  '#16 static-a11y(alt/tap-targets), #24 imagery(weight/art-direction), #27 app-conflicts, #28 translations, #29 email-triggers, ' +
+  '#37 legal-pages(privacy/terms/refund/shipping), #41 analytics-wiring(GA4/Meta), #42 consent(GDPR)'
+
+// Normalize any legacy gate names claude's priors leak into the new branded names (number-anchored
+// "#N old" → "#N new" + the dominant " · #N name · " citation form), so every stored FAQ is branded.
+const GATE_BRAND_PAIRS = (() => {
+  try {
+    const m = JSON.parse(fs.readFileSync(path.join(HERE, 'gate-migration-map.json'), 'utf8'))
+    return [
+      ...m.renames.map((r) => ({ oN: r.number, o: r.old, nN: r.number, n: r.new })),
+      ...m.merges.flatMap((mg) => mg.absorbs.map((a) => ({ oN: a.number, o: a.old, nN: mg.number, n: mg.new }))),
+    ]
+  } catch { return [] }
+})()
+function brandGates(text) {
+  let t = String(text || '')
+  for (const p of GATE_BRAND_PAIRS) {
+    const onum = String(p.oN).replace(/[.]/g, '\\.')
+    t = t.replace(new RegExp(`#\\s*${onum}\\s+${p.o}\\b`, 'g'), `#${p.nN} ${p.n}`) // "#13 candor" → "#13 candor"
+    t = t.replace(new RegExp(`\\b${p.o}\\s*\\(#\\s*${onum}\\)`, 'g'), `${p.n} (#${p.nN})`) // "candor (#13)"
+  }
+  return t
+}
 
 function genPrompt(slices, count, startId) {
   const sliceLines = slices
@@ -116,6 +145,7 @@ ${sliceLines}
 HARD RULES:
 - Specific to Shopify Online Store 2.0 Liquid themes (Dawn/Minimog base), real ecom behavior. NO generic web fluff.
 - Every entry names an owning agent + an enforcing gate from the lists above.
+- Cite gates by their EXACT name from the GATES list above (e.g. honesty, visual-check, design-tokens, render-check, static-a11y), NEVER removed gates (theme-lock/library-cards/review-board).
 - Honesty doctrine: never fabricate reviews/press/stats/urgency; empty modules hide, not fake.
 - "cons" must be a REAL trade-off + a mitigation, not a throwaway.
 - Distinct from each other; concrete and actionable.
@@ -137,8 +167,16 @@ function loadState() {
     log: [{ cycle: 1, ts: '2026-06-26', added: 50, faqTotal: 50, note: 'Batch 1 seed (manual)' }],
   }
 }
+// Atomic write (tmp + rename) — a crash mid-write can't leave a torn/corrupt file. The brain is the
+// ONLY source (every pack/digest/index rebuilds from it) and has no other recovery point, so its
+// in-place rewrites MUST be atomic. audit 2026-06-27.
+function atomicWrite(file, content) {
+  const tmp = `${file}.tmp`
+  fs.writeFileSync(tmp, content)
+  fs.renameSync(tmp, file)
+}
 function saveState(s) {
-  fs.writeFileSync(STATE_F, JSON.stringify(s, null, 2))
+  atomicWrite(STATE_F, JSON.stringify(s, null, 2))
 }
 function stamp() {
   return new Date().toISOString() // daemon process — Date is allowed here (not a workflow script)
@@ -155,18 +193,62 @@ function countBrainFaqs() {
   return m ? m.length : 0
 }
 
+// The next ID to assign MUST come from what's actually on disk, never from state.faqCount alone —
+// a manual purge that removes entries from the MIDDLE of the range (not the tail) decouples "total
+// count" from "highest assigned ID" (bit us for real 2026-07-02: purged 2 FAQs, faqCount patched to
+// the new total 4293, but FAQ-4294/4295 were still on disk from before the purge — a restart would
+// have silently duplicated their headers). Self-healing: doesn't matter what state.json says.
+function maxBrainFaqId() {
+  if (!fs.existsSync(BRAIN)) return 0
+  const m = fs.readFileSync(BRAIN, 'utf8').match(/^### FAQ-(\d{4})/gm)
+  if (!m) return 0
+  return Math.max(...m.map((s) => Number(s.slice(-4))))
+}
+
+// real per-slice counts, tallied from the FAQ headers actually on disk (not the state pointer).
+function countBrainSlices() {
+  const counts = new Map()
+  if (!fs.existsSync(BRAIN)) return counts
+  const re = /^### FAQ-\d{4} · ([\w-]+) · ([\w-]+)/gm
+  const md = fs.readFileSync(BRAIN, 'utf8')
+  let m
+  while ((m = re.exec(md))) {
+    const key = `${m[1]}|${m[2]}`
+    counts.set(key, (counts.get(key) || 0) + 1)
+  }
+  return counts
+}
+// under-quota slices, worst gap (zero-coverage) first — so a run cut short still lands the
+// most valuable fills first. Empty return = every slice at/above FAQS_PER_SLICE. No pointer:
+// recomputed fresh each cycle so a critic-gutted slice from cycle N is retried at cycle N+1.
+function buildGapPlan() {
+  const counts = countBrainSlices()
+  return buildSlicePlan()
+    .map((slice) => ({ slice, n: counts.get(slice) || 0 }))
+    .filter((x) => x.n < FAQS_PER_SLICE)
+    .sort((a, b) => a.n - b.n)
+    .map((x) => x.slice)
+}
+
 // ---- claude -p generation ----
+const GEN_TIMEOUT_MS = Number(process.env.SWT_GEN_TIMEOUT_MS || 12 * 60 * 1000) // 49-FAQ gen runs ~4-8min
 function callClaude(prompt) {
-  const args = ['-p', prompt, '--output-format', 'text', '--no-session-persistence']
+  // NOTE: dropped --no-session-persistence (not a documented flag in claude 2.1.x). Keep args minimal.
+  const args = ['-p', prompt, '--output-format', 'text']
   if (MODEL) args.push('--model', MODEL)
   const r = spawnSync(CLAUDE_BIN, args, {
     encoding: 'utf8',
-    timeout: 8 * 60 * 1000, // headroom: 49-FAQ gen runs ~4–5min; 5min tipped over occasionally
+    timeout: GEN_TIMEOUT_MS,
     maxBuffer: 30 * 1024 * 1024,
     cwd: ROOT,
   })
-  if (r.error) throw new Error(`claude spawn failed: ${r.error.message}`)
-  if (r.status !== 0) throw new Error(`claude exit ${r.status}: ${(r.stderr || '').slice(0, 300)}`)
+  if (r.error) {
+    // distinguish a timeout (expected under load) from a real spawn failure, so the log is diagnosable.
+    const why = (r.error.code === 'ETIMEDOUT' || r.signal === 'SIGTERM') ? `timeout after ${Math.round(GEN_TIMEOUT_MS / 60000)}min` : r.error.message
+    throw new Error(`claude generation failed: ${why}`)
+  }
+  // capture FULL stderr (the old 300-char slice hid the cause of every exit-1); fall back to stdout.
+  if (r.status !== 0) throw new Error(`claude exit ${r.status}: ${(r.stderr || r.stdout || '(no output)').trim().slice(0, 1000)}`)
   return r.stdout || ''
 }
 function extractJsonArray(text) {
@@ -197,14 +279,36 @@ function verifyPrompt(entries) {
   const list = entries
     .map((e, i) => `${i}. [${e.concern}/${e.surface}] GAP: ${e.gap.slice(0, 140)} | RULE: ${e.solution.slice(0, 190)}`)
     .join('\n')
-  return `You are a senior Shopify Online Store 2.0 / Liquid expert auditing auto-generated TRAINING RULES for an AI website-building team BEFORE they are written into the agents. For EACH numbered entry, decide keep or drop.
-DROP if: factually wrong about Shopify/Liquid/theme behavior; violates honesty (fabricated reviews/press/stats, fake urgency/countdown); cites a gate that doesn't exist; generic web advice not specific to Shopify ecom; or essentially duplicates another entry in this list.
-KEEP if it is a correct, specific, actionable Shopify ecom design rule.
+  return `You are a SKEPTICAL senior Shopify Online Store 2.0 / Liquid engineer auditing auto-generated TRAINING RULES that will be written into AI agents' instructions. A WRONG rule teaches the agents a falsehood that they then ship — so be ADVERSARIAL: when in doubt, DROP.
+
+For EACH numbered entry, decide keep or drop. DROP if ANY of these is true:
+- WRONG / INVENTED: factually wrong about Shopify/Liquid/theme behavior, OR uses a Liquid filter/object/property that does NOT exist (VERIFY the names are real — e.g. there is NO \`round_to_humanize\`, \`date_diff\`, \`time_ago\`, \`request.user_agent\`, \`shop.taxes_included\`; date math uses \`| date: '%s'\` epoch subtraction, currency uses Markets + \`| money\`, not a convert filter).
+- GENERIC: web/CRO/typography/copy/email advice NOT bound to a SPECIFIC real Shopify mechanism (a real Liquid object/filter, section/block setting, metafield/metaobject, route, or a real gate). "Use 16px body / 150ms transitions / benefits-first copy / 12-16-24px spacing" = DROP — it applies to any website.
+- DISHONEST: fabricated reviews/press/stats, fake urgency/countdown, OR cites a gate number that doesn't exist.
+- REDUNDANT: restates a universal rule (alt text, semantic HTML, WCAG basics, "use a real link") with nothing new or Shopify-specific, OR duplicates another entry in this list.
+
+KEEP ONLY if it is a REAL gap a Shopify theme builder genuinely hits AND the solution is CORRECT + SPECIFIC + actionable, naming a real Liquid object/filter/setting/metafield you can verify exists. A vague-but-true statement is NOT enough — it must be Shopify-specific and verifiable.
 
 ${list}
 
 Output ONLY a JSON array, one object per entry, covering all ${entries.length}: [{"i":<index>,"verdict":"keep"|"drop","reason":"<=10 words"}]`
 }
+// Deterministic backstop — Liquid filters/objects/props that DO NOT EXIST but the generator
+// hallucinates (audit 2026-06-27: these teach agents false Liquid). Curated to be ZERO false-positive
+// (every one is verifiably not real Shopify Liquid), so a rule using one is wrong-by-construction and
+// dropped regardless of what the LLM critic says. Grow this list as new hallucinations are caught.
+const HALLUCINATED = [
+  /\bround_to_humanize\b/i, /\|\s*date_diff\b/i, /\|\s*time_diff\b/i, /\|\s*time_ago\b/i, /\|\s*days_until\b/i,
+  /\|\s*relative_time\b/i, /\|\s*ordinalize\b/i, /\|\s*currency_convert\b/i, /\|\s*convert_currency\b/i,
+  /\|\s*money_round\b/i, /\|\s*to_currency\b/i, /\brequest\.user_agent\b/i, /\brequest\.is_mobile\b/i,
+  /\brequest\.device\b/i, /\bshop\.taxes_included\b/i,
+]
+function hallucinatedToken(entry) {
+  const text = `${entry.solution} ${entry.autofix || ''}`
+  for (const re of HALLUCINATED) { const m = text.match(re); if (m) return `invented Liquid: ${m[0].replace(/^\|\s*/, '').trim()}` }
+  return null
+}
+
 function verifyBatch(entries, cycle) {
   let verdicts
   try {
@@ -217,11 +321,18 @@ function verifyBatch(entries, cycle) {
   for (const v of verdicts)
     if (v && v.verdict === 'drop' && Number.isInteger(v.i) && v.i >= 0 && v.i < entries.length)
       drops.set(v.i, String(v.reason || '').slice(0, 80))
-  const kept = entries.filter((_, i) => !drops.has(i))
+  let kept = entries.filter((_, i) => !drops.has(i))
   if (kept.length < entries.length * 0.3) {
     logLine(`cycle ${cycle} verify ANOMALY (kept ${kept.length}/${entries.length}) — distrusting critic, keeping all`)
     return entries
   }
+  // deterministic backstop (high-precision, additive — catches invented Liquid the LLM critic missed)
+  for (let i = 0; i < entries.length; i += 1) {
+    if (drops.has(i)) continue
+    const h = hallucinatedToken(entries[i])
+    if (h) drops.set(i, `${h} [deterministic]`)
+  }
+  kept = entries.filter((_, i) => !drops.has(i))
   if (drops.size > 0) {
     const lines = [...drops.entries()].map(
       ([i, r]) => `- cycle ${cycle} [${entries[i].concern}/${entries[i].surface}] "${entries[i].gap.slice(0, 80)}" — DROPPED: ${r}`,
@@ -256,7 +367,7 @@ function appendBatch(entries, batchNo, startId) {
   const ledgerIdx = md.indexOf('## Auto-fix ledger')
   if (ledgerIdx === -1) md += block
   else md = md.slice(0, ledgerIdx) + block + '\n' + md.slice(ledgerIdx)
-  fs.writeFileSync(BRAIN, md)
+  atomicWrite(BRAIN, md)
   return lastId
 }
 
@@ -268,7 +379,7 @@ function updateMeter(faqCount, batches, cycles) {
     /<!-- SWT-FAQ-METER:START -->[\s\S]*?<!-- SWT-FAQ-METER:END -->/,
     `<!-- SWT-FAQ-METER:START -->\n${line}\n<!-- SWT-FAQ-METER:END -->`,
   )
-  fs.writeFileSync(BRAIN, md)
+  atomicWrite(BRAIN, md)
 }
 
 function appendLedger(cycle, added, slices, note) {
@@ -277,15 +388,17 @@ function appendLedger(cycle, added, slices, note) {
   // append a row to the markdown table at EOF
   md = md.replace(/(\n\| \d+ \|[^\n]*\n)(?![\s\S]*\n\| \d+ \|)/, `$1${row}`)
   if (!md.includes(row)) md += row
-  fs.writeFileSync(BRAIN, md)
+  atomicWrite(BRAIN, md)
 }
 
 function gitCommit(msg, files) {
   const add = spawnSync('git', ['add', '--', ...files], { cwd: ROOT, encoding: 'utf8' })
   if (add.status !== 0) { logLine(`git add warn: ${add.stderr}`); }
+  // PATH-RESTRICTED commit (`-- ...files`) so an unattended 15h loop can NEVER sweep Yash's WIP into
+  // a training commit, even if something else is staged in the index.
   const ci = spawnSync(
     'git',
-    ['commit', '-m', msg, '--no-verify'],
+    ['commit', '-m', msg, '--no-verify', '--', ...files],
     { cwd: ROOT, encoding: 'utf8' },
   )
   if (ci.status !== 0 && !(ci.stdout || '').includes('nothing to commit'))
@@ -313,17 +426,29 @@ function storeScan(cycle) {
 // ---- one cycle ----
 function runCycle(state) {
   if (fs.existsSync(STOP_F)) { logLine('STOP file present — exiting.'); process.exit(0) }
-  if (state.cyclesRun >= MAX_CYCLES) { logLine(`reached MAX_CYCLES=${MAX_CYCLES} — done.`); finish(state); process.exit(0) }
+  if (state.cyclesRun >= MAX_CYCLES) { logLine(`reached MAX_CYCLES=${MAX_CYCLES} — done.`); fs.writeFileSync(STOP_F, 'auto: complete (max cycles)\n'); finish(state); process.exit(0) }
 
   const cycle = state.cyclesRun + 1
-  const plan = buildSlicePlan()
-  if (state.slicePointer >= plan.length) {
-    logLine('slice plan exhausted — full possibility space covered. Done.')
-    finish(state); process.exit(0)
+  let slices
+  if (GAP_MODE) {
+    const gapPlan = buildGapPlan()
+    if (gapPlan.length === 0) {
+      logLine('gap plan empty — every slice at/above the 7-FAQ quota. Done.')
+      fs.writeFileSync(STOP_F, 'auto: complete (gap plan exhausted)\n')
+      finish(state); process.exit(0)
+    }
+    slices = gapPlan.slice(0, SLICES_PER_CYCLE)
+  } else {
+    const plan = buildSlicePlan()
+    if (state.slicePointer >= plan.length) {
+      logLine('slice plan exhausted — full possibility space covered. Done.')
+      fs.writeFileSync(STOP_F, 'auto: complete (full 5040-slice coverage)\n') // signal watchdog/reindex to stop too
+      finish(state); process.exit(0)
+    }
+    slices = plan.slice(state.slicePointer, state.slicePointer + SLICES_PER_CYCLE)
   }
-  const slices = plan.slice(state.slicePointer, state.slicePointer + SLICES_PER_CYCLE)
   const count = Math.min(slices.length * FAQS_PER_SLICE, 50)
-  const startId = state.faqCount + 1
+  const startId = maxBrainFaqId() + 1 // live scan, not state.faqCount — see maxBrainFaqId() comment
 
   logLine(`cycle ${cycle}: slices [${slices.join(', ')}] → generating ${count} FAQs (FAQ-${String(startId).padStart(4, '0')}…)`)
 
@@ -332,10 +457,13 @@ function runCycle(state) {
     const raw = callClaude(genPrompt(slices, count, startId))
     entries = extractJsonArray(raw).filter(validEntry).slice(0, count)
   } catch (e) {
+    // SWT_MAX_FAILURES (default 5) — for a long unattended run, set it high so a transient blip
+    // (rate-limit window, model overload) doesn't kill hours of progress. The wall-clock STOP governs the end.
+    const MAX_FAILURES = Number(process.env.SWT_MAX_FAILURES || 5)
     state.consecutiveFailures = (state.consecutiveFailures || 0) + 1
-    logLine(`cycle ${cycle} generation FAILED (${e.message}) — failure ${state.consecutiveFailures}/5; pointer not advanced.`)
+    logLine(`cycle ${cycle} generation FAILED (${e.message}) — failure ${state.consecutiveFailures}/${MAX_FAILURES}; pointer not advanced.`)
     saveState(state)
-    if (state.consecutiveFailures >= 5) { logLine('5 consecutive failures — writing STOP.'); fs.writeFileSync(STOP_F, 'auto: 5 failures\n'); process.exit(1) }
+    if (state.consecutiveFailures >= MAX_FAILURES) { logLine(`${MAX_FAILURES} consecutive failures — writing STOP.`); fs.writeFileSync(STOP_F, `auto: ${MAX_FAILURES} failures\n`); process.exit(1) }
     return
   }
   if (entries.length === 0) {
@@ -348,11 +476,14 @@ function runCycle(state) {
   entries = verifyBatch(entries, cycle)
   logLine(`cycle ${cycle} verify: kept ${entries.length}/${before} (dropped ${before - entries.length})`)
 
+  // brand-normalize: rewrite any legacy gate names claude leaked into the new branded names
+  entries = entries.map((e) => ({ ...e, solution: brandGates(e.solution), autofix: brandGates(e.autofix || '') }))
+
   const lastId = appendBatch(entries, state.batches + 1, startId)
   state.faqCount = lastId
   state.batches += 1
   state.cyclesRun = cycle
-  state.slicePointer += slices.length
+  if (!GAP_MODE) state.slicePointer += slices.length // gap mode recomputes its plan fresh each cycle
   state.consecutiveFailures = 0
   state.log.push({ cycle, ts: stamp(), added: entries.length, faqTotal: state.faqCount, slices })
   updateMeter(state.faqCount, state.batches, state.cyclesRun)
@@ -364,6 +495,8 @@ function runCycle(state) {
   let dist = null
   try { dist = distribute() } catch (e) { logLine(`distribute warn: ${e.message}`) }
   if (dist) logLine(`cycle ${cycle} distributed → ${dist.rules} rules · ${dist.agentsUpdated}/14 agents trained · ${dist.gateGaps} gate-gaps`)
+  // observability: a frozen vector index (Ollama down) must NOT hide behind a "✓ trained" line.
+  if (dist && dist.reindex) logLine(`cycle ${cycle} reindex: ${dist.reindex.ok === null ? 'skipped (batched separately)' : dist.reindex.ok ? 'OK · ' + dist.reindex.out : 'FAILED (search stale!) — ' + dist.reindex.out}`)
 
   storeScan(cycle)
 
@@ -385,7 +518,7 @@ function finish(state) {
   try {
     let md = fs.readFileSync(BRAIN, 'utf8')
     md = md.replace(/· Daemon: running/g, '· Daemon: finished')
-    fs.writeFileSync(BRAIN, md)
+    atomicWrite(BRAIN, md)
     saveState(state)
   } catch {}
 }
