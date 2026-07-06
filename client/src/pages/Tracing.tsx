@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Activity, CheckCircle, XCircle, Filter, Search, ListTree } from 'lucide-react'
 import { getAnalyticsRuns, apiError, type AgentRunEntry } from '../lib/api'
@@ -6,8 +6,9 @@ import { PageShell } from '../components/PageShell'
 import { ErrorState } from '../components/ErrorState'
 import { formatAgentDisplay } from '../lib/agentDisplay'
 import { SOURCE_COLORS } from '../lib/constants'
+import { onOrgChartEvent } from '../lib/sseBus'
 
-const SOURCES = ['all', 'playground', 'orchestration', 'schedule', 'webhook', 'sdk', 'ai-chat']
+const SOURCES = ['all', 'playground', 'orchestration', 'schedule', 'webhook', 'sdk', 'ai-chat', 'project-chat']
 
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime()
@@ -44,6 +45,24 @@ export default function Tracing() {
 
   useEffect(() => { setOffset(0) }, [sourceFilter, statusFilter, agentSearch])
   useEffect(() => { load() }, [sourceFilter, statusFilter])
+
+  // Live refresh — load() runs once per filter change with no subscription to
+  // new runs landing elsewhere (orchestration completing, a schedule firing,
+  // playground/project-chat). Debounced: an orchestration executing N nodes
+  // emits agent_run.recorded N times in a burst; one reload after they settle
+  // beats hammering the endpoint per event. Reuses the current filters via the
+  // ref so the reload always requests the SAME view the user is looking at.
+  const loadRef = useRef(load)
+  loadRef.current = load
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const off = onOrgChartEvent((ev) => {
+      if (ev.type !== 'agent_run.recorded') return
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => loadRef.current(), 1200)
+    })
+    return () => { off(); if (timer) clearTimeout(timer) }
+  }, [])
 
   const filtered = useMemo(() => {
     if (!agentSearch.trim()) return runs

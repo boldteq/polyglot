@@ -39,6 +39,7 @@ import type {
 } from '../lib/api'
 import { resource } from '../lib/cacheCore'
 import { CacheKeys } from '../lib/cacheKeys'
+import { onOrgChartEvent, onScheduleEvent } from '../lib/sseBus'
 import { StatRow } from '../components/PageShell'
 
 
@@ -172,6 +173,30 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => { loadData() }, [runsLimit, loadData])
+
+  // Live refresh — Dashboard reads via the low-level resource() primitive
+  // directly (not the useApi hook), so it never subscribes to cache
+  // invalidation; it snapshots once at mount and stays stale until a
+  // nav-away-and-back. agent_run.recorded fires on every run across the WHOLE
+  // app (playground, orchestration, schedule, webhook, project-chat) — an
+  // orchestration executing N nodes fires it N times in a burst — so debounce
+  // to one reload after events settle instead of hammering 5 endpoints per run.
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    const scheduleReload = () => {
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+      reloadTimerRef.current = setTimeout(loadData, 1200)
+    }
+    const offOrgChart = onOrgChartEvent((ev) => {
+      if (ev.type === 'agent_run.recorded') scheduleReload()
+    })
+    const offSchedule = onScheduleEvent(() => scheduleReload())
+    return () => {
+      offOrgChart()
+      offSchedule()
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+    }
+  }, [loadData])
 
   // Pending-learning count for the nudge pill (best-effort; errors are non-fatal).
   useEffect(() => {
