@@ -24,7 +24,7 @@ import {
   ArrowRight, Clock, Eye, Trash, Search, ChevronDown,
   StopCircle, Layers, AlertTriangle, SearchX, Download,
 } from 'lucide-react'
-import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHistory, getOrchestrationTemplates, startOrchestrationRun, getOrchestrationRun, cancelOrchestrationRun, advanceStep, exportOrchestration } from '../lib/api'
+import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHistory, getOrchestrationTemplates, startOrchestrationRun, getOrchestrationRun, cancelOrchestrationRun, advanceStep, exportOrchestration, retryStep } from '../lib/api'
 import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate, OrchestrationRun, OrchestrationStep, DAGExport } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
@@ -236,6 +236,13 @@ export default function Orchestration() {
   // HITL approval gate — set when the durable run pauses at an approval node.
   const [pendingApproval, setPendingApproval] = useState<{ nodeId: string; label: string } | null>(null)
   const [approving, setApproving] = useState(false)
+  // The run currently shown in the panel. Unlike activeRunIdRef (nulled the
+  // moment the run goes terminal, so the SSE reader knows to stop), this stays
+  // set so a Retry button on a failed step's log entry still knows which run
+  // to retry against after it's no longer "running". Cleared only by
+  // resetRunState / starting a genuinely new run.
+  const [lastRunId, setLastRunId] = useState<string | null>(null)
+  const [retryingNodeId, setRetryingNodeId] = useState<string | null>(null)
   // DAG export modal (mermaid + JSON of the saved pipeline).
   const [exportData, setExportData] = useState<DAGExport | null>(null)
   const [savedList, setSavedList] = useState<{ id: string; name: string; updatedAt: string; nodeCount: number; edgeCount: number }[]>([])
@@ -688,6 +695,7 @@ export default function Orchestration() {
   // pairs it with the next `data:` line; a blank line resets the pending name.
   const streamDurableRun = useCallback(async (runId: string) => {
     activeRunIdRef.current = runId
+    setLastRunId(runId)
     setRunning(true)
     setShowRunPanel(true)
     setSelectedNodeId(null)
@@ -791,6 +799,25 @@ export default function Orchestration() {
     }
   }, [setNodes, applyStep, loadHistory])
 
+  // Retry a single failed step from an already-terminal run. Re-executes just
+  // that node server-side, then reopens the SAME run's SSE stream (the server
+  // never actually closes it on terminal — it just forwards events keyed on
+  // runId, regardless of the run's overall status) to show the retry's live
+  // progress. If it succeeds and every other step is already clear, the
+  // backend promotes the run 'failed' → 'completed' and this reflects that too.
+  const retryFailedStep = useCallback(async (nodeId: string) => {
+    if (!lastRunId || retryingNodeId) return
+    setRetryingNodeId(nodeId)
+    try {
+      await retryStep(lastRunId, nodeId)
+      streamDurableRun(lastRunId)
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Retry failed to start')
+    } finally {
+      setRetryingNodeId(null)
+    }
+  }, [lastRunId, retryingNodeId, streamDurableRun])
+
   const handleRun = async () => {
     if (!task.trim()) { toast('error', 'Enter a task to get started'); return }
     if (nodes.length === 0) { toast('error', 'Add nodes to the canvas first'); return }
@@ -883,6 +910,7 @@ export default function Orchestration() {
 
   const resetRunState = () => {
     setRunLog([])
+    setLastRunId(null)
     setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: 'idle', output: undefined } })))
   }
 
@@ -1737,6 +1765,17 @@ export default function Orchestration() {
                       </div>
                     )}
                     {log.error && <p className="text-red mt-1.5 leading-relaxed">{log.error}</p>}
+                    {log.type === 'error' && log.nodeId && !running && (
+                      <button
+                        onClick={() => retryFailedStep(log.nodeId as string)}
+                        disabled={retryingNodeId === log.nodeId}
+                        className="flex items-center gap-1.5 text-[11px] text-red hover:underline mt-1.5 font-medium disabled:opacity-50"
+                      >
+                        {retryingNodeId === log.nodeId
+                          ? <><Loader className="w-3 h-3 animate-spin" /> Retrying...</>
+                          : <><RotateCcw className="w-3 h-3" /> Retry this step</>}
+                      </button>
+                    )}
                   </div>
                 ))}
 

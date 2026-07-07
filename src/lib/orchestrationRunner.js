@@ -189,6 +189,40 @@ function updateRunStatus(runId, status, fields = {}) {
   return updated;
 }
 
+// After a single failed step is retried and SUCCEEDS, check whether the run can
+// now be promoted 'failed' → 'completed'. updateRunStatus's terminal guard
+// (line above: `if ([...].includes(run.status)) return run`) exists to stop an
+// accidental/racy re-transition — e.g. a stale async callback re-completing an
+// already-cancelled run — but it also blocks this legitimate case, so this is a
+// deliberate, narrow bypass rather than a general relaxation. Only promotes a
+// 'failed' run (never 'cancelled' — a human deliberately stopped that one, and
+// a silent flip to 'completed' would misrepresent their action) when every step
+// is now in a terminal-success state. No-ops (returns null) if the run isn't
+// 'failed' or another step is still failed/pending — the caller does nothing
+// further in that case, same as any other retry that didn't fully clear the run.
+function reevaluateRunAfterRetry(runId) {
+  const run = getRun(runId);
+  if (!run || run.status !== 'failed') return null;
+  const steps = run.steps || [];
+  const allClear = steps.length > 0 && steps.every((s) => ['completed', 'skipped', 'approved'].includes(s.status));
+  if (!allClear) return null;
+
+  const now = nowIso();
+  const lastOutput = [...steps].reverse().find((s) => s.output != null)?.output ?? run.finalOutput ?? null;
+  const sets = ["status = 'completed'", 'completedAt = ?', 'finalOutput = ?', 'error = NULL'];
+  const args = [now, lastOutput];
+  if (run.startedAt) { sets.push('duration = ?'); args.push(Date.parse(now) - Date.parse(run.startedAt)); }
+  args.push(runId);
+  getDb().prepare(`UPDATE orchestration_runs SET ${sets.join(', ')} WHERE id = ?`).run(...args);
+
+  const updated = getRun(runId);
+  try { mirrorToRunHistory(updated); } catch (err) {
+    console.error(`[orchestrationRunner] run_history mirror failed for ${runId} (post-retry promotion): ${err.message}`);
+  }
+  events.emit('run:completed', updated);
+  return updated;
+}
+
 // Project a durable run (+ its steps) into the run_history row shape the Studio
 // History tab expects. Edges aren't tracked at the step level, so the replay
 // graph shows nodes + per-step logs without connectors (acceptable for history).
@@ -401,6 +435,7 @@ module.exports = {
   retryStep,
   prepareResume,
   advanceStep,
+  reevaluateRunAfterRetry,
   // Boot recovery
   recoverInflightRuns,
 };

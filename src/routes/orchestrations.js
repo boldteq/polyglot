@@ -945,6 +945,14 @@ async function executeSingleNode(runId, orchestration, taskInput, nodeId) {
     tasks.markComplete(task.id, output);
     orchRunner.markStepCompleted(runId, nodeId, output);
     logStepCost({ runId, agentName, prompt: composePrompt(agentName, node, taskInput), output });
+    // The retried step is the only reason a well-formed pipeline was still
+    // showing 'failed' — without this, a user who successfully fixes a failing
+    // step via retry sees the run stuck as "Failed" forever (only this step's
+    // own status flips; nothing else re-evaluates the RUN as a whole). No-ops
+    // if another step is still failed/pending, or the run wasn't 'failed'.
+    try { orchRunner.reevaluateRunAfterRetry(runId); } catch (err) {
+      console.error(`[orchestration] post-retry run promotion failed for ${runId}: ${err.message}`);
+    }
   } catch (err) {
     tasks.markFailed(task.id, err.message || String(err));
     orchRunner.markStepFailed(runId, nodeId, err.message || String(err));
