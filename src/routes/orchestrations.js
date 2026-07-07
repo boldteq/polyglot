@@ -834,6 +834,27 @@ async function executeDurableRun(runId, orchestration, taskInput) {
       continue;
     }
 
+    // Condition gate — skip this node (and bypass an approval wait below, if
+    // it's also isApproval) when the upstream output doesn't contain the
+    // configured text. The node editor has exposed this field since it
+    // shipped, and the LEGACY /orchestrations/run route has always honored
+    // it — but this durable executor (the only one Studio/schedules/webhooks
+    // actually run) never read node.data.condition at all, so it was a
+    // silent no-op on every real run. lastOutput, not per-edge incoming
+    // outputs, is this executor's "upstream" — it doesn't track edges as a
+    // graph beyond topoSort's linear order, so per-node incoming-edge lookups
+    // (the legacy executor's model) don't fit here; mirrors composePrompt's
+    // own use of lastOutput as "the previous step's output" a few lines down.
+    // Never updates lastOutput on skip (same as the isStart passthrough
+    // above) so a real node downstream of a skipped one still sees the last
+    // REAL output, not a "[SKIPPED...]" placeholder, as its context.
+    const condition = node.data?.condition;
+    if (condition && !(lastOutput || '').includes(condition)) {
+      orchRunner.markStepSkipped(runId, nodeId);
+      outputs[nodeId] = `[SKIPPED: condition "${condition}" not matched]`;
+      continue;
+    }
+
     // Approval gate — pause durably
     if (node.data?.isApproval) {
       orchRunner.markStepPaused(runId, nodeId);

@@ -22,7 +22,7 @@ import {
   CheckCircle, AlertCircle, Loader, Terminal, FileText,
   LayoutTemplate, X, Sparkles, Copy, Settings2, RotateCcw, HelpCircle,
   ArrowRight, Clock, Eye, Trash, Search, ChevronDown,
-  StopCircle, Layers, AlertTriangle, SearchX, Download,
+  StopCircle, Layers, AlertTriangle, SearchX, Download, UserCheck,
 } from 'lucide-react'
 import { getUnifiedAgents, getRunHistory, getRunDetail, deleteRun, clearRunHistory, getOrchestrationTemplates, startOrchestrationRun, getOrchestrationRun, cancelOrchestrationRun, advanceStep, exportOrchestration, retryStep } from '../lib/api'
 import type { RunHistoryItem, RunHistoryDetail, PipelineTemplate, OrchestrationRun, OrchestrationStep, DAGExport } from '../lib/api'
@@ -46,6 +46,7 @@ interface AgentNodeData {
   instructions?: string
   retryCount?: number
   condition?: string
+  isApproval?: boolean
   status?: 'idle' | 'running' | 'done' | 'error' | 'skipped'
   output?: string
   isStart?: boolean
@@ -80,6 +81,10 @@ function AgentNode({ data, selected }: { data: AgentNodeData; selected: boolean 
           {data.isStart ? (
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-purple flex items-center justify-center shrink-0">
               <Zap className="w-4 h-4 text-white" />
+            </div>
+          ) : data.isApproval ? (
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber to-yellow flex items-center justify-center shrink-0" title="Approval gate — pauses for human review">
+              <UserCheck className="w-4 h-4 text-white" />
             </div>
           ) : data.isCustom ? (
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber to-orange flex items-center justify-center shrink-0">
@@ -1582,6 +1587,24 @@ export default function Orchestration() {
                       <p className="text-[9px] text-text-muted mt-0.5">Skip node if upstream output doesn't contain this text</p>
                     </div>
                   </div>
+                )}
+
+                {!(selectedNode.data as AgentNodeData).isStart && (
+                  <label htmlFor="node-approval" className="flex items-start gap-2.5 p-3 rounded-xl border border-border bg-surface-2 cursor-pointer">
+                    <input
+                      id="node-approval"
+                      type="checkbox"
+                      checked={(selectedNode.data as AgentNodeData).isApproval ?? false}
+                      onChange={e => updateSelectedNodeData({ isApproval: e.target.checked })}
+                      className="shrink-0 w-4 h-4 mt-0.5 accent-amber"
+                    />
+                    <span>
+                      <span className="text-xs font-medium text-text-muted flex items-center gap-1.5">
+                        <UserCheck className="w-3.5 h-3.5 text-amber" /> Approval gate
+                      </span>
+                      <span className="text-[9px] text-text-muted block mt-0.5">Pause the run here for a human to approve or reject before continuing</span>
+                    </span>
+                  </label>
                 )}
 
                 <div className="pt-3 border-t border-border space-y-1">
