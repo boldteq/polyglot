@@ -1556,6 +1556,8 @@ function buildDigestPrompt(blocks, maxItems) {
     '  root_cause = why the FIRST attempt was wrong',
     '  solution   = what finally worked (from the retry edits)',
     '  prevention = how to recognize/avoid this next time (1 line)',
+    '  rework     = true   // ALWAYS set this on a rework-loop lesson — it marks the item a Yash re-report so the brain escalates it to a p0 signal (clears the evidence bar without waiting for a 3rd recurrence)',
+    '  agent      = the responsible Boldteq agent id if one is clearly implicated (e.g. "loom", "ink") — enables an auto-guardrail on that agent; omit if unclear',
     'Keep each field ≤ 1–2 lines. Skip a loop with no clear root cause. Set confidence ≥0.8 ONLY when the accepted retry is unambiguous.',
     '',
     'The sessions:',

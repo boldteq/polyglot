@@ -36,6 +36,13 @@ const DEFAULTS = {
 // on "custom"/"system" can't be turned into an agent .md patch).
 const UNATTRIBUTABLE = new Set(['custom', 'system', 'unknown', '', null, undefined]);
 
+// Rework / re-report detector (same pattern the transcript digest uses, transcriptScan.js /
+// systemSchedules.js). A learning-inbox item is a "Yash re-report" when Yash rejected the first
+// attempt and re-asked ("not done", "still broken", "that's wrong", "doesn't work", "i told you").
+// These are escalated to kind 'rework' / severity 'p0' so the governor clears them off the evidence
+// bar on the FIRST occurrence instead of making the same bug recur 3× first (2026-07-18 audit).
+const CORRECTION_RE = /\b(no,|nope|actually|don'?t|stop|that'?s wrong|not what|incorrect|i told you|use .* instead|never|always|still (broken|failing|wrong)|not done|doesn'?t work|again|same (bug|issue|thing))\b/i;
+
 // ── Normalization ────────────────────────────────────────────────────────────
 
 // Free text → a stable signature key, so the SAME weakness across different runs
@@ -217,8 +224,12 @@ function scanLearningAntipatterns(cfg, sessionMap) {
   for (const r of rows) {
     if (r.createdAt && r.createdAt < cutoff) continue;
     if (r.type !== 'bug' && r.type !== 'lesson') continue;
-    let payload = {};
-    try { payload = JSON.parse(r.payload || '{}'); } catch { payload = {}; }
+    // listLearningInbox already returns payload parsed to an object; tolerate a raw JSON string too.
+    // (Previously this always JSON.parse'd the already-parsed object → threw → payload={}, silently
+    // killing attribution + root-cause for every inbox signal. Fixed 2026-07-19.)
+    const payload = (r.payload && typeof r.payload === 'object')
+      ? r.payload
+      : (() => { try { return JSON.parse(r.payload || '{}'); } catch { return {}; } })();
     const rootCause = payload.root_cause || payload.rootCause || '';
     // Lessons only qualify when they carry a concrete root cause (else they're
     // positive patterns, not weaknesses).
@@ -229,15 +240,33 @@ function scanLearningAntipatterns(cfg, sessionMap) {
     const sig = normalizeSignature(`${r.title} ${rootCause}`);
     if (!sig || sig.length < 6) continue;
     const proj = resolveProject({ project: r.project, sessionId: r.sessionId }, sessionMap);
+    // Yash re-report? A digest-set payload flag (rework-loop lesson) OR correction language in the
+    // title/root_cause. Only meaningful when attributed to a real agent — an unowned domain bucket
+    // can't be patched into an agent .md, so it stays a plain antipattern routed to review.
+    const isRework = (payload.rework === true || payload.repeat === true
+      || CORRECTION_RE.test(`${r.title} ${rootCause}`))
+      && !UNATTRIBUTABLE.has(agent);
     const key = `${bucket}|${sig}`;
     let g = groups.get(key);
-    if (!g) { g = { agent: bucket, sig, count: 0, projects: new Set(), title: r.title, rootCause }; groups.set(key, g); }
+    if (!g) { g = { agent: bucket, sig, count: 0, projects: new Set(), title: r.title, rootCause, rework: false }; groups.set(key, g); }
     g.count += 1;
     g.projects.add(proj);
+    if (isRework) g.rework = true;
   }
   for (const g of groups.values()) {
-    if (g.count < 2) continue; // a one-off digest item isn't a cross-project pattern
     const projects = [...g.projects];
+    if (g.rework) {
+      // Yash re-report → 'rework'/p0: clears the governor's evidence bar on its own (STRONG_KIND),
+      // no 3×/2proj wait. Emitted even at a single occurrence — a re-report is never a "one-off".
+      const sig = emitSignal({
+        agent: g.agent, kind: 'rework', signature: g.sig,
+        occurrences: g.count, projects, severity: 'p0',
+        evidence: { source: 'learning_inbox', reReport: true, title: String(g.title).slice(0, 160), root_cause: String(g.rootCause).slice(0, 240) },
+      });
+      if (sig) out.push(sig);
+      continue;
+    }
+    if (g.count < 2) continue; // a one-off digest item isn't a cross-project pattern
     const sig = emitSignal({
       agent: g.agent, kind: 'antipattern', signature: g.sig,
       occurrences: g.count, projects,
@@ -272,7 +301,8 @@ function detectCrossProjectSignals(opts = {}) {
     byKind: {
       failure_cluster: failures.emitted.length,
       yash_correction: corrections.emitted.length,
-      antipattern: antipatterns.emitted.length,
+      antipattern: antipatterns.emitted.filter((s) => s && s.kind === 'antipattern').length,
+      rework: antipatterns.emitted.filter((s) => s && s.kind === 'rework').length,
     },
     signals: all,
   };

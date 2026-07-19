@@ -17,6 +17,7 @@
     "lens:judge": "node scripts/lens-judge.mjs",
     "lens:enforce": "node scripts/check-visual-truth.mjs",
     "lens:surface": "node scripts/lens-surface.mjs",
+    "lens:quick": "node scripts/lens-quick.mjs",
     "gates:list": "node scripts/theme-gates.mjs --list",
     "theme:audit": "node scripts/theme-gates.mjs --static-only",
     "theme:audit:full": "node scripts/theme-gates.mjs",

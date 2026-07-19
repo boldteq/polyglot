@@ -101,11 +101,11 @@ const FRESHNESS_ALLOWLIST = ['gate-reports', 'CHANGES.md', 'merchant-editability
 // freshness). FRESHNESS_TTL_OFF=1 disables the check (dogfood / re-gate-then-verify edge).
 const URL_GATE_TTL_MS = 24 * 60 * 60 * 1000
 
-// Branded gate stack — 31 gates across 9 families (Bedrock · Forge · Catalyst · Integrity · Lens ·
+// Branded gate stack — 37 gates across 9 families (Bedrock · Forge · Catalyst · Integrity · Lens ·
 // DNA · Press · Signal · Tribunal). `name` is the contract (report file, --gate, SKIP_<NAME>, fixture
 // dir); `number` is display-only and STABLE (merges keep the lowest absorbed number; retired: 15/17/21/26/32/34).
 // Old names still resolve via GATE_ALIAS (below) for one transition.
-// 35 quality gates · 2 levels: stage (setup|quality) → category (plain-English).
+// 34 quality gates · 2 levels: stage (setup|quality) → category (plain-English).
 // `name` is the contract (report file, --gate, SKIP_<NAME>, fixture dir). `desc` drives the info button.
 // NOT gates (removed 2026-06-26): theme-lock = a publish-safety POLICY (enforced by shopify-theme-push.mjs
 // + CI, not here); library-cards = component-library CI (COMPONENT_LIBRARY_AUDIT); review-board = retired
@@ -135,6 +135,7 @@ const GATES = [
   { name: 'brand-sync', number: 30, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-ds-cascade.mjs', desc: 'A brand change regenerates the CSS so it cascades everywhere — edit once.' },
   // ── QUALITY · Visual & Mobile ──
   { name: 'visual-check', number: 18, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'check-visual-truth.mjs', desc: 'Lens vision-judges the real rendered pixels — catches what code checks can\'t.' },
+  { name: 'class-d-visual', number: 20, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'gate-class-d-visual.mjs', desc: 'A surface touched by a Class-D micro-change must have fresh, passing Lens evidence — closes the small-fix pixel-verification bypass (2026-07-18 audit). N/A (pass) when no touched surface is declared.' },
   { name: 'section-consistency', number: 19, stage: 'quality', category: 'Visual & Mobile', kind: 'url', runner: 'node', script: 'check-section-cohesion.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'Sections feel like one page — consistent type scale, rhythm, alignment.' },
   { name: 'mobile', number: 35, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'check-mobile-layout.mjs', desc: 'Mobile-first: thumb-reach CTAs, tap-target sizes, no horizontal scroll.' },
   // ── QUALITY · Accessibility ──

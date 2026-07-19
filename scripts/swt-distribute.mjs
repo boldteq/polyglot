@@ -27,17 +27,18 @@ const TODAY = () => new Date().toISOString().slice(0, 10)
 // The ~9 granular, hardcoded gates whose checks actually BLOCK a specific pattern (audited 2026-06-27):
 // a rule citing one of these is mechanically ENFORCED. Every other gate is broad/heuristic/proxy, so
 // its rules are prompt+retrieval GUIDELINES (best-effort), not hard guarantees. Honest labelling.
-const ENFORCING_GATES = new Set(['#2', '#6', '#13', '#16', '#22', '#28', '#36', '#37', '#38'])
+const ENFORCING_GATES = new Set(['#2', '#6', '#13', '#16', '#20', '#22', '#28', '#36', '#37', '#38'])
 const isEnforced = (gate) => !!gate && ENFORCING_GATES.has(gate)
 
 const KNOWN_AGENTS = [
   'atrium', 'compass', 'drape', 'ink', 'beacon', 'stitch', 'loom', 'conduit',
   'lattice', 'keystone', 'porter', 'mantle', 'lumen', 'onyx',
 ]
-// 38 gates (loved names, stable numbers; +7 new: 0.6/37/38/39/40/41/42; retired 4/15/17/21/26/32/33/34).
+// 39 gates (loved names, stable numbers; +8: 0.6/20/37/38/39/40/41/42; retired 4/15/17/21/26/32/33/34).
+// #20 class-d-visual — the Class-D micro-change Lens evidence gate (2026-07-18 visual-QA-gap audit).
 const KNOWN_GATES = new Set([
   '#0.4', '#0.5', '#0.6', '#1', '#2', '#3', '#5', '#6', '#7', '#8', '#9', '#10',
-  '#11', '#12', '#13', '#14', '#16', '#18', '#19', '#22', '#23', '#24',
+  '#11', '#12', '#13', '#14', '#16', '#18', '#19', '#20', '#22', '#23', '#24',
   '#25', '#27', '#28', '#29', '#30', '#35', '#36', '#37', '#38', '#39', '#40', '#41', '#42',
 ])
 

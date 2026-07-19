@@ -120,6 +120,19 @@ test('decide: a P0 Yash correction clears the evidence bar on its own → auto',
   assert.equal(v.decision, 'auto', v.reasons.join(','))
 })
 
+test('decide: a rework re-report clears the bar on ONE occurrence → auto (2026-07-18 audit)', () => {
+  // A Yash ask→reject→retry loop is the strongest "real + important" signal — it must not sit in
+  // review waiting for a 3rd recurrence (that IS how the same small bug kept coming back).
+  const v = decide({ ...STRONG, signal: { kind: 'rework', severity: 'p0', occurrences: 1, projects: ['a'] } }, { evalCalibrated: true })
+  assert.equal(v.decision, 'auto', v.reasons.join(','))
+  assert.ok(v.reasons.includes('strong:yash-rework'), v.reasons.join(','))
+})
+
+test('decide: a rework signal is NOT below-evidence-bar even at 1×/1proj', () => {
+  const v = decide({ ...STRONG, signal: { kind: 'rework', occurrences: 1, projects: ['a'] } }, { evalCalibrated: true })
+  assert.ok(!v.reasons.includes('below-evidence-bar'), v.reasons.join(','))
+})
+
 // ── evalCalibration: the rich assessment behind the boolean (FIX #9/#10) ──────
 // Every blocking reason is distinct so /health + the tutor alert can say WHY the
 // brain paused (missing vs stale vs weak) instead of an opaque "not calibrated".

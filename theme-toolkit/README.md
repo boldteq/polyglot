@@ -14,6 +14,7 @@ pnpm theme:audit        # complete STATIC sweep (gates 8/9/11/12/13/14/15/16) �
 pnpm theme:audit:full   # + URL gates (lighthouse/axe/seo/conversion/functional) — needs THEME_PREVIEW_URL
 pnpm gates:list         # list all 18 gates + this cheatsheet
 pnpm lens               # Lens visual-truth pass: capture → judge → enforce (#18) — needs THEME_PREVIEW_URL
+pnpm lens:quick --surfaces pdp   # Class-D micro-change gate: fast-depth capture + haiku judge on ONE surface
 pnpm test               # run every gate fixture self-test (regression gate)
 pnpm store:preflight    # live-store access + content-quality preflight (needs SHOPIFY_ADMIN_API_TOKEN)
 pnpm gates:verify:full  # the PUBLISH precondition — assert a PRIOR full run is fresh+full+passing at HEAD
@@ -56,6 +57,16 @@ looks-right. Four scripts + a gate, run at Step 13.5 on the staging URL:
 the PUBLISHED preview URL, not `shopify theme dev`** — the dev server's hot-reload/proxy console noise +
 non-representative perf are auto-demoted as a safety net, but the clean read comes from a real preview.
 Visibility: the Polyglot dashboard `/lens` page renders the latest run.
+
+**`lens-quick.mjs` — the Class-D micro-change gate.** SAOS Class D (copy/color/spacing/image swaps —
+`shopify-agency-operating-system.md` §2) used to skip Lens entirely (CONFIGURE-or-EXTEND check → change →
+smoke, no pixels). `pnpm lens:quick --surfaces <touched>` composes the same three layers at reduced cost
+instead of a new capture/judge implementation: `LENS_DEPTH=fast` (3 core viewports, already supported by
+`lens-capture.mjs`, just never invoked for small fixes) + `LENS_JUDGE_MODEL=haiku` by default (fast/cheap
+judge tier — override with `--model sonnet` for a harder call) + `check-visual-truth.mjs` running WARN-only
+on missing coverage but still BLOCKing (exit 1) on a real defect. Required before a Class-D change is marked
+done (`shopify-agency-operating-system.md` §2 note). The deep publish-grade pass (`pnpm lens`, sonnet,
+6 viewports) is unchanged for Class A/B builds and the Step-17 publish gate.
 
 ## Pre-build validators (stage-specific, run by individual agents — NOT the publish stack)
 

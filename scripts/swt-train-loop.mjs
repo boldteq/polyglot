@@ -93,7 +93,7 @@ const AGENTS =
   'lattice(metafields/metaobjects) · keystone(store access) · porter(store data/products/images) · ' +
   'mantle(CLI deploy/publish) · lumen(QA gates/Lighthouse/axe) · onyx(final review/visual-quality)'
 
-// Gate stack — 35 quality gates · 2 levels (setup/quality → category). Loved names. (theme-lock/library-cards/review-board removed.)
+// Gate stack — 36 quality gates · 2 levels (setup/quality → category). Loved names. (theme-lock/library-cards/review-board removed.)
 const GATES =
   '#0.4 discovery, #0.5 foundation, #0.6 secret-scan, ' +
   '#1 performance(LCP/CLS), #5 accessibility(live a11y), #6 seo(JSON-LD/canonical/meta), ' +
@@ -101,7 +101,7 @@ const GATES =
   '#2 code-lint, #3 editability(no-hardcode), #11 dead-code, #22 layout(overflow), ' +
   '#7 conversion(CRO+can-transact+lift), #38 price-binding(no-hardcoded-prices), ' +
   '#13 honesty(no fabrication/fake-urgency), #36 content-quality(no-placeholder+copy), ' +
-  '#18 visual-check(Lens vision-judge), #19 section-consistency, #35 mobile, ' +
+  '#18 visual-check(Lens vision-judge), #19 section-consistency, #20 class-d-visual(Class-D micro-change Lens evidence), #35 mobile, ' +
   '#8 design-tokens, #9 consistency, #12 design-quality(premium), #14 render-check, #23 section-reuse, #30 brand-sync, ' +
   '#16 static-a11y(alt/tap-targets), #24 imagery(weight/art-direction), #27 app-conflicts, #28 translations, #29 email-triggers, ' +
   '#37 legal-pages(privacy/terms/refund/shipping), #41 analytics-wiring(GA4/Meta), #42 consent(GDPR)'

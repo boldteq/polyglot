@@ -38,8 +38,13 @@ function isSalesAgent(proposal) {
   return SALES_REVIEW_AGENTS.has(proposal?.agent) || proposal?.roleBand === 'sales'
 }
 
-// Signals strong enough to clear the evidence bar on their own.
-const STRONG_KINDS = new Set(['yash_correction'])
+// Signals strong enough to clear the evidence bar on their own — no ≥3×/≥2proj wait.
+//   yash_correction = an explicit human correction (training_corrections).
+//   rework          = a VS Code ask→reject→retry loop: Yash re-reported the SAME thing until it
+//                     was right. A re-report is the strongest "this is real AND it matters" signal
+//                     there is — it must never sit in review waiting for a 3rd recurrence, which is
+//                     exactly how the same small bug kept coming back (2026-07-18 visual-QA-gap audit).
+const STRONG_KINDS = new Set(['yash_correction', 'rework'])
 
 function distinctProjects(signal) {
   const p = signal?.projects
@@ -121,7 +126,7 @@ export function decide(proposal = {}, ctx = {}) {
     return { decision: 'review', reasons, evidence }
   }
   reasons.push(signal.severity === 'p0' || STRONG_KINDS.has(signal.kind)
-    ? 'strong:yash-correction'
+    ? (signal.kind === 'rework' ? 'strong:yash-rework' : 'strong:yash-correction')
     : `strong:recurrence(${evidence.occurrences}x/${evidence.distinctProjects}proj)`)
 
   // 3) Blast radius must be a single agent section to qualify for auto.
