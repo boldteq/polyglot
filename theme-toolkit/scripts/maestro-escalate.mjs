@@ -68,10 +68,15 @@ const defaultText = (c) => {
 }
 
 // PURE core — takes parsed inputs, returns { blocked, escalatedSurfaces, questions, backlog, stage, reason }.
-export function buildEscalation({ report = null, autofix = null, workorder = null, readiness = null } = {}) {
+export function buildEscalation({ report = null, autofix = null, gateAutofix = null, workorder = null, readiness = null } = {}) {
   const findings = []
   if (autofix && Array.isArray(autofix.unresolved)) {
     for (const f of autofix.unresolved) findings.push({ ...f, source: 'lens-autofix' })
+  }
+  // Code/content blockers the universal self-heal loop (gate-autofix.mjs) could not resolve — surfaced
+  // in the same batched ask so a stuck honesty/legal/real-asset item reaches Yash, not just visual ones.
+  if (gateAutofix && Array.isArray(gateAutofix.unresolved)) {
+    for (const f of gateAutofix.unresolved) findings.push({ check: f.check, surface: f.gate || f.surface || null, fix_owner: f.owner || f.fix_owner || '', evidence: f.evidence || f.reason || '', source: 'gate-autofix' })
   }
   if (report && Array.isArray(report.surfaces)) {
     for (const s of report.surfaces) {
@@ -148,11 +153,12 @@ export function consolidateEscalation({ dir = process.cwd(), buildStateDir = 'do
   const report = readJson(path.resolve(dir, buildStateDir, 'maestro-report.json'))
   const readiness = readJson(path.resolve(dir, buildStateDir, 'publish-readiness.json'))
   const autofix = readJson(path.resolve(dir, reportDir, 'lens', 'autofix-escalation.json'))
+  const gateAutofix = readJson(path.resolve(dir, reportDir, 'gate-autofix-escalation.json'))
   // porter-workorder.md is BEST-EFFORT (only the opt-in lens:autofix LLM step writes it). Porter store-data
   // findings still escalate regardless via autofix-escalation.json → classify()→real-asset-missing, so its
   // absence never drops an escalation; the .md just adds richer line-items when present.
   const workorder = readText(path.resolve(dir, reportDir, 'lens', 'porter-workorder.md'))
-  const result = buildEscalation({ report, autofix, workorder, readiness })
+  const result = buildEscalation({ report, autofix, gateAutofix, workorder, readiness })
   const ts = process.env.MAESTRO_TS || 'pending'
   const outDir = path.resolve(dir, buildStateDir)
   try {

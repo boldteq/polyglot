@@ -1,10 +1,27 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { X, Loader2, StopCircle, Hammer, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { X, Loader2, StopCircle, Hammer, CheckCircle2, AlertTriangle, Wand2, ArrowUpRight } from 'lucide-react'
 import { toast } from '../Toast'
 import { startBuild, getActiveBuilds, cancelBuild, buildStreamUrl } from '../../lib/api'
 
 type Phase = 'confirm' | 'starting' | 'running' | 'done' | 'error'
 interface Verdict { exitCode: number; publishReady: boolean; stage: string | null; reason: string | null }
+
+// Live self-heal board state, accumulated from the structured `heal` SSE events (src/lib/buildRuns.js
+// emitHeal). Turns the raw maestro log into "round 2/3 · loom ×3 · gate-autofix converged" so a human
+// WATCHES it fix itself to green instead of reading terminal text.
+interface HealState { stage?: string; round?: number; max?: number; visual?: number; code?: number; fixes: Record<string, number>; converged: string[]; escalated: { layer: string; count: number }[]; stalled?: number }
+const EMPTY_HEAL: HealState = { fixes: {}, converged: [], escalated: [] }
+function reduceHeal(h: HealState, m: { kind: string; [k: string]: unknown }): HealState {
+  switch (m.kind) {
+    case 'stage': return { ...h, stage: `${m.n}/4 ${m.label}` }
+    case 'round': return { ...h, round: m.round as number, max: m.max as number, visual: m.visual as number, code: m.code as number }
+    case 'fix': { const o = m.owner as string; return { ...h, fixes: { ...h.fixes, [o]: (h.fixes[o] || 0) + (m.count as number) } } }
+    case 'converged': return h.converged.includes(m.layer as string) ? h : { ...h, converged: [...h.converged, m.layer as string] }
+    case 'escalate': return { ...h, escalated: [...h.escalated, { layer: m.layer as string, count: m.count as number }] }
+    case 'stalled': return { ...h, stalled: m.blockers as number }
+    default: return h
+  }
+}
 
 // Runs an autonomous Maestro build (DEV mode — build/verify/auto-heal + preview,
 // NEVER pushes to the live theme) and streams it. Reuses the /api/build engine:
@@ -12,6 +29,7 @@ interface Verdict { exitCode: number; publishReady: boolean; stage: string | nul
 export default function BuildDrawer({ buildId, repoDir, store, onClose }: { projectId?: string; buildId: string; repoDir: string; store?: string | null; onClose: () => void }) {
   const [phase, setPhase] = useState<Phase>('confirm')
   const [output, setOutput] = useState('')
+  const [heal, setHeal] = useState<HealState>(EMPTY_HEAL)
   const [verdict, setVerdict] = useState<Verdict | null>(null)
   const esRef = useRef<EventSource | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -26,6 +44,7 @@ export default function BuildDrawer({ buildId, repoDir, store, onClose }: { proj
       try {
         const m = JSON.parse(ev.data)
         if (m.type === 'chunk' && typeof m.content === 'string') setOutput((o) => o + m.content)
+        else if (m.type === 'heal') setHeal((h) => reduceHeal(h, m))
         else if (m.type === 'done') { setVerdict(m); setPhase('done'); es.close() }
         else if (m.type === 'error') { setOutput((o) => o + `\n[error] ${m.error || m.code}\n`); setPhase('error'); es.close() }
       } catch { /* heartbeat/comment */ }
@@ -46,7 +65,7 @@ export default function BuildDrawer({ buildId, repoDir, store, onClose }: { proj
   useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight }, [output])
 
   const start = async () => {
-    setPhase('starting')
+    setPhase('starting'); setHeal(EMPTY_HEAL)
     try {
       const r = await startBuild({ repoPath: repoDir, buildId: runId, renderMode: 'dev' })
       void r
@@ -95,6 +114,21 @@ export default function BuildDrawer({ buildId, repoDir, store, onClose }: { proj
                     </span>
                   : <span className={phase === 'error' ? 'text-red' : 'text-text-muted'}>{phase === 'error' ? 'Build error' : 'Done'}</span>}
             </div>
+            {(heal.stage || heal.round || heal.converged.length || heal.escalated.length || heal.stalled != null) && (
+              <div className="mx-4 mt-3 rounded-lg border border-border bg-surface-2 p-3 text-[12px] space-y-1.5 shrink-0">
+                <div className="font-semibold flex items-center gap-1.5"><Wand2 className="w-3.5 h-3.5 text-accent" /> Self-heal</div>
+                {heal.stage && <div className="text-text-muted">Stage {heal.stage}</div>}
+                {heal.round != null && (
+                  <div>Heal round <b>{heal.round}/{heal.max}</b> — <span className={heal.visual ? '' : 'text-text-muted'}>{heal.visual ?? 0} visual</span> + <span className={heal.code ? '' : 'text-text-muted'}>{heal.code ?? 0} code/content</span> blocker(s)</div>
+                )}
+                {Object.keys(heal.fixes).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">{Object.entries(heal.fixes).map(([o, n]) => <span key={o} className="px-1.5 py-0.5 rounded-full bg-surface border border-border text-[11px]">{o} ×{n}</span>)}</div>
+                )}
+                {heal.converged.length > 0 && <div className="text-green flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> converged: {heal.converged.join(', ')}</div>}
+                {heal.escalated.length > 0 && <div className="text-amber flex items-center gap-1"><ArrowUpRight className="w-3.5 h-3.5" /> escalated: {heal.escalated.map((e) => `${e.layer} (${e.count})`).join(', ')} — see ESCALATION.md</div>}
+                {heal.stalled != null && <div className="text-red flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> stalled at {heal.stalled} blocker(s) — escalating the remainder</div>}
+              </div>
+            )}
             <div ref={bodyRef} className="flex-1 overflow-y-auto px-4 py-3">
               {output
                 ? <pre className="text-[11px] whitespace-pre-wrap break-words font-mono leading-relaxed">{output}</pre>

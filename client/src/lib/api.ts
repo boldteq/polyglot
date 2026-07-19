@@ -166,12 +166,20 @@ export const getWorkspace = (platform: string) =>
 
 // P0 — assembled + scored builds
 export interface ScoreLine { key: string; weight: number; earned: number; detail: string }
+export interface DoneCondition { id: string; label: string; ok: boolean | null; evidence: string }
+export interface BuildDone {
+  publishReady: boolean | null   // maestro PUBLISH-READY verdict (loop converged + full gate stack)
+  trulyDone: boolean             // publishReady AND fresh AND every condition ok
+  sha: string | null; fresh: boolean | null; stage: string | null; reason: string | null
+  conditions: DoneCondition[]    // the per-condition proof checklist (each with its evidence artifact)
+}
 export interface AssembledBuild {
   buildId: string; dir: string; platform: string; client: string
   store: string | null; capturedAt: number | null; present: boolean
   lensVerdict: 'pass' | 'block' | null
   gates: { total: number; passed: number; blockersOpen: number }
   changes: { present: boolean; rate: number; checked: number; total: number }
+  done?: BuildDone
   step: { current: number; reached: number; total: number }
   score: number; grade: string; scoreBreakdown: ScoreLine[]; pending: string[]; maxRealistic: number
 }

@@ -65,6 +65,22 @@ function broadcast(b, event) {
   for (const res of b.subscribers) { try { res.write(raw); } catch { b.subscribers.delete(res); } }
 }
 
+// Parse a completed maestro stdout line into a structured `heal` signal → the UI renders a live
+// self-heal board (stage/round/owner-fix/converged/stalled/escalate) instead of only raw log text
+// (2026-07-19 done-means-done clarity). Best-effort: an unmatched line emits nothing.
+const HEAL_RE = [
+  [/maestro:build — heal round (\d+)\/(\d+): (\d+) visual \+ (\d+) code\/content/i, (m) => ({ kind: 'round', round: +m[1], max: +m[2], visual: +m[3], code: +m[4] })],
+  [/(gate-autofix|lens-autofix): ✅ CONVERGED in (\d+)/i, (m) => ({ kind: 'converged', layer: m[1], rounds: +m[2] })],
+  [/(gate-autofix|lens-autofix): ESCALATION .*\((\d+) unresolved\)/i, (m) => ({ kind: 'escalate', layer: m[1], count: +m[2] })],
+  [/(gate-autofix|lens-autofix): .*→ (\d+) blocker/i, (m) => ({ kind: 'scan', layer: m[1], blockers: +m[2] })],
+  [/→ ([a-z]+): fixing (\d+)/i, (m) => ({ kind: 'fix', owner: m[1], count: +m[2] })],
+  [/maestro:build — heal stalled at (\d+)/i, (m) => ({ kind: 'stalled', blockers: +m[1] })],
+  [/stage (\d)\/4 — (.+)/i, (m) => ({ kind: 'stage', n: +m[1], label: m[2].trim() })],
+];
+function emitHeal(b, line) {
+  for (const [re, fn] of HEAL_RE) { const m = line.match(re); if (m) { broadcast(b, { type: 'heal', ...fn(m) }); return; } }
+}
+
 function broadcastComment(b, text) {
   if (!b) return;
   const raw = `: ${text}\n\n`;
@@ -148,7 +164,15 @@ function startBuild({
   }
   build._proc = proc;
 
-  const onChunk = (chunk) => broadcast(build, { type: 'chunk', content: String(chunk) });
+  const onChunk = (chunk) => {
+    const s = String(chunk);
+    broadcast(build, { type: 'chunk', content: s });
+    // line-buffer across chunk boundaries → emit a structured `heal` event per completed line
+    build._lineBuf = (build._lineBuf || '') + s;
+    const lines = build._lineBuf.split('\n');
+    build._lineBuf = lines.pop();
+    for (const ln of lines) emitHeal(build, ln);
+  };
   if (proc.stdout) proc.stdout.on('data', onChunk);
   if (proc.stderr) proc.stderr.on('data', onChunk);
   proc.on('error', (err) => {

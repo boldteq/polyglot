@@ -132,7 +132,7 @@
       "to": ["lumen"],
       "requires": ["skeleton_ready_for_refinement", "data_contracts_ready", "copy_ready"],
       "produces": ["sections/", "templates/", "assets/theme.css", "merchant-editability.md"],
-      "gate": "theme-check (#2) + render-wiring (#14) + commerce-readiness (#15)",
+      "gate": "theme-check (#2) + render-check (#14) + conversion (#7)",
       "aliases": ["theme_ready"]
     },
     {
@@ -160,7 +160,7 @@
       "requires": ["qa_passed_ready"],
       "produces": ["docs/visual-quality-review.json"],
       "signoff": { "artifact": "docs/visual-quality-review.json" },
-      "gate": "visual-quality (#17) + visual-truth (#18, verify-ran)",
+      "gate": "visual-check (#18, verify-ran)",
       "aliases": ["code_review_blocked"]
     },
     {

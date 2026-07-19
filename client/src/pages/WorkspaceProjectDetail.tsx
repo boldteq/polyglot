@@ -12,6 +12,7 @@ import BriefPanel from '../components/workspace/BriefPanel'
 import MonitoringPanel from '../components/workspace/MonitoringPanel'
 import RepoPanel from '../components/workspace/RepoPanel'
 import PreviewPanel from '../components/workspace/PreviewPanel'
+import DoneProofPanel from '../components/workspace/DoneProofPanel'
 import WorkflowTab from '../components/workspace/WorkflowTab'
 import GatesTab from '../components/workspace/GatesTab'
 import LensTab from '../components/workspace/LensTab'
@@ -140,6 +141,7 @@ export default function WorkspaceProjectDetail() {
 
               <TabPanel id="overview" active={activeTab} visited={visited}>
                 <div className="space-y-6">
+                  <Section title="Done — proof" open><DoneProofPanel done={build?.done} /></Section>
                   <Section title="Activity" open><ActivityTimeline projectId={id!} reloadKey={reloadKey} /></Section>
                   <Section title="Brief"><BriefPanel detail={detail} onReload={reloadAll} /></Section>
                 </div>

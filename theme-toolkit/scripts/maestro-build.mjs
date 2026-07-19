@@ -102,16 +102,29 @@ export function makeRealSteps(opts = {}) {
         return { pass, blockers, lensBlockers }
       }
       let v = gradeOnce()
-      // GAP 1 — heal-in-build (default-on): if the verdict BLOCKs on Lens (#18) VISUAL findings, run
-      // lens-autofix (owner-routed: loom/drape/ink/conduit edit files, ≤3 rounds internally, porter→escalate)
-      // then RE-GRADE the whole store ONCE. This makes `maestro:build` CONVERGE the visual layer instead of
-      // just reporting it (the Lovable "build heals itself" behavior). Non-Lens blockers (theme-check /
-      // css-layout / honesty) are code/content, not visual — lens-autofix won't touch them; they escalate.
-      if (heal && !v.pass && v.lensBlockers > 0) {
-        console.log(`maestro:build — heal: ${v.lensBlockers} Lens blocker(s) → lens:autofix, then re-grade…`)
-        run(process.execPath, [scriptPath('lens-autofix.mjs')], pub)
-        v = gradeOnce()
-        v.healed = true
+      // UNIVERSAL SELF-HEAL (default-on, 2026-07-19 done-means-done): CONVERGE every layer, not just
+      // visual. Each round heals whatever blocks — VISUAL (#18) via lens-autofix AND CODE/CONTENT (all
+      // other static gates) via gate-autofix (owner-routed: loom/drape/ink/conduit/beacon edit files,
+      // ≤3 rounds + cross-run anti-loop internally; honesty/imagery/legal/secret/real-asset/porter
+      // ESCALATE, never a blind edit) — then RE-GRADE, looping until green or a round makes no progress.
+      // This is the difference between "here are the problems" and "fixed, done" (the Lovable behavior).
+      // A no-progress round breaks out → the remaining blockers land in the escalation hatch. `--no-heal`
+      // disables it (report-only). (Locked by __fixtures__/maestro-build.)
+      if (heal && !v.pass) {
+        const healMax = Math.max(1, Number(process.env.HEAL_MAX_ROUNDS || 3))
+        for (let round = 1; round <= healMax && !v.pass; round += 1) {
+          const before = v.blockers || 0
+          const codeBlockers = Math.max(0, before - (v.lensBlockers || 0))
+          console.log(`maestro:build — heal round ${round}/${healMax}: ${v.lensBlockers} visual + ${codeBlockers} code/content blocker(s) → autofix, then re-grade…`)
+          if (v.lensBlockers > 0) run(process.execPath, [scriptPath('lens-autofix.mjs')], pub)
+          if (codeBlockers > 0) run(process.execPath, [scriptPath('gate-autofix.mjs')], pub)
+          v = gradeOnce()
+          v.healed = true
+          if (!v.pass && (v.blockers || 0) >= before) {
+            console.log(`maestro:build — heal stalled at ${v.blockers} blocker(s) (no progress) → escalate the remainder`)
+            break
+          }
+        }
       }
       return v
     },

@@ -206,6 +206,38 @@ function rosterUnhealthy(platform) {
 
 // Assemble the full scored summary for one build dir. Disk-first; tolerant of
 // every missing artifact (plan §C5).
+// The composed "done means done" proof-state (2026-07-19). The UI must NOT infer done from a gate
+// pass-count — the TRUTH is the maestro publish-readiness verdict (loop converged AND full gate stack
+// passed, SHA-stamped) + orchestration coherence + evidence freshness. This mirrors what
+// shopify-theme-publish.mjs actually enforces, so the header/panel can't show green on stale evidence.
+function doneStateFor(abs, { gates, lensVerdict, changes }) {
+  const readiness = lens.readJson(path.join(abs, 'docs', 'publish-readiness.json'));
+  const orch = gates.find((g) => /orchestration/.test(g.id || ''));
+  let headSha = null;
+  try { headSha = require('child_process').execFileSync('git', ['rev-parse', 'HEAD'], { cwd: abs, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* not a git repo */ }
+  const gatesPass = gates.length ? gates.every((g) => g.pass) : null;
+  const fresh = (readiness && readiness.sha && headSha) ? readiness.sha === headSha : null;
+  const cond = (id, label, ok, evidence) => ({ id, label, ok: ok === undefined ? null : ok, evidence });
+  const conditions = [
+    cond('loop', 'Surface loop converged', readiness && readiness.loop ? (readiness.loop.escalated || []).length === 0 : null, 'docs/publish-readiness.md'),
+    cond('gates', 'Full gate stack passed', readiness && readiness.gates ? readiness.gates.pass === true : gatesPass, 'gate-reports/SUMMARY.md'),
+    cond('lens', 'Lens visual-truth PASS', lensVerdict === 'pass' ? true : (lensVerdict === 'block' ? false : null), 'gate-reports/lens/index.html'),
+    cond('orchestration', 'Orchestration coherent', orch ? orch.pass : null, 'gate-reports/check-orchestration.json'),
+    cond('fresh', 'Evidence fresh (SHA-bound)', fresh, 'docs/publish-readiness.json'),
+    cond('changes', 'CHANGES.md complete', changes && changes.total ? changes.checked === changes.total : (changes && changes.present ? true : null), 'CHANGES.md'),
+  ];
+  const publishReady = readiness ? readiness.publishReady === true : null;
+  return {
+    publishReady,
+    trulyDone: publishReady === true && fresh === true && conditions.every((c) => c.ok === true),
+    sha: readiness ? readiness.sha : null,
+    fresh,
+    stage: readiness ? readiness.stage : null,
+    reason: readiness ? readiness.reason : null,
+    conditions,
+  };
+}
+
 function assembleBuild(dir) {
   return cached(`build:${dir}`, () => {
     const abs = path.resolve(dir);
@@ -245,6 +277,7 @@ function assembleBuild(dir) {
       lensVerdict,
       gates: { total: gates.length, passed: gates.filter((g) => g.pass).length, blockersOpen },
       changes: { present: changes.present, rate: changes.rate, checked: changes.checked, total: changes.total },
+      done: doneStateFor(abs, { gates, lensVerdict, changes }),
       step,
       score: score.score,
       grade: score.grade,
@@ -445,7 +478,20 @@ router.patch('/workspace/projects/:id', (req, res) => {
     if (name !== undefined && (typeof name !== 'string' || !name.trim())) return res.status(400).json({ error: 'name must be non-empty' });
     if (status !== undefined && !db.PROJECT_STATUSES.includes(status)) return res.status(400).json({ error: `status must be one of ${db.PROJECT_STATUSES.join('|')}` });
     db.updateClientProject(req.params.id, { name: name?.trim(), niche, domain, intake });
-    if (status !== undefined) db.setClientProjectStatus(req.params.id, status);
+    if (status !== undefined) {
+      // Done means done: a human can't label a build "published" out-of-band unless the real proof
+      // chain says PUBLISH-READY (loop converged + all gates + fresh SHA-bound evidence). force:true
+      // is the explicit Yash override (kept for a genuine manual flip), everything else is fail-closed.
+      if (status === 'published' && req.body.force !== true) {
+        const proj = db.getClientProject(req.params.id);
+        const dir = proj && proj.build_dir;
+        const done = (dir && fs.existsSync(dir)) ? assembleBuild(dir).done : null;
+        if (!done || done.publishReady !== true) {
+          return res.status(409).json({ error: 'Cannot mark "published": this build is not proven PUBLISH-READY (needs loop converged + full gate stack + fresh evidence). Run the build to green, or resend with force:true to override.', done });
+        }
+      }
+      db.setClientProjectStatus(req.params.id, status);
+    }
     res.json({ ok: true, project: db.getClientProject(req.params.id) });
   } catch (err) {
     console.error('[workspace] patch project failed:', err.message);

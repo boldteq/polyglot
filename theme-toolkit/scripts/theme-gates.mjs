@@ -101,11 +101,11 @@ const FRESHNESS_ALLOWLIST = ['gate-reports', 'CHANGES.md', 'merchant-editability
 // freshness). FRESHNESS_TTL_OFF=1 disables the check (dogfood / re-gate-then-verify edge).
 const URL_GATE_TTL_MS = 24 * 60 * 60 * 1000
 
-// Branded gate stack — 37 gates across 9 families (Bedrock · Forge · Catalyst · Integrity · Lens ·
+// Branded gate stack — 38 gates across 9 families (Bedrock · Forge · Catalyst · Integrity · Lens ·
 // DNA · Press · Signal · Tribunal). `name` is the contract (report file, --gate, SKIP_<NAME>, fixture
 // dir); `number` is display-only and STABLE (merges keep the lowest absorbed number; retired: 15/17/21/26/32/34).
 // Old names still resolve via GATE_ALIAS (below) for one transition.
-// 34 quality gates · 2 levels: stage (setup|quality) → category (plain-English).
+// 35 quality gates · 2 levels: stage (setup|quality) → category (plain-English).
 // `name` is the contract (report file, --gate, SKIP_<NAME>, fixture dir). `desc` drives the info button.
 // NOT gates (removed 2026-06-26): theme-lock = a publish-safety POLICY (enforced by shopify-theme-push.mjs
 // + CI, not here); library-cards = component-library CI (COMPONENT_LIBRARY_AUDIT); review-board = retired
@@ -125,6 +125,7 @@ const GATES = [
   { name: 'code-lint', number: 2, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'gate-theme-check.mjs', desc: 'Shopify theme-check passes — no Liquid/asset errors or bad-practice warnings.' },
   { name: 'editability', number: 3, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'bash', script: 'gate-editability-greps.sh', desc: 'No hardcoded content — every text/image/color is merchant-editable in the admin.' },
   { name: 'dead-code', number: 11, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-antipatterns.mjs', desc: 'No unused assets, orphan sections, or duplicate files bloating the theme.' },
+  { name: 'orchestration', number: 44, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-orchestration.mjs', desc: 'The pipeline graph is coherent — no broken handoff edges, no gate citation points at a missing gate, and the eyes/dispatch gates that stop "skip reads as pass" are all present.' },
   { name: 'layout', number: 22, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-css-layout.mjs', desc: 'No CSS overflow / layout defects (100vw, no-wrap rows) that break the page width.' },
   // ── QUALITY · Design System ──
   { name: 'design-tokens', number: 8, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-design-system.mjs', desc: 'Colors / spacing / type stay on the design-system scale — no hardcoded hex/px.' },

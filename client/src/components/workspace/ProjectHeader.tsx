@@ -114,13 +114,17 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
   const canPublish = !!(build && repo?.connected && repo?.themeLock?.store)
   const doPublish = () => openPublish({ projectId: project.id, store: repo!.themeLock!.store!, themeName: repo?.themeLock?.themeName, onPublished: onReload })
   const gatesGreen = !!(build && build.gates.total > 0 && build.gates.passed === build.gates.total && build.gates.blockersOpen === 0)
+  // "done means done": the Publish CTA gates on the REAL proof chain (maestro PUBLISH-READY + fresh
+  // SHA-bound evidence), not a gate pass-count — so it can't offer Publish on stale/unproven evidence.
+  // Falls back to gatesGreen only when a build has no readiness verdict yet (older builds).
+  const doneReady = build?.done ? (build.done.publishReady === true && build.done.fresh !== false) : gatesGreen
   const running = run?.status === 'running'
 
   // ── the ONE smart context CTA ──
   let primary: { key: string; label: string; icon: LucideIcon; onClick: () => void }
   if (!build) primary = { key: 'link', label: 'Link a build', icon: Link2, onClick: () => nav('/workspace') }
   else if (project.status === 'published' && storeUrl) primary = { key: 'view', label: 'View live', icon: ExternalLink, onClick: () => window.open(storeUrl, '_blank') }
-  else if (canPublish && gatesGreen) primary = { key: 'publish', label: 'Publish', icon: Rocket, onClick: doPublish }
+  else if (canPublish && doneReady) primary = { key: 'publish', label: 'Publish', icon: Rocket, onClick: doPublish }
   else if (build.gates.blockersOpen > 0 || build.lensVerdict === 'block') primary = { key: 'studio', label: 'Fix in Studio', icon: Wand2, onClick: () => nav(studioHref) }
   else primary = { key: 'studio', label: 'Open Studio', icon: Wand2, onClick: () => nav(studioHref) }
 
