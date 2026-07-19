@@ -117,7 +117,7 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
   // "done means done": the Publish CTA gates on the REAL proof chain (maestro PUBLISH-READY + fresh
   // SHA-bound evidence), not a gate pass-count — so it can't offer Publish on stale/unproven evidence.
   // Falls back to gatesGreen only when a build has no readiness verdict yet (older builds).
-  const doneReady = build?.done ? (build.done.publishReady === true && build.done.fresh !== false) : gatesGreen
+  const doneReady = build?.done ? (build.done.publishReady === true && build.done.fresh === true) : gatesGreen
   const running = run?.status === 'running'
 
   // ── the ONE smart context CTA ──

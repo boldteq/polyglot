@@ -35,15 +35,26 @@ const CRITICAL_GATES = ['0.4', '0.5', '13', '18', '20']
 
 const head = (s) => String(s).split(/[\s(]/)[0]
 const isPathish = (s) => { const h = head(s); return h.includes('/') || /\.(json|md|csv|js|mjs|liquid)$/.test(h) }
-const gateNumbers = (gateStr) => (String(gateStr || '').match(/#(\d+(?:\.\d+)?)/g) || []).map(t => t.slice(1))
+// Extract "name (#N)" citation PAIRS — "theme-check (#2) + conversion (#7)" → [{name,number}]. A #N
+// paired with a NON-gate name (e.g. "check-handoff-contract (#39)" — an enforcer script + an AIM
+// feature id, NOT a toolkit gate) is intentionally not a gate citation and is ignored downstream.
+const gateCitations = (gateStr) => {
+  const out = []; const re = /([a-z][a-z0-9-]+)\s*\(#(\d+(?:\.\d+)?)/gi; let m
+  while ((m = re.exec(String(gateStr || '')))) out.push({ name: m[1].toLowerCase(), number: m[2] })
+  return out
+}
+// Legacy gate names → current, so a valid alias citation isn't a false mismatch (mirrors theme-gates GATE_ALIAS).
+const GATE_ALIAS = { 'commerce-readiness': 'conversion', 'render-wiring': 'render-check', 'a11y-static': 'static-a11y', 'visual-truth': 'visual-check', 'css-layout': 'layout', 'antipatterns': 'dead-code', 'design-system': 'design-tokens', 'lighthouse': 'performance', 'axe': 'accessibility', 'functional': 'functionality', 'reuse-map': 'section-reuse', 'ds-cascade': 'brand-sync', 'locale-completeness': 'translations', 'bootstrap': 'foundation', 'theme-check': 'code-lint' }
 
-// PURE: audit the registry graph against the set of live gate numbers. → { blockers[], warnings[] }.
-export function auditGraph(registry, liveGateNumbers) {
+// PURE: audit the registry graph against the live gate manifest [{number,name}]. → { blockers[], warnings[] }.
+export function auditGraph(registry, manifest) {
   const blockers = []
   const warnings = []
   const contracts = registry.contracts || []
   const events = new Set(contracts.map(c => c.event))
-  const live = new Set([...liveGateNumbers].map(String))
+  const liveByName = new Map()
+  const live = new Set()
+  for (const g of (manifest || [])) { liveByName.set(String(g.name), String(g.number)); live.add(String(g.number)) }
   const add = (arr, id, page, detail) => arr.push({ id, page, detail, evidence: '' })
 
   // A. dangling requires — a require that is neither a path nor a defined contract event
@@ -54,10 +65,15 @@ export function auditGraph(registry, liveGateNumbers) {
     }
   }
 
-  // B. gate citations resolve — every #N a contract cites must exist in the live manifest
+  // B. gate citations resolve BY IDENTITY — a cited "name (#N)" whose name IS a real gate must carry
+  //    that gate's actual number (catches a citation drifting to the wrong gate — the board/red-team
+  //    #39/#40 masking the audit found). A #N paired with a non-gate name (enforcer script / AIM
+  //    feature id) is not a gate citation and is skipped — never a false pass NOR a false block.
   for (const c of contracts) {
-    for (const n of gateNumbers(c.gate)) {
-      if (!live.has(n)) add(blockers, 'orch.gate-citation-missing', c.event, `contract "${c.event}" cites gate #${n} which is not in the live gate manifest (theme-gates --list-json)`)
+    for (const { name, number } of gateCitations(c.gate)) {
+      const canonical = GATE_ALIAS[name] || name
+      if (!liveByName.has(canonical)) continue // not a gate name → not a gate citation
+      if (liveByName.get(canonical) !== number) add(blockers, 'orch.gate-citation-mismatch', c.event, `contract "${c.event}" cites "${name} (#${number})" but gate "${canonical}" is #${liveByName.get(canonical)} in the live manifest — wrong-gate citation`)
     }
   }
 
@@ -69,9 +85,9 @@ export function auditGraph(registry, liveGateNumbers) {
   // D. orphan produce (WARN) — a contract event nothing downstream requires (terminal events are OK)
   const requiredEvents = new Set()
   for (const c of contracts) for (const r of (c.requires || [])) if (!isPathish(r)) requiredEvents.add(r)
-  // Terminal / leaf contracts: their produce is a verdict/sign-off consumed by atrium's human
-  // acceptance (DoD §1 conditions 7/8) or is the end of the line — not another contract's `requires`.
-  const TERMINAL = new Set(['published', 'launch_watch_clear', 'design_review_board', 'red_team'])
+  // Terminal / leaf contracts: the end of the line — not another contract's `requires`.
+  // (design_review_board + red_team are now REQUIRED by `published`, so they're consumed, not orphans.)
+  const TERMINAL = new Set(['published', 'launch_watch_clear'])
   for (const c of contracts) {
     if (TERMINAL.has(c.event)) continue
     if (!requiredEvents.has(c.event)) add(warnings, 'orch.orphan-produce', c.event, `contract "${c.event}" is produced but no downstream contract requires it (dead handoff, or a missing consumer)`)
@@ -80,10 +96,10 @@ export function auditGraph(registry, liveGateNumbers) {
   return { blockers, warnings }
 }
 
-function liveGateNumbers() {
+function liveManifest() {
   try {
     const manifest = JSON.parse(execFileSync(process.execPath, [path.join(HERE, 'theme-gates.mjs'), '--list-json'], { cwd, encoding: 'utf-8' }))
-    return manifest.map(g => String(g.number))
+    return manifest.map(g => ({ number: String(g.number), name: String(g.name) }))
   } catch (e) {
     return { error: e.message }
   }
@@ -96,14 +112,14 @@ function main() {
     writeReport('check-orchestration', 44, { cwd, pass: false, blockers: [{ id: 'orch.registry-unreadable', page: 'lib/aim-handoff-registry.json', detail: `handoff registry unreadable: ${e.message}`, evidence: '' }], warnings: [], evidence: { reason: 'registry' }, duration_ms: Date.now() - t0 }, REPORT_DIR)
     console.error(`check-orchestration: ENV-ERROR — ${e.message}`); process.exit(2)
   }
-  const nums = liveGateNumbers()
-  if (nums && nums.error) {
-    writeReport('check-orchestration', 44, { cwd, pass: false, blockers: [{ id: 'orch.manifest-unreadable', page: 'theme-gates.mjs', detail: `could not read the live gate manifest: ${nums.error}`, evidence: '' }], warnings: [], evidence: { reason: 'manifest' }, duration_ms: Date.now() - t0 }, REPORT_DIR)
+  const manifest = liveManifest()
+  if (manifest && manifest.error) {
+    writeReport('check-orchestration', 44, { cwd, pass: false, blockers: [{ id: 'orch.manifest-unreadable', page: 'theme-gates.mjs', detail: `could not read the live gate manifest: ${manifest.error}`, evidence: '' }], warnings: [], evidence: { reason: 'manifest' }, duration_ms: Date.now() - t0 }, REPORT_DIR)
     console.error('check-orchestration: ENV-ERROR — manifest'); process.exit(2)
   }
-  const { blockers, warnings } = auditGraph(registry, nums)
+  const { blockers, warnings } = auditGraph(registry, manifest)
   const pass = blockers.length === 0
-  writeReport('check-orchestration', 44, { cwd, pass, blockers, warnings, evidence: { contracts: (registry.contracts || []).length, liveGates: nums.length }, duration_ms: Date.now() - t0 }, REPORT_DIR)
+  writeReport('check-orchestration', 44, { cwd, pass, blockers, warnings, evidence: { contracts: (registry.contracts || []).length, liveGates: manifest.length }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   console.log(`check-orchestration: ${pass ? 'PASS' : 'BLOCK'} — ${blockers.length} blocker(s), ${warnings.length} warning(s) · ${(registry.contracts || []).length} contracts`)
   for (const b of blockers) console.log(`  BLOCK ${b.id} ${b.page}: ${b.detail}`)
   for (const w of warnings) console.log(`  warn  ${w.id} ${w.page}: ${w.detail}`)

@@ -196,7 +196,7 @@
       "event": "published",
       "from": "mantle",
       "to": ["atrium", "client"],
-      "requires": ["publish_readiness_ready", "seo_signoff_ready", "CHANGES.md"],
+      "requires": ["publish_readiness_ready", "seo_signoff_ready", "design_review_board", "red_team", "CHANGES.md"],
       "produces": ["live theme (flipped)", "T+0 post-publish smoke"],
       "gate": "check-post-publish.mjs + theme-gates --verify --require-full",
       "aliases": []

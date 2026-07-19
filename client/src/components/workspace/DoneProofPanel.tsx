@@ -36,13 +36,15 @@ export default function DoneProofPanel({ done }: { done?: BuildDone }) {
   }
   const verdict = done.trulyDone
     ? { icon: <ShieldCheck className="w-5 h-5" />, tone: 'text-green bg-green/10 border-green/30', text: 'Truly done — every condition proven & evidence fresh' }
-    : done.publishReady === true && done.fresh === false
-      ? { icon: <ShieldAlert className="w-5 h-5" />, tone: 'text-amber bg-amber/10 border-amber/30', text: 'Ready, but evidence is stale — re-run the build (something changed under it)' }
-      : done.publishReady === true
-        ? { icon: <ShieldCheck className="w-5 h-5" />, tone: 'text-green bg-green/10 border-green/30', text: 'Publish-ready' }
-        : done.publishReady === false
-          ? { icon: <ShieldX className="w-5 h-5" />, tone: 'text-red bg-red/10 border-red/30', text: `Not done${done.stage ? ` — stopped at ${done.stage}` : ''}` }
-          : { icon: <Clock className="w-5 h-5" />, tone: 'text-text-muted bg-surface-2 border-border', text: 'No verdict yet' }
+    : done.publishReady === true && done.fresh === true
+      ? { icon: <ShieldCheck className="w-5 h-5" />, tone: 'text-green bg-green/10 border-green/30', text: 'Publish-ready (fresh)' }
+      : done.publishReady === true && done.fresh === false
+        ? { icon: <ShieldAlert className="w-5 h-5" />, tone: 'text-amber bg-amber/10 border-amber/30', text: 'Ready, but evidence is STALE — re-run the build (something changed under it)' }
+        : done.publishReady === true
+          ? { icon: <ShieldAlert className="w-5 h-5" />, tone: 'text-amber bg-amber/10 border-amber/30', text: 'Ready, but freshness UNVERIFIED (not a git repo / no SHA) — not counted as done' }
+          : done.publishReady === false
+            ? { icon: <ShieldX className="w-5 h-5" />, tone: 'text-red bg-red/10 border-red/30', text: `Not done${done.stage ? ` — stopped at ${done.stage}` : ''}` }
+            : { icon: <Clock className="w-5 h-5" />, tone: 'text-text-muted bg-surface-2 border-border', text: 'No verdict yet' }
 
   return (
     <div className="rounded-xl border border-border bg-surface overflow-hidden">

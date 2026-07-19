@@ -57,6 +57,8 @@
     "keystone:token": "node scripts/keystone-token.mjs",
     "lens:autofix": "node scripts/lens-autofix.mjs",
     "gate:autofix": "node scripts/gate-autofix.mjs",
+    "preflight:repo": "node scripts/preflight-repo.mjs",
+    "done": "node scripts/done-check.mjs",
     "lens:calibrate": "node scripts/lens-calibrate.mjs",
     "ds:css": "node scripts/generate-design-system-css.mjs",
     "ds:cascade": "node scripts/check-ds-cascade.mjs",

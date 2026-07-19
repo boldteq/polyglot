@@ -41,7 +41,10 @@ const UNATTRIBUTABLE = new Set(['custom', 'system', 'unknown', '', null, undefin
 // attempt and re-asked ("not done", "still broken", "that's wrong", "doesn't work", "i told you").
 // These are escalated to kind 'rework' / severity 'p0' so the governor clears them off the evidence
 // bar on the FIRST occurrence instead of making the same bug recur 3× first (2026-07-18 audit).
-const CORRECTION_RE = /\b(no,|nope|actually|don'?t|stop|that'?s wrong|not what|incorrect|i told you|use .* instead|never|always|still (broken|failing|wrong)|not done|doesn'?t work|again|same (bug|issue|thing))\b/i;
+// Tightened 2026-07-19 (audit): only UNAMBIGUOUS ask→reject→retry phrases, so a benign lesson title
+// ("Always add RLS", "Use zod instead") can't false-trigger a p0 auto-patch. Broad words (always/never/
+// again/actually/stop) were removed — a positive `payload.rework`/`repeat` flag is the primary signal.
+const CORRECTION_RE = /\b(that'?s wrong|not what i (asked|wanted|meant)|i (already )?told you|still (broken|failing|not working|not fixed|wrong)|not done|does ?n'?t work|did ?n'?t work|you (broke|missed|forgot)|asked (again|multiple times|for this)|same (bug|issue|problem|thing) again|re-?report)\b/i;
 
 // ── Normalization ────────────────────────────────────────────────────────────
 

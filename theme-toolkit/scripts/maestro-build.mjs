@@ -92,14 +92,18 @@ export function makeRealSteps(opts = {}) {
         run(process.execPath, [scriptPath('lens-capture.mjs')], pub)           // (b) whole-store eyes — capture …
         run(process.execPath, [scriptPath('lens-judge.mjs')], pub)             //     … then judge every frame
         const r = run(process.execPath, [scriptPath('theme-gates.mjs')], pub)  // (c) publish-grade gate stack
-        let pass = (r.status ?? 1) === 0, blockers = 0, lensBlockers = 0
+        let pass = (r.status ?? 1) === 0, blockers = 0, lensBlockers = 0, mode = null
         try {
           const sum = JSON.parse(fs.readFileSync(path.resolve(dir, 'gate-reports', 'summary.json'), 'utf-8'))
           pass = sum.pass === true
+          mode = sum.mode || null
           blockers = Object.values(sum.gates || {}).reduce((n, g) => n + ((g.blockers || []).length), 0)
-          lensBlockers = (((sum.gates || {})['visual-truth'] || {}).blockers || []).length
+          // The Lens gate is named 'visual-check' in the manifest + report ('visual-truth' is only a
+          // back-compat ALIAS, never a summary.gates key). Reading 'visual-truth' made lensBlockers
+          // ALWAYS 0 → lens-autofix was never invoked by the heal loop (dead branch, 2026-07-19 audit).
+          lensBlockers = (((sum.gates || {})['visual-check'] || (sum.gates || {})['visual-truth'] || {}).blockers || []).length
         } catch { /* fall back to exit code */ }
-        return { pass, blockers, lensBlockers }
+        return { pass, blockers, lensBlockers, mode }
       }
       let v = gradeOnce()
       // UNIVERSAL SELF-HEAL (default-on, 2026-07-19 done-means-done): CONVERGE every layer, not just
@@ -112,7 +116,9 @@ export function makeRealSteps(opts = {}) {
       // disables it (report-only). (Locked by __fixtures__/maestro-build.)
       if (heal && !v.pass) {
         const healMax = Math.max(1, Number(process.env.HEAL_MAX_ROUNDS || 3))
+        const healDeadline = Date.now() + Number(process.env.HEAL_BUDGET_MS || 30 * 60 * 1000) // wall-clock breaker (audit H4)
         for (let round = 1; round <= healMax && !v.pass; round += 1) {
+          if (Date.now() > healDeadline) { console.log('maestro:build — heal budget exhausted (HEAL_BUDGET_MS) → escalate the remainder'); break }
           const before = v.blockers || 0
           const codeBlockers = Math.max(0, before - (v.lensBlockers || 0))
           console.log(`maestro:build — heal round ${round}/${healMax}: ${v.lensBlockers} visual + ${codeBlockers} code/content blocker(s) → autofix, then re-grade…`)
@@ -195,6 +201,12 @@ export async function maestroBuild({ steps, dir = process.cwd(), buildStateDir =
   log('stage 4/4 — full gate stack')
   const gates = await steps.runGates()
   if (!gates.pass) return fin('gates', `gate stack blocked${gates.blockers ? ` (${gates.blockers} blocker(s))` : ''}`, { loop: loopSummary, gates })
+  // A static-only run (no preview URL) silently DROPS the 7 URL gates (functional/perf/a11y/seo/
+  // conversion/Lens) — those never enter the pass computation, so "gates pass" is not a full verdict.
+  // PUBLISH-READY requires a full-grade run (audit H1a). ALLOW_STATIC_READY=1 overrides for a code-only pass.
+  if (gates.mode && gates.mode !== 'full' && process.env.ALLOW_STATIC_READY !== '1') {
+    return fin('gates', `static-only run (no preview URL) — cannot verify functional/perf/a11y/SEO/Lens; set THEME_PREVIEW_URL for a publish-ready verdict`, { loop: loopSummary, gates })
+  }
 
   return fin('ready', 'surface loop converged + full gate stack passed', { loop: loopSummary, gates })
 }

@@ -486,8 +486,10 @@ router.patch('/workspace/projects/:id', (req, res) => {
         const proj = db.getClientProject(req.params.id);
         const dir = proj && proj.build_dir;
         const done = (dir && fs.existsSync(dir)) ? assembleBuild(dir).done : null;
-        if (!done || done.publishReady !== true) {
-          return res.status(409).json({ error: 'Cannot mark "published": this build is not proven PUBLISH-READY (needs loop converged + full gate stack + fresh evidence). Run the build to green, or resend with force:true to override.', done });
+        // Require publishReady AND fresh (SHA-bound) — a stale or unverifiable-freshness build is not
+        // "done" (audit: fresh===null must not pass). force:true is the explicit Yash override.
+        if (!done || done.publishReady !== true || done.fresh !== true) {
+          return res.status(409).json({ error: 'Cannot mark "published": this build is not proven PUBLISH-READY with fresh evidence (needs loop converged + full gate stack + SHA-fresh). Run the build to green, or resend with force:true to override.', done });
         }
       }
       db.setClientProjectStatus(req.params.id, status);

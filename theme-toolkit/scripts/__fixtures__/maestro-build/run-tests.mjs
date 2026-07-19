@@ -161,7 +161,7 @@ console.log('case i — runGates auto-heals Lens blockers then re-grades to pass
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-build-i-'))
   fs.mkdirSync(path.join(tmp, 'gate-reports'), { recursive: true })
   // first grade is BLOCKED on a #18 visual-truth blocker
-  fs.writeFileSync(path.join(tmp, 'gate-reports', 'summary.json'), JSON.stringify({ pass: false, gates: { 'visual-truth': { blockers: [{ id: 'vt.overflow' }] } } }))
+  fs.writeFileSync(path.join(tmp, 'gate-reports', 'summary.json'), JSON.stringify({ pass: false, gates: { 'visual-check': { blockers: [{ id: 'vt.overflow' }] } } }))
   const calls = []
   const spawn = (cmd, args, opts) => {
     calls.push({ args: args || [] })
@@ -181,7 +181,7 @@ console.log('case j — heal:false reports Lens blockers without auto-healing')
 {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-build-j-'))
   fs.mkdirSync(path.join(tmp, 'gate-reports'), { recursive: true })
-  fs.writeFileSync(path.join(tmp, 'gate-reports', 'summary.json'), JSON.stringify({ pass: false, gates: { 'visual-truth': { blockers: [{ id: 'vt.overflow' }] } } }))
+  fs.writeFileSync(path.join(tmp, 'gate-reports', 'summary.json'), JSON.stringify({ pass: false, gates: { 'visual-check': { blockers: [{ id: 'vt.overflow' }] } } }))
   const calls = []
   const spawn = (cmd, args) => { calls.push({ args: args || [] }); return { status: 0, stdout: '', stderr: '' } }
   const res = await makeRealSteps({ dir: tmp, env: {}, spawn, heal: false }).runGates()

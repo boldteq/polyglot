@@ -28,6 +28,12 @@ import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { persistedKeys, readOutcomes, appendOutcomes } from './lib/lens-fix-outcomes.mjs'
 import { runAutofixLoop } from './lib/lens-autofix-loop.mjs'
+import { snapshotTheme, detectDestructive, revertDestructive } from './lib/fix-guard.mjs'
+
+// Scoped write tools (the -p fixer must be able to Edit/Write, but not blanket skip-permissions) +
+// a per-child wall-clock kill so a hung `claude -p` can't stall the loop (2026-07-19 audit).
+const ALLOWED_TOOLS = process.env.FIX_ALLOWED_TOOLS || 'Edit,Write,Read,Bash,Glob,Grep'
+const FIX_TIMEOUT_MS = Number(process.env.LENS_FIX_TIMEOUT_MS || 8 * 60 * 1000)
 
 const cwd = process.cwd()
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -82,16 +88,27 @@ function dispatchFix(owner, findings) {
     `You are ${owner}, fixing visual defects Lens (the visual-truth layer) found on the RENDERED Shopify store. The theme repo is your working directory: ${cwd}.`,
     `Look at each screenshot to SEE the defect, then EDIT the theme files to fix it.`,
     `Defects:\n${list}`,
-    `RULES: stay strictly inside the locked design system — use the theme's CSS variables / design-system tokens, NEVER a hardcoded hex/rgb or an off-scale px (gate #8 will block them). Fix ONLY these defects; change nothing unrelated. If a defect is store DATA (a product/collection/store-setting/image upload) and not theme code, say so and do NOT edit theme files for it.`,
+    `RULES: stay strictly inside the locked design system — use the theme's CSS variables / design-system tokens, NEVER a hardcoded hex/rgb or an off-scale px (gate #8 will block them). Fix ONLY these defects; change nothing unrelated. **NEVER delete a section/snippet/template or strip its {% schema %} to make the defect go away — fix it IN PLACE.** If a defect is store DATA (a product/collection/store-setting/image upload) and not theme code, say so and do NOT edit theme files for it.`,
     `When done, print one line: FIXED: <comma-separated checks you actually fixed in code>.`,
   ].join('\n\n')
+  const before = snapshotTheme(cwd) // destructive-fix guard baseline
   return new Promise((resolve) => {
     let out = ''
-    const child = spawn(CLAUDE_BIN, ['-p', prompt, '--model', FIX_MODEL, '--no-session-persistence'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(CLAUDE_BIN, ['-p', prompt, '--model', FIX_MODEL, '--no-session-persistence', '--allowedTools', ALLOWED_TOOLS], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const timer = setTimeout(() => { try { child.kill('SIGKILL') } catch { /* */ } }, FIX_TIMEOUT_MS)
     child.stdout.on('data', d => { out += d.toString() })
     child.stderr.on('data', d => { out += d.toString() })
-    child.on('error', e => resolve({ owner, ok: false, note: `spawn failed: ${e.message}` }))
-    child.on('close', () => resolve({ owner, ok: true, note: (out.match(/FIXED:[^\n]*/) || ['(no FIXED line)'])[0].slice(0, 200) }))
+    child.on('error', e => { clearTimeout(timer); resolve({ owner, ok: false, note: `spawn failed: ${e.message}` }) })
+    child.on('close', () => {
+      clearTimeout(timer)
+      const g = detectDestructive(cwd, before)
+      if (g.destructive) {
+        const rev = revertDestructive(cwd, g.culprits, before)
+        resolve({ owner, ok: false, destructive: true, note: `⚠ DESTRUCTIVE fix rejected (${g.reasons.join('; ').slice(0, 120)})${rev.reverted ? ' — reverted' : ''}; escalating` })
+        return
+      }
+      resolve({ owner, ok: true, note: (out.match(/FIXED:[^\n]*/) || ['(no FIXED line)'])[0].slice(0, 200) })
+    })
   })
 }
 
@@ -111,11 +128,12 @@ function dispatchPorter(findings) {
   ].join('\n\n')
   return new Promise((resolve) => {
     let out = ''
-    const child = spawn(CLAUDE_BIN, ['-p', prompt, '--model', FIX_MODEL, '--no-session-persistence'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(CLAUDE_BIN, ['-p', prompt, '--model', FIX_MODEL, '--no-session-persistence', '--allowedTools', ALLOWED_TOOLS], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const timer = setTimeout(() => { try { child.kill('SIGKILL') } catch { /* */ } }, FIX_TIMEOUT_MS)
     child.stdout.on('data', d => { out += d.toString() })
     child.stderr.on('data', d => { out += d.toString() })
-    child.on('error', e => resolve({ ok: false, note: `spawn failed: ${e.message}` }))
-    child.on('close', () => resolve({ ok: true, note: (out.match(/PORTER:[^\n]*/) || ['(triaged → porter-workorder.md)'])[0].slice(0, 160) }))
+    child.on('error', e => { clearTimeout(timer); resolve({ ok: false, note: `spawn failed: ${e.message}` }) })
+    child.on('close', () => { clearTimeout(timer); resolve({ ok: true, note: (out.match(/PORTER:[^\n]*/) || ['(triaged → porter-workorder.md)'])[0].slice(0, 160) }) })
   })
 }
 

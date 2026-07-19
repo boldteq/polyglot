@@ -24,6 +24,13 @@ import { fileURLToPath } from 'node:url'
 import { persistedKeys, readOutcomes, appendOutcomes } from './lib/lens-fix-outcomes.mjs'
 import { runAutofixLoop } from './lib/lens-autofix-loop.mjs'
 import { CODE_GATE_OWNER, CODE_OWNERS, ESCALATE_OWNER, classifyFinding } from './lib/gate-owner.mjs'
+import { snapshotTheme, detectDestructive, revertDestructive } from './lib/fix-guard.mjs'
+
+// Scoped tools so the headless fixer can actually EDIT theme files (audit: -p with no --allowedTools
+// may silently fail to write) — but NOT blanket skip-permissions (autonomous ≠ unsafe). + a per-child
+// wall-clock kill so a hung `claude -p` can't stall the build (audit H4).
+const ALLOWED_TOOLS = process.env.FIX_ALLOWED_TOOLS || 'Edit,Write,Read,Bash,Glob,Grep'
+const FIX_TIMEOUT_MS = Number(process.env.GATE_FIX_TIMEOUT_MS || 8 * 60 * 1000)
 
 const cwd = process.cwd()
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -91,16 +98,29 @@ function dispatchFix(owner, findings) {
     `You are ${owner}, a Boldteq Shopify Website Team engineer. The theme repo is your working directory: ${cwd}.`,
     `The static quality gates found these code/content blockers. EDIT the theme files to fix each one.`,
     list,
-    `RULES: stay strictly inside the locked design system — use the theme's CSS variables / --ds-* tokens, NEVER a hardcoded hex/rgb or off-scale px (gate #8 blocks them). Fix ONLY these blockers; change nothing unrelated. Do NOT edit a base Dawn/Minimog section (pulls its whole body into the diff) — fix via your own custom sections/snippets/templates. If a blocker actually needs REAL content, a real image/asset, a factual claim's evidence, a legal decision, or store data (not theme code) — do NOT invent it; say so and leave it for escalation.`,
+    `RULES: stay strictly inside the locked design system — use the theme's CSS variables / --ds-* tokens, NEVER a hardcoded hex/rgb or off-scale px (gate #8 blocks them). Fix ONLY these blockers; change nothing unrelated. Do NOT edit a base Dawn/Minimog section (pulls its whole body into the diff) — fix via your own custom sections/snippets/templates. **NEVER delete a section/snippet/template file or strip its {% schema %} to make a gate pass — fix the content IN PLACE.** If a blocker actually needs REAL content, a real image/asset, a factual claim's evidence, a legal decision, or store data (not theme code) — do NOT invent it and do NOT remove the feature; say so and leave it for escalation.`,
     `When done, print one line: FIXED: <comma-separated gate.check ids you actually fixed in code>.`,
   ].join('\n\n')
+  const before = snapshotTheme(cwd) // destructive-fix guard baseline
   return new Promise((resolve) => {
     let out = ''
-    const child = spawn(CLAUDE_BIN, ['-p', prompt, '--model', FIX_MODEL, '--no-session-persistence'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(CLAUDE_BIN, ['-p', prompt, '--model', FIX_MODEL, '--no-session-persistence', '--allowedTools', ALLOWED_TOOLS], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const timer = setTimeout(() => { try { child.kill('SIGKILL') } catch { /* */ } }, FIX_TIMEOUT_MS)
     child.stdout.on('data', d => { out += d.toString() })
     child.stderr.on('data', d => { out += d.toString() })
-    child.on('error', e => resolve({ owner, ok: false, note: `spawn failed: ${e.message}` }))
-    child.on('close', () => resolve({ owner, ok: true, note: (out.match(/FIXED:[^\n]*/) || ['(no FIXED line)'])[0].slice(0, 200) }))
+    child.on('error', e => { clearTimeout(timer); resolve({ owner, ok: false, note: `spawn failed: ${e.message}` }) })
+    child.on('close', () => {
+      clearTimeout(timer)
+      // A gate must NEVER be "passed" by deleting required content. If the fix removed a section/schema
+      // or gutted the theme, REVERT it → the blocker re-appears on re-grade → the loop escalates.
+      const g = detectDestructive(cwd, before)
+      if (g.destructive) {
+        const rev = revertDestructive(cwd, g.culprits, before)
+        resolve({ owner, ok: false, destructive: true, note: `⚠ DESTRUCTIVE fix rejected (${g.reasons.join('; ').slice(0, 120)})${rev.reverted ? ' — reverted' : ' — could not auto-revert'}; escalating` })
+        return
+      }
+      resolve({ owner, ok: true, note: (out.match(/FIXED:[^\n]*/) || ['(no FIXED line)'])[0].slice(0, 200) })
+    })
   })
 }
 
