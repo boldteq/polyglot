@@ -216,6 +216,6 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 - 2026-07-23 · FIG-1 done (`2b6f08f9`) — Figma rate cap mechanized: cache probe + sticky provenance +
   degrade-to-Path-A rules. Found and fixed a second bug: re-registering wiped the persisted export.
   RM-3 un-blocked as a side effect (it never actually needed the MCP).
-- 2026-07-23 · REF-VID-1 done (`<sha2>`) — found the client's Figma walkthrough video alive in the repo
+- 2026-07-23 · REF-VID-1 done (`03d20350`) — found the client's Figma walkthrough video alive in the repo
   but hidden by `.gitignore *.mp4`; shipped `--video/--at` frame ingestion. RM-3 re-blocked on a real
   full-res design frame (searched: none on disk); logged REF-VID-2 to persist the walkthrough's frames.
