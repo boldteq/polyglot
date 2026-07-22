@@ -24,6 +24,7 @@ export const CODE_GATE_OWNER = {
   'consent': 'loom',          // #42 GDPR consent wired, non-blocking CTA
   'content-quality': 'ink',   // #36 dev placeholders / copy quality
   'design-quality': 'drape',  // #12 premium taste bar
+  'reference-match': 'drape', // #46 built result vs the client's reference (archetype + visual diff)
   'class-d-visual': 'loom',   // #20 Class-D micro-change visual evidence
   'analytics-wiring': 'conduit', // #41 GA4/Meta events wired
   'app-conflicts': 'conduit', // #27 clashing apps

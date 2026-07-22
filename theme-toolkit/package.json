@@ -59,6 +59,8 @@
     "gate:autofix": "node scripts/gate-autofix.mjs",
     "preflight:repo": "node scripts/preflight-repo.mjs",
     "done": "node scripts/done-check.mjs",
+    "ref:ingest": "node scripts/reference-ingest.mjs",
+    "ref:match": "node scripts/check-reference-match.mjs",
     "lens:calibrate": "node scripts/lens-calibrate.mjs",
     "ds:css": "node scripts/generate-design-system-css.mjs",
     "ds:cascade": "node scripts/check-ds-cascade.mjs",

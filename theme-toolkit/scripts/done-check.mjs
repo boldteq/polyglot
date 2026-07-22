@@ -36,12 +36,14 @@ const gates = summary.gates || {}
 const totalBlockers = Object.values(gates).reduce((n, g) => n + ((g.blockers || []).length), 0)
 const lens = gates['visual-check'] || gates['visual-truth'] || null
 const orch = gates['orchestration'] || null
+const ref = gates['reference-match'] || null
 const cond = (ok, label, detail) => ({ ok, label, detail })
 const conditions = [
   cond(summary.pass === true, 'Every gate passes (no blockers, no unwaived skip)', `${totalBlockers} blocker(s) across ${Object.keys(gates).length} gate(s)`),
   cond(summary.mode === 'full', 'Ran at full grade (preview URL present → URL + Lens gates in scope)', `mode=${summary.mode}${summary.mode !== 'full' ? ' — set THEME_PREVIEW_URL for functional/perf/a11y/Lens' : ''}`),
   cond(lens ? (lens.blockers || []).length === 0 && lens.skipped !== true : null, 'Lens visual-truth (#18) — the rendered pixels agree', lens ? `${(lens.blockers || []).length} visual blocker(s)` : 'not run (no preview URL)'),
   cond(orch ? (orch.blockers || []).length === 0 : null, 'Orchestration coherent (#44)', orch ? `${(orch.blockers || []).length} blocker(s)` : 'n/a'),
+  cond(ref ? (ref.blockers || []).length === 0 : null, 'Matches the client\'s reference (#46)', ref ? `${(ref.blockers || []).length} divergence blocker(s)` : 'n/a — no reference registered'),
   cond(summary.dirty === false, 'Working tree committed (evidence binds to a real SHA)', summary.dirty ? 'uncommitted edits — commit before this counts as publish-ready' : 'clean'),
 ]
 
@@ -54,11 +56,16 @@ for (const c of conditions) {
 // DONE = the store is verifiably correct: all gates pass AND (Lens ran clean if a URL was available).
 // Lens null (no URL) does NOT count as done — a real "done" needs the rendered check.
 const lensOk = lens ? ((lens.blockers || []).length === 0 && lens.skipped !== true) : false
-const done = summary.pass === true && lensOk
+// Reference-match is N/A-TOLERANT (unlike Lens): if the client never sent a reference there is nothing
+// to match, so absence must not block. But if a reference IS registered and the build diverges from it,
+// that is not done — "every gate green" was never proof we built the right thing (cravinbyandy hero).
+const refOk = ref ? (ref.blockers || []).length === 0 : true
+const done = summary.pass === true && lensOk && refOk
 if (done) {
   console.log('\n✅ DONE — every condition proven. Safe to say done.')
   process.exit(0)
 }
 console.log('\n❌ NOT DONE — do NOT say done. Loop: list the blockers above, fix each (your own way), re-run done-check.')
 if (!lensOk && summary.pass === true) console.log('   (gates pass but the RENDER was not verified — run with THEME_PREVIEW_URL so Lens can look at the pixels.)')
+if (!refOk) console.log('   (the build DIVERGES from the reference the client sent — see gate-reports/reference-match.json. Fix the divergences, do not re-explain them.)')
 process.exit(1)
