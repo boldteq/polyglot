@@ -123,7 +123,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   unknown-base default, the override, and no false flag on a reuse-heavy Dawn build). Against a copy
   carrying the pre-fix code the same correct Dawn input gives
   `BLOCK reuse-map.reuse-below-target — reuse+configure 20% < target 70%`, vs PASS + informational on
-  the fix. Toolkit **81/81**.
+  the fix. Toolkit **81/81**. Commit `ef90ddd2`.
 - [ ] **GI-2 · cravinbyandy still has no `section-reuse-map.md` (16 custom sections unmapped).**
   `status: open` GI-1 made the *requirement* honest; the *artifact* is still absent, and no generator
   exists (verified: nothing in the toolkit writes one). Most of it is mechanically derivable —
@@ -252,7 +252,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 - 2026-07-23 · REF-VID-1 done (`03d20350`) — found the client's Figma walkthrough video alive in the repo
   but hidden by `.gitignore *.mp4`; shipped `--video/--at` frame ingestion. RM-3 re-blocked on a real
   full-res design frame (searched: none on disk); logged REF-VID-2 to persist the walkthrough's frames.
-- 2026-07-23 · GI-1 done (`<sha3>`) — gate #23 hardcoded a universal 70% reuse floor while its own
+- 2026-07-23 · GI-1 done (`ef90ddd2`) — gate #23 hardcoded a universal 70% reuse floor while its own
   protocol says the floor "flips by theme_base" and does not apply to Dawn; it would have BLOCKED every
   correct custom-first Dawn build on enforce. Floor is now theme-base-conditional. Logged GI-2 (the map
   artifact + a generator that refuses to fabricate the two judgement fields).
