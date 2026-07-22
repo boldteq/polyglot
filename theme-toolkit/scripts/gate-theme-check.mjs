@@ -74,8 +74,16 @@ const SEV = { 0: 'error', 1: 'warning', 2: 'info', error: 'error', warning: 'war
 const blockers = []
 const warnings = []
 let infoCount = 0
+// SCAN-SCOPE HYGIENE (2026-07-22 cravinbyandy forensics): theme-check followed the vendored toolkit
+// into its own DELIBERATELY-BROKEN test fixtures — 52 of 56 "blockers" pointed at
+// toolkit/scripts/__fixtures__/**. `.shopifyignore` doesn't apply (theme-check doesn't read it), so
+// the gate sat permanently red for reasons unrelated to the theme, which trains everyone to ignore
+// red. These paths are never part of the shipped theme; drop their offenses outright.
+const OUT_OF_SCOPE = /(^|\/)(toolkit|node_modules|gate-reports|\.git)(\/|$)/
+let outOfScopeDropped = 0
 for (const fileResult of results) {
   const filePath = fileResult.path ?? fileResult.absolute_path ?? '(unknown)'
+  if (OUT_OF_SCOPE.test(filePath)) { outOfScopeDropped += (fileResult.offenses ?? []).length; continue }
   for (const o of fileResult.offenses ?? []) {
     const sev = SEV[o.severity] ?? 'warning'
     const row = typeof o.start_row === 'number' ? o.start_row + 1 : (o.start_line ?? '?')
@@ -92,10 +100,10 @@ for (const fileResult of results) {
 }
 
 const pass = blockers.length === 0
-console.log(`theme check: ${blockers.length} error(s), ${warnings.length} warning(s), ${infoCount} info across ${results.length} file(s)`)
+console.log(`theme check: ${blockers.length} error(s), ${warnings.length} warning(s), ${infoCount} info across ${results.length} file(s)${outOfScopeDropped ? ` · ignored ${outOfScopeDropped} offense(s) in toolkit/node_modules/gate-reports (not part of the theme)` : ''}`)
 finish(pass ? 0 : 1, {
   pass,
   blockers,
   warnings,
-  evidence: { files_with_offenses: results.length, errors: blockers.length, warnings: warnings.length, info: infoCount },
+  evidence: { files_with_offenses: results.length, errors: blockers.length, warnings: warnings.length, info: infoCount, out_of_scope_offenses_ignored: outOfScopeDropped },
 })

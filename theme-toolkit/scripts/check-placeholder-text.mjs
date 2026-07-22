@@ -25,6 +25,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { writeReport } from './lib/report.mjs'
 import { runAbsorbed } from './lib/merge-spawn.mjs'
@@ -114,11 +115,34 @@ function finish(envError, evidence = {}) {
   process.exit(code)
 }
 
+// VENDOR SCOPE (2026-07-22 cravinbyandy forensics): all 4 "blockers" were stock, never-touched Dawn
+// files carrying Shopify's own `{% comment %} TODO: … {% endcomment %}`. Flagging vendor code we never
+// wrote is noise that trains the loop to ignore red. When a baseline tag resolves, restrict the
+// dev-leftover scan to Liquid WE actually changed since base; without a baseline, keep full scope
+// (and #0.5/#45 will be blocking on the missing tag anyway).
+function changedSinceBase(files) {
+  const ref = process.env.BASE_REF || 'base'
+  try {
+    const out = execFileSync('git', ['diff', '--name-only', `${ref}...HEAD`], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore' ] })
+    const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] })
+    const modified = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] })
+    const set = new Set([...out.split('\n'), ...untracked.split('\n'), ...modified.split('\n')].map(s => s.trim()).filter(Boolean))
+    if (!set.size) return null
+    return files.filter(f => set.has(f))
+  } catch { return null } // no baseline / not a git repo → caller keeps full scope
+}
+
 function main() {
   // shipped-content surfaces (where seeded shopper-text lives) + rendered Liquid (dev-leftovers only)
   const shipped = [...walk('templates', ['.json']), ...walk('locales', ['.json'])]
   if (fs.existsSync(path.resolve(cwd, 'config/settings_data.json'))) shipped.push('config/settings_data.json')
-  const rendered = [...walk('sections', ['.liquid']), ...walk('snippets', ['.liquid'])]
+  let rendered = [...walk('sections', ['.liquid']), ...walk('snippets', ['.liquid'])]
+  const ours = changedSinceBase(rendered)
+  if (ours) {
+    const dropped = rendered.length - ours.length
+    rendered = ours
+    if (dropped > 0) console.log(`check-placeholder-text: scoped to ${ours.length} changed Liquid file(s) — ignored ${dropped} untouched vendor file(s)`)
+  }
 
   if (!shipped.length && !rendered.length) {
     warnings.push({ id: 'placeholder.n-a-no-content', page: '-', detail: 'no shipped-content surfaces (templates/locales/settings_data/sections) — nothing to scan (skip)', evidence: '' })

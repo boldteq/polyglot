@@ -15,6 +15,18 @@ const cwd = process.cwd()
 const has = (p) => fs.existsSync(path.join(cwd, p))
 const bin = (name) => { try { execFileSync(name, ['--version'], { stdio: ['ignore', 'ignore', 'ignore'] }); return true } catch { return false } }
 const isGit = () => { try { execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd, stdio: ['ignore', 'ignore', 'ignore'] }); return true } catch { return false } }
+const git = (args) => { try { return execFileSync('git', args, { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }) } catch { return null } }
+const hasBaselineTag = () => /(^|\n)(base|baseline|v?0\.)/i.test(git(['tag']) || '')
+const uncommitted = () => (git(['status', '--porcelain']) || '').split('\n').filter(Boolean).length
+const changesTracked = () => { try { execFileSync('git', ['ls-files', '--error-unmatch', 'CHANGES.md'], { cwd, stdio: ['ignore', 'ignore', 'ignore'] }); return true } catch { return !has('CHANGES.md') } }
+function dsScalesPopulated() {
+  try {
+    const ds = JSON.parse(fs.readFileSync(path.join(cwd, 'docs/design/design-system.json'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, ''))
+    const nonEmpty = (v) => Array.isArray(v) ? v.length > 0 : (v && typeof v === 'object' ? Object.keys(v).length > 0 : false)
+    return nonEmpty((ds.typography && (ds.typography.allowed_px || ds.typography.scale)) || ds.type_scale)
+      && nonEmpty((ds.spacing && (ds.spacing.scale || ds.spacing.allowed_px)) || ds.space_scale)
+  } catch { return false }
+}
 
 const checks = []
 const add = (required, ok, label, fix) => checks.push({ required, ok, label, fix })
@@ -32,6 +44,16 @@ add(true, bin('claude'), 'claude CLI on PATH (self-heal dispatches claude -p)',
   'install + auth Claude Code CLI so gate-autofix/lens-autofix can fix')
 add(true, isGit(), 'repo is a git repo (freshness + destructive-fix revert need it)',
   'git init && git add -A && git commit -m "baseline"')
+// ── The cravinbyandy class (2026-07-22 forensics) — these four made 8 gates silently skip AND
+// report pass for 9 days, so the client kept re-reporting bugs no gate was actually checking.
+add(true, hasBaselineTag(), 'baseline `base` git tag exists (8 scope-resolving gates need it)',
+  'git tag base   ← without it #8/#9/#11/#13/#14/#16/#22/#23 SKIP their scan and still report pass')
+add(true, dsScalesPopulated(), 'design-system has non-empty typography + spacing scales',
+  'populate docs/design/design-system.json typography.allowed_px + spacing.scale — else font-size/spacing drift is UNENFORCEABLE')
+add(false, uncommitted() <= 20, `working tree is committed (${uncommitted()} uncommitted path(s))`,
+  'git add -A && git commit — uncommitted work is invisible to the next agent, so fixes get silently reverted (and one `git checkout` destroys it)')
+add(false, changesTracked(), 'CHANGES.md is tracked by git',
+  'git add CHANGES.md && git commit — an untracked change-log has no history and cannot be diffed')
 
 // ── ADVISORY — needed for a FULL publish-grade run / live store, but the loop can start ──
 add(false, has('.boldteq-theme-lock.json'), 'theme linked (.boldteq-theme-lock.json)',

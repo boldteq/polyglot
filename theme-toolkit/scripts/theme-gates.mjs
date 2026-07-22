@@ -70,6 +70,15 @@ function writeSummaryMd(dir, selected, results, summary) {
   const blocked = selected.filter(g => cls(g) === 'block')
   const skipped = selected.filter(g => cls(g) === 'skip')
   const passed = selected.filter(g => cls(g) === 'pass')
+  // HONEST HEADER (2026-07-22 cravinbyandy forensics): the summary Yash reads printed
+  // "❌ BLOCK · 0 block · 7 gate(s)" while 26 un-run gate reports on disk held 58 blockers. Never let
+  // the headline imply the run was clean or complete when it was neither.
+  if (!summary.pass && summary.severityCounts && summary.severityCounts.block === 0 && skipped.length) {
+    L.push(`> **Why BLOCK with 0 blockers?** ${skipped.length} gate(s) did not run (${skipped.map(g => g.name).join(', ')}). A gate that did not run is NOT a pass — resolve or waive it in \`## Waivers\`.`, '')
+  }
+  if (summary.mode === 'gate-subset') {
+    L.push(`> ⚠️ **Partial run** — only ${selected.length} gate(s) were executed. This is NOT a publish-grade verdict and says nothing about the gates that were not run. Run the full stack (\`node toolkit/scripts/theme-gates.mjs\`) before trusting green.`, '')
+  }
   if (blocked.length) {
     L.push(`## ❌ Blocked (${blocked.length}) — fix before publish`, '')
     for (const g of blocked) {
@@ -126,6 +135,7 @@ const GATES = [
   { name: 'editability', number: 3, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'bash', script: 'gate-editability-greps.sh', desc: 'No hardcoded content — every text/image/color is merchant-editable in the admin.' },
   { name: 'dead-code', number: 11, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-antipatterns.mjs', desc: 'No unused assets, orphan sections, or duplicate files bloating the theme.' },
   { name: 'orchestration', number: 44, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-orchestration.mjs', desc: 'The pipeline graph is coherent — no broken handoff edges, no gate citation points at a missing gate, and the eyes/dispatch gates that stop "skip reads as pass" are all present.' },
+  { name: 'gate-integrity', number: 45, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-gate-integrity.mjs', desc: 'A skipped gate is not a passed gate — blocks when a gate reports pass while its scan was skipped (usually a missing `base` tag), so green can never mean "never ran".' },
   { name: 'layout', number: 22, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-css-layout.mjs', desc: 'No CSS overflow / layout defects (100vw, no-wrap rows) that break the page width.' },
   // ── QUALITY · Design System ──
   { name: 'design-tokens', number: 8, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-design-system.mjs', desc: 'Colors / spacing / type stay on the design-system scale — no hardcoded hex/px.' },
@@ -407,6 +417,15 @@ async function runGates(args) {
       }
       return gate
     })
+    // ALWAYS-ON CORE (2026-07-22 cravinbyandy forensics): a --gate subset must never be able to
+    // exclude the gates that prove the run itself is trustworthy. On cravinbyandy the final run was
+    // `--gate` × 7 and it EXCLUDED #3 editability — the one gate that was BLOCKing on the missing
+    // baseline tag — so the report read green while 8 gates were silently skipping. Force them in.
+    const CORE = ['foundation', 'editability', 'gate-integrity']
+    for (const name of CORE) {
+      const g = GATES.find(x => x.name === name)
+      if (g && !selected.some(s => s.name === g.name)) { selected.push(g); console.log(`note: forcing always-on core gate "${name}" into this subset (subsets may not hide run-integrity gates)`) }
+    }
   } else if (args.staticOnly) {
     mode = 'static-only'
     selected = GATES.filter(g => g.kind === 'static')
@@ -464,8 +483,7 @@ async function runGates(args) {
   // forces the old serial behavior. Verbose per-gate output is buffered + printed in selected order.
   const cap = process.env.GATES_SEQUENTIAL === '1' ? 1 : Math.max(1, Math.min(8, os.cpus?.().length || 4))
   const logs = {}
-  if (toSpawn.length) console.log(`  running ${toSpawn.length} gate(s) — up to ${cap} in parallel...`)
-  await pool(toSpawn, cap, async ({ gate, scriptPath, reportPath }) => {
+  const runOne = async ({ gate, scriptPath, reportPath }) => {
     const child = await runGateProc(gate.runner, [scriptPath], { cwd, env: baseEnv, timeout: 600_000 })
     let report = null
     try { report = readJson(reportPath) } catch { report = null }
@@ -479,7 +497,14 @@ async function runGates(args) {
       console.log(`  gate ${gate.name} ... SKIP-ENV (exit ${code})`)
     }
     logs[gate.name] = indent(`${child.stdout || ''}${child.stderr || ''}`)
-  })
+  }
+  // gate-integrity AUDITS the other gates' reports, so it must run LAST and alone — inside the
+  // parallel pool it would read stale/partial reports from the previous run and audit the wrong state.
+  const integrityTask = toSpawn.find(t => t.gate.name === 'gate-integrity')
+  const poolTasks = toSpawn.filter(t => t.gate.name !== 'gate-integrity')
+  if (poolTasks.length) console.log(`  running ${poolTasks.length} gate(s) — up to ${cap} in parallel...`)
+  await pool(poolTasks, cap, runOne)
+  if (integrityTask) { console.log('  running gate-integrity last (audits this run\'s reports)...'); await runOne(integrityTask) }
   for (const gate of selected) { if (logs[gate.name]) console.log(logs[gate.name]) }
 
   // pass = all executed gates pass; a SKIP_<GATE>=1 waiver only passes on a FULL run if

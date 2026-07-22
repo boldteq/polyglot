@@ -6,8 +6,8 @@
     "id": "zindex-war",
     "type": "forbid-css-pattern",
     "pattern": "z-index\\s*:\\s*9{4,}",
-    "severity": "warn",
-    "message": "z-index >= 9999 — escalation war; use the design-system layer scale, don't out-bid",
+    "severity": "block",
+    "message": "z-index >= 9999 — escalation war; use the design-system layer scale, don't out-bid. (Promoted warn→block 2026-07-22: cravinbyandy shipped FOUR stylesheets all at 9999 — base.css, about-cafe, catering-services, menu-cards — the classic 'modal opens behind the other modal' latent bug. A warn was ignored for 9 days.)",
     "owner": "loom",
     "source": "seed"
   },

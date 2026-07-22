@@ -18,8 +18,11 @@
 //      config/settings_data.json or locales/*.default.json. A test name shipping live is the
 //      Meridian/gpt-test failure class (Lens caught "© GPT TEST 1.0" at render; this catches it at
 //      source, pre-render, for free).
-//   4. A baseline git tag exists (advisory WARN) — gates that diff against a baseline ("changed
-//      since base") silently skip without one. Not every repo tags, so this never blocks.
+//   4. A baseline git tag exists — gates that diff against a baseline ("changed since base") silently
+//      skip AND report pass without one (this disabled 8 gates for 9 days on cravinbyandy). Publish-
+//      grade BLOCKS; dev WARNs (the dev contract stands) — but the CONSEQUENCE always blocks at any
+//      grade via gate #45 check-gate-integrity, which catches a gate reporting pass on a skipped scan.
+//      Fix: `git tag base`.
 //
 // Usage: node check-bootstrap.mjs
 // Env: REPORT_DIR (gate-reports) · DS_REQUIRE_SCOPE=1 | BOOTSTRAP_REQUIRED=1 (publish-grade: 1–3 BLOCK)
@@ -96,6 +99,21 @@ function checkDesignSystem() {
     issue('bootstrap.ds-empty', rel,
       `design-system.json present but missing core sections (need color/token defs AND a type scale; saw keys: ${Object.keys(ds).slice(0, 8).join(', ') || '∅'}).`)
   }
+  // A contract that cannot be ENFORCED is a missing contract (2026-07-22 cravinbyandy forensics):
+  // the file had a `typography` key — so the check above passed — but `typography.allowed_px` and
+  // `spacing.scale` were BOTH null, so gate #8 could never flag font-size or spacing drift. That is
+  // precisely the class of bug the client re-reported for 9 days ("font too big", "spacing off").
+  const nonEmpty = (v) => Array.isArray(v) ? v.length > 0 : (v && typeof v === 'object' ? Object.keys(v).length > 0 : false)
+  const typeScale = (ds.typography && (ds.typography.allowed_px || ds.typography.scale)) || ds.type_scale
+  const spaceScale = (ds.spacing && (ds.spacing.scale || ds.spacing.allowed_px)) || ds.space_scale
+  if (!nonEmpty(typeScale)) {
+    issue('bootstrap.ds-no-type-scale', rel,
+      'design-system.json has no non-empty typography scale (typography.allowed_px / typography.scale) — font-size drift is UNENFORCEABLE; gate #8 can never block a wrong font size. Populate the allowed px/rem set from the approved design.')
+  }
+  if (!nonEmpty(spaceScale)) {
+    issue('bootstrap.ds-no-space-scale', rel,
+      'design-system.json has no non-empty spacing scale (spacing.scale) — spacing drift is UNENFORCEABLE; gate #8 can never block inconsistent section padding. Populate the spacing steps from the approved design.')
+  }
 }
 
 // ── 2. JSON templates + config parse (Shopify-comment-tolerant) ──────────────
@@ -153,14 +171,25 @@ function checkIdentity() {
   }
 }
 
-// ── 4. Baseline git tag (advisory) ───────────────────────────────────────────
+// ── 4. Baseline git tag — BLOCKING (2026-07-22 cravinbyandy forensics) ───────
+// This was advisory ("not every repo tags, so this never blocks"). That was wrong: without a baseline
+// tag EIGHT scope-resolving gates (#8/#9/#11/#13/#14/#16/#22/#23) skip their scan and still report
+// pass:true, and SUMMARY.md prints them as "✅ Passed". On cravinbyandy that state held for 9 days
+// while the client re-reported spacing/typography bugs no gate was checking. A missing baseline tag is
+// not a style preference — it silently disables most of the quality stack. BLOCK it.
 function checkBaselineTag() {
+  // The baseline tag belongs to the THEME repo. If cwd isn't the git toplevel we're inside some other
+  // repo (e.g. a nested fixture/sandbox) and its tags say nothing about this theme — don't judge it.
+  try {
+    const top = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+    if (top && path.resolve(top) !== path.resolve(cwd)) return
+  } catch { /* handled below */ }
   let tags
   try { tags = execFileSync('git', ['tag'], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).split('\n').filter(Boolean) }
-  catch { warnings.push({ id: 'bootstrap.not-git', page: '.', detail: 'not a git repo (or git unavailable) — baseline-diff gates have no anchor', evidence: '' }); return }
+  catch { issue('bootstrap.not-git', '.', 'not a git repo (or git unavailable) — baseline-diff gates have no anchor, so they will skip and falsely report pass. `git init` + commit the pulled baseline + `git tag base`.'); return }
   const baseline = tags.find(t => BASELINE_RE.test(t))
   if (!baseline) {
-    warnings.push({ id: 'bootstrap.no-baseline-tag', page: '.', detail: `no baseline tag (looked for ${BASELINE_RE}) among ${tags.length} tag(s) — gates that diff "since base" will skip. Tag the forked theme base: \`git tag base\`.`, evidence: '' })
+    issue('bootstrap.no-baseline-tag', '.', `no baseline tag (looked for ${BASELINE_RE}) among ${tags.length} tag(s) — gates that diff "since base" SKIP their scan and still report pass (#8/#9/#11/#13/#14/#16/#22/#23). Tag the pulled theme base: \`git tag base\`.`)
   }
 }
 
