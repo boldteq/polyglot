@@ -33,8 +33,39 @@ const t0 = Date.now()
 const cwd = process.cwd()
 const REUSE_MAP = process.env.REUSE_MAP || 'section-reuse-map.md'
 const BASE_REF = process.env.BASE_REF || 'base'
-const REUSE_TARGET = Number.parseFloat(process.env.REUSE_TARGET || '0.70')
+const DS = process.env.DESIGN_SYSTEM || 'docs/design/design-system.json'
 const ALLOW_WAIVER = process.env.ALLOW_REUSE_WAIVER === '1'
+
+// THE REUSE FLOOR IS THEME-BASE-CONDITIONAL — it is not a universal rule.
+// `section-reuse-first-protocol.md` §Targets (Yash, 2026-06-18) states it outright:
+//   "Minimog = reuse-first → ≥70% REUSE+CONFIGURE. Dawn = custom-first → 70–80% CUSTOM expected
+//    (the ≥70%-reuse row is MINIMOG-ONLY; on Dawn it does not apply)"
+// and its table says the enforcement "gate flips by `theme_base`". This gate never implemented that
+// flip, so it applied the Minimog quota to every base. A correct Dawn build (custom-first by
+// doctrine) therefore scores ~20–30% reuse and trips `reuse-map.reuse-below-target` — i.e. the gate
+// would BLOCK the very builds the doctrine asks for the moment REUSE_MAP_ENFORCE=1. A false BLOCK is
+// as damaging as a false pass, and this one also explains why the artifact is never authored: an
+// honest Dawn map guarantees a failure needing a Yash waiver.
+// Dawn imposes no reuse quota; the ladder still governs CODE QUALITY on both bases
+// (anti-overengineering budgets) — "custom-first" means bespoke + quality, never overcoded.
+export function readThemeBase(dir = cwd, dsPath = DS) {
+  try {
+    const j = JSON.parse(fs.readFileSync(path.resolve(dir, dsPath), 'utf-8'))
+    const b = String(j.theme_base || '').trim().toLowerCase()
+    return b || null
+  } catch { return null }
+}
+// Returns the reuse+configure floor, or null when the base imposes none.
+export function reuseFloorFor(themeBase, envOverride = process.env.REUSE_TARGET) {
+  if (envOverride != null && envOverride !== '') {
+    const n = Number.parseFloat(envOverride)
+    if (Number.isFinite(n)) return n // explicit operator override always wins, on any base
+  }
+  if (themeBase === 'dawn') return null // custom-first: no reuse quota (protocol §Targets)
+  return 0.70 // Minimog, and the safe default when the base is unknown/unrecorded
+}
+const THEME_BASE = readThemeBase()
+const REUSE_TARGET = reuseFloorFor(THEME_BASE)
 // Phase A default = warn-only (surface findings, never block); REUSE_MAP_ENFORCE=1 = Phase B BLOCK.
 // Doctrine: register a new manifest gate warn-only, prove on ≥2 stores, then flip to block.
 const ENFORCE = process.env.REUSE_MAP_ENFORCE === '1'
@@ -73,7 +104,11 @@ function finish(envError) {
   const pass = !envError && blockers.length === 0
   writeReport('section-reuse', 23, {
     cwd, pass, blockers, warnings,
-    evidence: { reuseMap: REUSE_MAP, baseRef: BASE_REF, reuseTarget: REUSE_TARGET, reason: envError || undefined },
+    evidence: {
+      reuseMap: REUSE_MAP, baseRef: BASE_REF, themeBase: THEME_BASE,
+      reuseTarget: REUSE_TARGET, reuseFloorApplies: REUSE_TARGET != null,
+      reason: envError || undefined,
+    },
     duration_ms: Date.now() - t0,
   })
   const code = envError ? 2 : pass ? 0 : 1
@@ -149,11 +184,16 @@ for (const line of lines) {
 const total = reused + configured + extended + custom
 if (countsMatch && total > 0) {
   const share = (reused + configured) / total
-  if (share < REUSE_TARGET) {
-    const pct = (share * 100).toFixed(0)
+  const pct = (share * 100).toFixed(0)
+  if (REUSE_TARGET == null) {
+    // Dawn (custom-first): report the ratio, never gate on it. Still visible in the report so a
+    // genuinely over-reused Dawn build is readable by a human — just not a machine BLOCK.
+    add(warnings, 'reuse-map.reuse-share-informational', `reuse+configure ${pct}% · custom ${((custom / total) * 100).toFixed(0)}% — theme_base "${THEME_BASE}" is custom-first, so no reuse floor applies (section-reuse-first-protocol.md §Targets). Set REUSE_TARGET to override.`)
+  } else if (share < REUSE_TARGET) {
     const tgt = (REUSE_TARGET * 100).toFixed(0)
-    if (ALLOW_WAIVER) add(warnings, 'reuse-map.reuse-below-target-waived', `reuse+configure ${pct}% < ${tgt}% (waived via ## Waivers)`)
-    else add(blockers, 'reuse-map.reuse-below-target', `reuse+configure ${pct}% < target ${tgt}% — needs a Yash-approved CHANGES.md ## Waivers entry`)
+    const baseNote = THEME_BASE ? `theme_base "${THEME_BASE}"` : `theme_base unrecorded in ${DS} — defaulting to the reuse-first floor`
+    if (ALLOW_WAIVER) add(warnings, 'reuse-map.reuse-below-target-waived', `reuse+configure ${pct}% < ${tgt}% (${baseNote}) (waived via ## Waivers)`)
+    else add(blockers, 'reuse-map.reuse-below-target', `reuse+configure ${pct}% < target ${tgt}% (${baseNote}) — needs a Yash-approved CHANGES.md ## Waivers entry`)
   }
 }
 

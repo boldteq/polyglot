@@ -99,9 +99,42 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   read as "no timestamp"). End-to-end on the **real client video**: extracted the 0:20 frame →
   `docs/design/references/home/hero-design.png` (832×400) with `source_video`/`source_at: 20`, then
   re-registered the archetype with no `--video` and the frame + provenance survived. Toolkit **81/81**.
-- [ ] **GI-1 · `section-reuse-map.md` is required by 2 gates but missing in cravinbyandy.** `status: open`
-  Either generate it from the current theme or make the requirement honest. *Done when:* gate #23 is
-  no longer N/A-by-absence on that repo, or the requirement is explicitly scoped.
+- [x] **GI-1 · The reuse requirement is now honestly scoped — the gate contradicted its own doctrine.**
+  `status: done` **The premise in this item was wrong and is corrected:** gate #23 is *not*
+  "N/A-by-absence" on cravinbyandy. It resolves correctly and reports
+  `reuse-map.missing — section-reuse-map.md not found but 16 new section(s) added since base`, which is
+  precisely right; it merely exits 0 because the gate is still Phase-A warn-only. Also, the map is a
+  *fallback* scope source for the ~8 gates that read it — cravinbyandy's `base` tag resolves, so the
+  primary scope path is used and those gates are **not** degraded by its absence.
+  **The real defect, found by verifying the gate against its own spec:** `section-reuse-first-protocol.md`
+  §Targets states *"Minimog = reuse-first → ≥70% REUSE+CONFIGURE. Dawn = custom-first → 70–80% CUSTOM
+  expected (the ≥70%-reuse row is MINIMOG-ONLY; on Dawn it does not apply)"* and its table says the
+  enforcement *"gate flips by `theme_base`"*. **The gate never implemented that flip** — it hardcoded a
+  universal 70% reuse floor. cravinbyandy is `theme_base: "dawn"`, so a *correct* custom-first Dawn
+  build scores ~20–30% reuse and trips `reuse-map.reuse-below-target`. The moment
+  `REUSE_MAP_ENFORCE=1` flipped, the gate would have blocked exactly the builds the doctrine asks for —
+  and this is also why the artifact is never authored: an honest Dawn map guaranteed a failure needing
+  a Yash waiver.
+  **Shipped:** the floor is now read from `theme_base` in `docs/design/design-system.json` — Dawn ⇒ no
+  reuse quota (the share is still reported as `reuse-map.reuse-share-informational`, so a human can
+  still read it), Minimog/unknown ⇒ the 70% floor with the reason named, and an explicit `REUSE_TARGET`
+  env override still wins on any base. `themeBase` + `reuseFloorApplies` are recorded in the report.
+  *Proof:* fixture grew 10→17 cases (11–15 pin the flip, the Minimog quota staying armed, the
+  unknown-base default, the override, and no false flag on a reuse-heavy Dawn build). Against a copy
+  carrying the pre-fix code the same correct Dawn input gives
+  `BLOCK reuse-map.reuse-below-target — reuse+configure 20% < target 70%`, vs PASS + informational on
+  the fix. Toolkit **81/81**.
+- [ ] **GI-2 · cravinbyandy still has no `section-reuse-map.md` (16 custom sections unmapped).**
+  `status: open` GI-1 made the *requirement* honest; the *artifact* is still absent, and no generator
+  exists (verified: nothing in the toolkit writes one). Most of it is mechanically derivable —
+  `custom` = sections added since `base` (16, exact), `extended` = base sections modified since base,
+  `reused`/`configured` = stock sections referenced in templates, split by whether template settings
+  differ from schema defaults. **Two fields are NOT mechanically knowable and must not be fabricated:**
+  `Custom split {library, scratch}` and the per-section `blueprint: none (checked: …, gap: …)`
+  justifications — a wrong map is worse than none, because it would let a build pass Audit 7 on
+  invented numbers. *Done when:* a `generate-reuse-map.mjs` emits the derivable parts and leaves the
+  judgement fields as explicit unfilled markers (so the gate rejects a half-authored map rather than
+  accepting a fabricated one), with a fixture.
 - [ ] **DOC-1 · Seed the missing build artifacts in cravinbyandy** (`docs/discovery/goals.json`,
   `docs/design/brand-direction.md`) so gates #0.4/#0.5 stop failing on absence. `status: open`
   Derive ONLY from what already exists in the repo; never invent client goals — flag what needs Yash.
@@ -219,3 +252,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 - 2026-07-23 · REF-VID-1 done (`03d20350`) — found the client's Figma walkthrough video alive in the repo
   but hidden by `.gitignore *.mp4`; shipped `--video/--at` frame ingestion. RM-3 re-blocked on a real
   full-res design frame (searched: none on disk); logged REF-VID-2 to persist the walkthrough's frames.
+- 2026-07-23 · GI-1 done (`<sha3>`) — gate #23 hardcoded a universal 70% reuse floor while its own
+  protocol says the floor "flips by theme_base" and does not apply to Dawn; it would have BLOCKED every
+  correct custom-first Dawn build on enforce. Floor is now theme-base-conditional. Logged GI-2 (the map
+  artifact + a generator that refuses to fabricate the two judgement fields).

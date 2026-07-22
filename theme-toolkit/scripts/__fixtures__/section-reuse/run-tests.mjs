@@ -99,5 +99,51 @@ console.log('check-reuse-map — gate #23 (ENFORCE=1 for BLOCK cases)');
   expect('blueprint ref off a missing section → warn', { code: 0, mustContain: 'blueprint-section-missing' }, run(d, E)); fs.rmSync(d, { recursive: true, force: true });
 }
 
+// ── THE REUSE FLOOR IS THEME-BASE-CONDITIONAL (GI-1, 2026-07-23) ────────────────────────────
+// `section-reuse-first-protocol.md` §Targets: "Minimog = reuse-first → ≥70% REUSE+CONFIGURE.
+// Dawn = custom-first → 70–80% CUSTOM expected (the ≥70%-reuse row is MINIMOG-ONLY; on Dawn it
+// does not apply)", and its table says the gate "flips by `theme_base`". The gate applied the
+// Minimog quota to every base, so a CORRECT Dawn build (custom-first by doctrine) tripped
+// reuse-below-target — the gate would have blocked exactly the builds doctrine asks for.
+function writeDs(dir, themeBase) {
+  fs.mkdirSync(path.join(dir, 'docs', 'design'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'docs', 'design', 'design-system.json'), JSON.stringify({ theme_base: themeBase }));
+}
+// custom-first counts: reuse+configure = 20% — well under the Minimog floor
+const CUSTOM_FIRST = 'Counts: {reused: 2, configured: 0, extended: 0, custom: 8}\nCustom split: {library: 0, scratch: 8}\n'
+  + Array.from({ length: 8 }, (_, i) => `s${i}: blueprint: none (checked: a, b; gap: none fits)`).join('\n') + '\n';
+
+{ // 11. Dawn + custom-first ratio → NO reuse-floor block (the regression this fixes)
+  const d = tmp(); writeDs(d, 'dawn'); writeMap(d, CUSTOM_FIRST);
+  expect('dawn custom-first → no reuse-below-target', { code: 0, mustContain: 'reuse-share-informational' }, run(d, E));
+  const got = run(d, E);
+  got.out.includes('reuse-below-target')
+    ? bad('dawn still emitted reuse-below-target')
+    : ok('dawn emits NO reuse-below-target');
+  fs.rmSync(d, { recursive: true, force: true });
+}
+{ // 12. same counts on Minimog → STILL blocks (the flip must not disarm the Minimog quota)
+  const d = tmp(); writeDs(d, 'minimog'); writeMap(d, CUSTOM_FIRST);
+  expect('minimog custom-first → reuse-below-target BLOCK', { code: 1, mustContain: 'reuse-below-target' }, run(d, E));
+  fs.rmSync(d, { recursive: true, force: true });
+}
+{ // 13. no design-system.json → default to the reuse-first floor (safe default, and say so)
+  const d = tmp(); writeMap(d, CUSTOM_FIRST);
+  expect('unknown base → floor still applies', { code: 1, mustContain: 'reuse-below-target' }, run(d, E));
+  expect('unknown base → names the missing theme_base', { code: 1, mustContain: 'theme_base unrecorded' }, run(d, E));
+  fs.rmSync(d, { recursive: true, force: true });
+}
+{ // 14. explicit REUSE_TARGET overrides on ANY base, including Dawn (operator escape hatch)
+  const d = tmp(); writeDs(d, 'dawn'); writeMap(d, CUSTOM_FIRST);
+  expect('dawn + explicit REUSE_TARGET → blocks again', { code: 1, mustContain: 'reuse-below-target' }, run(d, { ...E, REUSE_TARGET: '0.70' }));
+  fs.rmSync(d, { recursive: true, force: true });
+}
+{ // 15. a Dawn build that IS reuse-heavy is not falsely flagged either — informational only
+  const d = tmp(); writeDs(d, 'dawn');
+  writeMap(d, 'Counts: {reused: 8, configured: 1, extended: 0, custom: 0}\n');
+  expect('dawn reuse-heavy → PASS', { code: 0 }, run(d, E));
+  fs.rmSync(d, { recursive: true, force: true });
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
