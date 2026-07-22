@@ -42,7 +42,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   easiest possible case. The false-positive risk that actually matters in production is a **design
   export vs a rendered page** (different rasterisation, scale, real vs placeholder content) — untested.
   Flipping on this evidence would risk a gate that blocks every build. Superseded by RM-3.
-- [ ] **RM-3 · Calibrate L2 on a REAL design-export-vs-render pair, then flip.** `status: open`
+- [ ] **RM-3 · Calibrate L2 on a REAL design-export-vs-render pair, then flip.** `status: blocked-by human`
   Need one genuine design frame (Figma export **or** a client screenshot of the intended design — it
   does not have to come from the MCP) paired with the rendered build of that same surface. Confirm zero
   false positives there, then set `REFERENCE_MATCH_ENFORCE=1` as the default in
