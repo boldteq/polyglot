@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Bot, ExternalLink, Link2, ChevronDown, Check, Hammer, Rocket, Wand2, MoreHorizontal, ShieldCheck, Loader2, CheckCircle2, type LucideIcon } from 'lucide-react'
+import { Eye, Bot, ExternalLink, Link2, ChevronDown, Check, Hammer, Rocket, Wand2, MoreHorizontal, ShieldCheck, Loader2, CheckCircle2, AlertTriangle, type LucideIcon } from 'lucide-react'
 import ScoreGauge from './ScoreGauge'
 import PhaseJourney from './PhaseJourney'
 import VerdictPill from './VerdictPill'
@@ -182,12 +182,20 @@ export default function ProjectHeader({ detail, repo, onReload }: { detail: Proj
                 {nextOwner && <span className="text-[11px] text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded shrink-0">@{nextOwner}</span>}
               </div>
             )}
-            {project.status === 'published' && (
-              <div className="flex items-center gap-1.5 mt-2 text-[12px] text-green">
-                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                <span className="font-medium truncate">Published · live{(project.domain || repo?.themeLock?.store) ? ` on ${project.domain || repo?.themeLock?.store}` : ''}</span>
-              </div>
-            )}
+            {project.status === 'published' && (() => {
+              // Published is sticky, the build is not — if the CURRENT build has open blockers or a
+              // Lens block, don't render an unconditional green "live" against a regressed build
+              // (2026-07-19 audit H4: conflicting green signals).
+              const regressed = !!(build && (build.gates.blockersOpen > 0 || build.lensVerdict === 'block'))
+              return (
+                <div className={`flex items-center gap-1.5 mt-2 text-[12px] ${regressed ? 'text-amber' : 'text-green'}`}>
+                  {regressed ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                  <span className="font-medium truncate">
+                    {regressed ? 'Live — new issues found since publish' : 'Published · live'}{(project.domain || repo?.themeLock?.store) ? ` on ${project.domain || repo?.themeLock?.store}` : ''}
+                  </span>
+                </div>
+              )
+            })()}
           </>
         ) : null}
       </div>

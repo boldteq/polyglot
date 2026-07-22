@@ -71,7 +71,12 @@ router.get('/build/:id/stream', rateLimit('read'), (req, res) => {
 
   // Announce + replay everything generated so far (one code path for initial-watch + reattach).
   res.write(`data: ${JSON.stringify({ type: 'start', buildId: build.id, store: build.store, brief: build.brief, previewUrl: build.previewUrl, reattach: true })}\n\n`);
-  if (build.output) res.write(`data: ${JSON.stringify({ type: 'chunk', content: build.output })}\n\n`);
+  if (build.output) {
+    res.write(`data: ${JSON.stringify({ type: 'chunk', content: build.output })}\n\n`);
+    // Re-derive heal events from the accumulated log so the self-heal board rebuilds after a
+    // refresh/reattach instead of starting blank (live heal events only reach live subscribers).
+    for (const ev of buildRegistry.healEventsFrom(build.output)) res.write(`data: ${JSON.stringify(ev)}\n\n`);
+  }
 
   if (build.status === 'running') {
     buildRegistry.subscribe(build, res);

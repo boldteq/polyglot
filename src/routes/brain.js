@@ -250,6 +250,30 @@ router.post('/brain/patches/:id/reject', rateLimit('write'), async (req, res) =>
   }
 });
 
+// ── Open loops (L6 goal/intent) — list + close ────────────────────────────────
+// The session brief surfaces open_loops rows; until now db.closeOpenLoop had no route,
+// so a stale/finished loop re-appeared in every brief forever (2026-07-19). List is
+// read-only hygiene tooling; close acts on ONE explicit id (done|dropped).
+router.get('/brain/loops', rateLimit('read'), (req, res) => {
+  try {
+    const items = db.getOpenLoops({ status: req.query.status || 'open', project: req.query.project || undefined, limit: Number(req.query.limit) || 50 });
+    res.json({ items });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+router.post('/brain/loops/:id/close', rateLimit('write'), (req, res) => {
+  try {
+    const status = req.body && req.body.status === 'dropped' ? 'dropped' : 'done';
+    const r = db.closeOpenLoop(req.params.id, status);
+    if (!r.changed) return res.status(404).json({ error: 'Loop not found or already closed' });
+    try { brainEvents.emit('memory', { kind: 'loop-closed', id: req.params.id, status }); } catch { /* ignore */ }
+    res.json({ ok: true, id: req.params.id, status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Decision journal (v30) — learn from consequences ─────────────────────────
 // GET /api/brain/decisions/unresolved — aged decisions still awaiting an outcome,
 // plus the rolling decision-accuracy from the ones already resolved. Review-only.

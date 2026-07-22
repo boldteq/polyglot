@@ -77,8 +77,21 @@ const HEAL_RE = [
   [/maestro:build — heal stalled at (\d+)/i, (m) => ({ kind: 'stalled', blockers: +m[1] })],
   [/stage (\d)\/4 — (.+)/i, (m) => ({ kind: 'stage', n: +m[1], label: m[2].trim() })],
 ];
+function parseHealLine(line) {
+  for (const [re, fn] of HEAL_RE) { const m = line.match(re); if (m) return fn(m); }
+  return null;
+}
 function emitHeal(b, line) {
-  for (const [re, fn] of HEAL_RE) { const m = line.match(re); if (m) { broadcast(b, { type: 'heal', ...fn(m) }); return; } }
+  const ev = parseHealLine(line);
+  if (ev) broadcast(b, { type: 'heal', ...ev });
+}
+// Re-derive every heal event from an accumulated log — used by the SSE replay path so a client that
+// reattaches mid-build (refresh/navigation) rebuilds the self-heal board instead of seeing it blank
+// (2026-07-19 audit H3: replay carried only raw chunks, never heal events).
+function healEventsFrom(output) {
+  const out = [];
+  for (const line of String(output || '').split('\n')) { const ev = parseHealLine(line); if (ev) out.push({ type: 'heal', ...ev }); }
+  return out;
 }
 
 function broadcastComment(b, text) {
@@ -175,13 +188,20 @@ function startBuild({
   };
   if (proc.stdout) proc.stdout.on('data', onChunk);
   if (proc.stderr) proc.stderr.on('data', onChunk);
+  // Flush the trailing partial line through the heal parser — a terminal "CONVERGED"/"stalled" line
+  // without a trailing newline was previously dropped from the heal board (2026-07-19 audit H3).
+  const flushHealBuf = () => {
+    if (build._lineBuf) { emitHeal(build, build._lineBuf); build._lineBuf = ''; }
+  };
   proc.on('error', (err) => {
+    flushHealBuf();
     broadcast(build, { type: 'error', error: `process error: ${err.message}` });
     if (build.exitCode == null) build.exitCode = -1;
     build._proc = null;
     markDone(build);
   });
   proc.on('close', (code) => {
+    flushHealBuf();
     build.exitCode = code;
     const verdict = readVerdict(repoPath, buildStateDir);
     build.verdict = verdict;
@@ -210,5 +230,5 @@ function startBuild({
 module.exports = {
   startBuild, getBuild, listActive,
   subscribe, unsubscribe, broadcast, broadcastComment, markDone,
-  resolveMaestro, readStore, readVerdict,
+  resolveMaestro, readStore, readVerdict, healEventsFrom,
 };

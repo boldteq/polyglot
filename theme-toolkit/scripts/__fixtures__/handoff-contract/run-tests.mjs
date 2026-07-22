@@ -52,5 +52,24 @@ console.log('checkContract — content_briefs_ready needs intake_ready inputs')
   eq(checkContract(reg, 'nope', all).found, false, 'unknown event → not found')
 }
 
+// ── staleness (2026-07-19 audit H2): artifact older than the current brief → stale WARN, ok unchanged ──
+console.log('staleness — artifact predating CHANGES.md flags stale (warn, never blocks)')
+{
+  const yes = () => true
+  const briefMtime = 1000
+  const oldArtifact = () => 500   // artifact older than the brief
+  const freshArtifact = () => 2000
+  const stale = resolveRequire(reg, 'intake_ready', yes, { mtimeFn: oldArtifact, briefMtime })
+  eq(stale.stale, true, 'artifact older than the brief → stale:true')
+  eq(stale.ok, true, 'stale is a WARN — ok stays true (never blocks dispatch by itself)')
+  const fresh = resolveRequire(reg, 'intake_ready', yes, { mtimeFn: freshArtifact, briefMtime })
+  eq(fresh.stale, false, 'artifact newer than the brief → not stale')
+  const noBrief = resolveRequire(reg, 'intake_ready', yes, { mtimeFn: oldArtifact, briefMtime: null })
+  eq(!!noBrief.stale, false, 'no CHANGES.md mtime → staleness not computed')
+  const c = checkContract(reg, 'content_briefs_ready', yes, { mtimeFn: oldArtifact, briefMtime })
+  eq(c.stale, true, 'checkContract surfaces contract-level stale flag')
+  eq(c.ready, true, 'checkContract stays ready (stale is advisory)')
+}
+
 console.log(failures === 0 ? '\n✓ HANDOFF-CONTRACT — ALL ASSERTIONS PASS' : `\n✗ ${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

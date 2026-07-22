@@ -30,22 +30,38 @@ const head = (s) => String(s).split(/[\s(]/)[0]
 const isPathish = (s) => { const h = head(s); return h.includes('/') || /\.(json|md|csv|js|mjs|liquid)$/.test(h) }
 
 // PURE: resolve one require against the registry + a fs-exists probe (injected for tests).
-export function resolveRequire(registry, req, existsFn) {
-  if (isPathish(req)) return { id: req, kind: 'path', ok: !!existsFn(head(req)) }
+// Optional staleness (2026-07-19 audit H2 — a leftover artifact from a PRIOR build satisfies a bare
+// existsSync and lets a downstream agent dispatch on outdated inputs): pass { mtimeFn, briefMtime }
+// (briefMtime = CHANGES.md mtime, the current brief) → an artifact OLDER than the brief is flagged
+// `stale:true`. WARN-not-BLOCK: an unchanged-but-valid artifact can legitimately predate a brief tweak,
+// so `ok` is unaffected — the orchestrator sees the warning and decides to re-run the producer.
+export function resolveRequire(registry, req, existsFn, opts = {}) {
+  const { mtimeFn = null, briefMtime = null } = opts
+  const staleOf = (paths) => {
+    if (!mtimeFn || !briefMtime) return []
+    return paths.filter(p => { const t = mtimeFn(p); return t != null && t < briefMtime })
+  }
+  if (isPathish(req)) {
+    const h = head(req)
+    const ok = !!existsFn(h)
+    const stalePaths = ok ? staleOf([h]) : []
+    return { id: req, kind: 'path', ok, stale: stalePaths.length > 0, stalePaths }
+  }
   const c = (registry.contracts || []).find(x => x.event === req)
   if (!c) return { id: req, kind: 'unknown', ok: false, note: 'not a known path or contract event' }
   const paths = (c.produces || []).filter(isPathish).map(head)
   if (!paths.length) return { id: req, kind: 'contract', ok: true, note: 'upstream contract has no on-disk artifact — soft pass' }
   const missing = paths.filter(p => !existsFn(p))
-  return { id: req, kind: 'contract', ok: missing.length === 0, missing }
+  const stalePaths = staleOf(paths.filter(p => existsFn(p)))
+  return { id: req, kind: 'contract', ok: missing.length === 0, missing, stale: stalePaths.length > 0, stalePaths }
 }
 
 // PURE: evaluate a whole contract's readiness to dispatch.
-export function checkContract(registry, event, existsFn) {
+export function checkContract(registry, event, existsFn, opts = {}) {
   const c = (registry.contracts || []).find(x => x.event === event)
   if (!c) return { event, found: false, ready: false, requires: [] }
-  const requires = (c.requires || []).map(r => resolveRequire(registry, r, existsFn))
-  return { event, found: true, ready: requires.every(r => r.ok), from: c.from, to: c.to, requires }
+  const requires = (c.requires || []).map(r => resolveRequire(registry, r, existsFn, opts))
+  return { event, found: true, ready: requires.every(r => r.ok), stale: requires.some(r => r.stale), from: c.from, to: c.to, requires }
 }
 
 // #45 — is this contract dispatch-enforced? Policy default is registry.enforcement === "all"; a
@@ -97,12 +113,15 @@ function main() {
   const dir = process.cwd()
   const existsFn = (p) => fs.existsSync(path.resolve(dir, p))
   const readFn = (p) => { try { return fs.readFileSync(path.resolve(dir, p), 'utf-8') } catch { return null } }
-  const r = checkContract(registry, event, existsFn)
+  const mtimeFn = (p) => { try { return fs.statSync(path.resolve(dir, p)).mtimeMs } catch { return null } }
+  const briefMtime = mtimeFn('CHANGES.md') // the current brief — artifacts older than it may be from a prior build
+  const r = checkContract(registry, event, existsFn, { mtimeFn, briefMtime })
   if (!r.found) { console.error(`check:handoff — unknown contract "${event}" (try --list)`); process.exit(2) }
   const so = checkSignoff(registry, event, readFn)
   const enforced = isEnforced(registry, event)
   console.log(`check:handoff — ${event} (${r.from} → ${Array.isArray(r.to) ? r.to.join(',') : r.to})${enforced ? ' [enforced]' : ''}`)
   for (const req of r.requires) console.log(`  ${req.ok ? '✓' : '✗'} ${req.id}${req.missing?.length ? ` — missing: ${req.missing.join(', ')}` : ''}${req.note ? ` (${req.note})` : ''}`)
+  for (const req of r.requires) if (req.stale) console.log(`  ⚠ STALE: ${req.stalePaths.join(', ')} predate CHANGES.md (the current brief) — may be from a prior build; re-run the producing agent before dispatching (warn, not a block)`)
   if (so.required) console.log(`  ${so.ok ? '✓' : '✗'} sign-off ${so.artifact}${so.ok ? ' (confidence+impact ok)' : ` — ${so.errors.map(e => `${e.path}: ${e.message}`).join('; ')}`}`)
   // #46/#47 — coordination guards on the SAME pre-dispatch check (orchestrator passes the live counts via env)
   const wipBlocked = process.env.WIP_INFLIGHT != null && wipExceeded(process.env.WIP_INFLIGHT, registry.wipCap)

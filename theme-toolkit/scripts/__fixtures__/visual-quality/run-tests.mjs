@@ -49,16 +49,20 @@ console.log('case (b) blocked → expect exit 1 with the 4 blocker classes')
   }
 }
 
+// "missing artifact" = a REAL empty dir. (This used to point at HERE/missing, which doesn't exist on
+// disk → spawnSync failed with cwd ENOENT → status null → 4 phantom failures. 2026-07-19 fix.)
+const missingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vq-missing-'))
+
 console.log('case (c) missing artifact (dev) → expect exit 0 (warn)')
 {
-  const { code, report } = runGate(path.join(HERE, 'missing'))
+  const { code, report } = runGate(missingDir)
   if (code === 0) pass('exit 0 (advisory warn)'); else fail(`expected 0, got ${code}`)
   if ((report?.warnings || []).some(w => w.id === 'vq.review-not-done')) pass('warns vq.review-not-done'); else fail('missing warn vq.review-not-done')
 }
 
 console.log('case (d) missing artifact + DS_REQUIRE_SCOPE=1 (publish) → expect exit 1')
 {
-  const { code, report } = runGate(path.join(HERE, 'missing'), { DS_REQUIRE_SCOPE: '1' })
+  const { code, report } = runGate(missingDir, { DS_REQUIRE_SCOPE: '1' })
   const ids = new Set((report?.blockers || []).map(b => b.id))
   if (code === 1) pass('exit 1 (block)'); else fail(`expected 1, got ${code}`)
   if (ids.has('vq.review-missing')) pass('blocker present: vq.review-missing'); else fail(`missing blocker vq.review-missing (saw ${[...ids].join(', ') || 'none'})`)
@@ -87,5 +91,6 @@ console.log('case (g) approved + publish-grade + Lens #18 FAIL → expect exit 1
   if (ids.has('vq.lens-not-passed')) pass('blocker present: vq.lens-not-passed'); else fail(`missing vq.lens-not-passed (saw ${[...ids].join(', ') || 'none'})`)
 }
 
+fs.rmSync(missingDir, { recursive: true, force: true })
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)
