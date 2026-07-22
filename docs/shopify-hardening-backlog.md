@@ -32,17 +32,68 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   (auto-rotate / dots-after-JS-init) that are unknowable from a static rest frame — the prompt now
   forbids reporting anything not visible in BOTH stills (those are L1's job). Judge calls take >2 min:
   run them backgrounded.
-- [ ] **RM-2 · Flip L2 to enforcing** once RM-1 is clean on a **2nd** store. `status: open`
-  Store 1 (cravinbyandy) is clean post-fix. Needs one more real store's frames with zero false
-  positives, then set `REFERENCE_MATCH_ENFORCE=1` by default.
+- [x] **RM-2 · L2 clean on a 2nd store — but the enforce flip is DECLINED for now.** `status: done`
+  Store 2 (`gpt test 1`, different theme): positive control **0 blockers / 0 warnings**; negative
+  control produced 2 accurate findings (*"reference places the content block on the RIGHT ~45%; the
+  build is flush left"* + content-parity). So the written criterion — 2 stores, zero false positives —
+  **is met**. **I am deliberately NOT flipping `REFERENCE_MATCH_ENFORCE=1` by default, because the
+  criterion was too weak:** both positive controls compared *byte-identical* images, which is the
+  easiest possible case. The false-positive risk that actually matters in production is a **design
+  export vs a rendered page** (different rasterisation, scale, real vs placeholder content) — untested.
+  Flipping on this evidence would risk a gate that blocks every build. Superseded by RM-3.
+- [ ] **RM-3 · Calibrate L2 on a REAL design-export-vs-render pair, then flip.** `status: blocked-by FIG-1`
+  Need one genuine design frame (Figma export or a client screenshot of the intended design) paired
+  with the rendered build of that same surface. Confirm zero false positives there, then set
+  `REFERENCE_MATCH_ENFORCE=1` as the default in `check-reference-match.mjs` + the docs.
+- [ ] **FIG-1 · The Figma MCP is rate-limited on the Starter plan — a production constraint, not a fluke.**
+  `status: open` Verified live 2026-07-23: `get_screenshot` returned *"You've reached the Figma MCP tool
+  call limit on the Starter plan."* `docs/design/catering-popup-spec.md` hit the same cap on 2026-07-15
+  ("Figma MCP hard-capped on Starter plan"), which is why that spec's measurements came from screenshots
+  that were then lost. **Implication: stitch/drape's "Path B premium" Figma flow will fail mid-build in
+  production.** This makes persisting exports non-optional — fetch a node ONCE, save it under
+  `docs/design/references/`, and never re-fetch. *Done when:* stitch/drape carry an explicit
+  rate-limit-aware rule (fetch-once-persist-always + a graceful degrade to Path A when capped), and the
+  fallback is documented where a build will actually hit it.
 - [ ] **GI-1 · `section-reuse-map.md` is required by 2 gates but missing in cravinbyandy.** `status: open`
   Either generate it from the current theme or make the requirement honest. *Done when:* gate #23 is
   no longer N/A-by-absence on that repo, or the requirement is explicitly scoped.
 - [ ] **DOC-1 · Seed the missing build artifacts in cravinbyandy** (`docs/discovery/goals.json`,
   `docs/design/brand-direction.md`) so gates #0.4/#0.5 stop failing on absence. `status: open`
   Derive ONLY from what already exists in the repo; never invent client goals — flag what needs Yash.
-- [ ] **HYG-1 · mantle.md has DUPLICATE `## Anti-Patterns` sections** (same content twice). `status: open`
-  De-duplicate carefully (both copies currently carry rule 22). *Done when:* one section, suite green.
+- [x] **HYG-1 · mantle.md corruption — root cause was a silent file-destroying bug in the distributor.**
+  `status: done` The duplication was a *symptom*, not a hygiene slip. `swt-distribute.mjs`
+  replaced the managed block with `original.replace(re, section)` — a **string** replacement, so JS
+  interpreted ``$` ``, `$&`, `$'`, `$$` **inside the rule text** as replacement patterns. mantle's #28
+  rule body contains ``never hardcode `$` ``; the ``$` `` sequence means *"insert everything before the
+  match"*, so the entire preceding agent file was spliced into mantle's own SWT-TRAINED block, and the
+  #28 rule was destroyed mid-sentence (`…never hardcode ` + 400 lines of file + `— the money filter…`).
+  **It was silent** — markers stayed balanced (1/1), frontmatter stayed intact, and the file only GREW,
+  so every existing guard passed. mantle sat at 814 lines with its whole body duplicated.
+  **Fixed:** (a) replacer **function** (`() => section`) so `$` is never interpreted; (b) a post-write
+  assertion that the block in the output is byte-identical to the section built — catches the whole
+  class, which the length/marker guards structurally cannot; (c) `SWT_AGENTS_DIR` override for testing;
+  (d) mantle.md repaired 814→414 lines, with rule #28's lost text recovered verbatim from its source of
+  truth (`swt-rules/mantle.md`), not guessed.
+  *Proof:* new `src/swtDistribute.replacement.test.mjs` (4 cases) passes on the fix; on a patched copy
+  carrying the old code the same input gives `sentinel ×2, ruleLiteral=false` vs `×1, true` fixed.
+  Audited all 14 SWT agents — **only mantle** was affected (it is the only agent whose *teaser* rule
+  contains a replacement pattern). Toolkit suite 80/80.
+  ⚠️ **The bug only fires on the REPLACE path** (a file that already has a managed block); a fresh file
+  takes a concatenation branch that was never vulnerable — a test seeding a block-less file passes
+  trivially. The regression test seeds an existing block for exactly this reason.
+- [ ] **TEST-1 · Two Polyglot tests fail at HEAD** (pre-existing, unrelated to the loop's work).
+  `status: open` `npm test` → 203/205. (a) `src/lib/gateFindings.test.js:45` *"harvest groups +
+  attributes defects"* — asserts "at least the loom lens defect + loom render-wiring defect" and gets
+  none, so the gate→owner defect harvester is dropping findings it should group. (b)
+  `src/routes/workspace.test.mjs` *"projects/sync is idempotent + auto-adopts (unlinkedBuilds
+  empties)"*. Verified pre-existing: both test files **and** their sources are byte-identical to HEAD
+  (`git status --porcelain` clean for all four). (a) matters most — a silently-empty defect harvest is
+  the same failure mode as HYG-1: a green-looking pipeline that moved nothing.
+- [ ] **HYG-2 · Audit the other machine-managed block writers for the HYG-1 bug class.** `status: open`
+  Any `String.replace(re, <content containing user/rule text>)` is vulnerable. Sweep the WordPress
+  distributor and any other agent/file templater for string-replacement writes and convert them to
+  replacer functions + a written-block assertion. *Done when:* the sweep is recorded here with the
+  files checked and any conversions made.
 - [ ] **BRAIN-1 · Verify the learning digest actually runs.** `status: open`
   It was re-enabled 2026-07-22 after being off since 06-30 with 84 sessions stuck at `pending_digest`.
   Confirm the 04:00 cron fired, sessions moved off `pending_digest`, and `learning_inbox` grew.

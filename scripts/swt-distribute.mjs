@@ -18,7 +18,8 @@ const HOME = process.env.HOME
 const BRAIN = path.join(HOME, '.claude/memory/patterns/good/shopify-website-faq-brain.md')
 const DIGEST = path.join(HOME, '.claude/memory/patterns/good/shopify-website-trained-rules.md')
 const PACKS_DIR = path.join(HOME, '.claude/memory/patterns/good/swt-rules') // deep per-agent rule packs (surface→concern)
-const AGENTS_DIR = path.join(HOME, '.claude/agents')
+// SWT_AGENTS_DIR lets the regression test drive updateAgent against a temp dir
+const AGENTS_DIR = process.env.SWT_AGENTS_DIR || path.join(HOME, '.claude/agents')
 const HERE = path.dirname(fileURLToPath(import.meta.url)) // fileURLToPath: repo path has a space
 const REPO = path.join(HERE, '..')
 const GATE_GAPS = path.join(HERE, 'swt-train/gate-gaps.md')
@@ -161,7 +162,7 @@ function ownedRules(agentId, rules) {
 
 // ---- agent files: managed section = LOAD PROTOCOL (point at the surface-scoped pack + memory_search),
 // not a raw rule dump. The full owned rule set lives in the per-agent pack (writeAgentPacks). ----
-function updateAgent(agentId, rules) {
+export function updateAgent(agentId, rules) {
   const file = path.join(AGENTS_DIR, `${agentId}.md`)
   if (!fs.existsSync(file)) return false
   const original = fs.readFileSync(file, 'utf8')
@@ -192,10 +193,14 @@ function updateAgent(agentId, rules) {
 
   let updated
   if (/<!-- SWT-TRAINED:START -->[\s\S]*?<!-- SWT-TRAINED:END -->/.test(original)) {
-    // replace the whole managed block (heading line + markers)
+    // replace the whole managed block (heading line + markers).
+    // MUST use a replacer FUNCTION: a string replacement makes JS interpret `$&`, `$\``, `$'`
+    // and `$1` inside `section` as replacement patterns. A rule body containing "never hardcode
+    // `$`" (mantle #28) hit `$\`` and spliced the ENTIRE preceding file into the managed block —
+    // silently, since markers stayed balanced and the file only GREW. See HYG-1.
     updated = original.replace(
       /## 🎓 SWT Trained Defaults[\s\S]*?<!-- SWT-TRAINED:END -->/,
-      section,
+      () => section,
     )
   } else {
     updated = original.replace(/\s*$/, '') + '\n\n' + section + '\n'
@@ -209,6 +214,11 @@ function updateAgent(agentId, rules) {
   ) {
     return false
   }
+  // validate: the managed block we wrote is EXACTLY the section we built. Catches any
+  // replacement-pattern mangling (the HYG-1 class) that the checks above cannot see, because
+  // corruption there splices content IN rather than removing it.
+  const writtenBlock = updated.match(/## 🎓 SWT Trained Defaults[\s\S]*?<!-- SWT-TRAINED:END -->/)
+  if (!writtenBlock || writtenBlock[0] !== section) return false
   if (updated !== original) fs.writeFileSync(file, updated)
   return true
 }
