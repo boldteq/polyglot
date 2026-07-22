@@ -77,7 +77,9 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   *Proof:* new `src/swtDistribute.replacement.test.mjs` (4 cases) passes on the fix; on a patched copy
   carrying the old code the same input gives `sentinel ×2, ruleLiteral=false` vs `×1, true` fixed.
   Audited all 14 SWT agents — **only mantle** was affected (it is the only agent whose *teaser* rule
-  contains a replacement pattern). Toolkit suite 80/80.
+  contains a replacement pattern). Toolkit suite 80/80. Commit `6c96b983`.
+  Note: `~/.claude` is not a git repo, so the mantle.md repair exists **on disk only** — it is not
+  captured by any commit and would be undone by restoring an old copy of that file.
   ⚠️ **The bug only fires on the REPLACE path** (a file that already has a managed block); a fresh file
   takes a concatenation branch that was never vulnerable — a test seeding a block-less file passes
   trivially. The regression test seeds an existing block for exactly this reason.
@@ -142,3 +144,10 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 
 ## Log (append one line per completed item)
 - 2026-07-22 · seeded from the VS-Code loop audit + cravinbyandy forensics + reference-conformance work.
+- 2026-07-23 · RM-1 done (`c226990e`) — L2 proven on cravinbyandy; behavioural-signal false positive fixed.
+- 2026-07-23 · RM-2 closed, enforce flip **declined** — criterion was too weak (identical-image controls
+  only). Replaced by RM-3; blocked by FIG-1 (Figma MCP Starter rate limit, hit live).
+- 2026-07-23 · HYG-1 done (`6c96b983`) — root cause was a silent `$`-replacement bug in swt-distribute
+  that spliced whole files into agents' managed blocks. Fixed + 4-case regression test + mantle repaired.
+- 2026-07-23 · discovered TEST-1 (2 pre-existing `npm test` failures at HEAD) and HYG-2 (sweep other
+  managed-block writers for the same bug class).
