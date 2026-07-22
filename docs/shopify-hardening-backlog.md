@@ -69,7 +69,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   *Proof:* new fixture `__fixtures__/reference-ingest/` — 21 assertions, incl. the wipe regression;
   against a copy carrying the old code the same input yields `reference: null` (⇒ case (a) fails), so
   the test has teeth. End-to-end on a temp repo: probe→miss(1) → ingest → probe→CACHED(0) →
-  re-register archetype → export still present → probe→CACHED(0). Toolkit suite **81/81**.
+  re-register archetype → export still present → probe→CACHED(0). Toolkit suite **81/81**. Commit `2b6f08f9`.
 - [ ] **GI-1 · `section-reuse-map.md` is required by 2 gates but missing in cravinbyandy.** `status: open`
   Either generate it from the current theme or make the requirement honest. *Done when:* gate #23 is
   no longer N/A-by-absence on that repo, or the requirement is explicitly scoped.
@@ -167,6 +167,6 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   that spliced whole files into agents' managed blocks. Fixed + 4-case regression test + mantle repaired.
 - 2026-07-23 · discovered TEST-1 (2 pre-existing `npm test` failures at HEAD) and HYG-2 (sweep other
   managed-block writers for the same bug class).
-- 2026-07-23 · FIG-1 done (`<sha>`) — Figma rate cap mechanized: cache probe + sticky provenance +
+- 2026-07-23 · FIG-1 done (`2b6f08f9`) — Figma rate cap mechanized: cache probe + sticky provenance +
   degrade-to-Path-A rules. Found and fixed a second bug: re-registering wiped the persisted export.
   RM-3 un-blocked as a side effect (it never actually needed the MCP).
