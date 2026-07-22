@@ -12,7 +12,8 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (80/80) · `node toolkit/scripts/X.mjs` from a
+**Hard rules:** Node 20 · toolkit suite must stay green (**81/81** as of 2026-07-23 — the count grows
+when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
 ---
