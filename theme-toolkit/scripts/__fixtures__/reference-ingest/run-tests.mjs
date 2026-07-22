@@ -7,7 +7,7 @@
 //   1. re-registering an entry must never DISCARD the persisted export (the bug this fixture pins),
 //   2. a cache probe must answer hit/miss/ambiguous without spending a Figma call.
 // PURE: exercises upsertEntry() + findFigmaEntry() only — no MCP, no network, no disk.
-import { upsertEntry, findFigmaEntry } from '../../reference-ingest.mjs'
+import { upsertEntry, findFigmaEntry, parseTimestamp, stampFor } from '../../reference-ingest.mjs'
 
 let failures = 0
 const ok = (m) => console.log('  PASS  ' + m)
@@ -88,6 +88,58 @@ console.log('case (e) an entry with unknown provenance is never claimed for a sp
   })
   eq(findFigmaEntry(map, { node: '1:1', file: 'FILE_A' }).status, 'miss', 'no recorded file → not a hit for FILE_A')
   eq(findFigmaEntry(map, { node: '1:1' }).status, 'hit', 'but still findable without a file filter')
+}
+
+console.log('case (f) client walkthrough VIDEO — timestamp parsing')
+{
+  // a video is the one reference format guaranteed to be lost (`*.mp4` is in the stock .gitignore),
+  // so --at has to accept whatever Yash types when pointing at a moment in a recording.
+  eq(parseTimestamp('90'), 90, 'bare seconds')
+  eq(parseTimestamp('1:30'), 90, 'M:SS')
+  eq(parseTimestamp('01:30'), 90, 'MM:SS')
+  eq(parseTimestamp('00:01:30'), 90, 'H:MM:SS')
+  eq(parseTimestamp('1:30.5'), 90.5, 'fractional seconds')
+  eq(parseTimestamp('0'), 0, 'zero is valid, not falsy-rejected')
+  eq(parseTimestamp(''), null, 'empty → null')
+  eq(parseTimestamp('abc'), null, 'garbage → null')
+  eq(parseTimestamp('1:75'), null, 'seconds >= 60 rejected')
+  eq(parseTimestamp('1:70:00'), null, 'minutes > 59 rejected')
+}
+
+console.log('case (g) frame stamps are filename-safe and collision-free')
+{
+  eq(stampFor(0), '00-00-00', 'zero')
+  eq(stampFor(90), '00-01-30', 'M:SS')
+  eq(stampFor(3661), '01-01-01', 'over an hour')
+  const a = stampFor(90)
+  const b = stampFor(91)
+  const hasSep = /[/:\\]/.test(stampFor(3661))
+  a !== b ? ok('adjacent seconds differ') : bad('stamp collision')
+  hasSep ? bad('stamp contains a path separator') : ok('no path separators')
+}
+
+console.log('case (h) video provenance is sticky too')
+{
+  let map = upsertEntry({ surfaces: [] }, {
+    surface: 'home', name: 'hero', archetype: 'slideshow',
+    reference: 'docs/design/references/home/hero.png',
+    sourceVideo: 'WhatsApp Video 2026-07-21.mp4', sourceAt: 90,
+  })
+  eq(sec(map, 'home', 'hero').source_video, 'WhatsApp Video 2026-07-21.mp4', 'video recorded')
+  eq(sec(map, 'home', 'hero').source_at, 90, 'timestamp recorded')
+
+  map = upsertEntry(map, { surface: 'home', name: 'hero', archetype: 'carousel' })
+  eq(sec(map, 'home', 'hero').source_video, 'WhatsApp Video 2026-07-21.mp4', 'video survives re-register')
+  eq(sec(map, 'home', 'hero').source_at, 90, 'timestamp survives re-register')
+}
+
+console.log('case (i) source_at=0 is preserved (the falsy-zero trap)')
+{
+  const map = upsertEntry({ surfaces: [] }, {
+    surface: 'home', name: 'hero', archetype: 'slideshow', reference: 'a.png',
+    sourceVideo: 'v.mp4', sourceAt: 0,
+  })
+  eq(sec(map, 'home', 'hero').source_at, 0, 'frame 0 is a real timestamp, not "missing"')
 }
 
 console.log(failures === 0 ? '\nreference-ingest: ALL CASES PASS' : `\nreference-ingest: ${failures} FAILURE(S)`)

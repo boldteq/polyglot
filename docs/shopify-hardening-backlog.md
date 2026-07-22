@@ -47,10 +47,19 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   does not have to come from the MCP) paired with the rendered build of that same surface. Confirm zero
   false positives there, then set `REFERENCE_MATCH_ENFORCE=1` as the default in
   `check-reference-match.mjs` + the docs.
-  *Un-blocked 2026-07-23:* FIG-1 is done, and the fix means a Figma export only ever needs fetching
-  once — but this item never truly required the MCP. **Next step:** look for an already-persisted
-  reference image or a client screenshot in the cravinbyandy / gpt-test-1 repos and pair it with the
-  matching Lens frame. Only if none exists is a human needed to supply one.
+  *Searched 2026-07-23 — no usable pair exists on disk.* cravinbyandy has **no** persisted references
+  and no design images under `docs/` (only `Cravin-Brand-Document.pdf` + text specs); `gpt test 1` has
+  none either. The 4 loose root PNGs are agent captures (`team-section-*`, gitignored). The one real
+  design source found is the client's **Figma walkthrough video** (see REF-VID-1) — but at 832×400, a
+  design frame *inside* the Figma canvas is only ~290px wide. That is enough to read STRUCTURE and far
+  too degraded to judge type/spacing/colour, so using it as the reference would measure the video's
+  blur, not L2's false-positive rate. Pairing it against a Lens frame is also unsound here: the
+  recording shows a 4-image collage hero while the current render shows a single-photo hero with 2
+  pagination dots, and I cannot tell without guessing whether that is a genuine divergence or simply a
+  different slide — and guessing is the documented anti-pattern this whole workstream exists to stop.
+  `status: blocked-by human` — **needs one full-resolution design frame** (a Figma PNG export, or a
+  crisp screenshot of the intended design) for a surface we can also render. That is the only missing
+  input; everything else is built and proven.
 - [x] **FIG-1 · The Figma MCP is rate-limited on the Starter plan — now mechanized, not just documented.**
   `status: done` Verified live 2026-07-23: `get_screenshot` returned *"You've reached the Figma MCP tool
   call limit on the Starter plan."* `docs/design/catering-popup-spec.md` hit the same cap on 2026-07-15,
@@ -71,6 +80,25 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   against a copy carrying the old code the same input yields `reference: null` (⇒ case (a) fails), so
   the test has teeth. End-to-end on a temp repo: probe→miss(1) → ingest → probe→CACHED(0) →
   re-register archetype → export still present → probe→CACHED(0). Toolkit suite **81/81**. Commit `2b6f08f9`.
+- [x] **REF-VID-1 · A client walkthrough VIDEO is the one reference format guaranteed to be lost.**
+  `status: done` Found while searching for an RM-3 pair: cravinbyandy's **7-minute Figma + staging
+  walkthrough** (`WhatsApp Video 2026-07-21 at 11.49.37.mp4`, 832×400, 19,215 frames) is still sitting
+  in the repo — while the reference-conformance plan recorded its frames as *"discarded with the
+  session"* and 4 items were left marked *"resolve by frame-match at build start"*. Verified cause:
+  `.gitignore:11 *.mp4` matches it, so the client's authoritative design is **invisible to git, to the
+  next session, and to every gate**. With FIG-1's Figma cap, a recording like this is often the only
+  *accessible* design source, and nothing could read it.
+  **Shipped:** `reference-ingest.mjs --video <file> --at <M:SS|seconds>` extracts one frame with ffmpeg
+  and persists it exactly like a still, into `docs/design/references/` (verified **not** gitignored),
+  recording `source_video` + `source_at` so the moment is reproducible. `parseTimestamp` accepts
+  `90` / `1:30` / `00:01:30` / `1:30.5` and rejects `1:75`; ffmpeg-missing degrades to a clear
+  "screenshot it yourself and pass --image". Documented in `/shopify-build` STEP 1b **with the honest
+  resolution caveat** — a design frame inside a canvas view can be ~290px wide, fine for structure,
+  useless for type/spacing/colour; say which you relied on.
+  *Proof:* fixture grew to 40 assertions (cases f–i, incl. the falsy-zero trap where `--at 0` must not
+  read as "no timestamp"). End-to-end on the **real client video**: extracted the 0:20 frame →
+  `docs/design/references/home/hero-design.png` (832×400) with `source_video`/`source_at: 20`, then
+  re-registered the archetype with no `--video` and the frame + provenance survived. Toolkit **81/81**.
 - [ ] **GI-1 · `section-reuse-map.md` is required by 2 gates but missing in cravinbyandy.** `status: open`
   Either generate it from the current theme or make the requirement honest. *Done when:* gate #23 is
   no longer N/A-by-absence on that repo, or the requirement is explicitly scoped.
@@ -150,12 +178,29 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 - [ ] **DEF-4 · Sales.tsx top-20 bugs + DesignLibrary.tsx gap analysis** (Polyglot app, not Shopify).
   Separate workstream. `status: open`
 
+- [ ] **REF-VID-2 · Persist the cravinbyandy walkthrough's key frames as real references.**
+  `status: open` The mechanism now exists (REF-VID-1) but the client repo still has an **empty**
+  reference map. Survey the recording, and for each surface it covers (home hero, about/"Meet Andy",
+  locations carousel, catering, gifting, footer) resolve the archetype from the visible structural
+  signals and persist the frame. **Do not guess an archetype from a blurry canvas view** — prefer the
+  frames where the surface fills the screen, and leave anything ambiguous for Yash rather than
+  registering a wrong archetype (a wrong reference is worse than none: gate #46 would then block the
+  correct build). *Done when:* `reference-ingest.mjs --list` on cravinbyandy shows the surfaces with
+  images present, and `check-reference-match.mjs` runs non-N/A there.
+
 ## Needs Yash (do not guess — guessing is what caused the re-asks)
 
 - **Marquee 20px vs 28px** — CSS documents Figma=28; home ships 20 after "now font size too big".
 - **Ratify the PROVISIONAL type/spacing ladder** in cravinbyandy's `design-system.json`.
 - **Swiggy/Zomato URLs**, Gill Sans `.woff2` licence, real photography, `matcha.jpg` ≥1400px.
 - **Which Figma file is authoritative** — four different keys are in play.
+- **One full-resolution design frame** (Figma PNG export or a crisp screenshot of the intended design)
+  for any surface we can render — the single missing input for **RM-3**, which then flips L2
+  reference-match from warn-only to enforcing. The walkthrough video cannot substitute: its in-canvas
+  design frames are ~290px wide.
+- **Home hero: is the 4-image collage still the intended design?** The 2026-07-21 walkthrough shows a
+  collage hero; the current build renders a single-photo hero with 2 pagination dots. Could be slide 2
+  of the same slideshow, could be a drift. Not guessing (see REF-VID-2).
 
 ---
 
@@ -171,3 +216,6 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 - 2026-07-23 · FIG-1 done (`2b6f08f9`) — Figma rate cap mechanized: cache probe + sticky provenance +
   degrade-to-Path-A rules. Found and fixed a second bug: re-registering wiped the persisted export.
   RM-3 un-blocked as a side effect (it never actually needed the MCP).
+- 2026-07-23 · REF-VID-1 done (`<sha2>`) — found the client's Figma walkthrough video alive in the repo
+  but hidden by `.gitignore *.mp4`; shipped `--video/--at` frame ingestion. RM-3 re-blocked on a real
+  full-res design frame (searched: none on disk); logged REF-VID-2 to persist the walkthrough's frames.
