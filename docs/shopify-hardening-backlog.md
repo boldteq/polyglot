@@ -19,12 +19,22 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 
 ## P0 — mechanize (highest leverage, no human needed)
 
-- [ ] **RM-1 · Prove L2 reference-match on a real store.** `status: open`
-  Register a real reference image for one cravinbyandy surface, run `lens-quick --surfaces <s>`, then
-  `check-reference-match.mjs`. Confirm the vision judge produces sane divergences (no scale/DPR
-  false-positives) and verdicts land in `lens/reference-judge/` without touching #18's dir.
-  *Done when:* a real verdict JSON exists + a false-positive assessment is written here.
-- [ ] **RM-2 · Flip L2 to enforcing** once RM-1 is clean on **2** stores. `status: blocked-by RM-1`
+- [x] **RM-1 · Prove L2 reference-match on a real store.** `status: done` (store 1 of 2)
+  Ran both controls against **real captured frames from the live cravinbyandy store** (no preview URL
+  needed — reused `gate-reports/lens/home/*.png`).
+  **Positive control** (reference == render): 0 blockers — no false divergences between identical images.
+  **Negative control** (reference = the page's scroll-end frame): 4 would-block findings with precise
+  evidence — *"Reference hero is a multi-card location carousel showing at least two full cards ('The
+  Cravin Pantry', 'Cravin To-Go') plus a third partially visible, with left/right arrows"* vs the
+  rendered two-column split; plus content-parity, layout and colour deltas. Verdicts landed in
+  `lens/reference-judge/` (⇒ #18's `judge/` dir untouched) and warn-only correctly labelled what would
+  block. **False-positive found + fixed:** the judge flagged behavioural `must_have` signals
+  (auto-rotate / dots-after-JS-init) that are unknowable from a static rest frame — the prompt now
+  forbids reporting anything not visible in BOTH stills (those are L1's job). Judge calls take >2 min:
+  run them backgrounded.
+- [ ] **RM-2 · Flip L2 to enforcing** once RM-1 is clean on a **2nd** store. `status: open`
+  Store 1 (cravinbyandy) is clean post-fix. Needs one more real store's frames with zero false
+  positives, then set `REFERENCE_MATCH_ENFORCE=1` by default.
 - [ ] **GI-1 · `section-reuse-map.md` is required by 2 gates but missing in cravinbyandy.** `status: open`
   Either generate it from the current theme or make the requirement honest. *Done when:* gate #23 is
   no longer N/A-by-absence on that repo, or the requirement is explicitly scoped.
