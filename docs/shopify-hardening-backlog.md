@@ -41,19 +41,35 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   easiest possible case. The false-positive risk that actually matters in production is a **design
   export vs a rendered page** (different rasterisation, scale, real vs placeholder content) — untested.
   Flipping on this evidence would risk a gate that blocks every build. Superseded by RM-3.
-- [ ] **RM-3 · Calibrate L2 on a REAL design-export-vs-render pair, then flip.** `status: blocked-by FIG-1`
-  Need one genuine design frame (Figma export or a client screenshot of the intended design) paired
-  with the rendered build of that same surface. Confirm zero false positives there, then set
-  `REFERENCE_MATCH_ENFORCE=1` as the default in `check-reference-match.mjs` + the docs.
-- [ ] **FIG-1 · The Figma MCP is rate-limited on the Starter plan — a production constraint, not a fluke.**
-  `status: open` Verified live 2026-07-23: `get_screenshot` returned *"You've reached the Figma MCP tool
-  call limit on the Starter plan."* `docs/design/catering-popup-spec.md` hit the same cap on 2026-07-15
-  ("Figma MCP hard-capped on Starter plan"), which is why that spec's measurements came from screenshots
-  that were then lost. **Implication: stitch/drape's "Path B premium" Figma flow will fail mid-build in
-  production.** This makes persisting exports non-optional — fetch a node ONCE, save it under
-  `docs/design/references/`, and never re-fetch. *Done when:* stitch/drape carry an explicit
-  rate-limit-aware rule (fetch-once-persist-always + a graceful degrade to Path A when capped), and the
-  fallback is documented where a build will actually hit it.
+- [ ] **RM-3 · Calibrate L2 on a REAL design-export-vs-render pair, then flip.** `status: open`
+  Need one genuine design frame (Figma export **or** a client screenshot of the intended design — it
+  does not have to come from the MCP) paired with the rendered build of that same surface. Confirm zero
+  false positives there, then set `REFERENCE_MATCH_ENFORCE=1` as the default in
+  `check-reference-match.mjs` + the docs.
+  *Un-blocked 2026-07-23:* FIG-1 is done, and the fix means a Figma export only ever needs fetching
+  once — but this item never truly required the MCP. **Next step:** look for an already-persisted
+  reference image or a client screenshot in the cravinbyandy / gpt-test-1 repos and pair it with the
+  matching Lens frame. Only if none exists is a human needed to supply one.
+- [x] **FIG-1 · The Figma MCP is rate-limited on the Starter plan — now mechanized, not just documented.**
+  `status: done` Verified live 2026-07-23: `get_screenshot` returned *"You've reached the Figma MCP tool
+  call limit on the Starter plan."* `docs/design/catering-popup-spec.md` hit the same cap on 2026-07-15,
+  which is why that spec's measurements came from screenshots that were then lost.
+  **A second bug was found while implementing this, and it mattered more than the docs:** re-registering
+  a reference to correct its archetype (`--surface home --name hero --archetype carousel`, no `--image`)
+  passed `reference: null` into `upsertEntry` and **silently wiped the persisted export** — forcing a
+  re-fetch against the very API that is capped. "Persist always" only held for the first command.
+  **Shipped:** (a) provenance is now sticky — `reference`/`figma_node`/`figma_file` are overwritten only
+  by a new non-empty value, never cleared by an omitted flag; (b) `--figma-file` so the cache key is
+  file+node (node ids are unique only *within* a file; cravinbyandy has four keys in play); (c)
+  `--check-figma <node> [--figma-file <key>]` — a cache **probe** that spends no Figma call: exit 0
+  cached / 1 may-fetch / 2 ambiguous, and ambiguity is *refused* rather than guessed, so a probe can
+  never hand back the wrong file's design; (d) explicit rate-limit + degrade-to-Path-A rules in
+  `stitch.md` (Path B step 4a) and `drape.md` (anti-pattern 17c), and in `/shopify-build` STEP 1b where
+  a build actually hits it.
+  *Proof:* new fixture `__fixtures__/reference-ingest/` — 21 assertions, incl. the wipe regression;
+  against a copy carrying the old code the same input yields `reference: null` (⇒ case (a) fails), so
+  the test has teeth. End-to-end on a temp repo: probe→miss(1) → ingest → probe→CACHED(0) →
+  re-register archetype → export still present → probe→CACHED(0). Toolkit suite **81/81**.
 - [ ] **GI-1 · `section-reuse-map.md` is required by 2 gates but missing in cravinbyandy.** `status: open`
   Either generate it from the current theme or make the requirement honest. *Done when:* gate #23 is
   no longer N/A-by-absence on that repo, or the requirement is explicitly scoped.
@@ -151,3 +167,6 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   that spliced whole files into agents' managed blocks. Fixed + 4-case regression test + mantle repaired.
 - 2026-07-23 · discovered TEST-1 (2 pre-existing `npm test` failures at HEAD) and HYG-2 (sweep other
   managed-block writers for the same bug class).
+- 2026-07-23 · FIG-1 done (`<sha>`) — Figma rate cap mechanized: cache probe + sticky provenance +
+  degrade-to-Path-A rules. Found and fixed a second bug: re-registering wiped the persisted export.
+  RM-3 un-blocked as a side effect (it never actually needed the MCP).

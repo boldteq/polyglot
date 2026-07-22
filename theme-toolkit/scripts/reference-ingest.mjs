@@ -9,8 +9,18 @@
 // checkable read (the `archetype`) that gate #46 asserts against the real template.
 //
 //   node toolkit/scripts/reference-ingest.mjs --surface home --name hero --image ~/Desktop/hero.png \
-//        --archetype slideshow --must-have "pagination dots,auto-rotate,no arrows" [--order 1] [--figma 225:1294]
+//        --archetype slideshow --must-have "pagination dots,auto-rotate,no arrows" [--order 1] \
+//        [--figma 225:1294] [--figma-file lInEfNo3UXiju5B3kq1Tvi]
 //   node toolkit/scripts/reference-ingest.mjs --list
+//   node toolkit/scripts/reference-ingest.mjs --check-figma 225:1294 [--figma-file <key>]
+//
+// FETCH-ONCE, PERSIST-ALWAYS (FIG-1, 2026-07-23). The Figma MCP is hard-capped on the Starter plan —
+// `get_screenshot` returns "You've reached the Figma MCP tool call limit on the Starter plan", verified
+// live twice (2026-07-15 and 2026-07-23). A build that re-reads Figma per section WILL die mid-run.
+// So: `--check-figma` is a cache PROBE — it spends no Figma call and tells you whether that node is
+// already persisted (exit 0 = reuse the file on disk, exit 1 = you may spend one fetch). Run it BEFORE
+// every get_screenshot. Node ids are only unique within a file, so the cache key is file+node; pass
+// --figma-file whenever more than one Figma file is in play (cravinbyandy has four).
 //
 // Image is COPIED to docs/design/references/<surface>/<name>.png (inside the repo so the headless
 // judge may read it, and NOT under gate-reports/lens which lens-capture wipes on every run).
@@ -45,6 +55,8 @@ function parseArgs(argv) {
     else if (a === '--must-have') o.mustHave = String(argv[++i] || '').split(',').map(s => s.trim()).filter(Boolean)
     else if (a === '--order') o.order = Number(argv[++i])
     else if (a === '--figma') o.figma = argv[++i]
+    else if (a === '--figma-file') o.figmaFile = argv[++i]
+    else if (a === '--check-figma') o.checkFigma = argv[++i]
     else if (a === '--viewport') o.viewport = argv[++i]
     else if (a === '--list') o.list = true
     else if (a === '--note') o.note = argv[++i]
@@ -57,25 +69,61 @@ export function readMap(dir = cwd) {
 }
 
 // PURE: upsert one section entry into the map (surface + name is the key).
+//
+// PROVENANCE IS STICKY (FIG-1). `reference` / `figma_node` / `figma_file` are only ever overwritten by
+// a NEW non-empty value — never cleared by an omitted flag. Before this, re-registering an entry to
+// correct its archetype (`--surface home --name hero --archetype carousel`, no --image) wrote
+// `reference: null` and silently discarded the persisted export, forcing a re-fetch against the very
+// API that is rate-limited. "Persist always" has to survive the second command, not just the first.
 export function upsertEntry(map, entry) {
   const out = { surfaces: [...(map.surfaces || [])] }
   let s = out.surfaces.find(x => x.surface === entry.surface)
   if (!s) { s = { surface: entry.surface, sections: [] }; out.surfaces.push(s) }
   s.sections = [...(s.sections || [])]
   const i = s.sections.findIndex(x => x.name === entry.name)
+  const prev = i >= 0 ? s.sections[i] : {}
+  const keep = (next, old) => (next != null && next !== '' ? next : old)
+  const reference = keep(entry.reference, prev.reference)
+  const figmaNode = keep(entry.figma, prev.figma_node)
+  const figmaFile = keep(entry.figmaFile, prev.figma_file)
   const row = {
-    order: entry.order ?? (i >= 0 ? s.sections[i].order : s.sections.length + 1),
+    order: entry.order ?? (i >= 0 ? prev.order : s.sections.length + 1),
     name: entry.name,
     archetype: entry.archetype,
     must_have: entry.mustHave || [],
-    reference: entry.reference,
-    ...(entry.viewport ? { viewport: entry.viewport } : {}),
-    ...(entry.figma ? { figma_node: entry.figma } : {}),
-    ...(entry.note ? { note: entry.note } : {}),
+    reference: reference ?? null,
+    ...(keep(entry.viewport, prev.viewport) ? { viewport: keep(entry.viewport, prev.viewport) } : {}),
+    ...(figmaNode ? { figma_node: figmaNode } : {}),
+    ...(figmaFile ? { figma_file: figmaFile } : {}),
+    ...(keep(entry.note, prev.note) ? { note: keep(entry.note, prev.note) } : {}),
   }
   if (i >= 0) s.sections[i] = row; else s.sections.push(row)
   s.sections.sort((a, b) => (a.order || 0) - (b.order || 0))
   return out
+}
+
+// PURE: find already-persisted entries for a Figma node. Node ids are unique only WITHIN a file, so a
+// bare node match across two different files is AMBIGUOUS — we refuse it rather than risk handing back
+// the wrong design (cravinbyandy has four file keys in play). Returns {status, matches}.
+//   'hit'       → exactly one match; reuse it, spend no Figma call
+//   'miss'      → nothing registered; you may spend one fetch
+//   'ambiguous' → same node id in several files; caller must pass --figma-file
+export function findFigmaEntry(map, { node, file } = {}) {
+  const matches = []
+  for (const s of map.surfaces || []) {
+    for (const sec of s.sections || []) {
+      if (!sec.figma_node || sec.figma_node !== node) continue
+      if (file && sec.figma_file && sec.figma_file !== file) continue
+      if (file && !sec.figma_file) continue // unknown provenance — don't claim it's this file's node
+      matches.push({ ...sec, surface: s.surface })
+    }
+  }
+  if (matches.length === 0) return { status: 'miss', matches }
+  if (matches.length > 1) {
+    const files = new Set(matches.map(m => m.figma_file || '(unknown)'))
+    if (files.size > 1) return { status: 'ambiguous', matches }
+  }
+  return { status: 'hit', matches }
 }
 
 function main() {
@@ -94,6 +142,35 @@ function main() {
     }
     console.log('')
     process.exit(0)
+  }
+
+  // Cache probe. Spends NO Figma call — that is the whole point (the MCP is capped on Starter).
+  // exit 0 = already persisted, reuse the file. exit 1 = not cached, you may spend one fetch.
+  if (o.checkFigma) {
+    const { status, matches } = findFigmaEntry(readMap(), { node: o.checkFigma, file: o.figmaFile })
+    const label = `${o.figmaFile ? `${o.figmaFile}:` : ''}${o.checkFigma}`
+    if (status === 'ambiguous') {
+      console.error(`reference-ingest: node ${o.checkFigma} is registered in MULTIPLE Figma files — pass --figma-file to disambiguate.`)
+      for (const m of matches) console.error(`  ${m.figma_file || '(unknown file)'} → ${m.surface}/${m.name} → ${m.reference || '(no image)'}`)
+      process.exit(2)
+    }
+    if (status === 'hit') {
+      const m = matches[0]
+      const onDisk = m.reference && fs.existsSync(path.resolve(cwd, m.reference))
+      if (onDisk) {
+        console.log(`reference-ingest: CACHED ${label} → ${m.reference}`)
+        console.log('  DO NOT call get_screenshot for this node. Read the file above.')
+        process.exit(0)
+      }
+      console.log(`reference-ingest: registered but image MISSING for ${label} (${m.surface}/${m.name}).`)
+      console.log('  Fetch it once, then persist with --image so it is never fetched again.')
+      process.exit(1)
+    }
+    console.log(`reference-ingest: NOT CACHED ${label} — you may spend ONE get_screenshot, then persist it:`)
+    console.log(`  node toolkit/scripts/reference-ingest.mjs --surface <s> --name <n> --archetype <a> --image <saved.png> --figma ${o.checkFigma}${o.figmaFile ? ` --figma-file ${o.figmaFile}` : ''}`)
+    console.log('  If the MCP answers "You\'ve reached the Figma MCP tool call limit", STOP fetching and')
+    console.log('  degrade to Path A (design-spec.md) — do not retry, do not build against an unseen design.')
+    process.exit(1)
   }
 
   if (!o.surface || !o.name) die('--surface and --name are required (e.g. --surface home --name hero)')
