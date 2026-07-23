@@ -452,9 +452,34 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
     warns rather than blocks, since a false block there would stall every local run. That check is the
     direct descendant of the cravinbyandy failure that started this workstream.
   Toolkit **89/89** · `npm test` **225/225**. Commit `9fbcad2f`.
-  *Next:* the last 11 static are all Lens-artifact gates — `check-visual-truth` (5) and
-  `gate-class-d-visual` (5) need capture/judge JSON fixtures, plus 1 stray. The 29 URL-gate ones need a
-  live page and are a separate problem.
+  **Round 4 — static untested 11 → 0. Every hermetically-testable BLOCKING check in the toolkit is now
+  proven to fire.** (127 blocking checks across 58 gate scripts; 49 were unproven when the detector
+  landed.)
+  · `check-visual-truth` **5 → 0**: the Layer-1 deterministic facts — Liquid error rendered to the page,
+    broken images, navigation failure — plus `capture-missing` and `judge-missing` at publish grade,
+    each paired with a dev-grade case proving the same state only warns. These are the findings that
+    mean *a shopper is looking at a broken page*, so an unproven one is the worst kind: the gate would
+    report visual truth while never having checked it.
+  · `gate-class-d-visual` **5 → 0**: the same facts on the micro-change path, plus a judge blocker
+    finding and a corrupt `lens-manifest.json` (`capture-invalid` — a corrupt manifest must block, not
+    be silently ignored).
+  · `check-visual-quality` **1 → 0**: `audits-missing`, asserting it names the omitted audit. A review
+    that quietly drops `mobile_rendering` would otherwise read as a full sign-off with a whole
+    dimension unexamined.
+  Toolkit **89/89** · `npm test` **225/225**.
+  *Remaining: 28 URL-gate blockers* — see QA-2.
+
+- [ ] **QA-2 · 28 URL-gate blocking checks remain unproven.** `status: open`
+  What is left after QA-1 took static coverage to 0. `gate-seo` (15), `gate-functional` (6),
+  `gate-conversion` (4) and friends only run against `THEME_PREVIEW_URL`, so they have never been
+  exercised in a fixture. They block publishes, so the same argument applies — an unproven blocker is
+  indistinguishable from an absent one.
+  *Approach:* this does NOT need a real storefront. Serve crafted HTML from a local `node:http` server
+  in the fixture and point `THEME_PREVIEW_URL` at it — a page with two `<h1>`s, a missing canonical, a
+  broken add-to-cart. Lighthouse and axe additionally need a browser, so split those out; they may only
+  be reachable via the Playwright already vendored for Lens.
+  *Done when:* the auditor reports 0 untested for `gate-seo`, `gate-functional` and `gate-conversion`,
+  each blocking id proven against a served page.
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 

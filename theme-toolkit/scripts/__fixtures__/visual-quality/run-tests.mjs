@@ -92,5 +92,24 @@ console.log('case (g) approved + publish-grade + Lens #18 FAIL → expect exit 1
 }
 
 fs.rmSync(missingDir, { recursive: true, force: true })
+// ── QA-1: vq.audits-missing had never been proven to fire ────────────────────────────────
+// All 7 audits must be PRESENT. A review that silently omits one — say mobile_rendering — would
+// otherwise read as a full sign-off while a whole dimension went unexamined.
+console.log('case (e) a review missing one of the 7 audits → vq.audits-missing')
+{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vq-partial-'))
+  fs.mkdirSync(path.join(dir, 'docs'), { recursive: true })
+  const full = JSON.parse(fs.readFileSync(path.join(HERE, 'approved', 'docs', 'visual-quality-review.json'), 'utf-8'))
+  delete full.audits.mobile_rendering // the one a hurried reviewer is most likely to skip
+  fs.writeFileSync(path.join(dir, 'docs', 'visual-quality-review.json'), JSON.stringify(full))
+  const { code, report } = runGate(dir, {}, true)
+  const ids = new Set((report?.blockers || []).map(b => b.id))
+  ids.has('vq.audits-missing') ? pass('an incomplete audit set is blocked') : fail(`got [${[...ids].join(', ')}]`)
+  code === 1 ? pass('exit 1') : fail(`expected exit 1, got ${code}`)
+  const detail = (report?.blockers || []).find(b => b.id === 'vq.audits-missing')?.detail || ''
+  detail.includes('mobile_rendering') ? pass('names the audit that is missing') : fail(`detail does not name it: ${detail.slice(0, 80)}`)
+  fs.rmSync(dir, { recursive: true, force: true })
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

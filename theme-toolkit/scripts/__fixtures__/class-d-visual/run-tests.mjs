@@ -84,5 +84,57 @@ console.log('case (g) low judge confidence on a money surface → expect exit 1 
   code === 1 ? ok('exit 1 (block)') : bad(`expected 1 got ${code}`)
   ids.has('cd.low-confidence') ? ok('blocker: cd.low-confidence') : bad(`missing cd.low-confidence (saw ${[...ids].join(', ')})`) }
 
+// ── QA-1: five Class-D blockers had never been proven to fire ────────────────────────────
+// Class-D is the micro-change path — a one-line CSS tweak still has to prove it did not break the
+// rendered page. These deterministic findings are the whole point of that proof, so an unproven one
+// means a "verified" micro-change was never actually verified.
+const CDF = (extra) => [{ surface: 'pdp', viewport: 'desktop', theme: 'light', nav: 'ok', url: 'x', frames: { rest: '' }, ...extra }]
+const CDV = [{ surface: 'pdp', viewport: 'desktop', verdict: 'PASS', confidence: 95, findings: [], passed_checks: ['a'] }]
+
+console.log('case (f) Liquid error on the rendered page → cd.liquid-error')
+{ const { ids } = run({ surfaces: 'pdp', frames: CDF({ liquidError: 'Liquid error: bad filter' }), verdicts: CDV })
+  ids.has('cd.liquid-error') ? ok('blocked') : bad(`got [${[...ids].join(', ')}]`) }
+
+console.log('case (g) broken images → cd.broken-image')
+{ const { ids } = run({ surfaces: 'pdp', frames: CDF({ brokenImages: ['/x.jpg'] }), verdicts: CDV })
+  ids.has('cd.broken-image') ? ok('blocked') : bad(`got [${[...ids].join(', ')}]`) }
+
+console.log('case (h) navigation failed → cd.nav-failed')
+{ const { ids } = run({ surfaces: 'pdp', frames: CDF({ nav: 'timeout' }), verdicts: CDV })
+  ids.has('cd.nav-failed') ? ok('blocked') : bad(`got [${[...ids].join(', ')}]`) }
+
+console.log('case (i) storefront render error → cd.render-error')
+{ const { ids } = run({ surfaces: 'pdp', frames: CDF({ renderError: '500 Internal Server Error' }), verdicts: CDV })
+  ids.has('cd.render-error') ? ok('blocked') : bad(`got [${[...ids].join(', ')}]`) }
+
+console.log('case (j) a judge BLOCKER finding → cd.finding')
+{
+  const verdicts = [{ surface: 'pdp', viewport: 'desktop', verdict: 'FAIL', confidence: 95,
+    findings: [{ severity: 'blocker', check: 'spacing-rhythm', evidence: 'hero padding collapsed', fix_owner: 'loom' }], passed_checks: [] }]
+  const { ids } = run({ surfaces: 'pdp', frames: CDF({}), verdicts })
+  ids.has('cd.finding') ? ok('a judge blocker finding is surfaced') : bad(`got [${[...ids].join(', ')}]`)
+}
+
+console.log('case (k) an unreadable lens-manifest → cd.capture-invalid')
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-inv-'))
+  fs.mkdirSync(path.join(tmp, 'gate-reports', 'lens'), { recursive: true })
+  fs.writeFileSync(path.join(tmp, 'gate-reports', 'lens', 'lens-manifest.json'), '{ "frames": ')
+  const r = spawnSync('node', [GATE], { cwd: tmp, env: { ...process.env, CLASS_D_SURFACES: 'pdp' }, encoding: 'utf-8' })
+  let rep = null
+  try { rep = JSON.parse(fs.readFileSync(path.join(tmp, 'gate-reports', 'class-d-visual.json'), 'utf-8')) } catch {}
+  const ids = new Set((rep?.blockers || []).map(b => b.id))
+  ids.has('cd.capture-invalid') ? ok('a corrupt manifest is blocked, not silently ignored') : bad(`got [${[...ids].join(', ')}]`)
+  fs.rmSync(tmp, { recursive: true, force: true })
+}
+
+console.log('case (l) NO false blocks — a clean Class-D capture raises none of them')
+{
+  const { code, ids } = run({ surfaces: 'pdp', frames: CDF({}), verdicts: CDV })
+  const bad6 = [...ids].filter(i => /liquid-error|broken-image|nav-failed|render-error|capture-invalid|cd\.finding/.test(i))
+  bad6.length === 0 ? ok('healthy capture raises none of the six') : bad(`false blocks: ${bad6.join(', ')}`)
+  code === 0 ? ok('exit 0') : bad(`expected exit 0, got ${code}`)
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} FAILED`)
 process.exit(failures === 0 ? 0 : 1)
