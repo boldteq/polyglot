@@ -10,6 +10,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 
 const cwd = process.cwd()
 const has = (p) => fs.existsSync(path.join(cwd, p))
@@ -26,6 +27,30 @@ function dsScalesPopulated() {
     return nonEmpty((ds.typography && (ds.typography.allowed_px || ds.typography.scale)) || ds.type_scale)
       && nonEmpty((ds.spacing && (ds.spacing.scale || ds.spacing.allowed_px)) || ds.space_scale)
   } catch { return false }
+}
+
+// ── vendored-copy integrity ────────────────────────────────────────────────
+// A client repo VENDORS a copy of the toolkit. Every fix shipped in Polyglot reaches a client only
+// when that copy is refreshed, and nothing detected staleness: cravinbyandy's copy was missing 11
+// scripts (done-check, gate-integrity #45, orchestration #44, reference-match #46, class-d-visual #20,
+// gate-autofix, preflight itself, snap-colors-to-tokens, generate-reuse-map, reference-ingest,
+// audit-unproven-guards) while BOTH sides reported toolkitVersion 1.0.0 — so the evidence looked
+// identical to a current run. CB-1 read as "blocked" for weeks because its own tool was not there.
+//
+// Offline check, no source tree needed: every gate the vendored manifest itself declares must have
+// its script present. A partial copy is then loud instead of silent.
+export function missingGateScripts(manifestRows, exists) {
+  return (manifestRows || [])
+    .filter((g) => g && g.script && !exists(g.script))
+    .map((g) => `#${g.number} ${g.name} (${g.script})`)
+}
+
+// Version drift against the SOURCE toolkit when it is reachable (POLYGLOT_TOOLKIT, else the default
+// checkout path). Unreachable is reported as unknown — never as "up to date".
+export function versionDrift(localVersion, sourceVersion) {
+  if (!sourceVersion) return { known: false, drifted: false, detail: 'source toolkit not reachable — vendored copy freshness UNKNOWN (set POLYGLOT_TOOLKIT)' }
+  const drifted = String(localVersion).trim() !== String(sourceVersion).trim()
+  return { known: true, drifted, detail: drifted ? `vendored ${localVersion} != source ${sourceVersion}` : `matches source (${sourceVersion})` }
 }
 
 const checks = []
@@ -67,8 +92,36 @@ add(false, has('docs/discovery/goals.json'), 'discovery goals seeded (gate #0.4)
 add(false, has('docs/design/design-system.json'), 'design-system seeded (gate #0.5)',
   'drape authors docs/design/design-system.json in-run (auto)')
 
+// ── vendored-copy integrity (the drift that made every fix invisible to clients) ──
+{
+  const gatesPath = path.join(cwd, 'toolkit/scripts/theme-gates.mjs')
+  let rows = []
+  if (fs.existsSync(gatesPath)) {
+    try {
+      rows = JSON.parse(execFileSync(process.execPath, [gatesPath, '--list-json'], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }))
+    } catch { rows = [] }
+  }
+  const missing = missingGateScripts(rows, (sc) => fs.existsSync(path.join(cwd, 'toolkit/scripts', sc)))
+  add(true, rows.length > 0 && missing.length === 0,
+    `vendored toolkit is complete (${rows.length} gate script(s)${missing.length ? `, ${missing.length} MISSING` : ''})`,
+    missing.length
+      ? `re-vendor: cp -R "<Polyglot>/theme-toolkit/scripts/." ./toolkit/scripts/ — missing: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? ` +${missing.length - 4}` : ''}`
+      : 'could not read the vendored gate manifest — re-vendor the toolkit')
+
+  const readVer = (base) => { try { return fs.readFileSync(path.join(base, 'TOOLKIT_VERSION'), 'utf-8').trim() } catch { return null } }
+  const localVer = readVer(path.join(cwd, 'toolkit'))
+  const src = process.env.POLYGLOT_TOOLKIT || path.join(process.env.HOME || '', 'Desktop/Boldteq App/Operation/Polyglot/theme-toolkit')
+  const drift = versionDrift(localVer, readVer(src))
+  add(false, drift.known && !drift.drifted, `vendored toolkit version ${localVer || 'unknown'} — ${drift.detail}`,
+    'refresh the vendored copy: cp -R "<Polyglot>/theme-toolkit/." ./toolkit/ && npm ci --prefix toolkit')
+}
+
 const reqFail = checks.filter((c) => c.required && !c.ok)
 const advFail = checks.filter((c) => !c.required && !c.ok)
+
+// run as CLI only — importable for tests (missingGateScripts / versionDrift) without printing or exiting
+const IS_CLI = Boolean(process.argv[1]) && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+if (!IS_CLI) { /* imported for its pure helpers — no report, no exit */ } else {
 
 console.log(`preflight-repo — ${path.basename(cwd)}\n`)
 for (const c of checks) {
@@ -83,3 +136,4 @@ if (reqFail.length) {
 }
 console.log(`✅ READY for /shopify-build${advFail.length ? ` — ${advFail.length} advisory item(s) (full publish-grade needs them)` : ''}.`)
 process.exit(0)
+}
