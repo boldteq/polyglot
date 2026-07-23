@@ -312,7 +312,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   no-manifest / missing-dim / provider drift. Fixed one flaw in my own code on the way: `indexHealth()`
   compared the manifest dim to itself, so its `fatal` flag could never fire — it now reports
   provider/model only and defers the dim check to query time rather than showing a reassuring field
-  that can never trigger. `npm test` **222/222** · toolkit **82/82**.
+  that can never trigger. `npm test` **222/222** · toolkit **82/82**. Commit `84f3d761`.
 - [ ] **TEST-3 · The `/ai/*` reattach tests are flaky and the suite's test COUNT varies run to run.**
   `status: open` Observed across consecutive `npm test` runs on an unchanged tree: **207/200/7-fail**,
   then **222/222/0-fail**; earlier runs reported 211, 212 and 213 tests. The 7 failures were all in
