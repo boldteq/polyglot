@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**86/86** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**88/88** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -423,8 +423,24 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   have fixture cases — the first is what stops GI-2's generator from letting a half-authored map pass,
   verified by hand then but never pinned. Static untested **49 → 45**, confirmed by re-running the
   auditor. Toolkit **86/86** · `npm test` **225/225**. Commit `e43d9d38`.
-  *Next:* worst-first — `check-metafield-schema` (14/15 untested) and `check-briefs` (7/7) are entirely
-  unproven and both block client builds.
+  **Burn-down progress: static untested 49 → 45 → 31 → 24** (the two worst offenders are now covered).
+  · `check-metafield-schema` **14/15 → 0**: 24 assertions, one planted defect each — forbidden/malformed
+    namespaces, bad field defs and types, dangling metaobject refs, the three non-RE2 regex forms
+    (lookahead/lookbehind/backreference — all valid JS, all rejected by Shopify), uncompilable regex,
+    every metaobject rule, unparseable JSON, plus no-false-block cases for `list.<type>`, an RE2-safe
+    regex and a self-referential-but-defined metaobject ref. **All 14 fired correctly** — the gate was
+    sound, just unproven. My *baseline* was wrong (namespaces without a dot), which the gate caught.
+  · `check-briefs` **7/7 → 0**: 16 assertions including the >20%-missing threshold and its boundary
+    (exactly 20% must NOT block), and that STORE_BUILD conversion surfaces are only demanded on store
+    builds.
+  **A real defect found while doing it:** `PLACEHOLDER_RE` matched only the literal phrase `"tbd copy"`,
+  so a brief containing `Headline: TBD` passed Step-4 and **design was dispatched on placeholder copy** —
+  exactly what compass AP#2 forbids. (`check-discovery` catches bare `tbd`/`todo` for the same concept;
+  the two gates had drifted.) Fixed with a `DRAFT_MARKER_RE` scoped to `status:ready` only — a
+  `partial`/`missing` brief legitimately carries TBDs and blocking those would stall normal drafting, so
+  they warn instead. Toolkit **88/88** · `npm test` **225/225**.
+  *Next:* the remaining 24 static — `check-visual-truth` (5), `gate-class-d-visual` (5),
+  `check-reference-match` (3), `check-design-system` (3), `check-asset-budget` (2).
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 

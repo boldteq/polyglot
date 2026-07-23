@@ -44,7 +44,15 @@ const RECIPES = new Set([
   'about', 'contact', 'faq', 'landing-promo', 'blog-article',
 ])
 const STATUS_VALUES = new Set(['ready', 'partial', 'missing'])
+// Unambiguous placeholders — never acceptable at ANY status.
 const PLACEHOLDER_RE = /lorem ipsum|placeholder text|tbd copy/i
+// Bare TBD/TODO/"fill in". Surfaced by the QA-1 burn-down: the rule above only matched the exact
+// phrase "tbd copy", so a brief containing `Headline: TBD` passed Step-4 and design was dispatched on
+// placeholder copy — precisely what compass AP#2 forbids. (check-discovery already catches bare
+// tbd/todo for the same concept; the two gates had drifted apart.)
+// Scoped to status:ready ONLY: a `partial`/`missing` brief is honest work-in-progress and blocking it
+// would be a false positive on normal drafting.
+const DRAFT_MARKER_RE = /\bTBD\b|\bTODO\b|\bfill (this )?in\b/i
 
 const blockers = []
 const warnings = []
@@ -153,6 +161,15 @@ for (const f of files) {
 
   if (PLACEHOLDER_RE.test(text)) {
     add(blockers, 'briefs.placeholder-content', f, 'lorem ipsum / placeholder text / TBD copy present — no placeholder ships (compass AP#2)')
+  } else if (DRAFT_MARKER_RE.test(text)) {
+    // A brief that declares itself READY must not still carry drafting markers — design is dispatched
+    // off this file. At partial/missing they are expected, so they only warn.
+    const m = text.match(DRAFT_MARKER_RE)
+    if (b.status === 'ready') {
+      add(blockers, 'briefs.placeholder-content', f, `brief is status:ready but still contains "${m[0]}" — design dispatches off this file; resolve it or set status:partial (compass AP#2)`)
+    } else {
+      add(warnings, 'briefs.draft-marker', f, `contains "${m[0]}" — expected at status:${b.status}, but it must be gone before status:ready`)
+    }
   }
 
   for (const s of b.slots) {
