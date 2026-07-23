@@ -165,7 +165,16 @@ async function cartDrawerCheck(page) {
   const opened = await openCartDrawerPW(page)
   if (!opened.opened) return { drawer: 'closed', reason: opened.reason }
   const facts = await page.evaluate((assertSel) => {
-    const vis = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 40 && r.height > 80 && el.offsetParent !== null }
+    // NOT `el.offsetParent !== null`: offsetParent is null for EVERY position:fixed element, and a cart
+    // drawer is fixed in essentially every theme — so that test made `found` permanently false and both
+    // cart-drawer blockers below were unreachable. Proven by the functional-url fixture (QA-2).
+    const vis = (el) => {
+      if (!el) return false
+      const r = el.getBoundingClientRect()
+      if (!(r.width > 40 && r.height > 80)) return false      // a display:none element measures 0x0
+      const cs = getComputedStyle(el)
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0'
+    }
     let drawer = null
     for (const sel of assertSel) { for (const el of document.querySelectorAll(sel)) { if (vis(el)) { drawer = el; break } } if (drawer) break }
     if (!drawer) { for (const el of document.querySelectorAll('aside, [role="dialog"], .drawer, [class*="cart" i]')) { if (/cart/i.test(`${el.id} ${el.className}`) && vis(el)) { const cs = getComputedStyle(el); if (cs.position === 'fixed' || cs.position === 'absolute') { drawer = el; break } } } }
