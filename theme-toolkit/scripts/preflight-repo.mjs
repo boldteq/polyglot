@@ -115,6 +115,14 @@ add(false, has('docs/design/design-system.json'), 'design-system seeded (gate #0
   const localVer = readVer(path.join(cwd, 'toolkit'))
   const src = process.env.POLYGLOT_TOOLKIT || path.join(process.env.HOME || '', 'Desktop/Boldteq App/Operation/Polyglot/theme-toolkit')
   const drift = versionDrift(localVer, readVer(src))
+  // provenance beats a version string: QA-6 showed two very different toolkits both reporting 1.0.0.
+  let prov = null
+  try { prov = JSON.parse(fs.readFileSync(path.join(cwd, 'toolkit', '.vendor-provenance.json'), 'utf-8')) } catch { /* older vendor */ }
+  add(false, Boolean(prov) && prov.dirty === false,
+    prov
+      ? `vendored from ${String(prov.sha || '?').slice(0, 7)}${Array.isArray(prov.dirty) ? ` — DIRTY: ${prov.dirty.length} uncommitted path(s) shipped` : ' (clean commit)'}`
+      : 'vendored copy has no provenance (copied by hand, source commit unknown)',
+    'vendor it properly: node <Polyglot>/theme-toolkit/scripts/vendor-toolkit.mjs --to .   (records the source commit; refuses a dirty source)')
   add(false, drift.known && !drift.drifted, `vendored toolkit version ${localVer || 'unknown'} — ${drift.detail}`,
     'refresh the vendored copy (all dirs, not just scripts/): rsync -a --exclude node_modules --exclude gate-reports "<Polyglot>/theme-toolkit/" ./toolkit/ && npm ci --prefix toolkit')
 }
