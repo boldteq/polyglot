@@ -827,3 +827,8 @@
 [2026-07-03T10:24:46.626Z] cycle 161 reindex: skipped (batched separately)
 [2026-07-03T10:24:46.753Z] cycle 161 ✓ +21 FAQs → 5941/5040 (117.9%) · 14/14 agents trained · committed
 [2026-07-03T10:26:16.796Z] gap plan empty — every slice at/above the 7-FAQ quota. Done.
+[2026-07-23T15:43:40.031Z] cycle 162: slices [platform-authoring|home, spacing-rhythm|collection, platform-authoring|collection, platform-authoring|pdp, platform-authoring|cart, platform-authoring|cart-drawer, platform-authoring|checkout-reassurance] → generating 49 FAQs (FAQ-5944…)
+[2026-07-23T15:49:13.097Z] cycle 162 verify: kept 38/49 (dropped 11)
+[2026-07-23T15:52:20.651Z] cycle 162 distributed → 5186 rules · 14/14 agents trained · 0 gate-gaps
+[2026-07-23T15:52:20.663Z] cycle 162 reindex: FAILED (search stale!) — reindex: 1156 source file(s) · embedder=ollama/nomic-embed-text · store=local · incremental
+
