@@ -186,7 +186,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   one-word clauses miss the floor, (m) the inline form is accepted but a single inline brand still
   blocks. Against a copy carrying the old heuristic the same "we have no references" brief yields
   **0** `brand-references-thin` findings vs **1** on the fix. On cravinbyandy the gate now correctly
-  blocks, agreeing with what §5 of the brief itself says. Toolkit **82/82**.
+  blocks, agreeing with what §5 of the brief itself says. Toolkit **82/82**. Commit `0c5668cd`.
 - [x] **HYG-1 · mantle.md corruption — root cause was a silent file-destroying bug in the distributor.**
   `status: done` The duplication was a *symptom*, not a hygiene slip. `swt-distribute.mjs`
   replaced the managed block with `original.replace(re, section)` — a **string** replacement, so JS
