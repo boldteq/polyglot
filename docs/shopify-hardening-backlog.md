@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**92/92** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**93/93** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -469,8 +469,8 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   Toolkit **89/89** · `npm test` **225/225**. Commit `88b482c3`.
   *Remaining: 28 URL-gate blockers* — see QA-2.
 
-- [~] **QA-2 · URL gates ARE fixturable — 28 → 21, and the "needs a live page" excuse is gone.**
-  `status: open` (approach proven on gate-seo; the rest is repetition)
+- [x] **QA-2 · URL gates ARE fixturable — 28 → 21, and the "needs a live page" excuse is gone.**
+  `status: done` (0 untested blockers remain — `01044c79`, `908fe01a`)
   The premise that URL gates need a real storefront is **false**. `gate-seo` talks plain `fetch` (no
   browser) and `resolvePages` discovers handles from `/products.json`, `/collections.json` and
   `sitemap.xml` — so a ~40-line `node:http` server IS a storefront as far as the gate is concerned.
@@ -510,10 +510,25 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
     only flips `display` is invisible to gate-axe's `assertOpen`. Both noted inline.
   · A 500-with-a-body is deliberately **not** `fn.load` — it renders, so it lands as a content problem.
     The case uses a connection reset. Commit `0e631277`.
-  *Remaining 9:* `gate-seo` 5 (variant/collection canonical URL forms, `robots-txt`, gallery
-  lazy-loading — these need multi-URL and header-level serving), `check-section-cohesion` 3, and the
-  browser-dependent `lighthouse`/`axe`. The Playwright pattern from `functional-url` is now the
-  template for all of them.
+  **Round 4 — DONE. Untested blocking checks: 0 static, 0 URL (from 49 + 28).**
+  · `gate-seo` **5 → 0** — the fixture's `serve()` gained a `site` argument (robots 404 / no `Sitemap:`,
+    sitemap 404 / not-an-XML-sitemap, per-URL-form canonical hrefs). Shopify serves one product at
+    `/products/x`, `/products/x?variant=N` **and** `/collections/y/products/x`; if the canonical does not
+    collapse those, the product competes with itself in the index — the classic silent Shopify
+    duplicate-content bug. Also fixed a latent fixture defect: `page()` shipped `loading="lazy"` on every
+    image, so every pdp case silently carried a `seo.pdp-gallery-lazy` blocker nobody asserted on.
+    Commit `01044c79`.
+  · `check-redirects` **1 → 0** — `redirect.dead-live` via `REDIRECTS_CRAWL=1` against a real server. A
+    legacy URL that 404s live means the redirect was never created on the store, so every inbound link
+    and indexed result for it is broken; a map that merely *parses* proves nothing.
+  · `check-section-cohesion` **3 → 0** — and it found the fourth dead-evidence bug. The gate wrote its
+    **PASS** report as `section-cohesion`, a **retired alias**, while its own `die()` path already used
+    the manifest name `section-consistency`. `theme-gates` reads `gate-reports/<manifest-name>.json`, so
+    a *passing* gate 19 left no report where anything looks for it — evidence, freshness and gate #45's
+    skip-vs-pass check all saw a hole, and only failures were legible. Commit `908fe01a`.
+  **Method note, now proven 4 times:** writing the fixture is what finds the defect. Every single
+  unreachable guard this quarter was found by trying to make it fire, never by reading the code.
+
 - [ ] **QA-2-ORIG · (superseded framing) 28 URL-gate blocking checks unproven.** `status: open`
   What is left after QA-1 took static coverage to 0. `gate-seo` (15), `gate-functional` (6),
   `gate-conversion` (4) and friends only run against `THEME_PREVIEW_URL`, so they have never been
