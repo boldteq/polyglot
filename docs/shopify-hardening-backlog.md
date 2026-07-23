@@ -868,6 +868,25 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   the handle (or give a staging URL) and it is a 5-minute change.
   
 
+- [x] **CB-10 · Scope was FILE-granular — 2 edited lines pulled in a 3612-line stock file.**
+  `status: done` (`09b32c3b` · client `698704a`)
+  Found by asking a question nobody had asked: **how many blockers sit in files the team never wrote?**
+  Answer: **107 of them were in `assets/base.css`** — stock Dawn.
+  **Cause, and it was self-inflicted.** CB-1 bound one colour literal and CB-4 bound one z-index in
+  `base.css` — **2 changed lines out of 3612** — and file-granular scope pulled the entire stock
+  stylesheet into the drift scan. A false BLOCK that *punishes making a minimal, correct edit* to a
+  theme-base file, which is exactly what the reuse doctrine asks for.
+  **Fix:** declarations are evaluated only on lines ADDED/MODIFIED since `BASE_REF`, for git-resolved
+  plain stylesheets. Deliberately **not** applied to `.liquid` (`extractCss` concatenates style
+  fragments so offsets stop mapping to source lines — and a `.liquid` in scope is a custom section we
+  authored anyway) nor to reuse-map scope (an explicit *"this section is ours"*). `stripComments` now
+  preserves the newlines of what it strips, or every line after a multi-line comment maps wrong.
+  **Verified NOT under-scoped** — the real risk of this change: compared like-for-like against the
+  pre-change gate, every custom section is identical (catering-services 54→54, catering-enquiry 39→39,
+  team-gallery 28→28, …); only stock files dropped. Fixture pins all three directions: one edited line
+  → **one** finding; a file absent at base → scanned in **full**; an untouched stock file → **nothing**.
+  `base.css` **107 → 0**, design-tokens **437 → 319**, static blockers **507 → 389**. Toolkit **97/97**.
+
 - [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned.** `status: blocked-by human`
   Confirmed: `templates/page.gifting.json` renders `slideshow, feature-story, marquee, about-cafe,
   feature-story, page-hero` — **not** `gifting-occasions`. So `sections/gifting-occasions.liquid` (4.0 KB)
