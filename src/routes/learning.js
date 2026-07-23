@@ -151,7 +151,12 @@ setInterval(() => {
   } catch {}
   // Prune old reviewed/auto learning-inbox rows (cheap DELETEs; keep pending+approved).
   try { db.pruneLearningInbox(); } catch (err) { console.error('[learning] prune inbox failed:', err.message); }
-}, 5 * 60 * 1000);
+}, 5 * 60 * 1000).unref();
+// .unref() — this module-level background timer must never hold the process open by itself. In
+// production the server's own handles keep it alive; without unref, merely REQUIRING this route file
+// pins the event loop forever. That is what forced `--test-force-exit` on the whole suite, and
+// force-exit is what let `node --test` silently truncate queued test files (TEST-3/TEST-4).
+// rateLimit.js and playground.js already unref their equivalents — this one was the outlier.
 
 // ── Learning Inbox: review queue for auto-extracted VS Code learnings ────────
 

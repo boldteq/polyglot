@@ -331,13 +331,28 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   two previously-vanishing files are present in all three. New `src/testRunnerIntegrity.test.mjs` pins
   both flags with the reasoning, and rejects the pre-fix script string. `npm test` **224/224** ·
   toolkit **82/82**. Commit `0edc44b6`.
-- [ ] **TEST-4 · The suite needs `--test-force-exit` because something leaks a handle.** `status: open`
-  Root cause behind TEST-3, deliberately not fixed inline. Without the flag `node --test src/` never
-  exits (reproduced 3/3, killed at 90s) — some module under `src/` keeps the loop alive at import
-  (a DB connection, an un-`unref`'d `setInterval`, or a listening server). Force-exit masks it, and
-  masking it is what allowed the silent truncation in the first place. Prior art: a background
-  `setInterval` needing `.unref()` already caused this once (see `polyglot-brain-deep-fix-13`).
-  *Done when:* `node --test src/` exits on its own and `--test-force-exit` can be dropped.
+- [x] **TEST-4 · Both handle leaks found and fixed — the suite now exits on its own, no masking flags.**
+  `status: done` Bisected by importing each of the 33 test files in isolation and letting the process
+  try to exit naturally. Two leaked, both holding a `Timeout`; a timer spy that records creation stacks
+  named each one exactly:
+  **(1) `src/routes/learning.js:138`** — a module-level `setInterval` with **no `.unref()`**, so merely
+  *requiring* the route file pinned the event loop forever. Its two siblings (`rateLimit.js`,
+  `playground.js`) already unref'd theirs — and rateLimit's comment spells out precisely why. This one
+  was the outlier.
+  **(2) `src/routes/schedules.test.js`** — creating schedules through the API starts **real node-cron
+  jobs** whose internal `setTimeout` never stops. `stopAllSchedules()` was already exported; the test's
+  `after()` simply never called it.
+  **Both masking flags are now gone.** `npm test` is plain `node --test src/`: **225/225 in ~3s**,
+  exiting on its own, with byte-identical test sets across runs. That supersedes TEST-3's
+  `--test-concurrency=1` workaround — it was only needed because `--test-force-exit` truncated queued
+  files, and force-exit was only needed because of these leaks. Removing it also means the **next**
+  handle leak will hang loudly instead of silently dropping test files.
+  *Proof:* both files exit cleanly under the probe (was: killed at 8s); `node --test src/` completes
+  3/3 without force-exit; parallel is deterministic again (3/3 identical sets, 3s vs 7s serial).
+  `src/testRunnerIntegrity.test.mjs` now pins the **absence** of `--test-force-exit` and scans every
+  route file for a module-level `setInterval` missing `.unref()`. Its teeth-check caught a greedy-regex
+  bug in my own scanner that flagged already-fixed code — fixed with a non-greedy, end-anchored match.
+  `npm test` **225/225** · toolkit **82/82**.
 
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working

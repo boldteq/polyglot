@@ -34,7 +34,7 @@ runClaude.validateAgentExists = () => agentExists;
 
 const express = require('express');
 const db = require('./../db');
-const { router } = require('./schedules');
+const { router, stopAllSchedules } = require('./schedules');
 
 let server;
 let base;
@@ -49,6 +49,11 @@ before(async () => {
 });
 
 after(async () => {
+  // Creating schedules through the API starts REAL node-cron jobs, whose internal setTimeout keeps the
+  // event loop alive forever — this file was one of the two handle leaks that forced
+  // `--test-force-exit` on the whole suite, and force-exit is what let `node --test` silently truncate
+  // queued test files (TEST-3/TEST-4). stopAllSchedules() was already exported; it just was not called.
+  try { stopAllSchedules(); } catch { /* nothing scheduled */ }
   await new Promise((resolve) => (server ? server.close(resolve) : resolve()));
   try { db.getDb().close(); } catch { /* already closed */ }
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* best-effort */ }
