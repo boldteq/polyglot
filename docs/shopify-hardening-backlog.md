@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**81/81** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**82/82** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -124,17 +124,26 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   carrying the pre-fix code the same correct Dawn input gives
   `BLOCK reuse-map.reuse-below-target — reuse+configure 20% < target 70%`, vs PASS + informational on
   the fix. Toolkit **81/81**. Commit `ef90ddd2`.
-- [ ] **GI-2 · cravinbyandy still has no `section-reuse-map.md` (16 custom sections unmapped).**
-  `status: open` GI-1 made the *requirement* honest; the *artifact* is still absent, and no generator
-  exists (verified: nothing in the toolkit writes one). Most of it is mechanically derivable —
-  `custom` = sections added since `base` (16, exact), `extended` = base sections modified since base,
-  `reused`/`configured` = stock sections referenced in templates, split by whether template settings
-  differ from schema defaults. **Two fields are NOT mechanically knowable and must not be fabricated:**
-  `Custom split {library, scratch}` and the per-section `blueprint: none (checked: …, gap: …)`
-  justifications — a wrong map is worse than none, because it would let a build pass Audit 7 on
-  invented numbers. *Done when:* a `generate-reuse-map.mjs` emits the derivable parts and leaves the
-  judgement fields as explicit unfilled markers (so the gate rejects a half-authored map rather than
-  accepting a fabricated one), with a fixture.
+- [x] **GI-2 · `generate-reuse-map.mjs` — derives the mechanical half, refuses to invent the rest.**
+  `status: done` Nothing in the toolkit could produce a `section-reuse-map.md`, which is why it is
+  never written. The generator derives the counts from git + the template JSON, **file-based** because
+  that is what gate #23 cross-checks (`custom` must equal the count of `sections/*.liquid` added since
+  `base`) — instance-based counting would have produced 28 and tripped `custom-count-mismatch`.
+  `main-*` drivers are excluded from the reuse denominator per protocol §Targets.
+  **It deliberately does NOT emit `Custom split {library, scratch}` or any `blueprint:` justification** —
+  those are authorship history that is not in the repo, and a fabricated value would let a build pass
+  onyx Audit 7 on invented numbers, indistinguishable from a real pass. They are emitted as a TODO
+  checklist instead, so the map is **incomplete by design** and the gate blocks until a human finishes it.
+  Also refuses to overwrite an existing map without `--force`.
+  *Proof (real store, round trip):* on cravinbyandy it derived
+  `reused 0 · configured 4 · extended 2 · custom 16`; feeding that generated map to gate #23 under
+  `REUSE_MAP_ENFORCE=1` gives **BLOCK `reuse-map.custom-split-missing`** and *no*
+  `custom-count-mismatch` — proving the derived custom=16 matches the 16 real files. Appending the two
+  human fields flips the same map to **PASS**. New fixture `__fixtures__/reuse-map-generate/` = 22
+  assertions, incl. case (e) which fails if the generator ever emits either judgement field, and case
+  (f) which pins the Counts line against gate #23's own regex. Toolkit **82/82**.
+  *Found while generating:* `gifting-occasions.liquid` is added since base but referenced by **no**
+  template — dead weight no render-time gate can see (logged as CB-8).
 - [ ] **DOC-1 · Seed the missing build artifacts in cravinbyandy** (`docs/discovery/goals.json`,
   `docs/design/brand-direction.md`) so gates #0.4/#0.5 stop failing on absence. `status: open`
   Derive ONLY from what already exists in the repo; never invent client goals — flag what needs Yash.
@@ -196,6 +205,11 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `assets/section-image-banner.css:57`, plus the abandoned `image-banner` customisation. `status: open`
 - [ ] **CB-6 · 38 locale `body_font_weight` translation errors** — acknowledged, blamed on "an external
   change", never fixed. `status: open`
+- [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned** — added since `base` but referenced by
+  no template or section group. `status: open` Dead weight that no render-time gate can see (nothing
+  renders it, so #14/#18/#46 never look at it) while it still counts toward the custom total. Either
+  wire it into the gifting template or delete it. Surfaced by `generate-reuse-map.mjs`. *Done when:*
+  the generator reports 0 orphaned sections on cravinbyandy.
 - [ ] **CB-7 · 22 uncommitted regenerated gate-reports** in cravinbyandy. `status: open` Decide the
   convention (commit as evidence vs ignore) and apply it once.
 
