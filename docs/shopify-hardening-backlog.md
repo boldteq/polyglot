@@ -846,15 +846,27 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   diff-scoped) and pins all of it. `editability` is consequently removed from stack-coherence's
   `EXEMPT_STATIC` ledger — recorded there as *"node-fixture not tractable"*, which this disproves; **the
   guard itself caught the stale exemption.** editability **147 → 103**.
-  **Remaining 103:** `1.3` **64** hex/rgb with no exact token → the same brand call as CB-3's colour
-  half; `1.1` **36** hardcoded English in render output → section settings / translation keys (real dev
-  work, no decision needed); `1.2` **1** genuine hardcoded CDN `url()` in `.locations__card::after`;
-  `1.4` **2**.
+  **Round 3 (client `42e3b29`) — `editability.1.1` 36 → 0.** 40 hardcoded strings moved to translation
+  keys across 9 sections: catering-enquiry's 11 field labels + 7 placeholders, 21 `aria-label`s
+  (Close / Prev+Next / Menu / Primary / Services / Instagram / WhatsApp / Linktree / Swiggy / Zomato),
+  "Ideal For" and 2 "Read more".
+  **Keys, not settings — on doctrine, not preference:** anti-overengineering **Rule 2 caps a section at
+  ≤15 functional settings** and `catering-enquiry` already carries 10; its 18 strings alone would have
+  taken it to 28 and required a waiver. Dawn itself uses translation keys for form labels.
+  **The rendered text is unchanged** — every key's value is the exact original string.
+  **The propagation IS the job:** adding the keys to `en.default` alone sent theme-check
+  `MatchingTranslations` **0 → 540 errors** — trading 14 editability blockers for 540 lint blockers,
+  strictly worse. All **30** storefront locales now carry them (`setdefault`, so a real translation is
+  never overwritten) and theme-check is back to **0**. Same honesty caveat as the schema keys: English
+  placeholders in the non-English locales, not translations; a native pass is owed if a locale is enabled.
+  **Remaining 67:** `1.3` **64** hex/rgb with no exact token → the same brand call as CB-3's colour half;
+  `1.2` **1** (see CB-9a); `1.4` **2**.
+  Totals: **816 → 507**.
   **CB-9a · the 1 real image URL** — `status: blocked-by human` (small). Making it merchant-editable
   means guessing the `shopify://` file handle for `Frame_2147240171.png`; a wrong guess **blanks the
   texture**, and it is a decorative `::after` background nobody can verify without a preview. Confirm
   the handle (or give a staging URL) and it is a 5-minute change.
-  Totals: **816 → 543** across CB-1/CB-2/CB-4/CB-9.
+  
 
 - [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned.** `status: blocked-by human`
   Confirmed: `templates/page.gifting.json` renders `slideshow, feature-story, marquee, about-cafe,
