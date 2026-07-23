@@ -80,5 +80,32 @@ console.log('case (e) non-string values are ignored rather than stringified into
   }
 }
 
+console.log('\nz-index layers (CB-4) — a named layer instead of an escalation war')
+{
+  // cravinbyandy shipped stylesheets all bidding 9999 — the classic "modal opens behind the other
+  // modal" latent bug. Named layers make stacking a design decision recorded in ONE place.
+  const { css } = gen({ typography: { allowed_px: [16, 32] }, spacing: { scale: [8, 16] } })
+  // NB bind the regex to a const first — a statement STARTING with a regex literal parses as division
+  const hasModal = /--ds-z-modal:\s*2000/
+  hasModal.test(css) ? ok('a default layer scale ships even with no z_index in the contract')
+    : bad('no default z layers emitted')
+  // the skip link is deliberately the TOP layer: an a11y skip link a modal can cover is useless,
+  // so 9999 there is CORRECT — it just has to be named rather than an ad-hoc bid.
+  const hasSkip = /--ds-z-skip-link:\s*9999/
+  hasSkip.test(css) ? ok('skip-link is the top named layer, above modal')
+    : bad('skip-link layer missing')
+  const modal = Number((css.match(/--ds-z-modal:\s*(\d+)/) || [])[1])
+  const skip = Number((css.match(/--ds-z-skip-link:\s*(\d+)/) || [])[1])
+  skip > modal ? ok('skip-link outranks modal (an unreachable skip link is an a11y defect)')
+    : bad(`skip=${skip} modal=${modal}`)
+
+  // an explicit z_index in the contract must WIN — the ladder is the store's decision, not ours
+  const { css: custom } = gen({ typography: { allowed_px: [16] }, spacing: { scale: [8] }, z_index: { base: 1, modal: 42 } })
+  const has42 = /--ds-z-modal:\s*42/
+  const hasToast = /--ds-z-toast/
+  has42.test(custom) && !hasToast.test(custom)
+    ? ok('an explicit z_index contract overrides the default set') : bad('contract z_index was ignored')
+}
+
 console.log(failures === 0 ? '\nds-cascade-color: ALL CASES PASS' : `\nds-cascade-color: ${failures} FAILURE(S)`)
 process.exit(failures === 0 ? 0 : 1)
