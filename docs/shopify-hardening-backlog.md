@@ -833,11 +833,28 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
     `editability.1.3` findings was **wrong** — those colours have no exact token, the same
     design-decision class as the 52 left in CSS. Real coverage gap, closed for future builds; it does
     not move this store's number.
-  **Remaining 147, and what each actually needs:** `1.3` **74** hex/rgb with no exact token → the same
-  call as CB-3's colour half (a brand decision, not mechanical); `1.2` **45** image URLs hardcoded in
-  `templates/*.json` (22 in `index.json`) → merchant-editable image settings, real dev work;
-  `1.1` **36** hardcoded English in render output → section settings or translation keys, real dev work.
-  Totals: **816 → 587** across CB-1/CB-2/CB-4/CB-9.
+  **Round 2 (`0e90f6a5`) — a THIRD false-BLOCK class in the same gate, 44 findings.**
+  `shopify://shop_images/x.png` is **exactly what the theme editor writes when a merchant picks an
+  image** — it is the editable form, the thing the gate is asking for, and it was being reported as a
+  hardcoded URL. The pattern caught it only because its optional-protocol branch `(https?:)?//` matches
+  the `//shop_images/...` tail. **44 of the 45** `1.2` findings were merchant-picked values; the 1 real
+  one (a CDN `url()` in a stylesheet) still blocks, fixture-verified so the exclusion did not gut it.
+  **The gate had NO fixture** and three defects surfaced in it this week — the blockers/warnings slot
+  mix-up (caught pre-ship), grepping the generated cascade, and this. All three are **false BLOCKS**,
+  which are as damaging as false passes because they train the team to wave the gate through.
+  `__fixtures__/editability` now drives the bash gate from node against a real git repo (it is
+  diff-scoped) and pins all of it. `editability` is consequently removed from stack-coherence's
+  `EXEMPT_STATIC` ledger — recorded there as *"node-fixture not tractable"*, which this disproves; **the
+  guard itself caught the stale exemption.** editability **147 → 103**.
+  **Remaining 103:** `1.3` **64** hex/rgb with no exact token → the same brand call as CB-3's colour
+  half; `1.1` **36** hardcoded English in render output → section settings / translation keys (real dev
+  work, no decision needed); `1.2` **1** genuine hardcoded CDN `url()` in `.locations__card::after`;
+  `1.4` **2**.
+  **CB-9a · the 1 real image URL** — `status: blocked-by human` (small). Making it merchant-editable
+  means guessing the `shopify://` file handle for `Frame_2147240171.png`; a wrong guess **blanks the
+  texture**, and it is a decorative `::after` background nobody can verify without a preview. Confirm
+  the handle (or give a staging URL) and it is a 5-minute change.
+  Totals: **816 → 543** across CB-1/CB-2/CB-4/CB-9.
 
 - [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned.** `status: blocked-by human`
   Confirmed: `templates/page.gifting.json` renders `slideshow, feature-story, marquee, about-cafe,
