@@ -233,7 +233,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   builds appearing under "unlinked" was pure duplication.
   *Proof:* on real state the two builds move `unlinkedBuilds 2 → 0`, `archivedBuilds 2`; the test now
   also asserts no build is counted as both, and that an archived build is never linked to an active
-  project. `workspace.test.mjs` 36/36 · **`npm test` 211/211** · toolkit **82/82**.
+  project. `workspace.test.mjs` 36/36 · **`npm test` 211/211** · toolkit **82/82**. Commit `5b7c6056`.
 - [x] **HYG-2 · Swept the repo for the HYG-1 bug class — 11 real sites fixed + a permanent guard.**
   `status: done` Scanned `scripts/`, `src/`, `theme-toolkit/scripts/` (280 files) for generated content
   passed to `String.replace` as a **string** replacement.
