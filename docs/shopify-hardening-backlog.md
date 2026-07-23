@@ -383,7 +383,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `rgba(44,61,30,0.52)` …) — design decisions, correctly refused. New `snap-colors` fixture (34
   assertions) + `design-tokens` cases (d)/(e). A bug caught on real data: a naive `[^)]*` truncated
   `rgb(var(--color-foreground))` into 194 phantom "literals"; now nested-paren aware and var-bound
-  values are skipped. Toolkit **84/84** · `npm test` **225/225**.
+  values are skipped. Toolkit **84/84** · `npm test` **225/225**. Commit `7b629a53`.
   **Remaining:** run the three steps in the client repo (`generate-design-system-css.mjs` → add the
   `stylesheet_tag` to `layout/theme.liquid` → `snap-colors-to-tokens.mjs --apply`) and commit there.
   Held back because it edits ~150 sites across a live client theme — worth one visual check on staging
