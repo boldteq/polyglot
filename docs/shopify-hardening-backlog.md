@@ -483,7 +483,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   (2) three "failures" were my own test error, not gate bugs: `meta-description` and `img-alt` are
   scoped to pdp/collection/article via `APPLY`, and I had aimed them at `home`. That scoping is now
   pinned by its own assertion, since if it ever silently widened, every store's home page would start
-  failing the SEO gate.
+  failing the SEO gate. Commit `ca61683a`.
   *Remaining 21:* `gate-seo` 8 (variant/collection canonical forms, product JSON-LD, lazy-loading and
   image dimensions — all need richer served pages), `gate-functional` 5, `gate-conversion` 4, and the
   browser-dependent `lighthouse`/`axe`, which need the Playwright already vendored for Lens.
