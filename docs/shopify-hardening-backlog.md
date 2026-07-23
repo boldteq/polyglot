@@ -543,7 +543,20 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 
-- [~] **CB-1 · Colour swap MECHANIZED + a gate-stack contradiction fixed. 201 → 51 measured.**
+- [x] **CB-1 · APPLIED — 146 literals bound to brand tokens.** `status: done` (client `870ffe9`)
+  **My "needs a staging URL" caveat was too cautious and is withdrawn.** The swap is **identity-only by
+  construction**: a literal is replaced solely when byte-identical to the token's value
+  (`#2c3d1e` → `--ds-color-dark-green: #2C3D1E`), so the rendered colour *cannot* change. Verified
+  independently: 14 `--ds-*` vars used, 40 defined, **0 undefined** — no declaration can be invalidated.
+  The real blocker was never a preview URL; it was the **precondition chain**: `snap-colors-to-tokens`
+  refuses to apply until the cascade is generated AND wired into a layout, because swapping to
+  `var(--ds-color-*)` in a theme that never loads it **deletes** the colour. Ran the chain: `ds:css` →
+  `theme.liquid` loads it before section styles → 146 swaps across 16 stylesheets.
+  **52 distinct literals deliberately left alone** (`#405034`, `#ffedf1`, `rgba(255,255,255,0.55)`, …):
+  which brand colour was meant is a *design decision*, not a mechanical substitution, and guessing would
+  silently change what the client sees.
+  *Proof:* static blockers **816 → 669**, matching the swap count. (Superseded framing below.)
+- [~] **CB-1-ORIG · Colour swap MECHANIZED + a gate-stack contradiction fixed. 201 → 51 measured.**
   `status: open` (tooling done; application to the client repo is the remaining step)
   Three things had to be true before a single literal could be safely replaced, and none of them were:
   **(1) There was no brand token to bind to.** The cascade generator emitted type/spacing/weight/font
@@ -735,7 +748,19 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
     files, `editability` still **BLOCKS with 282**, and no gate raises a spurious N/A.
   **Final: 33 static gates — 19 declare N/A, 3 declare pending, 11 absence-checks, 0 VACUOUS.**
 
-- [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
+- [x] **CB-4 · z-index war — DONE.** `status: done` (`2853ac7c` toolkit · client `7d32307`)
+  Three stylesheets all bid `9999` — the classic *"modal opens behind the other modal"* latent bug.
+  **Root cause: there was no layer scale to bind to**, so 9999 was the only available answer.
+  `generate-design-system-css` now emits `--ds-z-*` (base 1 · dropdown 10 · sticky 100 · drawer 1000 ·
+  modal 2000 · toast 3000 · **skip-link 9999**); an explicit `z_index` in `design-system.json` overrides
+  it — the ladder is the store's decision, not the toolkit's.
+  **The skip link keeps 9999 on purpose:** an accessibility skip link a modal can cover is useless, so
+  the number was always right — it just had to be a *named* layer rather than an ad-hoc bid. A fixture
+  asserts `skip-link > modal` so a future tidy-up cannot quietly demote it. **This is why the fix was
+  not "replace every 9999"** — one of the three was correct.
+  Client: the two custom modals → `var(--ds-z-modal, 2000)`, skip link → `var(--ds-z-skip-link, 9999)`.
+  Literal fallbacks are intentional (an unloaded cascade must not collapse stacking to `auto`).
+  *Proof:* rule-pack #43 **BLOCK → PASS**, no raw 9999 left in `assets/`. Toolkit **96/96**.
   Introduce a layer scale and migrate the 4 call sites.
 - [x] **CB-5 · Dead `hero-seasonal` references removed.** `status: done`
   `assets/reveal.css:58` carried `h1.hero-seasonal__title, h2.hero-seasonal__title,` for a section that
