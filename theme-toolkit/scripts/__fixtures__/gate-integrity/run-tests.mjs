@@ -2,7 +2,7 @@
 // PURE: exercises auditReports() against synthetic gate reports. Proves the cravinbyandy failure state
 // (8 gates pass:true while their scan was skipped) BLOCKS, that genuinely-N/A gates only WARN, and
 // that a CHANGES.md waiver exempts a named gate.
-import { auditReports, skippedMarker } from '../../check-gate-integrity.mjs'
+import { auditReports, skippedMarker, emptyScan } from '../../check-gate-integrity.mjs'
 
 let failures = 0
 const eqNull = (v, m) => (v === null ? ok(m) : bad(`${m} — got ${JSON.stringify(v)}`))
@@ -91,6 +91,33 @@ console.log('case ENV-2c — NO FALSE POSITIVES on an empty skip list or an hone
   const honest = auditReports([{ name: 'axe', json: { pass: false, blockers: [], warnings: [], evidence: { skipped: 'env' } } }])
   honest.blockers.some(b => b.id === 'integrity.skipped-but-pass') ? bad('an honest pass:false skip was flagged') : ok('skip + pass:false → not flagged')
   eqNull(skippedMarker({ evidence: { skipped: '' } }), 'an empty reason string is not a skip')
+}
+
+console.log('\nvacuous pass — green over an EMPTY scan (QA-7)')
+{
+  // "no findings" and "nothing was looked at" are different facts wearing the same green tick.
+  // Several gates already RECORD the count (static-a11y writes `scanned: 0`) — nothing read it.
+  emptyScan({ evidence: { scanned: 0 } }) === 'scanned' ? ok('an explicit scanned:0 is detected') : bad('scanned:0 missed')
+  emptyScan({ evidence: { scanned: 12 } }) === null ? ok('a non-zero scan is not flagged') : bad('non-zero scan flagged')
+  // absence of the field is UNKNOWN, never "fine" — judging gates that do not report a size would
+  // invent a fact, which is the failure mode this whole workstream exists to stop
+  emptyScan({ evidence: {} }) === null && emptyScan({}) === null && emptyScan(null) === null
+    ? ok('a gate that reports no scan size is left alone (unknown != fine)') : bad('missing field mishandled')
+  emptyScan({ evidence: { filesScanned: 0 } }) === 'filesScanned' ? ok('alternate field names are honoured') : bad('filesScanned missed')
+
+  const r = auditReports([{ name: 'static-a11y', json: { gate: 'static-a11y', pass: true, evidence: { scanned: 0 }, blockers: [], warnings: [] } }])
+  r.blockers.some(b => b.id === 'integrity.vacuous-pass')
+    ? ok('pass + scanned:0 + no declaration → integrity.vacuous-pass') : bad(`got ${JSON.stringify(r.blockers.map(b => b.id))}`)
+
+  // ...but a gate that SAYS it did not run, or says it was N/A, is already honest — not vacuous too
+  const skipped = auditReports([{ name: 'x', json: { gate: 'x', pass: true, evidence: { scanned: 0, skipped: 'env' }, blockers: [], warnings: [] } }])
+  !skipped.blockers.some(b => b.id === 'integrity.vacuous-pass') ? ok('a declared skip is not double-reported as vacuous') : bad('skip double-reported')
+  const na = auditReports([{ name: 'y', json: { gate: 'y', pass: true, evidence: { scanned: 0 }, blockers: [], warnings: [{ id: 'y.n-a-no-input' }] } }])
+  !na.blockers.some(b => b.id === 'integrity.vacuous-pass') ? ok('a declared N/A is not reported as vacuous') : bad('N/A double-reported')
+
+  // and a real, populated pass must stay clean
+  const good = auditReports([{ name: 'z', json: { gate: 'z', pass: true, evidence: { scanned: 40 }, blockers: [], warnings: [] } }])
+  good.blockers.length === 0 ? ok('a gate that actually scanned raises nothing') : bad(`false block: ${good.blockers.map(b => b.id)}`)
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} FAILED`)

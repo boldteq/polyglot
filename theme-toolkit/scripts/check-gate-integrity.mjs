@@ -38,6 +38,22 @@ const NA_RE = /\.n-a-/
 // Handles both shapes: the legacy top-level `skipped` and `evidence.skipped`, which is what every
 // gate in this toolkit really writes. An empty array/string means "nothing was skipped" (the imagery
 // gate emits `skipped: []` on a clean merge) and must NOT be read as a skip.
+// A gate that reports pass:true having examined ZERO files proved nothing — "no findings" and
+// "nothing was looked at" are different facts wearing the same green tick. Several gates already
+// RECORD the count (static-a11y writes `scanned: 0`); nothing read it, which is the same
+// evidence-nobody-reads shape as the report-name drift. Only gates that actually report a scan size
+// are judged here — absence of the field means unknown, never "fine".
+//
+// Returns the count when it is an explicit zero, else null.
+export function emptyScan(json) {
+  const ev = json?.evidence
+  if (!ev || typeof ev !== 'object') return null
+  for (const key of ['scanned', 'filesScanned', 'files_scanned', 'scannedFiles']) {
+    if (typeof ev[key] === 'number') return ev[key] === 0 ? key : null
+  }
+  return null
+}
+
 export function skippedMarker(json) {
   const val = json?.evidence?.skipped !== undefined ? json.evidence.skipped : json?.skipped
   if (val === undefined || val === null || val === false) return null
@@ -98,6 +114,12 @@ export function auditReports(reports, waived = new Set()) {
     if (skipMark && json.pass === true && !isWaived) {
       add(blockers, 'integrity.skipped-but-pass', name,
         `gate "${name}" reports pass:true but did not actually run (${skipMark}) — it proved nothing. Run it, or waive "${name}" in CHANGES.md ## Waivers.`)
+    }
+    // pass + an explicitly-zero scan + no skip/N-A declaration = a green tick over an empty scan
+    const emptyKey = emptyScan(json)
+    if (json.pass === true && emptyKey && !skipMark && !naMarks.length) {
+      add(blockers, 'integrity.vacuous-pass', name,
+        `gate "${name}" reports pass:true but ${emptyKey}=0 — it examined nothing, so its green tick is not evidence. Fix the scope (a base tag / an empty changed-file set), or have the gate declare a skip or an *.n-a-* warning.`)
     }
     if (naMarks.length) {
       add(warnings, 'integrity.gate-not-applicable', name,
