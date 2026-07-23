@@ -610,20 +610,22 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   merchant-editability gaps. Those need `{{ ... | t }}` keys, `image_url`/settings-backed media, and
   bound alt text — real per-section work, not a sweep.
 - [ ] **CB-3 · THE LADDER — now a ratifiable proposal, not a blank question.** `status: blocked-by human`
-  **The data (measured 2026-07-23, after CB-1/CB-2 cleared the noise):** 378 of the 607 remaining
-  blockers are this one decision — `ds.spacing` **266** + `ds.font-size` **112**.
-  · Current type ladder `[16,18,20,22,51,64]`; actual off-scale usage, px×count:
-    `14×22  15×21  32×10  12×8  13×8  30×7  17×6  19×6  24×4  48×4  10×3  26×3  34×3  28×2` (+ singles).
-  · Current spacing scale `[4,8,12,16,24,32,40,48,60,64,80]`; actual off-scale usage:
-    `20×57  10×46  30×19  6×17  15×14  14×13  18×13  50×13  22×9  36×8  28×7  11×7  5×10 …`
-  **The finding that decides it: the theme was built on a 10-based rhythm** (10/20/30/50/70/90 dominate)
-  while the contract encodes a 4/8 grid. Two competing rhythms — that is the actual defect, not 266
-  stray numbers. Just adding **10, 20, 30** to the scale clears **122 of 266 (46%)**.
-  **The call needed (a brand decision, which is why it stays `blocked-by human`):**
-  · **Option A — adopt reality (recommended).** Canonical spacing `4, 8, 10, 16, 20, 24, 30, 40, 48, 50,
-    60, 80`; type `12, 14, 16, 18, 20, 24, 32, 48, 64`. Snaps only the stragglers (~2/3/5/11/13/…),
+  **The data — RECOMPUTED after CB-10/CB-11 (the earlier figures were stock-inflated and are
+  superseded).** Scope is now line-granular, so every number below is drift **we** introduced:
+  · `ds.font-size` **90**: `12×1  12.5×1  13×7  14×14  15×18  17×6  19×6  21×1  23×1  24×4  26×3
+    28×2  30×7  32×10  34×3  42×1  48×4  60×1`
+  · `ds.spacing` **167**: `5×3  6×15  10×25  11×7  14×13  18×13  20×40  22×7  26×4  28×6  30×9
+    36×7  44×2  56×3  72×2` (+ singles)
+  · `consistency` reports **23** distinct font-sizes (was 25 — stock Dawn's 9 and 10 no longer counted
+    against us) and 9 radii.
+  **The finding that decides it still holds: the theme was built on a 10-based rhythm** (20×40, 10×25,
+  30×9) while the contract encodes a 4/8 grid. Two competing rhythms — that is the defect, not 167
+  stray numbers. Adding **10, 20, 30** alone clears **74 of 167 (44%)**.
+  **The call needed (a brand decision, hence `blocked-by human`):**
+  · **Option A — adopt reality (recommended).** Spacing `4, 8, 10, 16, 20, 24, 30, 40, 48, 60, 80`;
+    type `12, 14, 16, 18, 20, 24, 32, 48, 64`. Snaps only the stragglers (5/11/22/26/36/44/56/72…),
     smallest visual delta, clears the bulk immediately.
-  · **Option B — enforce the 8-point grid.** Keep the current scale and snap ~122 values by ±2px.
+  · **Option B — enforce the 8-point grid.** Keep the current scale and snap ~74 values by ±2px.
     Cleaner system, but a real visual change across most sections — wants a staging look first.
   Say A or B and I'll apply it, snap the CSS and re-gate; the tooling is all in place.
   Needs the provisional type/spacing ladder ratified (drape + Yash) before the sweep.
@@ -886,6 +888,19 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   team-gallery 28→28, …); only stock files dropped. Fixture pins all three directions: one edited line
   → **one** finding; a file absent at base → scanned in **full**; an untouched stock file → **nothing**.
   `base.css` **107 → 0**, design-tokens **437 → 319**, static blockers **507 → 389**. Toolkit **97/97**.
+
+- [x] **CB-11 · Variety was counted from the theme base's vocabulary, not ours.** `status: done`
+  (`38eaf9d0` · client `78302d0`) CB-10's lens applied to the next gate that still blocks. Same defect:
+  file-granular scope meant a stock stylesheet touched on ONE line contributed its **entire** type/
+  radius vocabulary to a *"store-wide variety"* count the team never chose — stock `base.css` alone
+  contributed font-sizes 9/10/12/13/14/15/16/18. Reported variety **25 → 23** once only our lines count
+  (9 and 10 exist nowhere in our code).
+  **It does not clear the blocker, and should not:** 23 distinct font-sizes is genuinely the chaos CB-3
+  exists to settle. The number is now attributable to code the team actually wrote.
+  **A bug caught before it shipped:** the first cut referenced `scopeSource`, which this gate never
+  defined — `node --check` passes on an undefined identifier, so it would have thrown at runtime on
+  every real store. Fixture pins both directions (stock file touched on one line → only that value;
+  file absent at base → full vocabulary). Toolkit **97/97**.
 
 - [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned.** `status: blocked-by human`
   Confirmed: `templates/page.gifting.json` renders `slideshow, feature-story, marquee, about-cafe,
