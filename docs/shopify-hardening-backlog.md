@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**91/91** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**92/92** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -493,10 +493,27 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   · `gate-seo` **8 → 5**: Product JSON-LD missing and duplicated (a PDP with none loses rich results;
     two makes Google pick one at random — both silent revenue problems), and `img-dimensions`. Plus the
     correct case: exactly one Product block raises neither. Commit `d23b987e`.
-  *Remaining 14:* `gate-functional` 5 and `gate-seo` 5 (variant/collection canonical URL forms,
-  `robots-txt`, gallery lazy-loading — these need multi-URL and header-level serving),
-  `check-section-cohesion` 3, and the browser-dependent `lighthouse`/`axe`, which should reuse the
-  Playwright already vendored for Lens.
+  **Round 3 — URL untested 14 → 9, and it caught a real dead guard.**
+  · `gate-functional` **5 → 0**, driven by the vendored Lens chromium against a local `node:http`
+    storefront — so "needs a browser" turned out not to mean "needs a real store" either.
+  · **A blocker that could never fire.** `cartDrawerCheck`'s visibility test ended in
+    `el.offsetParent !== null`, and `offsetParent` is null for **every** `position: fixed` element. A
+    cart drawer is fixed in essentially every theme, so `found` was permanently false and BOTH
+    `fn.cart-drawer-no-checkout` and `fn.cart-drawer-checkout-cutoff` were unreachable: a drawer with
+    no Checkout button, or with Checkout pushed below the fold on mobile, passed this gate every time.
+    Now a computed-style check (the >40x80 rect test already excludes `display:none`). Proof: same
+    page, old code → 0 blockers; fixed → the blocker at all 6 viewports. **This is the third time the
+    audit has found a guard that looks present and cannot fire** — the class is worth its own sweep.
+  · The fixture only exercises the gate if the storefront behaves like a real AJAX theme: incrementing
+    `/cart.js`, `/products/<h>.js` variants, `/cart/add.js`, and a drawer that signals open with an
+    `.active` class. A full-page-POST form navigates off the PDP before the drawer runs; a drawer that
+    only flips `display` is invisible to gate-axe's `assertOpen`. Both noted inline.
+  · A 500-with-a-body is deliberately **not** `fn.load` — it renders, so it lands as a content problem.
+    The case uses a connection reset. Commit `0e631277`.
+  *Remaining 9:* `gate-seo` 5 (variant/collection canonical URL forms, `robots-txt`, gallery
+  lazy-loading — these need multi-URL and header-level serving), `check-section-cohesion` 3, and the
+  browser-dependent `lighthouse`/`axe`. The Playwright pattern from `functional-url` is now the
+  template for all of them.
 - [ ] **QA-2-ORIG · (superseded framing) 28 URL-gate blocking checks unproven.** `status: open`
   What is left after QA-1 took static coverage to 0. `gate-seo` (15), `gate-functional` (6),
   `gate-conversion` (4) and friends only run against `THEME_PREVIEW_URL`, so they have never been
