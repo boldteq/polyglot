@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**89/89** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**90/90** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -469,7 +469,25 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   Toolkit **89/89** · `npm test` **225/225**. Commit `88b482c3`.
   *Remaining: 28 URL-gate blockers* — see QA-2.
 
-- [ ] **QA-2 · 28 URL-gate blocking checks remain unproven.** `status: open`
+- [~] **QA-2 · URL gates ARE fixturable — 28 → 21, and the "needs a live page" excuse is gone.**
+  `status: open` (approach proven on gate-seo; the rest is repetition)
+  The premise that URL gates need a real storefront is **false**. `gate-seo` talks plain `fetch` (no
+  browser) and `resolvePages` discovers handles from `/products.json`, `/collections.json` and
+  `sitemap.xml` — so a ~40-line `node:http` server IS a storefront as far as the gate is concerned.
+  **`gate-seo` 15/16 → 8/16 unproven**, 15 assertions against a served page: title missing/too long,
+  meta-description missing/short, canonical count 0 and 2, `noindex`, social meta, `<h1>` count 0 and 2,
+  unparseable JSON-LD, missing `alt` — plus the clean page raising **zero** blockers.
+  **Two things worth keeping:** (1) the fixture must use async `spawn`, **not `spawnSync`** — the
+  storefront server lives in the same process, and `spawnSync` blocks the event loop, so the server can
+  never answer and both sides deadlock until timeout. That cost an hour and the gate was innocent.
+  (2) three "failures" were my own test error, not gate bugs: `meta-description` and `img-alt` are
+  scoped to pdp/collection/article via `APPLY`, and I had aimed them at `home`. That scoping is now
+  pinned by its own assertion, since if it ever silently widened, every store's home page would start
+  failing the SEO gate.
+  *Remaining 21:* `gate-seo` 8 (variant/collection canonical forms, product JSON-LD, lazy-loading and
+  image dimensions — all need richer served pages), `gate-functional` 5, `gate-conversion` 4, and the
+  browser-dependent `lighthouse`/`axe`, which need the Playwright already vendored for Lens.
+- [ ] **QA-2-ORIG · (superseded framing) 28 URL-gate blocking checks unproven.** `status: open`
   What is left after QA-1 took static coverage to 0. `gate-seo` (15), `gate-functional` (6),
   `gate-conversion` (4) and friends only run against `THEME_PREVIEW_URL`, so they have never been
   exercised in a fixture. They block publishes, so the same argument applies — an unproven blocker is
