@@ -104,7 +104,11 @@ grep -nHE '(aria-label|placeholder|title)="[A-Za-z][^"{]*"' $FILES | collect 1.1
 
 # ── 1.2 — Image URLs not from settings ────────────────────────────────────
 grep -nHE '(https?:)?//[^"'"'"' )]+\.(png|jpe?g|gif|webp|avif|svg)|cdn\.shopify\.com/s/files' $FILES \
-| grep -vE 'shopifycloud|image_url|img_url|asset_url|file_url' | collect 1.2
+| grep -vE 'shopifycloud|image_url|img_url|asset_url|file_url|shopify://' | collect 1.2
+# `shopify://shop_images/x.png` is EXACTLY what the theme editor writes when a merchant picks an image
+# via an image_picker setting — it is the editable form, not a hardcoded URL. The pattern above caught it
+# only because its optional-protocol branch matches the `//shop_images/...` tail. 44 of cravinbyandy's 45
+# 1.2 findings were merchant-picked values (2026-07-23); the 1 real one was a CDN url() in a stylesheet.
 
 # ── 1.3 — Hex/rgb colors where a scheme var exists (diff + lines only) ────
 for f in $FILES; do case "$f" in sections/*|snippets/*|assets/*|layout/*)

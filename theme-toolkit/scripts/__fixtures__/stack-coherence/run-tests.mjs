@@ -27,7 +27,6 @@ const fail = (m) => { console.log(`  FAIL  ${m}`); failures += 1 }
 // Each MUST carry a reason. Remove an entry the moment its fixture lands (stale-exemption enforces this).
 const EXEMPT_STATIC = new Map([
   ['code-lint', 'proxies the Shopify CLI (`shopify theme check`) — no hermetic fixture without the CLI'],
-  ['editability', 'bash grep script — covered by its own greps; node-fixture not tractable'],
 ])
 const EXEMPT_NUMBER = new Set(['library-cards']) // library gate: writeReport gateNumber is null by design
 
