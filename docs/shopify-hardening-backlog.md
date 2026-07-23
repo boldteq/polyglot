@@ -399,7 +399,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   *Proof:* 3 new fixture cases (real shape blocked, legacy shape still blocked, no false positives) —
   the first fails against the pre-fix code by construction, since `evidence.skipped` was never read. On
   the real store gate #45 stays **PASS — 34 reports audited, 0 blockers, 5 N/A warnings**, so the two
-  genuine skips are not false-flagged. Toolkit **85/85** · `npm test` **225/225**.
+  genuine skips are not false-flagged. Toolkit **85/85** · `npm test` **225/225**. Commit `c75ca7fa`.
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 
