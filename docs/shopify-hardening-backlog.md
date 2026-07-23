@@ -451,7 +451,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
     and `scope-unresolved-strict` — the last paired with a **dev-grade** case proving the same state
     warns rather than blocks, since a false block there would stall every local run. That check is the
     direct descendant of the cravinbyandy failure that started this workstream.
-  Toolkit **89/89** · `npm test` **225/225**.
+  Toolkit **89/89** · `npm test` **225/225**. Commit `9fbcad2f`.
   *Next:* the last 11 static are all Lens-artifact gates — `check-visual-truth` (5) and
   `gate-class-d-visual` (5) need capture/judge JSON fixtures, plus 1 stray. The 29 URL-gate ones need a
   live page and are a separate problem.
