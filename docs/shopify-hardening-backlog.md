@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**95/95** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**96/96** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -680,6 +680,31 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   *Proof:* `preflight-drift` fixture (9 assertions, incl. unreachable-source-is-UNKNOWN). Client repo:
   40/40 gate scripts, version matched, **preflight READY**, secret-scan + orchestration BLOCK → PASS.
   Toolkit **95/95**. Commits `8bb3dda1`, `4314b3dc`.
+
+- [~] **QA-7 · 16 static gates report PASS having examined nothing.** `status: open`
+  Ran all **33** static gates against a theme with no sections, assets or templates — with `base`
+  resolving fine, so this is **not** the known missing-tag case; it is an empty **scan** that never says
+  so. Result: **7 declare N/A** (so the convention already exists and is followed by some),
+  **9 are absence-checks**, **1 writes no report** (`editability`), and **16 report a bare PASS** —
+  every one of which `theme-gates --verify --require-full` treats as assurance before publish.
+  *"No findings"* and *"nothing was looked at"* are different facts wearing the same green tick. Several
+  gates already **record** the count — `static-a11y` writes `scanned: 0` — and nothing read it: the same
+  evidence-nobody-reads shape as QA-3's report-name drift.
+  **Shipped:** gate #45 blocks on `integrity.vacuous-pass` when a report is `pass:true` with an
+  explicitly-zero scan and declares neither a skip nor an `*.n-a-*`. Absence of the field is **UNKNOWN**,
+  never "fine" — judging gates that report no size would invent a fact. `audit-vacuous-pass.mjs` is the
+  sibling of `audit-unproven-guards` (that one: *has this blocker ever fired?*; this one: *does this
+  green tick mean anything?*), with four verdicts rather than pass/fail because PASS on zero files is
+  **not** automatically a bug — `ABSENCE_CHECKS` is the record of that judgement so a new gate cannot
+  quietly join the vacuous set.
+  *Proof:* on the empty theme, `layout` / `mobile` / `static-a11y` (the three reporting a size today)
+  now **BLOCK** instead of passing green. Toolkit **96/96**. Commit `84a3c1fb`.
+  **Remaining (the open part):** 13 of the 16 report no scan size at all, so #45 cannot see them yet —
+  `social-assets` #39, `code-lint` #2, `dead-code` #11, `design-tokens` #8, `consistency` #9,
+  `design-quality` #12, `render-check` #14, `brand-sync` #30, `visual-check` #18, `class-d-visual` #20,
+  `price-binding` #38, `honesty` #13, `rule-pack` #43. Each needs its own call (record a scan size, or
+  justify it into `ABSENCE_CHECKS`) — **gate-by-gate against its own scope logic, not guessed in bulk.**
+  Plus `editability` #10, which wrote **no report at all** on an empty theme and needs its own look.
 
 - [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
   Introduce a layer scale and migrate the 4 call sites.
