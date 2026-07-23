@@ -710,6 +710,39 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `/private/var/folders/…` resolved, so the guard failed, `main()` never ran, and the script **exited 0
   having done nothing**. Now compares realpaths. Toolkit **102/102**.
 
+- [x] **CB-20 · Dogfooded `vendor-toolkit` — it did not survive first contact.** `status: done` (`264ef7bd`)
+  I built it last run and never used it. Using it found **three bugs, one of them shipped by me**:
+  · **`--ref` was refused on a dirty tree**, making the tool's own advice (*"vendor an explicit --ref"*)
+    self-contradictory. `git archive <ref>` reads committed state — the working tree cannot contaminate
+    it — so `--ref` is precisely the safe escape hatch. Refusing it left `--allow-dirty`, which **ships
+    the WIP**, as the only way through: with ongoing concurrent work (the normal state) vendoring was
+    blocked outright. Now only the *implicit* default refuses. **My fixture asserted the wrong behaviour
+    and is corrected.**
+  · **Vendoring was additive only** — a file vendored by the old `cp -R` and since deleted upstream
+    survived forever, so the client kept running a WIP gate while provenance claimed `dirty:false`.
+    *A provenance that lies is worse than none.* It now reconciles and records what it pruned.
+  · **…and the prune immediately ate `package-lock.json`**, which the source gitignores so `git archive`
+    never carries it — breaking the `npm ci --prefix toolkit` the tool itself recommends. `PRESERVE`
+    now protects install state.
+  **Separately, my own audit was shipping a "secret" to clients:** `secret-scan` reported
+  `audit-ownership.mjs` as a leaked private key, because it builds its fixture theme from a literal key
+  block and lives in `scripts/` (vendored everywhere), not `__fixtures__`. The marker is assembled at
+  runtime now — cravinbyandy **BLOCK → PASS**, 0 secrets across 490 files.
+  **Client result (`918c45a`):** toolkit pinned to sha `264ef7b`, `dirty:false`, 16 stale files pruned;
+  **repo-hygiene's 29 blockers gone** (never this store's code); 390 blockers remain and they are
+  genuinely the theme's — design-tokens 319 + editability 67 + consistency 3, i.e. **CB-3**.
+  Toolkit **106/106 in 302s**.
+
+- [ ] **CB-21 · A retired gate's report lingers and inflates every count.** `status: open` (small)
+  `theme-gates` clears `gate-reports/<name>.json` only for gates it is **about to run**, so when a gate
+  leaves the manifest its last report stays on disk forever. cravinbyandy carried a `repo-hygiene.json`
+  from sha `698704a` reporting 29 blockers for a gate that no longer exists; I removed it by hand.
+  Worse, gate **#45 audits every report in the directory**, so a retired gate's stale evidence can be
+  audited as if it were current. Fix: on a full run, prune reports matching no gate in the manifest
+  (never on a partial `--static-only`/`--pages` run, which legitimately leaves other reports untouched).
+  *Not done here because `theme-gates.mjs` is currently modified by the concurrent workstream and I will
+  not edit a contested file.*
+
 - [x] **CB-19 · The suite crossed the 10-minute cap — parallelised, 600s+ → 179s.** `status: done` (`1fb29558`)
   **A suite that cannot be run in one command is a suite people stop running** — the same *"nobody runs
   it"* failure the gates themselves keep hitting, and the reason CB-18's note existed. The stack is

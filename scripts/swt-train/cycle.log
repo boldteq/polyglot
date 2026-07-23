@@ -838,3 +838,10 @@
 [2026-07-23T16:03:33.117Z] cycle 163 distributed → 5210 rules · 14/14 agents trained · 0 gate-gaps
 [2026-07-23T16:03:33.153Z] cycle 163 reindex: FAILED (search stale!) — reindex: 1156 source file(s) · embedder=ollama/nomic-embed-text · store=local · incremental
 
+[2026-07-23T16:03:33.601Z] cycle 163 ✓ +24 FAQs → 6005/6650 (90.3%) · 14/14 agents trained · committed
+[2026-07-23T16:04:42.470Z] SWT training daemon START — interval 0.08333333333333333min · max 200 cycles · 7 slices/cycle · model inherit · at 6005/6650
+[2026-07-23T16:04:42.552Z] cycle 164: slices [motion|account, motion|article, color-contrast|blog, spacing-rhythm|blog, motion|blog, platform-authoring|blog, typography|policy] → generating 49 FAQs (FAQ-6006…)
+[2026-07-23T16:11:46.895Z] cycle 164 verify: kept 18/49 (dropped 31)
+[2026-07-23T16:14:49.855Z] cycle 164 distributed → 5228 rules · 14/14 agents trained · 0 gate-gaps
+[2026-07-23T16:14:49.876Z] cycle 164 reindex: FAILED (search stale!) — reindex: 1156 source file(s) · embedder=ollama/nomic-embed-text · store=local · incremental
+
