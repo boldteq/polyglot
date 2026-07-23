@@ -14,7 +14,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { canonicalColor, tokenMap, snapCss } from '../../snap-colors-to-tokens.mjs'
+import { canonicalColor, tokenMap, snapCss, snapLiquidStyles } from '../../snap-colors-to-tokens.mjs'
 
 const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'snap-colors-to-tokens.mjs')
 let failures = 0
@@ -137,6 +137,41 @@ console.log('case (h) with both preconditions met, --apply writes the swap')
   out.includes('var(--ds-color-body-gray)') ? ok('literal replaced by the token') : bad(`not swapped: ${out}`)
   out.includes('#6C6C6C') ? bad('the literal is still there') : ok('no literal hex remains')
   fs.rmSync(d, { recursive: true, force: true })
+}
+
+console.log('\ninline {% style %} blocks in sections/snippets (editability.1.3)')
+{
+  // assets/*.css was the only thing this tool ever saw, which is why cravinbyandy still had 74
+  // `hex/rgb where a scheme var exists` findings AFTER every stylesheet literal had been bound —
+  // the colours were sitting in inline {% style %} blocks.
+  const T = tokenMap({ color: { dark_green: '#2C3D1E', surface: '#FFFFFF' } })
+
+  const one = snapLiquidStyles('{% style %}\n.a { color: #2c3d1e; }\n{% endstyle %}', T)
+  const boundVar = /var\(--ds-color-dark-green\)/
+  one.swaps.length === 1 && boundVar.test(one.text)
+    ? ok('a literal inside {% style %} is swapped') : bad(`got ${one.swaps.length}: ${one.text}`)
+
+  // {% stylesheet %} (the section-scoped form) too
+  const two = snapLiquidStyles('{% stylesheet %}.b { color: #FFFFFF; }{% endstylesheet %}', T)
+  two.swaps.length === 1 ? ok('{% stylesheet %} blocks are covered') : bad('stylesheet block missed')
+
+  // THE SAFETY RULE: markup OUTSIDE the style block must never be touched — a hex in a Liquid
+  // attribute or in copy is not CSS, and rewriting it would corrupt the template.
+  const outside = '<div data-c="#2c3d1e">#2c3d1e</div>\n{% style %}.c { color: #2c3d1e; }{% endstyle %}\n<p>#2c3d1e</p>'
+  const r3 = snapLiquidStyles(outside, T)
+  const bodyOnly = (r3.text.match(/#2c3d1e/gi) || []).length === 3 && r3.swaps.length === 1
+  bodyOnly ? ok('only the style block is rewritten; surrounding markup is untouched')
+    : bad(`swaps=${r3.swaps.length} remaining=${(r3.text.match(/#2c3d1e/gi) || []).length}`)
+
+  // Liquid interpolation inside a style block is a merchant setting, not a literal — it must survive
+  const interp = snapLiquidStyles('{% style %}.d { color: {{ section.settings.c }}; background: #2c3d1e; }{% endstyle %}', T)
+  const keptInterp = /\{\{ section\.settings\.c \}\}/   // bind first: a statement STARTING with a regex parses as division
+  keptInterp.test(interp.text) && interp.swaps.length === 1
+    ? ok('a merchant-set colour is left alone; the literal beside it still swaps') : bad('interpolation damaged')
+
+  // a file with no style block at all must come back byte-identical
+  const none = '<div class="x">#2c3d1e</div>'
+  snapLiquidStyles(none, T).text === none ? ok('a file with no style block is returned unchanged') : bad('file without a style block was modified')
 }
 
 console.log(failures === 0 ? '\nsnap-colors: ALL CASES PASS' : `\nsnap-colors: ${failures} FAILURE(S)`)

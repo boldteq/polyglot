@@ -77,31 +77,34 @@ console.log('case (h) unresolvable scope at publish grade → ds.scope-unresolve
   dev.code === 0 ? pass('dev grade: same state warns, does not block') : fail(`dev grade blocked (exit ${dev.code})`)
 }
 
+// shared by the spacing-scope and generated-file cases below
+const tmp = (css) => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'dsx-'))
+  fs.mkdirSync(path.join(d, 'docs', 'design'), { recursive: true })
+  fs.mkdirSync(path.join(d, 'sections'), { recursive: true })
+  fs.writeFileSync(path.join(d, 'docs', 'design', 'design-system.json'),
+    JSON.stringify({ typography: { allowed_px: [16, 32] }, spacing: { scale: [8, 16, 24] } }))
+  // scope comes from the reuse map (same shape the sibling fixture dirs use) — with no base ref and
+  // no map the gate correctly declines to scan, which would make every case below vacuous.
+  // NB the map parser needs a section name of 2+ chars (/[a-z0-9][a-z0-9_-]+/) — a 1-char name
+  // silently yields an empty scope and every assertion below would pass vacuously.
+  fs.writeFileSync(path.join(d, 'section-reuse-map.md'), '# reuse map\n| Frame | section | Rung |\n|---|---|---|\n| Probe | probe | CUSTOM |\n')
+  fs.writeFileSync(path.join(d, 'sections', 'probe.liquid'),
+    `{% style %}\n${css}\n{% endstyle %}\n<div class="probe"></div>\n{% schema %}{ "name": "Probe" }{% endschema %}\n`)
+  const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-'))
+  spawnSync('node', [GATE], { cwd: d, env: { ...process.env, REPORT_DIR: reportDir, BASE_REF: '__no_such_base__', ALLOW_DS_WAIVER: '' }, encoding: 'utf-8' })
+  let rep = null; try { rep = JSON.parse(fs.readFileSync(path.join(reportDir, 'design-tokens.json'), 'utf-8')) } catch { /* */ }
+  fs.rmSync(d, { recursive: true, force: true }); fs.rmSync(reportDir, { recursive: true, force: true })
+  return (rep?.blockers || []).filter(b => b.id === 'ds.spacing')
+}
+
+
 console.log('\nspacing scope — positioning and formulas are NOT spacing (2026-07-23)')
 {
   // A false BLOCK is as damaging as a false pass. `top: 33.5rem` is a geometric OFFSET that places an
   // element, not rhythm between elements; and a number inside calc()/max()/clamp() is a constant in a
   // responsive formula (max(0px, calc(47vw - 655px - 7rem))) — snapping it to a scale step would
   // change the geometry. 24 of cravinbyandy's 290 ds.spacing findings were these two shapes.
-  const tmp = (css) => {
-    const d = fs.mkdtempSync(path.join(os.tmpdir(), 'dsx-'))
-    fs.mkdirSync(path.join(d, 'docs', 'design'), { recursive: true })
-    fs.mkdirSync(path.join(d, 'sections'), { recursive: true })
-    fs.writeFileSync(path.join(d, 'docs', 'design', 'design-system.json'),
-      JSON.stringify({ typography: { allowed_px: [16, 32] }, spacing: { scale: [8, 16, 24] } }))
-    // scope comes from the reuse map (same shape the sibling fixture dirs use) — with no base ref and
-    // no map the gate correctly declines to scan, which would make every case below vacuous.
-    // NB the map parser needs a section name of 2+ chars (/[a-z0-9][a-z0-9_-]+/) — a 1-char name
-    // silently yields an empty scope and every assertion below would pass vacuously.
-    fs.writeFileSync(path.join(d, 'section-reuse-map.md'), '# reuse map\n| Frame | section | Rung |\n|---|---|---|\n| Probe | probe | CUSTOM |\n')
-    fs.writeFileSync(path.join(d, 'sections', 'probe.liquid'),
-      `{% style %}\n${css}\n{% endstyle %}\n<div class="probe"></div>\n{% schema %}{ "name": "Probe" }{% endschema %}\n`)
-    const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-'))
-    spawnSync('node', [GATE], { cwd: d, env: { ...process.env, REPORT_DIR: reportDir, BASE_REF: '__no_such_base__', ALLOW_DS_WAIVER: '' }, encoding: 'utf-8' })
-    let rep = null; try { rep = JSON.parse(fs.readFileSync(path.join(reportDir, 'design-tokens.json'), 'utf-8')) } catch { /* */ }
-    fs.rmSync(d, { recursive: true, force: true }); fs.rmSync(reportDir, { recursive: true, force: true })
-    return (rep?.blockers || []).filter(b => b.id === 'ds.spacing')
-  }
 
   tmp('.a { top: 33.5rem; left: 13px; right: 7px; bottom: 3px; }').length === 0
     ? pass('positioning (top/right/bottom/left) is not held to the spacing scale') : fail('positioning still flagged as spacing')
@@ -113,6 +116,22 @@ console.log('\nspacing scope — positioning and formulas are NOT spacing (2026-
   tmp('.a { gap: 10px; }').length > 0 ? pass('off-scale gap still blocks') : fail('gap no longer checked')
   tmp('.a { margin-top: 18px; }').length > 0 ? pass('off-scale margin-top still blocks') : fail('margin-top no longer checked')
   tmp('.a { padding: 16px; gap: 24px; }').length === 0 ? pass('on-scale values stay clean') : fail('false positive on on-scale values')
+}
+
+console.log('\ngenerated files are not hand-authored code (2026-07-23)')
+{
+  // The brand cascade EXISTS to hold the hex literals every other file then binds to. Flagging it is a
+  // false BLOCK that punishes doing the right thing — generating assets/design-system.css for CB-1
+  // immediately produced 10 blockers here and 10 more in the editability gate. Matched on the
+  // generator's own header so it covers ANY generated asset, not one hardcoded filename.
+  const withHeader = (body) => `/* GENERATED by generate-design-system-css.mjs from docs/design/design-system.json — do not edit by hand. */\n${body}`
+
+  const gen = tmp(withHeader(':root { --ds-color-x: #C8102E; }\n.z { padding: 13px; }'))
+  gen.length === 0 ? pass('a GENERATED file is skipped entirely') : fail(`generated file still flagged: ${gen.length}`)
+
+  // the identical body WITHOUT the header must still be checked, or the skip is a blanket amnesty
+  const hand = tmp(':root { --ds-color-x: #C8102E; }\n.z { padding: 13px; }')
+  hand.length > 0 ? pass('the same content hand-authored is still flagged') : fail('the skip leaked to hand-authored files')
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)

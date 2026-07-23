@@ -104,6 +104,28 @@ function layoutsReferencing(cssPath) {
   return files.filter((f) => new RegExp(base).test(fs.readFileSync(path.join(dir, f), 'utf-8')))
 }
 
+
+// Inline `{% style %}` / `{% stylesheet %}` blocks in sections+snippets are CSS too, and until now they
+// were invisible to this tool — which is why cravinbyandy still had 74 editability.1.3 (hex/rgb where a
+// scheme var exists) after every assets/*.css literal had been bound.
+//
+// Only the INSIDE of those blocks is touched. Liquid outside them (and Liquid interpolation inside,
+// e.g. `color: {{ section.settings.c }}`) is left exactly alone — the identity rule already refuses
+// anything that is not a byte-identical literal, so an interpolated value can never match.
+export function snapLiquidStyles(src, tokens) {
+  const BLOCK = /(\{%-?\s*(?:style|stylesheet)[^%]*-?%\})([\s\S]*?)(\{%-?\s*end(?:style|stylesheet)\s*-?%\})/g
+  let swaps = []
+  let skipped = []
+  const text = String(src).replace(BLOCK, (whole, open, body, close) => {
+    const r = snapCss(body, tokens)
+    swaps = swaps.concat(r.swaps)
+    skipped = skipped.concat(r.skipped)
+    return open + r.text + close
+  })
+  return { text, swaps, skipped }
+}
+
+
 function main() {
   const argv = process.argv.slice(2)
   const apply = argv.includes('--apply')
@@ -133,8 +155,31 @@ function main() {
   try { files = fs.readdirSync(assetsDir).filter((f) => f.endsWith('.css') && f !== path.basename(DS_CSS)) } catch { die('no assets/ directory') }
   if (only) files = files.filter((f) => path.join('assets', f) === only || f === only)
 
+  // sections/ + snippets/ inline style blocks — same identity rule, same reporting
+  const liquidTargets = []
+  for (const dir of ['sections', 'snippets']) {
+    let names = []
+    try { names = fs.readdirSync(path.resolve(cwd, dir)).filter((n) => n.endsWith('.liquid')) } catch { continue }
+    for (const n of names) {
+      const rel = path.join(dir, n)
+      if (only && rel !== only && n !== only) continue
+      liquidTargets.push(rel)
+    }
+  }
+
   let totalSwaps = 0
   const unmatched = new Map() // canonical literal → count
+  for (const rel of liquidTargets) {
+    const abs = path.resolve(cwd, rel)
+    const src = fs.readFileSync(abs, 'utf-8')
+    const { text, swaps, skipped } = snapLiquidStyles(src, tokens)
+    for (const s2 of skipped) unmatched.set(s2.literal.toLowerCase(), (unmatched.get(s2.literal.toLowerCase()) || 0) + 1)
+    if (!swaps.length) continue
+    totalSwaps += swaps.length
+    console.log(`${apply ? 'snapped' : 'would snap'} ${String(swaps.length).padStart(3)} in ${rel}`)
+    if (apply) fs.writeFileSync(abs, text)
+  }
+
   for (const f of files) {
     const rel = path.join('assets', f)
     const abs = path.join(assetsDir, f)
@@ -147,7 +192,7 @@ function main() {
     if (apply) fs.writeFileSync(abs, text)
   }
 
-  console.log(`\nsnap-colors: ${apply ? 'applied' : 'DRY RUN —'} ${totalSwaps} literal(s) map exactly to a brand token across ${files.length} stylesheet(s)`)
+  console.log(`\nsnap-colors: ${apply ? 'applied' : 'DRY RUN —'} ${totalSwaps} literal(s) map exactly to a brand token across ${files.length} stylesheet(s) + ${liquidTargets.length} liquid file(s)`)
   if (unmatched.size) {
     const top = [...unmatched.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)
     console.log(`\n${unmatched.size} distinct literal(s) have NO exact token and were left untouched —`)
