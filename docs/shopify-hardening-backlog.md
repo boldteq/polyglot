@@ -330,7 +330,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   *Proof:* three consecutive runs produce byte-identical sorted test-name lists (`diff` clean), and the
   two previously-vanishing files are present in all three. New `src/testRunnerIntegrity.test.mjs` pins
   both flags with the reasoning, and rejects the pre-fix script string. `npm test` **224/224** ·
-  toolkit **82/82**.
+  toolkit **82/82**. Commit `0edc44b6`.
 - [ ] **TEST-4 · The suite needs `--test-force-exit` because something leaks a handle.** `status: open`
   Root cause behind TEST-3, deliberately not fixed inline. Without the flag `node --test src/` never
   exits (reproduced 3/3, killed at 90s) — some module under `src/` keeps the loop alive at import
