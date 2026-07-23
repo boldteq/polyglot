@@ -352,7 +352,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `src/testRunnerIntegrity.test.mjs` now pins the **absence** of `--test-force-exit` and scans every
   route file for a module-level `setInterval` missing `.unref()`. Its teeth-check caught a greedy-regex
   bug in my own scanner that flagged already-fixed code — fixed with a non-greedy, end-anchored match.
-  `npm test` **225/225** · toolkit **82/82**.
+  `npm test` **225/225** · toolkit **82/82**. Commit `f3b58d38`.
 
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
