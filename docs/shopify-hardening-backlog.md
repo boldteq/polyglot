@@ -401,8 +401,8 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   the real store gate #45 stays **PASS — 34 reports audited, 0 blockers, 5 N/A warnings**, so the two
   genuine skips are not false-flagged. Toolkit **85/85** · `npm test` **225/225**. Commit `c75ca7fa`.
 
-- [~] **QA-1 · 45 BLOCKING checks have never been proven to fire. Now detectable, not accidental.**
-  `status: open` (detector shipped; the list is the work)
+- [x] **QA-1 · 45 BLOCKING checks have never been proven to fire. Now detectable, not accidental.**
+  `status: done` — static untested went 49 → **0** (`88b482c3`); the URL half closed under QA-2.
   Five guards were found this week that looked present, were believed, and could never fire: gate #45
   watching a field no gate writes (ENV-2), gate #2 misreporting a broken CLI launch as "not installed"
   (ENV-1), the gate→owner table naming renamed gates (TEST-1a), a `\.replaceAll?\(` regex binding `?`
@@ -529,7 +529,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   **Method note, now proven 4 times:** writing the fixture is what finds the defect. Every single
   unreachable guard this quarter was found by trying to make it fire, never by reading the code.
 
-- [ ] **QA-2-ORIG · (superseded framing) 28 URL-gate blocking checks unproven.** `status: open`
+- [x] **QA-2-ORIG · (superseded framing) 28 URL-gate blocking checks unproven.** `status: done` — 0 remain (`01044c79`, `908fe01a`).
   What is left after QA-1 took static coverage to 0. `gate-seo` (15), `gate-functional` (6),
   `gate-conversion` (4) and friends only run against `THEME_PREVIEW_URL`, so they have never been
   exercised in a fixture. They block publishes, so the same argument applies — an unproven blocker is
@@ -598,6 +598,26 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   bound alt text — real per-section work, not a sweep.
 - [ ] **CB-3 · consistency: 21 font-sizes / 4 weights / 8 radii vs the caps.** `status: blocked-by human`
   Needs the provisional type/spacing ladder ratified (drape + Yash) before the sweep.
+- [x] **QA-3 · "Evidence nobody reads" is now a gate, not a review item.** `status: done`
+  `theme-gates` reads each gate's evidence from `gate-reports/<manifest-name>.json`, so a gate that
+  `writeReport()`s under any other name produces a report **nothing reads** — evidence, freshness and
+  gate #45's skip-vs-pass audit all see a hole, while the gate still prints **PASS**. Three instances
+  had been found by hand, so it stopped being a review item: gate #44 now BLOCKS on
+  `orch.report-name-mismatch` / `orch.report-number-mismatch` across the live manifest, resolving
+  `const X = '…'` indirection (exactly how #45 hid). Unverifiable cases WARN rather than pass silently,
+  and *"no writeReport call"* is kept distinct from *"a call whose name I cannot read"* — conflating
+  them would hide the second.
+  **Found + fixed:** #19 wrote the retired alias `section-cohesion` (`908fe01a`), #44 wrote
+  `check-orchestration`, #45 wrote `check-gate-integrity` — the gate whose entire job is *"a skipped
+  gate is not a passed gate"* had an unreadable report itself.
+  **Two self-inflicted traps, both pinned by fixture:** counting raw `writeReport(` occurrences flagged
+  the checker's own doc comment and message strings; and stripping block comments *before* line
+  comments let the `/*` in a real comment line (`// scope: sections/*.liquid`) open a fake block that
+  swallowed the rest of the file, making `check-honesty` (#13, a **critical** gate) look like it wrote
+  no report at all. Comment and string state are now tracked in one pass.
+  **Proof:** all 40 live gate scripts are inspected — asserted, so "0 blockers" cannot be vacuous — and
+  0 write an invisible report. Toolkit **93/93** · `npm test` **225/225**. Commit `f7730c00`.
+
 - [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
   Introduce a layer scale and migrate the 4 call sites.
 - [x] **CB-5 · Dead `hero-seasonal` references removed.** `status: done`
