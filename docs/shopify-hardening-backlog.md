@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**94/94** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**95/95** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -654,6 +654,33 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   (`DS_REQUIRE_SCOPE`/`LENS_REQUIRE`), **WARN** in dev so an early build is not stalled. No frame means
   no evidence; it was not judged. Both paths pinned by fixture. Toolkit **94/94**. Commit `03ce1724`.
 
+- [x] **QA-6 · Client repos vendor a STALE toolkit and nothing detected it — the reason CB-1 "sat blocked".**
+  `status: done`
+  Every fix shipped in Polyglot reaches a client only when the vendored `toolkit/` copy is refreshed.
+  Measured on the real repo: cravinbyandy was missing **ELEVEN gate scripts** — `done-check`,
+  `gate-integrity` (#45), `orchestration` (#44), `reference-match` (#46), `class-d-visual` (#20),
+  `gate-autofix`, `preflight-repo` itself, `snap-colors-to-tokens`, `generate-reuse-map`,
+  `reference-ingest`, `audit-unproven-guards` — while **both sides reported `toolkitVersion` 1.0.0**.
+  Identical version, eleven missing gates: the client's evidence read exactly like a current run.
+  **This quarter's QA-1…QA-5 fixes were reaching no client build at all**, and CB-1 read as blocked for
+  weeks because `snap-colors-to-tokens` — its own tool — was not in the repo.
+  **Structural root cause:** `toolkit/` is **gitignored** in the client repo (`.gitignore:9`), so the
+  copy never travels with the repo and its freshness is entirely manual. Defensible (repo bloat), but
+  it means drift is guaranteed unless something checks — hence the check.
+  **Shipped:** `preflight-repo` gains `missingGateScripts` (**required**, offline — every gate the
+  vendored manifest itself declares must have its script present, so a partial copy is loud) and
+  `versionDrift` (advisory — unreachable source reports **UNKNOWN**, never "up to date", since an
+  unverifiable freshness claim is what hid this). `TOOLKIT_VERSION` 1.0.0 → **1.1.0** so reports can
+  distinguish pre/post-hardening evidence; `preflight-repo` also got a CLI guard (it executed on import).
+  **Two more toolkit bugs fell out of actually doing the re-vendor** (`4314b3dc`): `secret-scan` walked
+  `__fixtures__` and so **false-BLOCKED every client repo** on the toolkit's own deliberate fake private
+  key; and my first re-vendor hint said `scripts/` only — `lib/` (the handoff registry), `schemas/`,
+  `templates/`, `toolkit-rules/`, `workflows/`, `lens-rubrics/` drift too, and copying scripts alone
+  left gate #44 blocking on a wrong-gate citation that a **complete** re-vendor cleared.
+  *Proof:* `preflight-drift` fixture (9 assertions, incl. unreachable-source-is-UNKNOWN). Client repo:
+  40/40 gate scripts, version matched, **preflight READY**, secret-scan + orchestration BLOCK → PASS.
+  Toolkit **95/95**. Commits `8bb3dda1`, `4314b3dc`.
+
 - [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
   Introduce a layer scale and migrate the 4 call sites.
 - [x] **CB-5 · Dead `hero-seasonal` references removed.** `status: done`
@@ -684,7 +711,16 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   **Wire it in or delete it is a content decision, not a mechanical one** — "should the gifting page have
   an occasions block?" is Yash's/the client's call, and both options are destructive in one direction.
   Committed in `1fdc5e4` (the 9-day baseline), so nothing is lost either way.
-- [ ] **CB-7 · 22 uncommitted regenerated gate-reports** in cravinbyandy. `status: open` Decide the
+- [x] **CB-7 · RESOLVED — and the premise was wrong.** `status: done`
+  `gate-reports` is **already in the toolkit's `FRESHNESS_ALLOWLIST`**, and both the summary's own
+  `dirty` (theme-gates:520) and `--verify`'s freshness check use it — so uncommitted reports **never**
+  made a publish stale. Nothing was blocked. The convention is therefore pure hygiene: **keep them
+  tracked, commit them with the work that produced them.**
+  **The real defect underneath:** the committed evidence described sha `105922a` and was produced from
+  a **dirty** tree while HEAD was `6477150`. Evidence that does not describe the commit it claims to
+  gate is not evidence. Regenerated at HEAD, `dirty=false`, client tree now clean. Client commit
+  `3a0d717`.
+- [x] **CB-7-ORIG · (superseded) 22 uncommitted regenerated gate-reports.** `status: done` Decide the
   convention (commit as evidence vs ignore) and apply it once.
 
 ## P2 — deferred by judgement (documented, not forgotten)
