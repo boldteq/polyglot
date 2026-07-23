@@ -167,15 +167,26 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   Toolkit **82/82**. Commit `15592ad1`.
   ⚠️ The two files are written into the **client** repo and left **uncommitted** — committing there is a
   separate call (see CB-7).
-- [ ] **DOC-2 · Gate #0.4's reference-brand check can false-PASS.** `status: open`
-  `discovery.brand-references-thin` decides "≥2 reference brands each with a what-to-take" by counting
-  regex hits for `[A-Z][\w& .'’]{1,30}\s*[—\-–:(]\s*\w`. The cravinbyandy `brand-direction.md` written
-  in DOC-1 states **explicitly that no reference brands are recorded**, yet the check did **not** fire —
-  its palette and type tables ("Playfair Display — headers") match that shape. So the gate reports the
-  brief has reference brands when it does not, which is the false-pass class this workstream treats as
-  seriously as a false block. *Done when:* the check keys off a declared structure it cannot confuse
-  with prose (e.g. a required `## Reference brands` section whose list items must each carry a
-  "what to take" clause), with a fixture proving a brief that names none is caught.
+- [x] **DOC-2 · Gate #0.4's reference-brand check could false-PASS — now structure-scoped.**
+  `status: done` It decided "≥2 reference brands each with a what-to-take" by counting regex hits for
+  `[A-Z][\w& .'’]{1,30}\s*[—\-–:(]\s*\w` **anywhere in the file**. The cravinbyandy brief written in
+  DOC-1 states explicitly that **no reference brands are recorded**, yet the check did not fire — its
+  palette and type tables ("Playfair Display — weight 400 italic emphasis") matched that shape. The
+  gate was reporting references the brief does not have.
+  **Now:** `referenceBrands()` parses two declared forms and nothing else — (1) a heading mentioning
+  "referenc", counting only list items / table rows inside it (header rows skipped, scope ends at the
+  next same-or-higher heading, clause must be ≥3 words); (2) the inline `**References:** Brand (what to
+  take), …` line, scoped to that one line. Prose elsewhere can no longer satisfy it.
+  **A false BLOCK was caught mid-change and fixed:** requiring form (1) rejected the `discovery-schema`
+  fixtures, which use the perfectly reasonable inline form (2) — the suite went 1/82 FAILED and told me.
+  Both forms are now supported and both are pinned, because a false block is as damaging as the false
+  pass this fixes.
+  *Proof:* discovery fixture 7→12 cases — (i) is the regression (type/palette tables no longer count),
+  (j) an empty References section is caught, (k) table form + header-row skip, (l) bare names and
+  one-word clauses miss the floor, (m) the inline form is accepted but a single inline brand still
+  blocks. Against a copy carrying the old heuristic the same "we have no references" brief yields
+  **0** `brand-references-thin` findings vs **1** on the fix. On cravinbyandy the gate now correctly
+  blocks, agreeing with what §5 of the brief itself says. Toolkit **82/82**.
 - [x] **HYG-1 · mantle.md corruption — root cause was a silent file-destroying bug in the distributor.**
   `status: done` The duplication was a *symptom*, not a hygiene slip. `swt-distribute.mjs`
   replaced the managed block with `original.replace(re, section)` — a **string** replacement, so JS

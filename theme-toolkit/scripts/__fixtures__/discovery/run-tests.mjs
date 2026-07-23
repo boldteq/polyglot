@@ -140,5 +140,96 @@ console.log('case (g) every canonical numeric field name still matches the ancho
   fs.rmSync(d, { recursive: true, force: true })
 }
 
+// ── DOC-2 (2026-07-23): the reference-brand check must not FALSE-PASS ───────────────────────
+// The old heuristic counted any `Name — text` match anywhere in the file, so a brief whose palette and
+// type tables read "Playfair Display — headers" satisfied it while stating outright that no reference
+// brands were recorded. Reporting references we do not have is as damaging as blocking a good build.
+// run the real gate against a crafted brand-direction.md (the gate has no main-guard, so it cannot
+// be imported — a subprocess run is also the truer test).
+const PAD = `
+## Voice
+Calm, evidence-led, warm without hype. Short declarative sentences and no exclamation points anywhere.
+## Visual intent
+Palette deep navy with warm bone and one muted amber accent. Humanist serif headings, grotesque body.
+Photography dim and restful with real skin, never stocky white background studio product shots at all.
+## Hard constraints
+WCAG 2.1 AA contrast on every accent pairing, no countdown timers and no fabricated scarcity claims.
+`
+const refsBlocked = (brand) => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'discovery-refs-'))
+  writeGoals(d, BASE_GOALS, brand)
+  const { report } = runGate(d, { DS_REQUIRE_SCOPE: '1' })
+  fs.rmSync(d, { recursive: true, force: true })
+  return blockerIds(report).has('discovery.brand-references-thin')
+}
+
+console.log('case (h) a real References section satisfies the check')
+{
+  refsBlocked(`# Brand Direction — Meridian${PAD}
+## References (and what to take from each)
+1. Ceremonia — the editorial PDP rhythm and ingredient storytelling.
+2. Everist — the restrained palette discipline and whitespace.
+`) ? fail('a valid References section was rejected') : pass('valid References section accepted')
+}
+
+console.log('case (i) THE REGRESSION — palette/type tables must not satisfy the check')
+{
+  // this is the shape of the real cravinbyandy brief: rich tables, and an explicit statement that NO
+  // reference brands are recorded. The old heuristic passed it; it must now be caught.
+  refsBlocked(`# Brand Direction${PAD}
+## Type intent
+| Role | Family | As built |
+|---|---|---|
+| Headings | Playfair Display — weight 400 italic emphasis | shipped |
+| Body | Gill Sans — 22px over 28px line height | shipped |
+## Open — needs Yash
+1. Reference brands. None are recorded anywhere in this repo, and inventing them would mislead drape.
+`) ? pass('type/palette tables no longer count as reference brands') : fail('FALSE PASS — phantom references accepted')
+}
+
+console.log('case (j) a References section that names none is still caught')
+{
+  refsBlocked(`# Brand${PAD}
+## References
+None chosen yet — awaiting a decoder teardown of comparable brands.
+`) ? pass('empty References section caught') : fail('empty References section passed')
+}
+
+console.log('case (k) table form is accepted, and the header row is not counted as a brand')
+{
+  refsBlocked(`# Brand${PAD}
+## Reference brands
+| Brand | What to take |
+|---|---|
+| Ceremonia | the editorial PDP rhythm and ingredient storytelling |
+| Everist | the restrained palette discipline and whitespace |
+`) ? fail('table-form references rejected (header row miscounted?)') : pass('table form accepted, header row skipped')
+}
+
+console.log('case (l) bare names / one-word clauses do not reach the floor of 2')
+{
+  refsBlocked(`# Brand${PAD}
+## References
+1. Ceremonia
+2. Everist — restrained
+3. Hims — the clinical credibility framing without feeling cold
+`) ? pass('only the one specific entry counts → still blocked') : fail('bare names counted toward the floor')
+}
+
+console.log('case (m) NO FALSE BLOCKS — the inline `**References:** Brand (what to take)` form is valid')
+{
+  // Caught during DOC-2: requiring a heading + list false-BLOCKED the discovery-schema fixtures, which
+  // use this perfectly reasonable inline form. A false block is as damaging as the false pass this
+  // change fixes, so both forms are supported and both are pinned here.
+  refsBlocked(`# Brand Direction — Restful${PAD}
+**References:** Ritual (transparency), Headspace (calm restraint), Magic Spoon (review density) — take ingredient honesty, generous whitespace, proof modules.
+`) ? fail('inline References form was rejected') : pass('inline form accepted')
+
+  // …but a single inline brand still misses the floor of 2
+  refsBlocked(`# Brand Direction${PAD}
+**References:** Ritual (transparency).
+`) ? pass('one inline brand → still blocked') : fail('one inline brand passed the floor of 2')
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

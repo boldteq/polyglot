@@ -191,11 +191,69 @@ function checkBrandDirection() {
   // "what to take", not bare adjectives — drape designs FROM these. Deterministic structural floor (the
   // deeper "specific section · pattern · lift" quality is the LLM positioning judge's job, #13). issue()
   // → dispatch block, dev warning.
-  const refsMentioned = /referenc/i.test(text)
-  const structuredRefs = [...text.matchAll(/[A-Z][A-Za-z0-9&.+'’ ]{1,30}\s*[—\-–:(]\s*\w/g)].length
-  if (!refsMentioned || structuredRefs < 2) {
-    issue('discovery.brand-references-thin', BRAND_FILE, `brand-direction.md needs ≥2 reference brands EACH with a specific "what to take" (e.g. "Ceremonia — editorial PDP rhythm; Everist — restrained palette") — generic references give drape nothing concrete to design from.`)
+  const refs = referenceBrands(text)
+  if (!refs.hasSection) {
+    issue('discovery.brand-references-thin', BRAND_FILE, `brand-direction.md has no reference-brand section — add a heading containing "References" listing ≥2 brands, EACH with a specific "what to take" (e.g. "Ceremonia — the editorial PDP rhythm and ingredient storytelling"). Generic references give drape nothing concrete to design from.`)
+  } else if (refs.items.length < 2) {
+    issue('discovery.brand-references-thin', BRAND_FILE, `the reference section names ${refs.items.length} usable brand(s); ≥2 required, EACH as a list item or table row of the form "Brand — what to take" with a real clause (≥3 words). Found: ${refs.items.map(r => r.name).join(', ') || 'none'}.`)
   }
+}
+
+// DOC-2 (2026-07-23) — SCOPED to a declared reference section, because the previous heuristic could
+// FALSE-PASS. It counted any `Name — text` match anywhere in the file, so a brief whose palette and
+// type tables read "Playfair Display — headers" satisfied the check while explicitly stating that no
+// reference brands were recorded. A gate that reports references we do not have is the same class of
+// failure as one that blocks a correct build. Now: find the heading that mentions "referenc", then
+// count only list items / table rows INSIDE it that carry both a name and a real what-to-take clause.
+export function referenceBrands(text) {
+  const lines = String(text).split('\n')
+
+  // FORM 2 (inline): `**References:** Ritual (transparency), Headspace (calm restraint), …` — a real
+  // and common way to write this. Scoped to that ONE line, so prose elsewhere can never satisfy it.
+  // Checked first because it is unambiguous; a parenthetical is itself the what-to-take.
+  for (const line of lines) {
+    const m = line.match(/^\s*\*{0,2}\s*referen\w*[^:\n]{0,24}:\s*(.+)$/i)
+    if (!m) continue
+    const inline = []
+    for (const e of m[1].matchAll(/([A-Z][A-Za-z0-9&.'’-]*(?:\s+[A-Z][A-Za-z0-9&.'’-]*)*)\s*[([]([^)\]]{2,})[)\]]/g)) {
+      inline.push({ name: e[1].trim(), take: e[2].trim() })
+    }
+    for (const e of m[1].matchAll(/([A-Z][A-Za-z0-9&.'’-]*(?:\s+[A-Z][A-Za-z0-9&.'’-]*)*)\s*[—–]\s*([^,;]{3,})/g)) {
+      if (!inline.some(x => x.name === e[1].trim())) inline.push({ name: e[1].trim(), take: e[2].trim() })
+    }
+    if (inline.length) return { hasSection: true, items: inline }
+  }
+
+  // FORM 1 (sectioned): a heading that mentions "referenc", then list items / table rows inside it.
+  let start = -1
+  let level = 0
+  for (let i = 0; i < lines.length; i += 1) {
+    const h = lines[i].match(/^(#{1,6})\s+(.*)$/)
+    if (h && /referenc/i.test(h[2])) { start = i + 1; level = h[1].length; break }
+  }
+  if (start === -1) return { hasSection: false, items: [] }
+
+  const items = []
+  const isSeparator = (l) => /^\s*\|[-:\s|]+\|\s*$/.test(l || '')
+  for (let i = start; i < lines.length; i += 1) {
+    const h = lines[i].match(/^(#{1,6})\s+/)
+    if (h && h[1].length <= level) break // next section of the same or higher level ends the scope
+
+    let name = null
+    let take = null
+    const li = lines[i].match(/^\s*(?:[-*+]|\d+[.)])\s+(.*\S)\s*$/)
+    const row = lines[i].match(/^\s*\|(.+)\|\s*$/)
+    if (li) {
+      const m = li[1].replace(/\*\*/g, '').match(/^(.{2,40}?)\s*[—–:-]\s*(.+)$/)
+      if (m) { [, name, take] = m }
+    } else if (row && !isSeparator(lines[i]) && !isSeparator(lines[i + 1])) {
+      // a row whose NEXT line is the |---| separator is the header row — skip it
+      const cells = row[1].split('|').map(c => c.trim()).filter(Boolean)
+      if (cells.length >= 2) { name = cells[0].replace(/\*\*/g, ''); take = cells.slice(1).join(' ') }
+    }
+    if (name && take && take.split(/\s+/).filter(Boolean).length >= 3) items.push({ name: name.trim(), take: take.trim() })
+  }
+  return { hasSection: true, items }
 }
 
 // ── 4. preflight-audit.md (existing stores only) ──────────────────────────────
