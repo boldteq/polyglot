@@ -164,7 +164,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   in `cvr_target_pct` still blocks, (g) every canonical field shape (`_monthly$`/`_target$`/`_s$`) still
   matches. On cravinbyandy the false `goal-as-adjective` is gone; dev grade PASSES, and dispatch grade
   leaves exactly 2 honest blockers (`no-cvr-target`, `measurement-incomplete`) that need Yash.
-  Toolkit **82/82**.
+  Toolkit **82/82**. Commit `15592ad1`.
   ⚠️ The two files are written into the **client** repo and left **uncommitted** — committing there is a
   separate call (see CB-7).
 - [ ] **DOC-2 · Gate #0.4's reference-brand check can false-PASS.** `status: open`
