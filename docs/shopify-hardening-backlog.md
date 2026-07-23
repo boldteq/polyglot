@@ -210,14 +210,31 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   ⚠️ **The bug only fires on the REPLACE path** (a file that already has a managed block); a fresh file
   takes a concatenation branch that was never vulnerable — a test seeding a block-less file passes
   trivially. The regression test seeds an existing block for exactly this reason.
-- [ ] **TEST-1 · Two Polyglot tests fail at HEAD** (pre-existing, unrelated to the loop's work).
-  `status: open` `npm test` → 203/205. (a) `src/lib/gateFindings.test.js:45` *"harvest groups +
-  attributes defects"* — asserts "at least the loom lens defect + loom render-wiring defect" and gets
-  none, so the gate→owner defect harvester is dropping findings it should group. (b)
-  `src/routes/workspace.test.mjs` *"projects/sync is idempotent + auto-adopts (unlinkedBuilds
-  empties)"*. Verified pre-existing: both test files **and** their sources are byte-identical to HEAD
-  (`git status --porcelain` clean for all four). (a) matters most — a silently-empty defect harvest is
-  the same failure mode as HYG-1: a green-looking pipeline that moved nothing.
+- [~] **TEST-1 · One of the two `npm test` failures is FIXED — it was a rotted gate→owner table.**
+  `status: open` (1 of 2 remaining) `npm test` was 203/205; it is now **212/213**.
+  **(a) FIXED — `gateFindings` "harvest groups + attributes defects".** Not a flaky test: the
+  gate→owner table in `src/lib/gateFindings.js` had silently rotted. Six keys named gates that no
+  longer exist — `theme-check`→`code-lint`, `render-wiring`→`render-check`,
+  `a11y-static`→`static-a11y`, `design-system`→`design-tokens`, `antipatterns`→`dead-code`,
+  `functional`→`functionality`. Since an unmapped gate is **skipped** (`if (!owner) continue`), the
+  harvester was dropping most static-gate defects on the floor: measured against a real store's 32
+  reports, only **4 of 15** keys matched anything on disk. The gate→training-signal loop — the thing
+  that is supposed to make agents stop repeating defects — was starved, and nothing said a word.
+  Same silent-skip family as HYG-1 and the skipped-but-passing gates.
+  **Fixed:** the table now mirrors the toolkit's source of truth
+  (`theme-toolkit/scripts/lib/gate-owner.mjs` `CODE_GATE_OWNER`) under canonical names, plus an
+  `EXTRA` set for real-but-not-auto-fixable gates and a documented `LEGACY_GATE_ALIAS` so builds
+  captured before the renames still attribute. Ownership was taken from the toolkit table and the
+  manifest's own alias map (`lighthouse`→`performance`, `visual-quality`→`visual-check`,
+  `commerce-readiness`→`conversion`) — **not guessed**; aliases pointing at gates we deliberately do
+  not own (`library-cards`, `foundation`) were dropped rather than given an invented owner.
+  **Guard:** new `src/gateFindingsOwners.test.mjs` (4 cases) asserts every owner key names a gate in
+  the toolkit manifest, that the table never drifts from the toolkit's, and that legacy names still
+  resolve — it caught 3 of my own carried-over entries naming non-existent gates.
+  *Proof:* the harvester now returns 2 findings incl. a `gate:`-sourced one for **both** the canonical
+  and the legacy report name (was 1, lens-only); `gateFindings.test.js` 3/3; `npm test` 212/213.
+  **(b) STILL OPEN — `projects/sync is idempotent + auto-adopts (unlinkedBuilds empties)`** in
+  `src/routes/workspace.test.mjs`. Untouched by this change; needs its own diagnosis.
 - [x] **HYG-2 · Swept the repo for the HYG-1 bug class — 11 real sites fixed + a permanent guard.**
   `status: done` Scanned `scripts/`, `src/`, `theme-toolkit/scripts/` (280 files) for generated content
   passed to `String.replace` as a **string** replacement.
@@ -241,13 +258,15 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   *×1, true* on the fix. Toolkit **82/82**; all 8 edited files pass `node --check`. Commit `9e7b9c2c`.
   ⚠️ `node --test src/replaceSafety.test.mjs` **hangs in this repo** (the runner, not the test — a direct
   `import()` of the same file completes in 95 ms and reports both cases). Logged as TEST-2.
-- [ ] **TEST-2 · `node --test` hangs on `src/replaceSafety.test.mjs`.** `status: open`
-  The test itself is fine — `node -e 'import("./src/replaceSafety.test.mjs")'` completes in **95 ms**
-  and reports both cases green; only the `node --test` runner hangs (>5 min, killed). Since `npm test`
-  is `node --test --test-force-exit src/`, this guard may not be running in CI even though it passes.
-  Related to TEST-1's 2 pre-existing failures — worth one look at the runner as a whole (a stray
-  open handle in a sibling module under `src/` would explain both). *Done when:* `npm test` completes
-  and the guard's result is visible in its output.
+- [x] **TEST-2 · CORRECTED — the guards DO run in CI; the hang is narrower than I reported.**
+  `status: done` My previous write-up said `node --test` hangs and implied the guard might not run
+  under `npm test`. **That conclusion was wrong.** Verified: `npm test` completes in **4s** and its
+  output contains all 4 guard assertions, so the guards run exactly as intended.
+  What is real: invoking `node --test --test-force-exit <a single .mjs file under src/>` sometimes
+  stalls after the first case (reproduced at 90s+, killed) — it is not load-dependent as I first
+  guessed, but it does **not** affect `npm test`, which runs the whole directory and exits cleanly.
+  Workaround when debugging one file: `node -e 'import("./src/<file>.test.mjs")'`, which completes in
+  ~2s and prints the same TAP. Not worth chasing further — no CI impact.
 - [ ] **BRAIN-1 · Verify the learning digest actually runs.** `status: open`
   It was re-enabled 2026-07-22 after being off since 06-30 with 84 sessions stuck at `pending_digest`.
   Confirm the 04:00 cron fired, sessions moved off `pending_digest`, and `learning_inbox` grew.

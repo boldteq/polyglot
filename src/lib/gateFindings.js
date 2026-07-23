@@ -29,13 +29,49 @@ const { normalizeSignature } = require('./brainSignals');
 
 // Static gate id → owning agent. Lens findings carry their own fix_owner. Unmapped gates
 // are intentionally skipped (no false attribution). Mirrors the AIM gate-owner table.
-const GATE_OWNER = {
-  'theme-check': 'loom', 'editability': 'loom', 'render-wiring': 'loom',
-  'commerce-readiness': 'loom', 'a11y-static': 'loom', 'section-cohesion': 'loom',
-  'consistency': 'loom', 'design-system': 'loom', 'lighthouse': 'loom',
-  'visual-quality': 'loom', 'antipatterns': 'loom', 'functional': 'loom',
-  'design-quality': 'drape', 'honesty': 'ink', 'seo': 'beacon',
+// CANONICAL gate ids — these MUST match the names gates actually write their reports under.
+// Mirrored from the toolkit's source of truth, theme-toolkit/scripts/lib/gate-owner.mjs
+// (CODE_GATE_OWNER); gateFindingsOwners.test.mjs fails if the two ever drift apart.
+//
+// TEST-1 (2026-07-23): this table had silently rotted. Six keys named gates that no longer exist —
+// theme-check→code-lint, render-wiring→render-check, a11y-static→static-a11y,
+// design-system→design-tokens, antipatterns→dead-code, functional→functionality. Because an
+// unmapped gate is skipped (`if (!owner) continue`), the harvester was dropping most static-gate
+// defects on the floor: on a real store only 4 of 15 keys matched any report on disk. The gate→
+// training-signal loop was starved and said nothing about it — the same silent-skip failure mode as
+// HYG-1 and the skipped-but-passing gates.
+const CANONICAL_GATE_OWNER = {
+  'code-lint': 'loom', 'editability': 'loom', 'dead-code': 'loom', 'layout': 'loom',
+  'design-tokens': 'loom', 'consistency': 'loom', 'render-check': 'loom', 'section-reuse': 'loom',
+  'brand-sync': 'loom', 'static-a11y': 'loom', 'translations': 'loom', 'social-assets': 'loom',
+  'consent': 'loom', 'class-d-visual': 'loom',
+  'content-quality': 'ink',
+  'design-quality': 'drape', 'reference-match': 'drape',
+  'analytics-wiring': 'conduit', 'app-conflicts': 'conduit', 'email-triggers': 'conduit',
 };
+
+// Gates owned here but not present in the toolkit's auto-fix table (they are not blind-fixable, yet
+// their defects are still real training signal). Kept separate so the drift test can tell the two apart.
+const EXTRA_GATE_OWNER = {
+  'honesty': 'ink', 'seo': 'beacon',
+  'section-consistency': 'loom', 'functionality': 'loom', 'performance': 'loom',
+  'visual-check': 'loom', 'mobile': 'loom', 'imagery': 'loom', 'conversion': 'loom',
+};
+
+// Historical report names, so builds captured before the renames still attribute correctly.
+const LEGACY_GATE_ALIAS = {
+  'theme-check': 'code-lint', 'render-wiring': 'render-check', 'wiring': 'render-check',
+  'a11y-static': 'static-a11y', 'design-system': 'design-tokens', 'antipatterns': 'dead-code',
+  'functional': 'functionality', 'section-cohesion': 'section-consistency',
+  'reuse-map': 'section-reuse',
+  'css-layout': 'layout', 'mobile-layout': 'mobile',
+  'lighthouse': 'performance', 'visual-quality': 'visual-check', 'commerce-readiness': 'conversion',
+};
+
+const GATE_OWNER = { ...CANONICAL_GATE_OWNER, ...EXTRA_GATE_OWNER };
+for (const [legacy, canonical] of Object.entries(LEGACY_GATE_ALIAS)) {
+  if (GATE_OWNER[canonical] && !GATE_OWNER[legacy]) GATE_OWNER[legacy] = GATE_OWNER[canonical];
+}
 const LENS_OWNERS = new Set(['loom', 'drape', 'ink', 'conduit', 'porter']);
 const sevRank = (s) => (s === 'blocker' ? 2 : s === 'warning' ? 1 : 0);
 const sigSeverity = (s) => (s === 'blocker' ? 'high' : 'medium');
@@ -162,4 +198,4 @@ function startGateHarvester({ bus, debounceMs = 2500, database = db, log = conso
   log.log?.('[gate-harvest] started — Lens/gate defects now feed the brain');
 }
 
-module.exports = { harvestBuildFindings, emitGateSignals, startGateHarvester, GATE_OWNER };
+module.exports = { harvestBuildFindings, emitGateSignals, startGateHarvester, GATE_OWNER, CANONICAL_GATE_OWNER, EXTRA_GATE_OWNER, LEGACY_GATE_ALIAS };
