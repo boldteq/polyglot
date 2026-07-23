@@ -492,7 +492,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
     bare cart on every dev run would stall early-stage builds.
   · `gate-seo` **8 → 5**: Product JSON-LD missing and duplicated (a PDP with none loses rich results;
     two makes Google pick one at random — both silent revenue problems), and `img-dimensions`. Plus the
-    correct case: exactly one Product block raises neither.
+    correct case: exactly one Product block raises neither. Commit `d23b987e`.
   *Remaining 14:* `gate-functional` 5 and `gate-seo` 5 (variant/collection canonical URL forms,
   `robots-txt`, gallery lazy-loading — these need multi-URL and header-level serving),
   `check-section-cohesion` 3, and the browser-dependent `lighthouse`/`axe`, which should reuse the
