@@ -16,9 +16,9 @@ let failures = 0
 const pass = (m) => console.log(`  PASS  ${m}`)
 const fail = (m) => { console.log(`  FAIL  ${m}`); failures += 1 }
 
-function run(dir) {
+function run(dir, extraEnv = {}) {
   const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-'))
-  const env = { ...process.env, REPORT_DIR: reportDir, BASE_REF: '__no_such_base__', ALLOW_DS_WAIVER: '' }
+  const env = { ...process.env, REPORT_DIR: reportDir, BASE_REF: '__no_such_base__', ALLOW_DS_WAIVER: '', ...extraEnv }
   const r = spawnSync('node', [GATE], { cwd: path.join(HERE, dir), env, encoding: 'utf-8' })
   let rep = null; try { rep = JSON.parse(fs.readFileSync(path.join(reportDir, 'design-tokens.json'), 'utf-8')) } catch { /* */ }
   fs.rmSync(reportDir, { recursive: true, force: true })
@@ -53,6 +53,29 @@ console.log('case (d) a section bound to var(--ds-*) is NOT a second token syste
 console.log('case (e) a FOREIGN token system (--tw-*) still blocks')
 { const { ids } = run('tw-foreign')
   ids.has('ds.second-token') ? pass('--tw-* still flagged') : fail('the foreign-system check was disarmed') }
+
+// ── QA-1: three BLOCKING checks here had never been proven to fire ───────────────────────
+console.log('case (f) off-token border-radius → ds.radius')
+{ const { code, ids } = run('radius-drift')
+  ids.has('ds.radius') ? pass('7px is not in radius.tokens [4, 8] → blocked') : fail(`got [${[...ids].join(', ')}]`)
+  code === 1 ? pass('exit 1') : fail(`expected exit 1, got ${code}`) }
+
+console.log('case (g) no design-system.json at all → ds.missing (design-system-first)')
+{ const { code, ids } = run('no-contract')
+  ids.has('ds.missing') ? pass('a build with no locked design system is blocked') : fail(`got [${[...ids].join(', ')}]`)
+  code === 1 ? pass('exit 1') : fail(`expected exit 1, got ${code}`) }
+
+console.log('case (h) unresolvable scope at publish grade → ds.scope-unresolved-strict')
+{
+  // DS_REQUIRE_SCOPE=1 is the publish posture: if the gate cannot work out WHAT to scan it must
+  // block, not quietly scan nothing — the cravinbyandy failure that started this whole workstream.
+  const { code, ids } = run('clean', { DS_REQUIRE_SCOPE: '1', BASE_REF: '__no_such_base__', REUSE_MAP: '__none__.md' })
+  ids.has('ds.scope-unresolved-strict') ? pass('unresolvable scope blocks at publish grade') : fail(`got [${[...ids].join(', ')}]`)
+  code === 1 ? pass('exit 1') : fail(`expected exit 1, got ${code}`)
+  // ...and at DEV grade the same state must NOT block (a false block would stall every local run)
+  const dev = run('clean', { BASE_REF: '__no_such_base__', REUSE_MAP: '__none__.md' })
+  dev.code === 0 ? pass('dev grade: same state warns, does not block') : fail(`dev grade blocked (exit ${dev.code})`)
+}
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

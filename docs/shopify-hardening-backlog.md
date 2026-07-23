@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**88/88** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**89/89** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -439,8 +439,22 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   the two gates had drifted.) Fixed with a `DRAFT_MARKER_RE` scoped to `status:ready` only — a
   `partial`/`missing` brief legitimately carries TBDs and blocking those would stall normal drafting, so
   they warn instead. Toolkit **88/88** · `npm test` **225/225**. Commit `25b77833`.
-  *Next:* the remaining 24 static — `check-visual-truth` (5), `gate-class-d-visual` (5),
-  `check-reference-match` (3), `check-design-system` (3), `check-asset-budget` (2).
+  **Round 3 — static untested 24 → 11.** Eight more blockers proven, each with its no-false-block twin:
+  · `check-asset-budget` **2/2 → 0**: oversized inline `{% stylesheet %}`/`{% javascript %}`, plus the
+    env-tunable budgets in both directions and a 9KB-under-10KB edge case (an off-by-one here would
+    fail correct builds).
+  · `check-reference-match` **3/3 → 0**: `map-invalid`, `template-missing`, `template-invalid` — the
+    file-level failures that mean the reference cannot be checked at all, so a build would sail past
+    gate #46 unverified. The existing fixture only covered the pure `resolveEntry()`; these needed real
+    subprocess runs.
+  · `check-design-system` **3/3 → 0**: off-token `border-radius`, the design-system-first `ds.missing`,
+    and `scope-unresolved-strict` — the last paired with a **dev-grade** case proving the same state
+    warns rather than blocks, since a false block there would stall every local run. That check is the
+    direct descendant of the cravinbyandy failure that started this workstream.
+  Toolkit **89/89** · `npm test` **225/225**.
+  *Next:* the last 11 static are all Lens-artifact gates — `check-visual-truth` (5) and
+  `gate-class-d-visual` (5) need capture/judge JSON fixtures, plus 1 stray. The 29 URL-gate ones need a
+  live page and are a separate problem.
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 
