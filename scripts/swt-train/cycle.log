@@ -832,3 +832,9 @@
 [2026-07-23T15:52:20.651Z] cycle 162 distributed → 5186 rules · 14/14 agents trained · 0 gate-gaps
 [2026-07-23T15:52:20.663Z] cycle 162 reindex: FAILED (search stale!) — reindex: 1156 source file(s) · embedder=ollama/nomic-embed-text · store=local · incremental
 
+[2026-07-23T15:52:20.929Z] cycle 162 ✓ +38 FAQs → 5981/6650 (89.9%) · 14/14 agents trained · committed
+[2026-07-23T15:53:17.816Z] cycle 163: slices [platform-authoring|search, platform-authoring|search-empty, color-contrast|account, motion|account, platform-authoring|account, motion|article, platform-authoring|article] → generating 49 FAQs (FAQ-5982…)
+[2026-07-23T16:00:28.710Z] cycle 163 verify: kept 24/49 (dropped 25)
+[2026-07-23T16:03:33.117Z] cycle 163 distributed → 5210 rules · 14/14 agents trained · 0 gate-gaps
+[2026-07-23T16:03:33.153Z] cycle 163 reindex: FAILED (search stale!) — reindex: 1156 source file(s) · embedder=ollama/nomic-embed-text · store=local · incremental
+
