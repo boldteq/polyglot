@@ -609,7 +609,23 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   *Next:* land CB-1 first (it does 128 of these for free), then treat CB-2 as the 65 genuine
   merchant-editability gaps. Those need `{{ ... | t }}` keys, `image_url`/settings-backed media, and
   bound alt text — real per-section work, not a sweep.
-- [ ] **CB-3 · consistency: 21 font-sizes / 4 weights / 8 radii vs the caps.** `status: blocked-by human`
+- [ ] **CB-3 · THE LADDER — now a ratifiable proposal, not a blank question.** `status: blocked-by human`
+  **The data (measured 2026-07-23, after CB-1/CB-2 cleared the noise):** 378 of the 607 remaining
+  blockers are this one decision — `ds.spacing` **266** + `ds.font-size` **112**.
+  · Current type ladder `[16,18,20,22,51,64]`; actual off-scale usage, px×count:
+    `14×22  15×21  32×10  12×8  13×8  30×7  17×6  19×6  24×4  48×4  10×3  26×3  34×3  28×2` (+ singles).
+  · Current spacing scale `[4,8,12,16,24,32,40,48,60,64,80]`; actual off-scale usage:
+    `20×57  10×46  30×19  6×17  15×14  14×13  18×13  50×13  22×9  36×8  28×7  11×7  5×10 …`
+  **The finding that decides it: the theme was built on a 10-based rhythm** (10/20/30/50/70/90 dominate)
+  while the contract encodes a 4/8 grid. Two competing rhythms — that is the actual defect, not 266
+  stray numbers. Just adding **10, 20, 30** to the scale clears **122 of 266 (46%)**.
+  **The call needed (a brand decision, which is why it stays `blocked-by human`):**
+  · **Option A — adopt reality (recommended).** Canonical spacing `4, 8, 10, 16, 20, 24, 30, 40, 48, 50,
+    60, 80`; type `12, 14, 16, 18, 20, 24, 32, 48, 64`. Snaps only the stragglers (~2/3/5/11/13/…),
+    smallest visual delta, clears the bulk immediately.
+  · **Option B — enforce the 8-point grid.** Keep the current scale and snap ~122 values by ±2px.
+    Cleaner system, but a real visual change across most sections — wants a staging look first.
+  Say A or B and I'll apply it, snap the CSS and re-gate; the tooling is all in place.
   Needs the provisional type/spacing ladder ratified (drape + Yash) before the sweep.
 - [x] **QA-3 · "Evidence nobody reads" is now a gate, not a review item.** `status: done`
   `theme-gates` reads each gate's evidence from `gate-reports/<manifest-name>.json`, so a gate that
@@ -782,6 +798,24 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   gate, which reported "0 findings" — but its evidence says `skipped: env · shopify CLI not on PATH`, so
   theme-check never ran. The gate is right to report `pass:false` on a skip (that is gate #45 working).
   The proof above is structural (parse every file, assert the key exists) and does not depend on it.
+- [x] **CB-2 · Re-triage after CB-1/CB-4 — and a false-positive class found.** `status: done`
+  The remaining 669 split cleanly: **402** = the CB-3 ladder, **157** editability, **69** colour
+  literals with no exact token, **38** `theme-check.MatchingTranslations`.
+  · **The 38 were mechanical and are fixed** (client `4b54236`): two keys
+    (`settings_schema.typography.settings.body_font_weight.{label,info}`) added to `en.default` in our
+    own build commit `1fdc5e4` and never propagated to the other **19** locales. Filled with the
+    **English** strings deliberately — I will not ship 19 unreviewed machine translations to a client
+    as if they were checked; untranslated-but-present is what theme-check requires, and a native pass is
+    owed if any of those admin locales is ever enabled. Inserted as text anchored on the sibling
+    `body_scale` block rather than re-serialising (a rewrite would reflow every file and drop the
+    Shopify header comment); all 19 verified to still parse. **code-lint #2 BLOCK → PASS.**
+  · **A gate false-positive class (`85463829`):** 24 of the 290 `ds.spacing` findings were not spacing —
+    `top/right/bottom/left` are geometric **offsets** (holding `top: 33.5rem` to a rhythm ladder is a
+    false BLOCK whose "fix" moves the element), and a constant inside `calc()/max()/clamp()`
+    (`max(0px, calc(47vw - 655px - 7rem))`) is a formula term, not a spacing token. Both now out of
+    scope; `margin/padding/gap` unchanged and teeth-verified still blocking.
+  **Totals: 816 → 607** across CB-1, CB-4 and this item.
+
 - [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned.** `status: blocked-by human`
   Confirmed: `templates/page.gifting.json` renders `slideshow, feature-story, marquee, about-cafe,
   feature-story, page-hero` — **not** `gifting-occasions`. So `sections/gifting-occasions.liquid` (4.0 KB)
