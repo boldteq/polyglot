@@ -36,12 +36,31 @@ if (files.length === 0) {
   writeReport('price-binding', 38, { cwd, pass: true, blockers, warnings, evidence: { reason: 'no product/price surface' }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   console.log('price-binding: PASS (no product surface)'); process.exit(0)
 }
+
+// A "hardcoded price" is literal money in RENDERED output. Liquid CODE and CSS are neither.
+//
+// Measured on cravinbyandy 2026-07-23: all 15 price.hardcoded findings were false positives, because
+// PRICE_LITERAL's bare-decimal branch (\d{1,4}\.\d{2}) matches any 2-dp number:
+//   · 12 × Dawn's responsive padding — `padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px`
+//   ·  3 × `{% assign media_width = 0.65 %}` — a layout ratio
+// Zero true positives. If this check were ever promoted to BLOCK it would block every Dawn theme.
+//
+// So: blank out style blocks, Liquid tags, and numeric FILTER ARGUMENTS before scanning, keeping the
+// line structure intact so reported line numbers stay correct.
+export function renderedText(src) {
+  const blank = (m) => m.replace(/[^\n]/g, ' ')
+  return String(src)
+    .replace(/\{%-?\s*(style|stylesheet)[^%]*-?%\}[\s\S]*?\{%-?\s*end\1\s*-?%\}/g, blank) // CSS, not copy
+    .replace(/\{%[\s\S]*?%\}/g, blank)                                                    // liquid tags: assign/if/for...
+    .replace(/\|\s*[a-z_]+\s*:\s*-?[\d.]+/gi, blank)                                     // filter args: `| times: 0.75`
+}
+
 let boundCount = 0
 for (const f of files) {
   let txt; try { txt = fs.readFileSync(f, 'utf8') } catch { continue }
   const rel = path.relative(cwd, f)
   if (/\|\s*money|product\.price|variant\.price|current_variant\.price/i.test(txt)) boundCount++
-  const lines = txt.split('\n')
+  const lines = renderedText(txt).split('\n')
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     if (ALLOW_LINE.test(line)) continue
