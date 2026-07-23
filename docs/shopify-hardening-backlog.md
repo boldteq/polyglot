@@ -466,7 +466,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   · `check-visual-quality` **1 → 0**: `audits-missing`, asserting it names the omitted audit. A review
     that quietly drops `mobile_rendering` would otherwise read as a full sign-off with a whole
     dimension unexamined.
-  Toolkit **89/89** · `npm test` **225/225**.
+  Toolkit **89/89** · `npm test` **225/225**. Commit `88b482c3`.
   *Remaining: 28 URL-gate blockers* — see QA-2.
 
 - [ ] **QA-2 · 28 URL-gate blocking checks remain unproven.** `status: open`
