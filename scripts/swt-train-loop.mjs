@@ -121,8 +121,10 @@ function brandGates(text) {
   let t = String(text || '')
   for (const p of GATE_BRAND_PAIRS) {
     const onum = String(p.oN).replace(/[.]/g, '\\.')
-    t = t.replace(new RegExp(`#\\s*${onum}\\s+${p.o}\\b`, 'g'), `#${p.nN} ${p.n}`) // "#13 candor" → "#13 candor"
-    t = t.replace(new RegExp(`\\b${p.o}\\s*\\(#\\s*${onum}\\)`, 'g'), `${p.n} (#${p.nN})`) // "candor (#13)"
+    // replacer functions — `p.n` is a gate NAME from data; as a string replacement a `$&` in it would
+    // splice the match back in (HYG-1 class).
+    t = t.replace(new RegExp(`#\\s*${onum}\\s+${p.o}\\b`, 'g'), () => `#${p.nN} ${p.n}`) // "#13 candor" → "#13 candor"
+    t = t.replace(new RegExp(`\\b${p.o}\\s*\\(#\\s*${onum}\\)`, 'g'), () => `${p.n} (#${p.nN})`) // "candor (#13)"
   }
   return t
 }
@@ -375,10 +377,11 @@ function updateMeter(faqCount, batches, cycles) {
   let md = fs.readFileSync(BRAIN, 'utf8')
   const pct = ((faqCount / TARGET) * 100).toFixed(1)
   const line = `**FAQs: ${faqCount} / ${TARGET} (${pct}%)** · Batches: ${batches} · Cycles run: ${cycles} · Last updated: ${stamp().slice(0, 10)} · Daemon: running`
-  md = md.replace(
-    /<!-- SWT-FAQ-METER:START -->[\s\S]*?<!-- SWT-FAQ-METER:END -->/,
-    `<!-- SWT-FAQ-METER:START -->\n${line}\n<!-- SWT-FAQ-METER:END -->`,
-  )
+  // replacer FUNCTION, not a string: a string replacement makes JS interpret `$&`, "$`", "$'" and
+  // `$1` inside the interpolated content as patterns. This is the exact shape that spliced a whole
+  // agent file into its own managed block (HYG-1). Never hand generated text to replace() as a string.
+  const meter = `<!-- SWT-FAQ-METER:START -->\n${line}\n<!-- SWT-FAQ-METER:END -->`
+  md = md.replace(/<!-- SWT-FAQ-METER:START -->[\s\S]*?<!-- SWT-FAQ-METER:END -->/, () => meter)
   atomicWrite(BRAIN, md)
 }
 
@@ -386,7 +389,10 @@ function appendLedger(cycle, added, slices, note) {
   let md = fs.readFileSync(BRAIN, 'utf8')
   const row = `| ${cycle} | ${stamp().slice(0, 10)} | ${added} | ${slices.join(', ')}${note ? ' — ' + note : ''} |\n`
   // append a row to the markdown table at EOF
-  md = md.replace(/(\n\| \d+ \|[^\n]*\n)(?![\s\S]*\n\| \d+ \|)/, `$1${row}`)
+  // `$1` is intentional here, so the capture is taken from the replacer's ARGS rather than from a
+  // string — that keeps the group semantics while making `row` (which carries slice names + a free-text
+  // note) inert. As a string, a `$&` in the note would splice the whole match back in. See HYG-1/HYG-2.
+  md = md.replace(/(\n\| \d+ \|[^\n]*\n)(?![\s\S]*\n\| \d+ \|)/, (_m, g1) => g1 + row)
   if (!md.includes(row)) md += row
   atomicWrite(BRAIN, md)
 }

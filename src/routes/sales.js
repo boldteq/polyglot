@@ -121,7 +121,9 @@ router.patch('/sales/deals/:slug', express.json({ limit: '16kb' }), (req, res) =
   const outcome = normalizeOutcome((req.body || {}).outcome);
   try {
     let body = fs.readFileSync(p, 'utf-8');
-    if (/\*\*Outcome:\*\*\s*[^\n]*/i.test(body)) body = body.replace(/\*\*Outcome:\*\*\s*[^\n]*/i, `**Outcome:** ${outcome}`);
+    // replacer function: `outcome` is free text a user types about a client chat, so a stray "$&" or
+    // "$`" in it would expand instead of being written (the HYG-1 corruption class).
+    if (/\*\*Outcome:\*\*\s*[^\n]*/i.test(body)) body = body.replace(/\*\*Outcome:\*\*\s*[^\n]*/i, () => `**Outcome:** ${outcome}`);
     else body += `\n**Outcome:** ${outcome}\n`;
     fs.writeFileSync(p, body);
     res.json({ ok: true, deal: parseDeal(`${slug}.md`) });

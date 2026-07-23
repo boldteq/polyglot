@@ -80,17 +80,18 @@ for (const f of fs.readdirSync(TEMPLATES).filter((x) => x.endsWith('.md'))) {
   const pt = pageTypeFromName(slug)
   if (!/\*\*Slug:\*\*/.test(body)) {
     // insert after H1
-    body = body.replace(/^(#\s+.+\n)/, `$1\n**Slug:** ${slug}\n`)
+    body = body.replace(/^(#\s+.+\n)/, (_m, g1) => `${g1}\n**Slug:** ${slug}\n`)
     tplSlug++; changed = true
   }
   if (!/\*\*Page type:\*\*/i.test(body)) {
     // insert after the Slug line if present, else after H1
-    if (/\*\*Slug:\*\*.*\n/.test(body)) body = body.replace(/(\*\*Slug:\*\*.*\n)/, `$1**Page type:** ${pt}\n`)
-    else body = body.replace(/^(#\s+.+\n)/, `$1\n**Page type:** ${pt}\n`)
+    if (/\*\*Slug:\*\*.*\n/.test(body)) body = body.replace(/(\*\*Slug:\*\*.*\n)/, (_m, g1) => `${g1}**Page type:** ${pt}\n`)
+    else body = body.replace(/^(#\s+.+\n)/, (_m, g1) => `${g1}\n**Page type:** ${pt}\n`)
     tplPageTypeField = tplPageTypeField + 1; changed = true
   }
   if (!/##\s+pageType\b/i.test(body)) {
-    body = body.replace(/\s*$/, `\n\n## pageType\n${pt} — backfilled from record slug; see the ordered section list above for the page's conversion spine.\n`)
+    const ptBlock = `\n\n## pageType\n${pt} — backfilled from record slug; see the ordered section list above for the page's conversion spine.\n`
+    body = body.replace(/\s*$/, () => ptBlock)
     tplPageType++; changed = true
   }
   if (!/##\s+Niche note\b/i.test(body)) {

@@ -112,7 +112,9 @@ const scopeLine = toml.match(/^(\s*scopes\s*=\s*")([^"]*)(")/m)
 if (scopeLine) {
   const existing = scopeLine[2].split(',').map(s => s.trim()).filter(Boolean)
   const union = [...new Set([...existing, ...REQUIRED_SCOPES, 'read_online_store_navigation'])]
-  toml = toml.replace(scopeLine[0], `${scopeLine[1]}${union.join(',')}${scopeLine[3]}`)
+  // replacer fn — scope names are data; as a string a `$&` would splice the match back in (HYG-1 class)
+  const scopeRepl = `${scopeLine[1]}${union.join(',')}${scopeLine[3]}`
+  toml = toml.replace(scopeLine[0], () => scopeRepl)
 }
 fs.writeFileSync(tomlPath, toml)
 

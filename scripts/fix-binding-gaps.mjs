@@ -44,9 +44,13 @@ for (const p of walk(COMPONENTS)) {
     newSec = bindSec.replace(/(\*\*Color:\*\*\n(?:- .*\n?)*)/, (blk) => blk.replace(/\n?$/, '\n') + rows + '\n')
   } else {
     // no Color block yet — insert one right after the intro line
-    newSec = bindSec.replace(/(##\s+Design-system bindings\b.*\n(?:_.*_\n)?)/, `$1\n**Color:**\n${rows}\n`)
+    // replacer function so `rows` (generated from var names + role prose) is inert; the capture comes
+    // from the args instead of `$1`. As a string, a `$&`/`` $` `` in it would splice the match/prefix
+    // back in — the HYG-1 corruption class.
+    newSec = bindSec.replace(/(##\s+Design-system bindings\b.*\n(?:_.*_\n)?)/, (_m, g1) => `${g1}\n**Color:**\n${rows}\n`)
   }
-  body = body.replace(bindSec, newSec)
+  // bindSec is a STRING needle, and newSec is generated — same hazard, same fix.
+  body = body.replace(bindSec, () => newSec)
   if (!dry) fs.writeFileSync(p, body)
   fixed++; added += missing.length
 }

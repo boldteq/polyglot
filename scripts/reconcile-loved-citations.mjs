@@ -24,8 +24,8 @@ const P = [
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 function rewrite(t) {
   for (const [o, n, num] of P) {
-    t = t.replace(new RegExp(`#\\s*${esc(num)}\\s+${o}\\b`, 'g'), `#${num} ${n}`)
-    t = t.replace(new RegExp(`\\b${o}\\s*\\(#\\s*${esc(num)}\\)`, 'g'), `${n} (#${num})`)
+    t = t.replace(new RegExp(`#\\s*${esc(num)}\\s+${o}\\b`, 'g'), () => `#${num} ${n}`)
+    t = t.replace(new RegExp(`\\b${o}\\s*\\(#\\s*${esc(num)}\\)`, 'g'), () => `${n} (#${num})`)
   }
   return t
 }

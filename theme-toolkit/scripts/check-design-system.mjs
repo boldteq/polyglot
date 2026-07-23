@@ -237,6 +237,8 @@ for (const file of targets) {
     // shadow (warn)
     if (prop === 'box-shadow' && !hasVar && vLow !== 'none') {
       const tokens = Object.values(contract.shadow?.tokens || {}).map(s => String(s).replace(/\s+/g, ''))
+      // scanner artifact: the template literal is add()'s message arg, not a replacement — this
+      // replace() uses a literal ''. safe-replace-ok
       if (tokens.length && !tokens.includes(value.replace(/\s+/g, ''))) add(warnings, 'ds.shadow', file, `box-shadow "${value.slice(0, 40)}" not a shadow.token — prefer a named token`, value.slice(0, 60))
     }
   }

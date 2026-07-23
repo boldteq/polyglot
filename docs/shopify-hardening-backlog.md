@@ -218,11 +218,36 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   empties)"*. Verified pre-existing: both test files **and** their sources are byte-identical to HEAD
   (`git status --porcelain` clean for all four). (a) matters most — a silently-empty defect harvest is
   the same failure mode as HYG-1: a green-looking pipeline that moved nothing.
-- [ ] **HYG-2 · Audit the other machine-managed block writers for the HYG-1 bug class.** `status: open`
-  Any `String.replace(re, <content containing user/rule text>)` is vulnerable. Sweep the WordPress
-  distributor and any other agent/file templater for string-replacement writes and convert them to
-  replacer functions + a written-block assertion. *Done when:* the sweep is recorded here with the
-  files checked and any conversions made.
+- [x] **HYG-2 · Swept the repo for the HYG-1 bug class — 11 real sites fixed + a permanent guard.**
+  `status: done` Scanned `scripts/`, `src/`, `theme-toolkit/scripts/` (280 files) for generated content
+  passed to `String.replace` as a **string** replacement.
+  **Fixed (11 sites, 7 files):** `swt-train-loop.mjs` ×4 (the FAQ-meter marker block — the exact HYG-1
+  shape — plus the ledger row and two gate-rename rewrites), `fix-binding-gaps.mjs` ×2 (incl.
+  `body.replace(bindSec, newSec)`, a string needle with a generated replacement),
+  `backfill-recall-enrichment.mjs` ×4, `migrate-gate-refs.mjs` ×3, `reconcile-loved-citations.mjs` ×2,
+  `keystone-clone.mjs` ×1, and **`src/routes/sales.js` ×1 — the highest real risk**, because `outcome`
+  is free text a user types about a client chat, so a stray `$&` corrupts the record.
+  Where `$1` was intentional the capture now comes from the replacer's **arguments** instead, keeping
+  group semantics while making the interpolated text inert. **`src/intelligence/trainer.mjs` was checked
+  and is safe** — it edits its managed block with `indexOf`/`slice` + concatenation, never `replace()`.
+  **Guard:** new `src/replaceSafety.test.mjs` scans the repo for two unambiguous signatures — a
+  template literal with `${…}` in the replacement position, and `replace(identifier, identifier)` — with
+  a `safe-replace-ok` comment escape hatch (used once, for a genuine scanner artifact in
+  `check-design-system.mjs` where the template literal is a message argument, not a replacement).
+  *Proof:* the guard's own teeth test **caught a bug in the guard**: `\.replaceAll?\(` binds the `?` to
+  the final `l`, so it required "replaceAl" and matched nothing — the repo scan was passing vacuously
+  until that test failed. After the fix it found the 12 hits above. Behavioural check on the real call
+  sites: a ledger note containing `` $` `` gives *sentinel ×2, written literally: false* pre-fix vs
+  *×1, true* on the fix. Toolkit **82/82**; all 8 edited files pass `node --check`.
+  ⚠️ `node --test src/replaceSafety.test.mjs` **hangs in this repo** (the runner, not the test — a direct
+  `import()` of the same file completes in 95 ms and reports both cases). Logged as TEST-2.
+- [ ] **TEST-2 · `node --test` hangs on `src/replaceSafety.test.mjs`.** `status: open`
+  The test itself is fine — `node -e 'import("./src/replaceSafety.test.mjs")'` completes in **95 ms**
+  and reports both cases green; only the `node --test` runner hangs (>5 min, killed). Since `npm test`
+  is `node --test --test-force-exit src/`, this guard may not be running in CI even though it passes.
+  Related to TEST-1's 2 pre-existing failures — worth one look at the runner as a whole (a stray
+  open handle in a sibling module under `src/` would explain both). *Done when:* `npm test` completes
+  and the guard's result is visible in its output.
 - [ ] **BRAIN-1 · Verify the learning digest actually runs.** `status: open`
   It was re-enabled 2026-07-22 after being off since 06-30 with 84 sessions stuck at `pending_digest`.
   Confirm the 04:00 cron fired, sessions moved off `pending_digest`, and `learning_inbox` grew.

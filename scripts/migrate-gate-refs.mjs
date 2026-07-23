@@ -28,14 +28,14 @@ function rewrite(text) {
   let t = text
   for (const p of pairs) {
     // primary citation form: "#<oldNum> <oldName>"  (optional whitespace) → "#<newNum> <newName>"
-    t = t.replace(new RegExp(`#\\s*${numRe(p.oldNum)}\\s+${esc(p.oldName)}\\b`, 'g'), `#${p.newNum} ${p.newName}`)
+    t = t.replace(new RegExp(`#\\s*${numRe(p.oldNum)}\\s+${esc(p.oldName)}\\b`, 'g'), () => `#${p.newNum} ${p.newName}`)
     // reverse form: "<oldName> (#<oldNum>)" → "<newName> (#<newNum>)"
-    t = t.replace(new RegExp(`\\b${esc(p.oldName)}\\s*\\(#\\s*${numRe(p.oldNum)}\\)`, 'g'), `${p.newName} (#${p.newNum})`)
+    t = t.replace(new RegExp(`\\b${esc(p.oldName)}\\s*\\(#\\s*${numRe(p.oldNum)}\\)`, 'g'), () => `${p.newName} (#${p.newNum})`)
   }
   // merges retire numbers — rewrite a BARE retired "#<oldNum>" to its merge target number (retired
   // numbers are unique to their absorbed gate, so this is safe). Renames keep their number untouched.
   for (const p of pairs) {
-    if (p.newNum !== p.oldNum) t = t.replace(new RegExp(`#${numRe(p.oldNum)}\\b`, 'g'), `#${p.newNum}`)
+    if (p.newNum !== p.oldNum) t = t.replace(new RegExp(`#${numRe(p.oldNum)}\\b`, 'g'), () => `#${p.newNum}`)
   }
   return t
 }
