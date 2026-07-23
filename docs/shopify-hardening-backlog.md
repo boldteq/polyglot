@@ -422,7 +422,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   **First 3 burned down:** `reuse-map.custom-split-missing` / `custom-split-mismatch` / `bad-rung` now
   have fixture cases — the first is what stops GI-2's generator from letting a half-authored map pass,
   verified by hand then but never pinned. Static untested **49 → 45**, confirmed by re-running the
-  auditor. Toolkit **86/86** · `npm test` **225/225**.
+  auditor. Toolkit **86/86** · `npm test` **225/225**. Commit `e43d9d38`.
   *Next:* worst-first — `check-metafield-schema` (14/15 untested) and `check-briefs` (7/7) are entirely
   unproven and both block client builds.
 
