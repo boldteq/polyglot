@@ -140,7 +140,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `REUSE_MAP_ENFORCE=1` gives **BLOCK `reuse-map.custom-split-missing`** and *no*
   `custom-count-mismatch` — proving the derived custom=16 matches the 16 real files. Appending the two
   human fields flips the same map to **PASS**. New fixture `__fixtures__/reuse-map-generate/` = 22
-  assertions, incl. case (e) which fails if the generator ever emits either judgement field, and case
+  assertions (commit `ac7c0310`), incl. case (e) which fails if the generator ever emits either judgement field, and case
   (f) which pins the Counts line against gate #23's own regex. Toolkit **82/82**.
   *Found while generating:* `gifting-occasions.liquid` is added since base but referenced by **no**
   template — dead weight no render-time gate can see (logged as CB-8).
