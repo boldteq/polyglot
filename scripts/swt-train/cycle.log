@@ -896,3 +896,8 @@ remove the file manually to continue.
 [2026-07-23T19:39:50.541Z] cycle 170 verify: kept 38/49 (dropped 11)
 [2026-07-23T19:44:02.413Z] cycle 170 distributed → 5452 rules · 14/14 agents trained · 0 gate-gaps
 [2026-07-23T19:44:02.414Z] cycle 170 reindex: OK · }
+[2026-07-23T19:44:02.474Z] cycle 170 ✓ +38 FAQs → 5452/6650 (82.0%) · 14/14 agents trained · committed
+[2026-07-23T19:44:07.521Z] cycle 171: slices [typography|new-section, color-contrast|new-section, spacing-rhythm|new-section, imagery-art-direction|new-section, motion|new-section, mobile|new-section, a11y|new-section] → generating 49 FAQs (FAQ-6248…)
+[2026-07-23T19:50:31.972Z] cycle 171 verify: kept 39/49 (dropped 10)
+[2026-07-23T19:54:42.212Z] cycle 171 distributed → 5491 rules · 14/14 agents trained · 0 gate-gaps
+[2026-07-23T19:54:42.213Z] cycle 171 reindex: OK · }
