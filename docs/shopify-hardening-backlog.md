@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**84/84** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**85/85** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -354,6 +354,31 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   bug in my own scanner that flagged already-fixed code — fixed with a non-greedy, end-anchored match.
   `npm test` **225/225** · toolkit **82/82**. Commit `f3b58d38`.
 
+
+- [x] **ENV-1 · Gate #2 (theme-check / Liquid lint) had NEVER been able to run — and said so wrongly.**
+  `status: done` Found while re-verifying CB-5/CB-6: the gate reported *"shopify CLI not found on PATH —
+  install `@shopify/cli@3`"*, but the CLI **is** installed and on PATH. It crashes on launch under the
+  Node this toolkit mandates: `@shopify/cli` imports `enableCompileCache` from `node:module`, which
+  **Node 20.20.1 does not export** (verified `undefined`; v18 also fails; **Node 22.22.3 runs it fine**,
+  CLI v4.1.0). So the printed remedy could never work — reinstalling does not change the launching Node
+  — and the Liquid linter silently never ran on any build. It did report `pass:false` (honest, gate #45),
+  but it was **unfixable by anyone following its own advice**, which is worse than a plain failure.
+  This also made my first CB-5/CB-6 verification vacuous: "0 findings" came from a gate that never ran.
+  **Shipped:** the guard now distinguishes MISSING (install it) from installed-but-unlaunchable, and when
+  the current runtime cannot load the CLI it **finds one that can** — resolving the CLI entry via the
+  PATH symlink and trying each installed Node newest-first (`SHOPIFY_CLI_NODE` overrides). The error, if
+  it still fails, carries the real stderr and a remedy that is actually true. `classifyProbe` lives in
+  `lib/cli-probe.mjs` so tests can import it **without executing the gate** (importing the gate runs
+  theme-check — that trap bit once here).
+  *Proof:* on cravinbyandy the gate now RUNS via Node 22 — **0 errors, 8 warnings across 25 files,
+  `pass:true`** (was: skipped, never linted). That also gives CB-6 a real proof at last: the 38
+  `body_font_weight` errors are gone **per the actual linter**, not just my structural parse. New
+  `theme-check-runtime` fixture pins the taxonomy, including that a non-zero exit is *never* reported as
+  "missing". One test expectation of mine was wrong and I corrected it rather than the code
+  (`Cannot find module` is a broken install → `broken`, not a runtime mismatch). Toolkit **85/85** ·
+  `npm test` **225/225**.
+  ⚠️ **Standing constraint worth knowing:** the toolkit needs **Node 20** (better-sqlite3) while the
+  Shopify CLI needs **≥22**. They cannot share one runtime; the gate now bridges that automatically.
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 
