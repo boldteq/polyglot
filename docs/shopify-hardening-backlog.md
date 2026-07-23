@@ -710,7 +710,20 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `/private/var/folders/…` resolved, so the guard failed, `main()` never ran, and the script **exited 0
   having done nothing**. Now compares realpaths. Toolkit **102/102**.
 
-- [ ] **CB-16 · The same CLI-guard pattern is latent across the toolkit.** `status: open` (small)
+- [x] **CB-16 · 40 scripts could silently no-op when run through a symlink.** `status: done` (`92ccc656`)
+  `path.resolve` does **not** resolve symlinks: on macOS a temp dir is `/var/folders/…` in argv but
+  `/private/var/folders/…` resolved. When the compare fails `main()` never runs and the script **exits 0
+  having done nothing** — the worst failure mode available, since every caller reads exit 0 as success.
+  `lib/jsonify-hits.mjs` already had the correct realpath comparison **with this reasoning in a
+  comment**; it was never shared, so 39 others kept the fragile spelling. Extracted as `lib/is-main.mjs`
+  and swept. All three load paths verified on a real script (direct / imported / **symlinked**), and the
+  fixture's regression scan **caught my own sweep being incomplete** (I globbed `*.mjs` + `lib/*.mjs`
+  and missed `dna/bulk-extract.mjs`). Toolkit **104/104**.
+  **Scope note:** 13 further files also carry the swap but their diffs contain the concurrent
+  workstream's uncommitted work, so they were deliberately left unstaged; the sweep completes when that
+  lands. *A first attempt used a broad `git add $(...)` and swept 53 files including theirs — reset and
+  redone file-by-file. The contract's "stage explicit paths only" rule exists for exactly that.*
+- [x] **CB-16-ORIG · (superseded) The same CLI-guard pattern is latent across the toolkit.** `status: done`
   `if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()`
   appears in several scripts. It only works because they are run from their real repo path; invoked via
   a symlinked path (a temp dir, a symlinked checkout, some CI layouts) the guard silently fails and the
