@@ -228,7 +228,13 @@ for (const file of targets) {
     }
 
     // spacing scale
-    if (/^(margin|padding)(-(top|right|bottom|left))?$|^(gap|row-gap|column-gap|inset|top|right|bottom|left)$/.test(prop) && !hasVar) {
+    // POSITIONING (top/right/bottom/left/inset) is not spacing: those are geometric offsets that place
+    // an element, not rhythm between elements, and holding `top: 33.5rem` to a spacing ladder is a false
+    // BLOCK. Likewise a number inside calc()/max()/min()/clamp() is a constant in a responsive formula
+    // (`max(0px, calc(47vw - 655px - 7rem))`) — snapping it to a scale step would change the geometry.
+    // 24 of cravinbyandy's 290 ds.spacing findings were these two shapes (2026-07-23).
+    const isFormula = /\b(calc|min|max|clamp)\(/i.test(vLow)
+    if (/^(margin|padding)(-(top|right|bottom|left))?$|^(gap|row-gap|column-gap)$/.test(prop) && !hasVar && !isFormula) {
       for (const px of lenTokens(value)) {
         if (allowedSpace.size && !allowedSpace.has(Math.abs(px))) {
           drift('ds.spacing', file, `off-scale ${prop} (px≈${px}) in "${value.slice(0, 40)}" — not on spacing.scale [${[...allowedSpace].join(', ')}]; use var(--spacing-*) or a scale value`, `${prop}: ${value}`)
