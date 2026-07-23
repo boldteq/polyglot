@@ -377,7 +377,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   *Proof:* new fixture `__fixtures__/ds-cascade-color/` — 17 assertions covering emission, kebab-casing,
   verbatim values, `_source` exclusion, no-colour contracts, and non-string rejection. Against a copy of
   the pre-fix generator the same contract yields **0** colour tokens vs **2**. Toolkit **83/83** ·
-  `npm test` **225/225**.
+  `npm test` **225/225**. Commit `88a136ed`.
   **Still open — the swap itself,** deliberately not done inline: it edits ~201 sites across 8 client
   stylesheets. *Next:* wire `design-system.css` into `theme.liquid`, then swap **only** literals whose
   value exactly equals a `--ds-color-*` token (normalising `#abc`→`#aabbcc` and case), leaving any
