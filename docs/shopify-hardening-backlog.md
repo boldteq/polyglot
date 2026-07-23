@@ -375,8 +375,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `body_font_weight` errors are gone **per the actual linter**, not just my structural parse. New
   `theme-check-runtime` fixture pins the taxonomy, including that a non-zero exit is *never* reported as
   "missing". One test expectation of mine was wrong and I corrected it rather than the code
-  (`Cannot find module` is a broken install → `broken`, not a runtime mismatch). Toolkit **85/85** ·
-  `npm test` **225/225**.
+  (`Cannot find module` is a broken install → `broken`, not a runtime mismatch). Toolkit **85/85** · `npm test` **225/225**. Commit `2843476d`.
   ⚠️ **Standing constraint worth knowing:** the toolkit needs **Node 20** (better-sqlite3) while the
   Shopify CLI needs **≥22**. They cannot share one runtime; the gate now bridges that automatically.
 
