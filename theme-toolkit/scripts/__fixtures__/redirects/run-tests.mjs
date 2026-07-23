@@ -5,7 +5,8 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import http from 'node:http'
+import { spawnSync, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { analyzeRedirects } from '../../check-redirects.mjs'
 
@@ -65,6 +66,49 @@ function runGate(dir, env = {}) {
   const { code, rep } = runGate(d)
   code === 0 && (rep?.warnings || []).some(w => w.id === 'redirect.n-a-no-map') ? pass('no redirect map → SKIP/PASS') : fail(`no-map: code ${code}`)
   fs.rmSync(d, { recursive: true, force: true })
+}
+
+console.log('live crawl — REDIRECTS_CRAWL=1 against a real server')
+{
+  // redirect.dead-live is the only check here that needs a server: a legacy URL in the map that
+  // 404s live means the redirect was never actually created on the store, so every inbound link
+  // and every indexed result for it is broken. A map that merely *parses* proves nothing.
+  //
+  // async spawn, NOT spawnSync (used everywhere above): this server lives in THIS process, and
+  // spawnSync blocks the event loop so it could never answer the gate's fetch — both sides deadlock.
+  const server = http.createServer((req, res) => {
+    if (req.url === '/dead') { res.writeHead(404); return res.end('gone') }
+    if (req.url === '/moved') { res.writeHead(301, { location: '/final' }); return res.end() }
+    res.writeHead(200, { 'content-type': 'text/html' })
+    res.end('<!doctype html><html lang="en"><head><title>ok</title></head><body>ok</body></html>')
+  })
+  await new Promise((r) => server.listen(0, '127.0.0.1', r))
+  const origin = `http://127.0.0.1:${server.address().port}`
+
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'redir-live-'))
+  fs.writeFileSync(path.join(d, 'redirects.csv'), 'Redirect from,Redirect to\n/dead,/new-home\n/moved,/final\n')
+  const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'redir-live-rep-'))
+  await new Promise((resolve) => {
+    const child = spawn(process.execPath, [GATE], {
+      cwd: d,
+      env: { ...process.env, REPORT_DIR: reportDir, REDIRECTS_CRAWL: '1', REDIRECTS_BASE_URL: origin, REDIRECTS_ENFORCE: '' },
+    })
+    child.stdout.on('data', () => {})
+    child.stderr.on('data', () => {})
+    child.on('exit', resolve)
+  })
+  let rep = null
+  try { rep = JSON.parse(fs.readFileSync(path.join(reportDir, 'redirects.json'), 'utf-8')) } catch { /* none */ }
+  const found = (rep?.blockers || []).filter(b => b.id === 'redirect.dead-live')
+  found.length === 1 && found[0].page === '/dead'
+    ? pass('legacy URL that 404s live → redirect.dead-live')
+    : fail(`dead-live: got ${JSON.stringify((rep?.blockers || []).map(b => `${b.id}@${b.page}`))}`)
+  // ...and a source that really does redirect must NOT be reported dead
+  found.some(b => b.page === '/moved') ? fail('a working 301 was reported dead') : pass('a source that 301s is not reported dead')
+
+  await new Promise((r) => server.close(r))
+  fs.rmSync(d, { recursive: true, force: true })
+  fs.rmSync(reportDir, { recursive: true, force: true })
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)

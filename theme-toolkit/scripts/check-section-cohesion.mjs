@@ -226,7 +226,10 @@ async function main() {
   const requireScope = process.env.DS_REQUIRE_SCOPE === '1'
   if (!perSurface.length && requireScope) add(blockers, 'cohesion.no-surfaces', '.', 'no surfaces rendered — cannot verify cohesion at publish-grade')
   const pass = blockers.length === 0
-  writeReport('section-cohesion', 19, { cwd, pass, blockers, warnings, evidence: { contract: DS, surfaces: perSurface.map(s => ({ surface: s.surface, sections: s.sections.length })) }, duration_ms: Date.now() - t0 }, REPORT_DIR)
+  // 'section-consistency' is the manifest name theme-gates reads (gate-reports/<name>.json) and the
+  // name die() already used. The pass path wrote the RETIRED alias 'section-cohesion', so a passing
+  // gate 19 left no report where anything looks for it — evidence, freshness and #45 all saw a hole.
+  writeReport('section-consistency', 19, { cwd, pass, blockers, warnings, evidence: { contract: DS, surfaces: perSurface.map(s => ({ surface: s.surface, sections: s.sections.length })) }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   console.log(`section-cohesion: ${pass ? 'PASS' : 'BLOCK'} — ${blockers.length} blocker(s), ${warnings.length} warning(s)`)
   for (const b of blockers) console.log(`  BLOCK ${b.id} ${b.page}: ${b.detail}`)
   for (const w of warnings.slice(0, 8)) console.log(`  warn  ${w.id} ${w.page}: ${w.detail}`)
