@@ -902,6 +902,42 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   every real store. Fixture pins both directions (stock file touched on one line → only that value;
   file absent at base → full vocabulary). Toolkit **97/97**.
 
+- [x] **CB-12 · Warning triage — every `price.hardcoded` finding was a false positive.** `status: done`
+  (`7f7b34c4` · client `e425a75`) Triaged the **440 warnings** nobody had looked at, on the theory that
+  real defects hide in noise that large. The most alarming id — *hardcoded price on an ecom store* —
+  turned out to be the noise: **15 findings, 0 true positives.**
+  · 12 × Dawn's responsive padding `padding-top: {{ … | times: 0.75 | round: 0 }}px`
+  · 3 × `{% assign media_width = 0.65 %}` — a layout ratio
+  **Cause:** `PRICE_LITERAL`'s bare-decimal branch `\d{1,4}\.\d{2}` matches **any** 2-dp number, with
+  no currency symbol and no regard for context. The check is warn-in-dev / **block-at-publish**, so
+  promoting it would have blocked **every Dawn-based theme**.
+  A hardcoded price is literal money in **rendered output**; Liquid code and CSS are neither.
+  `renderedText()` now blanks `{% style %}` blocks, `{% %}` tags and numeric filter arguments before
+  scanning, preserving line structure so line numbers stay correct. **Teeth verified:** a real `$39.99`
+  in markup still warns, and so does a bare `1299.00` in visible copy. price-binding **15 → 0**, and it
+  now reports PASS honestly instead of passing while pointing at padding. Toolkit **100/100**.
+
+- [ ] **CB-13 · 14 `ValidSchemaTranslations` errors — a pre-existing i18n posture question.**
+  `status: blocked-by human` (small)
+  Surfaced by CB-9 part 3, and worth stating precisely: these are **not broken references**. Our custom
+  sections write plain English schema labels (`"name": "Header"`, `"label": "Color scheme"`), and
+  theme-check is *recommending* they be `t:` keys, naming the key it would expect. They are
+  **pre-existing** (from `1fdc5e4`); `gate-theme-check` scopes offenses to CHANGED files, so editing
+  those sections for the i18n work brought them into scope. code-lint 0 → 14.
+  **The call:** (a) convert ~14 schema labels to `t:` keys + register them across `en.default.schema`
+  **and the other 19** `*.schema.json` — which repeats the English-placeholder duplication already
+  flagged as a smell, for a single-language cafe; or (b) scope `ValidSchemaTranslations` off in the
+  client's `.theme-check.yml`, with the reason recorded — legitimate for a single-locale store.
+  I did **not** silence a check unilaterally, and did not spend a 20-locale expansion on a posture
+  decision that is yours.
+
+- [ ] **CB-14 · `repo-hygiene` (29 blockers) is not mine.** `status: open` (owner: concurrent workstream)
+  A new gate (`check-repo-hygiene.mjs`, plus `check-schema-authoring.mjs`, `new-section.mjs`,
+  `templates/section/` and edits to `check-rule-pack.mjs` / `done-check.mjs` / `gate-owner.mjs`)
+  appeared in the Polyglot tree mid-run from a **concurrent workstream**. Vendoring the toolkit into
+  cravinbyandy therefore activated it, adding 29 blockers to the client's count. Flagged rather than
+  touched — staged paths stayed scoped to my own work throughout.
+
 - [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned.** `status: blocked-by human`
   Confirmed: `templates/page.gifting.json` renders `slideshow, feature-story, marquee, about-cafe,
   feature-story, page-hero` — **not** `gifting-occasions`. So `sections/gifting-occasions.liquid` (4.0 KB)
