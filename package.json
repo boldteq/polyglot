@@ -21,7 +21,7 @@
     "swt:quality": "node scripts/quality-loop.mjs",
     "swt:trend": "node scripts/quality-trend.mjs",
     "results:register": "node scripts/register-build-schedules.mjs",
-    "test": "node --test --test-force-exit src/",
+    "test": "node --test --test-force-exit --test-concurrency=1 src/",
     "test:brain": "node scripts/brain-proof.mjs"
   },
   "pnpm": {

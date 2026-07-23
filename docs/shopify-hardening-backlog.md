@@ -313,16 +313,32 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   compared the manifest dim to itself, so its `fatal` flag could never fire — it now reports
   provider/model only and defers the dim check to query time rather than showing a reassuring field
   that can never trigger. `npm test` **222/222** · toolkit **82/82**. Commit `84f3d761`.
-- [ ] **TEST-3 · The `/ai/*` reattach tests are flaky and the suite's test COUNT varies run to run.**
-  `status: open` Observed across consecutive `npm test` runs on an unchanged tree: **207/200/7-fail**,
-  then **222/222/0-fail**; earlier runs reported 211, 212 and 213 tests. The 7 failures were all in
-  `src/routes/ai.reattach.test.js` (`/ai/active`, reattach replay/stream, cancel) — timing-sensitive
-  tests around buffered output and live processes. **Not caused by the BRAIN-2 change** (only
-  `src/intelligence/retrieve.mjs` was modified; that file has zero `intelligence`/`retrieve` references).
-  A varying test count means some files intermittently fail to register, so a green run is not proof
-  the whole suite ran — the same "a skipped check is not a passed check" problem this backlog keeps
-  hitting, one level up. *Done when:* the count is stable across 3 consecutive runs and the reattach
-  tests are deterministic (or explicitly serialised).
+- [x] **TEST-3 · The suite was silently skipping whole test FILES and still reporting all-green.**
+  `status: done` The flakiness was the small half. The real finding: on an unchanged tree, consecutive
+  `npm test` runs reported **213 / 215 / 222** tests — every one of them "0 failures, cancelled 0".
+  Diffing the runs, run 1 was missing **8 tests from two files** (`governor.test.mjs`,
+  `buildSchedules.test.js`) that run 3 executed, with none missing the other way. Those files never ran
+  and nothing said so. A green suite that quietly skipped two files is exactly the failure this backlog
+  keeps finding — *a skipped check is not a passed check* — except one level up, in the harness itself,
+  which means every "npm test green" claim in this file was weaker than it looked.
+  **Cause:** `node --test --test-force-exit src/` runs files concurrently and the forced exit truncates
+  files still queued. Verified as a genuine trade-off, not a stray flag: **without** `--test-force-exit`
+  the runner hangs on leaked handles (3/3 runs killed at 90s), which is why it was added.
+  **Fixed** with `--test-concurrency=1`: **222/222, identical test set, 3/3 runs**, ~7s vs ~4s — and it
+  also eliminated the `/ai/*` reattach flakes, which were cross-test interference from parallel
+  execution, not genuine test bugs.
+  *Proof:* three consecutive runs produce byte-identical sorted test-name lists (`diff` clean), and the
+  two previously-vanishing files are present in all three. New `src/testRunnerIntegrity.test.mjs` pins
+  both flags with the reasoning, and rejects the pre-fix script string. `npm test` **224/224** ·
+  toolkit **82/82**.
+- [ ] **TEST-4 · The suite needs `--test-force-exit` because something leaks a handle.** `status: open`
+  Root cause behind TEST-3, deliberately not fixed inline. Without the flag `node --test src/` never
+  exits (reproduced 3/3, killed at 90s) — some module under `src/` keeps the loop alive at import
+  (a DB connection, an un-`unref`'d `setInterval`, or a listening server). Force-exit masks it, and
+  masking it is what allowed the silent truncation in the first place. Prior art: a background
+  `setInterval` needing `.unref()` already caused this once (see `polyglot-brain-deep-fix-13`).
+  *Done when:* `node --test src/` exits on its own and `--test-force-exit` can be dropped.
+
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 
