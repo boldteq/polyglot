@@ -692,6 +692,30 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   cravinbyandy therefore activated it, adding 29 blockers to the client's count. Flagged rather than
   touched — staged paths stayed scoped to my own work throughout.
 
+- [x] **CB-15 · `cp -R` was shipping UNCOMMITTED work to a client repo.** `status: done` (`7e78a648`)
+  A hazard I created, found by asking where CB-14's 29 blockers actually came from. Client repos
+  gitignore `toolkit/`, so the vendored copy is refreshed by hand — and the documented recipe copied the
+  **working tree**. Today that put **21 uncommitted paths** from a concurrent workstream into
+  cravinbyandy, including a half-finished gate (`check-repo-hygiene`) that immediately added 29 blockers
+  to a client's build. **Nobody decided that; a copy command did.**
+  `vendor-toolkit.mjs` vendors from `git archive <ref>` (committed state, never the working copy),
+  **REFUSES** when anything under `theme-toolkit/` is uncommitted, and writes
+  `toolkit/.vendor-provenance.json {sha, ref, version, dirty, files}` — QA-6 already proved
+  `TOOLKIT_VERSION` cannot identify a tree (two very different toolkits both said 1.0.0 while 11 gate
+  scripts were missing); a **sha** can. `--allow-dirty` exists but records which paths went unreviewed.
+  `node_modules/` and `gate-reports/` never travel, and a target with no `sections/`/`layout/` is
+  refused. `preflight-repo` now prints the provenance line.
+  **A bug the fixture caught, and the worst kind for a vendor tool:** the CLI guard compared
+  `path.resolve(argv[1])` to `import.meta.url`; on macOS a temp dir is `/var/folders/…` by symlink and
+  `/private/var/folders/…` resolved, so the guard failed, `main()` never ran, and the script **exited 0
+  having done nothing**. Now compares realpaths. Toolkit **102/102**.
+
+- [ ] **CB-16 · The same CLI-guard pattern is latent across the toolkit.** `status: open` (small)
+  `if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()`
+  appears in several scripts. It only works because they are run from their real repo path; invoked via
+  a symlinked path (a temp dir, a symlinked checkout, some CI layouts) the guard silently fails and the
+  script **exits 0 doing nothing**. Sweep them onto the realpath comparison.
+
 - [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned.** `status: blocked-by human`
   Confirmed: `templates/page.gifting.json` renders `slideshow, feature-story, marquee, about-cafe,
   feature-story, page-hero` — **not** `gifting-occasions`. So `sections/gifting-occasions.liquid` (4.0 KB)
