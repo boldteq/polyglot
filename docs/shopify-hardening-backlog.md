@@ -232,7 +232,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   the toolkit manifest, that the table never drifts from the toolkit's, and that legacy names still
   resolve — it caught 3 of my own carried-over entries naming non-existent gates.
   *Proof:* the harvester now returns 2 findings incl. a `gate:`-sourced one for **both** the canonical
-  and the legacy report name (was 1, lens-only); `gateFindings.test.js` 3/3; `npm test` 212/213.
+  and the legacy report name (was 1, lens-only); `gateFindings.test.js` 3/3; `npm test` 212/213. Commit `6f242feb`.
   **(b) STILL OPEN — `projects/sync is idempotent + auto-adopts (unlinkedBuilds empties)`** in
   `src/routes/workspace.test.mjs`. Untouched by this change; needs its own diagnosis.
 - [x] **HYG-2 · Swept the repo for the HYG-1 bug class — 11 real sites fixed + a permanent guard.**
