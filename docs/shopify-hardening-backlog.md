@@ -266,10 +266,29 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   guessed, but it does **not** affect `npm test`, which runs the whole directory and exits cleanly.
   Workaround when debugging one file: `node -e 'import("./src/<file>.test.mjs")'`, which completes in
   ~2s and prints the same TAP. Not worth chasing further — no CI impact.
-- [ ] **BRAIN-1 · Verify the learning digest actually runs.** `status: open`
-  It was re-enabled 2026-07-22 after being off since 06-30 with 84 sessions stuck at `pending_digest`.
-  Confirm the 04:00 cron fired, sessions moved off `pending_digest`, and `learning_inbox` grew.
-  *Done when:* row counts before/after are recorded here.
+- [x] **BRAIN-1 · The digest DOES run — but 65 sessions could never be digested. Fixed.**
+  `status: done` **Row counts, as asked.** `vscode_session`: **123 digested** (last 2026-07-22) vs
+  **72 pending_digest** spanning 2026-06-19 → 07-23. `learning_inbox`: **83 rows**, with new entries on
+  07-22 (6) and 07-23 (1). So the 04:00 job fired and the loop is alive — that half of the question is
+  a clean yes.
+  **But the pending count told a second story.** `getPendingVscodeSessions(hours = 24, …)` selects only
+  `createdAt >= now - 24h`. A session still pending once it ages past that window can **never** be
+  selected again — it is permanently undigestable, and nothing reports the loss. That is precisely what
+  the 06-30 → 07-22 outage produced: re-enabling the job recovered only the last 24h and stranded the
+  rest. Measured split at the time of the fix: **7 in-window, 65 stranded** (oldest
+  `2026-06-19T05:21`). Those 65 sessions' lessons were silently gone. Same silent-loss family as HYG-1,
+  the skipped-but-passing gates, and TEST-1a's starved harvester.
+  **Shipped:** `getStrandedVscodeSessions()` (oldest-first) + `countPendingVscodeSessions()` (returns
+  `{inWindow, stranded, oldest}`), and `learningDigest` now fills whatever slots fresh sessions leave
+  spare with the OLDEST stranded ones, so a backlog drains deterministically instead of starving behind
+  new work. The window is configurable (`learning.vscode.digestLookbackHours`) but the 24h default is
+  unchanged — fresh sessions keep priority. The backlog is now **reported** in both the job's output
+  line and its metadata, so it can never rot unseen again.
+  *Proof:* replaying the handler's exact selection against the live DB picks 7 fresh + **13 drained**
+  (oldest `2026-06-19`) — where previously **0 of the 65** were reachable, so it now clears in ~5 runs.
+  New `src/lib/vscodeSessionBacklog.test.js` (3 cases) pins that stranded rows are counted, retrievable
+  oldest-first, and that the two queries partition the pending set exactly. `npm test` **212/212** ·
+  toolkit **82/82**.
 - [ ] **BRAIN-2 · Ollama is down → semantic reindex failing** (`embedder=ollama/nomic-embed-text`).
   `status: open` — detect + report clearly; `memory_search` recall is degraded until it runs.
 

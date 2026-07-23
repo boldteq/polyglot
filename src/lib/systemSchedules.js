@@ -918,8 +918,27 @@ const HANDLERS = {
       recordFault(null, 'sys-learning-digest', 'transcript-scan', err, { critical: true });
     }
 
-    const sessions = db.getPendingVscodeSessions(24, maxSessions);
-    if (!sessions.length) return { output: `learning digest: no pending sessions (scanned ${scan.scanned})`, metadata: { sessions: 0, scan } };
+    // BACKLOG DRAIN (BRAIN-1). The pending query only looks back `windowHours`, so a session still
+    // pending once it ages past that window could never be digested again — its lessons were lost with
+    // nothing reporting it. Re-enabling the job on 2026-07-22 after it had been off since 06-30
+    // therefore recovered only the last 24h and left 65 sessions (back to 06-19) permanently stranded.
+    // Fresh sessions still take priority; the OLDEST stranded ones fill whatever slots are left, so a
+    // backlog drains deterministically across runs and can never starve behind new work.
+    const windowHours = cfg('learning.vscode.digestLookbackHours', 24);
+    const backlog = db.countPendingVscodeSessions(windowHours);
+    const fresh = db.getPendingVscodeSessions(windowHours, maxSessions);
+    const spare = Math.max(0, maxSessions - fresh.length);
+    const drained = spare > 0 ? db.getStrandedVscodeSessions(windowHours, spare) : [];
+    const sessions = [...fresh, ...drained];
+    const backlogNote = backlog.stranded
+      ? ` · backlog ${backlog.stranded} stranded (oldest ${String(backlog.oldest).slice(0, 10)}), draining ${drained.length} this run`
+      : '';
+    if (!sessions.length) {
+      return {
+        output: `learning digest: no pending sessions (scanned ${scan.scanned})${backlogNote}`,
+        metadata: { sessions: 0, scan, backlog },
+      };
+    }
 
     const blocks = sessions.map((s, i) => buildSessionBlock(s, maxTranscriptChars, i));
     const prompt = buildDigestPrompt(blocks, maxItems);
@@ -1027,9 +1046,9 @@ const HANDLERS = {
     if (loops > 0 || reflections > 0) { try { agentSync.events.emit('memory.changed', { reason: 'continuity', loops, reflections }); } catch { /* SSE best-effort */ } }
 
     return {
-      output: `learning digest: ${sessions.length} session(s) → ${captured} auto-captured, ${staged} staged, ${deduped} deduped, ${loops} open-loop(s), ${reflections} reflection(s) (scanned ${scan.scanned}, +${scan.upserted}/~${scan.repended})`,
+      output: `learning digest: ${sessions.length} session(s)${drained.length ? ` (${drained.length} from backlog)` : ''} → ${captured} auto-captured, ${staged} staged, ${deduped} deduped, ${loops} open-loop(s), ${reflections} reflection(s) (scanned ${scan.scanned}, +${scan.upserted}/~${scan.repended})${backlogNote}`,
       usage,
-      metadata: { llm: true, mode, sessions: sessions.length, captured, staged, deduped, loops, reflections, scan },
+      metadata: { llm: true, mode, sessions: sessions.length, drainedFromBacklog: drained.length, backlog, captured, staged, deduped, loops, reflections, scan },
     };
   },
 

@@ -2371,6 +2371,30 @@ function getPendingVscodeSessions(hours = 24, limit = 50) {
     .map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
 }
 
+// BACKLOG DRAIN (BRAIN-1, 2026-07-23). getPendingVscodeSessions only ever looks back `hours`, so a
+// session still pending once it ages past that window can NEVER be digested — its lessons are lost
+// silently. That is exactly what happened while the digest was disabled 2026-06-30 → 07-22: the
+// backlog aged out, and re-enabling it recovered only the last 24h. 72 sessions dating back to 06-19
+// were stranded with nothing reporting the loss.
+// Oldest-first, so a persistent backlog drains deterministically instead of starving behind new work.
+function getStrandedVscodeSessions(hours = 24, limit = 50) {
+  const cutoff = new Date(Date.now() - hours * 3600000).toISOString();
+  return stmt(`SELECT * FROM vscode_session WHERE status = 'pending_digest' AND createdAt < ?
+    ORDER BY createdAt ASC LIMIT ?`).all(cutoff, limit)
+    .map(r => ({ ...r, metadata: JSON.parse(r.metadata || '{}') }));
+}
+
+// Split of what is still undigested, so the job can REPORT a backlog rather than hide it.
+function countPendingVscodeSessions(hours = 24) {
+  const cutoff = new Date(Date.now() - hours * 3600000).toISOString();
+  const row = stmt(`SELECT
+      SUM(CASE WHEN createdAt >= ? THEN 1 ELSE 0 END) inWindow,
+      SUM(CASE WHEN createdAt <  ? THEN 1 ELSE 0 END) stranded,
+      MIN(createdAt) oldest
+    FROM vscode_session WHERE status = 'pending_digest'`).get(cutoff, cutoff);
+  return { inWindow: row?.inWindow || 0, stranded: row?.stranded || 0, oldest: row?.oldest || null };
+}
+
 // Success-rate of REAL agent work (this 7d vs prior 7d), excluding
 // 'system-schedule' infra runs (which are ~always success and would skew the
 // "are agents getting better?" signal). Powers the Overview's improvement %.
@@ -4766,7 +4790,7 @@ module.exports = {
   // Table retention (sys-db-retention)
   pruneCostLogs, pruneAgentRuns, pruneAgentEvents, pruneDelegations,
   // Learning Loop (VS Code sessions → review inbox)
-  insertVscodeSession, getSessionWatermark, getPendingVscodeSessions, getDigestedSessionStats, getRealRunStats, markVscodeSessionsDigested, getAgentRunsBySession,
+  insertVscodeSession, getSessionWatermark, getPendingVscodeSessions, getStrandedVscodeSessions, countPendingVscodeSessions, getDigestedSessionStats, getRealRunStats, markVscodeSessionsDigested, getAgentRunsBySession,
   insertLearningCandidate, listLearningInbox, getLearningCandidate,
   updateLearningStatus, updateLearningPayload, getInboxCounts, pruneLearningInbox,
   insertCalibrationGrade, listCalibrationGrades,
