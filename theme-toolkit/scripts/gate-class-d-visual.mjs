@@ -79,6 +79,9 @@ function finish(pass, evidence) {
 const { surfaces, source } = declaredSurfaces()
 if (!surfaces.length) {
   console.log('class-d-visual: no Class-D surfaces declared (CLASS_D_SURFACES / docs/class-d-touched.txt) — N/A; formal builds are covered by #18 visual-check.')
+  // QA-7: the prose + `note` already said N/A; the warning id is what gate #45 and
+  // audit-vacuous-pass actually read.
+  warnings.push({ id: 'cd.n-a-no-class-d-surfaces', page: '.', detail: 'no Class-D micro-change declared — formal builds are covered by #18 visual-check', evidence: '' })
   finish(true, { declared: [], source: null, note: 'no Class-D micro-change declared' })
 }
 

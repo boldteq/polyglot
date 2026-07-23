@@ -156,6 +156,9 @@ function main() {
     }
   }
 
+  // QA-7: scope resolved but covers nothing — say so. Silence here is a green tick over an empty
+  // scan, indistinguishable from a clean audit.
+  if (files.size === 0) warnings.push({ id: 'a11y.n-a-empty-scope', page: '.', detail: 'scope resolved but covers 0 files — nothing was scanned for static a11y defects', evidence: '' })
   finish(null, { scanned: files.size, counts })
 }
 

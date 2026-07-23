@@ -20,6 +20,7 @@ function readDir(dir, exts) { const out = []; try { for (const f of fs.readdirSy
 
 const layout = read('layout/theme.liquid')
 if (layout == null) {
+  warnings.push({ id: 'social.n-a-no-layout', page: '.', detail: 'no layout/theme.liquid — nothing was scanned for social/share assets', evidence: '' })
   writeReport('social-assets', 39, { cwd, pass: true, blockers, warnings, evidence: { reason: 'no layout/theme.liquid' }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   console.log('social-assets: PASS (no layout)'); process.exit(0)
 }

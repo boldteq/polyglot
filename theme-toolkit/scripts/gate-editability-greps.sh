@@ -17,9 +17,9 @@ START_MS="$(node -e 'process.stdout.write(String(Date.now()))')"
 TSV="$(mktemp)"
 trap 'rm -f "$TSV"' EXIT
 
-# write_report <pass:true|false> <blockers-json> <evidence-json>
+# write_report <pass:true|false> <blockers-json> <evidence-json> [warnings-json]
 write_report() {
-  GATE_PASS="$1" GATE_BLOCKERS="$2" GATE_EVIDENCE="$3" \
+  GATE_PASS="$1" GATE_BLOCKERS="$2" GATE_EVIDENCE="$3" GATE_WARNINGS="${4:-[]}" \
   GATE_START_MS="$START_MS" REPORT_LIB="$SCRIPT_DIR/lib/report.mjs" REPORT_DIR="$REPORT_DIR" \
   node --input-type=module - <<'NODE'
 import { pathToFileURL } from 'node:url'
@@ -27,7 +27,7 @@ const { writeReport } = await import(pathToFileURL(process.env.REPORT_LIB).href)
 const { file, report } = writeReport('editability', 3, {
   pass: process.env.GATE_PASS === 'true',
   blockers: JSON.parse(process.env.GATE_BLOCKERS || '[]'),
-  warnings: [],
+  warnings: JSON.parse(process.env.GATE_WARNINGS || '[]'),
   evidence: JSON.parse(process.env.GATE_EVIDENCE || '{}'),
   duration_ms: Date.now() - Number(process.env.GATE_START_MS || Date.now()),
 }, process.env.REPORT_DIR)
@@ -66,7 +66,7 @@ fi
 
 FILES=$(git diff --name-only "$BASE"...HEAD -- sections/ snippets/ assets/ layout/ templates/)
 if [ -z "$FILES" ]; then
-  write_report true '[]' '{"base":"base","files_in_scope":0,"note":"no theme files changed vs base"}'
+  write_report true '[]' '{"base":"base","files_in_scope":0,"note":"no theme files changed vs base"}' '[{"id":"editability.n-a-empty-scope","page":".","detail":"no theme files changed vs base — nothing was scanned for merchant editability","evidence":""}]'
   echo "PASS: no theme files changed vs base"
   exit 0
 fi
@@ -76,7 +76,7 @@ PRESENT=""
 for f in $FILES; do [ -f "$f" ] && PRESENT="$PRESENT $f"; done
 FILES="$(echo $PRESENT | tr ' ' '\n' | sed '/^$/d')"
 if [ -z "$FILES" ]; then
-  write_report true '[]' '{"base":"base","files_in_scope":0,"note":"only deletions vs base — nothing to grep"}'
+  write_report true '[]' '{"base":"base","files_in_scope":0,"note":"only deletions vs base — nothing to grep"}' '[{"id":"editability.n-a-empty-scope","page":".","detail":"only deletions vs base — nothing to grep — nothing was scanned for merchant editability","evidence":""}]'
   echo "PASS: only deletions vs base"
   exit 0
 fi

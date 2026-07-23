@@ -32,6 +32,7 @@ function walk(dir, acc) {
 }
 const files = walk(cwd, []).filter((f) => PRICE_FILE.test(path.basename(f)))
 if (files.length === 0) {
+  warnings.push({ id: 'price.n-a-no-surface', page: '.', detail: 'no product/price surface in scope — nothing was scanned for price binding', evidence: '' })
   writeReport('price-binding', 38, { cwd, pass: true, blockers, warnings, evidence: { reason: 'no product/price surface' }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   console.log('price-binding: PASS (no product surface)'); process.exit(0)
 }

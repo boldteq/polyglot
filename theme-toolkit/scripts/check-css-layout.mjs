@@ -231,6 +231,9 @@ async function main() {
     }
   }
 
+  // QA-7: scope resolved but covers nothing — say so. Silence here is a green tick over an empty
+  // scan, indistinguishable from a clean audit.
+  if (files.length === 0) warnings.push({ id: 'layout.n-a-empty-scope', page: '.', detail: 'scope resolved but covers 0 CSS/liquid files — nothing was scanned for layout defects', evidence: '' })
   finish(null, { scanned: files.length, counts, runtime: RUNTIME })
 }
 

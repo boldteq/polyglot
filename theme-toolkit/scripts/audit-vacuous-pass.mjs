@@ -36,6 +36,23 @@ export const ABSENCE_CHECKS = new Set([
   'gate-integrity',     // audits other reports, not the theme
   'discovery',          // audits docs/ artifacts, not the theme
   'foundation',         // audits repo provisioning, not the theme
+  // theme-check lints the WHOLE theme, not a diff scope: "no lint offenses" in an empty theme is a
+  // true statement, the same shape as secret-scan. (It still blocks on a real theme — cravinbyandy
+  // 2026-07-23.)
+  'code-lint',
+  // rule-pack EVALUATED all 8 rules on the empty theme and emitted 3 real findings (html-lang,
+  // skip-link, responsive-images). It examined the theme and reported — the opposite of vacuous.
+  'rule-pack',
+])
+
+// Gates whose empty-theme PASS carries a warning that ESCALATES TO A BLOCKER at publish grade
+// (DS_REQUIRE_SCOPE / LENS_REQUIRE / *_ENFORCE). They are not claiming a clean audit — they are saying
+// "a required step has not been done yet", and they stop the publish. Renaming those ids to *.n-a-*
+// was considered and rejected: it would downgrade a real finding to a shrug.
+export const PENDING_DECLARERS = new Map([
+  ['design-quality', 'dq.pack-missing — warns in dev, BLOCKS under DS_REQUIRE_SCOPE'],
+  ['brand-sync', 'cascade.css-missing — warns in dev, BLOCKS under enforce (asserted by its own fixture)'],
+  ['visual-check', 'vt.capture-not-done — warns in dev, becomes vt.capture-missing (BLOCK) at publish grade'],
 ])
 
 export function classify(name, report) {
@@ -48,6 +65,7 @@ export function classify(name, report) {
   if (declaredSkip) return { verdict: 'declares-skip', why: 'says it did not run' }
   if (declaredNA) return { verdict: 'declares-n-a', why: 'says it was not applicable' }
   if (ABSENCE_CHECKS.has(name)) return { verdict: 'absence-check', why: 'PASS on an empty theme is a true claim (allowlisted)' }
+  if (PENDING_DECLARERS.has(name)) return { verdict: 'declares-pending', why: PENDING_DECLARERS.get(name) }
   return { verdict: 'VACUOUS', why: 'pass:true on an empty theme, with no skip and no N/A — the green tick is not evidence' }
 }
 
@@ -101,7 +119,7 @@ function main() {
 
   console.log(`audit-vacuous-pass: ${rows.length} static gate(s) run against an EMPTY theme\n`)
   const by = (v) => rows.filter((r) => r.verdict === v)
-  for (const [label, v] of [['declares a skip', 'declares-skip'], ['declares N/A', 'declares-n-a'], ['absence-check (allowlisted)', 'absence-check'], ['blocked / errored', 'not-pass'], ['wrote NO report', 'no-report']]) {
+  for (const [label, v] of [['declares a skip', 'declares-skip'], ['declares N/A', 'declares-n-a'], ['declares work PENDING (blocks at publish)', 'declares-pending'], ['absence-check (allowlisted)', 'absence-check'], ['blocked / errored', 'not-pass'], ['wrote NO report', 'no-report']]) {
     const g = by(v)
     if (g.length) console.log(`  ${String(g.length).padStart(2)} ${label}: ${g.map((r) => r.gate).join(', ')}`)
   }

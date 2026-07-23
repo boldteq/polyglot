@@ -165,6 +165,9 @@ function main() {
   // sticky-ATC advisory: a commerce build (product form present) with no sticky anywhere in custom CSS
   if (productForm && !anySticky) place('sections/*', { id: 'mobile.sticky-atc', severityHint: 'advise', value: '', detail: `a product-form section is present but no custom section uses position:sticky — mobile PDPs convert better with a sticky Add-to-Cart (or a repeated in-page CTA). Lens #18 verifies the rendered result.` })
 
+  // QA-7: scope resolved but covers nothing — say so. Silence here is a green tick over an empty
+  // scan, indistinguishable from a clean audit.
+  if (scanned === 0) warnings.push({ id: 'mobile.n-a-empty-scope', page: '.', detail: 'scope resolved but covers 0 files — nothing was scanned for mobile layout', evidence: '' })
   finish(null, { scanned, productForm, anySticky })
 }
 

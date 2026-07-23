@@ -11,7 +11,7 @@
 // empty theme, while a scan-based gate ("every section is on the type ladder") proved nothing. The
 // allowlist is the record of that judgement, so a newly-added gate cannot quietly join the vacuous set.
 
-import { classify, ABSENCE_CHECKS, makeEmptyTheme } from '../../audit-vacuous-pass.mjs'
+import { classify, ABSENCE_CHECKS, PENDING_DECLARERS, makeEmptyTheme } from '../../audit-vacuous-pass.mjs'
 import fs from 'node:fs'
 
 let failures = 0
@@ -67,6 +67,21 @@ console.log('\n── the *.n-a-* convention is the ONE way to declare an empty 
     ? ok('the renamed empty-scope warning is recognised as a declaration') : bad('n-a rename not honoured')
   classify('honesty', pass({ warnings: [{ id: 'honesty.no-custom-code' }] })).verdict === 'VACUOUS'
     ? ok('the OLD spelling is not recognised — which is exactly why it was renamed') : bad('old spelling silently accepted')
+}
+
+console.log('\n── "a required step is not done" is NOT the same as "not applicable" ──')
+{
+  // design-quality / brand-sync / visual-check pass on an empty theme carrying a warning that
+  // ESCALATES TO A BLOCKER at publish grade (dq.pack-missing, cascade.css-missing, vt.capture-not-done).
+  // Renaming those ids to *.n-a-* was considered and REJECTED: it would downgrade a real finding to a
+  // shrug — cascade.css-missing is asserted as a BLOCKER by brand-sync's own fixture.
+  classify('brand-sync', pass()).verdict === 'declares-pending'
+    ? ok('a pending-work declarer is its own category, not vacuous') : bad('pending declarer misclassified')
+  PENDING_DECLARERS.has('visual-check') && PENDING_DECLARERS.has('design-quality')
+    ? ok('all three pending declarers are recorded with their escalation') : bad('pending list incomplete')
+  // and the category must not become a dumping ground: a gate in NEITHER list is still VACUOUS
+  classify('some-new-gate', pass()).verdict === 'VACUOUS'
+    ? ok('a gate in neither list is still flagged') : bad('the escape hatch leaks')
 }
 
 console.log(failures === 0 ? '\nvacuous-pass: ALL CASES PASS' : `\nvacuous-pass: ${failures} FAILURE(S)`)

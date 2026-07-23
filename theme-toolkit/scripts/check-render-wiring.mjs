@@ -128,6 +128,8 @@ function main() {
   const sections = targets.filter(f => /^sections\/.*\.liquid$/.test(f) && fs.existsSync(path.resolve(cwd, f)))
   const sectionText = sections.map(read).join('\n')
   const evidence = { scope: scopeSource, sections: sections.length }
+  // QA-7: scope resolved but no sections — nothing was scanned for render wiring.
+  if (sections.length === 0) warnings.push({ id: 'rw.n-a-empty-scope', page: '.', detail: `scope resolved via ${scopeSource} but covers 0 sections — nothing was scanned for render wiring`, evidence: '' })
 
   // ── whole-repo backing corpus ───────────────────────────────────────────────
   const allCssBearing = [...walkAll('sections', ['.liquid']), ...walkAll('snippets', ['.liquid']), ...walkAll('layout', ['.liquid']), ...walkAll('assets', ['.css', '.css.liquid', '.scss', '.js'])]

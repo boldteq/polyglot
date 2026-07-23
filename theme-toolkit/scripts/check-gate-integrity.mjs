@@ -48,7 +48,7 @@ const NA_RE = /\.n-a-/
 export function emptyScan(json) {
   const ev = json?.evidence
   if (!ev || typeof ev !== 'object') return null
-  for (const key of ['scanned', 'filesScanned', 'files_scanned', 'scannedFiles']) {
+  for (const key of ['scanned', 'filesScanned', 'files_scanned', 'scannedFiles', 'files_in_scope', 'filesInScope']) {
     if (typeof ev[key] === 'number') return ev[key] === 0 ? key : null
   }
   return null
