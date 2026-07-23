@@ -32,6 +32,12 @@ const PREFIX = path.basename(TOOLKIT_ROOT)             // 'theme-toolkit'
 // Directories that are BUILD OUTPUT or per-repo state — never travel with the toolkit.
 const EXCLUDE = new Set(['node_modules', 'gate-reports'])
 
+// Files that legitimately exist in a vendored copy but NOT in `git archive`, because the source repo
+// gitignores them. They are install state, not source, and pruning them breaks the client: deleting
+// package-lock.json breaks the `npm ci --prefix toolkit` this tool itself tells you to run. Found by
+// dogfooding the prune on cravinbyandy (2026-07-24).
+const PRESERVE = new Set(['package-lock.json'])
+
 const die = (msg, code = 2) => { console.error(`vendor-toolkit: ${code === 2 ? 'ENV-ERROR' : 'REFUSED'} — ${msg}`); process.exit(code) }
 
 export function dirtyToolkitPaths(porcelain, prefix) {
@@ -53,11 +59,37 @@ function copyTree(from, to) {
   return n
 }
 
+// Vendoring must RECONCILE, not just overlay. The first cut only copied, so a file vendored earlier by
+// the old `cp -R` and absent from the committed source survived forever — the client kept running a WIP
+// gate while provenance said `dirty: false`. A provenance that lies is worse than none.
+// toolkit/ is a gitignored, fully reproducible dependency directory, so removing what the source does
+// not have is safe; it is reported so the removal is never silent.
+function pruneStale(dest, source, rel = '') {
+  const removed = []
+  let ents
+  try { ents = fs.readdirSync(path.join(dest, rel), { withFileTypes: true }) } catch { return removed }
+  for (const ent of ents) {
+    if (EXCLUDE.has(ent.name)) continue
+    const r = path.join(rel, ent.name)
+    if (r === '.vendor-provenance.json') continue          // written after the copy, by design
+    if (PRESERVE.has(ent.name)) continue                   // install state the archive never carries
+    const inSource = fs.existsSync(path.join(source, r))
+    if (ent.isDirectory()) {
+      if (!inSource) { fs.rmSync(path.join(dest, r), { recursive: true, force: true }); removed.push(`${r}/`) }
+      else removed.push(...pruneStale(dest, source, r))
+    } else if (!inSource) {
+      fs.rmSync(path.join(dest, r), { force: true }); removed.push(r)
+    }
+  }
+  return removed
+}
+
 function main() {
   const argv = process.argv.slice(2)
   const at = (f) => (argv.includes(f) ? argv[argv.indexOf(f) + 1] : null)
   const to = at('--to')
-  const ref = at('--ref') || 'HEAD'
+  const explicitRef = at('--ref')
+  const ref = explicitRef || 'HEAD'
   const allowDirty = argv.includes('--allow-dirty')
   if (!to) die('--to <client-repo> is required')
 
@@ -75,11 +107,18 @@ function main() {
   } catch (e) { die(`cannot read git state: ${e.message}`) }
 
   const dirty = dirtyToolkitPaths(porcelain, PREFIX)
-  if (dirty.length && !allowDirty) {
+  // An EXPLICIT --ref is the escape hatch, and it is safe: `git archive <ref>` reads committed state,
+  // so a dirty working tree cannot contaminate it. The first cut refused --ref too, which made the
+  // tool's own advice ("vendor an explicit --ref") self-contradictory and left --allow-dirty — which
+  // ships the WIP — as the only way through. In a repo with ongoing concurrent work, i.e. the normal
+  // state, that blocked vendoring entirely. Only the IMPLICIT default refuses, to protect a caller who
+  // did not think about it. Found by trying to use the tool (2026-07-24).
+  if (dirty.length && !allowDirty && !explicitRef) {
     console.error(`vendor-toolkit: REFUSED — ${dirty.length} uncommitted path(s) under ${PREFIX}/.`)
     console.error('Vendoring the WORKING TREE ships unreviewed work to a client. On 2026-07-23 that put a')
     console.error("concurrent workstream's half-finished gate into cravinbyandy and added 29 blockers.")
-    console.error('Commit them, or vendor an explicit --ref, or opt in with --allow-dirty (recorded).')
+    console.error(`Commit them, or pin a reviewed commit: --ref ${sha.slice(0, 7)} (archives committed state,`)
+    console.error('ignoring the working tree), or opt in with --allow-dirty (which records what shipped).')
     for (const p of dirty.slice(0, 8)) console.error(`  ${p}`)
     process.exit(1)
   }
@@ -101,6 +140,7 @@ function main() {
   const dest = path.join(target, 'toolkit')
   fs.mkdirSync(dest, { recursive: true })
   const files = copyTree(source, dest)
+  const stale = pruneStale(dest, source)
 
   let version = 'unknown'
   try { version = fs.readFileSync(path.join(dest, 'TOOLKIT_VERSION'), 'utf-8').trim() } catch { /* keep */ }
@@ -111,12 +151,14 @@ function main() {
     version,
     dirty: allowDirty && dirty.length ? dirty : false,
     files,
+    pruned: stale,
     vendoredAt: new Date().toISOString(),
   }
   fs.writeFileSync(path.join(dest, '.vendor-provenance.json'), `${JSON.stringify(provenance, null, 2)}\n`)
   fs.rmSync(stage, { recursive: true, force: true })
 
   console.log(`vendor-toolkit: ${files} file(s) → ${path.relative(process.cwd(), dest) || dest}`)
+  if (stale.length) console.log(`  pruned ${stale.length} stale file(s) not in the source: ${stale.slice(0, 5).join(', ')}${stale.length > 5 ? ' …' : ''}`)
   console.log(`  version ${version} · sha ${sha.slice(0, 7)}${provenance.dirty ? ` · DIRTY (${dirty.length} uncommitted path(s) included)` : ''}`)
   if (provenance.dirty) console.log('  ⚠ this client is running unreviewed work — re-vendor from a clean commit when it lands')
   console.log('  run `npm ci --prefix toolkit` if dependencies changed')

@@ -84,11 +84,16 @@ console.log('\n── THE REFUSAL: a dirty source must not reach a client ──
   refused.code === 1 && /REFUSED/.test(refused.out) && !fs.existsSync(path.join(client, 'toolkit', 'scripts', 'check-half-done.mjs'))
     ? ok('an uncommitted gate is REFUSED and never reaches the client') : bad(`dirty vendor: code ${refused.code}`)
 
-  // vendoring the COMMIT is still allowed while the tree is dirty — that is the whole point
+  // CORRECTED 2026-07-24: an EXPLICIT --ref must WORK on a dirty tree. `git archive <ref>` reads
+  // committed state, so the working tree cannot contaminate it. The first version refused --ref too,
+  // which made the tool's own advice ("vendor an explicit --ref") self-contradictory and left
+  // --allow-dirty — which ships the WIP — as the only way through. In a repo with ongoing concurrent
+  // work, i.e. the normal state, that blocked vendoring outright. Found by trying to use the tool.
   const committed = run(root, ['--to', client, '--ref', 'HEAD'])
   const leaked = fs.existsSync(path.join(client, 'toolkit', 'scripts', 'check-half-done.mjs'))
-  committed.code === 1 && !leaked
-    ? ok('a dirty tree still refuses even with --ref (the tree, not the ref, is the risk)') : bad(`ref path: code ${committed.code} leaked=${leaked}`)
+  committed.code === 0 && !leaked
+    ? ok('an explicit --ref vendors the COMMIT even while the tree is dirty, and the WIP does not leak')
+    : bad(`ref path: code ${committed.code} leaked=${leaked}`)
 
   // ...and opting in is possible, but it is RECORDED
   const forced = run(root, ['--to', client, '--allow-dirty'])
@@ -108,6 +113,37 @@ console.log('\n── the target must actually be a theme ──')
   r.code === 1 && /does not look like a Shopify theme/.test(r.out)
     ? ok('vendoring into a non-theme directory is refused') : bad(`wrong target accepted: ${r.code}`)
   fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(notATheme, { recursive: true, force: true })
+}
+
+console.log('\n── vendoring RECONCILES, but never destroys install state ──')
+{
+  const { root, client, tk } = scaffold()
+  fs.copyFileSync(TOOL, path.join(tk, 'vendor-toolkit.mjs'))
+  execFileSync('git', ['add', '-A'], { cwd: root }); execFileSync('git', ['-c', 'user.email=a@b.c', '-c', 'user.name=t', 'commit', '-q', '-m', 'tool'], { cwd: root })
+
+  // a stale gate left behind by an older `cp -R`, plus install state the archive never carries
+  fs.mkdirSync(path.join(client, 'toolkit', 'scripts'), { recursive: true })
+  fs.writeFileSync(path.join(client, 'toolkit', 'scripts', 'check-stale.mjs'), '// vendored long ago, deleted upstream\n')
+  fs.writeFileSync(path.join(client, 'toolkit', 'package-lock.json'), '{ "lockfileVersion": 3 }')
+  fs.mkdirSync(path.join(client, 'toolkit', 'node_modules'), { recursive: true })
+  fs.writeFileSync(path.join(client, 'toolkit', 'node_modules', 'dep.js'), 'x')
+
+  const r = run(root, ['--to', client])
+  const stale = fs.existsSync(path.join(client, 'toolkit', 'scripts', 'check-stale.mjs'))
+  !stale ? ok('a file deleted upstream is PRUNED from the client') : bad('stale vendored file survived')
+
+  // the prune must not eat install state: deleting package-lock.json breaks the `npm ci` this tool
+  // tells you to run, and node_modules is not the vendor's to manage
+  fs.existsSync(path.join(client, 'toolkit', 'package-lock.json'))
+    ? ok('package-lock.json is preserved (npm ci still works)') : bad('the prune deleted the lockfile')
+  fs.existsSync(path.join(client, 'toolkit', 'node_modules', 'dep.js'))
+    ? ok('node_modules is left alone') : bad('the prune deleted node_modules')
+
+  const prov = JSON.parse(fs.readFileSync(path.join(client, 'toolkit', '.vendor-provenance.json'), 'utf-8'))
+  Array.isArray(prov.pruned) && prov.pruned.some((x) => /check-stale/.test(x))
+    ? ok('what was pruned is RECORDED, never silent') : bad(`pruned not recorded: ${JSON.stringify(prov.pruned)}`)
+  r.code === 0 || bad(`clean vendor exited ${r.code}`)
+  fs.rmSync(root, { recursive: true, force: true })
 }
 
 console.log(failures === 0 ? '\nvendor-toolkit: ALL CASES PASS' : `\nvendor-toolkit: ${failures} FAILURE(S)`)

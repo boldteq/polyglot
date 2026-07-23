@@ -82,7 +82,11 @@ export function buildFixtureTheme() {
     ':root {', '  --ds-color-x: #C8102E;', '  --ds-size-13: 13px;', '  --ds-space-9: 9px;', '}', ''].join('\n'))
   w('templates/index.json', JSON.stringify({ sections: { hero: { type: 'ours', settings: { image: 'shopify://shop_images/pick.png', heading: 'A merchant wrote this' } } }, order: ['hero'] }, null, 2))
   w('config/settings_data.json', JSON.stringify({ current: { logo: 'shopify://shop_images/logo.png', color_scheme: 'scheme-1' } }, null, 2))
-  w('toolkit/scripts/__fixtures__/secret-probe/run-tests.mjs', '// fixture data\nconst FAKE = "-----BEGIN RSA PRIVATE KEY-----\\nnotreal\\n-----END RSA PRIVATE KEY-----"\nexport default FAKE\n')
+  // Assembled at runtime, never written as a literal: this file lives in scripts/ (not __fixtures__),
+  // gets vendored into every client repo, and a literal key block here makes secret-scan report OUR
+  // audit as the CLIENT's leaked secret. It did exactly that on cravinbyandy before this was fixed.
+  const KEY_MARK = ['-----BEGIN', 'RSA', 'PRIVATE', 'KEY-----'].join(' ')
+  w('toolkit/scripts/__fixtures__/secret-probe/run-tests.mjs', `// fixture data\nconst FAKE = "${KEY_MARK}\\nnotreal"\nexport default FAKE\n`)
   // OURS — the control. A gate that reports NOTHING here is broken, not polite.
   w('sections/ours.liquid', '{% style %}\n.ours { font-size: 13px; padding: 9px; color: #C8102E; }\n{% endstyle %}\n<div class="ours">Hardcoded English here</div>\n{% schema %}{ "name": "Ours" }{% endschema %}\n')
   w('assets/section-ours.css', DIRTY_CSS)
