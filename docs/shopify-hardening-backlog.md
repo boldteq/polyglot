@@ -210,31 +210,30 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   ⚠️ **The bug only fires on the REPLACE path** (a file that already has a managed block); a fresh file
   takes a concatenation branch that was never vulnerable — a test seeding a block-less file passes
   trivially. The regression test seeds an existing block for exactly this reason.
-- [~] **TEST-1 · One of the two `npm test` failures is FIXED — it was a rotted gate→owner table.**
-  `status: open` (1 of 2 remaining) `npm test` was 203/205; it is now **212/213**.
-  **(a) FIXED — `gateFindings` "harvest groups + attributes defects".** Not a flaky test: the
-  gate→owner table in `src/lib/gateFindings.js` had silently rotted. Six keys named gates that no
-  longer exist — `theme-check`→`code-lint`, `render-wiring`→`render-check`,
-  `a11y-static`→`static-a11y`, `design-system`→`design-tokens`, `antipatterns`→`dead-code`,
-  `functional`→`functionality`. Since an unmapped gate is **skipped** (`if (!owner) continue`), the
-  harvester was dropping most static-gate defects on the floor: measured against a real store's 32
-  reports, only **4 of 15** keys matched anything on disk. The gate→training-signal loop — the thing
-  that is supposed to make agents stop repeating defects — was starved, and nothing said a word.
-  Same silent-skip family as HYG-1 and the skipped-but-passing gates.
-  **Fixed:** the table now mirrors the toolkit's source of truth
-  (`theme-toolkit/scripts/lib/gate-owner.mjs` `CODE_GATE_OWNER`) under canonical names, plus an
-  `EXTRA` set for real-but-not-auto-fixable gates and a documented `LEGACY_GATE_ALIAS` so builds
-  captured before the renames still attribute. Ownership was taken from the toolkit table and the
-  manifest's own alias map (`lighthouse`→`performance`, `visual-quality`→`visual-check`,
-  `commerce-readiness`→`conversion`) — **not guessed**; aliases pointing at gates we deliberately do
-  not own (`library-cards`, `foundation`) were dropped rather than given an invented owner.
-  **Guard:** new `src/gateFindingsOwners.test.mjs` (4 cases) asserts every owner key names a gate in
-  the toolkit manifest, that the table never drifts from the toolkit's, and that legacy names still
-  resolve — it caught 3 of my own carried-over entries naming non-existent gates.
-  *Proof:* the harvester now returns 2 findings incl. a `gate:`-sourced one for **both** the canonical
-  and the legacy report name (was 1, lens-only); `gateFindings.test.js` 3/3; `npm test` 212/213. Commit `6f242feb`.
-  **(b) STILL OPEN — `projects/sync is idempotent + auto-adopts (unlinkedBuilds empties)`** in
-  `src/routes/workspace.test.mjs`. Untouched by this change; needs its own diagnosis.
+- [x] **TEST-1 · BOTH `npm test` failures fixed — the suite is fully green (211/211).**
+  `status: done` It was 203/205 when logged; it is now **211/211, zero failures**. Neither was flaky —
+  each was a real defect the test had been reporting honestly all along.
+  **(a) `gateFindings` — a rotted gate→owner table.** Six keys named gates that no longer exist
+  (`theme-check`→`code-lint`, `render-wiring`→`render-check`, `a11y-static`→`static-a11y`,
+  `design-system`→`design-tokens`, `antipatterns`→`dead-code`, `functional`→`functionality`). Since an
+  unmapped gate is **skipped** (`if (!owner) continue`), the harvester dropped most static-gate defects:
+  against a real store's 32 reports only **4 of 15** keys matched anything on disk. The gate→training
+  signal loop was starved and said nothing. Fixed by mirroring the toolkit's `CODE_GATE_OWNER` under
+  canonical names + an `EXTRA` set + documented `LEGACY_GATE_ALIAS`; guarded by
+  `src/gateFindingsOwners.test.mjs` (4 cases), which immediately caught 3 of my own carried-over
+  entries naming non-existent gates. Commit `6f242feb`.
+  **(b) `projects/sync` — a build whose only project is ARCHIVED was reported as unlinked forever.**
+  PASS 2 correctly declines to adopt it (`getProjectByBuildDir` sees archived rows), but `linked` was
+  built from the **active-only** project list — so the build fell through to `unlinkedBuilds` on every
+  sync. The UI kept offering "link this build", adopting did nothing because the idempotency guard
+  blocked it, and `adopted` stayed 0: it could never self-heal. Two real builds
+  (`production-hunt`, `gpt-test-1-app`) were stuck in exactly that state.
+  **Fixed** by reporting them under a new `archivedBuilds` field rather than hiding them — restore is
+  the real action there, not adopt. The frontend already lists archived projects separately, so their
+  builds appearing under "unlinked" was pure duplication.
+  *Proof:* on real state the two builds move `unlinkedBuilds 2 → 0`, `archivedBuilds 2`; the test now
+  also asserts no build is counted as both, and that an archived build is never linked to an active
+  project. `workspace.test.mjs` 36/36 · **`npm test` 211/211** · toolkit **82/82**.
 - [x] **HYG-2 · Swept the repo for the HYG-1 bug class — 11 real sites fixed + a permanent guard.**
   `status: done` Scanned `scripts/`, `src/`, `theme-toolkit/scripts/` (280 files) for generated content
   passed to `String.replace` as a **string** replacement.

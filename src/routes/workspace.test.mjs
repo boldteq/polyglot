@@ -310,6 +310,18 @@ test('projects/sync is idempotent + auto-adopts (unlinkedBuilds empties)', async
   // every project with a build_dir is unique (no dupes)
   const dirs = first.json.projects.map((p) => p.build_dir).filter(Boolean);
   assert.equal(dirs.length, new Set(dirs).size, 'no duplicate build_dir across projects');
+
+  // A build whose ONLY project is ARCHIVED must be reported as archived, never as unlinked.
+  // It used to land in unlinkedBuilds forever: PASS 2 declines to adopt it (getProjectByBuildDir sees
+  // archived rows) while `linked` was built from the active-only list — so the UI kept offering
+  // "link this build", adopting did nothing, and `adopted` stayed 0. It could never self-heal.
+  assert.ok(Array.isArray(first.json.archivedBuilds), 'archivedBuilds must be reported, not hidden');
+  const archivedDirs = new Set(first.json.archivedBuilds.map((b) => b.dir));
+  const unlinkedDirs = new Set(first.json.unlinkedBuilds.map((b) => b.dir));
+  for (const d of archivedDirs) {
+    assert.ok(!unlinkedDirs.has(d), `${d} counted as BOTH archived and unlinked`);
+    assert.ok(!dirs.includes(d), `${d} is archived but also linked to an active project`);
+  }
   // 2nd sync adopts nothing new
   const second = await post('/api/workspace/projects/sync');
   assert.equal(second.json.adopted, 0);

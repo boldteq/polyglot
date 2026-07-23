@@ -40,8 +40,9 @@ function deriveIntakeFromDir(dir) {
   };
 }
 
-// Run both passes. Returns { projects, unlinkedBuilds, adopted } — after adoption
-// unlinkedBuilds is normally empty (every build owns a project).
+// Run both passes. Returns { projects, unlinkedBuilds, archivedBuilds, adopted } — after adoption
+// unlinkedBuilds is empty (every build owns a project); a build whose only project is ARCHIVED is
+// reported under archivedBuilds instead, because adopt can never resolve it — restore can.
 function syncProjectsFromDisk(listBuilds) {
   const builds = listBuilds();
   const byDir = new Map(builds.map((b) => [b.dir, b]));
@@ -73,8 +74,20 @@ function syncProjectsFromDisk(listBuilds) {
   projects = db.listClientProjects();
   for (const p of projects) p.build = p.build_dir ? (byDir.get(p.build_dir) || null) : null;
   const linked = new Set(projects.map((p) => p.build_dir).filter(Boolean));
-  const unlinkedBuilds = builds.filter((b) => !linked.has(b.dir));
-  return { projects, unlinkedBuilds, adopted };
+
+  // A build whose ONLY project is archived is not unlinked — it is archived. PASS 2 already declines
+  // to adopt it (getProjectByBuildDir sees archived rows), but `linked` is built from the active-only
+  // list, so such a build was reported as unlinked FOREVER: the UI offered "link this build", adopting
+  // did nothing (the idempotency guard blocked it), and `adopted` stayed 0. It could never self-heal.
+  // Split them out rather than hiding them — restore is the real action, not adopt.
+  const archivedDirs = new Set(
+    db.listClientProjects({ includeArchived: true })
+      .filter((p) => p.status === 'archived' && p.build_dir)
+      .map((p) => p.build_dir),
+  );
+  const unlinkedBuilds = builds.filter((b) => !linked.has(b.dir) && !archivedDirs.has(b.dir));
+  const archivedBuilds = builds.filter((b) => !linked.has(b.dir) && archivedDirs.has(b.dir));
+  return { projects, unlinkedBuilds, archivedBuilds, adopted };
 }
 
 module.exports = { syncProjectsFromDisk, deriveIntakeFromDir };
