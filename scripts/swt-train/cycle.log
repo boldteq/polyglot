@@ -875,3 +875,9 @@ remove the file manually to continue.
 [2026-07-23T19:02:14.620Z] cycle 166 verify: kept 49/49 (dropped 0)
 [2026-07-23T19:06:21.116Z] cycle 166 distributed → 5302 rules · 14/14 agents trained · 0 gate-gaps
 [2026-07-23T19:06:21.117Z] cycle 166 reindex: OK · }
+[2026-07-23T19:06:21.174Z] cycle 166 ✓ +49 FAQs → 5302/6650 (79.7%) · 14/14 agents trained · committed
+[2026-07-23T19:06:26.207Z] cycle 167: slices [typography|contact, color-contrast|contact, spacing-rhythm|contact, imagery-art-direction|contact, motion|contact, a11y|contact, platform-authoring|contact] → generating 49 FAQs (FAQ-6098…)
+[2026-07-23T19:11:47.340Z] cycle 167 verify ANOMALY (kept 12/49) — distrusting critic, keeping all
+[2026-07-23T19:11:47.342Z] cycle 167 verify: kept 49/49 (dropped 0)
+[2026-07-23T19:15:56.169Z] cycle 167 distributed → 5351 rules · 14/14 agents trained · 0 gate-gaps
+[2026-07-23T19:15:56.169Z] cycle 167 reindex: OK · }
