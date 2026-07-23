@@ -29,7 +29,11 @@ const PATTERNS = [
 const ALLOW = [/\.myshopify\.com/, /your[_-]?(api[_-]?key|secret|token)/i, /example|placeholder|xxxx|<.*>/i, /shpat_xxxx/i]
 
 const SCAN_EXTS = ['.liquid', '.js', '.mjs', '.json', '.css', '.scss', '.md', '.txt', '.yml', '.yaml', '.env']
-const SKIP_DIRS = new Set(['node_modules', '.git', 'gate-reports', 'dist', 'build', '.shopify'])
+// `__fixtures__` holds deliberate test secrets — a fake private key is how the secret-scan fixture
+// PROVES this gate fires. A client repo vendors toolkit/, so without this the gate scans our own test
+// data and BLOCKS every client build on a secret that does not exist. (A false BLOCK is as damaging
+// as a false pass.) Found 2026-07-23 by re-vendoring the toolkit into cravinbyandy.
+const SKIP_DIRS = new Set(['node_modules', '.git', 'gate-reports', 'dist', 'build', '.shopify', '__fixtures__'])
 
 function walk(dir, acc) {
   let ents

@@ -105,7 +105,10 @@ add(false, has('docs/design/design-system.json'), 'design-system seeded (gate #0
   add(true, rows.length > 0 && missing.length === 0,
     `vendored toolkit is complete (${rows.length} gate script(s)${missing.length ? `, ${missing.length} MISSING` : ''})`,
     missing.length
-      ? `re-vendor: cp -R "<Polyglot>/theme-toolkit/scripts/." ./toolkit/scripts/ — missing: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? ` +${missing.length - 4}` : ''}`
+      // re-vendor the WHOLE toolkit, not just scripts/: lib/ (aim-handoff-registry), schemas/,
+      // templates/, toolkit-rules/, workflows/ and lens-rubrics/ all drift too. Copying scripts/ alone
+      // left cravinbyandy with a stale registry and gate #44 blocked on a wrong-gate citation.
+      ? `re-vendor ALL of it: for d in lib schemas templates toolkit-rules workflows lens-rubrics scripts; do cp -R "<Polyglot>/theme-toolkit/$d/." "./toolkit/$d/"; done — missing: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? ` +${missing.length - 4}` : ''}`
       : 'could not read the vendored gate manifest — re-vendor the toolkit')
 
   const readVer = (base) => { try { return fs.readFileSync(path.join(base, 'TOOLKIT_VERSION'), 'utf-8').trim() } catch { return null } }
@@ -113,7 +116,7 @@ add(false, has('docs/design/design-system.json'), 'design-system seeded (gate #0
   const src = process.env.POLYGLOT_TOOLKIT || path.join(process.env.HOME || '', 'Desktop/Boldteq App/Operation/Polyglot/theme-toolkit')
   const drift = versionDrift(localVer, readVer(src))
   add(false, drift.known && !drift.drifted, `vendored toolkit version ${localVer || 'unknown'} — ${drift.detail}`,
-    'refresh the vendored copy: cp -R "<Polyglot>/theme-toolkit/." ./toolkit/ && npm ci --prefix toolkit')
+    'refresh the vendored copy (all dirs, not just scripts/): rsync -a --exclude node_modules --exclude gate-reports "<Polyglot>/theme-toolkit/" ./toolkit/ && npm ci --prefix toolkit')
 }
 
 const reqFail = checks.filter((c) => c.required && !c.ok)
