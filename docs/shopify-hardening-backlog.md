@@ -729,7 +729,21 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   a symlinked path (a temp dir, a symlinked checkout, some CI layouts) the guard silently fails and the
   script **exits 0 doing nothing**. Sweep them onto the realpath comparison.
 
-- [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned.** `status: blocked-by human`
+- [x] **CB-8 · NO LONGER ORPHANED — the client wired it in. No action, and deleting it would now break a live page.**
+  `status: done` (verified 2026-07-23, no code change needed)
+  The original analysis was **correct when written**: at the `1fdc5e4` baseline `templates/page.gifting.json`
+  rendered `slideshow, feature-story, marquee, about-cafe, feature-story, page-hero` — no
+  `gifting-occasions`. It has since been resolved **by the client**, not by us: at `105922a`
+  (*"snapshot local theme state before pull"*) the section appears in the render order as id `occasions`,
+  and it is still there at HEAD:
+  `slideshow, **gifting-occasions**, feature-story, marquee, about-cafe, feature-story, page-hero`.
+  Someone added the block in the theme editor and it came down in a theme pull.
+  **So the "wire it or delete it" question is closed, and the delete branch is now actively dangerous** —
+  removing the file would strip a rendering section from the gifting page. No gate treats it as dead;
+  its 24 findings are the ordinary design-token/editability class that applies to any live section.
+  *Lesson worth keeping: a client-owned theme changes underneath the backlog. An item that names a
+  render decision needs re-verification against HEAD before anyone acts on it, not just re-reading.*
+- [x] **CB-8-ORIG · (superseded) `sections/gifting-occasions.liquid` is orphaned.** `status: done`
   Confirmed: `templates/page.gifting.json` renders `slideshow, feature-story, marquee, about-cafe,
   feature-story, page-hero` — **not** `gifting-occasions`. So `sections/gifting-occasions.liquid` (4.0 KB)
   and `assets/section-gifting-occasions.css` (3.3 KB) render nowhere, while `reveal.css` still styles
