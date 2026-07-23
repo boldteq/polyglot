@@ -10,16 +10,68 @@
 
 import os from 'node:os'
 import { pathToFileURL } from 'node:url'
-import { embedOne } from './embedder.mjs'
+import { embedOne, embedderInfo } from './embedder.mjs'
 import { getStore } from './store.mjs'
 
 const HOME = os.homedir()
 const short = (ref) => (typeof ref === 'string' ? ref.replace(HOME, '~') : ref)
 const round = (n, d = 4) => (Number.isFinite(n) ? Number(n.toFixed(d)) : n)
 
+// BRAIN-2 (2026-07-23) — the query side had no guard at all.
+// reindex.mjs detects a changed embedder and forces a full re-embed, but only when it RUNS. Between a
+// provider change (or an Ollama outage that pushes someone to INTEL_EMBED_PROVIDER=hash to unblock)
+// and the next reindex, every query is embedded with one model and compared against an index built by
+// another — so `memory_search` returns confidently-ranked nonsense and nothing says a word. Recall
+// degrading silently is the exact failure this backlog keeps finding; make it announce itself.
+//
+// PURE so it can be tested without an index or a running Ollama.
+export function embedderMismatch(manifest, current, queryDim) {
+  if (!manifest) return null // no manifest (e.g. the supabase store) — nothing to compare against
+  const deltas = []
+  if (manifest.provider && current.provider && manifest.provider !== current.provider) {
+    deltas.push(`provider ${manifest.provider} → ${current.provider}`)
+  }
+  if (manifest.model && current.model && manifest.model !== current.model) {
+    deltas.push(`model ${manifest.model} → ${current.model}`)
+  }
+  // A dim mismatch is not a degradation, it is a category error: cosine across different-length
+  // vectors is meaningless, so returning ANY ranking would be fabricating a result.
+  const dimMismatch = Number.isFinite(manifest.dim) && Number.isFinite(queryDim)
+    && manifest.dim > 0 && queryDim > 0 && manifest.dim !== queryDim
+  if (dimMismatch) deltas.push(`dim ${manifest.dim} → ${queryDim}`)
+  if (!deltas.length) return null
+  return { fatal: dimMismatch, detail: deltas.join(', ') }
+}
+
+// What the index was built with vs what queries use now — for the Brain UI / a health check.
+// Provider+model only: the query dim is not knowable without actually embedding something, so passing
+// the manifest's own dim here would compare it to itself and report `fatal:false` every time — a
+// reassuring-looking field that can never fire. retrieve() does the real dim check per query.
+export function indexHealth() {
+  const manifest = getStore().readManifest?.() || null
+  const current = embedderInfo()
+  const mismatch = embedderMismatch(manifest, current, null)
+  return {
+    ok: !mismatch,
+    current,
+    manifest: manifest && { provider: manifest.provider, model: manifest.model, dim: manifest.dim, count: manifest.count, updated_at: manifest.updated_at },
+    mismatch: mismatch && { detail: mismatch.detail, dimCheckedAtQueryTime: true },
+  }
+}
+
+let warned = ''
 export async function retrieve(query, { topK = 8, filter = {} } = {}) {
   if (!query || !query.trim()) return []
-  const { vector } = await embedOne(query)
+  const { vector, dim } = await embedOne(query)
+
+  const mismatch = embedderMismatch(getStore().readManifest?.(), embedderInfo(), dim)
+  if (mismatch) {
+    const msg = `[intel] index/embedder MISMATCH (${mismatch.detail}) — this index was built with a `
+      + 'different embedder, so similarity scores are not meaningful. Run: node src/intelligence/reindex.mjs --full'
+    if (mismatch.fatal) throw new Error(msg) // refuse rather than return a confident-looking ranking
+    if (warned !== mismatch.detail) { warned = mismatch.detail; console.warn(msg) }
+  }
+
   const hits = await getStore().search(vector, { topK, filter })
   return hits.map(h => {
     const m = h.record.metadata || {}

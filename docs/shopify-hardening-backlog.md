@@ -289,8 +289,40 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   New `src/lib/vscodeSessionBacklog.test.js` (3 cases) pins that stranded rows are counted, retrievable
   oldest-first, and that the two queries partition the pending set exactly. `npm test` **212/212** ·
   toolkit **82/82**. Commit `e03bc7b2`.
-- [ ] **BRAIN-2 · Ollama is down → semantic reindex failing** (`embedder=ollama/nomic-embed-text`).
-  `status: open` — detect + report clearly; `memory_search` recall is degraded until it runs.
+- [x] **BRAIN-2 · Ollama recovered — but the QUERY side had no guard at all. Fixed.**
+  `status: done` **The premise is stale:** Ollama is up, `nomic-embed-text` is pulled, and the index
+  was rebuilt today — manifest `ollama/nomic-embed-text dim=768`, **34,017 chunks**, `updated_at
+  2026-07-23T02:34`. A live query returns real hits (top cosine **0.777**). So the reindex is not
+  failing.
+  **What the item actually asked for — "detect + report clearly" — was genuinely missing.**
+  `reindex.mjs` detects a changed embedder and forces a full re-embed, but only when it RUNS.
+  `retrieve.mjs` never compared anything: between a provider change — or exactly the outage this item
+  describes, where someone sets `INTEL_EMBED_PROVIDER=hash` to unblock — and the next reindex, every
+  query is embedded with one model and ranked against an index built by another. `memory_search` then
+  returns confidently-ranked nonsense and says nothing. (`embed()` itself is sound: it throws rather
+  than silently falling back to hash.)
+  **Shipped:** pure `embedderMismatch(manifest, current, queryDim)` + `indexHealth()`, wired into
+  `retrieve()`. A provider/model drift at the same dim **warns once**; a **dim** mismatch **throws** —
+  cosine across different-length vectors is not a degraded ranking, it is a category error, and
+  returning an order at all would be fabricating a result.
+  *Proof (end-to-end, live index):* normal path → `health.ok true`, 3 hits, top cosine 0.777. Forcing
+  `INTEL_EMBED_PROVIDER=hash` → `health.ok false` and the query is **REFUSED** with
+  *"MISMATCH (provider ollama → hash, model nomic-embed-text → hash, dim 768 → 512)"* — previously that
+  path returned silent nonsense. 6 unit cases cover match / hash-vs-ollama fatal / same-dim model swap /
+  no-manifest / missing-dim / provider drift. Fixed one flaw in my own code on the way: `indexHealth()`
+  compared the manifest dim to itself, so its `fatal` flag could never fire — it now reports
+  provider/model only and defers the dim check to query time rather than showing a reassuring field
+  that can never trigger. `npm test` **222/222** · toolkit **82/82**.
+- [ ] **TEST-3 · The `/ai/*` reattach tests are flaky and the suite's test COUNT varies run to run.**
+  `status: open` Observed across consecutive `npm test` runs on an unchanged tree: **207/200/7-fail**,
+  then **222/222/0-fail**; earlier runs reported 211, 212 and 213 tests. The 7 failures were all in
+  `src/routes/ai.reattach.test.js` (`/ai/active`, reattach replay/stream, cancel) — timing-sensitive
+  tests around buffered output and live processes. **Not caused by the BRAIN-2 change** (only
+  `src/intelligence/retrieve.mjs` was modified; that file has zero `intelligence`/`retrieve` references).
+  A varying test count means some files intermittently fail to register, so a green run is not proof
+  the whole suite ran — the same "a skipped check is not a passed check" problem this backlog keeps
+  hitting, one level up. *Done when:* the count is stable across 3 consecutive runs and the reattach
+  tests are deterministic (or explicitly serialised).
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 
