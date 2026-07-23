@@ -26,6 +26,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 const cwd = process.cwd()
 const DS = process.env.DESIGN_SYSTEM || 'docs/design/design-system.json'
@@ -203,4 +204,4 @@ function main() {
   process.exit(0)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()
+if (isMain(import.meta.url)) main()

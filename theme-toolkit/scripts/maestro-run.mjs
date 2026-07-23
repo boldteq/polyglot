@@ -29,6 +29,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { runMaestroLoop, MAESTRO_MAX_ROUNDS } from './lib/maestro-loop.mjs'
 import { preflight, formatChecklist } from './maestro-preflight.mjs'
 import { readLock, isSingleThemeLock } from './lib/shopify-theme-lock.mjs'
@@ -279,6 +280,6 @@ async function main() {
 }
 
 // run as CLI only (not when imported by the fixture)
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main().catch(e => { console.error(`maestro:run: ${e.message}`); process.exit(2) })
 }

@@ -26,6 +26,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { persistedKeys, readOutcomes, appendOutcomes } from './lib/lens-fix-outcomes.mjs'
 import { runAutofixLoop } from './lib/lens-autofix-loop.mjs'
 import { snapshotTheme, detectDestructive, revertDestructive } from './lib/fix-guard.mjs'
@@ -187,6 +188,6 @@ async function main() {
   process.exit(1)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main().catch(e => die(2, `unexpected failure: ${e.message}`))
 }

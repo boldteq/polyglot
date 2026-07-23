@@ -38,6 +38,7 @@
 
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 import { resolvePages, authFetch, EnvError, MANDATORY_PAGES, OPTIONAL_PAGES } from './lib/pages.mjs'
 
@@ -630,7 +631,7 @@ async function main() {
   finish(pass ? 0 : 1, { pass, blockers, warnings, evidence: { checkedPages, skippedPages, canonicalForms, site } })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main().catch(err => {
     if (err instanceof EnvError || err?.isEnvError === true) {
       console.error(`ENV-ERROR: ${err.message}`)

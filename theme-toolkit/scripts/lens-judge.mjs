@@ -25,6 +25,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 const cwd = process.cwd()
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -245,6 +246,6 @@ async function main() {
   process.exit(failed > 0 ? 1 : 0)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main().catch(e => die(2, `unexpected failure: ${e.message}`))
 }

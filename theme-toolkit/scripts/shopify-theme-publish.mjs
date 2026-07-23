@@ -29,6 +29,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync, execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import {
   LOCK_FILE, readLock, lockShapeErrors, lockTargetsLiveUnsafely,
   isSingleThemeLock, isLiveRole, cliAvailable, listThemes, findTheme,
@@ -173,4 +174,4 @@ async function main() {
 }
 
 // run as CLI only (importable for tests without side effects)
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) main()
+if (isMain(import.meta.url)) main()

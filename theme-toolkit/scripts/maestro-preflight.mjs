@@ -24,6 +24,7 @@ import http from 'node:http'
 import https from 'node:https'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { readLock, lockShapeErrors, cliAvailable, LOCK_FILE } from './lib/shopify-theme-lock.mjs'
 import { loadRegistry, resolveRequire } from './check-handoff-contract.mjs'
 
@@ -233,6 +234,6 @@ async function main() {
   process.exit(result.ready ? 0 : 1)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main().catch(e => { console.error(`maestro:preflight: ${e.message}`); process.exit(2) })
 }

@@ -20,6 +20,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 
 const t0 = Date.now()
@@ -239,5 +240,5 @@ async function main() {
   process.exit(pass ? 0 : 1)
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-if (isMain) main().catch(e => die(2, `unexpected failure: ${e.message}`))
+const IS_MAIN = isMain(import.meta.url)
+if (IS_MAIN) main().catch(e => die(2, `unexpected failure: ${e.message}`))

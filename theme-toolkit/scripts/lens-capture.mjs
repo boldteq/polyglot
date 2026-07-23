@@ -23,6 +23,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -505,6 +506,6 @@ async function main() {
 }
 
 // run as CLI only — importable for tests (planCaptures/frameStates/frameKey) without side effects
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (isMain(import.meta.url)) {
   main().catch(err => die(2, `unexpected failure: ${err.message}`))
 }

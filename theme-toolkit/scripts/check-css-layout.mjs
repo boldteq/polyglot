@@ -27,6 +27,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { execFileSync } from 'node:child_process'
 import { writeReport } from './lib/report.mjs'
 
@@ -237,5 +238,5 @@ async function main() {
   finish(null, { scanned: files.length, counts, runtime: RUNTIME })
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-if (isMain) main().catch(err => finish(`unexpected failure: ${err.message}`))
+const IS_MAIN = isMain(import.meta.url)
+if (IS_MAIN) main().catch(err => finish(`unexpected failure: ${err.message}`))

@@ -16,6 +16,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 const cwd = process.cwd()
 // Central corpus by default so --collect from every store aggregates → the weekly sample is cross-store.
@@ -142,4 +143,4 @@ function main() {
 }
 
 // CLI only — importable for tests (sampleFrames/computeCalibration) without side effects
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) main()
+if (isMain(import.meta.url)) main()

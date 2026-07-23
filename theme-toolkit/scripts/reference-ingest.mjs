@@ -43,6 +43,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 const cwd = process.cwd()
 const REF_DIR = 'docs/design/references'
@@ -284,4 +285,4 @@ function main() {
   process.exit(0)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()
+if (isMain(import.meta.url)) main()

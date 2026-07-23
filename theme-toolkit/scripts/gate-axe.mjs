@@ -16,6 +16,7 @@
 
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 import { resolvePages, EnvError, MANDATORY_PAGES } from './lib/pages.mjs'
 
@@ -273,7 +274,7 @@ async function main() {
   })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main().catch(err => {
     const reason = err instanceof EnvError ? err.message : `script error: ${err.message}`
     console.error(`ENV-ERROR: ${reason}`)

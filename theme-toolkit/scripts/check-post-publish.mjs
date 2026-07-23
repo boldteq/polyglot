@@ -17,6 +17,7 @@
 
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 import { readLock, lockShapeErrors, LOCK_FILE } from './lib/shopify-theme-lock.mjs'
 
@@ -77,4 +78,4 @@ async function main() {
   process.exit(0)
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) main()
+if (isMain(import.meta.url)) main()

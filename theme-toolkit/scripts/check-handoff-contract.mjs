@@ -16,6 +16,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { validate } from './lib/jsonschema.mjs'
 
 const REGISTRY = fileURLToPath(new URL('../lib/aim-handoff-registry.json', import.meta.url))
@@ -133,6 +134,6 @@ function main() {
   process.exit(ready ? 0 : 1)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main()
 }

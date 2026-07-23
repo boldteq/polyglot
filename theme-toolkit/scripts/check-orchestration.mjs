@@ -22,6 +22,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 import { loadRegistry } from './check-handoff-contract.mjs'
 
@@ -247,6 +248,6 @@ function main() {
   process.exit(pass ? 0 : 1)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main()
 }

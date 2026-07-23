@@ -17,6 +17,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 
 const t0 = Date.now()
@@ -129,6 +130,6 @@ function main() {
   finish(null, { present: true, niche: j.niche, lift_target: j.lift_target, benchmark, sparse, surfaces: (j.surfaces || []).length, decoderBrands: brands, mechanics: Array.isArray(j.mechanics) ? j.mechanics.length : 0, mechanicGaps })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   try { main() } catch (e) { finish(`unexpected failure: ${e.message}`) }
 }

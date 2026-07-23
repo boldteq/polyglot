@@ -21,6 +21,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 
@@ -134,4 +135,4 @@ function main() {
   process.exit(0)
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) main()
+if (isMain(import.meta.url)) main()

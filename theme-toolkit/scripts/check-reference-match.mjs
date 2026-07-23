@@ -29,6 +29,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 
 const t0 = Date.now()
@@ -228,6 +229,6 @@ async function main() {
   finish(blockers.length === 0, { declared: entries.length, l1Pass, judged, enforced: ENFORCE })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main().catch((e) => { console.error(`reference-match: ENV-ERROR — ${e.message}`); process.exit(2) })
 }

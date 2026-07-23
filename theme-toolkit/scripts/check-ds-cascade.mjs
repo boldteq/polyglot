@@ -18,6 +18,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 import { cascadeStale } from './lib/ds-hash.mjs'
 
@@ -138,6 +139,6 @@ function main() {
   finish(null, { present: true, fresh: stale.ok, coverageGaps })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   try { main() } catch (err) { finish(`unexpected failure: ${err.message}`) }
 }

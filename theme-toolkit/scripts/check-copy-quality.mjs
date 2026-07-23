@@ -19,6 +19,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 
 const t0 = Date.now()
@@ -137,6 +138,6 @@ function main() {
   finish(null, { briefs: briefs.length, objections: objections.length, objectionGaps: gaps.length })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   try { main() } catch (err) { finish(`unexpected failure: ${err.message}`) }
 }

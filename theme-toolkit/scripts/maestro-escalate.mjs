@@ -25,6 +25,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 // Owners whose findings are ALWAYS a human question (store data can't be invented).
 const HUMAN_OWNERS = new Set(['porter'])
@@ -182,6 +183,6 @@ function main() {
   process.exit(0)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main()
 }

@@ -15,6 +15,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 
 // PURE: emails whose trigger isn't in the wired set (or that declare no trigger at all).
@@ -65,6 +66,6 @@ function main() {
   finish(null, { emails: (lc.emails || []).length, wired: (wiring.triggers || []).length, gaps: gaps.length })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main()
 }

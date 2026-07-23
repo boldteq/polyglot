@@ -23,6 +23,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync, execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { preflight, formatChecklist } from './maestro-preflight.mjs'
 import { makeRealDeps, runMaestro, loadSurfaces } from './maestro-run.mjs'
 import { withPreviewServer, DEFAULT_PREVIEW_URL } from './lib/preview-server.mjs'
@@ -277,6 +278,6 @@ async function main() {
   process.exit(result.publishReady ? 0 : 1)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main().catch(e => { console.error(`maestro:build: ${e.message}`); process.exit(2) })
 }

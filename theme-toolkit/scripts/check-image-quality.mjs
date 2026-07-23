@@ -21,6 +21,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 
 const IMG_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif'])
@@ -144,6 +145,6 @@ function main() {
   finish({ scanned })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main()
 }

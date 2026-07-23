@@ -26,6 +26,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 const cwd = process.cwd()
 const BASE_REF = process.env.BASE_REF || 'base'
@@ -170,4 +171,4 @@ function main() {
 
 // fileURLToPath, NOT new URL(...).pathname — the latter percent-encodes, so any repo path containing
 // a space (e.g. "Boldteq App") never matches argv[1] and main() silently never runs.
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()
+if (isMain(import.meta.url)) main()

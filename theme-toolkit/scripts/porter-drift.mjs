@@ -18,6 +18,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 
 // PURE: compare two store-state snapshots. Each snapshot is { <type>: { <key>: <value> } } (e.g.
@@ -73,6 +74,6 @@ function main() {
   finish(null, { drift: drift.length })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main()
 }

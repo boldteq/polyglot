@@ -14,6 +14,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
 
 // PURE: every leaf key path in a nested translation object (arrays treated as leaves).
@@ -90,6 +91,6 @@ function main() {
   finish({ locales: files.length, defaultLocale, gapLocales: Object.keys(gaps).length })
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main()
 }

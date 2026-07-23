@@ -11,6 +11,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 const cwd = process.cwd()
 const has = (p) => fs.existsSync(path.join(cwd, p))
@@ -131,7 +132,7 @@ const reqFail = checks.filter((c) => c.required && !c.ok)
 const advFail = checks.filter((c) => !c.required && !c.ok)
 
 // run as CLI only — importable for tests (missingGateScripts / versionDrift) without printing or exiting
-const IS_CLI = Boolean(process.argv[1]) && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+const IS_CLI = isMain(import.meta.url)
 if (!IS_CLI) { /* imported for its pure helpers — no report, no exit */ } else {
 
 console.log(`preflight-repo — ${path.basename(cwd)}\n`)

@@ -16,6 +16,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf-8')) } catch { return null } }
 
@@ -114,7 +115,7 @@ export function formatStatus(s) {
 }
 
 // ── CLI ─────────────────────────────────────────────────────────────────────────────
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   const json = process.argv.includes('--json')
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
     console.log('Usage: node maestro-status.mjs [--json]   (morning snapshot of the last maestro build)')

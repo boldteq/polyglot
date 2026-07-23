@@ -23,6 +23,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isMain } from './lib/is-main.mjs'
 
 // PURE: count "cleared-then-returned" transitions in a chronological presence array. 0 = stable
 // (always present, always absent, or fixed-once-and-stayed-fixed); ≥1 = it came back after clearing.
@@ -116,6 +117,6 @@ function main() {
   process.exit(argv.includes('--strict') && out.flagged.length ? 1 : 0)
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta.url)) {
   main()
 }
