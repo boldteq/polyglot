@@ -388,7 +388,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   false-flagged. Fixture: `brand-sync` +5 cases (unwired detected, blocks at enforce, wired not flagged,
   link/@import accepted). Notably the existing "fresh cascade → PASS at enforce" case **started failing**
   when this landed — correctly, because its temp theme had no layout at all; the fixture now models the
-  healthy wired state instead of the check being weakened.
+  healthy wired state instead of the check being weakened. Commit `f60c287f`.
   **Still open — the swap itself,** deliberately not done inline: it edits ~201 sites across 8 client
   stylesheets. *Next, in order:* (1) `node toolkit/scripts/generate-design-system-css.mjs` in the client
   repo, (2) add the `stylesheet_tag` to `layout/theme.liquid` and confirm gate #30 reports neither
