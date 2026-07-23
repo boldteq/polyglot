@@ -710,6 +710,23 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `/private/var/folders/…` resolved, so the guard failed, `main()` never ran, and the script **exited 0
   having done nothing**. Now compares realpaths. Toolkit **102/102**.
 
+- [x] **CB-19 · The suite crossed the 10-minute cap — parallelised, 600s+ → 179s.** `status: done` (`1fb29558`)
+  **A suite that cannot be run in one command is a suite people stop running** — the same *"nobody runs
+  it"* failure the gates themselves keep hitting, and the reason CB-18's note existed. The stack is
+  still growing (the concurrent workstream added two gates mid-run), so this was going to get worse.
+  The 106 suites are independent processes over their own temp dirs, so they now run through a small
+  worker pool. **Bounded, not unbounded:** several fixtures drive a real chromium (`functional-url`,
+  `lens-visibility`, `section-cohesion`) and a few spawn the entire static gate stack (`audits-live`,
+  `vacuous-pass`), so a full fan-out would thrash. Defaults to `min(4, cpus-1)`; `TEST_CONCURRENCY`
+  overrides. Results print in **manifest order** regardless of finish order so the output stays
+  diffable, and the summary now carries wall time + slowest suite — the number that says when this
+  needs attention again.
+  **106/106 in 179s** (slowest `functional-url` 122s under contention; ~59s alone).
+  **Teeth verified — and my first attempt was wrong:** appending a failing assertion to a fixture proved
+  nothing, because that fixture already calls `process.exit()` before the appended lines run, so exit 0
+  was correct for the wrong reason. Replacing the fixture outright gives `exit=1`, `✗ translations`, and
+  the FAIL line surfaced.
+
 - [x] **CB-18 · The three audits were unenforced — their own results could rot.** `status: done` (`bfb65b74`)
   A gap in **my own work**, and the exact shape this workstream keeps finding elsewhere. Each audit had
   a fixture, but every one tested the **pure helpers** against synthetic input; none asserted the
@@ -725,8 +742,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   Incidentally confirmed the value: the stack grew to **129 blocking checks / 35 static gates** during
   the run (concurrent workstream added two gates) and both are already clean on all three audits.
   Toolkit **106/106**.
-  ⚠ **Operational note:** the suite now exceeds the 10-minute single-command cap (~72s added). It must
-  be run backgrounded — `nohup node scripts/run-all-tests.mjs > out 2>&1 &` — and polled.
+  ⚠ *Operational note (RESOLVED by CB-19 — the suite runs in 179s and needs no backgrounding).*
 
 - [x] **CB-17 · The false-attribution class is now audited, not rediscovered.** `status: done` (`044282fa`)
   Six times in one week the same shape was found **by accident**, and every one was a false BLOCK:
