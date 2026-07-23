@@ -288,7 +288,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   (oldest `2026-06-19`) — where previously **0 of the 65** were reachable, so it now clears in ~5 runs.
   New `src/lib/vscodeSessionBacklog.test.js` (3 cases) pins that stranded rows are counted, retrievable
   oldest-first, and that the two queries partition the pending set exactly. `npm test` **212/212** ·
-  toolkit **82/82**.
+  toolkit **82/82**. Commit `e03bc7b2`.
 - [ ] **BRAIN-2 · Ollama is down → semantic reindex failing** (`embedder=ollama/nomic-embed-text`).
   `status: open` — detect + report clearly; `memory_search` recall is degraded until it runs.
 
