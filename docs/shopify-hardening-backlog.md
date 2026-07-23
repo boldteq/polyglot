@@ -438,7 +438,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   exactly what compass AP#2 forbids. (`check-discovery` catches bare `tbd`/`todo` for the same concept;
   the two gates had drifted.) Fixed with a `DRAFT_MARKER_RE` scoped to `status:ready` only — a
   `partial`/`missing` brief legitimately carries TBDs and blocking those would stall normal drafting, so
-  they warn instead. Toolkit **88/88** · `npm test` **225/225**.
+  they warn instead. Toolkit **88/88** · `npm test` **225/225**. Commit `25b77833`.
   *Next:* the remaining 24 static — `check-visual-truth` (5), `gate-class-d-visual` (5),
   `check-reference-match` (3), `check-design-system` (3), `check-asset-budget` (2).
 
