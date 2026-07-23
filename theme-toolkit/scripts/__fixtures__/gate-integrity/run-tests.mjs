@@ -2,7 +2,7 @@
 // PURE: exercises auditReports() against synthetic gate reports. Proves the cravinbyandy failure state
 // (8 gates pass:true while their scan was skipped) BLOCKS, that genuinely-N/A gates only WARN, and
 // that a CHANGES.md waiver exempts a named gate.
-import { auditReports, skippedMarker, emptyScan } from '../../check-gate-integrity.mjs'
+import { auditReports, skippedMarker, emptyScan, orphanReports } from '../../check-gate-integrity.mjs'
 
 let failures = 0
 const eqNull = (v, m) => (v === null ? ok(m) : bad(`${m} — got ${JSON.stringify(v)}`))
@@ -118,6 +118,32 @@ console.log('\nvacuous pass — green over an EMPTY scan (QA-7)')
   // and a real, populated pass must stay clean
   const good = auditReports([{ name: 'z', json: { gate: 'z', pass: true, evidence: { scanned: 40 }, blockers: [], warnings: [] } }])
   good.blockers.length === 0 ? ok('a gate that actually scanned raises nothing') : bad(`false block: ${good.blockers.map(b => b.id)}`)
+}
+
+console.log('\nretired gates leave fossils — a report is not evidence if its gate is gone (CB-21)')
+{
+  // theme-gates clears gate-reports/<name>.json only for gates it is ABOUT TO RUN, so when a gate
+  // leaves the stack its last report stays forever. cravinbyandy carried a repo-hygiene.json from an
+  // older sha reporting 29 blockers for a gate that no longer exists. Two harms: it inflates every
+  // count over the directory, and THIS gate audited it as if it were current.
+  const live = ['seo', 'honesty', 'conversion']
+  orphanReports(['seo', 'honesty', 'repo-hygiene'], live).join(',') === 'repo-hygiene'
+    ? ok('a report with no live gate is identified as an orphan') : bad('orphan not detected')
+  orphanReports(['seo', 'honesty'], live).length === 0
+    ? ok('reports matching live gates are never orphans') : bad('false orphan')
+  orphanReports([], live).length === 0 && orphanReports(['x'], []).join(',') === 'x'
+    ? ok('empty inputs behave') : bad('empty input mishandled')
+
+  // THE POINT: a fossil must not be audited. A retired gate's report claiming pass-while-skipped
+  // would otherwise raise a blocker about a gate that no longer exists.
+  const fossil = { name: 'repo-hygiene', json: { gate: 'repo-hygiene', pass: true, evidence: { skipped: 'env' }, blockers: [], warnings: [] } }
+  const audited = auditReports([fossil])
+  audited.blockers.some((b) => b.id === 'integrity.skipped-but-pass')
+    ? ok('(baseline) that fossil WOULD raise a blocker if audited') : bad('baseline wrong — the fossil is not audit-worthy')
+  // ...which is exactly why main() filters orphans out BEFORE calling auditReports. Pinning the
+  // contract the filter relies on:
+  orphanReports([fossil.name], live).length === 1
+    ? ok('so it is excluded from the audit and reported as integrity.orphan-report') : bad('filter contract broken')
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} FAILED`)

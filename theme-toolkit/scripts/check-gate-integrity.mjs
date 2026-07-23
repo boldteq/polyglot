@@ -20,9 +20,12 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
+
+const HERE = path.dirname(fileURLToPath(import.meta.url))
 
 const cwd = process.cwd()
 const REPORT_DIR = process.env.REPORT_DIR || 'gate-reports'
@@ -81,6 +84,21 @@ function waivedGates() {
 }
 
 // PURE: audit parsed reports → { blockers[], warnings[], audited }
+
+// A report for a gate that is no longer in the manifest is not evidence — it is a fossil.
+//
+// theme-gates clears gate-reports/<name>.json only for gates it is ABOUT TO RUN, so when a gate leaves
+// the stack its last report stays on disk forever. cravinbyandy carried a repo-hygiene.json from an
+// older sha reporting 29 blockers for a gate that no longer exists (CB-21). Two harms: it inflates
+// every count taken over the directory, and — worse — THIS gate audits every report it finds, so a
+// retired gate's stale verdict gets audited as if it were current.
+//
+// Returns the names present on disk that the live manifest does not know about.
+export function orphanReports(reportNames, manifestNames) {
+  const live = new Set(manifestNames)
+  return reportNames.filter((n) => !live.has(n)).sort()
+}
+
 export function auditReports(reports, waived = new Set()) {
   const blockers = []
   const warnings = []
@@ -145,6 +163,16 @@ function loadReports() {
   return out
 }
 
+// The live gate manifest, so a report can be matched against the gates that actually exist.
+// Unreadable → null, and orphan detection is skipped rather than guessed: inventing "this gate is
+// retired" from a failed lookup would delete real evidence.
+function liveGateNames() {
+  try {
+    const j = JSON.parse(execFileSync(process.execPath, [path.join(HERE, 'theme-gates.mjs'), '--list-json'], { cwd, encoding: 'utf-8' }))
+    return j.map((g) => String(g.name))
+  } catch { return null }
+}
+
 function main() {
   const t0 = Date.now()
   const reports = loadReports()
@@ -154,9 +182,21 @@ function main() {
     console.log('check-gate-integrity: PASS — no gate reports to audit yet')
     process.exit(0)
   }
-  const { blockers, warnings, audited } = auditReports(reports, waivedGates())
+  // Drop fossils BEFORE auditing: a retired gate's report must never be read as current evidence.
+  const live = liveGateNames()
+  const orphans = live ? orphanReports(reports.map((r) => r.name), live) : []
+  const fresh = orphans.length ? reports.filter((r) => !orphans.includes(r.name)) : reports
+  const { blockers, warnings, audited } = auditReports(fresh, waivedGates())
+  for (const name of orphans) {
+    warnings.push({
+      id: 'integrity.orphan-report',
+      page: `${REPORT_DIR}/${name}.json`,
+      detail: `report for "${name}", which is not in the live gate manifest — a retired gate's evidence lingers forever because theme-gates only clears reports for gates it is about to run. It was EXCLUDED from this audit; delete the file so it stops inflating counts.`,
+      evidence: '',
+    })
+  }
   const pass = blockers.length === 0
-  writeReport(SELF, 45, { cwd, pass, blockers, warnings, evidence: { audited }, duration_ms: Date.now() - t0 }, REPORT_DIR)
+  writeReport(SELF, 45, { cwd, pass, blockers, warnings, evidence: { audited, orphans }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   console.log(`check-gate-integrity: ${pass ? 'PASS' : 'BLOCK'} — audited ${audited} report(s) · ${blockers.length} blocker(s), ${warnings.length} warning(s)`)
   for (const b of blockers) console.log(`  BLOCK ${b.id} [${b.page}]: ${b.detail}`)
   for (const w of warnings) console.log(`  warn  ${w.id} [${w.page}]: ${w.detail}`)
