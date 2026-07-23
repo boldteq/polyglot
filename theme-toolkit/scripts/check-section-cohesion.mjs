@@ -138,7 +138,10 @@ async function main() {
           const cs = getComputedStyle(sec)
           const inner = sec.querySelector(':scope > *') || sec
           const ics = getComputedStyle(inner)
-          const heads = [...sec.querySelectorAll('h1,h2,h3,h4')].filter(h => h.offsetParent !== null)
+          // offsetParent is null for position:fixed, so a heading in a fixed/overlay section was
+          // dropped — which silently weakened cohesion.multi-h1 and the heading-step-down rhythm check.
+          const shownEl = (el) => { const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0' }
+          const heads = [...sec.querySelectorAll('h1,h2,h3,h4')].filter(h => shownEl(h))
           const firstHead = heads[0]
           const weights = new Set()
           const fontSizes = []

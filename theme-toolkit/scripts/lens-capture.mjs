@@ -118,12 +118,21 @@ async function gotoWithAuth(page, url, password) {
 // modal otherwise occludes the hero, so the vision judge can't see it — gpt-test-1 2026-06-21).
 // Read-only (clicks an Accept control → sets a consent cookie + hides the banner) — safe in an
 // ephemeral capture context. Exact-label match + length cap keeps false-clicks ~nil. Returns true if it acted.
-async function dismissOccluders(page) {
+export async function dismissOccluders(page) {
   try {
     const acted = await page.evaluate(() => {
       const ACCEPT = /^(accept all|accept|i accept|accept cookies|agree|i agree|allow all|allow|got it|ok|okay|enable all|continue|confirm)$/i
       const CLOSE = /^(close|dismiss|no thanks|no, thanks|maybe later|not now|×|✕|✖|x)$/i  // promo / exit-intent close glyphs + opt-outs
-      const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 4 && r.height > 4 && el.offsetParent !== null }
+      // NOT offsetParent: it is null for EVERY position:fixed element, and a cookie banner or promo
+      // modal is fixed in practically every theme — so this helper could never see the very things
+      // dismissOccluders exists to dismiss. (Same defect class as gate-functional's cart drawer.)
+      const visible = (el) => {
+        if (!el) return false
+        const r = el.getBoundingClientRect()
+        if (!(r.width > 4 && r.height > 4)) return false
+        const cs = getComputedStyle(el)
+        return cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0'
+      }
       let did = false
       const cands = [...document.querySelectorAll('button, a[role="button"], [role="button"], input[type="button"], input[type="submit"], [aria-label]')]
       for (const el of cands) {
@@ -173,26 +182,37 @@ async function addToCart(page, surfaces) {
 // captured, and the a11y gate clicked a toggle without asserting it opened (so it scanned a CLOSED drawer
 // on Dawn/custom headers). Returns { opened, via } or { opened:false, reason } — the caller records it as
 // a hard fact so a drawer that won't open is itself a finding, not a silent skip.
-async function openCartDrawer(page) {
+export async function openCartDrawer(page) {
   return page.evaluate(async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
     const isOpenDrawer = () => {
       const SEL = 'cart-drawer[open], cart-drawer.active, cart-drawer.is-open, slide-cart[open], slide-cart.is-open, .cart-drawer.active, .cart-drawer.is-open, .cart-drawer.open, .drawer--cart.active, .mini-cart.is-open, .mini-cart.open, .cart-popup.open, #CartDrawer.active, [id*="cart" i][aria-hidden="false"][role="dialog"]'
+      // offsetParent is null for position:fixed, and a cart drawer is fixed in essentially every
+      // theme — this branch could never return true.
+      const shown = (el) => { const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0' }
       for (const el of document.querySelectorAll(SEL)) {
         const r = el.getBoundingClientRect()
-        if (r.width > 120 && r.height > 160 && el.offsetParent !== null) return true
+        if (r.width > 120 && r.height > 160 && shown(el)) return true
       }
       // generic: a fixed/absolute, cart-named, visibly-large panel that's on-screen
       for (const el of document.querySelectorAll('aside, dialog, [role="dialog"], .drawer, [class*="drawer" i], [class*="cart" i]')) {
         const cartish = /cart/i.test(`${el.id} ${el.className}`)
-        if (!cartish || el.offsetParent === null) continue
+        // this branch explicitly looks for position:fixed panels, then required offsetParent !== null
+        // — which fixed elements never have. It could only ever match `absolute` drawers.
+        if (!cartish) continue
         const cs = getComputedStyle(el); const r = el.getBoundingClientRect()
         if ((cs.position === 'fixed' || cs.position === 'absolute') && cs.visibility !== 'hidden' && cs.display !== 'none' && r.width > 200 && r.height > 240 && r.right > 0 && r.left < window.innerWidth) return true
       }
       return false
     }
     if (isOpenDrawer()) return { opened: true, via: 'already-open' }
-    const visible = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && el.offsetParent !== null }
+    const visible = (el) => {
+      if (!el) return false
+      const r = el.getBoundingClientRect()
+      if (!(r.width > 0 && r.height > 0)) return false
+      const cs = getComputedStyle(el)   // NOT offsetParent — a cart toggle in a fixed sticky header has none
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0'
+    }
     const TOGGLES = ['[data-cart-drawer-toggle]', '#cart-icon-bubble', '.header__icon--cart', 'a[href="/cart"]', 'a[href$="/cart"]', '.cart-icon', '[data-cart-toggle]', '.js-cart-trigger', '[aria-controls*="cart" i]', '[aria-label*="cart" i]']
     for (const sel of TOGGLES) {
       for (const el of document.querySelectorAll(sel)) {
