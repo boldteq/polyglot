@@ -628,10 +628,14 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   corrected in the commit message and the fixture header.*
   **Genuinely dead:** `lens-capture`'s `isOpenDrawer()` tests the **drawer element**, which IS fixed, so
   it could never report a drawer open. Proven against pre-fix code: the toggle *is* clicked and the
-  drawer *does* open, yet Lens reports "no drawer" and **skips capturing the cart surface entirely** —
-  so that surface was never visually judged on any build. Its generic branch was self-contradictory
+  drawer *does* open, yet Lens records `drawerOpened:false`. Its generic branch was self-contradictory
   too: it looked for `fixed|absolute` panels and then demanded `offsetParent !== null`, so only
   `absolute` drawers could ever match.
+  **CORRECTION (QA-5, verified against source):** I first wrote that the surface "was never visually
+  judged". Wrong — `drawerOpened` **is** read: gate #18 blocks on `vt.cart-drawer-not-open`. So the
+  real pre-fix behaviour at publish depth was a **FALSE BLOCK** on any theme with a fixed drawer, and a
+  false BLOCK is as damaging as a false pass. Content states are depth-gated to `LENS_DEPTH=full`,
+  which is why everyday dev runs never surfaced it.
   **Also hardened:** controls that are THEMSELVES fixed (floating close glyph, fixed sticky ATC bar);
   and `check-section-cohesion`'s heading filter, which dropped headings in fixed/overlay sections and
   quietly weakened `cohesion.multi-h1` + the heading step-down rhythm check.
@@ -639,6 +643,16 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   (no copy of the predicate — a fixture that re-implements what it tests proves nothing); both cases
   FAIL against `HEAD~` and pass after, plus a no-false-positive case. Toolkit **94/94**. Commit
   `53611049`.
+
+- [x] **QA-5 · A planned capture state that failed left no trace.** `status: done`
+  `lens-capture` swallowed a failed content-state setup in a bare `catch {}`: no frame, no record, and
+  the manifest simply had one fewer entry — so *"planned but not captured"* read exactly like
+  *"captured and fine"*. The skipped-is-not-passed hole, in the **capture** layer this time, and the
+  reason the QA-4 drawer defect could sit unnoticed.
+  `lens-capture` now records `skippedStates[]` (surface/state/viewport/locale/reason) in the manifest
+  and prints them; gate #18 raises `vt.state-not-captured` — **BLOCK** at publish grade
+  (`DS_REQUIRE_SCOPE`/`LENS_REQUIRE`), **WARN** in dev so an early build is not stalled. No frame means
+  no evidence; it was not judged. Both paths pinned by fixture. Toolkit **94/94**. Commit `03ce1724`.
 
 - [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
   Introduce a layer scale and migrate the 4 call sites.
