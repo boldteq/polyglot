@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**93/93** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**94/94** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -617,6 +617,28 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   no report at all. Comment and string state are now tracked in one pass.
   **Proof:** all 40 live gate scripts are inspected — asserted, so "0 blockers" cannot be vacuous — and
   0 write an invisible report. Toolkit **93/93** · `npm test` **225/225**. Commit `f7730c00`.
+
+- [x] **QA-4 · `offsetParent` sweep — Lens never captured the cart-drawer surface.** `status: done`
+  Sibling shape to the gate-functional bug (`0e631277`): `el.offsetParent !== null` used as *"is it
+  visible"*, when offsetParent is **null for every `position: fixed` element**. Five sites.
+  **The nuance that decides which were actually dead:** offsetParent is null only for the fixed element
+  **itself** — a normal child of a fixed banner still has one. So the everyday cases (an Accept button
+  inside a fixed cookie bar, a cart icon inside a fixed sticky header) were fine, and the fixture
+  confirms the pre-fix code handled them. *I first claimed `dismissOccluders` was broken; it was not —
+  corrected in the commit message and the fixture header.*
+  **Genuinely dead:** `lens-capture`'s `isOpenDrawer()` tests the **drawer element**, which IS fixed, so
+  it could never report a drawer open. Proven against pre-fix code: the toggle *is* clicked and the
+  drawer *does* open, yet Lens reports "no drawer" and **skips capturing the cart surface entirely** —
+  so that surface was never visually judged on any build. Its generic branch was self-contradictory
+  too: it looked for `fixed|absolute` panels and then demanded `offsetParent !== null`, so only
+  `absolute` drawers could ever match.
+  **Also hardened:** controls that are THEMSELVES fixed (floating close glyph, fixed sticky ATC bar);
+  and `check-section-cohesion`'s heading filter, which dropped headings in fixed/overlay sections and
+  quietly weakened `cohesion.multi-h1` + the heading step-down rhythm check.
+  **Proof:** new `lens-visibility` fixture drives the **real exported functions** against real chromium
+  (no copy of the predicate — a fixture that re-implements what it tests proves nothing); both cases
+  FAIL against `HEAD~` and pass after, plus a no-false-positive case. Toolkit **94/94**. Commit
+  `53611049`.
 
 - [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
   Introduce a layer scale and migrate the 4 call sites.
