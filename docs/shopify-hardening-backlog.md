@@ -733,7 +733,24 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   genuinely the theme's — design-tokens 319 + editability 67 + consistency 3, i.e. **CB-3**.
   Toolkit **106/106 in 302s**.
 
-- [ ] **CB-21 · A retired gate's report lingers and inflates every count.** `status: open` (small)
+- [~] **CB-21 · A retired gate's report lingers and was audited as current evidence.** `status: open`
+  (dangerous half **DONE** — `878a65c3`; the prune half still blocked)
+  **Done:** gate **#45** now excludes orphan reports *before* auditing and names them via
+  `integrity.orphan-report` (warning — the file is stale, not a build defect). Fixed there rather than in
+  `theme-gates` because the dangerous half is the **auditing**, and #45 is the evidence-integrity gate:
+  a report whose gate no longer exists is exactly an integrity problem. If the manifest cannot be read,
+  orphan detection is **skipped rather than guessed** — inventing *"this gate is retired"* from a failed
+  lookup would suppress real evidence.
+  *Proven end-to-end:* a fossil claiming pass-while-skipped is excluded (audited 1, not 2), does not
+  block, and is named. The fixture pins the baseline that the same report **would** raise
+  `integrity.skipped-but-pass` if audited, so the exclusion cannot be mistaken for the check going soft.
+  **Correction to CB-20:** cravinbyandy's `repo-hygiene.json` was a genuine fossil **in the client**
+  (its toolkit is pinned to `264ef7b`, which has no such gate) — but `repo-hygiene` is **live** in
+  Polyglot's working tree, where the concurrent workstream added it. Both true; different manifests.
+  **Still open:** `theme-gates` should prune reports matching no manifest gate on a **full** run (never
+  on `--static-only`/`--pages`, which legitimately leave other reports untouched). Blocked only by that
+  file being modified by the concurrent workstream.
+- [x] **CB-21-ORIG · (superseded framing) A retired gate's report lingers and inflates every count.** `status: done`
   `theme-gates` clears `gate-reports/<name>.json` only for gates it is **about to run**, so when a gate
   leaves the manifest its last report stays on disk forever. cravinbyandy carried a `repo-hygiene.json`
   from sha `698704a` reporting 29 blockers for a gate that no longer exists; I removed it by hand.
