@@ -238,7 +238,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   the final `l`, so it required "replaceAl" and matched nothing — the repo scan was passing vacuously
   until that test failed. After the fix it found the 12 hits above. Behavioural check on the real call
   sites: a ledger note containing `` $` `` gives *sentinel ×2, written literally: false* pre-fix vs
-  *×1, true* on the fix. Toolkit **82/82**; all 8 edited files pass `node --check`.
+  *×1, true* on the fix. Toolkit **82/82**; all 8 edited files pass `node --check`. Commit `9e7b9c2c`.
   ⚠️ `node --test src/replaceSafety.test.mjs` **hangs in this repo** (the runner, not the test — a direct
   `import()` of the same file completes in 95 ms and reports both cases). Logged as TEST-2.
 - [ ] **TEST-2 · `node --test` hangs on `src/replaceSafety.test.mjs`.** `status: open`
