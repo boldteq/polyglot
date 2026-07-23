@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**85/85** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**86/86** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -400,6 +400,31 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   the first fails against the pre-fix code by construction, since `evidence.skipped` was never read. On
   the real store gate #45 stays **PASS — 34 reports audited, 0 blockers, 5 N/A warnings**, so the two
   genuine skips are not false-flagged. Toolkit **85/85** · `npm test` **225/225**. Commit `c75ca7fa`.
+
+- [~] **QA-1 · 45 BLOCKING checks have never been proven to fire. Now detectable, not accidental.**
+  `status: open` (detector shipped; the list is the work)
+  Five guards were found this week that looked present, were believed, and could never fire: gate #45
+  watching a field no gate writes (ENV-2), gate #2 misreporting a broken CLI launch as "not installed"
+  (ENV-1), the gate→owner table naming renamed gates (TEST-1a), a `\.replaceAll?\(` regex binding `?`
+  to the wrong character so a scanner matched nothing (HYG-2), and an index-health check comparing a
+  value to itself (BRAIN-2). **Every one was found by accident.** The shared shape: a check whose
+  failure path had never been executed.
+  **Shipped:** `audit-unproven-guards.mjs` enumerates every finding id a gate can raise in a BLOCKING
+  position and reports those no fixture references. **Result: 127 blocking checks across 58 gate
+  scripts — 45 untested in STATIC gates (hermetically testable, no excuse) and 30 in URL gates (need a
+  live page).** Reporting-only by design: 79 hard failures on first run would be the alarm avalanche
+  this repo treats as equal to a false pass.
+  *Proof:* its own fixture (13 assertions) covers all three blocking shapes, rejects warning-ids,
+  accepts both fully-qualified and bare-suffix fixture assertions, refuses short-suffix prose matches,
+  separates URL from static gates, and finds a planted untested blocker. Two self-corrections while
+  building it: requiring the fully-qualified id overstated the gap by 9, and my first pass counted
+  warning ids as blockers — both caught before reporting a number.
+  **First 3 burned down:** `reuse-map.custom-split-missing` / `custom-split-mismatch` / `bad-rung` now
+  have fixture cases — the first is what stops GI-2's generator from letting a half-authored map pass,
+  verified by hand then but never pinned. Static untested **49 → 45**, confirmed by re-running the
+  auditor. Toolkit **86/86** · `npm test` **225/225**.
+  *Next:* worst-first — `check-metafield-schema` (14/15 untested) and `check-briefs` (7/7) are entirely
+  unproven and both block client builds.
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 

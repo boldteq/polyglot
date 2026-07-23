@@ -145,5 +145,25 @@ const CUSTOM_FIRST = 'Counts: {reused: 2, configured: 0, extended: 0, custom: 8}
   fs.rmSync(d, { recursive: true, force: true });
 }
 
+// Flagged by audit-unproven-guards: these BLOCK a client build but no fixture had ever proven they
+// fire. `custom-split-missing` is exactly what the GI-2 generator relies on to keep a half-authored
+// map from passing — it was verified by hand then, never pinned.
+{ // custom>0 with no `Custom split:` line at all
+  const d = tmp(); writeMap(d, 'Counts: {reused: 8, configured: 1, extended: 0, custom: 2}\n');
+  expect('no Custom split line → custom-split-missing', { code: 1, mustContain: 'custom-split-missing' }, run(d, E));
+  fs.rmSync(d, { recursive: true, force: true });
+}
+{ // library + scratch that do not add up to custom
+  const d = tmp(); writeMap(d, 'Counts: {reused: 8, configured: 1, extended: 0, custom: 5}\nCustom split: {library: 1, scratch: 1}\n');
+  expect('split does not sum to custom → custom-split-mismatch', { code: 1, mustContain: 'custom-split-mismatch' }, run(d, E));
+  fs.rmSync(d, { recursive: true, force: true });
+}
+{ // a rung outside the vocabulary
+  const d = tmp();
+  writeMap(d, 'Counts: {reused: 9, configured: 0, extended: 0, custom: 0}\n\n| Zone | Section | Rung |\n|---|---|---|\n| hero | image-banner | RECYCLE |\n');
+  expect('unknown rung → bad-rung', { code: 1, mustContain: 'bad-rung' }, run(d, E));
+  fs.rmSync(d, { recursive: true, force: true });
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
