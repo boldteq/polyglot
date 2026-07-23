@@ -121,7 +121,8 @@ function reuseMapTargets() {
 }
 
 let targets = gitChanged()
-if (targets === null) targets = reuseMapTargets()
+let scopeSource = 'git'                       // line-granular scoping only applies to a git-resolved scope
+if (targets === null) { targets = reuseMapTargets(); scopeSource = 'reuse-map' }
 
 if (targets === null) {
   if (REQUIRE_SCOPE) { add(blockers, 'consistency.scope-unresolved-strict', `scope unresolvable + DS_REQUIRE_SCOPE=1 — tag the theme base "base"`); finish(null, null) }
@@ -168,11 +169,38 @@ function extractCss(file, raw) {
 const RE_DECL = /([a-zA-Z-]+)\s*:\s*([^;{}]+)(?=[;}])/g
 const fontSizes = new Set(), fontWeights = new Set(), radii = new Set(), buttonClasses = new Set(), cardClasses = new Set()
 
+// Lines ADDED/MODIFIED since BASE_REF. Same reasoning as check-design-system (CB-10): scope was
+// file-granular, so a stock theme-base stylesheet touched on ONE line contributed its ENTIRE type/
+// radius vocabulary to a "store-wide variety" count the team never chose. Measured on cravinbyandy
+// 2026-07-23: stock assets/base.css alone added 9/10/12/13/14/15/16/18 to the tally, taking the
+// reported font-size variety from 18 (ours) to 25.
+//
+// This narrows WHOSE variety is being measured — the variety we INTRODUCED on top of the base — which
+// is what the rule is actually about. The base's own vocabulary is a given we are told to reuse.
+function changedLineSet(file) {
+  try {
+    const out = execFileSync('git', ['diff', '-U0', `${BASE_REF}..HEAD`, '--', file], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] })
+    const lines = new Set()
+    for (const m of out.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)) {
+      const start = Number(m[1]); const count = m[2] === undefined ? 1 : Number(m[2])
+      for (let i = 0; i < count; i += 1) lines.add(start + i)
+    }
+    return lines
+  } catch { return null }
+}
+
 for (const file of targets) {
   const abs = path.resolve(cwd, file); if (!fs.existsSync(abs)) continue
   const raw = fs.readFileSync(abs, 'utf-8')
-  const css = extractCss(file, raw).replace(/\/\*[\s\S]*?\*\//g, ' ')
+  // keep the comments' NEWLINES so an offset still maps to its source line
+  const css = extractCss(file, raw).replace(/\/\*[\s\S]*?\*\//g, (m) => ' ' + '\n'.repeat((m.match(/\n/g) || []).length))
+  // line-granular for git-resolved plain stylesheets only — see changedLineSet above. .liquid is
+  // excluded because extractCss concatenates fragments (offsets stop mapping), and a .liquid in scope
+  // is a custom section we authored anyway.
+  const lineScoped = scopeSource === 'git' && /\.css(\.liquid)?$|\.scss$/.test(file) ? changedLineSet(file) : null
+  const lineOf = (idx) => { let n = 1; for (let i = 0; i < idx && i < css.length; i += 1) if (css[i] === '\n') n += 1; return n }
   for (const d of css.matchAll(RE_DECL)) {
+    if (lineScoped !== null && !lineScoped.has(lineOf(d.index))) continue
     const prop = d[1].toLowerCase(); const value = d[2].trim()
     if (/var\(/.test(value)) continue
     if (prop === 'font-size') for (const px of lenTokens(value)) fontSizes.add(px)

@@ -74,5 +74,45 @@ console.log('button zoo: dev = WARN (not block), publish-grade = BLOCK (BUG-8)')
   fs.rmSync(d, { recursive: true, force: true })
 }
 
+console.log('\nvariety is measured on OUR lines, not the theme base\'s (2026-07-23)')
+{
+  // A stock theme-base stylesheet touched on ONE line used to contribute its ENTIRE type/radius
+  // vocabulary to a "store-wide variety" count the team never chose. Measured on cravinbyandy: stock
+  // assets/base.css alone added 9/10/12/13/14/15/16/18, taking reported font-size variety 18 -> 25.
+  const gitRepo = (baseFiles, headFiles, contract) => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), 'cons-'))
+    const git = (...a) => spawnSync('git', a, { cwd: d, stdio: ['ignore', 'ignore', 'ignore'] })
+    fs.mkdirSync(path.join(d, 'docs', 'design'), { recursive: true })
+    fs.mkdirSync(path.join(d, 'assets'), { recursive: true })
+    fs.writeFileSync(path.join(d, 'docs', 'design', 'design-system.json'), JSON.stringify(contract))
+    git('init', '-q', '.')
+    for (const [rel, body] of Object.entries(baseFiles)) fs.writeFileSync(path.join(d, rel), body)
+    git('add', '-A'); git('-c', 'user.email=a@b.c', '-c', 'user.name=t', 'commit', '-q', '-m', 'base')
+    git('tag', 'base')
+    for (const [rel, body] of Object.entries(headFiles)) fs.writeFileSync(path.join(d, rel), body)
+    git('add', '-A'); git('-c', 'user.email=a@b.c', '-c', 'user.name=t', 'commit', '-q', '-m', 'work')
+    const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cons-r-'))
+    spawnSync('node', [GATE], { cwd: d, env: { ...process.env, REPORT_DIR: reportDir, BASE_REF: 'base' }, encoding: 'utf-8' })
+    let rep = null; try { rep = JSON.parse(fs.readFileSync(path.join(reportDir, 'consistency.json'), 'utf-8')) } catch { /* */ }
+    fs.rmSync(d, { recursive: true, force: true }); fs.rmSync(reportDir, { recursive: true, force: true })
+    return rep
+  }
+  const CONTRACT = { typography: { allowed_px: [16, 32], rem_root_px: 16 }, spacing: { scale: [8, 16] } }
+
+  // stock file carries a wide vocabulary; we touch ONE line and add one size of our own
+  const stock = ['.s1 { font-size: 9px; }', '.s2 { font-size: 11px; }', '.s3 { font-size: 13px; }', '.s4 { color: red; }'].join('\n') + '\n'
+  const edited = stock.replace('.s4 { color: red; }', '.s4 { font-size: 32px; }')
+  const rep = gitRepo({ 'assets/base.css': stock }, { 'assets/base.css': edited }, CONTRACT)
+  const sizes = rep?.evidence?.fontSizes || []
+  sizes.includes(32) && !sizes.includes(9) && !sizes.includes(11) && !sizes.includes(13)
+    ? ok(`variety counts only our line (${JSON.stringify(sizes)})`) : bad(`stock vocabulary leaked in: ${JSON.stringify(sizes)}`)
+
+  // a file that did not exist at base is entirely ours → all of its values count
+  const fresh = gitRepo({}, { 'assets/section-new.css': stock }, CONTRACT)
+  const fsizes = fresh?.evidence?.fontSizes || []
+  fsizes.includes(9) && fsizes.includes(11) && fsizes.includes(13)
+    ? ok('a wholly new custom file contributes its full vocabulary') : bad(`new file under-counted: ${JSON.stringify(fsizes)}`)
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)
