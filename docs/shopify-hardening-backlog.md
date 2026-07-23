@@ -388,8 +388,28 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `stylesheet_tag` to `layout/theme.liquid` → `snap-colors-to-tokens.mjs --apply`) and commit there.
   Held back because it edits ~150 sites across a live client theme — worth one visual check on staging
   first, even though the swap is value-identical by construction.
-- [ ] **CB-2 · editability: 269 blockers.** `status: open` Triage first — how many are real merchant-
-  editability gaps vs base-Dawn noise? Record the split here before fixing.
+- [~] **CB-2 · TRIAGED (the split this item asked for). It is not 269 problems — it is ~65.**
+  `status: open` (triage done; the fix is now mostly CB-1's job)
+  **Base-Dawn noise: ZERO.** The gate is diff-scoped — 1.3 greps `git diff base...HEAD` for ADDED lines
+  and the file list is "added/modified since base" — so every finding is our own custom work. There is
+  no stock-theme noise to subtract.
+  **Measured split** (fresh run on a scratch copy; the stale 269 was 264 on re-measure):
+  | rule | what it is | count |
+  |---|---|---|
+  | `1.3` | hex/rgb where a scheme var exists | **199 (75%)** |
+  | `1.1` | hardcoded English in render output | 36 |
+  | `1.2` | image URLs not from settings | 27 |
+  | `1.4` | literal alt text | 2 |
+  **Three quarters of CB-2 is the SAME colour-literal class as CB-1**, and 1.3 already excludes
+  `var(--`, so CB-1's swap resolves it directly. Proven end-to-end on a scratch copy — generate cascade
+  → wire → `snap-colors-to-tokens --apply` → commit → re-run the gate:
+  **1.3 199 → 71 · total 264 → 136 (128 resolved, 48%) with no other rule moving.**
+  **So the real remaining scope is 136, of which only 65 are non-colour:** 36 hardcoded English,
+  27 non-settings image URLs, 2 literal alt texts. The 71 surviving 1.3 findings are literals with no
+  exact brand token — the same design decisions CB-1 correctly refuses to guess.
+  *Next:* land CB-1 first (it does 128 of these for free), then treat CB-2 as the 65 genuine
+  merchant-editability gaps. Those need `{{ ... | t }}` keys, `image_url`/settings-backed media, and
+  bound alt text — real per-section work, not a sweep.
 - [ ] **CB-3 · consistency: 21 font-sizes / 4 weights / 8 radii vs the caps.** `status: blocked-by human`
   Needs the provisional type/spacing ladder ratified (drape + Yash) before the sweep.
 - [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
