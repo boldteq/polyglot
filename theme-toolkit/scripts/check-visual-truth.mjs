@@ -138,6 +138,16 @@ function main() {
     if (Array.isArray(f.consoleErrors) && f.consoleErrors.length) warnings.push({ id: 'vt.console-error', page: f.surface, detail: `${at}: ${f.consoleErrors.length} console error(s): ${f.consoleErrors[0]?.slice(0, 100)}`, evidence: '' })
   }
 
+  // A content state that was PLANNED but never captured is not evidence of anything. At publish grade
+  // that must BLOCK: the cart drawer silently failing to capture is exactly how a broken slide-out
+  // cart reached a client build unseen. In dev it warns, so an early build is not stalled by it.
+  for (const sk of (manifest.skippedStates || [])) {
+    const at = `${sk.surface}/${sk.state} @ ${sk.viewport}`
+    const detail = `${at}: this state was planned but NEVER captured — ${sk.reason || 'setup failed'}. No frame means no evidence; it was not judged.`
+    if (REQUIRE) add(blockers, 'vt.state-not-captured', sk.surface, detail, '')
+    else warnings.push({ id: 'vt.state-not-captured', page: sk.surface, detail: `${detail} (BLOCKS at publish-grade)`, evidence: '' })
+  }
+
   // ── Layer 2: vision verdicts ──
   const judgeDir = path.join(LENS_DIR, 'judge')
   const verdicts = []

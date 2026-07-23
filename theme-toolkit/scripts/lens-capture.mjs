@@ -351,6 +351,10 @@ async function main() {
   fs.mkdirSync(LENS_DIR, { recursive: true })
   const origin = new URL(previewUrl).origin
   const frames = []
+  // A planned content state whose setup throws used to be swallowed by a bare `catch {}` — no frame,
+  // no trace, and the manifest simply had one fewer entry. "Planned but not captured" then reads
+  // exactly like "captured and fine", which is the skipped-is-not-passed hole in the capture layer.
+  const skippedStates = []
   const themes = process.env.LENS_DARK === '1' ? ['light', 'dark'] : ['light']
   const rel = (p) => path.relative(LENS_DIR, p)
 
@@ -468,7 +472,10 @@ async function main() {
                 const cf = await captureVisit(page, { surface, url, vp, theme, locale, state: st })
                 cf.consoleErrors = [...consoleErrors].slice(0, 10); cf.failedRequests = [...failedReq].slice(0, 8)
                 frames.push(cf)
-              } catch { /* content-state setup failed → skip */ }
+              } catch (e) {
+                // never break the run — but never lose the fact either
+                skippedStates.push({ surface, state: st, viewport: vp.name, locale, theme, reason: String(e && e.message ? e.message : e).split('\n')[0].slice(0, 160) })
+              }
             }
           }
           await ctx.close()
@@ -485,11 +492,12 @@ async function main() {
     tool: 'lens-capture', version: '1.1.0', previewUrl, origin, depth: DEPTH,
     capturedAt_ms: t0, duration_ms: Date.now() - t0,
     viewports: viewports.map(v => v.name), themes, locales: [...new Set(frames.map(f => f.locale))],
-    surfaceCount: new Set(frames.map(f => f.surface)).size, frameCount: frames.length, frames,
+    surfaceCount: new Set(frames.map(f => f.surface)).size, frameCount: frames.length, frames, skippedStates,
   }
   const manifestPath = path.join(LENS_DIR, 'lens-manifest.json')
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   console.log(`lens-capture: ${frames.length} frame-set(s) · ${manifest.surfaceCount} surface(s) × ${viewports.length} viewport(s) × ${manifest.locales.length} locale(s) [depth=${DEPTH}] → ${path.relative(cwd, manifestPath)}`)
+  for (const sk of skippedStates) console.log(`  ⚠ ${sk.surface}/${sk.state} @ ${sk.viewport}: NOT captured — ${sk.reason}`)
   // surface any hard render facts immediately (the judge will see these + the pixels)
   const hard = frames.filter(f => f.nav !== 'ok' || f.renderError || f.liquidError || f.overflowPx > 1 || f.brokenImages.length)
   for (const f of hard) console.log(`  ⚠ ${f.key}/${f.theme}: ${[f.nav !== 'ok' && f.nav, f.renderError && `render-error:"${f.renderError}"`, f.liquidError && `liquid:"${f.liquidError}"`, f.overflowPx > 1 && `overflow ${f.overflowPx}px`, f.brokenImages.length && `${f.brokenImages.length} broken img`].filter(Boolean).join(' · ')}`)

@@ -39,6 +39,39 @@ console.log('case (c) coverage: a captured frame with no judge verdict (publish-
   fs.rmSync(tmp, { recursive: true, force: true })
 }
 
+console.log('case (c2) a PLANNED content state that was never captured → publish-grade block')
+{
+  // The hole this closes: lens-capture swallowed a failed content-state setup in a bare `catch {}`,
+  // so the manifest simply had one fewer frame. "Planned but not captured" then read exactly like
+  // "captured and fine" — which is how a cart drawer that never opens reaches a client build unseen.
+  const mk = () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vt-skip-'))
+    const lensDir = path.join(tmp, 'gate-reports', 'lens'); fs.mkdirSync(path.join(lensDir, 'judge'), { recursive: true })
+    fs.writeFileSync(path.join(lensDir, 'lens-manifest.json'), JSON.stringify({ previewUrl: 'x',
+      frames: [{ surface: 'pdp', viewport: 'mobile', theme: 'light', key: 'pdp-mobile', nav: 'ok', url: 'x', frames: { rest: '', scrollEnd: '' } }],
+      skippedStates: [{ surface: 'pdp', state: 'drawer', viewport: 'mobile', locale: 'default', reason: 'add-to-cart failed' }] }))
+    fs.writeFileSync(path.join(lensDir, 'judge', 'pdp-mobile.json'), JSON.stringify({ surface: 'pdp', viewport: '375x812', key: 'pdp-mobile', verdict: 'PASS', confidence: 95, findings: [] }))
+    return tmp
+  }
+  const strict = mk()
+  const r = spawnSync('node', [GATE], { cwd: strict, env: { ...process.env, DS_REQUIRE_SCOPE: '1' }, encoding: 'utf-8' })
+  let rep = null; try { rep = JSON.parse(fs.readFileSync(path.join(strict, 'gate-reports', 'visual-check.json'), 'utf-8')) } catch {}
+  const ids = new Set((rep?.blockers || []).map(b => b.id))
+  ids.has('vt.state-not-captured') && r.status === 1
+    ? ok('blocker: vt.state-not-captured at publish grade') : bad(`expected vt.state-not-captured + exit 1, got ${r.status} / ${[...ids].join(', ')}`)
+  fs.rmSync(strict, { recursive: true, force: true })
+
+  // ...and in a normal dev run it must WARN, not stall the build
+  const dev = mk()
+  const r2 = spawnSync('node', [GATE], { cwd: dev, encoding: 'utf-8' })
+  let rep2 = null; try { rep2 = JSON.parse(fs.readFileSync(path.join(dev, 'gate-reports', 'visual-check.json'), 'utf-8')) } catch {}
+  const w2 = new Set((rep2?.warnings || []).map(w => w.id))
+  const b2 = new Set((rep2?.blockers || []).map(b => b.id))
+  w2.has('vt.state-not-captured') && !b2.has('vt.state-not-captured')
+    ? ok('warns (does not block) in a dev run') : bad(`dev run: blockers=${[...b2].join(',')} warnings=${[...w2].join(',')}`)
+  fs.rmSync(dev, { recursive: true, force: true })
+}
+
 console.log('case (d) cart drawer captured but did NOT open (BUG-1/BUG-2) → expect exit 1 (vt.cart-drawer-not-open)')
 {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vt-drawer-'))
