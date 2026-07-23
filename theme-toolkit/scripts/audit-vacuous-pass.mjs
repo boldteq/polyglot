@@ -81,7 +81,11 @@ function main() {
   const rows = []
   for (const g of statics) {
     try {
-      execFileSync(process.execPath, [path.join(HERE, g.script)], {
+      // honour the manifest's runner exactly as theme-gates does — `editability` is a bash gate, and
+      // running it with node made it look like it wrote no report at all. An audit that mis-runs a
+      // gate invents a finding, which is the failure mode this whole workstream exists to stop.
+      const runner = g.runner === 'node' ? process.execPath : g.runner
+      execFileSync(runner, [path.join(HERE, g.script)], {
         cwd: dir, stdio: ['ignore', 'ignore', 'ignore'], timeout: 60_000,
         env: { ...process.env, REPORT_DIR: 'gate-reports' },
       })

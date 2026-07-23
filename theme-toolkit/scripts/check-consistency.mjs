@@ -30,6 +30,10 @@ const REQUIRE_SCOPE = process.env.DS_REQUIRE_SCOPE === '1'
 const ALLOW_WAIVER = process.env.ALLOW_DS_WAIVER === '1'
 const MAX_FONT_SIZES = Number.parseInt(process.env.MAX_STORE_FONT_SIZES || '6', 10)
 
+// QA-7: how many files this run actually EXAMINED. pass:true over a zero-file scan proves nothing —
+// `no findings` and `nothing was looked at` are different facts wearing the same green tick. null =
+// not resolved yet; gate #45 treats an absent count as UNKNOWN, never as fine.
+let scannedCount = null
 const blockers = []
 const warnings = []
 const add = (list, id, detail, evidence = '') => list.push({ id, page: 'store-wide', detail, evidence })
@@ -65,7 +69,7 @@ function finish(envError, stats) {
   if (stats) writeMd(path.resolve(cwd, reportDir), stats, pass)
   writeReport('consistency', 9, {
     cwd, pass, blockers, warnings,
-    evidence: { contract: DS, baseRef: BASE_REF, ...(stats || {}), reason: envError || undefined },
+    evidence: { contract: DS, baseRef: BASE_REF, scanned: scannedCount ?? undefined, ...(stats || {}), reason: envError || undefined },
     duration_ms: Date.now() - t0,
   })
   const code = envError ? 2 : pass ? 0 : 1
@@ -118,12 +122,21 @@ function reuseMapTargets() {
 
 let targets = gitChanged()
 if (targets === null) targets = reuseMapTargets()
+
 if (targets === null) {
   if (REQUIRE_SCOPE) { add(blockers, 'consistency.scope-unresolved-strict', `scope unresolvable + DS_REQUIRE_SCOPE=1 — tag the theme base "base"`); finish(null, null) }
   warnings.push({ id: 'consistency.scope-unresolved', page: 'store-wide', detail: `scope unresolvable — store-wide audit skipped (set BASE_REF)`, evidence: '' })
   finish(null, null)
 }
 targets = targets.filter(f => /\.(liquid|css|scss)$/.test(f) && SCAN_DIRS.some(d => f.startsWith(`${d}/`)))
+scannedCount = targets.length
+// QA-7: scope RESOLVED but covers nothing — say so. Silence here is a green tick over an empty
+// scan, which reads exactly like a clean audit. (Convention: *.n-a-* is what gate #45 and
+// audit-vacuous-pass already understand; `honesty`/`design-tokens` have always done this.)
+if (targets.length === 0) {
+  warnings.push({ id: 'consistency.n-a-empty-scope', page: 'store-wide', detail: 'scope resolved but covers 0 liquid/css files — nothing was scanned for consistency', evidence: '' })
+  finish(null, null)
+}
 
 // ── gather store-wide stats ──────────────────────────────────────────────────
 // rem/em → px ROOT — same Dawn 62.5% (1rem=10px) calibration as check-design-system.mjs;

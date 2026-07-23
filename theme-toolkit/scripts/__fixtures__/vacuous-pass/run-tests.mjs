@@ -56,5 +56,18 @@ console.log('\n── the empty theme must be genuinely empty AND genuinely reso
   fs.rmSync(dir, { recursive: true, force: true })
 }
 
+console.log('\n── the *.n-a-* convention is the ONE way to declare an empty scope ──')
+{
+  // `honesty` and `design-tokens` were flagged VACUOUS by the first run of this audit and were not:
+  // they had always warned on an empty scope, just under ids (`honesty.no-custom-code`,
+  // `ds.no-custom-code`) that neither this classifier nor gate #45 recognised. They were renamed to
+  // *.n-a-* rather than teaching the tools a second spelling — two conventions is how the next one
+  // gets missed. This pins that a declaration is recognised by the id, not by the wording.
+  classify('honesty', pass({ warnings: [{ id: 'honesty.n-a-no-custom-code' }] })).verdict === 'declares-n-a'
+    ? ok('the renamed empty-scope warning is recognised as a declaration') : bad('n-a rename not honoured')
+  classify('honesty', pass({ warnings: [{ id: 'honesty.no-custom-code' }] })).verdict === 'VACUOUS'
+    ? ok('the OLD spelling is not recognised — which is exactly why it was renamed') : bad('old spelling silently accepted')
+}
+
 console.log(failures === 0 ? '\nvacuous-pass: ALL CASES PASS' : `\nvacuous-pass: ${failures} FAILURE(S)`)
 process.exit(failures === 0 ? 0 : 1)

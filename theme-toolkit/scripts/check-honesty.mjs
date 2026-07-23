@@ -52,6 +52,10 @@ const STRICT = process.env.STRICT_CONVERSION === '1'
 // a bare env flag must not silently green a dishonest store.
 const ALLOW_WAIVER = process.env.ALLOW_HONESTY_WAIVER === '1' && changesWaivesHonesty()
 
+// QA-7: how many files this run actually EXAMINED. pass:true over a zero-file scan proves nothing —
+// `no findings` and `nothing was looked at` are different facts wearing the same green tick. null =
+// not resolved yet; gate #45 treats an absent count as UNKNOWN, never as fine.
+let scannedCount = null
 const blockers = []
 const warnings = []
 const add = (list, id, page, detail, evidence = '') => list.push({ id, page, detail, evidence })
@@ -77,6 +81,7 @@ function finish(envError) {
   writeReport('honesty', 13, {
     cwd, pass, blockers, warnings,
     evidence: {
+      scanned: scannedCount ?? undefined,
       baseRef: BASE_REF,
       strict: STRICT,
       waiver: ALLOW_WAIVER,
@@ -139,6 +144,7 @@ function reuseMapTargets() {
 
 let targets = gitChanged()
 let scopeSource = 'git'
+
 if (targets === null) { targets = reuseMapTargets(); scopeSource = 'reuse-map' }
 if (targets === null) {
   if (REQUIRE_SCOPE) {
@@ -149,8 +155,9 @@ if (targets === null) {
   finish(null)
 }
 targets = targets.filter(f => /\.(liquid|js)$/.test(f) && SCAN_DIRS.some(d => f.startsWith(`${d}/`)))
+scannedCount = targets.length
 if (targets.length === 0) {
-  warnings.push({ id: 'honesty.no-custom-code', page: '.', detail: `no custom/extended liquid/js files in scope (${scopeSource}) — nothing to check`, evidence: '' })
+  warnings.push({ id: 'honesty.n-a-no-custom-code', page: '.', detail: `no custom/extended liquid/js files in scope (${scopeSource}) — nothing to check`, evidence: '' })
   finish(null)
 }
 

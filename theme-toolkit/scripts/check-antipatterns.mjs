@@ -26,6 +26,10 @@ const REUSE_MAP = process.env.REUSE_MAP || 'section-reuse-map.md'
 const REQUIRE_SCOPE = process.env.DS_REQUIRE_SCOPE === '1'
 const ALLOW_WAIVER = process.env.ALLOW_AP_WAIVER === '1'
 
+// QA-7: how many files this run actually EXAMINED. A gate that scanned zero files and reports
+// pass:true proved nothing — `no findings` and `nothing was looked at` are different facts wearing
+// the same green tick. null means 'not resolved yet' (gate #45 treats absence as UNKNOWN, not fine).
+let scannedCount = null
 const blockers = []
 const warnings = []
 const add = (l, id, page, detail, evidence = '') => l.push({ id, page, detail, evidence })
@@ -33,7 +37,7 @@ const block = (id, page, detail, evidence) => ALLOW_WAIVER ? add(warnings, `${id
 
 function finish(envError) {
   const pass = !envError && blockers.length === 0
-  writeReport('dead-code', 11, { cwd, pass, blockers, warnings, evidence: { baseRef: BASE_REF, reason: envError || undefined }, duration_ms: Date.now() - t0 })
+  writeReport('dead-code', 11, { cwd, pass, blockers, warnings, evidence: { baseRef: BASE_REF, scanned: scannedCount ?? undefined, reason: envError || undefined }, duration_ms: Date.now() - t0 })
   const code = envError ? 2 : pass ? 0 : 1
   console.log(`antipatterns: ${code === 2 ? 'ENV-ERROR' : pass ? 'PASS' : 'BLOCK'} — ${blockers.length} blocker(s), ${warnings.length} warning(s)`)
   for (const b of blockers) console.log(`  BLOCK ${b.id} ${b.page}: ${b.detail}`)
@@ -76,6 +80,14 @@ if (added === null) {
 }
 const addedAssets = added.filter(f => /^assets\/.+\.(css|js)(\.liquid)?$/.test(f))
 const addedSections = added.filter(f => /^sections\/.+\.liquid$/.test(f))
+scannedCount = added.length
+// QA-7: scope RESOLVED but covers nothing — say so. Silence here is a green tick over an empty
+// scan, which reads exactly like a clean audit. (Convention: *.n-a-* is what gate #45 and
+// audit-vacuous-pass already understand; `honesty`/`design-tokens` have always done this.)
+if (added.length === 0) {
+  warnings.push({ id: 'ap.n-a-empty-scope', page: '.', detail: `scope resolved via ${scopeSrc} but covers 0 files — nothing was scanned for anti-patterns`, evidence: '' })
+  finish(null)
+}
 
 // ── corpus: all liquid (for asset refs) + all json (for section type refs) ──
 function walk(dir, exts, acc = []) {

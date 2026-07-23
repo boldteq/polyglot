@@ -141,7 +141,7 @@ if (targets === null) {
 }
 targets = targets.filter(f => /\.(liquid|css|scss)$/.test(f) && SCAN_DIRS.some(d => f.startsWith(`${d}/`)))
 if (targets.length === 0) {
-  warnings.push({ id: 'ds.no-custom-code', page: '.', detail: `no custom/extended CSS-bearing files in scope (${scopeSource}) — nothing to check`, evidence: '' })
+  warnings.push({ id: 'ds.n-a-no-custom-code', page: '.', detail: `no custom/extended CSS-bearing files in scope (${scopeSource}) — nothing to check`, evidence: '' })
   finish(null)
 }
 
