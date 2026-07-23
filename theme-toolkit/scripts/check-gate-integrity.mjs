@@ -30,6 +30,19 @@ const SELF = 'check-gate-integrity'
 
 const SCOPE_SKIP_RE = /(\.scope-unresolved$|base-unresolved$)/
 const NA_RE = /\.n-a-/
+
+// PURE: did this report actually RUN? Returns a human-readable marker when it did not.
+// Handles both shapes: the legacy top-level `skipped` and `evidence.skipped`, which is what every
+// gate in this toolkit really writes. An empty array/string means "nothing was skipped" (the imagery
+// gate emits `skipped: []` on a clean merge) and must NOT be read as a skip.
+export function skippedMarker(json) {
+  const val = json?.evidence?.skipped !== undefined ? json.evidence.skipped : json?.skipped
+  if (val === undefined || val === null || val === false) return null
+  if (Array.isArray(val)) return val.length ? `skipped: ${val.join(', ')}` : null
+  if (typeof val === 'string') return val.trim() ? `skipped: ${val.trim()}` : null
+  if (val === true) return 'skipped: true'
+  return null
+}
 const ROOT_CAUSE_RE = /(no-baseline-tag|base-tag-missing)/
 
 // Gates named under `## Waivers` in CHANGES.md are exempt (documented, Yash-approved).
@@ -70,9 +83,18 @@ export function auditReports(reports, waived = new Set()) {
       add(blockers, 'integrity.skip-counted-as-pass', name,
         `gate "${name}" reported pass:true but its scan was SKIPPED (${scopeSkips.join(', ')}) — a skipped gate is not a passed gate. Resolve the scope (usually the missing \`base\` tag) and re-run, or waive "${name}" in CHANGES.md ## Waivers.`)
     }
-    if (json.skipped === true && json.pass === true && !isWaived) {
+    // ENV-2 (2026-07-23) — this used to test ONLY `json.skipped === true`, a top-level boolean that
+    // **no gate has ever written** (audited: 0 occurrences across every gate script and every report on
+    // disk). The shape the toolkit actually uses is `evidence.skipped` — 8 gates emit it
+    // (theme-check, lighthouse, axe, seo, functional, conversion, theme-link, theme-relink). So the
+    // one check whose whole job is "a skipped gate is not a passed gate" could never fire, while the
+    // docstring promised it did. Same class as the other guards found tonight: present, believed,
+    // inert. No live false-pass exists today — all 8 correctly set pass:false — so this is
+    // preventative, restoring a guarantee the stack already thinks it has.
+    const skipMark = skippedMarker(json)
+    if (skipMark && json.pass === true && !isWaived) {
       add(blockers, 'integrity.skipped-but-pass', name,
-        `gate "${name}" is marked skipped:true yet reports pass:true — it proved nothing. Run it or waive it explicitly.`)
+        `gate "${name}" reports pass:true but did not actually run (${skipMark}) — it proved nothing. Run it, or waive "${name}" in CHANGES.md ## Waivers.`)
     }
     if (naMarks.length) {
       add(warnings, 'integrity.gate-not-applicable', name,

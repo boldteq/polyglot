@@ -379,6 +379,28 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   ⚠️ **Standing constraint worth knowing:** the toolkit needs **Node 20** (better-sqlite3) while the
   Shopify CLI needs **≥22**. They cannot share one runtime; the gate now bridges that automatically.
 
+- [x] **ENV-2 · Gate #45's "skipped ≠ passed" check could never fire — it watched the wrong field.**
+  `status: done` Follow-up to ENV-1: since one foundational gate had been inert for months, I audited
+  whether others were. Ran the full 33-gate static stack on cravinbyandy — **30 ran, 3 N/A by design, 1
+  skipped for a real data reason** (`functionality`: no published products, so the PDP page cannot be
+  resolved). The stack is healthy post-ENV-1.
+  **But the audit found the guard itself was broken.** Gate #45 — whose entire job is *"a skipped gate
+  is not a passed gate"* — tested only a **top-level `json.skipped === true`**, and **no gate has ever
+  written that field** (audited: 0 occurrences across every gate script and every report on disk). The
+  shape actually used is `evidence.skipped`, emitted by **8** gates (theme-check, lighthouse, axe, seo,
+  functional, conversion, theme-link, theme-relink). So the check was present, believed, and inert —
+  the same class as ENV-1, the `replaceAll?` regex, the manifest self-comparison, and the rotted
+  gate→owner table.
+  **No live false-pass exists today** — all 8 correctly set `pass:false` when they skip — so this is
+  **preventative**, restoring a guarantee the stack already believes it has.
+  **Shipped:** pure `skippedMarker()` reading both shapes, with the false-positive cases that matter:
+  `skipped: []` (what `imagery` emits on a clean merge) and an empty reason string are **not** skips,
+  and a gate that skipped *and* honestly reported `pass:false` is not flagged.
+  *Proof:* 3 new fixture cases (real shape blocked, legacy shape still blocked, no false positives) —
+  the first fails against the pre-fix code by construction, since `evidence.skipped` was never read. On
+  the real store gate #45 stays **PASS — 34 reports audited, 0 blockers, 5 N/A warnings**, so the two
+  genuine skips are not false-flagged. Toolkit **85/85** · `npm test` **225/225**.
+
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 
 - [~] **CB-1 · Colour swap MECHANIZED + a gate-stack contradiction fixed. 201 → 51 measured.**
