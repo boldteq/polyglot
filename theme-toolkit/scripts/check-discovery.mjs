@@ -133,7 +133,12 @@ function checkGoals() {
   checkMeasurement(goals)
 
   // adjective-as-goal smell: any string value among the numeric target fields = the §5 anti-pattern.
-  const numericKeys = /(_pct|_s|_ms|_monthly|_target|_current|aov_|lcp_|inp_|cls_|lighthouse_)/
+  // ANCHORED (DOC-1, 2026-07-23). The suffixes must be end-anchored and the prefixes start-anchored.
+  // Unanchored, `_s` matched any key merely CONTAINING it — so `_source`, `_status` and
+  // `priority_surfaces` were all treated as numeric target fields, and a goals.json that documented its
+  // own provenance (the `_source` convention design-system.json already uses) was reported as the
+  // "faster/more sales" anti-pattern. That is the opposite of the intent: it punished the honest brief.
+  const numericKeys = /(_pct$|_s$|_ms$|_monthly$|_target$|_current$|^aov_|^lcp_|^inp_|^cls_|^lighthouse_)/
   const adjectives = []
   const walk = (obj, prefix = '') => {
     if (!obj || typeof obj !== 'object') return

@@ -72,5 +72,73 @@ console.log('case (d) BROKEN in DEV mode → expect exit 0 (warnings only)')
   else fail(`dev mode produced blockers: ${JSON.stringify([...blockerIds(report)])}`)
 }
 
+// ── DOC-1 (2026-07-23): provenance keys must not read as numeric goal fields ────────────────
+// The adjective-as-goal regex was unanchored, so `_s` matched any key CONTAINING it — `_source`,
+// `_status` and `priority_surfaces` were all treated as numeric targets. A goals.json that documented
+// its own provenance (the `_source` convention design-system.json already uses) was therefore reported
+// as the "faster/more sales" anti-pattern: the check punished the honest brief. These pin the anchoring.
+function writeGoals(dir, goals, brand = null) {
+  fs.mkdirSync(path.join(dir, 'docs', 'discovery'), { recursive: true })
+  fs.mkdirSync(path.join(dir, 'docs', 'design'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'docs', 'discovery', 'goals.json'), JSON.stringify(goals, null, 2))
+  fs.copyFileSync(
+    path.join(HERE, 'good', 'docs', 'design', 'brand-direction.md'),
+    path.join(dir, 'docs', 'design', 'brand-direction.md'),
+  )
+  if (brand) fs.writeFileSync(path.join(dir, 'docs', 'design', 'brand-direction.md'), brand)
+}
+const BASE_GOALS = {
+  revenue: { current_monthly: 1000, target_monthly: 2000, aov_current: 40, aov_target: 55 },
+  conversion: { cvr_current_pct: 1.2, cvr_target_pct: 2.4, priority_surfaces: ['hero', 'pdp'] },
+  seo: { target_keywords: ['cafe mumbai'] },
+  performance: { lcp_current_s: 3.1, lcp_target_s: 2.5, inp_target_ms: 200, cls_target: 0.1 },
+  measurement: { ga4: 'G-XYZ', gsc: true, shopify_analytics: true },
+}
+
+console.log('case (e) documentation keys (_source/_status) are NOT numeric goal fields')
+{
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'discovery-prov-'))
+  writeGoals(d, {
+    ...BASE_GOALS,
+    _status: 'PARTIAL — seeded from artifacts already in the repo',
+    revenue: { ...BASE_GOALS.revenue, _source: 'not in repo — client business data' },
+    conversion: { ...BASE_GOALS.conversion, _source: 'derived from the built templates' },
+  })
+  const { code, report } = runGate(d, { DS_REQUIRE_SCOPE: '1' })
+  const ids = blockerIds(report)
+  ids.has('discovery.goal-as-adjective')
+    ? fail('provenance keys still read as numeric goal fields (regex not anchored)')
+    : pass('_source / _status do not trip goal-as-adjective')
+  code === 0 ? pass('documented-but-complete goals.json passes at dispatch grade') : fail(`expected exit 0, got ${code}: ${JSON.stringify([...ids])}`)
+  fs.rmSync(d, { recursive: true, force: true })
+}
+
+console.log('case (f) a REAL adjective target is still caught (the fix must not disarm the check)')
+{
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'discovery-adj-'))
+  writeGoals(d, { ...BASE_GOALS, conversion: { ...BASE_GOALS.conversion, cvr_target_pct: 'more sales' } })
+  const { report } = runGate(d, { DS_REQUIRE_SCOPE: '1' })
+  blockerIds(report).has('discovery.goal-as-adjective')
+    ? pass('adjective in cvr_target_pct still blocks')
+    : fail('anchoring disarmed the adjective check')
+  fs.rmSync(d, { recursive: true, force: true })
+}
+
+console.log('case (g) every canonical numeric field name still matches the anchored regex')
+{
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'discovery-fields-'))
+  // one adjective per canonical shape — each must be caught
+  writeGoals(d, {
+    ...BASE_GOALS,
+    revenue: { ...BASE_GOALS.revenue, target_monthly: 'lots', aov_target: 'higher' },
+    performance: { ...BASE_GOALS.performance, lcp_target_s: 'fast', inp_target_ms: 'snappy', cls_target: 'stable' },
+  })
+  const { report } = runGate(d, { DS_REQUIRE_SCOPE: '1' })
+  const detail = (report?.blockers || []).find(b => b.id === 'discovery.goal-as-adjective')?.detail || ''
+  const caught = ['target_monthly', 'aov_target', 'lcp_target_s'].filter(k => detail.includes(k))
+  caught.length === 3 ? pass('_monthly$ / _target$ / _s$ suffixes all still match') : fail(`only caught ${caught.join(',') || 'none'}`)
+  fs.rmSync(d, { recursive: true, force: true })
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

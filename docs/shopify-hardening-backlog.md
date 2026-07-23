@@ -144,9 +144,38 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   (f) which pins the Counts line against gate #23's own regex. Toolkit **82/82**.
   *Found while generating:* `gifting-occasions.liquid` is added since base but referenced by **no**
   template — dead weight no render-time gate can see (logged as CB-8).
-- [ ] **DOC-1 · Seed the missing build artifacts in cravinbyandy** (`docs/discovery/goals.json`,
-  `docs/design/brand-direction.md`) so gates #0.4/#0.5 stop failing on absence. `status: open`
-  Derive ONLY from what already exists in the repo; never invent client goals — flag what needs Yash.
+- [x] **DOC-1 · Seeded cravinbyandy's discovery artifacts — and fixed a gate that punished the honest brief.**
+  `status: done` Both files written **from repo artifacts only**: the client's official brand kit
+  (`Cravin-Brand-Document.pdf` — exact palettes for both sub-brands, and the Playfair/Gill Sans/Aerotis
+  type intent), `design-system.json`, `design-spec.md`, and decisions recorded in `CHANGES.md`.
+  `discovery.goals-missing` + `discovery.brand-missing` are both **gone**.
+  Nothing was invented. `brand-direction.md` §5 and `goals.json._needs_yash` list what is genuinely
+  unknown; revenue/AOV/CVR are `null`, which the contract explicitly permits (*"null =
+  unknown-at-discovery, never an adjective"*). Voice is labelled **observed-from-the-build**, not
+  client-ratified. Only two non-null numbers were added and both are published constants, not client
+  targets: `lcp_target_s 2.5` (the lumen gate constant) and the Core Web Vitals `inp 200` / `cls 0.1`.
+  **Gate bug found and fixed while doing it.** The adjective-as-goal regex was unanchored, so `_s`
+  matched any key merely *containing* it — `_source`, `_status` and `priority_surfaces` were all read as
+  numeric target fields. A goals.json that documented its own provenance (the `_source` convention
+  `design-system.json` already uses) was therefore reported as the *"faster/more sales"* anti-pattern:
+  the check punished exactly the honest brief it exists to encourage. Suffixes are now end-anchored and
+  prefixes start-anchored.
+  *Proof:* discovery fixture 4→7 cases — (e) `_source`/`_status` no longer trip it, (f) a real adjective
+  in `cvr_target_pct` still blocks, (g) every canonical field shape (`_monthly$`/`_target$`/`_s$`) still
+  matches. On cravinbyandy the false `goal-as-adjective` is gone; dev grade PASSES, and dispatch grade
+  leaves exactly 2 honest blockers (`no-cvr-target`, `measurement-incomplete`) that need Yash.
+  Toolkit **82/82**.
+  ⚠️ The two files are written into the **client** repo and left **uncommitted** — committing there is a
+  separate call (see CB-7).
+- [ ] **DOC-2 · Gate #0.4's reference-brand check can false-PASS.** `status: open`
+  `discovery.brand-references-thin` decides "≥2 reference brands each with a what-to-take" by counting
+  regex hits for `[A-Z][\w& .'’]{1,30}\s*[—\-–:(]\s*\w`. The cravinbyandy `brand-direction.md` written
+  in DOC-1 states **explicitly that no reference brands are recorded**, yet the check did **not** fire —
+  its palette and type tables ("Playfair Display — headers") match that shape. So the gate reports the
+  brief has reference brands when it does not, which is the false-pass class this workstream treats as
+  seriously as a false block. *Done when:* the check keys off a declared structure it cannot confuse
+  with prose (e.g. a required `## Reference brands` section whose list items must each carry a
+  "what to take" clause), with a fixture proving a brief that names none is caught.
 - [x] **HYG-1 · mantle.md corruption — root cause was a silent file-destroying bug in the distributor.**
   `status: done` The duplication was a *symptom*, not a hygiene slip. `swt-distribute.mjs`
   replaced the managed block with `original.replace(re, section)` — a **string** replacement, so JS
@@ -241,6 +270,16 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 - **Ratify the PROVISIONAL type/spacing ladder** in cravinbyandy's `design-system.json`.
 - **Swiggy/Zomato URLs**, Gill Sans `.woff2` licence, real photography, `matcha.jpg` ≥1400px.
 - **Which Figma file is authoritative** — four different keys are in play.
+- **cravinbyandy `goals.json` — the numbers only you have:** revenue current/target, AOV current/target,
+  CVR current/target, and a *ranking* of the priority surfaces (the file lists all five the built site
+  has, in build order, explicitly not as a priority claim). Also GA4 + GSC + Shopify-analytics access,
+  without which orbit cannot measure lift at 30/90 days. These are the 2 remaining dispatch-grade
+  blockers on gate #0.4. NB: `check-discovery` tells the author to "resolve cvr_target to the niche
+  default", but no CVR default is published anywhere — the niche table gives surface **lift**, not a
+  conversion rate — so it is null rather than invented.
+- **Reference brands for cravinbyandy** (≥2, each with a specific "what to take") — none exist in the
+  repo; needed for `brand-direction.md` §5.1, or commission a decoder teardown of comparable
+  hospitality/cafe brands.
 - **One full-resolution design frame** (Figma PNG export or a crisp screenshot of the intended design)
   for any surface we can render — the single missing input for **RM-3**, which then flips L2
   reference-match from warn-only to enforcing. The walkthrough video cannot substitute: its in-canvas
