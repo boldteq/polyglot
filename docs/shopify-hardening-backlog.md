@@ -710,6 +710,26 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `/private/var/folders/…` resolved, so the guard failed, `main()` never ran, and the script **exited 0
   having done nothing**. Now compares realpaths. Toolkit **102/102**.
 
+- [x] **CB-17 · The false-attribution class is now audited, not rediscovered.** `status: done` (`044282fa`)
+  Six times in one week the same shape was found **by accident**, and every one was a false BLOCK:
+  stock Dawn dragged into a drift scan (CB-10); stock Dawn's vocabulary counted as ours (CB-11); the
+  generated cascade flagged for holding the literals it exists to hold (CB-9); `shopify://shop_images/…`
+  — a merchant's own image pick — read as a hardcoded URL, **44 of 45 findings** (CB-9); our vendored
+  fixture's fake private key read as the client's secret (CB-9); `| times: 0.75` read as money (CB-12).
+  **A false block is as damaging as a false pass — it teaches the team to wave the gate through, which
+  is precisely how this backlog grew.**
+  `audit-ownership.mjs` builds a theme where every ownership class (theme-base / generated /
+  merchant-data / vendored / **ours**) holds a deliberately dirty file, runs every static gate, and
+  reports anything landing outside *ours*. `ALLOWED` records the legitimate cases with reasons; nothing
+  may ever be allowlisted against **theme-base** or **ours**, and the fixture fails loudly if a future
+  entry tries.
+  **Teeth proven against a REAL historical bug:** reverting the `shopify://` exclusion makes the audit
+  report `editability → merchant-data editability.1.2` — the 44-false-positive regression, caught
+  automatically. *A fixture artefact was caught en route too: the first draft appended a CSS rule to the
+  "generated" cascade and invented two misattributions that were artefacts of my fixture, not defects in
+  the gates.* Current state: **7 gates flag our code** (the control) · **0 misattributions**.
+  Toolkit **105/105**.
+
 - [x] **CB-16 · 40 scripts could silently no-op when run through a symlink.** `status: done` (`92ccc656`)
   `path.resolve` does **not** resolve symlinks: on macOS a temp dir is `/var/folders/…` in argv but
   `/private/var/folders/…` resolved. When the compare fails `main()` never runs and the script **exits 0
