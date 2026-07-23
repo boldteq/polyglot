@@ -394,15 +394,34 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   Needs the provisional type/spacing ladder ratified (drape + Yash) before the sweep.
 - [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
   Introduce a layer scale and migrate the 4 call sites.
-- [ ] **CB-5 · Dead references to the deleted `hero-seasonal`** in `assets/reveal.css:58` and
-  `assets/section-image-banner.css:57`, plus the abandoned `image-banner` customisation. `status: open`
-- [ ] **CB-6 · 38 locale `body_font_weight` translation errors** — acknowledged, blamed on "an external
-  change", never fixed. `status: open`
-- [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned** — added since `base` but referenced by
-  no template or section group. `status: open` Dead weight that no render-time gate can see (nothing
-  renders it, so #14/#18/#46 never look at it) while it still counts toward the custom total. Either
-  wire it into the gifting template or delete it. Surfaced by `generate-reuse-map.mjs`. *Done when:*
-  the generator reports 0 orphaned sections on cravinbyandy.
+- [x] **CB-5 · Dead `hero-seasonal` references removed.** `status: done`
+  `assets/reveal.css:58` carried `h1.hero-seasonal__title, h2.hero-seasonal__title,` for a section that
+  no longer exists (only `page-hero.liquid` remains), and `assets/section-image-banner.css:57` had a
+  comment citing "the hero-seasonal carousel dots". Dropped the two dead selectors; reworded the comment
+  to describe the pattern without naming a deleted section (it explains *why* the overlay exists, so
+  deleting it outright would have lost the rationale).
+  *Proof:* `grep -rn hero-seasonal assets/ sections/ templates/ snippets/` → **0 references**; the 14
+  live heading selectors in that rule are intact. Client repo, uncommitted.
+- [x] **CB-6 · 38 locale `body_font_weight` errors fixed — it was never "an external change".**
+  `status: done` Root cause: the setting was added to `locales/en.default.schema.json` but to none of the
+  other **19** locale schemas → 19 × 2 keys (`label` + `info`) = exactly the 38 reported errors.
+  Inserted the key into all 19, positioned after each file's own `body_scale` block so the structure stays
+  parallel to `en.default`. The English string is used deliberately: an untranslated key renders as the
+  English fallback anyway, so this is **zero visible change** for merchants and clears the lint — it is
+  not a claim that 19 translations were done. Merchant-admin only; no storefront impact.
+  *Proof:* parsing all 19 schemas → **0 missing** (was 19). Client repo, uncommitted.
+  ⚠️ **My first verification of this was vacuous and I am correcting it:** I checked via the code-lint
+  gate, which reported "0 findings" — but its evidence says `skipped: env · shopify CLI not on PATH`, so
+  theme-check never ran. The gate is right to report `pass:false` on a skip (that is gate #45 working).
+  The proof above is structural (parse every file, assert the key exists) and does not depend on it.
+- [ ] **CB-8 · `sections/gifting-occasions.liquid` is orphaned.** `status: blocked-by human`
+  Confirmed: `templates/page.gifting.json` renders `slideshow, feature-story, marquee, about-cafe,
+  feature-story, page-hero` — **not** `gifting-occasions`. So `sections/gifting-occasions.liquid` (4.0 KB)
+  and `assets/section-gifting-occasions.css` (3.3 KB) render nowhere, while `reveal.css` still styles
+  `h2.gift-occasions__heading` — i.e. the theme was *built* expecting this block on the gifting page.
+  **Wire it in or delete it is a content decision, not a mechanical one** — "should the gifting page have
+  an occasions block?" is Yash's/the client's call, and both options are destructive in one direction.
+  Committed in `1fdc5e4` (the 9-day baseline), so nothing is lost either way.
 - [ ] **CB-7 · 22 uncommitted regenerated gate-reports** in cravinbyandy. `status: open` Decide the
   convention (commit as evidence vs ignore) and apply it once.
 
