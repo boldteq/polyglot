@@ -378,11 +378,24 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   verbatim values, `_source` exclusion, no-colour contracts, and non-string rejection. Against a copy of
   the pre-fix generator the same contract yields **0** colour tokens vs **2**. Toolkit **83/83** ·
   `npm test` **225/225**. Commit `88a136ed`.
+  **Precondition #2 shipped (2026-07-23):** gate #30 verified the cascade was PRESENT and FRESH but
+  never that it was **LOADED**. A theme could be fully cascade-green while every `var(--ds-*)` resolved
+  to nothing at render time — an undefined custom property invalidates the whole declaration, so type,
+  spacing and colour silently fall back to inherited values. That matters directly here: swapping
+  `#6C6C6C` for `var(--ds-color-body-gray)` in an unwired theme does not preserve the colour, **it
+  deletes it**. New `cascade.not-wired` finding + pure `layoutReferencesCss()`; `{{ … | stylesheet_tag }}`,
+  a raw `<link href>` and an `@import` all count as wiring, so a correctly-wired theme is never
+  false-flagged. Fixture: `brand-sync` +5 cases (unwired detected, blocks at enforce, wired not flagged,
+  link/@import accepted). Notably the existing "fresh cascade → PASS at enforce" case **started failing**
+  when this landed — correctly, because its temp theme had no layout at all; the fixture now models the
+  healthy wired state instead of the check being weakened.
   **Still open — the swap itself,** deliberately not done inline: it edits ~201 sites across 8 client
-  stylesheets. *Next:* wire `design-system.css` into `theme.liquid`, then swap **only** literals whose
-  value exactly equals a `--ds-color-*` token (normalising `#abc`→`#aabbcc` and case), leaving any
-  non-matching literal untouched and reported — a colour with no exact token is a design decision, not
-  a mechanical substitution.
+  stylesheets. *Next, in order:* (1) `node toolkit/scripts/generate-design-system-css.mjs` in the client
+  repo, (2) add the `stylesheet_tag` to `layout/theme.liquid` and confirm gate #30 reports neither
+  `css-missing` nor `not-wired`, (3) only then swap literals whose value **exactly** equals a
+  `--ds-color-*` token (normalising `#abc`→`#aabbcc` and case), leaving every non-matching literal
+  untouched and reported — a colour with no exact token is a design decision, not a mechanical
+  substitution. Do NOT reorder: steps 1–2 are what make step 3 identity-preserving.
 - [ ] **CB-2 · editability: 269 blockers.** `status: open` Triage first — how many are real merchant-
   editability gaps vs base-Dawn noise? Record the split here before fixing.
 - [ ] **CB-3 · consistency: 21 font-sizes / 4 weights / 8 radii vs the caps.** `status: blocked-by human`

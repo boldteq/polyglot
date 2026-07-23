@@ -43,12 +43,21 @@ function run(dir, env = {}) {
   return { code: r.status, rep }
 }
 const allIds = (rep) => new Set([...(rep?.blockers || []), ...(rep?.warnings || [])].map(x => x.id))
-function build(stamp) {
+// `wired` defaults to true: a healthy theme LOADS the cascade. Without it every var(--ds-*) resolves
+// to nothing at render time, so a fresh-but-unwired cascade is broken, not passing (CB-1).
+function build(stamp, { wired = true } = {}) {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'dsc-'))
   fs.mkdirSync(path.join(d, 'docs', 'design'), { recursive: true })
   fs.mkdirSync(path.join(d, 'assets'), { recursive: true })
+  fs.mkdirSync(path.join(d, 'layout'), { recursive: true })
   fs.writeFileSync(path.join(d, 'docs', 'design', 'design-system.json'), JSON.stringify(ds))
   if (stamp !== undefined) fs.writeFileSync(path.join(d, 'assets', 'design-system.css'), `/* ds-hash:${stamp} */\n:root{}`)
+  fs.writeFileSync(
+    path.join(d, 'layout', 'theme.liquid'),
+    wired
+      ? `<head>{{ 'design-system.css' | asset_url | stylesheet_tag }}</head>`
+      : `<head>{{ 'base.css' | asset_url | stylesheet_tag }}</head>`,
+  )
   return d
 }
 {
@@ -76,6 +85,39 @@ function build(stamp) {
   const { code, rep } = run(d, { DS_CASCADE_ENFORCE: '1' })
   code === 0 && allIds(rep).has('cascade.n-a-no-ds') ? pass('no design-system.json → SKIP/PASS') : fail(`no-ds: code ${code}`)
   fs.rmSync(d, { recursive: true, force: true })
+}
+
+// ── CB-1: present + fresh is NOT the same as LOADED ──────────────────────────────────────
+// The gate proved the CSS exists and its hash matches the contract, but nothing checked that a layout
+// actually includes it. A theme could be fully cascade-green while every var(--ds-*) resolved to
+// nothing at render time — undefined custom properties invalidate the whole declaration, so type,
+// spacing and colour silently fall back. This is the precondition for snapping literals to tokens:
+// swapping `#6C6C6C` for `var(--ds-color-body-gray)` in an UNWIRED theme deletes the colour.
+{
+  const d = build(dsHash(ds), { wired: false })
+  const { code, rep } = run(d, { DS_CASCADE_ENFORCE: '1' })
+  allIds(rep).has('cascade.not-wired') ? pass('fresh but UNWIRED → cascade.not-wired') : fail('unwired cascade not detected')
+  code === 1 ? pass('unwired blocks at enforce') : fail(`unwired: expected exit 1, got ${code}`)
+  fs.rmSync(d, { recursive: true, force: true })
+}
+{
+  const d = build(dsHash(ds), { wired: true })
+  const { rep } = run(d, { DS_CASCADE_ENFORCE: '1' })
+  allIds(rep).has('cascade.not-wired') ? fail('FALSE POSITIVE — a wired layout was flagged') : pass('wired layout → not flagged')
+  fs.rmSync(d, { recursive: true, force: true })
+}
+{
+  // a <link> tag and an @import are equally valid wiring — never false-flag them
+  for (const [label, head] of [
+    ['<link href>', '<head><link rel="stylesheet" href="/assets/design-system.css"></head>'],
+    ['@import', '<head><style>@import url("design-system.css");</style></head>'],
+  ]) {
+    const d = build(dsHash(ds), { wired: false })
+    fs.writeFileSync(path.join(d, 'layout', 'theme.liquid'), head)
+    const { rep } = run(d, { DS_CASCADE_ENFORCE: '1' })
+    allIds(rep).has('cascade.not-wired') ? fail(`FALSE POSITIVE — ${label} wiring flagged`) : pass(`${label} accepted as wiring`)
+    fs.rmSync(d, { recursive: true, force: true })
+  }
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)

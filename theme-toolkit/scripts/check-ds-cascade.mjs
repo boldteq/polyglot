@@ -23,6 +23,26 @@ import { cascadeStale } from './lib/ds-hash.mjs'
 
 // PURE: custom-section CSS that hardcodes a type/spacing literal where it should bind a --ds-* var
 // (so a brand-change wouldn't reach it). Heuristic + warn-level — render-wiring (#14) owns the hard cases.
+// PURE: does this layout source actually pull in the cascade stylesheet? Accepts the Shopify idioms —
+// `{{ 'design-system.css' | asset_url | stylesheet_tag }}`, a raw <link href="...design-system.css">,
+// or an @import — so a legitimately-wired theme is never falsely flagged.
+export function layoutReferencesCss(layoutSrc, cssPath) {
+  const base = String(cssPath).split('/').pop()
+  if (!base) return false
+  const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`['"\`]?${escaped}['"\`]?`).test(String(layoutSrc))
+}
+
+// every layout/*.liquid that references the cascade (a theme may ship more than one layout)
+function layoutsReferencing(cssPath) {
+  const dir = path.resolve(cwd, 'layout')
+  let files = []
+  try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.liquid')) } catch { return [] }
+  return files.filter((f) => {
+    try { return layoutReferencesCss(fs.readFileSync(path.join(dir, f), 'utf-8'), cssPath) } catch { return false }
+  })
+}
+
 export function cascadeCoverageGaps(cssText) {
   const gaps = []
   const css = String(cssText || '')
@@ -83,6 +103,24 @@ function main() {
     return finish(null, { present: false })
   }
   const cssText = fs.readFileSync(cssAbs, 'utf-8')
+
+  // #2b (CB-1, 2026-07-23) — PRESENT + FRESH is not the same as LOADED.
+  // The gate proved the file exists and its hash matches the contract, but nothing checked that any
+  // layout actually includes it. A theme can therefore be fully "cascade-green" while every
+  // var(--ds-*) resolves to nothing at render time: undefined custom properties make the whole
+  // declaration invalid, so type/spacing/colour silently fall back to inherited values. This is the
+  // precondition for snapping literals to tokens — swapping `#6C6C6C` for `var(--ds-color-body-gray)`
+  // in an unwired theme does not preserve the colour, it deletes it.
+  const wiredIn = layoutsReferencing(DS_CSS)
+  if (!wiredIn.length) {
+    eligible(
+      'cascade.not-wired', DS_CSS,
+      `${DS_CSS} exists but NO layout references it — every var(--ds-*) resolves to nothing at render `
+      + `time and the declaration is dropped. Add {{ '${path.basename(DS_CSS)}' | asset_url | stylesheet_tag }} `
+      + 'to the <head> of layout/theme.liquid.',
+    )
+  }
+
   const stale = cascadeStale(dsJson, cssText)
   if (!stale.ok) {
     eligible('cascade.stale', DS_CSS, `${stale.reason}. Re-run \`pnpm ds:css\` (expected ds-hash ${stale.expected}, found ${stale.found || 'none'}).`, `${stale.found || 'none'}→${stale.expected}`)
