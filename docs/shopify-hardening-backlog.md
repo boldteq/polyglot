@@ -699,12 +699,26 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   quietly join the vacuous set.
   *Proof:* on the empty theme, `layout` / `mobile` / `static-a11y` (the three reporting a size today)
   now **BLOCK** instead of passing green. Toolkit **96/96**. Commit `84a3c1fb`.
-  **Remaining (the open part):** 13 of the 16 report no scan size at all, so #45 cannot see them yet —
-  `social-assets` #39, `code-lint` #2, `dead-code` #11, `design-tokens` #8, `consistency` #9,
-  `design-quality` #12, `render-check` #14, `brand-sync` #30, `visual-check` #18, `class-d-visual` #20,
-  `price-binding` #38, `honesty` #13, `rule-pack` #43. Each needs its own call (record a scan size, or
-  justify it into `ABSENCE_CHECKS`) — **gate-by-gate against its own scope logic, not guessed in bulk.**
-  Plus `editability` #10, which wrote **no report at all** on an empty theme and needs its own look.
+  **Round 2 (`0bb4f44e`) — 17 → 13 vacuous, and two of the findings were MY audit's fault:**
+  · The audit ran every gate with `node`, but `editability` is a **bash** gate — so *"wrote no report at
+    all"* was the audit mis-running it, not a defect. It now honours the manifest's `runner` exactly as
+    `theme-gates` does. Correcting it **raised** the count 16 → 17 (editability is vacuous, just not for
+    that reason).
+  · **`honesty` and `design-tokens` were never vacuous.** Both have always warned on an empty scope —
+    under ids (`honesty.no-custom-code`, `ds.no-custom-code`) that neither the audit nor #45 recognised.
+    Renamed to `*.n-a-*` rather than teaching the tools a second spelling: **two conventions is how the
+    next one gets missed.** No dependents (grepped). Pinned by fixture, including that the OLD spelling
+    is still not recognised.
+  · **Genuinely fixed:** `dead-code` #11 and `consistency` #9 resolved their scope, scanned zero files
+    and reported green in silence. Both now record `scanned` and declare `*.n-a-empty-scope*`.
+  · **Verified not merely quieter:** on the real cravinbyandy theme they scan 107 / 43 / 33 files,
+    `consistency` still blocks with 3 and `design-tokens` with 492, and none raises a spurious N/A.
+    *A gate that only ever says N/A would be worse than the bug it replaced.*
+  **Remaining 13** (each needs its own call — record a scan size + declare `*.n-a-empty-scope*`, or
+  justify it into `ABSENCE_CHECKS`; **gate-by-gate against its own scope logic, never guessed in bulk**):
+  `social-assets` #39, `code-lint` #2, `editability` #3, `layout` #22, `design-quality` #12,
+  `render-check` #14, `brand-sync` #30, `visual-check` #18, `class-d-visual` #20, `mobile` #35,
+  `static-a11y` #16, `price-binding` #38, `rule-pack` #43.
 
 - [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
   Introduce a layer scale and migrate the 4 call sites.
