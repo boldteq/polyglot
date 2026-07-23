@@ -629,6 +629,23 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   exchange for leaving the gate that measures the actual problem still red. The theme does not have a
   wide ladder — **it has no ladder**, and no contract edit changes that. Reverted; the store is
   untouched.
+  **TOOLING NOW EXISTS — the decision is a dry run (`98f7d330`).**
+  `snap-scale-to-ladder.mjs` is the CB-3 companion to `snap-colors-to-tokens`, built deliberately
+  **asymmetric** to it: colours could be mechanical because the rule was IDENTITY (the render could not
+  change); type/spacing cannot, so this is a **reporter first** and `--apply` **refuses** when any move
+  exceeds `--max-delta` (default 2px). Refusal is per-RUN, so a blocked batch can never leave the theme
+  half-snapped. It carries the lessons already paid for: never a GENERATED file, never positioning or a
+  `calc()` constant, never a `var()`-bound value, and in `.liquid` only inside `{% style %}`.
+  **Measured against the CURRENT (too-tight) ladder:** ~1000 moves — `178× 10→8`, `150× 15→16`,
+  `145× 20→16 (4px)`, `71× 30→32`, `71× 5→4`, `54× 50→48`, `49× 6→4`. That is the honest price of
+  forcing the theme's 10-based rhythm onto a 4/8 grid, and the tool declines to do it unattended.
+  *A documented trap I walked into and fixed:* the first dry run reported **754** off-ladder values that
+  were all `rem × 1.6` — Dawn resets the root to 62.5% (1rem = 10px); assuming 16 manufactures phantom
+  drift. Same `detectRemRootPx` as the gates now.
+  **To decide it:** give me a ladder (or approve one) and I run `--only <file>` first, then the batch —
+  or raise the bar deliberately with `--max-delta`. A `THEME_PREVIEW_URL` still lets me *look* at the
+  result, which no amount of tooling replaces.
+
   **What the fix actually requires (and why it is still yours):** a TIGHT ladder plus **snapping the
   CSS** — e.g. type `12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 64` with 15→16 (18 occurrences), 13→14,
   17→18, 19→20, 30→32, 34→32… That is ~55 font-size and ~120 spacing edits which **change what renders**,
