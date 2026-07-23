@@ -39,5 +39,20 @@ console.log('case (c) comment-safe ("no Tailwind" comment + clean code) → expe
   code === 0 ? pass('exit 0 (pass)') : fail(`expected 0 got ${code}; blockers=${[...ids].join(', ')}`)
   !ids.has('ds.tailwind') ? pass('no ds.tailwind false-positive on a comment') : fail('ds.tailwind FP fired on a comment') }
 
+// ── CB-1: --ds-* is THIS toolkit's own token system, not a bolted-on one ──────────────────
+// Until 2026-07-23 this gate flagged --ds-* as ds.second-token while gate #30 (ds-cascade) emitted
+// exactly those vars from the toolkit's own generator and WARNED when sections failed to bind to
+// them. Doing what the cascade asked tripped a blocker here, so the cascade was unusable: wiring it
+// on cravinbyandy traded 150 colour blockers for 15 ds.second-token ones. Foreign systems (--tw-*)
+// must still block.
+console.log('case (d) a section bound to var(--ds-*) is NOT a second token system')
+{ const { code, ids } = run('ds-cascade-binding')
+  !ids.has('ds.second-token') ? pass('--ds-* accepted (the cascade is usable)') : fail('ds.second-token fired on the toolkit\'s own tokens')
+  code === 0 ? pass('exit 0') : fail(`expected 0 got ${code}; blockers=${[...ids].join(', ')}`) }
+
+console.log('case (e) a FOREIGN token system (--tw-*) still blocks')
+{ const { ids } = run('tw-foreign')
+  ids.has('ds.second-token') ? pass('--tw-* still flagged') : fail('the foreign-system check was disarmed') }
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

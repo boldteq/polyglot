@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**83/83** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**84/84** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -357,45 +357,37 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 
 ## P1 — the 478 findings cravinbyandy surfaced once its gates started working
 
-- [~] **CB-1 · UNBLOCKED — there was nothing to snap the colours TO. Cascade now emits them.**
-  `status: open` (prerequisite shipped) The item says "snap hardcoded colours to the brand
-  tokens/schemes", but **no brand colour token existed anywhere in the theme.** Verified:
-  `assets/design-system.css` is absent from cravinbyandy and unreferenced, and
-  `generate-design-system-css.mjs` emitted type / spacing / weight / font tokens and **skipped `color`
-  entirely** — so the PDF-authoritative palette in `design-system.json` was unreachable from CSS. That
-  is *why* every custom section hardcodes literals: there was no binding target. Current gate state:
-  **476 blockers** (165 `ds.color-hex` + 36 `ds.color-literal` = the 201 colour ones this item owns;
-  187 spacing + 88 font-size belong to CB-3, which is blocked on the ladder).
-  **Why the naive swap would have been wrong:** the only colour vars present are Dawn's `--color-*`
-  scheme variables, which resolve **per section scheme**. Binding a fixed brand colour to one changes
-  the rendered result wherever that section runs under a different scheme — the exact thing this item
-  forbids ("never change a rendered colour value").
-  **Shipped:** the cascade generator now emits `--ds-color-<name>` from `design-system.json.color`,
-  copied **verbatim** (so `#6C6C6C` → `var(--ds-color-body-gray)` is provably identity), skipping
-  `_`-prefixed documentation keys and non-string values. On cravinbyandy it produces all **10** brand
-  colours including the `rgba()` ones.
-  *Proof:* new fixture `__fixtures__/ds-cascade-color/` — 17 assertions covering emission, kebab-casing,
-  verbatim values, `_source` exclusion, no-colour contracts, and non-string rejection. Against a copy of
-  the pre-fix generator the same contract yields **0** colour tokens vs **2**. Toolkit **83/83** ·
-  `npm test` **225/225**. Commit `88a136ed`.
-  **Precondition #2 shipped (2026-07-23):** gate #30 verified the cascade was PRESENT and FRESH but
-  never that it was **LOADED**. A theme could be fully cascade-green while every `var(--ds-*)` resolved
-  to nothing at render time — an undefined custom property invalidates the whole declaration, so type,
-  spacing and colour silently fall back to inherited values. That matters directly here: swapping
-  `#6C6C6C` for `var(--ds-color-body-gray)` in an unwired theme does not preserve the colour, **it
-  deletes it**. New `cascade.not-wired` finding + pure `layoutReferencesCss()`; `{{ … | stylesheet_tag }}`,
-  a raw `<link href>` and an `@import` all count as wiring, so a correctly-wired theme is never
-  false-flagged. Fixture: `brand-sync` +5 cases (unwired detected, blocks at enforce, wired not flagged,
-  link/@import accepted). Notably the existing "fresh cascade → PASS at enforce" case **started failing**
-  when this landed — correctly, because its temp theme had no layout at all; the fixture now models the
-  healthy wired state instead of the check being weakened. Commit `f60c287f`.
-  **Still open — the swap itself,** deliberately not done inline: it edits ~201 sites across 8 client
-  stylesheets. *Next, in order:* (1) `node toolkit/scripts/generate-design-system-css.mjs` in the client
-  repo, (2) add the `stylesheet_tag` to `layout/theme.liquid` and confirm gate #30 reports neither
-  `css-missing` nor `not-wired`, (3) only then swap literals whose value **exactly** equals a
-  `--ds-color-*` token (normalising `#abc`→`#aabbcc` and case), leaving every non-matching literal
-  untouched and reported — a colour with no exact token is a design decision, not a mechanical
-  substitution. Do NOT reorder: steps 1–2 are what make step 3 identity-preserving.
+- [~] **CB-1 · Colour swap MECHANIZED + a gate-stack contradiction fixed. 201 → 51 measured.**
+  `status: open` (tooling done; application to the client repo is the remaining step)
+  Three things had to be true before a single literal could be safely replaced, and none of them were:
+  **(1) There was no brand token to bind to.** The cascade generator emitted type/spacing/weight/font
+  and skipped `color` entirely, so the PDF-authoritative palette was unreachable from CSS. Now emits
+  `--ds-color-*` verbatim. Commit `88a136ed`.
+  **(2) Nothing checked the cascade was LOADED.** Gate #30 proved it existed and was fresh, never that
+  a layout included it — and swapping to `var(--ds-color-*)` in an unwired theme *deletes* the colour
+  (an undefined custom property invalidates the declaration). New `cascade.not-wired`. Commit `f60c287f`.
+  **(3) Two gates directly contradicted each other.** Gate #8 flagged `--ds-*` as
+  `ds.second-token` ("second token system") while gate #30 emits exactly those vars from the toolkit's
+  own generator and *warns* when sections fail to bind to them. Doing what the cascade asked tripped a
+  blocker in the design-token gate — measured: wiring the cascade traded 150 colour blockers for **15
+  `ds.second-token`** ones. `--ds-*` is not bolted on; it is this toolkit's first-class system (the same
+  reasoning the code already applied to `--brand-*`). `--tw-*` still blocks. **This is very likely why
+  `design-system.css` was never generated or wired on any store.**
+  **Shipped:** `snap-colors-to-tokens.mjs` — replaces a literal only when its **canonical** value is
+  byte-identical to a token (`#abc`→`#aabbcc`, case-folded, `rgb()`→hex, opaque `rgba()`→hex), leaves
+  every non-match untouched **and reported**, skips shadow/filter (as the gate does), and **refuses
+  `--apply`** unless the cascade is generated *and* wired.
+  *Proof (real theme, scratch copy — the client repo was NOT modified):* generate → wire → apply gives
+  **colour blockers 201 → 51 (150 resolved, 75%)**, total **476 → 326**, **no new blocker ids**, and
+  gate #30 goes to 0 blockers. The 51 survivors are literals with no exact token (`#829474`, `#365237`,
+  `rgba(44,61,30,0.52)` …) — design decisions, correctly refused. New `snap-colors` fixture (34
+  assertions) + `design-tokens` cases (d)/(e). A bug caught on real data: a naive `[^)]*` truncated
+  `rgb(var(--color-foreground))` into 194 phantom "literals"; now nested-paren aware and var-bound
+  values are skipped. Toolkit **84/84** · `npm test` **225/225**.
+  **Remaining:** run the three steps in the client repo (`generate-design-system-css.mjs` → add the
+  `stylesheet_tag` to `layout/theme.liquid` → `snap-colors-to-tokens.mjs --apply`) and commit there.
+  Held back because it edits ~150 sites across a live client theme — worth one visual check on staging
+  first, even though the swap is value-identical by construction.
 - [ ] **CB-2 · editability: 269 blockers.** `status: open` Triage first — how many are real merchant-
   editability gaps vs base-Dawn noise? Record the split here before fixing.
 - [ ] **CB-3 · consistency: 21 font-sizes / 4 weights / 8 radii vs the caps.** `status: blocked-by human`

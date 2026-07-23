@@ -191,9 +191,18 @@ for (const file of targets) {
   // (Seraphine beauty dogfood 2026-06-19: a "no Tailwind." comment false-fired ds.tailwind).
   const rawNoComments = stripComments(raw)
   if (/@apply|@tailwind|\btailwind\b/i.test(rawNoComments)) drift('ds.tailwind', file, 'Tailwind/@apply present — one CSS system only (Rule 9); use the theme vars', '')
-  // Second token system = an unambiguously bolted-on prefix (Tailwind --tw-*, a parallel --ds-*).
+  // Second token system = an unambiguously bolted-on FOREIGN prefix (Tailwind --tw-*).
   // NOTE: --brand-* is intentionally NOT flagged — many themes expose brand vars as their OWN tokens (Rule-9 compliant).
-  for (const m of rawNoComments.matchAll(/--(?:tw|ds)-[a-z0-9-]+/gi)) { drift('ds.second-token', file, `second token system "${m[0]}" — use the theme's design-system vars (Rule 9)`, m[0]); break }
+  //
+  // `--ds-*` was ALSO flagged here until 2026-07-23 (CB-1), which put two gates in direct conflict:
+  //   · gate #30 (ds-cascade) emits assets/design-system.css full of `--ds-*` via the toolkit's own
+  //     generator, and WARNS (`cascade.literal-not-bound`) when a custom section fails to bind to it
+  //   · this gate BLOCKED the section for doing exactly that
+  // Doing what the cascade asks tripped a blocker in the design-token gate, so the cascade was
+  // unusable in practice — measured: wiring it on cravinbyandy traded 150 colour blockers for 15
+  // `ds.second-token` ones. `--ds-*` is not a bolted-on system; it is THIS toolkit's first-class one,
+  // generated from the design-system contract. Same reasoning already applied to `--brand-*` above.
+  for (const m of rawNoComments.matchAll(/--tw-[a-z0-9-]+/gi)) { drift('ds.second-token', file, `second token system "${m[0]}" — use the theme's design-system vars (Rule 9)`, m[0]); break }
 
   const css = stripComments(extractCss(file, raw))
   const sizesInFile = new Set()
