@@ -12,7 +12,7 @@ re-analysing the same ground. Every item is a real, verified gap from the 2026-0
 5. **Never** `theme push`/publish to a live store. **Never** `git add -A` on an intertwined tree.
    Never mark an item done without a test/proof line.
 
-**Hard rules:** Node 20 · toolkit suite must stay green (**90/90** as of 2026-07-23 — the count grows
+**Hard rules:** Node 20 · toolkit suite must stay green (**91/91** as of 2026-07-23 — the count grows
 when a suite is added; what matters is ALL SUITES PASS, never a drop) · `node toolkit/scripts/X.mjs` from a
 client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate · no live pushes.
 
@@ -484,9 +484,19 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   scoped to pdp/collection/article via `APPLY`, and I had aimed them at `home`. That scoping is now
   pinned by its own assertion, since if it ever silently widened, every store's home page would start
   failing the SEO gate. Commit `ca61683a`.
-  *Remaining 21:* `gate-seo` 8 (variant/collection canonical forms, product JSON-LD, lazy-loading and
-  image dimensions — all need richer served pages), `gate-functional` 5, `gate-conversion` 4, and the
-  browser-dependent `lighthouse`/`axe`, which need the Playwright already vendored for Lens.
+  **Round 2 — URL untested 21 → 14.**
+  · `gate-conversion` **4 → 0** (zero Playwright references — it fetches and reads markup). The four
+    guard the buy path itself: no hero CTA, no add-to-cart, no price, and a cart with no conversion
+    mechanic at all. If they never fire, a store ships a broken funnel while the gate reports the
+    mechanical 60% as passed. `cart-no-mechanic` is paired with its non-STRICT case, since blocking a
+    bare cart on every dev run would stall early-stage builds.
+  · `gate-seo` **8 → 5**: Product JSON-LD missing and duplicated (a PDP with none loses rich results;
+    two makes Google pick one at random — both silent revenue problems), and `img-dimensions`. Plus the
+    correct case: exactly one Product block raises neither.
+  *Remaining 14:* `gate-functional` 5 and `gate-seo` 5 (variant/collection canonical URL forms,
+  `robots-txt`, gallery lazy-loading — these need multi-URL and header-level serving),
+  `check-section-cohesion` 3, and the browser-dependent `lighthouse`/`axe`, which should reuse the
+  Playwright already vendored for Lens.
 - [ ] **QA-2-ORIG · (superseded framing) 28 URL-gate blocking checks unproven.** `status: open`
   What is left after QA-1 took static coverage to 0. `gate-seo` (15), `gate-functional` (6),
   `gate-conversion` (4) and friends only run against `THEME_PREVIEW_URL`, so they have never been

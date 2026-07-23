@@ -25,7 +25,8 @@ const page = (over = {}) => {
   const o = {
     title: 'Cravin by Andy — seasonal cafe menu in Mumbai',
     desc: 'A Mumbai cafe serving a seasonal menu, house blend coffee and ceremonial matcha, with catering and thoughtful gifting.',
-    canonical: 1, h1: 1, noindex: false, og: true, jsonld: 'WebPage', img: true, ...over,
+    canonical: 1, h1: 1, noindex: false, og: true, jsonld: 'WebPage', img: true,
+    products: 0, org: true, dims: true, ...over,
   }
   const canon = Array.from({ length: o.canonical }, () => '<link rel="canonical" href="http://127.0.0.1/">').join('\n')
   const h1s = Array.from({ length: o.h1 }, (_, i) => `<h1>Heading ${i + 1}</h1>`).join('\n')
@@ -34,13 +35,17 @@ const page = (over = {}) => {
        <meta property="og:image" content="http://127.0.0.1/a.jpg"><meta property="og:type" content="website">
        <meta property="og:url" content="http://127.0.0.1/"><meta name="twitter:card" content="summary_large_image">`
     : ''
-  const ld = o.jsonld === null ? '' :
+  const org = o.org
+    ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: 'Cravin', url: 'http://127.0.0.1/' })}</script>`
+    : ''
+  const products = Array.from({ length: o.products }, (_, i) => `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: `Matcha ${i + 1}`, offers: { '@type': 'Offer', price: '1200', priceCurrency: 'INR' } })}</script>`).join('\n')
+  const ld = o.jsonld === null ? org + products :
     o.jsonld === 'BROKEN' ? '<script type="application/ld+json">{ not json </script>'
       : `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': o.jsonld, name: 'Cravin' })}</script>
-         <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: 'Cravin', url: 'http://127.0.0.1/' })}</script>`
-  const img = o.img
-    ? '<img src="/a.jpg" alt="A seasonal salad bowl" width="800" height="600" loading="lazy">'
-    : '<img src="/a.jpg">'
+         ${org}${products}`
+  const img = !o.img ? '<img src="/a.jpg">'
+    : o.dims ? '<img src="/a.jpg" alt="A seasonal salad bowl" width="800" height="600" loading="lazy">'
+      : '<img src="/a.jpg" alt="A seasonal salad bowl" loading="lazy">'
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><title>${o.title}</title>
 ${o.desc ? `<meta name="description" content="${o.desc}">` : ''}
@@ -123,6 +128,21 @@ await expectId('unparseable JSON-LD', { all: { jsonld: 'BROKEN' } }, 'seo.jsonld
 
 console.log('\n── images ──')
 await expectId('image with no alt (pdp)', { all: { img: false } }, 'seo.img-alt', 'pdp')
+
+console.log('\n── structured data, round 2 ──')
+// A PDP with no Product JSON-LD loses rich results outright; two Product blocks make Google pick one
+// at random. Both are silent revenue problems, so both must be provable.
+await expectId('PDP with no Product JSON-LD', { all: { products: 0 } }, 'seo.jsonld-product-missing', 'pdp')
+await expectId('two Product JSON-LD blocks', { all: { products: 2 } }, 'seo.jsonld-product-dupe', 'pdp')
+{
+  // a correct PDP — exactly one Product block — must raise neither
+  const { ids } = await runGate({ all: { products: 1 } }, 'pdp')
+  const ld = [...ids].filter((i) => /jsonld-product/.test(i))
+  ld.length === 0 ? ok('exactly one Product block raises neither') : bad(`false blocks: ${ld.join(', ')}`)
+}
+
+console.log('\n── images, round 2 ──')
+await expectId('image with alt but no width/height', { all: { dims: false } }, 'seo.img-dimensions', 'pdp')
 
 console.log('\n── page-type SCOPING is deliberate, not a miss ──')
 {
