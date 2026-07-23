@@ -681,7 +681,7 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   40/40 gate scripts, version matched, **preflight READY**, secret-scan + orchestration BLOCK → PASS.
   Toolkit **95/95**. Commits `8bb3dda1`, `4314b3dc`.
 
-- [~] **QA-7 · 16 static gates report PASS having examined nothing.** `status: open`
+- [x] **QA-7 · 16 static gates report PASS having examined nothing.** `status: done` (0 remain — `ca6b4823`)
   Ran all **33** static gates against a theme with no sections, assets or templates — with `base`
   resolving fine, so this is **not** the known missing-tag case; it is an empty **scan** that never says
   so. Result: **7 declare N/A** (so the convention already exists and is followed by some),
@@ -714,11 +714,26 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   · **Verified not merely quieter:** on the real cravinbyandy theme they scan 107 / 43 / 33 files,
     `consistency` still blocks with 3 and `design-tokens` with 492, and none raises a spurious N/A.
     *A gate that only ever says N/A would be worse than the bug it replaced.*
-  **Remaining 13** (each needs its own call — record a scan size + declare `*.n-a-empty-scope*`, or
-  justify it into `ABSENCE_CHECKS`; **gate-by-gate against its own scope logic, never guessed in bulk**):
-  `social-assets` #39, `code-lint` #2, `editability` #3, `layout` #22, `design-quality` #12,
-  `render-check` #14, `brand-sync` #30, `visual-check` #18, `class-d-visual` #20, `mobile` #35,
-  `static-a11y` #16, `price-binding` #38, `rule-pack` #43.
+  **Round 3 (`ca6b4823`) — 13 → 0. QA-7 CLOSED.** Each judged against its own scope logic.
+  · **Declared empty scope** (resolved a scope covering nothing and said nothing): `layout` #22,
+    `mobile` #35, `static-a11y` #16, `price-binding` #38, `social-assets` #39, `render-check` #14,
+    `class-d-visual` #20, `editability` #3 — all now emit `*.n-a-empty-scope*`. Several already **knew**
+    (`"no product/price surface"`, `"no layout/theme.liquid"`, `files_in_scope: 0`, a `note`) — they
+    just never said it in the form the tools read. #45's `emptyScan` also learned `files_in_scope`.
+  · **NOT renamed, deliberately:** `design-quality` (`dq.pack-missing`), `brand-sync`
+    (`cascade.css-missing`) and `visual-check` (`vt.capture-not-done`) pass on an empty theme carrying a
+    warning that **escalates to a BLOCKER at publish grade**. Calling those "N/A" would downgrade a real
+    finding to a shrug — `cascade.css-missing` is asserted as a **blocker** by brand-sync's own fixture.
+    They get their own `declares-pending` category.
+  · **Allowlisted with reasons:** `code-lint` (theme-check lints the whole theme, so "no offenses" on an
+    empty theme is true — same shape as `secret-scan`) and `rule-pack` (it **evaluated** all 8 rules and
+    emitted 3 real findings — the opposite of vacuous).
+  · **A bug caught before it shipped:** `editability`'s `write_report` takes blockers as `$2` with
+    `warnings` hardcoded to `[]`, so the first patch put the N/A warning in the **blockers** slot — a
+    false block on every clean run. It now takes a warnings parameter.
+  · **Verified honest, not merely quiet:** on the real cravinbyandy theme these scan 43/43/25/35/18/129
+    files, `editability` still **BLOCKS with 282**, and no gate raises a spurious N/A.
+  **Final: 33 static gates — 19 declare N/A, 3 declare pending, 11 absence-checks, 0 VACUOUS.**
 
 - [ ] **CB-4 · z-index war** — 4 stylesheets at `9999` (now a blocker via rule-pack). `status: open`
   Introduce a layer scale and migrate the 4 call sites.
