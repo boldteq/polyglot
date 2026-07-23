@@ -710,6 +710,24 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   `/private/var/folders/…` resolved, so the guard failed, `main()` never ran, and the script **exited 0
   having done nothing**. Now compares realpaths. Toolkit **102/102**.
 
+- [x] **CB-18 · The three audits were unenforced — their own results could rot.** `status: done` (`bfb65b74`)
+  A gap in **my own work**, and the exact shape this workstream keeps finding elsewhere. Each audit had
+  a fixture, but every one tested the **pure helpers** against synthetic input; none asserted the
+  audit's **real answer**. So the results they exist to produce could regress in silence the moment
+  anyone added a gate — `0 untested blocking checks` (49 static + 28 URL burned down to reach it),
+  `0 vacuous passes` (17 classified or fixed), `0 misattributions` (6 false-BLOCK classes fixed).
+  **A number nobody re-checks is "evidence nobody reads."** It applied to mine too.
+  Each assertion now carries a **denominator check** so a zero can never be vacuous: >100 blocking
+  checks audited, >20 static gates exercised, ≥3 gates flagging our own dirty code as the control. If an
+  audit stops measuring the stack, *that* fails first instead of reporting a comfortable zero.
+  **Teeth proven against a real regression:** reverting the `shopify://` exclusion makes the fixture
+  FAIL with `1 misattribution(s): editability→merchant-data`. Restored after the test.
+  Incidentally confirmed the value: the stack grew to **129 blocking checks / 35 static gates** during
+  the run (concurrent workstream added two gates) and both are already clean on all three audits.
+  Toolkit **106/106**.
+  ⚠ **Operational note:** the suite now exceeds the 10-minute single-command cap (~72s added). It must
+  be run backgrounded — `nohup node scripts/run-all-tests.mjs > out 2>&1 &` — and polled.
+
 - [x] **CB-17 · The false-attribution class is now audited, not rediscovered.** `status: done` (`044282fa`)
   Six times in one week the same shape was found **by accident**, and every one was a false BLOCK:
   stock Dawn dragged into a drift scan (CB-10); stock Dawn's vocabulary counted as ours (CB-11); the
