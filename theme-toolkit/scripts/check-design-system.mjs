@@ -146,8 +146,31 @@ if (targets.length === 0) {
 }
 
 // ── 3. CSS extraction ────────────────────────────────────────────────────────
+// Comments collapse to a space, but their NEWLINES are kept: line-granular scoping (below) maps a
+// declaration's offset back to a source line, and swallowing newlines would shift every line after a
+// multi-line comment. Matching semantics are unchanged — whitespace either way.
 function stripComments(s) {
-  return s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{%-?\s*comment\s*-?%\}[\s\S]*?\{%-?\s*endcomment\s*-?%\}/g, ' ')
+  const keepLines = (m) => ' ' + '\n'.repeat((m.match(/\n/g) || []).length)
+  return s.replace(/\/\*[\s\S]*?\*\//g, keepLines).replace(/\{%-?\s*comment\s*-?%\}[\s\S]*?\{%-?\s*endcomment\s*-?%\}/g, keepLines)
+}
+
+// Lines ADDED/MODIFIED in this file since BASE_REF. Returns null when it cannot be determined.
+//
+// Why this exists: scope was file-granular, so touching ONE line of a big stock theme-base file pulled
+// the WHOLE file into the drift scan. Measured on cravinbyandy 2026-07-23: 2 changed lines in
+// assets/base.css (a colour token bind + a z-index bind) produced 107 blockers against stock Dawn CSS
+// the team never wrote. That is a false BLOCK, and it punishes making a minimal, correct edit.
+function changedLineSet(file) {
+  try {
+    const out = execFileSync('git', ['diff', '-U0', `${BASE_REF}..HEAD`, '--', file], { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] })
+    const lines = new Set()
+    for (const m of out.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)) {
+      const start = Number(m[1])
+      const count = m[2] === undefined ? 1 : Number(m[2])
+      for (let i = 0; i < count; i += 1) lines.add(start + i)
+    }
+    return lines
+  } catch { return null }
 }
 function extractCss(file, raw) {
   if (/\.css(\.liquid)?$|\.scss$/.test(file)) return raw
@@ -215,7 +238,16 @@ for (const file of targets) {
   const css = stripComments(extractCss(file, raw))
   const sizesInFile = new Set()
 
+  // Line-granular scope, git-resolved plain stylesheets only. For .liquid, extractCss concatenates
+  // fragments so offsets no longer map to source lines; a .liquid in scope is a custom section we
+  // authored anyway, so whole-file remains right there. A reuse-map scope is an explicit "this section
+  // is ours" declaration, so it also stays whole-file.
+  const lineScoped = scopeSource === 'git' && /\.css(\.liquid)?$|\.scss$/.test(file) ? changedLineSet(file) : null
+  const lineOf = (idx) => { let n = 1; for (let i = 0; i < idx && i < css.length; i += 1) if (css[i] === '\n') n += 1; return n }
+  const outOfScope = (idx) => lineScoped !== null && !lineScoped.has(lineOf(idx))
+
   for (const d of css.matchAll(RE_DECL)) {
+    if (outOfScope(d.index)) continue
     const prop = d[1].toLowerCase()
     const value = d[2].trim()
     const vLow = value.toLowerCase()

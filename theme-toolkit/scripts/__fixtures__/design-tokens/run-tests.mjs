@@ -134,5 +134,47 @@ console.log('\ngenerated files are not hand-authored code (2026-07-23)')
   hand.length > 0 ? pass('the same content hand-authored is still flagged') : fail('the skip leaked to hand-authored files')
 }
 
+console.log('\nscope is line-granular, not file-granular (2026-07-23)')
+{
+  // Touching ONE line of a big stock theme-base file used to pull the WHOLE file into the drift scan.
+  // Measured on cravinbyandy: 2 changed lines in assets/base.css (a colour bind + a z-index bind)
+  // produced 107 blockers against stock Dawn CSS the team never wrote — a false BLOCK that punishes
+  // making a minimal, correct edit.
+  const gitRepo = (baseFiles, headFiles) => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), 'dsl-'))
+    const git = (...a) => spawnSync('git', a, { cwd: d, stdio: ['ignore', 'ignore', 'ignore'] })
+    fs.mkdirSync(path.join(d, 'docs', 'design'), { recursive: true })
+    fs.mkdirSync(path.join(d, 'assets'), { recursive: true })
+    fs.writeFileSync(path.join(d, 'docs', 'design', 'design-system.json'),
+      JSON.stringify({ typography: { allowed_px: [16, 32] }, spacing: { scale: [8, 16, 24] } }))
+    git('init', '-q', '.')
+    for (const [rel, body] of Object.entries(baseFiles)) fs.writeFileSync(path.join(d, rel), body)
+    git('add', '-A'); git('-c', 'user.email=a@b.c', '-c', 'user.name=t', 'commit', '-q', '-m', 'base')
+    git('tag', 'base')
+    for (const [rel, body] of Object.entries(headFiles)) fs.writeFileSync(path.join(d, rel), body)
+    git('add', '-A'); git('-c', 'user.email=a@b.c', '-c', 'user.name=t', 'commit', '-q', '-m', 'work')
+    const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-'))
+    spawnSync('node', [GATE], { cwd: d, env: { ...process.env, REPORT_DIR: reportDir, BASE_REF: 'base', ALLOW_DS_WAIVER: '' }, encoding: 'utf-8' })
+    let rep = null; try { rep = JSON.parse(fs.readFileSync(path.join(reportDir, 'design-tokens.json'), 'utf-8')) } catch { /* */ }
+    fs.rmSync(d, { recursive: true, force: true }); fs.rmSync(reportDir, { recursive: true, force: true })
+    return (rep?.blockers || [])
+  }
+
+  // a stock file full of off-scale values; ONE line edited after base
+  const stock = ['.a { padding: 13px; }', '.b { padding: 17px; }', '.c { padding: 19px; }', '.d { color: #C8102E; }'].join('\n') + '\n'
+  const edited = stock.replace('.c { padding: 19px; }', '.c { padding: 21px; }')
+  const only1 = gitRepo({ 'assets/base.css': stock }, { 'assets/base.css': edited })
+  only1.length === 1 && /21/.test(only1[0].detail || '')
+    ? pass('one edited line in a stock file reports ONE finding, not the whole file') : fail(`got ${only1.length}: ${only1.map(b => b.detail?.slice(0, 40))}`)
+
+  // a file that did not exist at base is entirely ours → every line stays in scope
+  const fresh = gitRepo({}, { 'assets/section-new.css': stock })
+  fresh.length === 4 ? pass('a wholly new custom file is scanned in full (4 findings)') : fail(`new file under-scoped: ${fresh.length}`)
+
+  // and an untouched stock file is out of scope entirely
+  const untouched = gitRepo({ 'assets/base.css': stock }, { 'assets/other.css': '.z { padding: 16px; }\n' })
+  untouched.length === 0 ? pass('an untouched stock file raises nothing') : fail(`untouched file flagged: ${untouched.length}`)
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)
