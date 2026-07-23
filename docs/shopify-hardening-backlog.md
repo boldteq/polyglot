@@ -621,286 +621,20 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   **The finding that decides it still holds: the theme was built on a 10-based rhythm** (20×40, 10×25,
   30×9) while the contract encodes a 4/8 grid. Two competing rhythms — that is the defect, not 167
   stray numbers. Adding **10, 20, 30** alone clears **74 of 167 (44%)**.
-  **The call needed (a brand decision, hence `blocked-by human`):**
-  · **Option A — adopt reality (recommended).** Spacing `4, 8, 10, 16, 20, 24, 30, 40, 48, 60, 80`;
-    type `12, 14, 16, 18, 20, 24, 32, 48, 64`. Snaps only the stragglers (5/11/22/26/36/44/56/72…),
-    smallest visual delta, clears the bulk immediately.
-  · **Option B — enforce the 8-point grid.** Keep the current scale and snap ~74 values by ±2px.
-    Cleaner system, but a real visual change across most sections — wants a staging look first.
-  Say A or B and I'll apply it, snap the CSS and re-gate; the tooling is all in place.
-  Needs the provisional type/spacing ladder ratified (drape + Yash) before the sweep.
-- [x] **QA-3 · "Evidence nobody reads" is now a gate, not a review item.** `status: done`
-  `theme-gates` reads each gate's evidence from `gate-reports/<manifest-name>.json`, so a gate that
-  `writeReport()`s under any other name produces a report **nothing reads** — evidence, freshness and
-  gate #45's skip-vs-pass audit all see a hole, while the gate still prints **PASS**. Three instances
-  had been found by hand, so it stopped being a review item: gate #44 now BLOCKS on
-  `orch.report-name-mismatch` / `orch.report-number-mismatch` across the live manifest, resolving
-  `const X = '…'` indirection (exactly how #45 hid). Unverifiable cases WARN rather than pass silently,
-  and *"no writeReport call"* is kept distinct from *"a call whose name I cannot read"* — conflating
-  them would hide the second.
-  **Found + fixed:** #19 wrote the retired alias `section-cohesion` (`908fe01a`), #44 wrote
-  `check-orchestration`, #45 wrote `check-gate-integrity` — the gate whose entire job is *"a skipped
-  gate is not a passed gate"* had an unreadable report itself.
-  **Two self-inflicted traps, both pinned by fixture:** counting raw `writeReport(` occurrences flagged
-  the checker's own doc comment and message strings; and stripping block comments *before* line
-  comments let the `/*` in a real comment line (`// scope: sections/*.liquid`) open a fake block that
-  swallowed the rest of the file, making `check-honesty` (#13, a **critical** gate) look like it wrote
-  no report at all. Comment and string state are now tracked in one pass.
-  **Proof:** all 40 live gate scripts are inspected — asserted, so "0 blockers" cannot be vacuous — and
-  0 write an invisible report. Toolkit **93/93** · `npm test` **225/225**. Commit `f7730c00`.
-
-- [x] **QA-4 · `offsetParent` sweep — Lens never captured the cart-drawer surface.** `status: done`
-  Sibling shape to the gate-functional bug (`0e631277`): `el.offsetParent !== null` used as *"is it
-  visible"*, when offsetParent is **null for every `position: fixed` element**. Five sites.
-  **The nuance that decides which were actually dead:** offsetParent is null only for the fixed element
-  **itself** — a normal child of a fixed banner still has one. So the everyday cases (an Accept button
-  inside a fixed cookie bar, a cart icon inside a fixed sticky header) were fine, and the fixture
-  confirms the pre-fix code handled them. *I first claimed `dismissOccluders` was broken; it was not —
-  corrected in the commit message and the fixture header.*
-  **Genuinely dead:** `lens-capture`'s `isOpenDrawer()` tests the **drawer element**, which IS fixed, so
-  it could never report a drawer open. Proven against pre-fix code: the toggle *is* clicked and the
-  drawer *does* open, yet Lens records `drawerOpened:false`. Its generic branch was self-contradictory
-  too: it looked for `fixed|absolute` panels and then demanded `offsetParent !== null`, so only
-  `absolute` drawers could ever match.
-  **CORRECTION (QA-5, verified against source):** I first wrote that the surface "was never visually
-  judged". Wrong — `drawerOpened` **is** read: gate #18 blocks on `vt.cart-drawer-not-open`. So the
-  real pre-fix behaviour at publish depth was a **FALSE BLOCK** on any theme with a fixed drawer, and a
-  false BLOCK is as damaging as a false pass. Content states are depth-gated to `LENS_DEPTH=full`,
-  which is why everyday dev runs never surfaced it.
-  **Also hardened:** controls that are THEMSELVES fixed (floating close glyph, fixed sticky ATC bar);
-  and `check-section-cohesion`'s heading filter, which dropped headings in fixed/overlay sections and
-  quietly weakened `cohesion.multi-h1` + the heading step-down rhythm check.
-  **Proof:** new `lens-visibility` fixture drives the **real exported functions** against real chromium
-  (no copy of the predicate — a fixture that re-implements what it tests proves nothing); both cases
-  FAIL against `HEAD~` and pass after, plus a no-false-positive case. Toolkit **94/94**. Commit
-  `53611049`.
-
-- [x] **QA-5 · A planned capture state that failed left no trace.** `status: done`
-  `lens-capture` swallowed a failed content-state setup in a bare `catch {}`: no frame, no record, and
-  the manifest simply had one fewer entry — so *"planned but not captured"* read exactly like
-  *"captured and fine"*. The skipped-is-not-passed hole, in the **capture** layer this time, and the
-  reason the QA-4 drawer defect could sit unnoticed.
-  `lens-capture` now records `skippedStates[]` (surface/state/viewport/locale/reason) in the manifest
-  and prints them; gate #18 raises `vt.state-not-captured` — **BLOCK** at publish grade
-  (`DS_REQUIRE_SCOPE`/`LENS_REQUIRE`), **WARN** in dev so an early build is not stalled. No frame means
-  no evidence; it was not judged. Both paths pinned by fixture. Toolkit **94/94**. Commit `03ce1724`.
-
-- [x] **QA-6 · Client repos vendor a STALE toolkit and nothing detected it — the reason CB-1 "sat blocked".**
-  `status: done`
-  Every fix shipped in Polyglot reaches a client only when the vendored `toolkit/` copy is refreshed.
-  Measured on the real repo: cravinbyandy was missing **ELEVEN gate scripts** — `done-check`,
-  `gate-integrity` (#45), `orchestration` (#44), `reference-match` (#46), `class-d-visual` (#20),
-  `gate-autofix`, `preflight-repo` itself, `snap-colors-to-tokens`, `generate-reuse-map`,
-  `reference-ingest`, `audit-unproven-guards` — while **both sides reported `toolkitVersion` 1.0.0**.
-  Identical version, eleven missing gates: the client's evidence read exactly like a current run.
-  **This quarter's QA-1…QA-5 fixes were reaching no client build at all**, and CB-1 read as blocked for
-  weeks because `snap-colors-to-tokens` — its own tool — was not in the repo.
-  **Structural root cause:** `toolkit/` is **gitignored** in the client repo (`.gitignore:9`), so the
-  copy never travels with the repo and its freshness is entirely manual. Defensible (repo bloat), but
-  it means drift is guaranteed unless something checks — hence the check.
-  **Shipped:** `preflight-repo` gains `missingGateScripts` (**required**, offline — every gate the
-  vendored manifest itself declares must have its script present, so a partial copy is loud) and
-  `versionDrift` (advisory — unreachable source reports **UNKNOWN**, never "up to date", since an
-  unverifiable freshness claim is what hid this). `TOOLKIT_VERSION` 1.0.0 → **1.1.0** so reports can
-  distinguish pre/post-hardening evidence; `preflight-repo` also got a CLI guard (it executed on import).
-  **Two more toolkit bugs fell out of actually doing the re-vendor** (`4314b3dc`): `secret-scan` walked
-  `__fixtures__` and so **false-BLOCKED every client repo** on the toolkit's own deliberate fake private
-  key; and my first re-vendor hint said `scripts/` only — `lib/` (the handoff registry), `schemas/`,
-  `templates/`, `toolkit-rules/`, `workflows/`, `lens-rubrics/` drift too, and copying scripts alone
-  left gate #44 blocking on a wrong-gate citation that a **complete** re-vendor cleared.
-  *Proof:* `preflight-drift` fixture (9 assertions, incl. unreachable-source-is-UNKNOWN). Client repo:
-  40/40 gate scripts, version matched, **preflight READY**, secret-scan + orchestration BLOCK → PASS.
-  Toolkit **95/95**. Commits `8bb3dda1`, `4314b3dc`.
-
-- [x] **QA-7 · 16 static gates report PASS having examined nothing.** `status: done` (0 remain — `ca6b4823`)
-  Ran all **33** static gates against a theme with no sections, assets or templates — with `base`
-  resolving fine, so this is **not** the known missing-tag case; it is an empty **scan** that never says
-  so. Result: **7 declare N/A** (so the convention already exists and is followed by some),
-  **9 are absence-checks**, **1 writes no report** (`editability`), and **16 report a bare PASS** —
-  every one of which `theme-gates --verify --require-full` treats as assurance before publish.
-  *"No findings"* and *"nothing was looked at"* are different facts wearing the same green tick. Several
-  gates already **record** the count — `static-a11y` writes `scanned: 0` — and nothing read it: the same
-  evidence-nobody-reads shape as QA-3's report-name drift.
-  **Shipped:** gate #45 blocks on `integrity.vacuous-pass` when a report is `pass:true` with an
-  explicitly-zero scan and declares neither a skip nor an `*.n-a-*`. Absence of the field is **UNKNOWN**,
-  never "fine" — judging gates that report no size would invent a fact. `audit-vacuous-pass.mjs` is the
-  sibling of `audit-unproven-guards` (that one: *has this blocker ever fired?*; this one: *does this
-  green tick mean anything?*), with four verdicts rather than pass/fail because PASS on zero files is
-  **not** automatically a bug — `ABSENCE_CHECKS` is the record of that judgement so a new gate cannot
-  quietly join the vacuous set.
-  *Proof:* on the empty theme, `layout` / `mobile` / `static-a11y` (the three reporting a size today)
-  now **BLOCK** instead of passing green. Toolkit **96/96**. Commit `84a3c1fb`.
-  **Round 2 (`0bb4f44e`) — 17 → 13 vacuous, and two of the findings were MY audit's fault:**
-  · The audit ran every gate with `node`, but `editability` is a **bash** gate — so *"wrote no report at
-    all"* was the audit mis-running it, not a defect. It now honours the manifest's `runner` exactly as
-    `theme-gates` does. Correcting it **raised** the count 16 → 17 (editability is vacuous, just not for
-    that reason).
-  · **`honesty` and `design-tokens` were never vacuous.** Both have always warned on an empty scope —
-    under ids (`honesty.no-custom-code`, `ds.no-custom-code`) that neither the audit nor #45 recognised.
-    Renamed to `*.n-a-*` rather than teaching the tools a second spelling: **two conventions is how the
-    next one gets missed.** No dependents (grepped). Pinned by fixture, including that the OLD spelling
-    is still not recognised.
-  · **Genuinely fixed:** `dead-code` #11 and `consistency` #9 resolved their scope, scanned zero files
-    and reported green in silence. Both now record `scanned` and declare `*.n-a-empty-scope*`.
-  · **Verified not merely quieter:** on the real cravinbyandy theme they scan 107 / 43 / 33 files,
-    `consistency` still blocks with 3 and `design-tokens` with 492, and none raises a spurious N/A.
-    *A gate that only ever says N/A would be worse than the bug it replaced.*
-  **Round 3 (`ca6b4823`) — 13 → 0. QA-7 CLOSED.** Each judged against its own scope logic.
-  · **Declared empty scope** (resolved a scope covering nothing and said nothing): `layout` #22,
-    `mobile` #35, `static-a11y` #16, `price-binding` #38, `social-assets` #39, `render-check` #14,
-    `class-d-visual` #20, `editability` #3 — all now emit `*.n-a-empty-scope*`. Several already **knew**
-    (`"no product/price surface"`, `"no layout/theme.liquid"`, `files_in_scope: 0`, a `note`) — they
-    just never said it in the form the tools read. #45's `emptyScan` also learned `files_in_scope`.
-  · **NOT renamed, deliberately:** `design-quality` (`dq.pack-missing`), `brand-sync`
-    (`cascade.css-missing`) and `visual-check` (`vt.capture-not-done`) pass on an empty theme carrying a
-    warning that **escalates to a BLOCKER at publish grade**. Calling those "N/A" would downgrade a real
-    finding to a shrug — `cascade.css-missing` is asserted as a **blocker** by brand-sync's own fixture.
-    They get their own `declares-pending` category.
-  · **Allowlisted with reasons:** `code-lint` (theme-check lints the whole theme, so "no offenses" on an
-    empty theme is true — same shape as `secret-scan`) and `rule-pack` (it **evaluated** all 8 rules and
-    emitted 3 real findings — the opposite of vacuous).
-  · **A bug caught before it shipped:** `editability`'s `write_report` takes blockers as `$2` with
-    `warnings` hardcoded to `[]`, so the first patch put the N/A warning in the **blockers** slot — a
-    false block on every clean run. It now takes a warnings parameter.
-  · **Verified honest, not merely quiet:** on the real cravinbyandy theme these scan 43/43/25/35/18/129
-    files, `editability` still **BLOCKS with 282**, and no gate raises a spurious N/A.
-  **Final: 33 static gates — 19 declare N/A, 3 declare pending, 11 absence-checks, 0 VACUOUS.**
-
-- [x] **CB-4 · z-index war — DONE.** `status: done` (`2853ac7c` toolkit · client `7d32307`)
-  Three stylesheets all bid `9999` — the classic *"modal opens behind the other modal"* latent bug.
-  **Root cause: there was no layer scale to bind to**, so 9999 was the only available answer.
-  `generate-design-system-css` now emits `--ds-z-*` (base 1 · dropdown 10 · sticky 100 · drawer 1000 ·
-  modal 2000 · toast 3000 · **skip-link 9999**); an explicit `z_index` in `design-system.json` overrides
-  it — the ladder is the store's decision, not the toolkit's.
-  **The skip link keeps 9999 on purpose:** an accessibility skip link a modal can cover is useless, so
-  the number was always right — it just had to be a *named* layer rather than an ad-hoc bid. A fixture
-  asserts `skip-link > modal` so a future tidy-up cannot quietly demote it. **This is why the fix was
-  not "replace every 9999"** — one of the three was correct.
-  Client: the two custom modals → `var(--ds-z-modal, 2000)`, skip link → `var(--ds-z-skip-link, 9999)`.
-  Literal fallbacks are intentional (an unloaded cascade must not collapse stacking to `auto`).
-  *Proof:* rule-pack #43 **BLOCK → PASS**, no raw 9999 left in `assets/`. Toolkit **96/96**.
-  Introduce a layer scale and migrate the 4 call sites.
-- [x] **CB-5 · Dead `hero-seasonal` references removed.** `status: done`
-  `assets/reveal.css:58` carried `h1.hero-seasonal__title, h2.hero-seasonal__title,` for a section that
-  no longer exists (only `page-hero.liquid` remains), and `assets/section-image-banner.css:57` had a
-  comment citing "the hero-seasonal carousel dots". Dropped the two dead selectors; reworded the comment
-  to describe the pattern without naming a deleted section (it explains *why* the overlay exists, so
-  deleting it outright would have lost the rationale).
-  *Proof:* `grep -rn hero-seasonal assets/ sections/ templates/ snippets/` → **0 references**; the 14
-  live heading selectors in that rule are intact. Client repo, uncommitted.
-- [x] **CB-6 · 38 locale `body_font_weight` errors fixed — it was never "an external change".**
-  `status: done` Root cause: the setting was added to `locales/en.default.schema.json` but to none of the
-  other **19** locale schemas → 19 × 2 keys (`label` + `info`) = exactly the 38 reported errors.
-  Inserted the key into all 19, positioned after each file's own `body_scale` block so the structure stays
-  parallel to `en.default`. The English string is used deliberately: an untranslated key renders as the
-  English fallback anyway, so this is **zero visible change** for merchants and clears the lint — it is
-  not a claim that 19 translations were done. Merchant-admin only; no storefront impact.
-  *Proof:* parsing all 19 schemas → **0 missing** (was 19). Client repo, uncommitted.
-  ⚠️ **My first verification of this was vacuous and I am correcting it:** I checked via the code-lint
-  gate, which reported "0 findings" — but its evidence says `skipped: env · shopify CLI not on PATH`, so
-  theme-check never ran. The gate is right to report `pass:false` on a skip (that is gate #45 working).
-  The proof above is structural (parse every file, assert the key exists) and does not depend on it.
-- [x] **CB-2 · Re-triage after CB-1/CB-4 — and a false-positive class found.** `status: done`
-  The remaining 669 split cleanly: **402** = the CB-3 ladder, **157** editability, **69** colour
-  literals with no exact token, **38** `theme-check.MatchingTranslations`.
-  · **The 38 were mechanical and are fixed** (client `4b54236`): two keys
-    (`settings_schema.typography.settings.body_font_weight.{label,info}`) added to `en.default` in our
-    own build commit `1fdc5e4` and never propagated to the other **19** locales. Filled with the
-    **English** strings deliberately — I will not ship 19 unreviewed machine translations to a client
-    as if they were checked; untranslated-but-present is what theme-check requires, and a native pass is
-    owed if any of those admin locales is ever enabled. Inserted as text anchored on the sibling
-    `body_scale` block rather than re-serialising (a rewrite would reflow every file and drop the
-    Shopify header comment); all 19 verified to still parse. **code-lint #2 BLOCK → PASS.**
-  · **A gate false-positive class (`85463829`):** 24 of the 290 `ds.spacing` findings were not spacing —
-    `top/right/bottom/left` are geometric **offsets** (holding `top: 33.5rem` to a rhythm ladder is a
-    false BLOCK whose "fix" moves the element), and a constant inside `calc()/max()/clamp()`
-    (`max(0px, calc(47vw - 655px - 7rem))`) is a formula term, not a spacing token. Both now out of
-    scope; `margin/padding/gap` unchanged and teeth-verified still blocking.
-  **Totals: 816 → 607** across CB-1, CB-4 and this item.
-
-- [~] **CB-9 · Editability cluster — 2 gate defects found, one self-inflicted.** `status: open`
-  Working the 157 `editability` blockers (the largest cluster needing no design decision).
-  · **I created 20 false blockers in CB-1.** Generating `assets/design-system.css` immediately produced
-    10 blockers in `design-tokens` and 10 in `editability`: both gates grep the brand cascade for
-    hardcoded colour, and **the cascade exists to hold the hex literals every other file binds to.**
-    Flagging it is a false BLOCK that punishes doing the right thing. Both now skip **generated** files,
-    matched on the generator's own `/* GENERATED by <script> */` header so it covers any generated asset
-    rather than one hardcoded name. **Teeth kept:** identical content *without* the header is still
-    flagged, so the skip is not a blanket amnesty. Commit `db378550`.
-  · **`snap-colors-to-tokens` never saw inline `{% style %}`** — it scanned `assets/*.css` only, so
-    section/snippet style blocks were outside every colour-binding pass. Now covered, with the safety
-    rules pinned: only the INSIDE of a style block is rewritten (a hex in markup or copy is not CSS) and
-    Liquid interpolation (`color: {{ section.settings.c }}`) survives untouched.
-    **Honest result: 0 swaps on cravinbyandy.** My hypothesis that this would clear the 74
-    `editability.1.3` findings was **wrong** — those colours have no exact token, the same
-    design-decision class as the 52 left in CSS. Real coverage gap, closed for future builds; it does
-    not move this store's number.
-  **Round 2 (`0e90f6a5`) — a THIRD false-BLOCK class in the same gate, 44 findings.**
-  `shopify://shop_images/x.png` is **exactly what the theme editor writes when a merchant picks an
-  image** — it is the editable form, the thing the gate is asking for, and it was being reported as a
-  hardcoded URL. The pattern caught it only because its optional-protocol branch `(https?:)?//` matches
-  the `//shop_images/...` tail. **44 of the 45** `1.2` findings were merchant-picked values; the 1 real
-  one (a CDN `url()` in a stylesheet) still blocks, fixture-verified so the exclusion did not gut it.
-  **The gate had NO fixture** and three defects surfaced in it this week — the blockers/warnings slot
-  mix-up (caught pre-ship), grepping the generated cascade, and this. All three are **false BLOCKS**,
-  which are as damaging as false passes because they train the team to wave the gate through.
-  `__fixtures__/editability` now drives the bash gate from node against a real git repo (it is
-  diff-scoped) and pins all of it. `editability` is consequently removed from stack-coherence's
-  `EXEMPT_STATIC` ledger — recorded there as *"node-fixture not tractable"*, which this disproves; **the
-  guard itself caught the stale exemption.** editability **147 → 103**.
-  **Round 3 (client `42e3b29`) — `editability.1.1` 36 → 0.** 40 hardcoded strings moved to translation
-  keys across 9 sections: catering-enquiry's 11 field labels + 7 placeholders, 21 `aria-label`s
-  (Close / Prev+Next / Menu / Primary / Services / Instagram / WhatsApp / Linktree / Swiggy / Zomato),
-  "Ideal For" and 2 "Read more".
-  **Keys, not settings — on doctrine, not preference:** anti-overengineering **Rule 2 caps a section at
-  ≤15 functional settings** and `catering-enquiry` already carries 10; its 18 strings alone would have
-  taken it to 28 and required a waiver. Dawn itself uses translation keys for form labels.
-  **The rendered text is unchanged** — every key's value is the exact original string.
-  **The propagation IS the job:** adding the keys to `en.default` alone sent theme-check
-  `MatchingTranslations` **0 → 540 errors** — trading 14 editability blockers for 540 lint blockers,
-  strictly worse. All **30** storefront locales now carry them (`setdefault`, so a real translation is
-  never overwritten) and theme-check is back to **0**. Same honesty caveat as the schema keys: English
-  placeholders in the non-English locales, not translations; a native pass is owed if a locale is enabled.
-  **Remaining 67:** `1.3` **64** hex/rgb with no exact token → the same brand call as CB-3's colour half;
-  `1.2` **1** (see CB-9a); `1.4` **2**.
-  Totals: **816 → 507**.
-  **CB-9a · the 1 real image URL** — `status: blocked-by human` (small). Making it merchant-editable
-  means guessing the `shopify://` file handle for `Frame_2147240171.png`; a wrong guess **blanks the
-  texture**, and it is a decorative `::after` background nobody can verify without a preview. Confirm
-  the handle (or give a staging URL) and it is a 5-minute change.
-  
-
-- [x] **CB-10 · Scope was FILE-granular — 2 edited lines pulled in a 3612-line stock file.**
-  `status: done` (`09b32c3b` · client `698704a`)
-  Found by asking a question nobody had asked: **how many blockers sit in files the team never wrote?**
-  Answer: **107 of them were in `assets/base.css`** — stock Dawn.
-  **Cause, and it was self-inflicted.** CB-1 bound one colour literal and CB-4 bound one z-index in
-  `base.css` — **2 changed lines out of 3612** — and file-granular scope pulled the entire stock
-  stylesheet into the drift scan. A false BLOCK that *punishes making a minimal, correct edit* to a
-  theme-base file, which is exactly what the reuse doctrine asks for.
-  **Fix:** declarations are evaluated only on lines ADDED/MODIFIED since `BASE_REF`, for git-resolved
-  plain stylesheets. Deliberately **not** applied to `.liquid` (`extractCss` concatenates style
-  fragments so offsets stop mapping to source lines — and a `.liquid` in scope is a custom section we
-  authored anyway) nor to reuse-map scope (an explicit *"this section is ours"*). `stripComments` now
-  preserves the newlines of what it strips, or every line after a multi-line comment maps wrong.
-  **Verified NOT under-scoped** — the real risk of this change: compared like-for-like against the
-  pre-change gate, every custom section is identical (catering-services 54→54, catering-enquiry 39→39,
-  team-gallery 28→28, …); only stock files dropped. Fixture pins all three directions: one edited line
-  → **one** finding; a file absent at base → scanned in **full**; an untouched stock file → **nothing**.
-  `base.css` **107 → 0**, design-tokens **437 → 319**, static blockers **507 → 389**. Toolkit **97/97**.
-
-- [x] **CB-11 · Variety was counted from the theme base's vocabulary, not ours.** `status: done`
-  (`38eaf9d0` · client `78302d0`) CB-10's lens applied to the next gate that still blocks. Same defect:
-  file-granular scope meant a stock stylesheet touched on ONE line contributed its **entire** type/
-  radius vocabulary to a *"store-wide variety"* count the team never chose — stock `base.css` alone
-  contributed font-sizes 9/10/12/13/14/15/16/18. Reported variety **25 → 23** once only our lines count
-  (9 and 10 exist nowhere in our code).
-  **It does not clear the blocker, and should not:** 23 distinct font-sizes is genuinely the chaos CB-3
-  exists to settle. The number is now attributable to code the team actually wrote.
-  **A bug caught before it shipped:** the first cut referenced `scopeSource`, which this gate never
-  defined — `node --check` passes on an undefined identifier, so it would have thrown at runtime on
-  every real store. Fixture pins both directions (stock file touched on one line → only that value;
-  file absent at base → full vocabulary). Toolkit **97/97**.
+  **ATTEMPTED AND REVERTED 2026-07-23 — Option A as literally specified degenerates into
+  rubber-stamping, and this is the honest result of trying it.** Widening the contract to the rhythm the
+  theme actually uses means declaring **19 type sizes and 26 spacing values legal**. Measured: that
+  drops `design-tokens` 319 → **75**… while `consistency.font-size-variety` still blocks with **23
+  distinct sizes**, correctly. So the trade is a *meaningless pass* on the gate that counts values in
+  exchange for leaving the gate that measures the actual problem still red. The theme does not have a
+  wide ladder — **it has no ladder**, and no contract edit changes that. Reverted; the store is
+  untouched.
+  **What the fix actually requires (and why it is still yours):** a TIGHT ladder plus **snapping the
+  CSS** — e.g. type `12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 64` with 15→16 (18 occurrences), 13→14,
+  17→18, 19→20, 30→32, 34→32… That is ~55 font-size and ~120 spacing edits which **change what renders**,
+  mostly by 1–2px. It is Option B in all but name, and it needs either your sign-off on the ladder or a
+  `THEME_PREVIEW_URL` so the result can be looked at. Guessing a type scale for a client's storefront
+  and shipping it unseen is the documented anti-pattern this whole workstream exists to stop.
 
 - [x] **CB-12 · Warning triage — every `price.hardcoded` finding was a false positive.** `status: done`
   (`7f7b34c4` · client `e425a75`) Triaged the **440 warnings** nobody had looked at, on the theory that
@@ -917,8 +651,11 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   in markup still warns, and so does a bare `1299.00` in visible copy. price-binding **15 → 0**, and it
   now reports PASS honestly instead of passing while pointing at padding. Toolkit **100/100**.
 
-- [ ] **CB-13 · 14 `ValidSchemaTranslations` errors — a pre-existing i18n posture question.**
-  `status: blocked-by human` (small)
+- [x] **CB-13 · 14 `ValidSchemaTranslations` errors — scoped off, reason recorded.** `status: done`
+  (client `3e800f2`) Chose (b): ~280 English placeholder entries across 20 locale files, for admin
+  locales a single-language Mumbai cafe never serves, is the same duplication smell as the storefront
+  keys with none of the payoff. Disabled in `.theme-check.yml` **with the rationale in-file**, not
+  silently. code-lint **14 → 0**.
   Surfaced by CB-9 part 3, and worth stating precisely: these are **not broken references**. Our custom
   sections write plain English schema labels (`"name": "Header"`, `"label": "Color scheme"`), and
   theme-check is *recommending* they be `t:` keys, naming the key it would expect. They are
