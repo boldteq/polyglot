@@ -2,7 +2,11 @@
 // registries + a synthetic live-gate-number set — no spawn, no fs. Proves the graph coherence checks
 // (dangling require / missing gate citation / missing critical gate / orphan produce) BITE and don't
 // false-positive on a clean graph.
-import { auditGraph } from '../../check-orchestration.mjs'
+import fs from 'node:fs'
+import path from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { auditGraph, auditReportIdentity, stripComments, countWriteReportCalls } from '../../check-orchestration.mjs'
 
 let failures = 0
 const ok = (m) => console.log('  PASS  ' + m)
@@ -72,6 +76,72 @@ console.log('case (f) terminal contracts + board/red_team CONSUMED by published 
   ] }
   const r = auditGraph(reg, LIVE)
   !has(r.warnings, 'orch.orphan-produce') ? ok('terminal + published-consumed contracts do not warn') : bad(`false orphan warn: ${r.warnings.map(w => w.page).join(',')}`) }
+
+console.log('\nreport identity — a gate must write evidence under its MANIFEST name')
+{
+  // The defect this exists for: theme-gates reads gate-reports/<manifest-name>.json, so a gate writing
+  // under any other name produces a report NOTHING reads. Found three times by hand before it was
+  // mechanized — #19 wrote the retired alias `section-cohesion`, #44 wrote `check-orchestration`,
+  // #45 wrote `check-gate-integrity` (the gate whose whole job is "skipped is not passed" was itself
+  // unreadable). A wrong name is silent: the gate still prints PASS.
+  const one = (name, number, src) => auditReportIdentity([{ name, number, script: 'x.mjs' }], () => src)
+
+  has(one('seo', '6', "writeReport('search', 6, {})").blockers, 'orch.report-name-mismatch')
+    ? ok('wrong report name → orch.report-name-mismatch') : bad('a gate writing under a retired alias was not caught')
+  has(one('seo', '6', "writeReport('seo', 7, {})").blockers, 'orch.report-number-mismatch')
+    ? ok('wrong gate number → orch.report-number-mismatch') : bad('a wrong gate number was not caught')
+
+  const good = one('seo', '6', "writeReport('seo', 6, { pass: true })")
+  good.blockers.length === 0 ? ok('a correctly-named report is clean') : bad(`false block: ${good.blockers.map(b => b.id).join(',')}`)
+
+  // a gate naming itself through a constant must still be verified, not waved through —
+  // that is exactly how #45 hid (`const SELF = 'check-gate-integrity'`)
+  const viaConst = one('gate-integrity', '45', "const SELF = 'check-gate-integrity'\nwriteReport(SELF, 45, {})")
+  has(viaConst.blockers, 'orch.report-name-mismatch') ? ok('name via a const is resolved and checked') : bad('a const-named report escaped the check')
+  const constOk = one('gate-integrity', '45', "const SELF = 'gate-integrity'\nwriteReport(SELF, 45, {})")
+  constOk.blockers.length === 0 ? ok('a correct const-named report is clean') : bad('false block on a const name')
+
+  // unverifiable / unreadable cases must WARN, never silently pass as verified
+  has(one('x', '1', 'writeReport(nameFrom(cfg), 1, {})').warnings, 'orch.report-name-unresolvable')
+    ? ok('a computed report name warns rather than passing unverified') : bad('a computed name passed as verified')
+  has(one('x', '1', 'no report call here').warnings, 'orch.report-no-call')
+    ? ok('a gate with no writeReport call warns') : bad('a gate writing no report passed silently')
+  has(auditReportIdentity([{ name: 'x', number: '1', script: 'gone.mjs' }], () => null).warnings, 'orch.report-script-unreadable')
+    ? ok('an unreadable gate script warns') : bad('an unreadable script passed silently')
+}
+
+{
+  // The trap that made this check lie: `// ... sections/*.liquid ...` is a real comment line in these
+  // gates. Stripping block comments BEFORE line comments let that `/*` open a fake block that ran to
+  // the next `*/` and swallowed the rest of the file — check-honesty (#13, a critical gate) then
+  // looked like it wrote no report at all. Comment and string state must be tracked in one pass.
+  const tricky = ["// scope: sections/*.liquid + snippets/*.liquid", "writeReport('honesty', 13, {})"].join('\n')
+  const ident = auditReportIdentity([{ name: 'honesty', number: '13', script: 'h.mjs' }], () => tricky)
+  ident.blockers.length === 0 && ident.warnings.length === 0
+    ? ok('a `/*` inside a line comment does not swallow the file') : bad(`glob-in-comment broke the scan: ${[...ident.blockers, ...ident.warnings].map(x => x.id).join(',')}`)
+
+  // and a genuine mention inside a comment or a message string is still not counted as a call
+  countWriteReportCalls(stripComments("// call writeReport(name, n) here\nconst m = 'use writeReport(x, 1)'")) === 0
+    ? ok('writeReport mentioned in a comment or a string is not counted as a call') : bad('a mention was counted as a call')
+  countWriteReportCalls(stripComments("writeReport('a', 1, {})")) === 1
+    ? ok('a real call is counted') : bad('a real call was missed')
+}
+
+console.log('\nreport identity — against the REAL live manifest')
+{
+  // the regression that matters: every shipped gate must be readable right now
+  const HERE = path.dirname(fileURLToPath(import.meta.url))
+  const SCRIPTS = path.resolve(HERE, '..', '..')
+  const man = JSON.parse(execFileSync(process.execPath, [path.join(SCRIPTS, 'theme-gates.mjs'), '--list-json'], { encoding: 'utf-8' }))
+    .map((g) => ({ number: String(g.number), name: String(g.name), script: g.script }))
+  let read = 0
+  const r = auditReportIdentity(man, (sc) => { try { const t = fs.readFileSync(path.join(SCRIPTS, sc), 'utf-8'); read += 1; return t } catch { return null } })
+  // guard the guard: if nothing was actually read, "0 blockers" would be vacuous
+  read === man.length && man.length > 30
+    ? ok(`all ${read} live gate scripts were actually inspected`) : bad(`only ${read}/${man.length} gate scripts read`)
+  r.blockers.length === 0
+    ? ok('every live gate writes its report under its manifest name') : bad(`invisible reports: ${r.blockers.map(b => `${b.page} (${b.evidence})`).join(', ')}`)
+}
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} FAILED`)
 process.exit(failures === 0 ? 0 : 1)

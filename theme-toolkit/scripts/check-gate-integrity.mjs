@@ -26,7 +26,10 @@ import { writeReport } from './lib/report.mjs'
 const cwd = process.cwd()
 const REPORT_DIR = process.env.REPORT_DIR || 'gate-reports'
 const REPORT_ABS = path.resolve(cwd, REPORT_DIR)
-const SELF = 'check-gate-integrity'
+// MUST be the manifest name (theme-gates reads gate-reports/<manifest-name>.json). It was
+// 'check-gate-integrity', so gate 45's own report was invisible to the orchestrator — the gate whose
+// entire job is "a skipped gate is not a passed gate" was itself unreadable. Enforced by orch.report-name-mismatch.
+const SELF = 'gate-integrity'
 
 const SCOPE_SKIP_RE = /(\.scope-unresolved$|base-unresolved$)/
 const NA_RE = /\.n-a-/
