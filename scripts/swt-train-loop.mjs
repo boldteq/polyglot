@@ -44,9 +44,12 @@ const CLAUDE_BIN =
   '/Users/yashbaldha/.nvm/versions/node/v20.20.1/bin/claude'
 const INTERVAL_MS = Number(process.env.SWT_INTERVAL_MS || 15 * 60 * 1000)
 const MAX_CYCLES = Number(process.env.SWT_MAX_CYCLES || 60)
-const SLICES_PER_CYCLE = Number(process.env.SWT_SLICES_PER_CYCLE || 7)
+// 2026-07-24: default cut 7→4. A 7-slice/49-FAQ batch began exceeding the 12-min gen timeout and
+// retried the same slices to failure (cycle 173 stuck at 5/10). 4 slices ≈ 28 FAQs generates well
+// inside the window; generateFaqs() further halves a batch on timeout so a slow cycle degrades, not dies.
+const SLICES_PER_CYCLE = Number(process.env.SWT_SLICES_PER_CYCLE || 4)
 const FAQS_PER_SLICE = 7
-const TARGET = 5040
+// Set from CONCERNS × SURFACES × FAQS_PER_SLICE immediately after those arrays are declared below.
 const MODEL = process.env.SWT_MODEL || '' // empty = inherit CLI default
 const STORE_SCAN = process.env.SWT_STORE_SCAN !== '0'
 // Round 2 (topup): the linear plan is breadth-only — once slicePointer reaches 720 it's "done"
@@ -54,6 +57,21 @@ const STORE_SCAN = process.env.SWT_STORE_SCAN !== '0'
 // quota. Gap mode re-walks the brain's REAL per-slice counts every cycle (self-correcting: a
 // slice the critic guts this cycle just reappears next cycle) instead of trusting a stale pointer.
 const GAP_MODE = process.env.SWT_MODE === 'topup'
+
+// Priority surfaces (2026-07-24): the 8 authoring surfaces sit at the END of SURFACES, so the gap
+// plan's stable emptiest-first sort puts them BEHIND every other 0-count slice — at 7 slices/cycle
+// they were never reached, which is why section-schema/locales-schema/etc stayed at 0 depth while the
+// corpus was "82% full". This flag floats matching-surface slices to the FRONT of the gap plan.
+//   node swt-train-loop.mjs start --surfaces authoring          (the 8 authoring surfaces)
+//   node swt-train-loop.mjs start --surfaces section-schema,nav-binding
+//   SWT_PRIORITY_SURFACES=authoring node swt-train-loop.mjs start
+const AUTHORING_SURFACES = ['new-section', 'section-schema', 'section-blocks', 'theme-config', 'locales-schema', 'nav-binding', 'asset-ownership', 'theme-blocks']
+const PRIORITY_SURFACES = (() => {
+  const cliIdx = process.argv.indexOf('--surfaces')
+  const raw = (cliIdx !== -1 ? process.argv[cliIdx + 1] : process.env.SWT_PRIORITY_SURFACES) || ''
+  const list = raw.split(',').map((s) => s.trim()).filter(Boolean).flatMap((s) => (s === 'authoring' ? AUTHORING_SURFACES : [s]))
+  return new Set(list)
+})()
 
 const CONCERNS = [
   'layout', 'typography', 'color-contrast', 'spacing-rhythm',
@@ -63,6 +81,13 @@ const CONCERNS = [
   'states-empty-loading-error', 'edge-cases', 'legal-compliance',
   'merchandising', 'search-filtering', 'nav-ia', 'forms-validation',
   'email-lifecycle',
+  // 2026-07-23 — the 25th concern, and the reason Training 1.0 did not stop the recurring defects.
+  // The 24 above are all DESIGN/UX/content concerns: they teach what a good store LOOKS like. None
+  // of them teaches what a correctly-AUTHORED theme is. Measured across the 41,733-line FAQ brain
+  // before this line existed: `t:sections` 0 hits, `text_alignment` 0, `link_list` 1, `color_scheme` 1,
+  // `placeholder_svg_tag` 2, `image_picker` 5 — in 5,148 rules. Every one of the dev's 8 complaints
+  // and 8 of the 9 audit classes fell in that hole. Enforced by gates #47/#48/#43.
+  'platform-authoring',
 ]
 const SURFACES = [
   'home', 'collection', 'pdp', 'cart', 'cart-drawer', 'checkout-reassurance',
@@ -71,7 +96,18 @@ const SURFACES = [
   'faq-page', 'lookbook', 'store-locator', 'comparison', 'bundle-builder',
   'quiz-finder', 'landing-advertorial', 'header-nav', 'footer', 'mega-menu',
   'announcement-bar', 'password-page',
+  // Authoring surfaces. The 30 above are all Dawn PAGES, so a bespoke section matched none of them
+  // and retrieval returned nothing for the work actually being done: all 16 custom sections on a real
+  // client build matched 0 of the 49 indexed surfaces. These name the artifact, not the page.
+  'new-section', 'section-schema', 'section-blocks', 'theme-config',
+  'locales-schema', 'nav-binding', 'asset-ownership', 'theme-blocks',
 ]
+
+// Grew 5040 → 6650 on 2026-07-23 with the platform-authoring concern (+1) and the 8 authoring
+// surfaces: 25 × 38 × 7. Run with SWT_MODE=topup so the loop re-walks the brain's REAL per-slice
+// counts and fills only the new slices — a stale slicePointer would otherwise report "complete"
+// while 190 new slices hold nothing.
+const TARGET = CONCERNS.length * SURFACES.length * FAQS_PER_SLICE
 
 // Deterministic round-robin walk: rotate concern every step, advance surface
 // every full concern lap → 720 unique (concern|surface) slices, breadth-first.
@@ -104,7 +140,23 @@ const GATES =
   '#18 visual-check(Lens vision-judge), #19 section-consistency, #20 class-d-visual(Class-D micro-change Lens evidence), #35 mobile, ' +
   '#8 design-tokens, #9 consistency, #12 design-quality(premium), #14 render-check, #23 section-reuse, #30 brand-sync, ' +
   '#16 static-a11y(alt/tap-targets), #24 imagery(weight/art-direction), #27 app-conflicts, #28 translations, #29 email-triggers, ' +
-  '#37 legal-pages(privacy/terms/refund/shipping), #41 analytics-wiring(GA4/Meta), #42 consent(GDPR)'
+  '#37 legal-pages(privacy/terms/refund/shipping), #41 analytics-wiring(GA4/Meta), #42 consent(GDPR), ' +
+  // The platform-authoring gates (2026-07-23). Without these in the list the generator cites #3/#28 for
+  // schema defects — and #28 translations explicitly EXCLUDES *.schema.json, so the rule would name a
+  // gate that structurally cannot check it. That mislabelling is what this concern exists to end.
+  '#43 rule-pack(data-driven forbid/require rules: hardcoded SVG colour, literal font-family, ' +
+  'colour setting piped inline, computed asset filename, request.path active-state, Figma/CHANGES refs ' +
+  'in shipped code, non-English dev comment, static inline <style>, rgba literal), ' +
+  '#45 gate-integrity(a skipped gate is not a passed gate), #46 reference-match(built result vs the ' +
+  'reference the client actually sent), ' +
+  '#47 schema-authoring(the merchant admin panel: t: translation keys on every label/info, ' +
+  'image_picker not a typed filename, blocks not pipe/newline micro-syntax, no dev notes in merchant ' +
+  'info text, role-based section names, no duplicate default headings, no PII defaults, the ' +
+  'title/subtitle/description trio, conditional render, text_alignment setting, color_scheme wrapper, ' +
+  'link_list nav not nav_link blocks, placeholder_svg_tag empty state), ' +
+  '#48 repo-hygiene(.theme-check.yml belongs to THIS repo, theme_info names the client not stock Dawn, ' +
+  '*.schema.json locale completeness — the gap #28 excludes by design, no client content photos in ' +
+  'assets/, no third-party brand assets, no committed binaries)'
 
 // Normalize any legacy gate names claude's priors leak into the new branded names (number-anchored
 // "#N old" → "#N new" + the dominant " · #N name · " citation form), so every stored FAQ is branded.
@@ -146,6 +198,7 @@ ${sliceLines}
 
 HARD RULES:
 - Specific to Shopify Online Store 2.0 Liquid themes (Dawn/Minimog base), real ecom behavior. NO generic web fluff.
+- SHOPIFY IS THE SOURCE OF TRUTH. Any claim about a schema key, setting type, Liquid object/filter/tag, or an admin-panel behaviour MUST be true to Shopify's official docs — not recalled. For a "platform-authoring" concern especially, only assert schema/admin facts you are certain match shopify.dev (settings, section-schema, block schema, input-settings incl. visible_if / enabled_on / presets / max_blocks). A rule that invents a schema key or misstates where visible_if works is worse than no rule.
 - Every entry names an owning agent + an enforcing gate from the lists above.
 - Cite gates by their EXACT name from the GATES list above (e.g. honesty, visual-check, design-tokens, render-check, static-a11y), NEVER removed gates (theme-lock/library-cards/review-board).
 - Honesty doctrine: never fabricate reviews/press/stats/urgency; empty modules hide, not fake.
@@ -225,15 +278,18 @@ function countBrainSlices() {
 // recomputed fresh each cycle so a critic-gutted slice from cycle N is retried at cycle N+1.
 function buildGapPlan() {
   const counts = countBrainSlices()
+  const surfaceOf = (slice) => slice.split('|')[1]
   return buildSlicePlan()
-    .map((slice) => ({ slice, n: counts.get(slice) || 0 }))
+    .map((slice) => ({ slice, n: counts.get(slice) || 0, prio: PRIORITY_SURFACES.has(surfaceOf(slice)) ? 0 : 1 }))
     .filter((x) => x.n < FAQS_PER_SLICE)
-    .sort((a, b) => a.n - b.n)
+    // priority-surface slices first (prio 0), then emptiest-first within each tier. Without --surfaces,
+    // every slice is prio 1 → identical to the old pure emptiest-first behaviour.
+    .sort((a, b) => a.prio - b.prio || a.n - b.n)
     .map((x) => x.slice)
 }
 
 // ---- claude -p generation ----
-const GEN_TIMEOUT_MS = Number(process.env.SWT_GEN_TIMEOUT_MS || 12 * 60 * 1000) // 49-FAQ gen runs ~4-8min
+const GEN_TIMEOUT_MS = Number(process.env.SWT_GEN_TIMEOUT_MS || 18 * 60 * 1000) // headroom above the ~4-8min norm
 function callClaude(prompt) {
   // NOTE: dropped --no-session-persistence (not a documented flag in claude 2.1.x). Keep args minimal.
   const args = ['-p', prompt, '--output-format', 'text']
@@ -252,6 +308,27 @@ function callClaude(prompt) {
   // capture FULL stderr (the old 300-char slice hid the cause of every exit-1); fall back to stdout.
   if (r.status !== 0) throw new Error(`claude exit ${r.status}: ${(r.stderr || r.stdout || '(no output)').trim().slice(0, 1000)}`)
   return r.stdout || ''
+}
+
+// Generate FAQs for `slices`, HALVING the batch on a timeout so a slow cycle degrades instead of dying
+// (the cycle-173 failure mode: one oversized batch timed out and took the whole cycle down). A non-timeout
+// error still throws — only a timeout, which shrinking the batch actually fixes, triggers the split.
+function generateFaqs(slices, startId, depth = 0) {
+  const count = Math.min(slices.length * FAQS_PER_SLICE, 50)
+  try {
+    const raw = callClaude(genPrompt(slices, count, startId))
+    return extractJsonArray(raw).filter(validEntry).slice(0, count)
+  } catch (e) {
+    const isTimeout = /timeout after/.test(e.message)
+    if (isTimeout && slices.length > 1 && depth < 3) {
+      const mid = Math.ceil(slices.length / 2)
+      logLine(`  split-on-timeout: ${slices.length} slices → ${mid}+${slices.length - mid} (depth ${depth + 1})`)
+      const a = generateFaqs(slices.slice(0, mid), startId, depth + 1)
+      const b = generateFaqs(slices.slice(mid), startId + a.length, depth + 1)
+      return [...a, ...b]
+    }
+    throw e
+  }
 }
 function extractJsonArray(text) {
   let t = text.trim()
@@ -285,6 +362,7 @@ function verifyPrompt(entries) {
 
 For EACH numbered entry, decide keep or drop. DROP if ANY of these is true:
 - WRONG / INVENTED: factually wrong about Shopify/Liquid/theme behavior, OR uses a Liquid filter/object/property that does NOT exist (VERIFY the names are real — e.g. there is NO \`round_to_humanize\`, \`date_diff\`, \`time_ago\`, \`request.user_agent\`, \`shop.taxes_included\`; date math uses \`| date: '%s'\` epoch subtraction, currency uses Markets + \`| money\`, not a convert filter).
+- INVENTED SCHEMA KEY: names a section/block schema key or setting attribute that Shopify does not have, OR misstates one — e.g. \`visible_if\` is real for SECTION/BLOCK settings but is IGNORED in global \`settings_schema.json\`; \`presets\` is what makes a section addable in the editor; \`max_blocks\` bounds section blocks and \`limit\` bounds a block type; \`enabled_on\`/\`disabled_on\` are for app-block/theme-block targeting. A rule that claims a made-up key (\`show_if\`, \`depends_on\`, \`conditional\`) or puts visible_if in global settings = DROP.
 - GENERIC: web/CRO/typography/copy/email advice NOT bound to a SPECIFIC real Shopify mechanism (a real Liquid object/filter, section/block setting, metafield/metaobject, route, or a real gate). "Use 16px body / 150ms transitions / benefits-first copy / 12-16-24px spacing" = DROP — it applies to any website.
 - DISHONEST: fabricated reviews/press/stats, fake urgency/countdown, OR cites a gate number that doesn't exist.
 - REDUNDANT: restates a universal rule (alt text, semantic HTML, WCAG basics, "use a real link") with nothing new or Shopify-specific, OR duplicates another entry in this list.
@@ -460,8 +538,7 @@ function runCycle(state) {
 
   let entries
   try {
-    const raw = callClaude(genPrompt(slices, count, startId))
-    entries = extractJsonArray(raw).filter(validEntry).slice(0, count)
+    entries = generateFaqs(slices, startId)
   } catch (e) {
     // SWT_MAX_FAILURES (default 5) — for a long unattended run, set it high so a transient blip
     // (rate-limit window, model overload) doesn't kill hours of progress. The wall-clock STOP governs the end.
@@ -486,7 +563,12 @@ function runCycle(state) {
   entries = entries.map((e) => ({ ...e, solution: brandGates(e.solution), autofix: brandGates(e.autofix || '') }))
 
   const lastId = appendBatch(entries, state.batches + 1, startId)
-  state.faqCount = lastId
+  // faqCount is the REAL number of FAQ headers on disk, not the highest id (2026-07-23 fix). Ids are
+  // allocated before the critic drops entries, so the max id runs far ahead of the count — the loop was
+  // reporting 90.9% when the brain held 79.0%, an inflation of ~800 phantom FAQs. lastAssignedId keeps
+  // the id-allocation memory that maxBrainFaqId() self-heals from; the two are genuinely different numbers.
+  state.faqCount = countBrainFaqs()
+  state.lastAssignedId = lastId
   state.batches += 1
   state.cyclesRun = cycle
   if (!GAP_MODE) state.slicePointer += slices.length // gap mode recomputes its plan fresh each cycle
@@ -502,7 +584,16 @@ function runCycle(state) {
   try { dist = distribute() } catch (e) { logLine(`distribute warn: ${e.message}`) }
   if (dist) logLine(`cycle ${cycle} distributed → ${dist.rules} rules · ${dist.agentsUpdated}/14 agents trained · ${dist.gateGaps} gate-gaps`)
   // observability: a frozen vector index (Ollama down) must NOT hide behind a "✓ trained" line.
-  if (dist && dist.reindex) logLine(`cycle ${cycle} reindex: ${dist.reindex.ok === null ? 'skipped (batched separately)' : dist.reindex.ok ? 'OK · ' + dist.reindex.out : 'FAILED (search stale!) — ' + dist.reindex.out}`)
+  if (dist && dist.reindex) {
+    const rx = dist.reindex
+    // three distinct states, never conflated: skipped · hard-failed · exit-0-but-degraded (delivery
+    // health-check: embedded nothing / dim=0 → the new rules are NOT retrievable even though it "passed").
+    const status = rx.ok === null ? 'skipped (batched separately)'
+      : !rx.ok ? 'FAILED (search stale!) — ' + rx.out
+      : rx.healthy === false ? '⚠ ' + rx.out
+      : 'OK · ' + rx.out
+    logLine(`cycle ${cycle} reindex: ${status}`)
+  }
 
   storeScan(cycle)
 
@@ -535,8 +626,14 @@ function loop() {
   logLine(`SWT training daemon START — interval ${INTERVAL_MS / 60000}min · max ${MAX_CYCLES} cycles · ${SLICES_PER_CYCLE} slices/cycle · model ${MODEL || 'inherit'} · at ${state.faqCount}/${TARGET}`)
   const tick = () => {
     try { runCycle(state) } catch (e) { logLine(`cycle crash: ${e.stack || e.message}`) }
-    if (!fs.existsSync(STOP_F) && state.cyclesRun < MAX_CYCLES) setTimeout(tick, INTERVAL_MS)
-    else { finish(state); logLine('loop ended.'); }
+    if (!fs.existsSync(STOP_F) && state.cyclesRun < MAX_CYCLES) {
+      // Exponential backoff on a failing streak (capped at 16×) so a bad window (model overload)
+      // stops hammering the CLI; a clean cycle resets consecutiveFailures → back to the base interval.
+      const backoff = Math.min(2 ** (state.consecutiveFailures || 0), 16)
+      const wait = INTERVAL_MS * backoff
+      if (backoff > 1) logLine(`  backoff: waiting ${Math.round(wait / 1000)}s after ${state.consecutiveFailures} failure(s)`)
+      setTimeout(tick, wait)
+    } else { finish(state); logLine('loop ended.'); }
   }
   tick() // first cycle immediately
 }
@@ -544,11 +641,24 @@ function loop() {
 const cmd = process.argv[2] || 'start'
 if (cmd === 'status') {
   const s = loadState()
+  // Report from DISK, not from stored state — s.faqCount can be stale (or, pre-2026-07-23, was the
+  // max id, which over-reported by ~800). Volume (how many FAQs) and depth (how many slices reached
+  // the 7-FAQ quota) are DIFFERENT truths: a corpus can be 79% by volume and 54% by depth. Show both.
+  const realFaqs = countBrainFaqs()
+  const sliceCounts = countBrainSlices()
+  const totalSlices = CONCERNS.length * SURFACES.length
+  let full = 0; let partial = 0; let empty = 0
+  for (const c of CONCERNS) for (const su of SURFACES) {
+    const n = sliceCounts.get(`${c}|${su}`) || 0
+    if (n >= FAQS_PER_SLICE) full += 1; else if (n > 0) partial += 1; else empty += 1
+  }
   console.log(JSON.stringify({
-    faqCount: s.faqCount, target: TARGET, pct: ((s.faqCount / TARGET) * 100).toFixed(1) + '%',
+    volume: { faqs: realFaqs, target: TARGET, pct: ((realFaqs / TARGET) * 100).toFixed(1) + '%' },
+    depth: { slicesAtQuota: full, partial, empty, totalSlices, pct: ((full / totalSlices) * 100).toFixed(1) + '%' },
+    // kept for back-compat: the stored counter (may differ from `volume.faqs` between runs) + the max id.
+    storedFaqCount: s.faqCount, lastAssignedId: s.lastAssignedId ?? maxBrainFaqId(),
     cyclesRun: s.cyclesRun, maxCycles: MAX_CYCLES, batches: s.batches,
-    slicePointer: s.slicePointer, slicesTotal: CONCERNS.length * SURFACES.length,
-    consecutiveFailures: s.consecutiveFailures || 0, startedAt: s.startedAt,
+    slicePointer: s.slicePointer, consecutiveFailures: s.consecutiveFailures || 0, startedAt: s.startedAt,
     lastLog: s.log.slice(-3),
   }, null, 2))
 } else if (cmd === 'once') {

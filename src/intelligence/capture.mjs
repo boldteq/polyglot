@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
-import { embedOne } from './embedder.mjs'
+import { embedOneSafe } from './embedder.mjs'
 import { getStore } from './store.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -104,8 +104,16 @@ export async function captureItem(type, fields, origin = 'direct', opts = {}) {
   fs.mkdirSync(DATA_DIR, { recursive: true })
   fs.appendFileSync(path.join(DATA_DIR, `${type}s.jsonl`), JSON.stringify({ id, type, created_at, origin, confidence, verified, ...fields }) + '\n')
 
-  // 2) embed the new item
-  const { vector } = await embedOne(text)
+  // 2) embed the new item — Ollama-SPOF degradation: if the embedder is down the DURABLE log above
+  //    already holds the item, so we do NOT crash the capture. We skip the vector upsert (never write a
+  //    null/mismatched-dim vector — that would corrupt the store) and defer: the next reindex re-embeds
+  //    it from the now-changed source .jsonl. Nothing is lost; the vector just catches up.
+  const emb = await embedOneSafe(text)
+  if (!emb.ok) {
+    console.warn(`[intel] capture ${id}: embedder UNAVAILABLE (${emb.reason}) — saved to ${type}s.jsonl; vector deferred to the next reindex (run: node src/intelligence/reindex.mjs). Store not corrupted.`)
+    return { id, type, created_at, deferred: true, reason: emb.reason, supersedes: [], conflictsWith: [], nearDuplicateOf: [] }
+  }
+  const { vector } = emb
 
   // 3) index the new item FIRST — so a concurrent capture of near-identical text can
   //    SEE this one in its own neighbour search. With the old order (revise→upsert) two

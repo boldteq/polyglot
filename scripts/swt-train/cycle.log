@@ -966,3 +966,6 @@ remove the file manually to continue.
 [2026-07-24T07:56:44.456Z] cycle 177 verify: kept 28/28 (dropped 0)
 [2026-07-24T08:01:13.987Z] cycle 177 distributed → 5655 rules · 14/14 agents trained · 0 gate-gaps
 [2026-07-24T08:01:13.988Z] cycle 177 reindex: OK · }
+[2026-07-24T08:01:14.146Z] cycle 177 ✓ +28 FAQs → 5655/6650 (85.0%) · 14/14 agents trained · committed
+[2026-07-24T08:01:22.169Z] cycle 178: slices [cro|section-schema, trust-social-proof|section-schema, copy-voice|section-schema, honesty-claims|section-schema] → generating 28 FAQs (FAQ-6434…)
+[2026-07-24T08:19:22.985Z]   split-on-timeout: 4 slices → 2+2 (depth 1)

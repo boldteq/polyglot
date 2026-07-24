@@ -20,10 +20,15 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)) // fileURLToPath: repo path has a space
 const REPO = path.join(HERE, '..')
-const TREND = path.join(HERE, 'swt-train', 'quality-trend.jsonl')
+const TREND = process.env.QUALITY_TREND || path.join(HERE, 'swt-train', 'quality-trend.jsonl')
 const PROPOSED = path.join(REPO, 'theme-toolkit', 'toolkit-rules', 'proposed.json')
 const TEAM = path.join(REPO, 'theme-toolkit', 'toolkit-rules', 'team-default.json')
 const PROMOTE_MIN = Number(process.env.PROMOTE_MIN || 2)
+// The Witness/Tutor scoreboard — the SAME log the sales path writes to (src/routes/sales.js →
+// run-eval scoreOutput). Emitting a per-builder build score here (gap 1) is what finally makes the
+// self-improvement loop turn for loom/drape/ink, not just sway. db.ingestEvalRuns() bridges these
+// kind:'score' records into agent_runs → Witness classifies, Tutor measures impact.
+const RUNS_LOG = process.env.EVAL_RUNS_LOG || path.join(REPO, 'data', 'intel', 'eval-runs.jsonl')
 
 // gate id → owning agent (mirror of src/lib/gateFindings.js GATE_OWNER — keep in sync).
 const GATE_OWNER = {
@@ -68,6 +73,29 @@ function literalFromFinding(f) {
   return lit
 }
 
+// Collapse a build's gate results into ONE 0–1 quality score PER owning agent, and append each as a
+// kind:'score' eval-run (the shape db.ingestEvalRuns reads). Gate pass-rate already folds in the Lens
+// gate (#18 visual-check) and every static gate, so this one number IS gates+Lens per builder.
+function emitBuildScores(byAgent, buildId, ts) {
+  const records = []
+  for (const [agent, a] of Object.entries(byAgent)) {
+    if (agent === 'unknown' || !a.gatesTotal) continue
+    const overall = +((a.gatesTotal - a.gatesFailed) / a.gatesTotal).toFixed(3)
+    records.push({
+      kind: 'score', at: ts, case: `build:${buildId}`, agent, task_type: 'build',
+      overall, pass: a.gatesFailed === 0,
+      scores: { gate_pass_rate: overall, gates_total: a.gatesTotal, gates_failed: a.gatesFailed, blockers: a.blockers, warnings: a.warnings },
+      reasoning: `build ${buildId}: ${a.gatesTotal - a.gatesFailed}/${a.gatesTotal} owned gates passed (${a.blockers} blocker(s))`,
+      source: 'quality-loop',
+    })
+  }
+  if (records.length) {
+    fs.mkdirSync(path.dirname(RUNS_LOG), { recursive: true })
+    fs.appendFileSync(RUNS_LOG, records.map((r) => JSON.stringify(r)).join('\n') + '\n')
+  }
+  return records
+}
+
 function main() {
   const buildDir = process.argv[2]
   if (!buildDir) { console.error('usage: node scripts/quality-loop.mjs <buildDir> [buildId]'); process.exit(2) }
@@ -84,13 +112,26 @@ function main() {
     totalBlockers += nb; totalWarnings += nw
     if (!r.pass) gatesFailed += 1
     byGate[r.gate] = { blockers: nb, warnings: nw, pass: r.pass }
-    byAgent[owner] ||= { blockers: 0, warnings: 0, gatesFailed: 0 }
-    byAgent[owner].blockers += nb; byAgent[owner].warnings += nw; if (!r.pass) byAgent[owner].gatesFailed += 1
+    byAgent[owner] ||= { blockers: 0, warnings: 0, gatesFailed: 0, gatesTotal: 0 }
+    byAgent[owner].blockers += nb; byAgent[owner].warnings += nw; byAgent[owner].gatesTotal += 1; if (!r.pass) byAgent[owner].gatesFailed += 1
   }
   const passRate = Math.round(((reports.length - gatesFailed) / reports.length) * 100)
   const ts = new Date().toISOString()
   const snapshot = { ts, build: buildId, gatesTotal: reports.length, gatesFailed, passRate, totalBlockers, totalWarnings, byAgent, byGate }
+  // ---- ratchet candidates: a gate that flipped FAIL→PASS since the last run of THIS build is a fix
+  //      worth locking in forever (the audit's ratchet — "the same bug can't ship twice"). Read the
+  //      prior snapshot for this build BEFORE appending, then surface fixed gates so the signal doesn't
+  //      rely on discipline. (Non-blocking: it suggests `pnpm ratchet`, it doesn't auto-write noise.)
+  const priorForBuild = (() => {
+    try { const lines = fs.readFileSync(TREND, 'utf8').trim().split('\n').filter(Boolean)
+      for (let i = lines.length - 1; i >= 0; i--) { const s = JSON.parse(lines[i]); if (s.build === buildId) return s } } catch { /* first run */ }
+    return null
+  })()
   fs.appendFileSync(TREND, JSON.stringify(snapshot) + '\n')
+  const fixedGates = priorForBuild ? Object.keys(byGate).filter((g) => byGate[g].pass && priorForBuild.byGate && priorForBuild.byGate[g] && priorForBuild.byGate[g].pass === false) : []
+
+  // ---- (1b) per-builder build score → eval-runs.jsonl (gap 1: the build fleet feeds Witness/Tutor) ----
+  const scored = emitBuildScores(byAgent, buildId, ts)
 
   // ---- (2) candidates → proposed.json, promote recurring → team-default.json ----
   const proposed = readJson(PROPOSED, [])
@@ -125,6 +166,11 @@ function main() {
 
   console.log(`quality-loop: ${buildId} — ${reports.length} gates · ${gatesFailed} failed · pass-rate ${passRate}% · ${totalBlockers} blockers, ${totalWarnings} warnings`)
   console.log(`  trend: snapshot appended (${path.relative(REPO, TREND)})`)
+  console.log(`  score: ${scored.length} per-builder eval-run(s) → ${path.relative(REPO, RUNS_LOG)} (${scored.map((r) => `${r.agent} ${(r.overall * 100).toFixed(0)}%`).join(', ') || 'none'})`)
+  if (fixedGates.length) {
+    console.log(`  ratchet: ${fixedGates.length} gate(s) fixed since the last run of this build — lock the fix in so it can't recur:`)
+    for (const g of fixedGates) console.log(`     pnpm ratchet <buildDir> --gate ${g} --slug ${slug(g)}-fix --brief "<what broke>"`)
+  }
   console.log(`  rules: +${newCand} new candidate(s), ${bumped} occurrence bump(s) · ${proposed.length} queued · promoted ${promoted} → enforced team-default (bar: ${PROMOTE_MIN} builds)`)
 }
 main()

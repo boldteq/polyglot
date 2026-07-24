@@ -41,6 +41,25 @@ jobs:
       # stay green on every commit. Runs against a throwaway HOME + DB.
       - run: pnpm test:brain
 
+  # Guard the GATES, not just the app (audit gap 3 / roadmap Phase 3): the 110 toolkit mutation-fixture
+  # suites prove every gate BLOCKS its known-bad input and PASSES its clean one — incl. #50 gate-fires
+  # (a silently-inert gate/config can't read green) and the meta-gates (gate-integrity, vacuous-pass,
+  # unproven-guards). Node 22 here (the toolkit has no better-sqlite3; theme-check needs 22) — the app
+  # jobs above stay on 20. SKIP_MCP=1 keeps it hermetic (no network to shopify.dev).
+  theme-gates:
+    name: Theme gate suites (guard the gates)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+        working-directory: theme-toolkit
+      - name: Run all gate fixture suites
+        run: SKIP_MCP=1 node scripts/run-all-tests.mjs
+        working-directory: theme-toolkit
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest

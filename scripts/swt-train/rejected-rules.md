@@ -1639,3 +1639,172 @@
 - cycle 159 [forms-validation/mega-menu] "Store-locator search embedded in mega-menu — how do we validate zip/postal code " — DROPPED: Admin API has no zip location search
 - cycle 159 [forms-validation/mega-menu] "Sign-in form in mega-menu — should we show it inline or link to /account/login?" — DROPPED: generic inline-form security advice
 - cycle 159 [forms-validation/mega-menu] "Gift-card lookup form ('check balance') linked from mega-menu — how do we valida" — DROPPED: gift card format not strict, generic pattern
+- cycle 162 [spacing-rhythm/collection] "How do we keep product-grid gutters consistent across breakpoints without hardco" — DROPPED: generic design-token advice, any website
+- cycle 162 [spacing-rhythm/collection] "Product titles wrap to 1 vs 2 lines and the card row-heights jitter — how do we " — DROPPED: generic CSS min-height/line-clamp
+- cycle 162 [spacing-rhythm/collection] "On mobile, the 2-column grid gets crushed and images overlap taps — what's the s" — DROPPED: generic mobile breakpoints + 44px tap target
+- cycle 162 [spacing-rhythm/collection] "The filter sidebar's vertical rhythm feels random — different section gaps betwe" — DROPPED: generic vertical rhythm tokens
+- cycle 162 [spacing-rhythm/collection] "Empty filter-result state — 'no products match' — collapses into a 20px block th" — DROPPED: generic empty-state layout advice
+- cycle 162 [spacing-rhythm/collection] "Pagination bar buttons are tight — screen readers and thumbs both miss them. Wha" — DROPPED: generic WCAG tap-target/aria-current
+- cycle 162 [platform-authoring/cart-drawer] "Drawer opens — is focus trapped for keyboard users? How is that guaranteed?" — DROPPED: generic dialog a11y, not Shopify-specific
+- cycle 162 [platform-authoring/cart-drawer] "Cart has 12 items — the drawer overflows off-screen. How do we author scroll beh" — DROPPED: generic flex overflow CSS advice
+- cycle 162 [platform-authoring/cart-drawer] "Between the AJAX ATC and the section-render, there's a 400ms gap — what does the" — DROPPED: generic skeleton loading UX
+- cycle 162 [platform-authoring/checkout-reassurance] "Legal footer links (privacy/refund/shipping/terms) — how do we author them so th" — DROPPED: link_to filter usage renders wrong link text
+- cycle 162 [platform-authoring/checkout-reassurance] "Reviews snippet on PDP reassurance strip — how do we ensure it doesn't render wh" — DROPPED: redundant with entries 6 and 23
+- cycle 163 [platform-authoring/search-empty] "Empty-state message ships in English only — RTL and non-Latin stores get English" — DROPPED: duplicates #2 t-filter rule
+- cycle 163 [platform-authoring/search-empty] "Empty state never fires an analytics event — the merchant can't discover which q" — DROPPED: generic analytics, not Shopify mechanism
+- cycle 163 [color-contrast/account] "Account form placeholder text renders as #c0c0c0 on white — fails 4.5:1 for smal" — DROPPED: generic WCAG placeholder/label advice
+- cycle 163 [color-contrast/account] "Focus ring on 'Save address' button is #efefef on white — invisible for keyboard" — DROPPED: generic focus-ring accessibility
+- cycle 163 [color-contrast/account] "Order number links render as #5a7fbf on white — measures 3.9:1, under AA?" — DROPPED: generic link contrast WCAG
+- cycle 163 [color-contrast/account] "Disabled 'Update account' button is #dddddd fg on #f7f7f7 bg — reads as invisibl" — DROPPED: generic disabled-state WCAG
+- cycle 163 [color-contrast/account] "Inline form error 'Email is invalid' renders in #ff8a8a on white — 2.9:1 and fai" — DROPPED: generic error-text WCAG
+- cycle 163 [color-contrast/account] "Selected saved-address card outlined in a 2px brand accent on a brand-light bg —" — DROPPED: generic selected-state WCAG
+- cycle 163 [motion/account] "Order-list expand/collapse runs 'transition: all 400ms' on every tap — vestibula" — DROPPED: generic prefers-reduced-motion advice
+- cycle 163 [motion/account] "Toast on 'Address saved' slides in for 600ms — but a screen reader has no announ" — DROPPED: generic aria-live/toast pattern
+- cycle 163 [motion/account] "'Update account' spinner spins indefinitely when the request quietly fails — no " — DROPPED: generic spinner-timeout pattern
+- cycle 163 [motion/account] "Route transition between /account and /account/orders fades in with a 300ms opac" — DROPPED: generic route-transition advice
+- cycle 163 [motion/account] "Address book drag-to-reorder uses a jerky spring on mobile — laggy and not touch" — DROPPED: generic mobile touch/drag advice
+- cycle 163 [motion/account] "Order status change on 'Shipped' loops an infinite color pulse — WCAG 2.2.2 viol" — DROPPED: generic WCAG 2.2.2 pause
+- cycle 163 [motion/account] "Save-address bounce micro-interaction fires on every render, not on click — nois" — DROPPED: generic :active CSS pattern
+- cycle 163 [platform-authoring/account] "Account sections show as 'Section A', 'Section B' in the theme editor — merchant" — DROPPED: duplicates #1 section-name rule
+- cycle 163 [platform-authoring/account] "Account hero image lives at assets/account-hero.jpg — merchant can't swap and #4" — DROPPED: duplicates #10 image_picker pattern
+- cycle 163 [motion/article] "Article hero uses 'background-attachment: fixed' for parallax — iOS Safari drops" — DROPPED: generic background-attachment web perf
+- cycle 163 [motion/article] "Reading-progress bar animates on every scroll event — main thread stalls on long" — DROPPED: generic rAF scroll perf
+- cycle 163 [motion/article] "Related-articles carousel autoplays every 3s with no pause control — WCAG 2.2.2 " — DROPPED: generic autoplay WCAG advice
+- cycle 163 [motion/article] "Article images fade in over 500ms on lazy-load — CLS spikes as they land?" — DROPPED: generic lazy-load width/height
+- cycle 163 [motion/article] "Table-of-contents active-link transitions the background-color — under reduced-m" — DROPPED: generic reduced-motion active state
+- cycle 163 [motion/article] "Article share-button hover rotates the icon — but on mobile 'hover' sticks after" — DROPPED: generic hover:hover media query
+- cycle 163 [motion/article] "Article-comments 'Load more' accordion expands over 800ms — user has to wait to " — DROPPED: generic 200ms motion advice
+- cycle 163 [platform-authoring/article] "Article sections show as 'Section 1', 'Section 2' — merchant can't tell hero fro" — DROPPED: duplicates #1 section-name rule
+- cycle 164 [motion/account] "How should focus rings on login/register inputs animate without shifting the for" — DROPPED: generic CSS focus-ring advice, invented 'a4x-oob'
+- cycle 164 [motion/account] "Address-book "delete address" confirmation — modal slide-in animation or instant" — DROPPED: generic modal motion advice
+- cycle 164 [motion/account] "Should the /account sidebar nav (Orders, Addresses, Wishlist) share the same hov" — DROPPED: generic hover timing tokens
+- cycle 164 [motion/account] "Newsletter-preferences toggle on /account — animated switch, but the label expan" — DROPPED: generic toggle-label sizing CSS
+- cycle 164 [motion/article] "Article hero image parallax on scroll — worth it on a blog post, and how does it" — DROPPED: generic parallax/LCP advice
+- cycle 164 [motion/article] "Author byline avatar with a hover animation — does the avatar image get lazy-loa" — DROPPED: generic image lazy-load advice
+- cycle 164 [motion/article] "Article TOC sticky sidebar with smooth-scroll to headings — reduced-motion, keyb" — DROPPED: generic reduced-motion smooth-scroll pattern
+- cycle 164 [motion/article] "Share buttons on an article — icon hover scale and press feedback — do the tap t" — DROPPED: generic WCAG tap-target basic
+- cycle 164 [color-contrast/blog] ""Read more" link on a blog card — underlined at 14px in an accent color — is the" — DROPPED: generic underline CSS advice
+- cycle 164 [color-contrast/blog] "Blog card meta (author name · date · read-time) is 12px in a gray — does 12px co" — DROPPED: generic WCAG small-text restatement
+- cycle 164 [color-contrast/blog] "Pagination "Next" is enabled, "Prev" is disabled on page 1 — the disabled state " — DROPPED: generic WCAG disabled-state restatement
+- cycle 164 [color-contrast/blog] "Blog hero has a featured-image with the title text overlaid — how do we guarante" — DROPPED: generic image-overlay scrim technique
+- cycle 164 [spacing-rhythm/blog] "Blog listing grid — how do gaps scale from 1-col mobile to 3-col desktop without" — DROPPED: generic grid gap spacing values
+- cycle 164 [spacing-rhythm/blog] "Article body vertical rhythm — h2/h3/p spacing — what's the scale and how do we " — DROPPED: generic typographic modular-scale advice
+- cycle 164 [spacing-rhythm/blog] "Blog-card padding — image-to-title vs title-to-excerpt — should these use the sa" — DROPPED: generic card padding token values
+- cycle 164 [spacing-rhythm/blog] "Article intro paragraph vs body paragraphs — the first paragraph is often set la" — DROPPED: generic lead-paragraph typography
+- cycle 164 [spacing-rhythm/blog] "Author bio box at the bottom of the article — how much air above/below to feel f" — DROPPED: generic margin values for bio box
+- cycle 164 [spacing-rhythm/blog] "Pagination bar at the bottom of the blog listing — how far below the last card, " — DROPPED: generic pagination spacing
+- cycle 164 [spacing-rhythm/blog] "On desktop blog listing with a sidebar (categories, recent posts) — what's the g" — DROPPED: generic two-column grid CSS
+- cycle 164 [motion/blog] "Blog-card hover — lift with translateY vs box-shadow only — what performs better" — DROPPED: generic hover translateY+shadow advice
+- cycle 164 [motion/blog] "Blog grid stagger-in on scroll — does it help premium feel or does it hide broke" — DROPPED: generic scroll-stagger IntersectionObserver pattern
+- cycle 164 [motion/blog] "Category-filter tabs at the top of a blog listing — active tab has an underline " — DROPPED: generic underline slide technique
+- cycle 164 [motion/blog] "Featured-post hero on a blog with a ken-burns effect (slow zoom on the image) — " — DROPPED: generic ken-burns motion advice
+- cycle 164 [motion/blog] "Sticky blog nav that slides in on scroll-up (hide on scroll-down) — does it coll" — DROPPED: generic sticky-nav pattern
+- cycle 164 [motion/blog] "Search-in-blog autocomplete dropdown fade-in — do we animate results in and how " — DROPPED: generic autocomplete fade-in advice
+- cycle 164 [typography/policy] "What base font-size and line-height should policy pages (privacy, terms, refund," — DROPPED: generic policy typography sizing
+- cycle 164 [typography/policy] "How do we control line-length (measure) on policy pages so it stays readable — S" — DROPPED: generic measure/line-length advice
+- cycle 164 [typography/policy] "Nested list indentation in privacy/terms — do we use browser default padding or " — DROPPED: generic list indentation values
+- cycle 164 [typography/policy] "Links within policy body — underline by default or on hover only?" — DROPPED: generic underline-always advice
+- cycle 164 [typography/policy] "Should policy pages use the brand display/serif font or switch to a system stack" — DROPPED: generic font-stack choice
+- cycle 164 [typography/policy] "Policy pages often have anchor-linked section TOCs (jump to "Refunds", "Data ret" — DROPPED: generic TOC extraction pattern
+- cycle 165 [spacing-rhythm/blog] "How do we stop long-form article body copy from rendering as a wall of text when" — DROPPED: generic typography rhythm, not Shopify-specific
+- cycle 165 [spacing-rhythm/blog] "Blog listing card grid collapses to a cramped 8px gap on iPhone SE — how do we h" — DROPPED: generic CSS clamp advice
+- cycle 165 [spacing-rhythm/blog] "Vertical gap between featured image and article title varies from post to post b" — DROPPED: generic spacing token advice
+- cycle 165 [spacing-rhythm/blog] "Sidebar widgets (recent posts, tags, newsletter) stack with random gaps as merch" — DROPPED: generic lobotomised-owl CSS
+- cycle 165 [spacing-rhythm/blog] "Share bar sits right under the author byline with no breath — how do we insert c" — DROPPED: generic margin advice
+- cycle 165 [spacing-rhythm/blog] "Blog hero uses the same padding as the PDP hero and reads too heavy for an edito" — DROPPED: generic design-token split
+- cycle 165 [spacing-rhythm/blog] "Related-posts section stacks on newsletter section and both add their own margin" — DROPPED: generic inter-section margin CSS
+- cycle 165 [color-contrast/policy] "Dawn ships policy body at #707070 on #FFFFFF (4.48:1 at 16px — borderline, fails" — DROPPED: generic WCAG contrast advice
+- cycle 165 [color-contrast/policy] "`a:visited` links in the privacy policy body drop to the same tone as body text " — DROPPED: generic a:visited accessibility
+- cycle 165 [color-contrast/policy] "Policy H2/H3 use brand accent (e.g. warm orange) that fails against off-white — " — DROPPED: generic heading color advice
+- cycle 165 [color-contrast/policy] "Refund-window comparison table's borders are too pale — rows blur into each othe" — DROPPED: generic table border contrast
+- cycle 165 [color-contrast/policy] ""Not eligible for return" callouts use warning red background with white text — " — DROPPED: generic warning callout colors
+- cycle 165 [color-contrast/policy] ""Contact support" CTA on the policy page has `outline:none` and no visible focus" — DROPPED: generic focus-ring WCAG basics
+- cycle 165 [color-contrast/policy] "Store has a dark-mode color scheme — the fixed link accent inherits from light m" — DROPPED: generic contrast wrapped in color_scheme
+- cycle 165 [platform-authoring/404] "404 page inherited the homepage's "Sale ends midnight!" countdown — fake urgency" — DROPPED: generic honesty advice, no real mechanism
+- cycle 165 [platform-authoring/404] "No analytics on 404 impressions — Yash has no way to know which redirects to bui" — DROPPED: generic analytics advice, not Shopify-specific
+- cycle 165 [spacing-rhythm/subscription] "Subscription-vs-one-time radio group sits squeezed under the variant picker on P" — DROPPED: generic selector spacing
+- cycle 165 [spacing-rhythm/subscription] "Delivery-frequency dropdown crashes into "Add to cart" at 8px on iPhone SE — acc" — DROPPED: generic mobile spacing
+- cycle 165 [spacing-rhythm/subscription] ""How subscription works" 3-step block has identical padding to the marketing sec" — DROPPED: generic content-block token advice
+- cycle 165 [spacing-rhythm/subscription] "Recharge/Loop customer portal iframe embeds inside the theme with wildly differe" — DROPPED: generic iframe padding
+- cycle 165 [spacing-rhythm/subscription] "Subscription benefits list crams bullets on top of each other at 1.2 line-height" — DROPPED: generic line-height advice
+- cycle 165 [spacing-rhythm/subscription] "Renewal-date confirmation modal has form labels touching input borders — feels s" — DROPPED: generic form-field spacing
+- cycle 165 [spacing-rhythm/subscription] "Sub-vs-one-time comparison table collides with the reviews section below — no in" — DROPPED: generic section-gap CSS
+- cycle 165 [platform-authoring/subscription] "Ink wants a "Skip anytime" trust line, but merchant's app doesn't actually suppo" — DROPPED: resource_locked field on SPG unverified
+- cycle 168 [color-contrast/store-locator] "Locator marker pin dropped onto a Google Maps grey tile — merchant chose a #B0B0" — DROPPED: generic WCAG 1.4.11, no Shopify mechanism
+- cycle 168 [color-contrast/store-locator] "Selected location card gets a colored left border to indicate 'active'. How thic" — DROPPED: generic WCAG use-of-color guidance
+- cycle 168 [color-contrast/store-locator] "Search input placeholder ('Zip or city') is rendered light-grey on off-white. Do" — DROPPED: generic placeholder contrast, not Shopify
+- cycle 168 [color-contrast/store-locator] "Distance chip '2.3 mi' rendered at 12px — is 4.5:1 enough or do we need 7:1?" — DROPPED: generic WCAG AA vs AAA advice
+- cycle 168 [color-contrast/store-locator] "Merchant flips theme `color_scheme` from 'Light' to 'Sepia' — locator card contr" — DROPPED: {% color_scheme %} tag does not exist
+- cycle 168 [color-contrast/store-locator] "Keyboard focus ring on the search input disappears when the map tile behind is m" — DROPPED: generic focus-ring accessibility advice
+- cycle 168 [color-contrast/store-locator] "Empty state ('No stores within 25 miles') is rendered grey-on-grey and users mis" — DROPPED: generic empty-state contrast advice
+- cycle 168 [platform-authoring/comparison] "Sticky column header on scroll — is CSS `position: sticky` enough or do we need " — DROPPED: generic CSS sticky advice, not Shopify
+- cycle 168 [color-contrast/bundle-builder] "Bundle step numbers (1, 2, 3) sit on a brand-color chip. Chip is #F5C242 on whit" — DROPPED: generic WCAG contrast on chips
+- cycle 168 [color-contrast/bundle-builder] "Selected variant swatch (color chip) uses a 1px accent outline over a light card" — DROPPED: generic UI outline contrast advice
+- cycle 168 [color-contrast/bundle-builder] "Discount pill '-20%' floats over the bundle hero image. Image is a busy lifestyl" — DROPPED: generic text-over-image contrast
+- cycle 168 [color-contrast/bundle-builder] "Progress bar '2 of 3 selected' — filled portion is brand color, unfilled is #EEE" — DROPPED: generic progress-bar contrast advice
+- cycle 168 [color-contrast/bundle-builder] "Sticky footer 'Add bundle to cart' CTA — when it appears on scroll, its drop-sha" — DROPPED: generic sticky-CTA contrast advice
+- cycle 168 [color-contrast/bundle-builder] "Disabled 'Add bundle' state (before all steps completed) — usually rendered mute" — DROPPED: generic disabled-state WCAG exemption
+- cycle 168 [color-contrast/bundle-builder] "Warning message for 'sold-out variant in your bundle' — usually red. Which red h" — DROPPED: generic warning-color token advice
+- cycle 169 [color-contrast/store-locator] "Selected list item vs hover vs default — how do we differentiate without relying" — DROPPED: generic a11y, not Shopify-specific
+- cycle 169 [color-contrast/store-locator] "Distance labels ('2.4 mi') sit directly on map tiles — how do we guarantee legib" — DROPPED: generic UI chip advice
+- cycle 169 [color-contrast/store-locator] "Search input placeholder ('Enter zip or city') is barely visible on a warm cream" — DROPPED: generic WCAG 1.4.11 placeholder rule
+- cycle 169 [color-contrast/store-locator] "Focus ring on the 'Get directions' link on a card is a subtle 1px brand-tinted o" — DROPPED: generic focus-visible WCAG rule
+- cycle 169 [color-contrast/bundle-builder] "Selected variant swatch uses a 2px brand-color ring — on light schemes the ring " — DROPPED: generic swatch ring design advice
+- cycle 169 [color-contrast/bundle-builder] "Sold-out/disabled option: default is 50% opacity — is that enough contrast for a" — DROPPED: generic WCAG 1.4.3 disabled state
+- cycle 169 [color-contrast/bundle-builder] "Progress bar toward 'Buy 3 save 15%' tier — filled portion uses brand color, but" — DROPPED: generic progress bar contrast advice
+- cycle 169 [color-contrast/bundle-builder] "Strikethrough compare-at price sits next to sale price — how do we ensure the cr" — DROPPED: generic typography/price styling
+- cycle 169 [color-contrast/bundle-builder] "'Add to bundle' vs 'Added ✓' button states — clients want a color change alone. " — DROPPED: generic aria-pressed a11y
+- cycle 169 [color-contrast/bundle-builder] "Sticky bundle summary bar overlaps hero video — how do we stop text becoming unr" — DROPPED: generic sticky overlay pattern
+- cycle 169 [color-contrast/bundle-builder] "Quantity stepper +/- buttons on a card — icons are 1px thin, invisible on some s" — DROPPED: generic stroke/tap-target a11y
+- cycle 169 [spacing-rhythm/bundle-builder] "How many px between step cards ('Choose your base' → 'Add flavors' → 'Review') o" — DROPPED: generic spacing tokens
+- cycle 169 [spacing-rhythm/bundle-builder] "Product grid gap inside a step — designer says 24px, but on mobile 24px feels wa" — DROPPED: generic responsive grid clamp
+- cycle 169 [spacing-rhythm/bundle-builder] "Sticky bundle summary at bottom of viewport — how much padding above/below conte" — DROPPED: generic sticky CSS var pattern
+- cycle 169 [spacing-rhythm/bundle-builder] "Progress indicator ('2 of 4 selected') — how much space between it and the grid " — DROPPED: generic vertical rhythm spacing
+- cycle 169 [spacing-rhythm/bundle-builder] "Step number circles (1, 2, 3) — size and spacing on mobile without breaking touc" — DROPPED: generic tap-target sizing
+- cycle 169 [spacing-rhythm/bundle-builder] "Empty slot placeholder in a bundle ('+ Add item') — what spacing keeps it visual" — DROPPED: generic aspect-ratio placeholder
+- cycle 169 [spacing-rhythm/bundle-builder] "Primary CTA ('Add bundle to cart — $89') on mobile — how much breathing room aro" — DROPPED: generic mobile CTA spacing
+- cycle 169 [spacing-rhythm/bundle-builder] "Discount tier badges ('Save 10%') stacked next to bundle price — how do we preve" — DROPPED: generic container-query wrap
+- cycle 169 [platform-authoring/landing-advertorial] "Reading-progress bar at top — should it be a global feature or per-template?" — DROPPED: visible_if misused; value not visibility gates JS
+- cycle 170 [color-contrast/bundle-builder] "Sold-out chip appears inside a bundle tile — how do we prevent it disappearing o" — DROPPED: --color-scheme-warning-* not standard Shopify token
+- cycle 170 [spacing-rhythm/bundle-builder] "How much space should sit between bundle tiles on mobile vs desktop so they don'" — DROPPED: generic spacing advice, not Shopify-specific
+- cycle 170 [spacing-rhythm/bundle-builder] "Inside a tile, how do we set padding between the product image and the name/pric" — DROPPED: generic padding numbers, not Shopify-specific
+- cycle 170 [spacing-rhythm/bundle-builder] "'Step 1 / Step 2 / Step 3' headings sit above their tile groups — what vertical " — DROPPED: generic vertical rhythm numbers
+- cycle 170 [spacing-rhythm/bundle-builder] "Primary 'Add bundle to cart' CTA vs the small 'Free shipping over $50' helper be" — DROPPED: generic spacing between CTA and helper
+- cycle 170 [spacing-rhythm/bundle-builder] "Quantity stepper (- / N / +) inside a tile — how do we hit the 44×44 tap target " — DROPPED: generic tap target advice
+- cycle 170 [platform-authoring/mega-menu] "Featured image column should hide when merchant doesn't set an image. Current co" — DROPPED: visible_if syntax example is questionable/misleading
+- cycle 170 [layout/new-section] "Two-column section — dev used floats and it collapses at 768px. Correct grid + m" — DROPPED: generic grid/media-query, not Shopify-specific
+- cycle 170 [layout/new-section] "Section has a full-bleed image column and a contained text column. Dev used nega" — DROPPED: generic full-bleed grid CSS advice
+- cycle 170 [layout/new-section] "Section wants a sticky text column while the image column scrolls — dev built wi" — DROPPED: generic position:sticky CSS advice
+- cycle 170 [layout/new-section] "Section overflows horizontally on 360px because a block has `min-width: 400px`. " — DROPPED: generic CSS overflow advice, not Shopify
+- cycle 171 [typography/new-section] "CSS uses `line-height: 24px` on body copy — why is that a bug?" — DROPPED: generic CSS, not Shopify-specific
+- cycle 171 [color-contrast/new-section] "Badge uses `color:#9CA3AF` on white — passes on desktop, fails at small text siz" — DROPPED: generic WCAG font-size restatement
+- cycle 171 [color-contrast/new-section] "Icon-only social links use a light-grey icon on the footer's dark background — n" — DROPPED: generic WCAG non-text contrast
+- cycle 171 [motion/new-section] "Feature is revealed only on `:hover` — touch users on mobile can't reach it. Fix" — DROPPED: generic hover-focus UX advice
+- cycle 171 [motion/new-section] "Reveal-on-scroll uses staggered 100ms delays across 8 cards — total 800ms before" — DROPPED: opinion, unverifiable numeric budget
+- cycle 171 [mobile/new-section] "ATC button on PDP section is 32×32px on mobile — Lighthouse tap-target audit fai" — DROPPED: generic HIG/Material tap-target
+- cycle 171 [a11y/new-section] "Decorative image (like a background flourish) still has meaningful alt text — AT" — DROPPED: generic decorative-alt restatement
+- cycle 171 [a11y/new-section] "Icon-only social button is `<a href=/instagram><svg…></a>` — screen reader reads" — DROPPED: generic aria-label icon rule
+- cycle 171 [a11y/new-section] "CSS reset removes focus outline globally (`*:focus { outline: none; }`) — keyboa" — DROPPED: generic :focus-visible restatement
+- cycle 171 [a11y/new-section] "Product card announces "in stock" only via a green dot — colour-blind users get " — DROPPED: generic color-alone accessibility
+- cycle 172 [cro/new-section] "Should a new cart-drawer upsell section auto-recommend a bundle, and what's the " — DROPPED: product.recommendations is Liquid object, not Storefront API
+- cycle 172 [cro/new-section] "Should the new above-the-fold hero A/B test copy variants, and how without a pai" — DROPPED: cart token hashing for A/B is fragile/invented pattern
+- cycle 172 [trust-social-proof/new-section] "Which payment-badge/trust-icon set is safe to ship in the footer/checkout-trust " — DROPPED: shop.enabled_payment_types not a real Admin API field
+- cycle 172 [copy-voice/new-section] "What's the headline formula for a new hero section so copy hits benefit-first in" — DROPPED: generic copywriting formula, not Shopify-specific
+- cycle 172 [copy-voice/new-section] "How long should PDP benefit bullets be in a new highlights section?" — DROPPED: generic word-count copy rule, not Shopify-bound
+- cycle 172 [copy-voice/new-section] "What ratio of features to benefits in a new comparison-table section?" — DROPPED: generic feature-benefit rule, not Shopify-specific
+- cycle 172 [copy-voice/new-section] "How does copy voice for a new section adapt from a beauty niche to a tools niche" — DROPPED: generic voice guide, not Shopify mechanism
+- cycle 172 [copy-voice/new-section] "What's the copy pattern for an EMPTY state in a new predictive-search / filtered" — DROPPED: generic empty-state copy pattern
+- cycle 172 [copy-voice/new-section] "How does a new form section handle error/validation microcopy so it doesn't soun" — DROPPED: generic form error microcopy advice
+- cycle 172 [performance-cwv/new-section] "A new section using a custom @font-face — how do we keep CLS <0.1?" — DROPPED: generic web font-display advice, not Shopify-specific
+- cycle 172 [performance-cwv/new-section] "A new video-hero section — autoplay a background video or ship a poster image?" — DROPPED: generic video-vs-poster advice, weakly Shopify-bound
+- cycle 172 [performance-cwv/new-section] "A new section adds a large above-fold JS bundle for interactions — how do we kee" — DROPPED: generic JS performance advice, not Shopify-specific
+- cycle 174 [edge-cases/new-section] "Two block types inside a new section share the same `type` string value — what b" — DROPPED: 'merges settings onto first' behavior is invented/unverifiable
+- cycle 174 [legal-compliance/new-section] "A new 'As Featured In' section includes publisher logos (Forbes, Vogue) sourced " — DROPPED: trademark licensing advice is generic legal, not Shopify-specific
+- cycle 174 [legal-compliance/new-section] "A new Subscribe & Save section promotes a monthly subscription offer but contain" — DROPPED: FTC/EU subscription disclosure is generic legal, no Shopify mechanism cited
+- cycle 174 [search-filtering/new-section] "After a customer applies a filter the product grid updates via AJAX but no `aria" — DROPPED: aria-live for AJAX updates is generic WCAG, not Shopify-specific
+- cycle 175 [nav-ia/new-section] "The design deliverable contains no skip-to-content link. Does one need to be add" — DROPPED: Generic WCAG skip-link; restates universal a11y rule
+- cycle 175 [forms-validation/new-section] "The contact form section needs client-side validation with accessible error mess" — DROPPED: Generic client-side validation; not Shopify-specific
+- cycle 175 [forms-validation/new-section] "The design marks required fields with a red border only. Is this accessible and " — DROPPED: Generic WCAG 1.4.1; restates universal a11y rule
+- cycle 176 [layout/section-schema] "A sticky announcement-bar section overlaps the section below it in the theme edi" — DROPPED: scroll-margin-top fixes anchor scroll offset, NOT sticky overlap; wrong fix
+- cycle 176 [color-contrast/section-schema] "A section passes Lumen's automated axe gate but the text appears visually thin o" — DROPPED: Real axe limitation but no Shopify-specific fix; generic web advice only
+- cycle 176 [spacing-rhythm/section-schema] "A 'spacer' section with a single 'height' range setting is inserted between cont" — DROPPED: Design opinion; Dawn itself ships spacer sections; 'flagged' claim unverified

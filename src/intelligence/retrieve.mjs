@@ -10,7 +10,7 @@
 
 import os from 'node:os'
 import { pathToFileURL } from 'node:url'
-import { embedOne, embedderInfo } from './embedder.mjs'
+import { embedOneSafe, embedderInfo } from './embedder.mjs'
 import { getStore } from './store.mjs'
 
 const HOME = os.homedir()
@@ -62,7 +62,14 @@ export function indexHealth() {
 let warned = ''
 export async function retrieve(query, { topK = 8, filter = {} } = {}) {
   if (!query || !query.trim()) return []
-  const { vector, dim } = await embedOne(query)
+  // Ollama-SPOF degradation: a down embedder returns EMPTY (agents fall back to the static packs),
+  // never a fabricated ranking. Same honesty principle as the dim-mismatch refusal below.
+  const emb = await embedOneSafe(query)
+  if (!emb.ok) {
+    if (warned !== emb.reason) { warned = emb.reason; console.warn(`[intel] semantic search UNAVAILABLE (${emb.reason}) — retrieval degraded to empty; fall back to the static packs (MEMORY.md + patterns/good/). No results fabricated.`) }
+    return []
+  }
+  const { vector, dim } = emb
 
   const mismatch = embedderMismatch(getStore().readManifest?.(), embedderInfo(), dim)
   if (mismatch) {

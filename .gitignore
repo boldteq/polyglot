@@ -47,3 +47,6 @@ scripts/swt-train/*.out
 scripts/swt-train/STOP
 scripts/swt-train/reindex*.log
 scripts/swt-train/quality-trend.jsonl
+scripts/swt-train/authoring-fill.log
+dist/
+docs/gepa/

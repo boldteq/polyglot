@@ -103,3 +103,20 @@ export async function embedOne(text) {
   const { vectors, dim, provider, model } = await embed([text])
   return { vector: vectors[0], dim, provider, model }
 }
+
+// ── NON-THROWING embed for the LIVE paths (retrieve / capture) — the Ollama SPOF fix ──────────────
+// When the embedder is down (Ollama not running, key missing, HTTP error) embed() throws, which today
+// crashes memory_search and aborts a capture. These return { ok:false, unavailable:true, reason }
+// instead, so the caller can DEGRADE HONESTLY:
+//   • retrieve → return EMPTY (agents fall back to the static packs) — never a fabricated ranking.
+//   • capture  → keep the durable append-only log, defer the vector to the next reindex.
+// CRITICAL: a down embedder must NEVER silently fall back to a DIFFERENT provider/dim (hash is 512-d,
+// ollama 768-d) — mixing dims in one store makes every cosine meaningless. Degrade, don't substitute.
+export async function embedSafe(texts) {
+  try { const r = await embed(texts); return { ok: true, ...r } }
+  catch (e) { return { ok: false, unavailable: true, reason: e && e.message ? e.message : String(e), ...embedderInfo() } }
+}
+export async function embedOneSafe(text) {
+  const r = await embedSafe([text])
+  return r.ok ? { ok: true, vector: r.vectors[0], dim: r.dim, provider: r.provider, model: r.model } : r
+}

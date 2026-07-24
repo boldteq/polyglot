@@ -49,8 +49,14 @@ const BLOCK_HEADER = [
 // ── Defaults (overridable via the handler from configService) ────────────────
 export const TRAINER_DEFAULTS = {
   observeWindowHours: 504, // 21d — window for the pre/post score snapshots
-  minRunsForImpact: 5,     // need ≥5 post-patch runs before judging impact
-  regressionThreshold: 0.10, // >10% drop in success-rate → auto-rollback
+  minRunsForImpact: 5,     // need ≥5 post-patch agent_runs before judging impact (the FALLBACK signal)
+  // Fleet-level impact (2026-07-24, audit gap 7): per-agent agent_runs volume is thin, so the old
+  // per-agent-runs-only measure starved — 0/17 patches were ever measured, making auto-rollback
+  // theoretical. eval_scores are GRADED (0-1) and now DENSE (every Maestro build emits a per-builder
+  // score via quality-loop→eval-runs→ingestEvalRuns), so 3 graded scores carry more signal than 5
+  // binary runs and unblock the measurement. eval is preferred; agent_runs is the fallback.
+  minEvalsForImpact: 3,
+  regressionThreshold: 0.10, // >10% drop in the quality score → auto-rollback
   cooldownHours: 48,       // ≤1 auto-apply per agent per 48h (Tutor Constitution Q22), and
                            // don't re-apply a just-reverted signal within this window
   minObserveHours: 24,     // let a patch settle ≥24h before measuring it
@@ -203,9 +209,10 @@ export function applyProposedPatch(patchId, opts = {}) {
   const cfg = { ...TRAINER_DEFAULTS, ...(opts.cfg || {}) }
   const now = Date.now()
   const allRuns = (() => { try { return db.getRecentAgentRuns(cfg.observeWindowHours) || [] } catch { return [] } })()
-  const scoreBefore = scoreFromRuns(agentRunsInWindow(allRuns, patch.agent, now - cfg.observeWindowHours * 3600000, now))
+  const beforeM = pickImpact(patch.agent, allRuns, now - cfg.observeWindowHours * 3600000, now, cfg)
+  const scoreBefore = beforeM ? beforeM.score : null
   const appliedAt = new Date().toISOString()
-  db.updateTrainingPatch(patchId, { status: 'applied', appliedAt, impact: { ...(patch.impact || {}), scoreBefore, scoreAfter: null, runsObserved: 0, regressionPct: null } })
+  db.updateTrainingPatch(patchId, { status: 'applied', appliedAt, impact: { ...(patch.impact || {}), scoreBefore, scoreBeforeSignal: beforeM ? beforeM.signal : null, scoreAfter: null, runsObserved: 0, regressionPct: null } })
   if (patch.signalId) db.updateTrainingSignalStatus(patch.signalId, 'patched')
   db.logSelfImprovement({ kind: 'patch_applied', agent: patch.agent, refId: patchId, decision: 'review', summary: `APPROVED (human) · ${patch.patchType} → ${patch.agent}`, data: { signalId: patch.signalId, targetFile: patch.targetFile, scoreBefore, approvedBy: opts.by || 'human' } })
   appendChangelog(`- **${appliedAt}** · \`applied\` · **${patch.agent}** · ${patch.patchType} · human-approved · rollback:\`${patchId}\``)
@@ -276,6 +283,35 @@ function agentRunsInWindow(allRuns, agent, sinceMs, untilMs) {
     if (Number.isNaN(t)) return false
     return (sinceMs == null || t >= sinceMs) && (untilMs == null || t <= untilMs)
   })
+}
+
+// ── Fleet-level impact (audit gap 7): the GRADED, DENSE signal ────────────────
+// eval_scores carries a real 0-1 quality per run (build fleet via quality-loop + sales via scoreOutput),
+// so it measures a patch's effect where per-agent agent_runs is too sparse to ever reach the bar.
+function evalScoresInWindow(agent, sinceMs, untilMs) {
+  let rows = []
+  try { rows = db.getEvalScores({ agent, limit: 500 }) || [] } catch { return [] }
+  return rows.filter((r) => {
+    if (typeof r.overall !== 'number') return false
+    const t = Date.parse(r.ts)
+    return !Number.isNaN(t) && (sinceMs == null || t >= sinceMs) && (untilMs == null || t <= untilMs)
+  })
+}
+const meanOverall = (rows) => (rows.length ? rows.reduce((s, r) => s + r.overall, 0) / rows.length : null)
+
+// Measure the agent's quality on a SPECIFIC channel over a window (for a signal-consistent before/after).
+function measureSignal(agent, allRuns, sinceMs, untilMs, signal, cfg) {
+  if (signal === 'eval') { const e = evalScoresInWindow(agent, sinceMs, untilMs); return { n: e.length, score: meanOverall(e), signal: 'eval' } }
+  const runs = agentRunsInWindow(allRuns, agent, sinceMs, untilMs); return { n: runs.length, score: scoreFromRuns(runs), signal: 'run' }
+}
+// Pick the channel that has ENOUGH data to judge impact — eval (graded, preferred) then agent_runs
+// (binary, fallback). null = neither channel has enough yet (keep waiting). → { n, score, signal } | null
+function pickImpact(agent, allRuns, sinceMs, untilMs, cfg) {
+  const e = evalScoresInWindow(agent, sinceMs, untilMs)
+  if (e.length >= cfg.minEvalsForImpact) return { n: e.length, score: meanOverall(e), signal: 'eval' }
+  const runs = agentRunsInWindow(allRuns, agent, sinceMs, untilMs)
+  if (runs.length >= cfg.minRunsForImpact) return { n: runs.length, score: scoreFromRuns(runs), signal: 'run' }
+  return null
 }
 
 // ── The training cycle: open signals → governed patches ──────────────────────
@@ -378,8 +414,9 @@ export function runTrainingCycle(opts = {}) {
       results.proposed.push({ id, agent: signal.agent, reasons: [...reasons, `write-failed:${w.reason}`] }); continue
     }
     const appliedAt = new Date().toISOString()
-    const scoreBefore = scoreFromRuns(agentRunsInWindow(allRuns, signal.agent, now - cfg.observeWindowHours * 3600000, now))
-    db.updateTrainingPatch(id, { status: 'applied', appliedAt, impact: { scoreBefore, scoreAfter: null, runsObserved: 0, regressionPct: null } })
+    const beforeM = pickImpact(signal.agent, allRuns, now - cfg.observeWindowHours * 3600000, now, cfg)
+    const scoreBefore = beforeM ? beforeM.score : null
+    db.updateTrainingPatch(id, { status: 'applied', appliedAt, impact: { scoreBefore, scoreBeforeSignal: beforeM ? beforeM.signal : null, scoreAfter: null, runsObserved: 0, regressionPct: null } })
     db.updateTrainingSignalStatus(signal.id, 'patched')
     db.logSelfImprovement({ kind: 'patch_applied', agent: signal.agent, refId: id, decision: 'auto', summary: `APPLIED · ${plan.patchType} → ${signal.agent}: "${String(signal.signature).slice(0, 60)}"`, data: { signalId: signal.id, targetFile: plan.targetFile, scoreBefore } })
     appendChangelog(`- **${appliedAt}** · \`applied\` · **${signal.agent}** · ${plan.patchType} · ${signal.kind} · seen ${signal.occurrences}×/${(signal.projects || []).length}proj · rollback:\`${id}\``)
@@ -405,20 +442,28 @@ export function measureAndRollback(opts = {}) {
     const appliedMs = Date.parse(patch.appliedAt)
     if (now - appliedMs < minObserveMs) { out.waiting.push({ id: patch.id, reason: 'settling' }); continue }
 
-    const runsAfter = agentRunsInWindow(allRuns, patch.agent, appliedMs, now)
-    if (runsAfter.length < cfg.minRunsForImpact) {
-      db.updateTrainingPatch(patch.id, { status: 'applied', appliedAt: patch.appliedAt, impact: { ...(patch.impact || {}), runsObserved: runsAfter.length } })
-      out.waiting.push({ id: patch.id, reason: `insufficient-runs(${runsAfter.length}/${cfg.minRunsForImpact})` }); continue
+    // Fleet-preferred impact: eval_scores (graded, dense) if enough, else agent_runs (binary). null =
+    // neither channel has enough yet — the honest "keep waiting", not a starve that never resolves.
+    const after = pickImpact(patch.agent, allRuns, appliedMs, now, cfg)
+    if (!after) {
+      const nRuns = agentRunsInWindow(allRuns, patch.agent, appliedMs, now).length
+      const nEvals = evalScoresInWindow(patch.agent, appliedMs, now).length
+      db.updateTrainingPatch(patch.id, { status: 'applied', appliedAt: patch.appliedAt, impact: { ...(patch.impact || {}), runsObserved: nRuns, evalsObserved: nEvals } })
+      out.waiting.push({ id: patch.id, reason: `insufficient(evals ${nEvals}/${cfg.minEvalsForImpact}, runs ${nRuns}/${cfg.minRunsForImpact})` }); continue
     }
-    const scoreAfter = scoreFromRuns(runsAfter)
-    let scoreBefore = patch.impact && typeof patch.impact.scoreBefore === 'number' ? patch.impact.scoreBefore : null
-    if (scoreBefore == null) scoreBefore = scoreFromRuns(agentRunsInWindow(allRuns, patch.agent, appliedMs - cfg.observeWindowHours * 3600000, appliedMs))
+    const scoreAfter = after.score
+    // before must be measured on the SAME channel as after, or the % is apples-to-oranges. Reuse the
+    // stored apply-time baseline only when its channel matches; otherwise re-measure the pre-patch window.
+    let scoreBefore = null
+    const storedSignal = patch.impact && patch.impact.scoreBeforeSignal ? patch.impact.scoreBeforeSignal : 'run'
+    if (patch.impact && typeof patch.impact.scoreBefore === 'number' && storedSignal === after.signal) scoreBefore = patch.impact.scoreBefore
+    else scoreBefore = measureSignal(patch.agent, allRuns, appliedMs - cfg.observeWindowHours * 3600000, appliedMs, after.signal, cfg).score
     const regressionPct = (scoreBefore != null && scoreBefore > 0 && scoreAfter != null) ? (scoreBefore - scoreAfter) / scoreBefore : 0
-    db.updateTrainingPatch(patch.id, { status: 'applied', appliedAt: patch.appliedAt, impact: { scoreBefore, scoreAfter, runsObserved: runsAfter.length, regressionPct: Number(regressionPct.toFixed(3)) } })
-    out.measured.push({ id: patch.id, agent: patch.agent, scoreBefore, scoreAfter, regressionPct: Number(regressionPct.toFixed(3)) })
+    db.updateTrainingPatch(patch.id, { status: 'applied', appliedAt: patch.appliedAt, impact: { scoreBefore, scoreBeforeSignal: after.signal, scoreAfter, signal: after.signal, runsObserved: after.n, regressionPct: Number(regressionPct.toFixed(3)) } })
+    out.measured.push({ id: patch.id, agent: patch.agent, scoreBefore, scoreAfter, signal: after.signal, regressionPct: Number(regressionPct.toFixed(3)) })
 
     if (regressionPct > cfg.regressionThreshold) {
-      revertPatch(patch.id, `measured-regression ${(regressionPct * 100).toFixed(0)}% (before ${scoreBefore?.toFixed?.(2)} → after ${scoreAfter?.toFixed?.(2)}, n=${runsAfter.length})`)
+      revertPatch(patch.id, `measured-regression ${(regressionPct * 100).toFixed(0)}% (${after.signal}: before ${scoreBefore?.toFixed?.(2)} → after ${scoreAfter?.toFixed?.(2)}, n=${after.n})`)
       out.reverted.push({ id: patch.id, agent: patch.agent, regressionPct: Number(regressionPct.toFixed(3)) })
     }
   }

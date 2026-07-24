@@ -162,6 +162,40 @@ try {
   check('live calibration read on empty eval history is fail-safe FALSE',
     governor.isEvalCalibrated() === false)
 
+  console.log('\n7) FLEET IMPACT — eval_scores measures a patch where sparse agent_runs would starve')
+  // audit gap 7 / P4.3: per-agent agent_runs volume is thin (why 0/17 patches were ever measured).
+  // eval_scores (build fleet + sales, GRADED) is dense. Same sparse data: runs-only starves, eval reverts.
+  const EVAL_AGENT = '_brainproof_eval'
+  const EVAL_SIG = 'sig-eval-regression'
+  fs.writeFileSync(path.join(TMP_HOME, '.claude', 'agents', `${EVAL_AGENT}.md`),
+    `---\nname: ${EVAL_AGENT}\ndescription: fleet-impact proof agent\nmodel: claude-sonnet-4-6\n---\n\n# Eval Agent\n`)
+  const scoreOf = (agent, overall, agoH, i) => db.recordEvalScore({ agent, taskType: 'build', overall, pass: overall >= 0.7, ts: isoAgo(agoH), dedupKey: `${agent}:${overall}:${agoH}:${i}` })
+  const { id: patchE } = db.insertTrainingPatch({
+    agent: EVAL_AGENT, signalId: EVAL_SIG, patchType: 'anti_pattern',
+    targetFile: path.join(TMP_HOME, '.claude', 'agents', `${EVAL_AGENT}.md`),
+    before_text: '', after_text: '- rule', status: 'applied', appliedAt: isoAgo(30),
+    impact: { scoreBefore: 0.9, scoreBeforeSignal: 'eval', scoreAfter: null, runsObserved: 0, regressionPct: null },
+  })
+  // sparse post-patch runs (2 < minRunsForImpact 5) + dense post-patch evals (4 ≥ minEvalsForImpact 3), all a regression
+  run({ agent: EVAL_AGENT, status: 'success', proj: PROJ_A, agoH: 20 })
+  run({ agent: EVAL_AGENT, status: 'error', error: ERR, proj: PROJ_A, agoH: 18 })
+  for (let i = 0; i < 4; i++) scoreOf(EVAL_AGENT, 0.2, 22 - i * 3, i) // 22..13h ago, overall 0.2 (down from 0.9)
+
+  const CFG = { minObserveHours: 24, minRunsForImpact: 5, minEvalsForImpact: 3, observeWindowHours: 504, regressionThreshold: 0.10 }
+  // (a) runs-only (eval channel disabled) → the OLD behaviour: 2 runs < 5 → starves in `waiting`
+  const starve = trainer.measureAndRollback({ onlyAgent: EVAL_AGENT, cfg: { ...CFG, minEvalsForImpact: 9999 } })
+  check('runs-only STARVES on sparse volume (the old 0/17 failure): patch stuck in waiting, not measured',
+    starve.waiting.some((w) => w.id === patchE) && !starve.measured.some((m) => m.id === patchE),
+    JSON.stringify(starve.waiting[0] || {}))
+  // (b) eval channel ON → measures via the graded fleet signal + reverts the regression
+  const fleet = trainer.measureAndRollback({ onlyAgent: EVAL_AGENT, cfg: CFG })
+  const measuredE = fleet.measured.find((m) => m.id === patchE)
+  check('eval channel MEASURES the same patch (fleet volume unblocks it)', !!measuredE, JSON.stringify(measuredE || fleet.waiting[0] || {}))
+  check('measured via the "eval" signal, not agent_runs', measuredE && measuredE.signal === 'eval', measuredE && `signal=${measuredE.signal}`)
+  check('regression caught (0.9 → 0.2) → auto-reverted via the fleet signal', fleet.reverted.some((r) => r.id === patchE),
+    JSON.stringify(fleet.reverted[0] || measuredE || {}))
+  check('reverted patch row persisted', db.getTrainingPatch(patchE).status === 'reverted')
+
   // ── Verdict ────────────────────────────────────────────────────────────────
   const passed = results.filter((r) => r.ok).length
   const failed = results.length - passed

@@ -25,22 +25,36 @@ const REPO = path.join(HERE, '..')
 const GATE_GAPS = path.join(HERE, 'swt-train/gate-gaps.md')
 const TODAY = () => new Date().toISOString().slice(0, 10)
 
-// The ~9 granular, hardcoded gates whose checks actually BLOCK a specific pattern (audited 2026-06-27):
+// The granular, hardcoded gates whose checks actually BLOCK a specific pattern (audited 2026-06-27):
 // a rule citing one of these is mechanically ENFORCED. Every other gate is broad/heuristic/proxy, so
 // its rules are prompt+retrieval GUIDELINES (best-effort), not hard guarantees. Honest labelling.
-const ENFORCING_GATES = new Set(['#2', '#6', '#13', '#16', '#20', '#22', '#28', '#36', '#37', '#38'])
+//
+// 2026-07-23 — the set was INVERTED against reality. It omitted every gate that was actually failing on
+// the real client build (#3 editability 67 blockers, #8 design-tokens 437, #9 consistency 3) while
+// including #28 translations, whose check-locale-completeness.mjs:6 explicitly EXCLUDES *.schema.json —
+// so the one trained rule about schema `t:` keys cited a gate that structurally cannot see them and
+// reported pass:true. 145 rules citing #3 were distributed to 14 agents labelled [guideline]. Added:
+// #3/#8/#9 (granular blocking greps), #43 rule-pack (a JSON rule IS a hardcoded block), and the two
+// new authoring gates #47 schema-authoring / #48 repo-hygiene.
+const ENFORCING_GATES = new Set([
+  '#2', '#3', '#6', '#8', '#9', '#13', '#16', '#20', '#22', '#28',
+  '#36', '#37', '#38', '#43', '#47', '#48', '#49',
+])
 const isEnforced = (gate) => !!gate && ENFORCING_GATES.has(gate)
 
 const KNOWN_AGENTS = [
   'atrium', 'compass', 'drape', 'ink', 'beacon', 'stitch', 'loom', 'conduit',
   'lattice', 'keystone', 'porter', 'mantle', 'lumen', 'onyx',
 ]
-// 39 gates (loved names, stable numbers; +8: 0.6/20/37/38/39/40/41/42; retired 4/15/17/21/26/32/33/34).
-// #20 class-d-visual — the Class-D micro-change Lens evidence gate (2026-07-18 visual-QA-gap audit).
+// Every gate number in theme-gates.mjs GATES[] (loved names, stable numbers; retired 4/15/17/21/26/32/33/34).
+// A citation outside this set is filed as a mechanization gap, so a MISSING entry manufactures a fake gap:
+// #43/#45/#46 shipped without being added here, which is why gate-gaps.md read "0 open" while real
+// citations had nowhere to land (2026-07-23 audit). #47/#48 are the new authoring gates.
 const KNOWN_GATES = new Set([
   '#0.4', '#0.5', '#0.6', '#1', '#2', '#3', '#5', '#6', '#7', '#8', '#9', '#10',
   '#11', '#12', '#13', '#14', '#16', '#18', '#19', '#20', '#22', '#23', '#24',
   '#25', '#27', '#28', '#29', '#30', '#35', '#36', '#37', '#38', '#39', '#40', '#41', '#42', '#44',
+  '#43', '#45', '#46', '#47', '#48', '#49',
 ])
 
 // ---- parse the FAQ brain into structured entries ----
@@ -75,6 +89,40 @@ const STRATEGIST_MAP = {
 }
 
 // ---- derive owners + gate + a one-line rule from a FAQ ----
+// ── Shopify doc citation injector (2026-07-24) ───────────────────────────────
+// THE GAP: 2,491 pack rules assert a Shopify platform behaviour and 0 cited a doc (0.0%), so no
+// reader (and no gate) could tell a doc-true rule from model-recall. Rather than ask the generator
+// to emit URLs — which invites a fabricated-but-authoritative-looking link (a real risk: the
+// plausible `api/liquid/filters/t` is a 404) — this maps a rule's own Shopify tokens to a doc URL
+// **verified live on 2026-07-24**. Deterministic, auditable, and incapable of inventing a page.
+// Order matters: first match wins, so the most specific token is listed first.
+const DOC_CITES = [
+  [/visible_if/i, 'shopify.dev/docs/storefronts/themes/architecture/settings#conditional-settings'],
+  [/placeholder_svg_tag/i, 'shopify.dev/docs/api/liquid/filters/placeholder_svg_tag'],
+  [/image_url|image_tag/i, 'shopify.dev/docs/api/liquid/filters/image_url'],
+  [/link\.current|child_active|linklists?\b/i, 'shopify.dev/docs/api/liquid/objects/link'],
+  [/enabled_on|disabled_on|max_blocks|\bpresets?\b|\{%-? *schema/i, 'shopify.dev/docs/storefronts/themes/architecture/sections/section-schema'],
+  [/color_scheme|text_alignment|image_picker|link_list|inline_richtext|\brichtext\b|range setting|select setting/i, 'shopify.dev/docs/storefronts/themes/architecture/settings/input-settings'],
+  [/\.schema\.json|\bt:\s|locale|translat/i, 'shopify.dev/docs/storefronts/themes/architecture/locales'],
+  [/settings_schema|section\.settings|block\.settings/i, 'shopify.dev/docs/storefronts/themes/architecture/settings'],
+  // Liquid data objects/filters — the dominant uncited signal (metafield/metaobject alone was 898 of
+  // the 1,244-rule backlog). All verified live 2026-07-24.
+  [/metaobjects?\b/i, 'shopify.dev/docs/api/liquid/objects/metaobject'],
+  [/metafields?\b/i, 'shopify.dev/docs/api/liquid/objects/metafield'],
+  [/\| *money\b/i, 'shopify.dev/docs/api/liquid/filters/money'],
+  [/paginate/i, 'shopify.dev/docs/api/liquid/tags/paginate'],
+  [/\bcart\./i, 'shopify.dev/docs/api/liquid/objects/cart'],
+  [/\bproduct\./i, 'shopify.dev/docs/api/liquid/objects/product'],
+]
+const HAS_CITE = /shopify\.dev|help\.shopify\.com/i
+// Append the verified doc for the platform claim this rule makes. No match = no citation: a rule with
+// no recognised Shopify token stays honestly uncited rather than getting a vaguely-related link.
+export function citeShopify(body) {
+  if (!body || HAS_CITE.test(body)) return body
+  for (const [re, url] of DOC_CITES) if (re.test(body)) return `${body} [doc: ${url}]`
+  return body
+}
+
 export function deriveRule(faq) {
   const sol = faq.solution.toLowerCase()
   const head = sol.slice(0, 60)
@@ -105,6 +153,8 @@ export function deriveRule(faq) {
   })
   body = body.replace(/^#\d[\w.\-/+ ]*?\s*[—·:]\s*/, '').trim()
   if (body.length > 200) body = body.slice(0, 197) + '…'
+  // cite AFTER the length cap so the doc URL is never the thing that gets truncated away
+  body = citeShopify(body)
   return { owners, gate, concern: faq.concern, surface: faq.surface, gap: faq.gap, body, id: faq.id }
 }
 
@@ -316,9 +366,27 @@ function reindexSemantic(full = false) {
   try {
     const args = [path.join(REPO, 'src/intelligence/reindex.mjs')]
     if (full) args.push('--full')
-    const r = spawnSync('node', args, { encoding: 'utf8', timeout: 180000, cwd: REPO })
-    if (r.status === 0) return { ok: true, out: (r.stdout || '').trim().split('\n').filter(Boolean).pop() || 'reindexed' }
-    return { ok: false, out: (r.stderr || r.stdout || 'reindex failed').toString().slice(0, 160) }
+    // 2026-07-23: was 180s, which is SHORTER than the job. A cycle that appends ~40 FAQs leaves the
+    // incremental pass ~10min of embedding to do (1,156 source files via ollama/nomic-embed-text), so
+    // every single cycle logged "FAILED (search stale!)" while Ollama was healthy and the same command
+    // succeeded standalone. Net effect: the depth channel — memory_search, the thing agents are told to
+    // run before every task — never saw anything the training loop produced.
+    const r = spawnSync('node', args, { encoding: 'utf8', timeout: Number(process.env.SWT_REINDEX_TIMEOUT_MS || 900000), cwd: REPO })
+    if (r.status !== 0) return { ok: false, out: (r.stderr || r.stdout || 'reindex failed').toString().slice(0, 160) }
+    // DELIVERY HEALTH-CHECK (2026-07-24): exit 0 is NOT proof the rules landed. A reindex can "succeed"
+    // yet embed nothing (dim=0 → embedder returned empty vectors, i.e. Ollama degraded) or see no change
+    // (embedded 0 right after we rewrote every pack → the depth channel silently did not update). Parse
+    // the summary line and flag those so a stale search can't hide behind a green "reindex: OK".
+    const out = (r.stdout || '').trim()
+    const line = out.split('\n').filter(Boolean).pop() || 'reindexed'
+    const m = out.match(/embedded\s+(\d+)\s+file.*?\((\d+)\s+chunks\).*?dim=(\d+)/s)
+    const embedded = m ? Number(m[1]) : null
+    const chunks = m ? Number(m[2]) : null
+    const dim = m ? Number(m[3]) : null
+    // healthy unless we can positively prove degradation: a zero embedding dimension (broken embedder)
+    // or nothing embedded when the caller just rewrote the packs. Unparseable output → unknown, not a fail.
+    const degraded = dim === 0 || (embedded === 0 && !full)
+    return { ok: true, healthy: !degraded, embedded, chunks, dim, out: degraded ? `DELIVERY-DEGRADED (embedded=${embedded} dim=${dim}) — new rules may not be retrievable: ${line}` : line }
   } catch (e) { return { ok: false, out: e.message } }
 }
 

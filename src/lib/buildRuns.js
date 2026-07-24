@@ -123,6 +123,21 @@ function readVerdict(repoPath, buildStateDir) {
   } catch { return null; }
 }
 
+// Score a finished build (gap 1): fire quality-loop.mjs against the repo's gate-reports so every
+// build emits a per-builder build_quality_score into eval-runs.jsonl — the SAME log the sales path
+// feeds Witness/Tutor. Detached + fire-and-forget: it must never block the terminal event or crash
+// the build handler, and a scoring hiccup is isolated from the build result.
+function scoreBuild(repoPath, buildId) {
+  try {
+    if (!fs.existsSync(path.join(repoPath, 'gate-reports'))) return; // nothing to score
+    const script = path.resolve(__dirname, '..', '..', 'scripts', 'quality-loop.mjs');
+    if (!fs.existsSync(script)) return;
+    const child = defaultSpawn('node', [script, repoPath, buildId], { detached: true, stdio: 'ignore' });
+    child.on('error', () => { /* scoring is best-effort */ });
+    child.unref();
+  } catch { /* best-effort */ }
+}
+
 // Start an autonomous build. Validates the repo is a real LINKED theme repo, spawns
 // maestro in it, and wires its stdout/stderr into the registry. Returns the Build.
 // `spawnImpl` is injectable for tests. The publish-grade gate env (DS_REQUIRE_SCOPE /
@@ -214,6 +229,7 @@ function startBuild({
       durationMs: Date.now() - build.startedAt,
     });
     build._proc = null;
+    scoreBuild(repoPath, id); // gap 1: emit per-builder build score into the Witness/Tutor scoreboard
     markDone(build);
   });
 

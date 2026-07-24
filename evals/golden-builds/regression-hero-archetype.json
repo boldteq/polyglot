@@ -1,0 +1,13 @@
+{
+  "id": "regression-hero-archetype",
+  "brief": "Hero rendered as a static image-banner instead of the slideshow the client's reference showed (pagination dots ignored).",
+  "niche": "regression",
+  "repo": "/Users/yashbaldha/Desktop/Shopify Task/cravinbyandy",
+  "known_good_sha": "918c45ae6b955a3ac74ba4228c4502611f97eda2",
+  "provenance": "Ratcheted (date on commit): defect \"hero-archetype\" was fixed and gate \"reference-match\" passed. If it ever fails again, this case blocks the build. The same bug can't ship twice.",
+  "must_pass": {
+    "gates_green": [
+      "reference-match"
+    ]
+  }
+}
