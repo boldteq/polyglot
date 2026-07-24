@@ -3311,6 +3311,15 @@ export interface ObservabilitySummary {
   recentDelegations: DelegationRow[]
 }
 
+export interface BuildQuality {
+  buildCount: number
+  builders: { agent: string; latest: number | null; mean: number | null; n: number }[]
+  passRate: number | null
+  topFailingGates: { gate: string; fails: number; builds: number; rate: number }[]
+  goldenScore: number | null
+  goldenCases: number | null
+}
+
 const qstr = (params: Record<string, string | number | undefined>): string => {
   const qs = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') qs.set(k, String(v))
@@ -3320,6 +3329,8 @@ const qstr = (params: Record<string, string | number | undefined>): string => {
 
 export const getObservabilitySummary = (since?: string) =>
   request<ObservabilitySummary>(`/observability/summary${qstr({ since })}`)
+export const getBuildQuality = () =>
+  request<BuildQuality>(`/observability/build-quality`)
 export const getSpend = (since?: string, agentName?: string) =>
   request<Spend>(`/observability/spend${qstr({ since, agentName })}`)
 export const getCostLogs = (opts?: { runId?: string; agentName?: string; since?: string; limit?: number }) =>

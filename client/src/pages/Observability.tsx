@@ -2,11 +2,11 @@ import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Activity, DollarSign, ShieldAlert, Gauge, GitBranch,
-  RefreshCw, Loader2, AlertCircle, Play, CheckCircle2, XCircle,
+  RefreshCw, Loader2, AlertCircle, Play, CheckCircle2, XCircle, Hammer,
 } from 'lucide-react'
 import {
-  getObservabilitySummary, runScheduleNow,
-  type ObservabilitySummary,
+  getObservabilitySummary, getBuildQuality, runScheduleNow,
+  type ObservabilitySummary, type BuildQuality,
 } from '../lib/api'
 import { toast } from '../components/Toast'
 import EmptyState from '../components/EmptyState'
@@ -16,6 +16,7 @@ import EmptyState from '../components/EmptyState'
 export default function Observability() {
   const navigate = useNavigate()
   const [data, setData] = useState<ObservabilitySummary | null>(null)
+  const [bq, setBq] = useState<BuildQuality | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
   const [runningEval, setRunningEval] = useState(false)
@@ -31,6 +32,8 @@ export default function Observability() {
     } finally {
       setLoading(false)
     }
+    // build-quality is independent — a failure here must not blank the whole page
+    getBuildQuality().then(setBq).catch((e) => { console.error('[observability] build-quality fetch failed:', e?.message) })
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -90,6 +93,50 @@ export default function Observability() {
       </div>
 
       <div className="space-y-6 pb-10">
+        {/* Build quality — the fleet score that ships stores (Phase 5.2) */}
+        {bq && (
+          <section>
+            <SectionHead icon={<Hammer className="w-4 h-4 text-accent" />} title="Build quality" count={bq.buildCount} />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+              <Stat label="Builds scored" value={String(bq.buildCount)} />
+              <Stat label="Pass rate" value={bq.passRate == null ? '—' : `${Math.round(bq.passRate * 100)}%`} accent={bq.passRate != null && bq.passRate < 0.8 ? 'text-red' : 'text-emerald'} />
+              <Stat label="Golden score" value={bq.goldenScore == null ? '—' : `${Math.round(bq.goldenScore * 100)}%`} title={bq.goldenCases != null ? `${bq.goldenCases} golden case(s)` : undefined} />
+              <Stat label="Builders scored" value={String(bq.builders.length)} />
+            </div>
+            {bq.buildCount === 0 ? (
+              <EmptyCard text="No build scored yet — run a Maestro build; every build emits a per-builder score here (loom/drape/ink), not just sales." />
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-text-muted mb-1.5">Per-builder score (worst first)</p>
+                  <div className="space-y-1.5">
+                    {bq.builders.slice(0, 8).map((b) => (
+                      <div key={b.agent} className="flex items-center gap-2 text-xs">
+                        <span className="w-20 shrink-0 text-text">{b.agent}</span>
+                        {b.latest != null && <ScoreBar score={b.latest} />}
+                        <span className="text-text-muted shrink-0">{b.mean != null ? `avg ${Math.round(b.mean * 100)}% · n${b.n}` : `n${b.n}`}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted mb-1.5">Top failing gates</p>
+                  {bq.topFailingGates.length === 0 ? <EmptyCard text="No gate failures in the trend." /> : (
+                    <div className="space-y-1">
+                      {bq.topFailingGates.map((g) => (
+                        <div key={g.gate} className="flex items-center justify-between text-xs">
+                          <span className="text-text">{g.gate}</span>
+                          <span className="text-red">{g.fails}/{g.builds} builds ({Math.round(g.rate * 100)}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Spend — real token cost (Pillar 1) */}
         <section>
           <SectionHead icon={<DollarSign className="w-4 h-4 text-emerald" />} title="Token spend" />

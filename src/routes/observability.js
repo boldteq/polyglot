@@ -8,9 +8,24 @@
 
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const { rateLimit } = require('../middleware/rateLimit');
 const db = require('../db');
 const { buildConsolidationReport } = require('../lib/consolidation');
+const { aggregateBuildQuality } = require('../lib/buildQuality');
+
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+// quality-trend.jsonl (quality-loop's per-build snapshots) + the golden baseline are FILES, not the DB.
+function readTrendLines() {
+  try {
+    const f = process.env.QUALITY_TREND || path.join(REPO_ROOT, 'scripts', 'swt-train', 'quality-trend.jsonl');
+    return fs.readFileSync(f, 'utf8').trim().split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+  } catch { return []; }
+}
+function readGoldenBaseline() {
+  try { return JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'evals', 'golden-builds', 'baseline.json'), 'utf8')); } catch { return null; }
+}
 
 const wrap = (res, fn) => {
   try { res.json(fn()); }
@@ -136,6 +151,15 @@ router.get('/observability/metrics', rateLimit('read'), (req, res) =>
 // Independent LLM-judge scores. ?agent= &caseId= &limit=
 router.get('/observability/eval-scores', rateLimit('read'), (req, res) =>
   wrap(res, () => ({ items: db.getEvalScores({ agent: req.query.agent, caseId: req.query.caseId, limit: intArg(req.query.limit, 200) }) })));
+
+// Build-quality dashboard (Phase 5.2): per-builder build_quality_score (P1), top failing gates
+// (quality-trend), pass rate, and the golden-corpus benchmark (P2) — one payload for the UI panel.
+router.get('/observability/build-quality', rateLimit('read'), (req, res) =>
+  wrap(res, () => aggregateBuildQuality({
+    evalScores: db.getEvalScores({ limit: 2000 }),
+    trendLines: readTrendLines(),
+    goldenBaseline: readGoldenBaseline(),
+  })));
 
 // One-call dashboard payload: spend + recent blocks + recent judge scores + recent delegations.
 router.get('/observability/summary', rateLimit('read'), (req, res) =>
