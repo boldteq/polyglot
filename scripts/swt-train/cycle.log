@@ -922,3 +922,27 @@ remove the file manually to continue.
 [2026-07-24T03:55:33.060Z] cycle 172 verify: kept 37/49 (dropped 12)
 [2026-07-24T04:00:06.032Z] cycle 172 distributed → 5528 rules · 14/14 agents trained · 0 gate-gaps
 [2026-07-24T04:00:06.033Z] cycle 172 reindex: OK · }
+[2026-07-24T04:00:06.511Z] cycle 172 ✓ +37 FAQs → 5528/6650 (83.1%) · 14/14 agents trained · committed
+[2026-07-24T04:40:36.688Z] SWT training daemon START — interval 0.13333333333333333min · max 260 cycles · 7 slices/cycle · model inherit · at 5528/6650
+[2026-07-24T04:40:36.731Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section, nav-ia|new-section] → generating 49 FAQs (FAQ-6324…)
+[2026-07-24T04:52:37.571Z] cycle 173 generation FAILED (claude generation failed: timeout after 12min) — failure 1/10; pointer not advanced.
+[2026-07-24T04:52:45.609Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section, nav-ia|new-section] → generating 49 FAQs (FAQ-6324…)
+[2026-07-24T05:04:46.295Z] cycle 173 generation FAILED (claude generation failed: timeout after 12min) — failure 2/10; pointer not advanced.
+[2026-07-24T05:04:54.327Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section, nav-ia|new-section] → generating 49 FAQs (FAQ-6324…)
+[2026-07-24T05:16:55.329Z] cycle 173 generation FAILED (claude generation failed: timeout after 12min) — failure 3/10; pointer not advanced.
+[2026-07-24T05:17:03.372Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section, nav-ia|new-section] → generating 49 FAQs (FAQ-6324…)
+[2026-07-24T05:29:04.131Z] cycle 173 generation FAILED (claude generation failed: timeout after 12min) — failure 4/10; pointer not advanced.
+[2026-07-24T05:29:12.176Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section, nav-ia|new-section] → generating 49 FAQs (FAQ-6324…)
+[2026-07-24T05:41:12.934Z] cycle 173 generation FAILED (claude generation failed: timeout after 12min) — failure 5/10; pointer not advanced.
+[2026-07-24T05:41:20.972Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section, nav-ia|new-section] → generating 49 FAQs (FAQ-6324…)
+[2026-07-24T05:53:21.691Z] cycle 173 generation FAILED (claude generation failed: timeout after 12min) — failure 6/10; pointer not advanced.
+[2026-07-24T05:53:29.722Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section, nav-ia|new-section] → generating 49 FAQs (FAQ-6324…)
+[2026-07-24T06:05:30.483Z] cycle 173 generation FAILED (claude generation failed: timeout after 12min) — failure 7/10; pointer not advanced.
+[2026-07-24T06:05:38.517Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section, nav-ia|new-section] → generating 49 FAQs (FAQ-6324…)
+[2026-07-24T06:31:41.454Z] cycle 173 generation FAILED (claude generation failed: timeout after 12min) — failure 8/10; pointer not advanced.
+[2026-07-24T06:31:49.495Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section, nav-ia|new-section] → generating 49 FAQs (FAQ-6324…)
+[2026-07-24T06:34:17.085Z] SWT training daemon START — interval 0.13333333333333333min · max 260 cycles · 4 slices/cycle · model inherit · at 5528/6650
+[2026-07-24T06:34:17.110Z] cycle 173: slices [i18n-currency-rtl|new-section, states-empty-loading-error|new-section, edge-cases|new-section, legal-compliance|new-section] → generating 28 FAQs (FAQ-6324…)
+[2026-07-24T06:50:09.722Z] cycle 173 verify: kept 8/8 (dropped 0)
+[2026-07-24T06:57:32.336Z] cycle 173 distributed → 5536 rules · 14/14 agents trained · 0 gate-gaps
+[2026-07-24T06:57:32.338Z] cycle 173 reindex: OK · }
