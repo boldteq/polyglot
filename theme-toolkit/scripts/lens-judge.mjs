@@ -130,8 +130,17 @@ function judgeFrame(frame, rubric) {
     child.on('error', e => resolve({ frame, ok: false, reason: `spawn failed: ${e.message}` }))
     child.on('close', () => {
       // success is measured by the verdict FILE existing + parseable (the CLI's own stdout is ignored)
-      try { const v = JSON.parse(fs.readFileSync(outPath, 'utf-8')); resolve({ frame, ok: true, verdict: v }) }
-      catch { resolve({ frame, ok: false, reason: `no/invalid verdict at ${path.basename(outPath)}${err ? ` — ${err.slice(0, 120)}` : ''}` }) }
+      try {
+        const v = JSON.parse(fs.readFileSync(outPath, 'utf-8'))
+        // B2 (2026-07-24) — provenance: stamp the resolved judge MODEL onto the verdict. The judge is a
+        // NON-deterministic sample, so which model produced it matters for reproducibility + drift
+        // detection (a silent `sonnet` alias upgrade shifts verdicts). This is config, not something the
+        // vision model should self-report, so inject it. To PIN for reproducibility set LENS_JUDGE_MODEL
+        // to a dated id; the cache key (frameHash) already includes MODEL so a change re-judges cleanly.
+        v.model = MODEL
+        fs.writeFileSync(outPath, JSON.stringify(v, null, 2))
+        resolve({ frame, ok: true, verdict: v })
+      } catch { resolve({ frame, ok: false, reason: `no/invalid verdict at ${path.basename(outPath)}${err ? ` — ${err.slice(0, 120)}` : ''}` }) }
     })
   })
 }

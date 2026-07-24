@@ -110,5 +110,36 @@ console.log('case (e) slider JS (setTimeout/setInterval in a hero slideshow, var
   else fail(`false-positive: honesty.fake-countdown fired on a slider (saw ${[...ids].join(', ')})`)
 }
 
+// ── (f) full-tree fallback (B1): no reuse-map + unresolvable base → scan FULL tree, do NOT skip ──
+// Before the fix this returned exit 0 over ZERO files ("PASS" while nothing was looked at). Now the
+// gate scans the whole theme and BLOCKS on the fabricated activity + unsourced stat (both block by default).
+console.log('case (f) no reuse-map + unresolvable base (fabricated activity + unsourced stat) → expect exit 1 (full-tree scan, not skipped)')
+{
+  const { code, report } = runGate(path.join(HERE, 'no-scope-fabrication'))
+  const ids = new Set((report?.blockers || []).map(b => b.id))
+  if (code === 1) pass('exit 1 (full-tree fallback blocked — did NOT skip over zero files)')
+  else fail(`expected exit 1, got ${code}; blockers=${JSON.stringify([...ids])}`)
+  if ((report?.evidence?.scanned ?? 0) >= 1) pass(`scanned ${report?.evidence?.scanned} file(s) (not a zero-file pass)`)
+  else fail(`expected scanned >= 1, saw ${report?.evidence?.scanned}`)
+  for (const id of ['honesty.fake-activity', 'honesty.unsourced-stat']) {
+    if (ids.has(id)) pass(`blocker present by default: ${id}`)
+    else fail(`missing expected blocker: ${id} (saw ${[...ids].join(', ') || 'none'})`)
+  }
+}
+
+// ── (g) LENIENT_CONVERSION=1 downgrades the conversion-honesty blockers to warnings ──────────────
+console.log('case (g) same fixture + LENIENT_CONVERSION=1 → expect exit 0 (activity + stat downgraded to warnings)')
+{
+  const { code, report } = runGate(path.join(HERE, 'no-scope-fabrication'), { LENIENT_CONVERSION: '1' })
+  const blockIds = new Set((report?.blockers || []).map(b => b.id))
+  const warnIds = new Set((report?.warnings || []).map(w => w.id))
+  if (code === 0) pass('exit 0 (LENIENT downgraded the conversion blockers)')
+  else fail(`expected exit 0, got ${code}; blockers=${JSON.stringify([...blockIds])}`)
+  for (const id of ['honesty.fake-activity', 'honesty.unsourced-stat']) {
+    if (warnIds.has(id) && !blockIds.has(id)) pass(`downgraded to warning: ${id}`)
+    else fail(`expected ${id} as a warning, not a blocker (blockers=${[...blockIds].join(', ') || 'none'})`)
+  }
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

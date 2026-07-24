@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { judgeDriftAlerts } from '../../check-visual-truth.mjs'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const GATE = path.resolve(HERE, '..', '..', 'check-visual-truth.mjs')
 let failures = 0
@@ -198,6 +199,16 @@ console.log('case (i) NO false blocks — a clean frame + passing judge raises n
   const { ids } = lensRun([FRAME], { judge: PASSING_JUDGE })
   const bad5 = [...ids].filter(i => /liquid-error|broken-image|nav-failed|capture-missing|judge-missing/.test(i))
   bad5.length === 0 ? ok('a healthy capture raises none of the five') : bad(`false blocks: ${bad5.join(', ')}`)
+}
+
+console.log('case (j) B2 judgeDriftAlerts — build-time calibration signal (pure)')
+{
+  judgeDriftAlerts(null).length === 0 ? ok('no drift file → no alerts') : bad('null should give no alerts')
+  judgeDriftAlerts({ enough: false, alerts: [{ metric: 'confidence' }] }).length === 0
+    ? ok('not-enough-corpus → suppressed (no false alarm)') : bad('enough:false should suppress alerts')
+  const alerts = judgeDriftAlerts({ enough: true, alerts: [{ metric: 'fail-rate', detail: 'judge got stricter' }] })
+  alerts.length === 1 && alerts[0].metric === 'fail-rate'
+    ? ok('real drift alert surfaced for the build') : bad(`expected 1 fail-rate alert, got ${JSON.stringify(alerts)}`)
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} FAILED`)

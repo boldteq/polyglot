@@ -47,7 +47,13 @@ const cwd = process.cwd()
 const BASE_REF = process.env.BASE_REF || 'base'
 const REUSE_MAP = process.env.REUSE_MAP || 'section-reuse-map.md'
 const REQUIRE_SCOPE = process.env.DS_REQUIRE_SCOPE === '1'
+// 2026-07-24 (Q2 block-by-default): fabricated recent-activity and unsourced % stats are now BLOCKERS by
+// default (FTC exposure for a client agency), no longer gated behind STRICT_CONVERSION=1. Two opt-downs,
+// each with a clear role: LENIENT_CONVERSION=1 = a local/draft convenience (→ warning, no record); a
+// CHANGES.md ## Waivers `honesty` entry = a recorded publish-time exception. STRICT is kept only so an
+// explicit STRICT run can never be LENIENT.
 const STRICT = process.env.STRICT_CONVERSION === '1'
+const LENIENT = process.env.LENIENT_CONVERSION === '1' && !STRICT
 // ALLOW_HONESTY_WAIVER only downgrades when CHANGES.md ## Waivers actually names honesty —
 // a bare env flag must not silently green a dishonest store.
 const ALLOW_WAIVER = process.env.ALLOW_HONESTY_WAIVER === '1' && changesWaivesHonesty()
@@ -63,6 +69,12 @@ const add = (list, id, page, detail, evidence = '') => list.push({ id, page, det
 const blocker = (id, page, detail, evidence) => ALLOW_WAIVER
   ? add(warnings, `${id}.waived`, page, `${detail} (waived via CHANGES.md ## Waivers)`, evidence)
   : add(blockers, id, page, detail, evidence)
+// convBlocker(): the conversion-honesty findings (fabricated activity, unsourced %). BLOCK by default;
+// LENIENT_CONVERSION=1 downgrades to a warning for a local/draft run; the ## Waivers path still applies
+// via blocker() for a recorded publish exception.
+const convBlocker = (id, page, detail, evidence) => LENIENT
+  ? add(warnings, id, page, `${detail} (LENIENT_CONVERSION — downgraded to warning)`, evidence)
+  : blocker(id, page, detail, evidence)
 
 function changesWaivesHonesty() {
   try {
@@ -141,18 +153,35 @@ function reuseMapTargets() {
   }
   return [...files]
 }
+// Every scannable file in the theme surface — the FULL-TREE fallback scope. Shopify's sections/snippets/
+// assets are flat dirs, so a non-recursive read matches the `${dir}/${file}` paths the rest of the gate uses.
+function allTreeTargets() {
+  const out = []
+  for (const d of SCAN_DIRS) {
+    let entries
+    try { entries = fs.readdirSync(path.resolve(cwd, d), { withFileTypes: true }) } catch { continue }
+    for (const e of entries) if (e.isFile() && /\.(liquid|js)$/.test(e.name)) out.push(`${d}/${e.name}`)
+  }
+  return out
+}
 
 let targets = gitChanged()
 let scopeSource = 'git'
 
 if (targets === null) { targets = reuseMapTargets(); scopeSource = 'reuse-map' }
 if (targets === null) {
+  // FULL-TREE FALLBACK (2026-07-24): no diff scope resolved (base ref unresolvable AND no reuse map). The
+  // old path SKIPPED the scan and reported PASS over ZERO files — a dishonest store could ship because
+  // nothing was looked at (~50% of the dogfood runs hit this). Instead scan the ENTIRE theme surface so
+  // the always-on fabrication blockers still fire. DS_REQUIRE_SCOPE=1 still HARD-BLOCKS (publish needs a
+  // real diff scope so it doesn't re-flag the untouched base theme's own copy).
   if (REQUIRE_SCOPE) {
     add(blockers, 'honesty.scope-unresolved-strict', '.', `base ref "${BASE_REF}" unresolvable and no ${REUSE_MAP}, and DS_REQUIRE_SCOPE=1 — cannot verify honesty; mantle must tag the theme base "base" before publish`)
-  } else {
-    warnings.push({ id: 'honesty.scope-unresolved', page: '.', detail: `base ref "${BASE_REF}" unresolvable and no ${REUSE_MAP} — honesty scan skipped (set BASE_REF or DS_REQUIRE_SCOPE for publish)`, evidence: '' })
+    finish(null)
   }
-  finish(null)
+  targets = allTreeTargets()
+  scopeSource = 'full-tree'
+  warnings.push({ id: 'honesty.scope-unresolved', page: '.', detail: `base ref "${BASE_REF}" unresolvable and no ${REUSE_MAP} — scanning the FULL theme tree (${targets.length} file(s)) instead of a diff; fabrication blockers still enforced. Set BASE_REF for a narrower publish scope.`, evidence: '' })
 }
 targets = targets.filter(f => /\.(liquid|js)$/.test(f) && SCAN_DIRS.some(d => f.startsWith(`${d}/`)))
 scannedCount = targets.length
@@ -262,11 +291,10 @@ for (const file of targets) {
     const lineEnd = raw.indexOf('\n', m.index); const line = raw.slice(lineStart, lineEnd === -1 ? raw.length : lineEnd)
     if (/\}\}\s*$/.test(raw.slice(Math.max(0, m.index - 24), m.index)) || /metafield/i.test(line)) continue
     const detail = `recent-activity claim "${trunc(m[0], 40)}" with a hardcoded number near "${trunc(ctx.match(/today|this hour|right now|now|recently|in the last[^,.<]*/i)?.[0] || 'now', 24)}" — fabricated social proof unless data-bound`
-    if (STRICT) blocker('honesty.fake-activity', `${file}:${lineAt(raw, m.index)}`, `${detail} (STRICT_CONVERSION)`, trunc(m[0], 60))
-    else add(warnings, 'honesty.fake-activity', `${file}:${lineAt(raw, m.index)}`, detail, trunc(m[0], 60))
+    convBlocker('honesty.fake-activity', `${file}:${lineAt(raw, m.index)}`, detail, trunc(m[0], 60))
   }
 
-  // ── 4. honesty.unsourced-stat (WARN) ─────────────────────────────────────────
+  // ── 4. honesty.unsourced-stat (BLOCK by default — Q2 2026-07-24) ─────────────
   // "N% of customers/users/… said/saw/…" in static copy with no nearby citation / binding.
   const RE_STAT = /\b\d{1,3}%\s+(?:of\s+)?(customers|users|people|shoppers|said|reported|saw|notice)/gi
   for (const m of raw.matchAll(RE_STAT)) {
@@ -279,7 +307,7 @@ for (const file of targets) {
     const lineStart = raw.lastIndexOf('\n', m.index) + 1
     const lineEnd = raw.indexOf('\n', m.index); const line = raw.slice(lineStart, lineEnd === -1 ? raw.length : lineEnd)
     if (/<!--\s*(source|cite)\s*:/i.test(line) || /block\.settings/i.test(line)) continue // cited / setting-bound on this line
-    add(warnings, 'honesty.unsourced-stat', `${file}:${lineAt(raw, m.index)}`, `percentage claim "${trunc(m[0], 40)}" with no citation (<!-- source: --> / block.settings binding) — unsourced stat`, trunc(m[0], 60))
+    convBlocker('honesty.unsourced-stat', `${file}:${lineAt(raw, m.index)}`, `percentage claim "${trunc(m[0], 40)}" with no citation (<!-- source: --> / block.settings binding) — unsourced stat`, trunc(m[0], 60))
   }
 }
 

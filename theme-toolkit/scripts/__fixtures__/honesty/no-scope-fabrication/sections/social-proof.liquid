@@ -1,0 +1,10 @@
+{% comment %}
+  Fixture for B1 (2026-07-24): this theme has NO section-reuse-map.md and the harness forces an
+  unresolvable BASE_REF, so NO diff scope resolves. Before the fix the gate SKIPPED the scan and
+  reported PASS over zero files — this fabricated social proof would have shipped. The full-tree
+  fallback now scans it, and both claims BLOCK by default (fabricated activity + unsourced stat).
+{% endcomment %}
+<section class="social-proof">
+  <p class="activity">127 bought today</p>
+  <p class="stat">89% of customers said it changed their routine</p>
+</section>

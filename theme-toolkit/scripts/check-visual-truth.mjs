@@ -27,6 +27,7 @@ import path from 'node:path'
 import { writeReport } from './lib/report.mjs'
 import { runAbsorbed } from './lib/merge-spawn.mjs'
 import { applyRegressionRegistry, readRegistry, writeRegistry } from './lib/lens-regressions.mjs'
+import { isMain } from './lib/is-main.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -55,6 +56,17 @@ export function captureStale(manifest, nowMs, ttlMs) {
   const at = Number(manifest && manifest.capturedAt_ms)
   if (!Number.isFinite(at) || !Number.isFinite(ttlMs) || ttlMs <= 0) return false // no timestamp / no TTL → can't judge age (coverage+judge checks own it)
   return (nowMs - at) > ttlMs
+}
+
+// B2 (2026-07-24) — build-time calibration check. The Layer-2 judge is a non-deterministic sample; a
+// drifting judge (getting stricter/looser over time — see lens-calibrate.mjs computeDrift) makes its
+// BLOCK/PASS verdicts unreliable for THIS build. `sys-lens-calibrate` runs weekly, but a build should
+// not blindly trust a stale calibration. PURE: given a parsed calibration-drift.json, return the active
+// alerts (so a drifting judge is surfaced per-build, not only in the weekly cron).
+export function judgeDriftAlerts(driftJson) {
+  if (!driftJson || typeof driftJson !== 'object') return []
+  if (driftJson.enough === false) return [] // not enough corpus to judge drift — silent, not an alert
+  return Array.isArray(driftJson.alerts) ? driftJson.alerts : []
 }
 
 function finish(envError, evidence = {}) {
@@ -189,6 +201,22 @@ function main() {
     else warnings.push({ id: 'vt.judge-not-done', page: 'judge', detail: 'no vision-judge verdicts yet — frames captured but unjudged (warns in dev; BLOCKS at publish-grade)', evidence: '' })
   }
 
+  // ── B2: build-time calibration check ──
+  // The judge is a non-deterministic sample; if it has DRIFTED (stricter/looser over time), its verdicts
+  // — which block this build — are unreliable. Read the drift report (lens-calibrate.mjs --drift) and
+  // surface any active alert per-build, so a drifting judge is caught now, not only in the weekly cron.
+  // WARN-only by design: a drift signal informs the reader before they trust a marginal BLOCK/PASS; it is
+  // NOT itself a blocker (a blocker nobody can prove fires is an unproven guard, which this repo forbids).
+  // The objective Layer-1 facts above still hard-block deterministically regardless of judge calibration.
+  {
+    const driftPath = process.env.LENS_DRIFT_FILE || path.join(cwd, 'calibration-drift.json')
+    let driftJson = null
+    try { driftJson = readJson(driftPath) } catch { /* absent → judge calibration simply unverified here */ }
+    for (const al of judgeDriftAlerts(driftJson)) {
+      warnings.push({ id: 'vt.judge-drift', page: 'judge', detail: `judge calibration DRIFT (${al.metric}): ${al.detail} — the vision verdicts below are a drifting sample; re-calibrate (lens-calibrate.mjs) before trusting a marginal BLOCK/PASS.`, evidence: al.metric })
+    }
+  }
+
   const allFindings = []
   for (const v of verdicts) {
     const at = `${v.surface} ${v.viewport}`
@@ -231,11 +259,19 @@ function main() {
 
   writeHtml(manifest, verdictsByFrame)
   const judged = verdicts.length
+  // B2 provenance: which judge model(s) produced these verdicts. A verdict is a sample from ONE model;
+  // recording it makes a silent model change visible and lets the golden corpus pin reproducibility.
+  const models = [...new Set(verdicts.map(v => v.model).filter(Boolean))]
   finish(null, {
     present: true, frames: frames.length, judged,
-    verdicts: verdicts.map(v => ({ surface: v.surface, viewport: v.viewport, verdict: v.verdict, confidence: v.confidence })),
+    judgeModels: models.length ? models : undefined,
+    verdicts: verdicts.map(v => ({ surface: v.surface, viewport: v.viewport, verdict: v.verdict, confidence: v.confidence, model: v.model })),
     findingCount: allFindings.length, htmlReport: path.relative(cwd, path.join(LENS_DIR, 'index.html')),
   })
 }
 
-try { main() } catch (err) { finish(`unexpected failure: ${err.message}`) }
+// Guard the CLI entry so fixtures can import the pure exports (captureStale, judgeDriftAlerts) without
+// executing the gate (which would process.exit). Spawn callers run as the main module → main() runs.
+if (isMain(import.meta.url)) {
+  try { main() } catch (err) { finish(`unexpected failure: ${err.message}`) }
+}
