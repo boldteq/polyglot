@@ -809,26 +809,60 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   committed as evidence (client `968524b`). Toolkit unaffected (no toolkit code changed) — this
   was a real-store investigation, not a gate-script change.
 
-- [ ] **CB-23 · `check-reference-match` has no notion of global/section-group surfaces.** `status: open`
-  (toolkit gap, small)
-  `templateFor()` only resolves `templates/<surface>.json` / `templates/page.<surface>.json`. A header
-  or footer living in a section GROUP (`sections/footer-group.json`) has no template file, so registering
-  it as a normal surface produces a **permanent** `ref.template-missing` BLOCK — found while trying to
-  register cravinbyandy's footer for REF-VID-2. Worked around by archiving the frame outside
-  `reference-map.json` (`docs/design/references/global/footer.png`); the map itself has no footer entry.
-  Fix: teach `templateFor` to also check `sections/<surface>-group.json` and read its `order`/`sections`
-  the same way, for a small fixed set of global surface names (`header`, `footer`).
+- [x] **CB-23 · `check-reference-match` now resolves global/section-group surfaces.** `status: done`
+  `templateFor()` only resolved `templates/<surface>.json` / `templates/page.<surface>.json`. A header or
+  footer living in a section GROUP (`sections/footer-group.json`) has no template file, so registering it
+  as a normal surface produced a **permanent** `ref.template-missing` BLOCK — found while trying to
+  register cravinbyandy's footer for REF-VID-2.
+  **Shipped:** `templateFor` now also checks `sections/<surface>-group.json` for a small fixed allowlist
+  (`header`, `footer`) — `sectionsOf()` needed no change, since Shopify shapes a section group identically
+  to a template (`{sections, order}`). Scoped deliberately: a non-global surface with a genuinely missing
+  template still blocks (fixture case l), so this isn't a blanket "look in sections/ too" widening.
+  *Proof:* 3 new fixture cases (k/l/m) — the regression (footer/header group resolves, no permanent
+  block), the negative control (a real missing template for a non-global surface still blocks), and the
+  header mirror. All 3 confirmed to **fail against the pre-fix code** (`ref.template-missing` both times)
+  before passing on the fix. Toolkit **110/110**.
+  **Verified on the real client repo** (canonical script run directly, cwd=cravinbyandy — the vendored
+  copy is pinned to an older sha and will pick this up on its next legitimate re-vendor, not hand-copied):
+  registered cravinbyandy's footer for real (`surface: footer, section: cravin-footer, archetype: custom`
+  — no stock archetype fits a Brand+Explore+Contact-columns footer, so `custom` is the honest read, same
+  discipline as gifting/occasions in REF-VID-2) and `check-reference-match.mjs` resolved it via
+  `sections/footer-group.json` with **no `ref.template-missing`** — the exact regression this item exists
+  to prevent, reproduced and fixed on the store that found it.
 
-- [ ] **CB-24 · Gate #46 L2 only compares the above-the-fold frame — a below-the-fold section can never match.**
-  `status: open` (toolkit gap)
-  `lensFrameFor` picks the per-surface **"rest"** Lens frame (the top-of-page screenshot). For an
-  above-the-fold section (hero) that's correct; for `home/locations` (below the fold) the judge compared
-  the reference against a screenshot that simply doesn't scroll that far, and reported
+- [x] **CB-24 · Gate #46 L2 now scrolls to the declared section instead of always using the top-of-page frame.** `status: done`
+  `lensFrameFor` picked the per-surface **"rest"** Lens frame (the top-of-page screenshot) for every
+  entry. Correct for an above-the-fold section (hero); for `home/locations` (below the fold) the judge
+  compared the reference against a screenshot that simply doesn't scroll that far, and reported
   `component-parity: the Locations carousel section... [not visible]` — **not a real divergence**, a
-  frame/section mismatch, flagged `[would BLOCK under REFERENCE_MATCH_ENFORCE=1]`. This is exactly the
-  false-BLOCK class this whole quarter has been fixing, just not yet inside gate #46. Reinforces RM-2's
-  already-ratified decision to keep L2 warn-only. Fix needs a per-section scroll-to-frame in Lens
-  capture, not a quick patch here — logged, not attempted.
+  frame/section mismatch, flagged `[would BLOCK under REFERENCE_MATCH_ENFORCE=1]`.
+  **Shipped:** `resolveSectionKey(entry, sections)` — pinned `entry.section` first, then archetype match,
+  then (new, and the realistic case on an all-custom-sections store where no `TYPE_ARCHETYPE` entry ever
+  fires) exact `name === key` equality, since `reference-ingest --name` is routinely chosen to describe
+  the section it documents. `sectionTargetsFor(surface)` in `lens-capture.mjs` reads
+  `reference-map.json` (fully additive — absent map/entry → `{}`, zero effect on a repo with no
+  reference-conformance work) and resolves each declared entry to a real template section key.
+  `captureVisit` then scrolls to it and shoots one **extra** `section:<key>` frame in the **same**
+  frame-set as `rest` — no additional judge calls. `lensFrameFor` prefers the section frame when present,
+  falling back to `rest` unchanged otherwise.
+  **A real DOM gotcha found and fixed while proving this live, not assumed:** Shopify's rendered wrapper
+  id is prefixed with the template/group's own numeric id
+  (`shopify-section-template--27491524083746__locations`), **never** the bare JSON key — confirmed via
+  `curl` against the real live HTML. An exact-id `getElementById` lookup silently matched nothing on
+  every section (the scroll simply never happened, no error, no capture) — fixed with a suffix selector
+  (`[id$="__<key>"]`).
+  *Proof:* 5 new pure fixture cases (n/o/o2/p/q) for `resolveSectionKey`/`sectionTargetsFor`, each
+  confirmed to fail against the pre-fix code (import error / wrong resolution) before passing on the
+  fix. Toolkit **110/110**. **Live end-to-end on cravinbyandy** (read-only, no push): fresh capture
+  produced a real `section:locations` frame showing the actual carousel (2 cards + arrows, matching
+  RM-1's own reference description) instead of the hero; re-running gate #46 **dropped the false
+  "section absent"/"footer must appear below" BLOCK-under-enforce findings entirely**, replaced by one
+  honest, low-severity finding about carousel slide position (reference at slide-2, render at a
+  different slide) — a real content comparison survives where a frame-mismatch artifact used to be.
+  ⚠️ The DOM-selector fix itself is proven live against the real store, not hermetically fixtured — a
+  pure unit test can't exercise a live DOM without a browser. `lens-visibility`'s existing
+  Playwright+local-server harness (already covers `dismissOccluders`/`openCartDrawer`) would be the
+  natural place to add one if this needs day-2 hardening; not attempted here (time-bounded).
 
 - [x] **CB-21-ORIG · (superseded framing) A retired gate's report lingers and inflates every count.** `status: done`
   `theme-gates` clears `gate-reports/<name>.json` only for gates it is **about to run**, so when a gate
@@ -1077,3 +1111,15 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   question, now reconfirmed with more specific detail. Incidental finding logged: `design-system.json`'s
   `scheme-10` brand-kit override is unused anywhere in the theme (the hero it was written for was later
   rebuilt as a fully baked-image slideshow) — a human call, not touched.
+- 2026-07-24 · CB-23 done (Polyglot `3b9d9147`, client `248ccc0`) — `templateFor()` now resolves
+  `sections/<surface>-group.json` for header/footer, closing the permanent false-BLOCK a global surface
+  produced. CB-24 done (same commits) — gate #46 now scrolls to the declared section instead of always
+  using the top-of-page frame (`resolveSectionKey` + `sectionTargetsFor` + a per-section Lens frame),
+  found and fixed a real DOM-id gotcha (Shopify prefixes the wrapper id, never the bare key) while
+  proving it live. Both verified end-to-end on cravinbyandy, not just fixtured: footer resolves with no
+  `ref.template-missing`, and the previously-false "Locations section absent"/"footer must appear below"
+  BLOCK-under-enforce findings are gone, replaced by one honest content finding. 15 new fixture cases
+  total, each confirmed to fail against pre-fix code. Toolkit **110/110**. Every item from the previous
+  run's close-out (CB-22/23/24) is now resolved — nothing actionable remains except items blocked on
+  Yash (CB-3, the `shopify://` handle) and CB-21's remainder (blocked by a contested concurrent-workstream
+  file).
