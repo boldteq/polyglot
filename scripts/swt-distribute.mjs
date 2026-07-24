@@ -13,6 +13,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
+import { blocksAreIsolated } from '../src/lib/agentBlocks.mjs'
+import { assertsUncitedMechanism } from './lib/shopify-mechanism.mjs'
 
 const HOME = process.env.HOME
 const BRAIN = path.join(HOME, '.claude/memory/patterns/good/shopify-website-faq-brain.md')
@@ -155,6 +157,16 @@ export function deriveRule(faq) {
   if (body.length > 200) body = body.slice(0, 197) + '…'
   // cite AFTER the length cap so the doc URL is never the thing that gets truncated away
   body = citeShopify(body)
+  // D1 (2026-07-24): provenance is a GATE, not a report. A NEW rule that asserts a Shopify mechanism
+  // (schema key / Liquid object / metafield / route) with NO verified citation is model-recall — the
+  // measured reason authored themes drifted off spec. citeShopify already appended a [doc:] for every
+  // mechanism it recognises, so an uncited one here names a mechanism DOC_CITES can't source → REJECT it
+  // (returns null; the caller filters). This stops the uncited backlog from growing. SWT_ALLOW_UNCITED=1
+  // opts down for a transition; the rejection is logged so a DOC_CITES gap becomes visible to fill.
+  if (assertsUncitedMechanism(body) && process.env.SWT_ALLOW_UNCITED !== '1') {
+    if (process.env.SWT_DEBUG === '1') console.warn(`swt-distribute: DROP uncited mechanism rule (FAQ-${faq.id}): ${body.slice(0, 90)}`)
+    return null
+  }
   return { owners, gate, concern: faq.concern, surface: faq.surface, gap: faq.gap, body, id: faq.id }
 }
 
@@ -269,6 +281,10 @@ export function updateAgent(agentId, rules) {
   // corruption there splices content IN rather than removing it.
   const writtenBlock = updated.match(/## 🎓 SWT Trained Defaults[\s\S]*?<!-- SWT-TRAINED:END -->/)
   if (!writtenBlock || writtenBlock[0] !== section) return false
+  // Cross-block isolation (A4): our SWT-TRAINED block must not overlap the trainer's AUTOLEARN block.
+  // A splice that swallowed the other writer's block would still pass the checks above (they only see
+  // OUR block) — this catches it. Roll back (don't write) on any overlap. Shared with the trainer.
+  if (!blocksAreIsolated(updated)) return false
   if (updated !== original) fs.writeFileSync(file, updated)
   return true
 }
@@ -392,7 +408,13 @@ function reindexSemantic(full = false) {
 
 export function distribute() {
   const faqs = parseFaqs()
-  const rules = faqs.map(deriveRule)
+  // deriveRule returns null for a NEW rule that asserts an uncited Shopify mechanism (D1) — filter them
+  // out so an unverifiable platform claim never enters a pack. The count of dropped rules is the visible
+  // signal of a DOC_CITES coverage gap to fill.
+  const derived = faqs.map(deriveRule)
+  const rules = derived.filter(Boolean)
+  const droppedUncited = derived.length - rules.length
+  if (droppedUncited) console.warn(`swt-distribute: dropped ${droppedUncited} uncited-mechanism rule(s) (D1 provenance gate; SWT_ALLOW_UNCITED=1 to keep, SWT_DEBUG=1 to list)`)
   const ruleCount = writeDigest(rules)
   const packCounts = writeAgentPacks(rules)
   let agentsUpdated = 0

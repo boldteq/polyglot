@@ -25,6 +25,7 @@ import path from 'node:path'
 import os from 'node:os'
 import { createRequire } from 'node:module'
 import { govern, isEvalCalibrated } from './governor.mjs'
+import { blocksAreIsolated } from '../lib/agentBlocks.mjs'
 
 const require = createRequire(import.meta.url)
 const db = require('../db.js')
@@ -146,6 +147,9 @@ export function writePatch(plan) {
     const block = `\n\n${BLOCK_START}\n${BLOCK_HEADER}\n\n${plan.rule.line}\n${BLOCK_END}\n`
     content = content.replace(/\s*$/, '\n') + block
   }
+  // Cross-block isolation (A4): the AUTOLEARN block we just edited must not overlap swt-distribute's
+  // SWT-TRAINED block. Refuse the write on any overlap rather than persist a spliced file. Shared guard.
+  if (!blocksAreIsolated(content)) return { ok: false, reason: 'block-overlap' }
   try { fs.writeFileSync(plan.targetFile, content, 'utf8') } catch (e) { return { ok: false, reason: e.message } }
   return { ok: true }
 }

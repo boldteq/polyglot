@@ -18,6 +18,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
+import { SHOPIFY_SIGNAL, CITATION } from './lib/shopify-mechanism.mjs'
 
 const args = process.argv.slice(2)
 const asJson = args.includes('--json')
@@ -26,21 +27,13 @@ const PACKS = (() => {
   return i !== -1 && args[i + 1] ? args[i + 1] : path.join(os.homedir(), '.claude/memory/patterns/good/swt-rules')
 })()
 const TOP = (() => { const i = args.indexOf('--top'); return i !== -1 && args[i + 1] ? Number(args[i + 1]) : 15 })()
+// --enforce turns the report into a GATE (D1): exit 1 if the ENFORCED-uncited backlog exceeds --max
+// (default 0). Report-only (exit 0) without it, so the standalone corpus view stays advisory.
+const ENFORCE = args.includes('--enforce')
+const MAX_UNCITED = (() => { const i = args.indexOf('--max'); return i !== -1 && args[i + 1] ? Number(args[i + 1]) : 0 })()
 
-// Shopify-mechanism signals — a rule mentioning any of these is making a checkable platform claim.
-// Kept deliberately concrete: a schema key, a real Liquid filter/object, a metafield, a route.
-const SHOPIFY_SIGNAL = new RegExp([
-  // schema authoring
-  'visible_if', 'enabled_on', 'disabled_on', 'max_blocks', '\\bpresets?\\b', '\\blimit\\b',
-  'settings_schema', 'block\\.settings', 'section\\.settings', 'color_scheme', 'text_alignment',
-  'image_picker', 'link_list', 'inline_richtext', '\\brichtext\\b', 'range setting', 'select setting',
-  // liquid objects/filters/tags
-  'content_for', 'shopify_attributes', 'paginate', 'placeholder_svg_tag', 'image_url', 'image_tag',
-  '\\| money\\b', '\\| t\\b', 'metafield', 'metaobject', 'linklists', 'routes\\.', 'cart\\.', 'product\\.',
-  'collection\\.', 'request\\.', '{%-? *schema', '{%-? *render', '{%-? *section', '{%-? *style',
-].join('|'), 'i')
-
-const CITATION = /shopify\.dev|help\.shopify\.com/i
+// SHOPIFY_SIGNAL + CITATION now live in scripts/lib/shopify-mechanism.mjs — the SAME predicate the
+// swt-distribute D1 reject uses, so the audit and the gate can never drift apart.
 
 function packFiles() {
   if (!fs.existsSync(PACKS)) return null
@@ -77,9 +70,12 @@ function main() {
   const uncited = per.flatMap(p => p.uncited)
   const pct = shopifyClaims ? ((cited / shopifyClaims) * 100).toFixed(1) : '100.0'
 
+  const blocked = ENFORCE && uncited.length > MAX_UNCITED
+  const code = blocked ? 1 : 0
+
   if (asJson) {
-    console.log(JSON.stringify({ packs: files.length, enforced, shopifyClaims, cited, citationRate: `${pct}%`, uncitedEnforced: uncited.length, sample: uncited.slice(0, TOP) }, null, 2))
-    process.exit(0)
+    console.log(JSON.stringify({ packs: files.length, enforced, shopifyClaims, cited, citationRate: `${pct}%`, uncitedEnforced: uncited.length, enforce: ENFORCE, maxUncited: MAX_UNCITED, blocked, sample: uncited.slice(0, TOP) }, null, 2))
+    process.exit(code)
   }
 
   console.log('SWT rule provenance — how far the backlog is from Shopify-cited\n')
@@ -91,8 +87,9 @@ function main() {
   console.log(`  worst offenders (first ${Math.min(TOP, uncited.length)} of ${uncited.length}):`)
   for (const u of uncited.slice(0, TOP)) console.log(`   [${u.agent}] ${u.text}`)
   console.log('\n  Fix path: the generator now demands doc-grounding for NEW platform-authoring rules (swt-train-loop),')
-  console.log('  and the critic drops invented schema keys. This backlog shrinks as re-grounded slices replace old ones.')
-  process.exit(0)
+  console.log('  and swt-distribute REJECTS an uncited new mechanism rule (D1). This backlog shrinks as re-grounded slices replace old ones.')
+  if (ENFORCE) console.log(`\n  ${blocked ? `BLOCK — ${uncited.length} ENFORCED-uncited rule(s) > --max ${MAX_UNCITED}` : `OK — ${uncited.length} ENFORCED-uncited ≤ --max ${MAX_UNCITED}`}`)
+  process.exit(code)
 }
 
 main()
