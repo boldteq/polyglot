@@ -961,3 +961,8 @@ remove the file manually to continue.
 [2026-07-24T07:41:39.125Z] cycle 176 verify: kept 25/28 (dropped 3)
 [2026-07-24T07:45:49.266Z] cycle 176 distributed → 5627 rules · 14/14 agents trained · 0 gate-gaps
 [2026-07-24T07:45:49.267Z] cycle 176 reindex: OK · }
+[2026-07-24T07:45:49.391Z] cycle 176 ✓ +25 FAQs → 5627/6650 (84.6%) · 14/14 agents trained · committed
+[2026-07-24T07:45:57.431Z] cycle 177: slices [imagery-art-direction|section-schema, motion|section-schema, mobile|section-schema, a11y|section-schema] → generating 28 FAQs (FAQ-6406…)
+[2026-07-24T07:56:44.456Z] cycle 177 verify: kept 28/28 (dropped 0)
+[2026-07-24T08:01:13.987Z] cycle 177 distributed → 5655 rules · 14/14 agents trained · 0 gate-gaps
+[2026-07-24T08:01:13.988Z] cycle 177 reindex: OK · }
