@@ -34,6 +34,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync, spawn, execFileSync } from 'node:child_process'
 import { readJson, toolkitVersion, gitInfo, countSeverities, staleReportsByTtl } from './lib/report.mjs'
+import { applyPublishGrade } from './lib/publish-grade.mjs'
 
 // Promisified gate spawn — buffers output, enforces a timeout. (P0 #14: parallel gate execution.)
 function runGateProc(runner, gateArgs, opts) {
@@ -504,12 +505,11 @@ async function runGates(args) {
   }
 
   // Shared child env (identical semantics to the old per-gate env).
-  const baseEnv = { ...process.env, REPORT_DIR: args.reportDir }
+  // Authoritative (full) run = publish-grade: the block-eligible warn gates BLOCK (DS_REQUIRE_SCOPE) and
+  // conversion honesty runs strict. Extracted to lib/publish-grade.mjs so the invariant is unit-proven
+  // (publish-grade.run-tests) and this critical wiring cannot silently regress. (B3)
+  const baseEnv = applyPublishGrade(mode, { ...process.env, REPORT_DIR: args.reportDir })
   if (url) baseEnv.THEME_PREVIEW_URL = url
-  // Authoritative (full) run = publish-grade: static scope-aware gates BLOCK on an unresolvable
-  // scan scope (no green-on-nothing) + the conversion gate runs strict.
-  if (mode === 'full' && !baseEnv.DS_REQUIRE_SCOPE) baseEnv.DS_REQUIRE_SCOPE = '1'
-  if (mode === 'full' && !baseEnv.STRICT_CONVERSION) baseEnv.STRICT_CONVERSION = '1'
   if (!baseEnv.THEME_STORE_PASSWORD && process.env.STOREFRONT_PASSWORD) baseEnv.THEME_STORE_PASSWORD = process.env.STOREFRONT_PASSWORD
 
   // P0 #14 fix: run the gates with bounded concurrency — wall-clock = the SLOWEST gate, not the
