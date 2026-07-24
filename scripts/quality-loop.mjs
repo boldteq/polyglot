@@ -16,10 +16,13 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { mintRegressionCase } from './ratchet-add.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)) // fileURLToPath: repo path has a space
 const REPO = path.join(HERE, '..')
+const GOLDEN_DIR = process.env.GOLDEN_DIR || path.join(REPO, 'evals', 'golden-builds')
 const TREND = process.env.QUALITY_TREND || path.join(HERE, 'swt-train', 'quality-trend.jsonl')
 const PROPOSED = path.join(REPO, 'theme-toolkit', 'toolkit-rules', 'proposed.json')
 const TEAM = path.join(REPO, 'theme-toolkit', 'toolkit-rules', 'team-default.json')
@@ -96,6 +99,28 @@ function emitBuildScores(byAgent, buildId, ts) {
   return records
 }
 
+// C2 (2026-07-24): auto-mint the ratchet. A gate that flipped FAIL→PASS since this build's last run is a
+// JUST-FIXED defect — lock it in as a permanent golden regression case so the same bug can't ship twice.
+// Was suggestion-only ("pnpm ratchet …"), which relied on a discipline that never happened. Now automatic:
+// dedup by file, refuse a still-failing/skipped gate (mintRegressionCase enforces it), and normalize the
+// repo path to ~ so the minted case stays portable (mirrors C1). RATCHET_AUTO=0 opts out.
+export function autoRatchet(buildDir, buildId, fixedGates, ts) {
+  if (process.env.RATCHET_AUTO === '0' || !fixedGates.length) return []
+  const home = os.homedir()
+  const minted = []
+  for (const g of fixedGates) {
+    const s = `${slug(buildId)}-${slug(g)}`
+    const out = path.join(GOLDEN_DIR, `regression-${s}.json`)
+    if (fs.existsSync(out)) continue // already locked in — the bug is guarded
+    const r = mintRegressionCase(buildDir, { gate: g, slug: s, brief: `Auto-ratcheted: gate "${g}" flipped FAIL→PASS on ${buildId} — must never regress.`, now: ts.slice(0, 10) })
+    if (!r.ok) { console.log(`  ratchet: skipped "${g}" — ${r.reason}`); continue }
+    if (r.case.repo && r.case.repo.startsWith(home)) r.case.repo = r.case.repo.replace(home, '~') // portable (C1)
+    try { fs.mkdirSync(GOLDEN_DIR, { recursive: true }); fs.writeFileSync(out, JSON.stringify(r.case, null, 2) + '\n'); minted.push(s) }
+    catch (e) { console.log(`  ratchet: write failed for "${g}" — ${e.message}`) }
+  }
+  return minted
+}
+
 function main() {
   const buildDir = process.argv[2]
   if (!buildDir) { console.error('usage: node scripts/quality-loop.mjs <buildDir> [buildId]'); process.exit(2) }
@@ -167,10 +192,12 @@ function main() {
   console.log(`quality-loop: ${buildId} — ${reports.length} gates · ${gatesFailed} failed · pass-rate ${passRate}% · ${totalBlockers} blockers, ${totalWarnings} warnings`)
   console.log(`  trend: snapshot appended (${path.relative(REPO, TREND)})`)
   console.log(`  score: ${scored.length} per-builder eval-run(s) → ${path.relative(REPO, RUNS_LOG)} (${scored.map((r) => `${r.agent} ${(r.overall * 100).toFixed(0)}%`).join(', ') || 'none'})`)
+  const ratcheted = autoRatchet(buildDir, buildId, fixedGates, ts)
   if (fixedGates.length) {
-    console.log(`  ratchet: ${fixedGates.length} gate(s) fixed since the last run of this build — lock the fix in so it can't recur:`)
-    for (const g of fixedGates) console.log(`     pnpm ratchet <buildDir> --gate ${g} --slug ${slug(g)}-fix --brief "<what broke>"`)
+    console.log(`  ratchet: ${fixedGates.length} gate(s) flipped FAIL→PASS since this build's last run → ${ratcheted.length} new golden regression case(s) auto-minted${ratcheted.length ? ` (${ratcheted.join(', ')})` : ''}. Run \`pnpm golden:baseline\` to re-anchor the corpus, then commit the case(s).`)
   }
   console.log(`  rules: +${newCand} new candidate(s), ${bumped} occurrence bump(s) · ${proposed.length} queued · promoted ${promoted} → enforced team-default (bar: ${PROMOTE_MIN} builds)`)
 }
-main()
+
+// Guard the CLI entry so tests can import autoRatchet without running the loop (which process.exits).
+if (path.resolve(process.argv[1] || '') === fileURLToPath(import.meta.url)) main()

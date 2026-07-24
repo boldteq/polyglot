@@ -16,11 +16,22 @@
 // guarantees are proven hermetically (src/gepaOptimize.test.mjs) without burning tokens. A real run
 // (--apply) is an expensive batch job: rounds × variants × cases × (generate + judge) Claude calls.
 //
+// BENCHMARK — READ THIS: GEPA optimizes an agent's PROMPT by scoring its OUTPUT on JUDGE cases
+// (src/intelligence/eval/golden/<agent>*.json — task → expected output → LLM-judged). This is the CORRECT
+// benchmark for prompt-output quality and is DISTINCT from the golden-BUILD regression corpus
+// (evals/golden-builds/, which scores a real build's gate summary). They are different tools: judge cases
+// tune prompts; the build corpus catches build regressions. Do not point GEPA at the build corpus.
+//
+// STATUS — SHELVED (manual, expensive, nothing auto-calls it). An optimizer over a TINY case set overfits
+// and broadcasts noise, so it REFUSES below MIN_GEPA_CASES (default 8) unless --force. ACTIVATION TRIGGER:
+// grow an agent's judge-case set to ≥8 (via real graded outputs), then run `pnpm gepa --agent <name>`.
+// Until then it stays a proven-safe tool on the shelf, not dead surface area.
+//
 // Usage:
-//   node scripts/gepa-optimize.mjs --agent <name> [--rounds 2] [--variants 4] [--holdout 0.34] [--base <file>]
+//   node scripts/gepa-optimize.mjs --agent <name> [--rounds 2] [--variants 4] [--holdout 0.34] [--base <file>] [--force]
 // It PROPOSES a proven-better prompt + the full score evidence into docs/gepa/<agent>.optimized.md; it
 // does NOT auto-mutate the agent .md (that goes through the governor's safety gates). Dry-run by default.
-// Exit: 0 (ran; improved or honestly no-op) · 2 usage/env error
+// Exit: 0 (ran; improved or honestly no-op) · 2 usage/env error · 3 shelved (too few cases)
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -133,7 +144,15 @@ async function main() {
   const agent = arg('--agent')
   if (!agent) { console.error('usage: gepa-optimize.mjs --agent <name> [--rounds 2] [--variants 4] [--holdout 0.34] [--base <file>]'); process.exit(2) }
   const cases = loadAgentCases(agent)
-  if (cases.length < 2) { console.error(`gepa: agent "${agent}" has ${cases.length} golden case(s) — need ≥2 to split train/held-out. Grow the corpus first.`); process.exit(2) }
+  // SHELVE GUARD: an optimizer over a tiny case set overfits and broadcasts noise. Refuse below the
+  // activation threshold (env-overridable) unless --force. This is the "shelved with a written trigger"
+  // state — the tool is safe + ready, it just won't run until the benchmark is big enough to trust.
+  const MIN_GEPA_CASES = Number(process.env.MIN_GEPA_CASES || 8)
+  if (cases.length < 2) { console.error(`gepa: agent "${agent}" has ${cases.length} golden judge case(s) — need ≥2 to split train/held-out. Grow the case set first.`); process.exit(2) }
+  if (cases.length < MIN_GEPA_CASES && !argv.includes('--force')) {
+    console.error(`gepa: SHELVED — "${agent}" has ${cases.length} judge case(s) < MIN_GEPA_CASES=${MIN_GEPA_CASES}. Optimizing over so few cases overfits and broadcasts noise. Grow the agent's judge-case set to ≥${MIN_GEPA_CASES} (real graded outputs), then re-run. Override with --force if you understand the risk.`)
+    process.exit(3)
+  }
   const baseFile = arg('--base')
   const base = baseFile ? fs.readFileSync(baseFile, 'utf-8') : `You are ${agent}. Do the task to the team's quality bar.`
   const io = await defaultIO()

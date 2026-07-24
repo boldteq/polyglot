@@ -94,7 +94,12 @@ function readSections(buildDir) {
 }
 function resolveRepo(c) {
   // a case names its reference build; if absent, the caller must pass a <buildDir>.
-  return c.repo ? c.repo.replace(/^~/, process.env.HOME || '') : null
+  if (!c.repo) return null
+  // Portable: GOLDEN_REPO_ROOT relocates the whole corpus to wherever a machine keeps the reference
+  // repos (CI, a teammate's Mac), resolving by the case's repo BASENAME. Else expand a leading ~.
+  const root = process.env.GOLDEN_REPO_ROOT
+  if (root) return path.join(root, path.basename(c.repo))
+  return c.repo.replace(/^~/, process.env.HOME || '')
 }
 
 function scoreOneCase(c, buildDirOverride) {
@@ -133,6 +138,13 @@ function main() {
     process.exit(0)
   }
   if (argv.includes('--regression')) {
+    // Honest boundary (2026-07-24): the corpus references LOCAL client repos. On a machine that has NONE
+    // of them (a fresh clone, CI), the gate must SKIP — not BLOCK on a null score. It only judges a
+    // regression where a real reference build is actually present + gated.
+    if (agg.scored === 0) {
+      console.log('  REGRESSION GATE: SKIPPED — no reference repo present (set GOLDEN_REPO_ROOT to the corpus location, or run on the dev Mac that holds it). Not a pass, not a block.')
+      process.exit(0)
+    }
     let baseline = Number(process.env.GOLDEN_BASELINE)
     if (Number.isNaN(baseline)) { try { baseline = JSON.parse(fs.readFileSync(BASELINE_F, 'utf-8')).meanScore } catch { baseline = null } }
     if (baseline == null) { console.error('  no baseline — run --write-baseline first (or set GOLDEN_BASELINE)'); process.exit(2) }

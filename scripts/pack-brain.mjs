@@ -21,6 +21,19 @@
 //   BRAIN_EMBEDDINGS, BRAIN_EMBEDDINGS_MANIFEST
 // Exit: 0 ok · 1 verify failure (integrity/count mismatch) · 2 usage/env error
 //
+// THE PULL FLOW (the consumer — verify is the GATE, so a partial/corrupt pull can never be trusted):
+//   machine A:  pnpm brain:pack:full           → dist/boldteq-brain/ (+ MANIFEST.json + embeddings)
+//   transfer:   rsync -a dist/boldteq-brain/ B:~/boldteq-brain/     (or a tarball / release asset)
+//   machine B:  node scripts/pack-brain.mjs verify ~/boldteq-brain  ← MANDATORY: exit 1 = do NOT install
+//               (verify passing is the ONLY signal the pulled brain is intact + complete; only then
+//                point ~/.claude at it.) This closes the "one Mac" ceiling with an integrity gate.
+//
+// STATUS: pack + verify (the versioned artifact + the delivery health-check) are COMPLETE and proven
+// (src/packBrain.test.mjs + a real pack of 100 agents/15 packs/35k chunks). SHELVED: marketplace-publish
+// (a private Claude-Code plugin registry) — a distribution CHANNEL, not needed until there is a second
+// machine/teammate to pull to. Activation trigger: the first non-dev machine that needs the brain → wire
+// the rsync/release step above into its bootstrap; verify already gates it.
+//
 // Pure core (sha256, buildManifest, diffManifest) is hermetically tested in src/packBrain.test.mjs.
 
 import fs from 'node:fs'

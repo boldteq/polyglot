@@ -2,13 +2,13 @@
   "id": "brief-001-cafe",
   "brief": "Cafe / coffee brand storefront — hero, menu, story, ordering.",
   "niche": "cafe",
-  "repo": "/Users/yashbaldha/Desktop/Shopify Task/cravinbyandy",
+  "repo": "~/Desktop/Shopify Task/cravinbyandy",
   "known_good_sha": "918c45ae6b955a3ac74ba4228c4502611f97eda2",
-  "provenance": "Real client build, static gate stack run 2026-07-23: 29/33 gates green (88%). Anchored to the mechanically-certain gates it passes; bar set below its current rate so it is a valid non-regressing baseline, not an aspiration.",
+  "provenance": "Real client build, static gate stack run 2026-07-23: 29/33 gates green (88%). Anchored to the mechanically-certain gates it passes; min_pass_rate tightened to 0.85 (2026-07-24) — a 3-pt margin below its 0.88 actual so a real regression BITES without false-failing on a single flaky gate. Portable repo path (~) so any machine with the corpus (or GOLDEN_REPO_ROOT) can run it.",
   "must_pass": {
     "gates_green": ["secret-scan", "orchestration", "foundation", "discovery", "layout", "dead-code", "reference-match", "design-quality", "section-reuse", "brand-sync"],
     "sections_present": ["about-cafe"],
-    "min_pass_rate": 0.8,
+    "min_pass_rate": 0.85,
     "max_blockers": null
   }
 }

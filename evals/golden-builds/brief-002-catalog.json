@@ -2,7 +2,7 @@
   "id": "brief-002-catalog",
   "brief": "Multi-category catalog storefront — collections, 404 handling, lifecycle + analytics wiring.",
   "niche": "catalog",
-  "repo": "/Users/yashbaldha/Desktop/Shopify Task/mexdynamic",
+  "repo": "~/Desktop/Shopify Task/mexdynamic",
   "known_good_sha": "capture-on-commit",
   "provenance": "Real client build, static gate stack run 2026-07-23: 15/38 gates green (39%) — a build with open defects. Anchored ONLY to the mechanical gates it reliably passes so the case is a stable low-water baseline; its low bar is honest (this build is mid-flight, not known-good). Raise as it converges.",
   "must_pass": {
