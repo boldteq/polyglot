@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-07-19T08:04:27.545Z",
+  "activeSessionId": null,
+  "latestSessionId": "2026-07-19T08-03-11Z",
+  "sessions": [
+    {
+      "id": "2026-07-19T08-03-11Z",
+      "task": "Build shared Claude Codex handoff workflow",
+      "status": "completed",
+      "branch": "train/swt-evidence-bar",
+      "startedAt": "2026-07-19T08:03:11.668Z",
+      "updatedAt": "2026-07-19T08:04:15.261Z",
+      "completedAt": "2026-07-19T08:04:15.261Z",
+      "tools": [
+        "codex",
+        "claude"
+      ],
+      "handoffFile": "2026-07-19T08-03-11Z-build-shared-claude-codex-handoff-workflow.md",
+      "currentSummary": "Completed the local auto-sync workflow for Claude and Codex, including shared session files, docs, and CLI helpers.",
+      "currentNext": "Start the next shared task with npm run context:start and have the next tool read TEAM_CONTEXT.md first."
+    }
+  ]
+}

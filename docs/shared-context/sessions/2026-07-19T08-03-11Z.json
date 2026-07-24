@@ -1,0 +1,73 @@
+{
+  "id": "2026-07-19T08-03-11Z",
+  "task": "Build shared Claude Codex handoff workflow",
+  "slug": "build-shared-claude-codex-handoff-workflow",
+  "status": "completed",
+  "startedAt": "2026-07-19T08:03:11.668Z",
+  "updatedAt": "2026-07-19T08:04:15.261Z",
+  "startedBy": "codex",
+  "branch": "train/swt-evidence-bar",
+  "handoffFile": "2026-07-19T08-03-11Z-build-shared-claude-codex-handoff-workflow.md",
+  "tools": [
+    "codex",
+    "claude"
+  ],
+  "currentSummary": "Completed the local auto-sync workflow for Claude and Codex, including shared session files, docs, and CLI helpers.",
+  "currentNext": "Start the next shared task with npm run context:start and have the next tool read TEAM_CONTEXT.md first.",
+  "filesInPlay": [
+    "TEAM_CONTEXT.md",
+    "docs/13-cross-tool-context.md",
+    "scripts/context-sync.mjs",
+    "docs/shared-context/active-session.md",
+    "docs/shared-context/latest-handoff.md",
+    "docs/shared-context/index.json"
+  ],
+  "decisionsSnapshot": [
+    "Use active-session.md as the first cross-tool snapshot after TEAM_CONTEXT.md.",
+    "Use the context:* scripts as the supported write path for shared handoffs."
+  ],
+  "entries": [
+    {
+      "timestamp": "2026-07-19T08:03:11.668Z",
+      "tool": "codex",
+      "type": "start",
+      "summary": "Set up the repo-local cross-tool sync workflow and generated the shared session files.",
+      "next": "Verify update and finish commands, then have Claude read active-session.md before the next task.",
+      "files": [
+        "TEAM_CONTEXT.md",
+        "docs/13-cross-tool-context.md",
+        "scripts/context-sync.mjs"
+      ],
+      "decisions": []
+    },
+    {
+      "timestamp": "2026-07-19T08:03:57.818Z",
+      "tool": "claude",
+      "type": "update",
+      "summary": "Claude can now resume by reading the active session snapshot and latest handoff instead of relying on separate chat memory.",
+      "next": "Finish the session after confirming the generated markdown and index files look correct.",
+      "files": [
+        "docs/shared-context/active-session.md",
+        "docs/shared-context/latest-handoff.md"
+      ],
+      "decisions": [
+        "Use active-session.md as the first cross-tool snapshot after TEAM_CONTEXT.md."
+      ]
+    },
+    {
+      "timestamp": "2026-07-19T08:04:15.261Z",
+      "tool": "codex",
+      "type": "finish",
+      "summary": "Completed the local auto-sync workflow for Claude and Codex, including shared session files, docs, and CLI helpers.",
+      "next": "Start the next shared task with npm run context:start and have the next tool read TEAM_CONTEXT.md first.",
+      "files": [
+        "TEAM_CONTEXT.md",
+        "docs/shared-context/index.json"
+      ],
+      "decisions": [
+        "Use the context:* scripts as the supported write path for shared handoffs."
+      ]
+    }
+  ],
+  "completedAt": "2026-07-19T08:04:15.261Z"
+}
