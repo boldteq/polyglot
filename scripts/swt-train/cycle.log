@@ -946,3 +946,8 @@ remove the file manually to continue.
 [2026-07-24T06:50:09.722Z] cycle 173 verify: kept 8/8 (dropped 0)
 [2026-07-24T06:57:32.336Z] cycle 173 distributed → 5536 rules · 14/14 agents trained · 0 gate-gaps
 [2026-07-24T06:57:32.338Z] cycle 173 reindex: OK · }
+[2026-07-24T06:57:32.481Z] cycle 173 ✓ +8 FAQs → 5536/6650 (83.2%) · 14/14 agents trained · committed
+[2026-07-24T06:57:40.517Z] cycle 174: slices [edge-cases|new-section, legal-compliance|new-section, merchandising|new-section, search-filtering|new-section] → generating 28 FAQs (FAQ-6332…)
+[2026-07-24T07:07:06.444Z] cycle 174 verify: kept 24/28 (dropped 4)
+[2026-07-24T07:12:36.528Z] cycle 174 distributed → 5560 rules · 14/14 agents trained · 0 gate-gaps
+[2026-07-24T07:12:36.530Z] cycle 174 reindex: OK · }

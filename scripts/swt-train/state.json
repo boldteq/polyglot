@@ -1,9 +1,9 @@
 {
   "target": 5040,
   "startedAt": "2026-06-26T08:15:35.244Z",
-  "cyclesRun": 173,
-  "batches": 173,
-  "faqCount": 5536,
+  "cyclesRun": 174,
+  "batches": 174,
+  "faqCount": 5560,
   "slicePointer": 720,
   "consecutiveFailures": 0,
   "log": [
@@ -2555,7 +2555,19 @@
         "edge-cases|new-section",
         "legal-compliance|new-section"
       ]
+    },
+    {
+      "cycle": 174,
+      "ts": "2026-07-24T07:07:06.472Z",
+      "added": 24,
+      "faqTotal": 5560,
+      "slices": [
+        "edge-cases|new-section",
+        "legal-compliance|new-section",
+        "merchandising|new-section",
+        "search-filtering|new-section"
+      ]
     }
   ],
-  "lastAssignedId": 6331
+  "lastAssignedId": 6355
 }
