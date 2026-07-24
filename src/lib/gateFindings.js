@@ -48,14 +48,18 @@ const CANONICAL_GATE_OWNER = {
   'content-quality': 'ink',
   'design-quality': 'drape', 'reference-match': 'drape',
   'analytics-wiring': 'conduit', 'app-conflicts': 'conduit', 'email-triggers': 'conduit',
+  // 2026-07-23/24 — routed in the toolkit from birth so an unrouted gate can never silently turn a
+  // self-healable fix into a human escalation again (that hole is what made #43 rule-pack useless).
+  'rule-pack': 'loom', 'shopify-validate': 'loom', 'schema-authoring': 'loom', 'repo-hygiene': 'loom',
+  'mobile': 'loom', 'link-health': 'loom', 'section-consistency': 'loom',
 };
 
 // Gates owned here but not present in the toolkit's auto-fix table (they are not blind-fixable, yet
 // their defects are still real training signal). Kept separate so the drift test can tell the two apart.
 const EXTRA_GATE_OWNER = {
   'honesty': 'ink', 'seo': 'beacon',
-  'section-consistency': 'loom', 'functionality': 'loom', 'performance': 'loom',
-  'visual-check': 'loom', 'mobile': 'loom', 'imagery': 'loom', 'conversion': 'loom',
+  'functionality': 'loom', 'performance': 'loom',
+  'visual-check': 'loom', 'imagery': 'loom', 'conversion': 'loom',
 };
 
 // Historical report names, so builds captured before the renames still attribute correctly.

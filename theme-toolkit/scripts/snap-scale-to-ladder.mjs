@@ -72,7 +72,9 @@ export function snapCss(src, { type = [], space = [] }, remRoot = 16) {
       touched = true
       return unit === 'rem' ? `${signed / remRoot}rem` : `${signed}px`
     })
-    return touched ? whole.replace(value, newVal) : whole
+    // replacer FUNCTION, not a string: a "$&"/"$1" inside newVal would otherwise expand instead of
+    // being written literally (the class of bug that corrupted mantle.md).
+    return touched ? whole.replace(value, () => newVal) : whole
   })
   return { text, changes, skipped }
 }
