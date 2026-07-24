@@ -19,9 +19,13 @@ jobs:
           # editability gate diff-scopes against the `base` tag — needs full history + tags
           fetch-depth: 0
 
+      # Node 22 (NOT the app's .nvmrc=20): the Shopify CLI theme-check needs 22, and on 20 it goes
+      # SKIP-ENV (inert — reports nothing but doesn't fail), which is exactly how the .theme-check.yml
+      # hole hid for weeks. A client theme repo has no better-sqlite3, so 22 is safe here; only the
+      # Polyglot app CI (.github/workflows/ci.yml) must stay on 20.
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: '22'
 
       - name: Install Shopify CLI
         run: npm install -g @shopify/cli@3
@@ -29,12 +33,65 @@ jobs:
       - name: Install toolkit deps
         run: npm ci --prefix toolkit
 
+      # Guard the gates on THIS repo's real config: a .theme-check.yml with no `extends:` (the hole that
+      # let 43 offenses ship) or a dead rule (ImgLazyLoading) blocks here, before any build trusts it.
+      - name: Gate-fires meta-gate (config not inert)
+        run: node toolkit/scripts/check-gate-fires.mjs
+
       - name: Run static gates
         run: node toolkit/scripts/theme-gates.mjs --static-only
+
+      # A theme-check that went inert (evidence.skipped == 'env') is worse than a failing one — it
+      # reports green while checking nothing. Fail CI if the Liquid linter did not actually run.
+      - name: Assert theme-check actually ran (non-SKIP)
+        if: always()
+        run: |
+          node -e '
+            const fs = require("fs");
+            const p = "gate-reports/code-lint.json";
+            if (!fs.existsSync(p)) { console.error("code-lint.json missing — theme-check gate never ran"); process.exit(1); }
+            const r = JSON.parse(fs.readFileSync(p, "utf-8"));
+            if (r.evidence && r.evidence.skipped === "env") {
+              console.error("theme-check went SKIP-ENV (inert): " + (r.evidence.reason || "")); process.exit(1);
+            }
+            console.log("theme-check ran under " + process.version + " — not inert");
+          '
 
       - name: Upload gate reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gate-reports
+          path: gate-reports/
+
+  # Heavy gates (Lighthouse / axe / functional / Lens) against a REAL preview — the audit's P3.3:
+  # "stop trusting locally-produced evidence for the expensive gates." OPT-IN: a Liquid theme has no
+  # stateless CI preview, so this can't fabricate one — it runs ONLY when the client repo sets a
+  # `THEME_PREVIEW_URL` variable (a persistent preview / theme-preview link). When it isn't set the job
+  # is skipped — it NEVER reports a fake pass on absent infra; the static-gates job above still gates.
+  preview-gates:
+    name: heavy gates on preview URL (Lighthouse/axe/functional/Lens)
+    runs-on: ubuntu-latest
+    if: ${{ vars.THEME_PREVIEW_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Shopify CLI
+        run: npm install -g @shopify/cli@3
+      - name: Install toolkit deps
+        run: npm ci --prefix toolkit
+      # default mode (no --static-only) runs the URL gates when THEME_PREVIEW_URL is present.
+      - name: Run heavy gates against the preview
+        env:
+          THEME_PREVIEW_URL: ${{ vars.THEME_PREVIEW_URL }}
+        run: node toolkit/scripts/theme-gates.mjs
+      - name: Upload preview gate reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-gate-reports
           path: gate-reports/

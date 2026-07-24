@@ -18,6 +18,14 @@ import { LOCK_FILE, readLock, lockShapeErrors, isSingleThemeLock, lockTargetsLiv
 const cwd = process.cwd()
 const die = (code, msg) => { console.error(`theme-push: ${code === 2 ? 'ENV-ERROR' : 'BLOCK'} — ${msg}`); process.exit(code) }
 
+// THEME_PUSH_ALLOW_STALE=1 drops every publish precondition (gate freshness, Lens, CHANGES completeness)
+// — the biggest bypass in the pipeline. It must leave a RECORD, not vanish silently: a `## Waivers`
+// section in CHANGES.md with at least one bullet. Same shape as theme-gates.mjs changesWaives(); kept
+// local since this script imports no shared helper. Reads CHANGES.md relative to cwd (repo root), like below.
+// CHANGES.md `## Waivers` reader + durable waiver logger — shared with theme-gates' waiver check so a
+// bypass is validated + recorded the same way everywhere (lib/waivers.mjs).
+import { readWaiverText, changesHasWaiver, logWaiver } from './lib/waivers.mjs'
+
 const lock = (() => {
   try { return readLock(cwd) } catch (err) { die(2, `${LOCK_FILE} unreadable: ${err.message}`) }
 })()
@@ -57,7 +65,12 @@ for (let i = 0; i < argv.length; i += 1) {
 // SHAs with no aggregate, so a now-clean build looked blocked and a never-coherent tree looked
 // shippable. This is the missing line that binds publish to coherent fresh evidence.
 if (process.env.THEME_PUSH_ALLOW_STALE === '1') {
-  console.warn('theme-push: ⚠ THEME_PUSH_ALLOW_STALE=1 — gate-freshness check SKIPPED. This is an UNVERIFIED publish; record a `## Waivers` entry in CHANGES.md with the reason.')
+  // The bypass is only legitimate WITH a recorded reason. Refuse it when CHANGES.md has no `## Waivers`
+  // entry — today it drops every precondition and leaves no trace, which is exactly how an unverified
+  // build ships and nobody can say why.
+  if (!changesHasWaiver()) die(1, 'THEME_PUSH_ALLOW_STALE=1 drops every publish precondition (gate freshness, Lens, CHANGES completeness) but CHANGES.md has no `## Waivers` section with a bullet. Add a `## Waivers` heading with at least one `- ` entry naming why this publish bypasses the gates, or run `pnpm gates` at HEAD instead of bypassing.')
+  logWaiver('THEME_PUSH_ALLOW_STALE', readWaiverText())
+  console.warn('theme-push: ⚠ THEME_PUSH_ALLOW_STALE=1 — gate-freshness/Lens/CHANGES checks SKIPPED (justified + logged to gate-reports/waivers.jsonl). This is still an UNVERIFIED publish.')
 } else {
   // ── eyes-on precondition: run the Lens visual pass so the RENDERED page was actually looked at ──
   // The #1 root cause of "gates green but the store looks broken" is that the eyes were optional:
@@ -66,7 +79,11 @@ if (process.env.THEME_PUSH_ALLOW_STALE === '1') {
   // step makes Lens MANDATORY + automatic on every publish: capture the live preview, vision-judge
   // every frame, enforce. Set THEME_PUSH_SKIP_LENS=1 only with a CHANGES.md ## Waivers entry.
   if (process.env.THEME_PUSH_SKIP_LENS === '1') {
-    console.warn('theme-push: ⚠ THEME_PUSH_SKIP_LENS=1 — Lens visual pass SKIPPED. The rendered page was NOT looked at; record a `## Waivers` entry in CHANGES.md.')
+    // P3.4: SKIP_LENS bypasses the ONLY check that looks at the rendered pixels — it must be as guarded
+    // as ALLOW_STALE (was a bare warning). Refuse it without a recorded reason, and log the waiver.
+    if (!changesHasWaiver()) die(1, 'THEME_PUSH_SKIP_LENS=1 skips the Lens visual pass — the only gate that looks at the RENDERED page — but CHANGES.md has no `## Waivers` section with a bullet. Add a `## Waivers` heading with a `- ` entry naming why this publish ships without looking at the pixels, or start the preview (`pnpm theme:dev`) and run with THEME_PREVIEW_URL=<url> instead.')
+    logWaiver('THEME_PUSH_SKIP_LENS', readWaiverText())
+    console.warn('theme-push: ⚠ THEME_PUSH_SKIP_LENS=1 — Lens visual pass SKIPPED (justified + logged to gate-reports/waivers.jsonl). The rendered page was NOT looked at.')
   } else {
     const previewUrl = process.env.THEME_PREVIEW_URL || process.env.LENS_PREVIEW_URL || null
     if (!previewUrl) {
