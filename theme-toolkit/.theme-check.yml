@@ -1,7 +1,25 @@
-# Boldteq required rules — source of truth (lumen skill points here). Extends Shopify defaults.
-ImgLazyLoading:
-  enabled: true
-  severity: error
+# Boldteq theme-check config — source of truth (lumen skill points here).
+#
+# 2026-07-23: the header used to CLAIM "Extends Shopify defaults" but there was no `extends:` key, so
+# it silently ran only the 12 hand-picked rules below — the client's own config (which does extend the
+# default) surfaced 43 real offenses this one never saw (UndefinedObject×16, MissingAsset×5,
+# ValidScopedCSSClass×5, ...). Now it genuinely inherits Shopify's recommended ruleset, then tightens
+# the rules Boldteq treats as errors. `recommended` over `all` because `all` adds opinionated style
+# checks with no extra signal on a real theme (measured: same offense count on a clean base).
+extends: theme-check:recommended
+
+# theme-check has no .shopifyignore awareness, so without this it walks the vendored toolkit/ (incl. its
+# node_modules), the committed gate-reports/, and docs/ — burying the real Liquid findings in noise. This
+# is the 2026-07-22 cravinbyandy "lint reads as noise and gets ignored" failure, fixed at the config.
+ignore:
+  - toolkit/**
+  - gate-reports/**
+  - docs/**
+  - node_modules/**
+
+# ImgLazyLoading REMOVED 2026-07-23 — it does not exist in theme-check 2.x (Ruby 1.x only), so declaring
+# it `enabled: true, severity: error` did nothing at all. Loading="lazy" discipline is covered by our own
+# gate #16 static-a11y (a11y.eager-images) instead.
 
 ParserBlockingScript:
   enabled: true

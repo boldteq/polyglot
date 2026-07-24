@@ -1,0 +1,15 @@
+<div class="broken-banner">
+  {{ section.settings.heading | totally_fake_filter }}
+  {% render 'no-such-snippet-at-all' %}
+  {{ product.featured_image | img_url: '300x' }}
+</div>
+
+{% schema %}
+{
+  "name": "Broken banner",
+  "tag": "section",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading" }
+  ]
+}
+{% endschema %}

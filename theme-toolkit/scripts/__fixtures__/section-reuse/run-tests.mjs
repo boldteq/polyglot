@@ -165,5 +165,21 @@ const CUSTOM_FIRST = 'Counts: {reused: 2, configured: 0, extended: 0, custom: 8}
   fs.rmSync(d, { recursive: true, force: true });
 }
 
+// ── missing-map blocks even in Phase A (2026-07-23) ──────────────────────────────────────────
+// A missing map is not a ratio judgement — it means no section was ever CLASSIFIED, and classification
+// is what makes an agent open the blueprint library where the authoring conventions live. On a real
+// 10-day client build that warning was ignored and 16 sections shipped with 0 translation keys.
+// The ratio checks must stay Phase-A: ≥70% reuse is right on Minimog and wrong on Dawn.
+{
+  const d = tmp(); gitBase(d); addSections(d, ['a.liquid']);
+  expect('missing-map BLOCKS with no REUSE_MAP_ENFORCE', { code: 1, mustContain: 'reuse-map.missing' }, run(d, {}));
+  fs.rmSync(d, { recursive: true, force: true });
+}
+{
+  const d = tmp(); writeMap(d, 'Counts: {reused: 1, configured: 0, extended: 2, custom: 0}\n');
+  expect('ratio findings stay warn-only in Phase A', { code: 0, mustContain: 'reuse-map.warn-only' }, run(d, {}));
+  fs.rmSync(d, { recursive: true, force: true });
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

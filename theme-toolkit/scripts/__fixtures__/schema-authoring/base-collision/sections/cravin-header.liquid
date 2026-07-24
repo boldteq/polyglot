@@ -1,0 +1,16 @@
+<header class="cravin-header color-{{ section.settings.color_scheme }}">
+  {%- for link in linklists[section.settings.menu].links -%}
+    <a href="{{ link.url }}">{{ link.title }}</a>
+  {%- endfor -%}
+</header>
+
+{% schema %}
+{
+  "name": "Header",
+  "tag": "header",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.cravin-header.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "link_list", "id": "menu", "label": "t:sections.cravin-header.settings.menu.label", "default": "main-menu" }
+  ]
+}
+{% endschema %}

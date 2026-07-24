@@ -1,0 +1,37 @@
+{{ 'section-guarded-panel.css' | asset_url | stylesheet_tag }}
+
+<div class="guarded-panel color-{{ section.settings.color_scheme }} guarded-panel--{{ section.settings.text_alignment }}">
+  {%- if section.settings.image != blank -%}
+    {{ section.settings.image | image_url: width: 1200 | image_tag: loading: 'lazy' }}
+  {%- else -%}
+    {{ 'image' | placeholder_svg_tag }}
+  {%- endif -%}
+
+  {%- if section.settings.heading != blank -%}
+    <h2 class="guarded-panel__heading">{{ section.settings.heading }}</h2>
+  {%- endif -%}
+
+  {%- unless section.settings.subheading == blank -%}
+    <p class="guarded-panel__sub">{{ section.settings.subheading }}</p>
+  {%- endunless -%}
+
+  <a class="guarded-panel__cta" href="{{ section.settings.link }}">{{ section.settings.cta_label | default: 'Shop now' }}</a>
+</div>
+
+{% schema %}
+{
+  "name": "t:sections.guarded-panel.name",
+  "tag": "section",
+  "class": "section-guarded-panel",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.guarded-panel.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "text_alignment", "id": "text_alignment", "label": "t:sections.guarded-panel.settings.text_alignment.label", "default": "left" },
+    { "type": "image_picker", "id": "image", "label": "t:sections.guarded-panel.settings.image.label" },
+    { "type": "inline_richtext", "id": "heading", "label": "t:sections.guarded-panel.settings.heading.label" },
+    { "type": "text", "id": "subheading", "label": "t:sections.guarded-panel.settings.subheading.label" },
+    { "type": "text", "id": "cta_label", "label": "t:sections.guarded-panel.settings.cta_label.label" },
+    { "type": "url", "id": "link", "label": "t:sections.guarded-panel.settings.link.label" }
+  ],
+  "presets": [{ "name": "t:sections.guarded-panel.presets.name" }]
+}
+{% endschema %}

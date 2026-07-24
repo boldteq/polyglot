@@ -1,0 +1,24 @@
+<div class="gallery-strip color-{{ section.settings.color_scheme }}">
+  <h2>{{ section.settings.heading }}</h2>
+  <p>{{ section.settings.subheading }}</p>
+  <p>{{ section.settings.caption_1 }}</p>
+  <p>{{ section.settings.caption_2 }}</p>
+  <p>{{ section.settings.caption_3 }}</p>
+  <ul>{{ section.settings.quick_links }}</ul>
+</div>
+
+{% schema %}
+{
+  "name": "Gallery strip",
+  "tag": "section",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.gallery-strip.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "text", "id": "heading", "label": "t:sections.gallery-strip.settings.heading.label", "default": "Our story" },
+    { "type": "text", "id": "subheading", "label": "t:sections.gallery-strip.settings.subheading.label" },
+    { "type": "text", "id": "caption_1", "label": "t:sections.gallery-strip.settings.caption_1.label" },
+    { "type": "text", "id": "caption_2", "label": "t:sections.gallery-strip.settings.caption_2.label" },
+    { "type": "text", "id": "caption_3", "label": "t:sections.gallery-strip.settings.caption_3.label" },
+    { "type": "textarea", "id": "quick_links", "label": "t:sections.gallery-strip.settings.quick_links.label", "info": "One per line, comma-separated as Label|URL" }
+  ]
+}
+{% endschema %}

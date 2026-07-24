@@ -119,9 +119,16 @@ function reuseMapTargets() {
   const files = new Set(names)
   for (const n of names) {
     const base = path.basename(n, '.liquid')
-    for (const ext of ['.css', '.css.liquid', '.js']) {
-      const p = `assets/${base}${ext}`
-      if (fs.existsSync(path.resolve(cwd, p))) files.add(p)
+    // `section-<name>.css` is Dawn's own convention and what scripts/new-section.mjs emits, but it was
+    // missing here — so on any repo falling back to the reuse map (no resolvable `base` tag) a section's
+    // stylesheet was never in scope and token drift went unchecked. Proven 2026-07-23: injecting
+    // `color: #ff0000; font-size: 17px; margin: 7px` into assets/section-story-panel.css produced PASS
+    // with 0 findings. Both spellings are now paired.
+    for (const stem of [base, `section-${base}`]) {
+      for (const ext of ['.css', '.css.liquid', '.js']) {
+        const p = `assets/${stem}${ext}`
+        if (fs.existsSync(path.resolve(cwd, p))) files.add(p)
+      }
     }
   }
   return [...files]

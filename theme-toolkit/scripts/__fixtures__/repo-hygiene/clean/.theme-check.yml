@@ -1,0 +1,7 @@
+# clean — theme-check configuration (extends Shopify's default ruleset).
+extends: :default
+
+ignore:
+  - toolkit/
+  - gate-reports/
+  - docs/

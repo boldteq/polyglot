@@ -1,0 +1,16 @@
+<div class="photo-strip color-{{ section.settings.color_scheme }}">
+  <h2>{{ section.settings.heading }}</h2>
+  <p>{{ section.settings.subheading }}</p>
+</div>
+
+{% schema %}
+{
+  "name": "Photo strip",
+  "tag": "section",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.photo-strip.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "text", "id": "heading", "label": "t:sections.photo-strip.settings.heading.label", "default": "Our story" },
+    { "type": "text", "id": "subheading", "label": "t:sections.photo-strip.settings.subheading.label" }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,35 @@
+{{ 'section-meet-andy.css' | asset_url | stylesheet_tag }}
+
+<div class="meet-andy">
+  <img class="meet-andy__img" src="{{ section.settings.image | image_url: width: 900 }}" alt="">
+  <img class="meet-andy__fallback" src="{{ section.settings.fallback_image | asset_url }}" alt="">
+  <h2>{{ section.settings.heading }}</h2>
+  <span class="meet-andy__name">{{ section.settings.name }}</span>
+  <span class="meet-andy__phone">{{ section.settings.phone }}</span>
+</div>
+
+{% schema %}
+{
+  "name": "Meet Andy",
+  "tag": "section",
+  "class": "section-meet-andy",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Portrait image" },
+    { "type": "text", "id": "fallback_image", "label": "Fallback asset filename", "default": "about-andy.jpg" },
+    { "type": "text", "id": "name", "label": "Name", "default": "Anandita Parekh" },
+    { "type": "text", "id": "phone", "label": "Phone (used for local-business schema)" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Meet the founder" },
+    {
+      "type": "select",
+      "id": "badge_position",
+      "label": "Badge position",
+      "info": "Set per Figma 225:1319. See the WCAG 2.2.2 waiver in CHANGES.md before changing it — do NOT re-guess.",
+      "options": [
+        { "value": "left", "label": "Bottom left" },
+        { "value": "right", "label": "Bottom right" }
+      ],
+      "default": "left"
+    }
+  ]
+}
+{% endschema %}

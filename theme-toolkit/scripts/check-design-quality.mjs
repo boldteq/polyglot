@@ -22,6 +22,7 @@
 //
 // Env:
 //   DNA_PACKS_DIR       default ~/.claude/memory/design/ecom/niche-dna-packs
+//   REFERENCE_EXAMPLES_DIR  default ~/.claude/memory/design/ecom/reference-examples (evidence cards)
 //   CONCEPT_MAP         default ~/.claude/memory/design/ecom/component-library-premium/_concept-section-map.json
 //   DESIGN_SPEC         default docs/design/design-spec.md (declares `dna_pack:`)
 //   DESIGN_SYSTEM       default docs/design/design-system.json (font-family cross-check)
@@ -56,6 +57,8 @@ const PACKS_DIR = process.env.DNA_PACKS_DIR || path.join(os.homedir(), '.claude'
 // STRUCTURE layer (never taste). Honors `gate_contract`: rung CUSTOM/LIBRARY with [] sections = intentional
 // custom build (prove presence by match_tokens against the custom section filename, do NOT flag as missing).
 const MAP_FILE = process.env.CONCEPT_MAP || path.join(os.homedir(), '.claude', 'memory', 'design', 'ecom', 'component-library-premium', '_concept-section-map.json')
+// evidence corpus behind a pack's "tuned" claim — reference-examples/<niche>/*.md teardown cards.
+const REF_DIR = process.env.REFERENCE_EXAMPLES_DIR || path.join(os.homedir(), '.claude', 'memory', 'design', 'ecom', 'reference-examples')
 const DESIGN_SPEC = process.env.DESIGN_SPEC || 'docs/design/design-spec.md'
 const DS = process.env.DESIGN_SYSTEM || 'docs/design/design-system.json'
 const BASE_REF = process.env.BASE_REF || 'base'
@@ -121,6 +124,35 @@ function validatePackShape(pack) {
   let schema
   try { schema = JSON.parse(fs.readFileSync(schemaFile, 'utf-8')) } catch { return [] }
   try { return validate(pack, schema) } catch { return [] }
+}
+
+// EVIDENCE BEHIND THE "tuned" CLAIM. `_meta.calibration` is a string a pack author types, and it is the
+// switch that turns this whole gate from advisory to blocking. The promotion rule
+// (reference-examples/README.md step 4) is ≥3 CONVERGING CARDS, but nothing read the cards — so a pack
+// could claim "tuned", start blocking real builds, and be backed by zero measurements. Counted here
+// with the same three conditions as scripts/dna/bulk-extract.mjs promotionVerdict(): a real card file
+// (not `_index`/template), a Source: line that names how it was measured, and no DRAFT marker.
+// Returns null when the corpus isn't on this machine (vendored client repo) — then there is nothing to say.
+const MIN_EVIDENCE_CARDS = 3
+function countEvidenceCards(niche) {
+  if (!fs.existsSync(REF_DIR)) return null
+  const dir = path.join(REF_DIR, nicheToFile(niche).replace(/\.json$/, ''))
+  if (!fs.existsSync(dir)) return { cards: 0, evidence: 0, draft: 0, unsourced: 0, dir }
+  let cards = 0
+  let evidence = 0
+  let draft = 0
+  let unsourced = 0
+  for (const name of fs.readdirSync(dir)) {
+    if (!name.endsWith('.md') || name.startsWith('_')) continue
+    cards += 1
+    let text = ''
+    try { text = fs.readFileSync(path.join(dir, name), 'utf-8') } catch { /* unreadable — counts as no evidence */ }
+    const source = (text.match(/Source:(.*)$/im) || [, ''])[1].replace(/\*/g, '').trim()
+    if (/^\*\*Status:\*\*\s*DRAFT\b/im.test(text)) draft += 1
+    else if (!source) unsourced += 1
+    else evidence += 1
+  }
+  return { cards, evidence, draft, unsourced, dir }
 }
 
 // Deep-merge parent (extends) then overlay (overlay wins). Arrays/scalars overwrite, objects merge.
@@ -272,6 +304,22 @@ function main() {
     }
   }
 
+  // A pack claiming "tuned" must be able to show its work. WARNING, never a blocker: a mislabelled pack
+  // is a pack-authoring defect, and blocking a client build on it would punish the wrong person.
+  let evidenceCards = null
+  if (calibration === 'tuned' && niche) {
+    evidenceCards = countEvidenceCards(niche)
+    if (evidenceCards && evidenceCards.evidence < MIN_EVIDENCE_CARDS) {
+      const extra = [evidenceCards.draft ? `${evidenceCards.draft} still DRAFT` : '', evidenceCards.unsourced ? `${evidenceCards.unsourced} with no Source: line` : ''].filter(Boolean).join(', ')
+      warnings.push({
+        id: 'dq.tuned-evidence-thin',
+        page: nicheToFile(niche),
+        detail: `pack claims calibration="tuned" but only ${evidenceCards.evidence}/${MIN_EVIDENCE_CARDS} sourced non-draft reference cards exist in ${evidenceCards.dir}${extra ? ` (${evidenceCards.cards} card file(s): ${extra})` : ''} — this gate is BLOCKING on taste that isn't evidence-backed. Measure more stores (toolkit/scripts/dna/bulk-extract.mjs), reconcile the cards, or set calibration back to "draft".`,
+        evidence: `${evidenceCards.evidence} evidence card(s)`,
+      })
+    }
+  }
+
   // #19 — baseline floor: an UN-TUNED niche (untuned pack, or no pack at all) still meets a universal
   // premium baseline when BASELINE_ENFORCE=1. Swap to the baseline pack scored AS tuned (reuses every
   // check below); the per-build ## Waivers override (ALLOW_DQ_WAIVER) still applies. A tuned niche pack
@@ -335,7 +383,7 @@ function main() {
   const conceptMap = loadConceptMap()
   const mapLoaded = Object.keys(conceptMap).length > 0
   const themeBase = resolveThemeBase(sectionNames)
-  const evidence = { niche: pack.niche, calibration, enforce, scope: scopeNote, conceptMapStub: !mapLoaded, themeBase, mapConcepts: Object.keys(conceptMap).length }
+  const evidence = { niche: pack.niche, calibration, enforce, scope: scopeNote, conceptMapStub: !mapLoaded, themeBase, mapConcepts: Object.keys(conceptMap).length, evidenceCards }
 
   const reqMin = Number(pack.canonical_components?.required_min ?? 0)
   const conceptList = Array.isArray(pack.canonical_components?.list) ? pack.canonical_components.list : []

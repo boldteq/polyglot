@@ -1,0 +1,31 @@
+{{ 'section-hero-cta.css' | asset_url | stylesheet_tag }}
+
+{%- comment -%} CLEAN: dependents carry visible_if → no-conditional silent; the ref (show_button) exists → visible_if-invalid silent. {%- endcomment -%}
+<div class="hero-cta color-{{ section.settings.color_scheme }}">
+  {%- if section.settings.heading != blank -%}
+    <h2 class="hero-cta__heading">{{ section.settings.heading }}</h2>
+  {%- endif -%}
+  {%- if section.settings.subheading != blank -%}
+    <p class="hero-cta__sub">{{ section.settings.subheading }}</p>
+  {%- endif -%}
+  {%- if section.settings.show_button and section.settings.button_label != blank -%}
+    <a class="hero-cta__btn" href="{{ section.settings.button_link }}">{{ section.settings.button_label }}</a>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:sections.hero-cta.name",
+  "tag": "section",
+  "class": "section-hero-cta",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.hero-cta.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "text", "id": "heading", "label": "t:sections.hero-cta.settings.heading.label" },
+    { "type": "text", "id": "subheading", "label": "t:sections.hero-cta.settings.subheading.label" },
+    { "type": "checkbox", "id": "show_button", "label": "t:sections.hero-cta.settings.show_button.label", "default": true },
+    { "type": "text", "id": "button_label", "label": "t:sections.hero-cta.settings.button_label.label", "visible_if": "{{ section.settings.show_button }}" },
+    { "type": "url", "id": "button_link", "label": "t:sections.hero-cta.settings.button_link.label", "visible_if": "{{ section.settings.show_button }}" }
+  ],
+  "presets": [{ "name": "t:sections.hero-cta.presets.name" }]
+}
+{% endschema %}

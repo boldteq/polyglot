@@ -28,6 +28,9 @@ const BASE_REF = process.env.BASE_REF || 'base'
 const REUSE_MAP = process.env.REUSE_MAP || 'section-reuse-map.md'
 const REQUIRE_SCOPE = process.env.DS_REQUIRE_SCOPE === '1'
 const STRICT = process.env.A11Y_STRICT === '1'
+// Above-the-fold budget for loading="eager" per file. A hero + a logo is normal; a duplicated photo
+// strip forcing eager on 18 <img> is an LCP tax dressed up as a design decision.
+const EAGER_MAX = Number(process.env.A11Y_EAGER_MAX || 3)
 
 const blockers = []
 const warnings = []
@@ -102,7 +105,7 @@ function main() {
       if (fs.existsSync(path.resolve(cwd, sn))) addFile(files, sn)
     }
   }
-  const counts = { imgNoAlt: 0, handler: 0, inputFont: 0, autoplayMedia: 0, motionNoGuard: 0, imgNoDim: 0 }
+  const counts = { imgNoAlt: 0, handler: 0, inputFont: 0, autoplayMedia: 0, motionNoGuard: 0, imgNoDim: 0, nestedInteractive: 0, disclosureNoAria: 0, eagerImages: 0 }
 
   for (const file of files) {
     const raw = read(file)
@@ -147,6 +150,58 @@ function main() {
     for (const m of raw.matchAll(/\|\s*video_tag\b[^%}]*autoplay\s*:\s*true/gi)) {
       if (!/muted\s*:\s*true/i.test(m[0])) { finding('a11y.autoplay-media', `${file}:${lineAt(raw, m.index)}`, `video_tag autoplay:true without muted:true — autoplaying sound is a WCAG 1.4.2 violation. Add muted:true.`, m[0].slice(0, 70)); counts.autoplayMedia += 1 }
     }
+    // 6. NESTED INTERACTIVE CONTROLS (WCAG 4.1.2). A container faking a control (role="button" /
+    //    tabindex) that CONTAINS a real <button>/<a> is unresolvable for AT and traps keyboard users:
+    //    the inner control is reachable but the outer one swallows the same activation.
+    //    Added 2026-07-23 — this gate scanned 25 files and reported 0 findings on a client theme
+    //    shipping <article role="button" tabindex="0"> wrapping a real <button>. Only axe (#5, URL-kind,
+    //    which never ran) had any nested-interactive coverage, so it shipped.
+    for (const m of html.matchAll(/<(\w+)\b[^>]*\brole\s*=\s*["'](button|link|tab|menuitem|switch|checkbox|radio)["'][^>]*>/gi)) {
+      const openTag = m[0]
+      const tagName = m[1].toLowerCase()
+      if (tagName === 'button' || tagName === 'a') continue // a real control carrying an explicit role is fine
+      // Scan forward to this element's close tag (approximate: same-name close, first occurrence).
+      const rest = html.slice(m.index + openTag.length)
+      const closeIdx = rest.search(new RegExp(`</${tagName}\\s*>`, 'i'))
+      const inner = closeIdx === -1 ? rest.slice(0, 2000) : rest.slice(0, closeIdx)
+      const nested = inner.match(/<(button|a|input|select|textarea)\b[^>]*>/i)
+      if (nested) {
+        finding('a11y.nested-interactive', `${file}:${lineAt(html, m.index)}`,
+          `<${tagName} role="${m[2]}"> contains a real <${nested[1].toLowerCase()}> — nested interactive controls (WCAG 4.1.2). Screen readers cannot resolve which control they are on and keyboard activation is ambiguous. Make the container a plain wrapper and leave ONE real control inside, or drop the inner control.`,
+          openTag.slice(0, 80))
+        counts.nestedInteractive += 1
+      }
+    }
+
+    // 7. <details> disclosure with no ARIA state / focus management. Native <details> does expose
+    //    open/closed, so this is a WARN not a block — but a nav drawer built this way has no
+    //    aria-controls, no focus trap and no Escape handler, which is the part AT users actually lose.
+    //    Dawn ships snippets/header-drawer.liquid + assets/details-disclosure.js for exactly this.
+    for (const m of html.matchAll(/<details\b[^>]*>/gi)) {
+      const after = html.slice(m.index, m.index + 400)
+      const isNav = /\b(drawer|menu|nav|burger)\b/i.test(after) || /\b(drawer|menu|nav|burger)\b/i.test(file)
+      if (!isNav) continue
+      const hasAria = /aria-expanded|aria-controls/i.test(after)
+      const hasJs = /details-disclosure|menu-drawer|header-drawer/i.test(raw)
+      if (!hasAria && !hasJs) {
+        add(warnings, 'a11y.disclosure-no-aria', `${file}:${lineAt(html, m.index)}`,
+          `navigation <details> drawer with no aria-expanded/aria-controls and no disclosure JS — no focus trap, no Escape-to-close, focus escapes behind the open drawer. Reuse Dawn's snippets/header-drawer.liquid + assets/details-disclosure.js rather than a bare <details>.`,
+          m[0].slice(0, 70))
+        counts.disclosureNoAria += 1
+      }
+    }
+
+    // 8. loading="eager" past the fold. Every eager image competes with the LCP element for bandwidth.
+    //    A handful above the fold is correct; a duplicated marquee/strip forcing eager on every copy is
+    //    a real LCP cost. Threshold, not a ban — WARN with the count so the tradeoff is visible.
+    const eager = [...html.matchAll(/loading\s*=\s*["']eager["']/gi)]
+    if (eager.length > EAGER_MAX) {
+      add(warnings, 'a11y.eager-images', `${file}:${lineAt(html, eager[0].index)}`,
+        `${eager.length} images forced loading="eager" (threshold ${EAGER_MAX}) — only the above-the-fold LCP image should be eager; the rest steal its bandwidth. Set loading="lazy" below the fold.`,
+        `${eager.length} occurrences`)
+      counts.eagerImages += eager.length
+    }
+
     // 5. keyframe/animation motion with NO prefers-reduced-motion guard (WCAG 2.3.3 / vestibular safety). WARN.
     //    Only the `animation:` shorthand + @keyframes (continuous/decorative motion) — not hover `transition`s.
     const hasMotion = /@keyframes\b/i.test(css) || /\banimation\s*:(?!\s*none)/i.test(css)

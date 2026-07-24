@@ -73,5 +73,90 @@
     "message": "document.write blocks parsing + breaks async — use DOM APIs",
     "owner": "loom",
     "source": "audit-2026-06-27"
+  },
+
+  {
+    "_doc": "── Platform-authoring rules (Training 2.0, 2026-07-23) ──────────────────────────────────────  These enforce shopify-theme-authoring-standard.md. Every pattern below was CALIBRATED against a real 69-section client theme before being added: each one produces ZERO hits on files this build did not add or modify. That matters because until 2026-07-23 this gate had no base-diff scoping and would have judged ~100 vendored Dawn files by our rules — a false BLOCK is as bad as a false pass, and it is why this pack sat at 8 rules for a month. Recalibrate with the probe in the standard doc before changing any pattern."
+  },
+  {
+    "id": "svg-hardcoded-color",
+    "type": "forbid-section-pattern",
+    "pattern": "(fill|stroke)=\"#[0-9a-fA-F]{3,8}\"",
+    "severity": "block",
+    "message": "STD-TOKEN-03 — inline SVG paints a literal colour, so it ignores the merchant's colour scheme. Use currentColor and let the scheme drive it (snippets/enquiry-icon.liquid is the in-repo reference: 0 hardcoded). Gate #3 editability explicitly allowlists fill/stroke OUT of its colour grep, so nothing else catches this.",
+    "owner": "loom",
+    "source": "training-2.0"
+  },
+  {
+    "id": "font-family-literal",
+    "type": "forbid-css-pattern",
+    "pattern": "font-family\\s*:(?![^;}]*(var\\(|inherit|initial|unset))",
+    "severity": "block",
+    "message": "STD-TOKEN-04 — a literal font stack in section CSS pins typography outside the theme's global type settings, so changing the font in admin does nothing here. Bind to var(--font-body-family) / var(--font-heading-family). `inherit`/`initial`/`unset` are allowed (form-control resets).",
+    "owner": "drape",
+    "source": "training-2.0"
+  },
+  {
+    "id": "color-setting-inline",
+    "type": "forbid-section-pattern",
+    "pattern": "style=\"[^\"]*\\{\\{[^}]*colou?r",
+    "severity": "block",
+    "message": "STD-TOKEN-02 — a colour setting piped into an inline style= bypasses the colour-scheme system entirely. Remove the colour setting; wrap the section in color-{{ section.settings.color_scheme }} and use rgb(var(--color-foreground)). Carries no literal, so both gates that scan inline styles miss it by construction.",
+    "owner": "drape",
+    "source": "training-2.0"
+  },
+  {
+    "id": "computed-asset-filename",
+    "type": "forbid-section-pattern",
+    "pattern": "\\|\\s*append:[^%}]*\\.(jpe?g|png|webp|gif|svg)[^%}]*\\|\\s*asset_url",
+    "severity": "block",
+    "message": "STD-IMG-03/STD-IMG-01 — the image filename is COMPUTED (usually from forloop.index) and read out of assets/, so reordering blocks silently swaps photos and the merchant cannot change any of them. The image must come from the block's own image_picker, with placeholder_svg_tag as the empty state — never a bundled JPG.",
+    "owner": "loom",
+    "source": "training-2.0"
+  },
+  {
+    "id": "request-path-active",
+    "type": "forbid-section-pattern",
+    "pattern": "request\\.path",
+    "severity": "warn",
+    "message": "STD-NAV-02 — active-nav state derived from request.path breaks on handles, query strings and localized paths. Dawn compares link.current / link.child_active and sets aria-current=\"page\". (warn, not block: request.path has legitimate uses in canonical/breadcrumb logic — check the call site.)",
+    "owner": "loom",
+    "source": "training-2.0"
+  },
+  {
+    "id": "design-provenance-in-code",
+    "type": "forbid-css-pattern",
+    "pattern": "Figma|CHANGES\\.md|\\b\\d{2,4}:\\d{3,}\\b",
+    "severity": "block",
+    "message": "STD-CMT-02 — Figma node ids, CHANGES.md cross-references and client-decision dates are design provenance, not code explanation. They belong in docs/design/. Shipped CSS should explain a browser quirk or an ordering constraint, nothing else.",
+    "owner": "drape",
+    "source": "training-2.0"
+  },
+  {
+    "id": "nonlatin-dev-comment",
+    "type": "forbid-section-pattern",
+    "pattern": "[\\u0900-\\u097F]|/\\*[^*]*\\b(apne|karo|kare|karna|hisaab|nahi|thoda|kitna|matlab)\\b",
+    "severity": "block",
+    "message": "STD-CMT-03 — a developer note in any language shipped to production. Found live: `/* apne icon size ke hisaab se adjust karo */` inside an inline <style> in a client section. Gate #36 only knows English TODO/FIXME markers, so nothing else catches this.",
+    "owner": "loom",
+    "source": "training-2.0"
+  },
+  {
+    "id": "inline-style-static",
+    "type": "forbid-section-pattern",
+    "pattern": "<style[\\s>](?![\\s\\S]{0,4000}?\\{\\{)",
+    "severity": "block",
+    "message": "STD-CMT-04 — a raw <style> block with no Liquid interpolation is static CSS hiding in a section; it belongs in assets/section-<name>.css. NOTE: {% style %} is CORRECT and required for settings-bound CSS (Dawn uses it in 20+ sections) — this rule only catches the un-interpolated kind.",
+    "owner": "loom",
+    "source": "training-2.0"
+  },
+  {
+    "id": "rgba-literal",
+    "type": "forbid-css-pattern",
+    "pattern": "rgba?\\(\\s*\\d",
+    "severity": "warn",
+    "message": "STD-TOKEN-01 — a literal rgb()/rgba() channel triple is a hardcoded colour the scheme system cannot reach. Use rgb(var(--color-foreground)) / rgba(var(--color-foreground), 0.08). (warn: shadows and overlays are the common legitimate-looking case and need a designer's call, not a blind rewrite.)",
+    "owner": "drape",
+    "source": "training-2.0"
   }
 ]

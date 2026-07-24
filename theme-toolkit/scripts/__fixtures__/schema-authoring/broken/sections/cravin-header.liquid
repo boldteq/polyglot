@@ -1,0 +1,27 @@
+<header class="cravin-header color-{{ section.settings.color_scheme }}">
+  <nav>
+    {%- for block in section.blocks -%}
+      <a href="{{ block.settings.url }}">{{ block.settings.label }}</a>
+    {%- endfor -%}
+  </nav>
+</header>
+
+{% schema %}
+{
+  "name": "t:sections.cravin-header.name",
+  "tag": "header",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.cravin-header.settings.color_scheme.label", "default": "scheme-1" }
+  ],
+  "blocks": [
+    {
+      "type": "nav_link",
+      "name": "t:sections.cravin-header.blocks.nav_link.name",
+      "settings": [
+        { "type": "text", "id": "label", "label": "t:sections.cravin-header.blocks.nav_link.settings.label.label" },
+        { "type": "url", "id": "url", "label": "t:sections.cravin-header.blocks.nav_link.settings.url.label" }
+      ]
+    }
+  ]
+}
+{% endschema %}

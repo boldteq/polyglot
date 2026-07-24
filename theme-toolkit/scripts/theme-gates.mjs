@@ -98,6 +98,15 @@ function writeSummaryMd(dir, selected, results, summary) {
       L.push('')
     }
   }
+  // ## Not enforced on this run (S4 ledger) — every warn-policy gate that RAN, with its reason. A green
+  // header only means the BLOCK-policy gates passed; these warn gates surfaced findings that did NOT block.
+  // Making the un-enforced surface explicit is the whole point: green must never read as "everything judged".
+  const notEnforced = selected.filter(g => cls(g) !== 'skip' && g.enforcement && g.enforcement.policy === 'warn')
+  if (notEnforced.length) {
+    L.push(`## 🟡 Not enforced on this run (${notEnforced.length})`, '', 'These ran in **warn-only** mode — their findings are advisory, not blockers. A PASS above does NOT mean these gates judged the build clean:', '')
+    for (const g of notEnforced) L.push(`- **#${g.number} ${g.name}** — ${g.enforcement.reason}`)
+    L.push('')
+  }
   if (skipped.length) { L.push(`## ⏭️ Skipped / waived (${skipped.length})`, ''); for (const g of skipped) L.push(`- #${g.number} ${g.name} — ${results[g.name].reason || 'skipped'}`); L.push('') }
   if (passed.length) L.push(`## ✅ Passed (${passed.length})`, '', passed.map(g => `#${g.number} ${g.name}`).join(' · '), '')
   fs.writeFileSync(path.join(dir, 'SUMMARY.md'), `${L.join('\n')}\n`)
@@ -129,48 +138,72 @@ const GATES = [
   { name: 'seo', number: 6, stage: 'quality', category: 'Performance & SEO', kind: 'url', runner: 'node', script: 'gate-seo.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'Structured data, canonical + meta tags present — so Google can find + rank the store.' },
   { name: 'social-assets', number: 39, stage: 'quality', category: 'Performance & SEO', kind: 'static', runner: 'node', script: 'check-social-assets.mjs', desc: 'Favicon + social-share (OG/Twitter) images — no broken icon, full preview on shares.' },
   { name: 'link-health', number: 40, stage: 'quality', category: 'Performance & SEO', kind: 'url', runner: 'node', script: 'check-link-health.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'No broken internal links + a real 404 page with a way back — no dead ends.' },
-  { name: 'redirects', number: 25, stage: 'quality', category: 'Performance & SEO', kind: 'static', runner: 'node', script: 'check-redirects.mjs', desc: 'Migration redirect map is safe — no loops / dead targets that lose old URLs + SEO.' },
+  { name: 'redirects', number: 25, stage: 'quality', category: 'Performance & SEO', kind: 'static', runner: 'node', script: 'check-redirects.mjs', enforcement: { policy: 'block', provenBuilds: 1, reason: 'A redirect chain / loop / dead target silently drops old URLs and their SEO — mechanically certain, not advice. Already BLOCK-eligible on publish-grade runs via DS_REQUIRE_SCOPE; graduated to block on every run.', since: '2026-07-23' }, desc: 'Migration redirect map is safe — no loops / dead targets that lose old URLs + SEO.' },
   // ── QUALITY · Code Quality ──
   { name: 'code-lint', number: 2, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'gate-theme-check.mjs', desc: 'Shopify theme-check passes — no Liquid/asset errors or bad-practice warnings.' },
   { name: 'editability', number: 3, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'bash', script: 'gate-editability-greps.sh', desc: 'No hardcoded content — every text/image/color is merchant-editable in the admin.' },
   { name: 'dead-code', number: 11, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-antipatterns.mjs', desc: 'No unused assets, orphan sections, or duplicate files bloating the theme.' },
   { name: 'orchestration', number: 44, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-orchestration.mjs', desc: 'The pipeline graph is coherent — no broken handoff edges, no gate citation points at a missing gate, and the eyes/dispatch gates that stop "skip reads as pass" are all present.' },
   { name: 'gate-integrity', number: 45, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-gate-integrity.mjs', desc: 'A skipped gate is not a passed gate — blocks when a gate reports pass while its scan was skipped (usually a missing `base` tag), so green can never mean "never ran".' },
-  { name: 'reference-match', number: 46, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'check-reference-match.mjs', desc: 'The build matches the reference the client actually sent — the declared component archetype vs the real section type (blocks), plus a vision compare of the rendered frame against the saved reference image. N/A when no reference is registered.' },
+  { name: 'reference-match', number: 46, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'check-reference-match.mjs', enforcement: { policy: 'block', provenBuilds: 1, reason: "The reference is the client's literal ask, not advice. L1 (archetype-vs-section-type) already blocks pre-render; L2 (vision compare of the rendered frame vs the saved reference) graduates to block now — proven on cravinbyandy, where the image-banner-vs-slideshow hero reproduced and blocked. N/A-tolerant: no reference registered = pass.", since: '2026-07-23' }, desc: 'The build matches the reference the client actually sent — the declared component archetype vs the real section type (blocks), plus a vision compare of the rendered frame against the saved reference image. N/A when no reference is registered.' },
   { name: 'layout', number: 22, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-css-layout.mjs', desc: 'No CSS overflow / layout defects (100vw, no-wrap rows) that break the page width.' },
+  { name: 'shopify-validate', number: 49, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-shopify-validate.mjs', desc: "Shopify's OWN validator (@shopify/dev-mcp) judges this build's Liquid — unknown filters, missing snippets, deprecated filters, schema validity. Our other gates enforce rules we wrote; this one enforces Shopify's." },
+  { name: 'schema-authoring', number: 47, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-schema-authoring.mjs', desc: 'The admin panel a merchant actually gets: every section {% schema %} uses t: translation keys, typed settings (image_picker not a filename), blocks instead of pipe-syntax, role-based names, a colour scheme and dynamic alignment — the whole authoring surface no other gate parses.' },
+  { name: 'repo-hygiene', number: 48, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-repo-hygiene.mjs', desc: 'The corpus no rule can see: .theme-check.yml belongs to THIS repo, theme_info is the client\'s not stock Dawn, schema locale keys are complete, and no client photos or third-party brand assets are shipped as theme assets.' },
   // ── QUALITY · Design System ──
   { name: 'design-tokens', number: 8, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-design-system.mjs', desc: 'Colors / spacing / type stay on the design-system scale — no hardcoded hex/px.' },
   { name: 'consistency', number: 9, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-consistency.mjs', desc: 'Store-wide style stays consistent — capped font sizes / weights / radii, no drift.' },
-  { name: 'design-quality', number: 12, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-design-quality.mjs', desc: "Hits the niche's premium taste bar (DNA pack) — looks designed, not generic." },
+  { name: 'design-quality', number: 12, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-design-quality.mjs', enforcement: { policy: 'warn', provenBuilds: 0, reason: 'Enforcement is DATA-DRIVEN, not a global flag: a "tuned" DNA pack already BLOCKS measurable failures (calibration==="tuned"), and BASELINE_ENFORCE=1 blocks against the cross-niche floor. An un-tuned niche pack must stay warn or it blocks builds it cannot yet judge. The global always-on policy stays warn by design.', since: '2026-07-23' }, desc: "Hits the niche's premium taste bar (DNA pack) — looks designed, not generic." },
   { name: 'render-check', number: 14, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-render-wiring.mjs', desc: 'The design tokens actually render on the page, not just declared on paper.' },
-  { name: 'section-reuse', number: 23, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-reuse-map.mjs', desc: '≥70% of sections reuse the theme base before going custom — no over-building.' },
-  { name: 'brand-sync', number: 30, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-ds-cascade.mjs', desc: 'A brand change regenerates the CSS so it cascades everywhere — edit once.' },
+  { name: 'section-reuse', number: 23, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-reuse-map.mjs', enforcement: { policy: 'warn', provenBuilds: 0, reason: 'The reuse RATIO (≥70%) is theme-base-dependent — Minimog is reuse-first but Dawn is custom-first (70-80% custom is expected), so a global ratio block would fail the very custom-first builds the doctrine asks for. Only the ratio stays warn; the missing-reuse-map case already blocks.', since: '2026-07-23' }, desc: '≥70% of sections reuse the theme base before going custom — no over-building.' },
+  { name: 'brand-sync', number: 30, stage: 'quality', category: 'Design System', kind: 'static', runner: 'node', script: 'check-ds-cascade.mjs', enforcement: { policy: 'warn', provenBuilds: 0, reason: 'Cascade-regeneration drift (a brand edit that did not re-emit CSS everywhere) is advisory until proven false-positive-free on ≥2 stores. Still BLOCK-eligible on publish-grade runs via DS_REQUIRE_SCOPE.', since: '2026-07-23' }, desc: 'A brand change regenerates the CSS so it cascades everywhere — edit once.' },
   // ── QUALITY · Visual & Mobile ──
   { name: 'visual-check', number: 18, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'check-visual-truth.mjs', desc: 'Lens vision-judges the real rendered pixels — catches what code checks can\'t.' },
   { name: 'class-d-visual', number: 20, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'gate-class-d-visual.mjs', desc: 'A surface touched by a Class-D micro-change must have fresh, passing Lens evidence — closes the small-fix pixel-verification bypass (2026-07-18 audit). N/A (pass) when no touched surface is declared.' },
   { name: 'section-consistency', number: 19, stage: 'quality', category: 'Visual & Mobile', kind: 'url', runner: 'node', script: 'check-section-cohesion.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'Sections feel like one page — consistent type scale, rhythm, alignment.' },
-  { name: 'mobile', number: 35, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'check-mobile-layout.mjs', desc: 'Mobile-first: thumb-reach CTAs, tap-target sizes, no horizontal scroll.' },
+  { name: 'mobile', number: 35, stage: 'quality', category: 'Visual & Mobile', kind: 'static', runner: 'node', script: 'check-mobile-layout.mjs', enforcement: { policy: 'block', provenBuilds: 1, reason: 'Mobile-first defects (horizontal scroll, sub-min tap targets) are mechanically detectable and lose the majority of traffic. Already BLOCK-eligible on publish-grade runs via DS_REQUIRE_SCOPE; graduated to block on every run.', since: '2026-07-23' }, desc: 'Mobile-first: thumb-reach CTAs, tap-target sizes, no horizontal scroll.' },
   // ── QUALITY · Accessibility ──
   { name: 'accessibility', number: 5, stage: 'quality', category: 'Accessibility', kind: 'url', runner: 'node', script: 'gate-axe.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'Live WCAG check (axe) on the rendered page — usable by everyone, legal-safe.' },
   { name: 'static-a11y', number: 16, stage: 'quality', category: 'Accessibility', kind: 'static', runner: 'node', script: 'check-a11y-static.mjs', desc: 'Pre-deploy a11y in the markup — alt text, labels, tap targets, before it ships.' },
   // ── QUALITY · Commerce & Conversion ──
   { name: 'conversion', number: 7, stage: 'quality', category: 'Commerce & Conversion', kind: 'url', runner: 'node', script: 'gate-conversion.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'CRO mechanics: hero+CTA, working buy-path, trust signals, sticky add-to-cart.' },
   { name: 'price-binding', number: 38, stage: 'quality', category: 'Commerce & Conversion', kind: 'static', runner: 'node', script: 'check-price-binding.mjs', desc: 'Prices come from live Shopify data, never hardcoded — no fraud risk, multi-currency.' },
-  { name: 'imagery', number: 24, stage: 'quality', category: 'Commerce & Conversion', kind: 'static', runner: 'node', script: 'check-media-quality.mjs', desc: 'Image weight / format + art-direction — fast LCP, right crop per device.' },
+  { name: 'imagery', number: 24, stage: 'quality', category: 'Commerce & Conversion', kind: 'static', runner: 'node', script: 'check-media-quality.mjs', enforcement: { policy: 'warn', provenBuilds: 0, reason: 'Art-direction (responsive <picture>/srcset per device crop) is a heuristic about intent; Lens #18 image-art-direction is the authoritative blocker meanwhile. The per-slot weight/format half already blocks. Not yet proven false-positive-free on ≥2 stores — keep art-direction warn until it is.', since: '2026-07-23' }, desc: 'Image weight / format + art-direction — fast LCP, right crop per device.' },
   { name: 'functionality', number: 10, stage: 'quality', category: 'Commerce & Conversion', kind: 'url', runner: 'node', script: 'gate-functional.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'The store actually works — clicks, add-to-cart, no JS / console errors.' },
   // ── QUALITY · Content & Trust ──
   { name: 'honesty', number: 13, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-honesty.mjs', desc: 'Blocks fake reviews / fabricated scarcity / fake countdowns — trustworthy + legal.' },
-  { name: 'content-quality', number: 36, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-placeholder-text.mjs', desc: 'No dev placeholders (lorem / TEST) + copy meets the quality bar.' },
+  { name: 'content-quality', number: 36, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-placeholder-text.mjs', enforcement: { policy: 'block', provenBuilds: 1, reason: 'A dev placeholder (lorem / TEST) in shipped copy is a mechanically-certain defect, never advisory. Already BLOCK-eligible on publish-grade runs via DS_REQUIRE_SCOPE; graduated to block on every run so a placeholder can never ship from a static-only VS Code loop. (The absorbed copy-quality half stays warn — COPY_ENFORCE unset.)', since: '2026-07-23' }, desc: 'No dev placeholders (lorem / TEST) + copy meets the quality bar.' },
   { name: 'rule-pack', number: 43, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-rule-pack.mjs', desc: 'Data-driven rules (team + per-store, JSON) — adds enforcement by appending a rule; auto-grown from real defects.' },
   // ── QUALITY · Localization & Tracking ──
-  { name: 'translations', number: 28, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-locale-completeness.mjs', desc: 'Every text key exists in every locale — no untranslated fallbacks.' },
-  { name: 'app-conflicts', number: 27, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-app-conflicts.mjs', desc: 'No clashing apps (popup wars, duplicate reviews) that break the storefront.' },
-  { name: 'email-triggers', number: 29, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-email-triggers.mjs', desc: 'Every declared lifecycle email actually has its trigger wired, or it never sends.' },
+  { name: 'translations', number: 28, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-locale-completeness.mjs', enforcement: { policy: 'block', provenBuilds: 1, reason: 'A text key missing from a locale file ships an untranslated fallback to real customers. Shopify splits storefront (*.json) and schema (*.schema.json) locale files; completeness across every declared locale is mechanically checkable. Already BLOCK-eligible via DS_REQUIRE_SCOPE; graduated to block on every run.', since: '2026-07-23' }, desc: 'Every text key exists in every locale — no untranslated fallbacks.' },
+  { name: 'app-conflicts', number: 27, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-app-conflicts.mjs', enforcement: { policy: 'warn', provenBuilds: 0, reason: 'App-clash detection (popup wars / duplicate review widgets) is heuristic and store-specific; needs ≥2-store proof before an always-on block. Still BLOCK-eligible on publish-grade runs via DS_REQUIRE_SCOPE.', since: '2026-07-23' }, desc: 'No clashing apps (popup wars, duplicate reviews) that break the storefront.' },
+  { name: 'email-triggers', number: 29, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-email-triggers.mjs', enforcement: { policy: 'warn', provenBuilds: 0, reason: 'Depends on a declared lifecycle-email file that many builds legitimately omit; an always-on block would fire on builds that never claimed lifecycle email. Still BLOCK-eligible on publish-grade runs via DS_REQUIRE_SCOPE.', since: '2026-07-23' }, desc: 'Every declared lifecycle email actually has its trigger wired, or it never sends.' },
   { name: 'analytics-wiring', number: 41, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-analytics-wiring.mjs', desc: 'GA4 / Meta pixel + commerce events wired — revenue is actually tracked.' },
   // ── QUALITY · Legal & Privacy ──
   { name: 'legal-pages', number: 37, stage: 'quality', category: 'Legal & Privacy', kind: 'static', runner: 'node', script: 'check-legal-pages.mjs', desc: 'Privacy / Terms / Refund / Shipping / Contact exist + are linked — launch-required.' },
   { name: 'consent', number: 42, stage: 'quality', category: 'Legal & Privacy', kind: 'static', runner: 'node', script: 'check-consent.mjs', desc: 'GDPR cookie-consent present + not blocking the CTA — compliant for EU/UK/CA.' },
 ]
+
+// ── enforcement graduation (S4) ──────────────────────────────────────────────
+// A warn-capable gate gates its blocking behind an *_ENFORCE flag its own script reads. The manifest's
+// `enforcement.policy` is the DECISION; this table is the WIRING: gate name → the env var that flips it
+// to BLOCK. On spawn, a gate whose manifest says policy:"block" gets its var set to '1' (runOne). So a
+// graduation is one manifest edit — no gate-script change — and #44 (check-orchestration) blocks any
+// warn-capable gate that carries no dated, reasoned `enforcement` object, so warn-only can never be a
+// silent permanent state. The names come from the grep the S4 task ran (`_ENFORCE === '1'`).
+const ENFORCE_ENV = {
+  'reference-match': 'REFERENCE_MATCH_ENFORCE',
+  'content-quality': 'PLACEHOLDER_ENFORCE',
+  'mobile': 'MOBILE_ENFORCE',
+  'translations': 'LOCALE_ENFORCE',
+  'redirects': 'REDIRECTS_ENFORCE',
+  'imagery': 'ART_DIRECTION_ENFORCE',   // the art-direction half absorbed by check-media-quality.mjs
+  'design-quality': 'DQ_FORCE_ENFORCE',
+  'brand-sync': 'DS_CASCADE_ENFORCE',
+  'app-conflicts': 'APP_CONFLICTS_ENFORCE',
+  'email-triggers': 'EMAIL_ENFORCE',
+  'section-reuse': 'REUSE_MAP_ENFORCE',
+}
 
 // Back-compat: old gate names still resolve via --gate <old> and SKIP_<OLD> for one transition.
 // Maps every retired/renamed name → its current gate name. Built from scripts/gate-migration-map.json.
@@ -485,7 +518,12 @@ async function runGates(args) {
   const cap = process.env.GATES_SEQUENTIAL === '1' ? 1 : Math.max(1, Math.min(8, os.cpus?.().length || 4))
   const logs = {}
   const runOne = async ({ gate, scriptPath, reportPath }) => {
-    const child = await runGateProc(gate.runner, [scriptPath], { cwd, env: baseEnv, timeout: 600_000 })
+    // Graduation wiring: a gate the manifest marks policy:"block" is spawned with its *_ENFORCE var set,
+    // so it BLOCKS instead of warns. Per-gate (not baseEnv) so one gate's enforce flag never leaks to
+    // another — each var is read only by its own gate anyway, but scoping it keeps the intent explicit.
+    const enfVar = ENFORCE_ENV[gate.name]
+    const env = (enfVar && gate.enforcement && gate.enforcement.policy === 'block') ? { ...baseEnv, [enfVar]: '1' } : baseEnv
+    const child = await runGateProc(gate.runner, [scriptPath], { cwd, env, timeout: 600_000 })
     let report = null
     try { report = readJson(reportPath) } catch { report = null }
     const code = child.error ? 2 : (child.code ?? 2)
@@ -566,7 +604,7 @@ async function runGates(args) {
 // single source of truth for tooling that must reason about the gate stack (the stack-coherence
 // meta-test, the workspace dashboard). Additive; never read GATES[] by parsing this file's text.
 if (process.argv.includes('--list-json')) {
-  const json = JSON.stringify(GATES.map(g => ({ number: g.number, name: g.name, stage: g.stage, category: g.category, kind: g.kind, runner: g.runner, script: g.script, desc: g.desc })), null, 2)
+  const json = JSON.stringify(GATES.map(g => ({ number: g.number, name: g.name, stage: g.stage, category: g.category, kind: g.kind, runner: g.runner, script: g.script, enforcement: g.enforcement, desc: g.desc })), null, 2)
   // writeSync to fd 1 (not console.log + process.exit) — the manifest now exceeds the ~8KB stdout
   // pipe-flush boundary, so an async console.log gets TRUNCATED when process.exit() fires first.
   fs.writeSync(1, json + '\n')

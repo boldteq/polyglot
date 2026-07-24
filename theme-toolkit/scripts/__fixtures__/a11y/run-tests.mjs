@@ -58,5 +58,36 @@ console.log('case (c) violations under A11Y_STRICT=1 → expect exit 1 with bloc
   for (const id of EXPECT) { if (ids.has(id)) pass(`blocker present: ${id}`); else fail(`missing blocker: ${id} (saw ${[...ids].join(', ')})`) }
 }
 
+// ── authoring checks (2026-07-23) ────────────────────────────────────────────────────────────
+// These three shipped uncaught on a real client theme while this gate reported scanned:25 blockers:0.
+// Nested-interactive existed only in axe (#5), which is URL-kind and never ran at the static stage.
+const AUTHORING = ['a11y.nested-interactive', 'a11y.disclosure-no-aria', 'a11y.eager-images']
+
+console.log('case (d) authoring defects → nested interactive + bare nav <details> + eager flood')
+{
+  const { code, report } = runGate(path.join(HERE, 'authoring'))
+  if (code === 0) pass('exit 0 (advisory by default)')
+  else fail(`expected exit 0, got ${code}`)
+  const ids = new Set((report?.warnings || []).map(w => w.id))
+  for (const id of AUTHORING) { if (ids.has(id)) pass(`warning present: ${id}`); else fail(`missing warning: ${id} (saw ${[...ids].join(', ')})`) }
+}
+
+console.log('case (e) the CORRECT forms → none of the three may fire (a false BLOCK is as bad as a false pass)')
+{
+  const { code, report } = runGate(path.join(HERE, 'authoring-clean'))
+  if (code === 0) pass('exit 0')
+  else fail(`expected exit 0, got ${code}`)
+  const ids = new Set((report?.warnings || []).map(w => w.id))
+  for (const id of AUTHORING) { if (!ids.has(id)) pass(`no false positive: ${id}`); else fail(`FALSE POSITIVE: ${id} fired on the correct form`) }
+}
+
+console.log('case (f) nested-interactive BLOCKS under A11Y_STRICT=1')
+{
+  const { code, report } = runGate(path.join(HERE, 'authoring'), { A11Y_STRICT: '1' })
+  const ids = new Set((report?.blockers || []).map(b => b.id))
+  if (code === 1 && ids.has('a11y.nested-interactive')) pass('exit 1 with a11y.nested-interactive')
+  else fail(`expected exit 1 with a11y.nested-interactive, got ${code} (${[...ids].join(', ')})`)
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)

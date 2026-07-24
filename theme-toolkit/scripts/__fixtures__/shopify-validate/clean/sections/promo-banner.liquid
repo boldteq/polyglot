@@ -1,0 +1,23 @@
+<div class="promo-banner color-{{ section.settings.color_scheme }}">
+  {%- if section.settings.heading != blank -%}
+    <h2 class="promo-banner__heading">{{ section.settings.heading }}</h2>
+  {%- endif -%}
+  {%- if section.settings.image != blank -%}
+    {{ section.settings.image | image_url: width: 1200 | image_tag: loading: 'lazy', widths: '400, 800, 1200' }}
+  {%- else -%}
+    {{ 'image' | placeholder_svg_tag: 'placeholder-svg' }}
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Promo banner",
+  "tag": "section",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "Color scheme", "default": "scheme-1" },
+    { "type": "text", "id": "heading", "label": "Heading" },
+    { "type": "image_picker", "id": "image", "label": "Image" }
+  ],
+  "presets": [{ "name": "Promo banner" }]
+}
+{% endschema %}

@@ -79,5 +79,83 @@ function runGate(themeDir) {
   else bad(`(e) expected block exit 1 with rule.need-skip-link, got ${code}`)
 }
 
+// ── build-scope cases (2026-07-23) ────────────────────────────────────────────────────────────
+// Until this gate diffed against the vendored base it judged Shopify's ~100 Dawn files by our rules,
+// so a rule tuned on our sections fired on theirs and the pack stayed frozen at 8 rules. These cases
+// hold the fix: a forbid-rule must see only what THIS build added or modified, while a require-rule
+// must still see the whole theme (it asks "does the theme have X anywhere").
+function git(dir, args) { return spawnSync('git', args, { cwd: dir, encoding: 'utf-8' }) }
+
+function makeGitTheme({ baseSections = {}, buildSections = {}, storePack = null }) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rulepack-git-'))
+  fs.mkdirSync(path.join(dir, 'sections'), { recursive: true })
+  git(dir, ['init', '-q'])
+  git(dir, ['config', 'user.email', 't@t.t']); git(dir, ['config', 'user.name', 't'])
+  for (const [n, b] of Object.entries(baseSections)) fs.writeFileSync(path.join(dir, 'sections', n), b)
+  git(dir, ['add', '-A']); git(dir, ['commit', '-qm', 'vendor base'])
+  git(dir, ['tag', 'base'])
+  for (const [n, b] of Object.entries(buildSections)) fs.writeFileSync(path.join(dir, 'sections', n), b)
+  if (storePack) {
+    fs.mkdirSync(path.join(dir, 'docs', 'brand'), { recursive: true })
+    fs.writeFileSync(path.join(dir, 'docs', 'brand', 'rule-pack.json'), JSON.stringify(storePack))
+  }
+  git(dir, ['add', '-A']); git(dir, ['commit', '-qm', 'build work'])
+  return dir
+}
+
+const FORBID = [{ id: 'no-inline-style', type: 'forbid-section-pattern', pattern: '<style', severity: 'block', message: 'inline style' }]
+
+// (f) the violation lives ONLY in a vendored file → out of scope → pass
+{
+  const d = makeGitTheme({ baseSections: { 'dawn-hero.liquid': '<style>.a{}</style>' }, buildSections: { 'ours.liquid': '<p>clean</p>' }, storePack: FORBID })
+  const { code, report } = runGate(d)
+  if (code === 0 && report?.evidence?.scope === 'build-diff') ok('(f) vendored-only violation → out of scope → pass')
+  else bad(`(f) expected pass with scope=build-diff, got ${code} scope=${report?.evidence?.scope} blockers=${report?.blockers?.map(b => b.id).join(',')}`)
+}
+
+// (g) the same violation in a file THIS build added → in scope → block
+{
+  const d = makeGitTheme({ baseSections: { 'dawn-hero.liquid': '<p>vendor</p>' }, buildSections: { 'ours.liquid': '<style>.a{}</style>' }, storePack: FORBID })
+  const { code, report } = runGate(d)
+  if (code === 1 && report.blockers.some((b) => b.id === 'rule.no-inline-style')) ok('(g) build-added violation → in scope → block')
+  else bad(`(g) expected block, got ${code}`)
+}
+
+// (h) a MODIFIED vendor file is in scope too — the team edits stock Dawn sections and adds
+//     non-conforming code there; basename filtering would have missed exactly this.
+{
+  const d = makeGitTheme({ baseSections: { 'dawn-hero.liquid': '<p>vendor</p>' }, buildSections: { 'dawn-hero.liquid': '<p>vendor</p><style>.a{}</style>' }, storePack: FORBID })
+  const { code } = runGate(d)
+  if (code === 1) ok('(h) modified vendor file → in scope → block')
+  else bad(`(h) expected block on a modified vendor file, got ${code}`)
+}
+
+// (i) require-* still sees the whole theme — scoping must not make an absent-anywhere check pass
+{
+  const pack = [{ id: 'need-skip-link', type: 'require-pattern', pattern: 'skip-to-content', severity: 'block' }]
+  const d = makeGitTheme({ baseSections: { 'dawn-hero.liquid': '<p>vendor</p>' }, buildSections: { 'ours.liquid': '<p>x</p>' }, storePack: pack })
+  const { code, report } = runGate(d)
+  if (code === 1 && report.blockers.some((b) => b.id === 'rule.need-skip-link')) ok('(i) require-pattern unaffected by build scope')
+  else bad(`(i) require-pattern was wrongly scoped away, got ${code}`)
+}
+
+// (j) appliesTo:"all" opts a forbid-rule back into whole-theme scanning
+{
+  const pack = [{ ...FORBID[0], appliesTo: 'all' }]
+  const d = makeGitTheme({ baseSections: { 'dawn-hero.liquid': '<style>.a{}</style>' }, buildSections: { 'ours.liquid': '<p>clean</p>' }, storePack: pack })
+  const { code } = runGate(d)
+  if (code === 1) ok('(j) appliesTo:"all" scans vendored files too')
+  else bad(`(j) expected block with appliesTo:all, got ${code}`)
+}
+
+// (k) no base tag → cannot scope → still scans, but says so out loud rather than passing quietly
+{
+  const d = makeTheme({ sections: { 'ours.liquid': '<style>.a{}</style>' }, storePack: FORBID })
+  const { code, report } = runGate(d)
+  const warned = (report?.warnings || []).some((w) => w.id === 'rule-pack.scope-unresolved')
+  if (code === 1 && warned) ok('(k) unresolvable base → warns scope-unresolved, does not silently narrow')
+  else bad(`(k) expected block + scope-unresolved warning, got ${code} warned=${warned}`)
+}
+
 console.log(failures ? `\n  rule-pack: ${failures} CASE(S) FAILED` : '\n  rule-pack: ALL CASES PASS')
 process.exit(failures ? 1 : 0)

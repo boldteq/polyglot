@@ -5,6 +5,7 @@
 //   (a) CONFORMANT theme + TUNED pack             → exit 0 (pass)
 //   (b) DRIFTED theme  + TUNED pack               → exit 1 (block) with the expected blocker ids
 //   (c) DRIFTED theme  + SEED pack (calibration)  → exit 0 with warnings incl. dq.pack-not-tuned
+//   (d) TUNED pack backed by <3 evidence cards    → exit 0 with dq.tuned-evidence-thin (never blocks)
 //
 // Run (Node 20): node scripts/__fixtures__/design-quality/run-tests.mjs
 // Exit: 0 = all cases pass · 1 = a case failed.
@@ -29,6 +30,8 @@ function runGate(themeDir, extraEnv = {}) {
   const env = {
     ...process.env,
     DNA_PACKS_DIR: PACKS_DIR,
+    // pin the evidence corpus to the fixture so the suite never reads (or depends on) the real brain
+    REFERENCE_EXAMPLES_DIR: path.join(HERE, 'reference-examples'),
     REPORT_DIR: reportDir,
     BASE_REF: '__no_such_base__', // force the reuse-map scope path (no git base in the fixture)
     // unset inherited env that could perturb the run
@@ -85,6 +88,36 @@ console.log('case (c) drifted theme + seed pack → expect exit 0 with dq.pack-n
   }
   if ((report?.blockers || []).length === 0) pass('zero blockers (seed pack)')
   else fail(`expected zero blockers, saw ${report.blockers.map(b => b.id).join(', ')}`)
+}
+
+// ── (d) tuned pack with thin evidence → warn, never block ───────────────────
+// The defect this catches: `_meta.calibration` is a hand-typed string, so a pack can switch this gate
+// to BLOCKING with no measured cards behind it. The thin corpus holds 3 card files of which only 1 is
+// evidence (one is DRAFT, one has a bare `Source:`) — proving files are not counted as evidence.
+console.log('case (d) tuned pack + <3 evidence cards → expect dq.tuned-evidence-thin warning')
+{
+  const { code, report } = runGate(conformant, { REFERENCE_EXAMPLES_DIR: path.join(HERE, 'reference-examples-thin') })
+  const warn = (report?.warnings || []).find(w => w.id === 'dq.tuned-evidence-thin')
+  if (code === 0) pass('exit 0 — an unbacked "tuned" claim warns, it never blocks the build')
+  else fail(`expected exit 0, got ${code}; blockers=${JSON.stringify(report?.blockers?.map(b => b.id))}`)
+  if (warn) pass('warning present: dq.tuned-evidence-thin')
+  else fail(`missing dq.tuned-evidence-thin (saw ${(report?.warnings || []).map(w => w.id).join(', ') || 'none'})`)
+  if (warn && /\b1\/3\b/.test(warn.detail)) pass('warning reports the real count (1/3)')
+  else fail(`expected "1/3" in the detail, got: ${warn?.detail || '(no warning)'}`)
+  const ec = report?.evidence?.evidenceCards
+  if (ec && ec.cards === 3 && ec.evidence === 1 && ec.draft === 1 && ec.unsourced === 1) pass('evidence records cards=3 evidence=1 draft=1 unsourced=1')
+  else fail(`unexpected evidenceCards: ${JSON.stringify(ec)}`)
+}
+
+// ── (e) tuned pack with a full corpus → no evidence warning ─────────────────
+console.log('case (e) tuned pack + 3 evidence cards → expect NO dq.tuned-evidence-thin')
+{
+  const { report } = runGate(conformant)
+  const ids = new Set((report?.warnings || []).map(w => w.id))
+  if (!ids.has('dq.tuned-evidence-thin')) pass('no false positive on a properly backed pack')
+  else fail('dq.tuned-evidence-thin fired on a pack with 3 sourced non-draft cards')
+  if (report?.evidence?.evidenceCards?.evidence === 3) pass('_index.md is not counted as a card (evidence=3)')
+  else fail(`expected evidence=3, got ${JSON.stringify(report?.evidence?.evidenceCards)}`)
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)

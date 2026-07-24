@@ -1,0 +1,27 @@
+{{ 'section-restricted-hero.css' | asset_url | stylesheet_tag }}
+
+{%- comment -%} FIRES schema.enabled-on-misuse: both enabled_on and disabled_on set (docs allow only one). {%- endcomment -%}
+<div class="restricted-hero color-{{ section.settings.color_scheme }}">
+  {%- if section.settings.heading != blank -%}
+    <h2 class="restricted-hero__heading">{{ section.settings.heading }}</h2>
+  {%- endif -%}
+  {%- if section.settings.subheading != blank -%}
+    <p class="restricted-hero__sub">{{ section.settings.subheading }}</p>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:sections.restricted-hero.name",
+  "tag": "section",
+  "class": "section-restricted-hero",
+  "enabled_on": { "templates": ["index"] },
+  "disabled_on": { "groups": ["footer"] },
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.restricted-hero.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "text", "id": "heading", "label": "t:sections.restricted-hero.settings.heading.label" },
+    { "type": "text", "id": "subheading", "label": "t:sections.restricted-hero.settings.subheading.label" }
+  ],
+  "presets": [{ "name": "t:sections.restricted-hero.presets.name" }]
+}
+{% endschema %}

@@ -29,6 +29,17 @@ export const CODE_GATE_OWNER = {
   'analytics-wiring': 'conduit', // #41 GA4/Meta events wired
   'app-conflicts': 'conduit', // #27 clashing apps
   'email-triggers': 'conduit',// #29 lifecycle triggers wired
+  // 2026-07-23 — #43 rule-pack was unrouted, so every rule appended to team-default.json produced a
+  // human escalation instead of a self-healed fix. That silently destroyed the premise of the whole
+  // "enforcing a guideline = appending a JSON line" surface. The two new authoring gates are routed
+  // from birth so the same hole cannot reopen.
+  'rule-pack': 'loom',        // #43 data-driven team/store rules (forbid-text/css/section patterns)
+  'shopify-validate': 'loom', // #49 Shopify's own validator — unknown filter/missing snippet/deprecated filter
+  'schema-authoring': 'loom', // #47 {% schema %} shape: t: keys, typed settings, blocks, role naming
+  'repo-hygiene': 'loom',     // #48 .theme-check.yml, theme_info, schema locales, asset ownership
+  'mobile': 'loom',           // #35 thumb-reach / tap-target / horizontal scroll — all markup+CSS
+  'link-health': 'loom',      // #40 broken internal links + a real 404 route
+  'section-consistency': 'loom', // #19 type scale / rhythm / alignment drift across sections
 }
 
 // Gates that ALWAYS escalate — the fix needs real content/assets/claims/decisions, or is a security
@@ -44,8 +55,12 @@ export const ESCALATE_GATES = new Set([
 
 // Per-check escape hatch: a finding whose id smells like a real-asset / honesty / legal / money need
 // escalates EVEN inside an otherwise code-fixable gate (e.g. render-check `rw.placeholder-imagery`).
+// `content-image-in-assets` / `thirdparty-brand-asset` / `committed-binary` are routed here DELIBERATELY:
+// gate #48 is owned by loom, but the remediation is porter uploading real photos to Shopify Files and a
+// human deciding what a trademarked banner may do. An autofix pass that "resolves" them by deleting the
+// client's photography would be the worst possible outcome, so they escalate despite having a code owner.
 export const ESCALATE_CHECK_RE =
-  /real[-_]?asset|placeholder[-_]?imagery|missing[-_]?(image|photo|asset|product)|brand[-_.]?name|founder|press|testimonial|award|clinical|fabricat|scarcity|countdown|unsourced|efficacy|\binci\b|legal|privacy|refund|payment|checkout|irreversible|secret|token[-_]?leak/i
+  /real[-_]?asset|placeholder[-_]?imagery|missing[-_]?(image|photo|asset|product)|content[-_]?image|thirdparty[-_]?brand|committed[-_]?binary|brand[-_.]?name|founder|press|testimonial|award|clinical|fabricat|scarcity|countdown|unsourced|efficacy|\binci\b|legal|privacy|refund|payment|checkout|irreversible|secret|token[-_]?leak/i
 
 // PURE. Given a finding {gate, check}, decide who fixes it (a code owner) or that it ESCALATES.
 // → { fixable:true, owner } | { fixable:false, reason }

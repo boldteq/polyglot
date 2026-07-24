@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { auditGraph, auditReportIdentity, stripComments, countWriteReportCalls } from '../../check-orchestration.mjs'
+import { auditGraph, auditReportIdentity, auditEnforcement, stripComments, countWriteReportCalls } from '../../check-orchestration.mjs'
 
 let failures = 0
 const ok = (m) => console.log('  PASS  ' + m)
@@ -141,6 +141,56 @@ console.log('\nreport identity — against the REAL live manifest')
     ? ok(`all ${read} live gate scripts were actually inspected`) : bad(`only ${read}/${man.length} gate scripts read`)
   r.blockers.length === 0
     ? ok('every live gate writes its report under its manifest name') : bad(`invisible reports: ${r.blockers.map(b => `${b.page} (${b.evidence})`).join(', ')}`)
+}
+
+console.log('\nenforcement graduation — a warn-capable gate must carry a dated, reasoned enforcement object')
+{
+  // A gate is warn-capable if its source (or an absorbed sub-gate's source) reads an *_ENFORCE flag.
+  const SRC = {
+    'warn-cap.mjs': "const ENFORCE = process.env.FOO_ENFORCE === '1'\nwriteReport('g', 1, {})",
+    'plain.mjs': "const x = 1\nwriteReport('g', 1, {})",
+    'merged.mjs': "runAbsorbed([{ script: 'check-sub.mjs', report: 'sub' }], { cwd })",
+    'check-sub.mjs': "const E = process.env.BAR_ENFORCE === '1'",
+    'commented.mjs': "// a note mentioning FOO_ENFORCE === '1' only inside a comment\nconst x = 1",
+  }
+  const read = (s) => (s in SRC ? SRC[s] : null)
+  const one = (gate) => auditEnforcement([gate], read)
+  const okEnf = { policy: 'block', provenBuilds: 1, reason: 'proven on a real build', since: '2026-07-23' }
+
+  has(one({ number: '1', name: 'g', script: 'warn-cap.mjs' }).blockers, 'orch.warn-only-unreasoned')
+    ? ok('warn-capable gate with NO enforcement object → orch.warn-only-unreasoned') : bad('a warn-capable gate with no enforcement escaped')
+  one({ number: '1', name: 'g', script: 'warn-cap.mjs', enforcement: okEnf }).blockers.length === 0
+    ? ok('warn-capable gate with a dated, reasoned enforcement object is clean') : bad('false block on a reasoned enforcement object')
+  one({ number: '1', name: 'g', script: 'plain.mjs' }).blockers.length === 0
+    ? ok('a gate with no *_ENFORCE flag is not required to declare enforcement') : bad('false block on a non-warn-capable gate')
+  one({ number: '1', name: 'g', script: 'commented.mjs' }).blockers.length === 0
+    ? ok('an *_ENFORCE flag mentioned only in a comment does not trip warn-capability') : bad('a commented flag falsely tripped warn-capability')
+  has(one({ number: '1', name: 'g', script: 'merged.mjs' }).blockers, 'orch.warn-only-unreasoned')
+    ? ok('warn-capability follows a runAbsorbed sub-gate (imagery→art-direction, content-quality→copy-quality)') : bad('a merged gate absorbing a warn-capable sub-gate was not detected')
+  has(one({ number: '1', name: 'g', script: 'warn-cap.mjs', enforcement: { policy: 'warn', reason: '   ', since: '2026-07-23' } }).blockers, 'orch.warn-only-unreasoned')
+    ? ok('an empty enforcement reason → orch.warn-only-unreasoned') : bad('an empty enforcement reason escaped')
+  has(one({ number: '1', name: 'g', script: 'warn-cap.mjs', enforcement: { policy: 'warn', reason: 'x', since: 'soon' } }).blockers, 'orch.warn-only-unreasoned')
+    ? ok('a non-date since → orch.warn-only-unreasoned') : bad('a bad since date escaped')
+}
+
+console.log('\nenforcement graduation — against the REAL live manifest')
+{
+  // The regression that matters: the 13 warn-only gates must not be able to sit un-enforced silently.
+  const HERE = path.dirname(fileURLToPath(import.meta.url))
+  const SCRIPTS = path.resolve(HERE, '..', '..')
+  const man = JSON.parse(execFileSync(process.execPath, [path.join(SCRIPTS, 'theme-gates.mjs'), '--list-json'], { encoding: 'utf-8' }))
+    .map((g) => ({ number: String(g.number), name: String(g.name), script: g.script, enforcement: g.enforcement }))
+  const readSrc = (sc) => { try { return fs.readFileSync(path.join(SCRIPTS, sc), 'utf-8') } catch { return null } }
+  // guard the guard: STRIP enforcement from the live manifest → the check MUST now block ≥11 gates. This
+  // proves warn-capable gates genuinely exist in the stack, so "0 blockers WITH enforcement" is a real
+  // pass and not vacuous (the source-scan actually found the *_ENFORCE flags).
+  const stripped = man.map(g => ({ number: g.number, name: g.name, script: g.script }))
+  const rStripped = auditEnforcement(stripped, readSrc)
+  rStripped.blockers.length >= 11
+    ? ok(`stripping enforcement surfaces ${rStripped.blockers.length} warn-capable live gates (guard is not vacuous)`) : bad(`stripping enforcement surfaced only ${rStripped.blockers.length} warn-capable gates — expected ≥11`)
+  const r = auditEnforcement(man, readSrc)
+  r.blockers.length === 0
+    ? ok('every warn-capable live gate carries a dated, reasoned enforcement object') : bad(`unreasoned warn-only gate(s): ${r.blockers.map(b => `${b.page} (${b.detail.slice(0, 40)})`).join(', ')}`)
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} FAILED`)

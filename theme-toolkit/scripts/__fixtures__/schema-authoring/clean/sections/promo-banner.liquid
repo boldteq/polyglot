@@ -1,0 +1,41 @@
+{{ 'section-promo-banner.css' | asset_url | stylesheet_tag }}
+
+<div class="promo-banner color-{{ section.settings.color_scheme }}" style="text-align: {{ section.settings.text_alignment }}">
+  {%- if section.settings.image != blank -%}
+    {{ section.settings.image | image_url: width: 1200 | image_tag: loading: 'lazy' }}
+  {%- else -%}
+    {{ 'image' | placeholder_svg_tag }}
+  {%- endif -%}
+  {%- if section.settings.heading != blank -%}
+    <h2 class="promo-banner__heading">{{ section.settings.heading }}</h2>
+  {%- endif -%}
+  {%- if section.settings.subheading != blank -%}
+    <p class="promo-banner__sub">{{ section.settings.subheading }}</p>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:sections.promo-banner.name",
+  "tag": "section",
+  "class": "section-promo-banner",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.promo-banner.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "text_alignment", "id": "text_alignment", "label": "t:sections.promo-banner.settings.text_alignment.label", "default": "center" },
+    { "type": "image_picker", "id": "image", "label": "t:sections.promo-banner.settings.image.label" },
+    { "type": "inline_richtext", "id": "heading", "label": "t:sections.promo-banner.settings.heading.label" },
+    { "type": "text", "id": "subheading", "label": "t:sections.promo-banner.settings.subheading.label" },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "t:sections.promo-banner.settings.layout.label",
+      "options": [
+        { "value": "image_first", "label": "t:sections.promo-banner.settings.layout.options__1" },
+        { "value": "text_first", "label": "t:sections.promo-banner.settings.layout.options__2" }
+      ],
+      "default": "image_first"
+    }
+  ],
+  "presets": [{ "name": "t:sections.promo-banner.presets.name" }]
+}
+{% endschema %}

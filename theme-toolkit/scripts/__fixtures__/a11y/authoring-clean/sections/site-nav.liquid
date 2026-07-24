@@ -1,0 +1,10 @@
+{% schema %}{ "name": "Site nav", "settings": [] }{% endschema %}
+<script src="{{ 'details-disclosure.js' | asset_url }}" defer="defer"></script>
+<header class="site-nav">
+  <details-disclosure>
+    <details class="site-nav__drawer">
+      <summary class="site-nav__burger" aria-expanded="false" aria-controls="MobileNav" aria-label="Menu">Menu</summary>
+      <nav id="MobileNav" aria-label="Mobile"><a href="/shop">Shop</a></nav>
+    </details>
+  </details-disclosure>
+</header>

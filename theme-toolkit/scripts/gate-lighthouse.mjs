@@ -34,13 +34,17 @@ const FORM_FACTORS = ['mobile', 'desktop']
 const REDIRECT_STATUSES = [301, 302, 303, 307, 308]
 const DEP_HINT = 'npm ci --prefix toolkit'
 
-// budget metric key → lighthouse audit id
+// budget metric key → lighthouse audit id.
+// inp_ms is deliberately absent: a Lighthouse *navigation* run performs no
+// interactions, so it emits no interaction-to-next-paint audit. The budget
+// declares it measured:false and the gate records it as such; mapping it here
+// was dead wiring that would have produced a permanent "not measured" warning
+// the day anyone flipped that flag. tbt_ms is the lab proxy for INP.
 const METRIC_AUDITS = {
   lcp_ms: 'largest-contentful-paint',
   cls: 'cumulative-layout-shift',
   tbt_ms: 'total-blocking-time',
   fcp_ms: 'first-contentful-paint',
-  inp_ms: 'interaction-to-next-paint',
 }
 
 function finish(code, data) {

@@ -93,13 +93,28 @@ function newSectionsSinceBase() {
   } catch { return null }
 }
 
+// `reuse-map.missing` is exempt from the Phase-A downgrade (2026-07-23). It is not a ratio judgement —
+// it is the switch that decides whether a section gets CLASSIFIED at all, and classification is what
+// makes an agent open custom-section-blueprint-library.md. Measured: no reuse map was ever written on a
+// 10-day client build, so no section was ever classified, so the blueprint library (which states the
+// `t:`-keys-in-locales rule verbatim) was never opened, so 16 sections shipped with zero translation
+// keys. A warning bought nine days of silence. The RATIO checks stay Phase-A: "≥70% reuse" is correct
+// on Minimog and wrong on Dawn (custom-first, 70-80% custom expected), so blocking on them would be a
+// false BLOCK — and a false BLOCK is as bad as a false pass.
+const ALWAYS_BLOCK = new Set(['reuse-map.missing'])
+
 function finish(envError) {
   // Phase A (warn-only): downgrade every blocker to a warning so the gate surfaces findings
   // but never blocks a build until it's proven on ≥2 stores (REUSE_MAP_ENFORCE=1 flips to block).
   if (!ENFORCE && blockers.length) {
-    warnings.push(...blockers)
-    warnings.push({ id: 'reuse-map.warn-only', page: REUSE_MAP, detail: 'Phase A warn-only — set REUSE_MAP_ENFORCE=1 to BLOCK on the above', evidence: '' })
+    const kept = blockers.filter(b => ALWAYS_BLOCK.has(b.id))
+    const downgraded = blockers.filter(b => !ALWAYS_BLOCK.has(b.id))
+    if (downgraded.length) {
+      warnings.push(...downgraded)
+      warnings.push({ id: 'reuse-map.warn-only', page: REUSE_MAP, detail: 'Phase A warn-only — set REUSE_MAP_ENFORCE=1 to BLOCK on the above', evidence: '' })
+    }
     blockers.length = 0
+    blockers.push(...kept)
   }
   const pass = !envError && blockers.length === 0
   writeReport('section-reuse', 23, {

@@ -1,1 +1,105 @@
-{"version":1,"pages":[{"id":"home","path":"/"},{"id":"pdp","path":"/products/{{first_product_handle}}"},{"id":"collection","path":"/collections/{{first_collection_handle}}"},{"id":"cart","path":"/cart"},{"id":"search","path":"/search?q=test"}],"thresholds":{"mobile":{"lcp_ms":{"good":2500,"fail":4000},"cls":{"good":0.1,"fail":0.25},"tbt_ms":{"good":200,"fail":600},"fcp_ms":{"good":1800,"fail":3000},"inp_ms":{"good":200,"fail":500,"measured":false}},"desktop":{"lcp_ms":{"good":1500,"fail":2500},"cls":{"good":0.1,"fail":0.25},"tbt_ms":{"good":100,"fail":300},"fcp_ms":{"good":1000,"fail":1800},"inp_ms":{"good":200,"fail":500,"measured":false}}},"overrides":{}}
+{
+  "version": 2,
+  "_provenance": {
+    "checked": "2026-07-23",
+    "policy": "Every band below carries the URL it came from and the date it was verified. Where the source publishes no desktop/mobile split, the band says so explicitly instead of carrying an invented number.",
+    "mobile": "Core Web Vitals good/poor boundaries (web.dev) — these are FIELD boundaries at the 75th percentile; the gate applies them to a single lab run as a build-time proxy.",
+    "desktop": "Lighthouse publishes its own, stricter LAB thresholds for desktop on the per-audit Chrome for Developers pages (LCP, FCP, TBT). CWV itself does NOT split by device — where Lighthouse publishes no desktop number (CLS, INP) the mobile boundary is reused as a conservative proxy and labelled as such."
+  },
+  "pages": [
+    { "id": "home", "path": "/" },
+    { "id": "pdp", "path": "/products/{{first_product_handle}}" },
+    { "id": "collection", "path": "/collections/{{first_collection_handle}}" },
+    { "id": "cart", "path": "/cart" },
+    { "id": "search", "path": "/search?q=test" }
+  ],
+  "thresholds": {
+    "mobile": {
+      "lcp_ms": {
+        "good": 2500,
+        "fail": 4000,
+        "source": "https://web.dev/articles/lcp",
+        "checked": "2026-07-23",
+        "note": "CWV: good ≤ 2.5s, poor > 4.0s. Same numbers on the Lighthouse mobile audit page."
+      },
+      "cls": {
+        "good": 0.1,
+        "fail": 0.25,
+        "source": "https://web.dev/articles/cls",
+        "checked": "2026-07-23",
+        "note": "CWV: good ≤ 0.1, poor > 0.25."
+      },
+      "tbt_ms": {
+        "good": 200,
+        "fail": 600,
+        "source": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time",
+        "checked": "2026-07-23",
+        "note": "Not a Core Web Vital — Lighthouse lab metric, mobile bands green 0–200ms / orange 200–600ms / red > 600ms. It is the lab proxy for INP, which cannot be measured here."
+      },
+      "fcp_ms": {
+        "good": 1800,
+        "fail": 3000,
+        "source": "https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint",
+        "checked": "2026-07-23",
+        "note": "Lighthouse mobile bands green 0–1.8s / orange 1.8–3s / red > 3s; identical to the web.dev FCP boundaries."
+      },
+      "inp_ms": {
+        "good": 200,
+        "fail": 500,
+        "measured": false,
+        "source": "https://web.dev/articles/inp",
+        "checked": "2026-07-23",
+        "note": "FIELD-ONLY here. CWV: good ≤ 200ms, poor > 500ms. A Lighthouse navigation run performs no interactions, so it emits no INP value — these bands are recorded for CrUX/RUM comparison and are deliberately NOT scored by the gate (measured:false). Lab proxy = tbt_ms."
+      }
+    },
+    "desktop": {
+      "lcp_ms": {
+        "good": 1200,
+        "fail": 2400,
+        "source": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint",
+        "checked": "2026-07-23",
+        "note": "Lighthouse desktop bands green 0–1.2s / orange 1.2–2.4s / red > 2.4s. Stricter than the 2.5s/4s CWV boundary because Lighthouse desktop is a faster lab profile."
+      },
+      "cls": {
+        "good": 0.1,
+        "fail": 0.25,
+        "source": "https://web.dev/articles/cls",
+        "checked": "2026-07-23",
+        "note": "No official desktop split; using the mobile boundary as a conservative proxy. Lighthouse publishes no desktop-specific CLS bands and CWV states the same thresholds apply to both device classes."
+      },
+      "tbt_ms": {
+        "good": 150,
+        "fail": 350,
+        "source": "https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time",
+        "checked": "2026-07-23",
+        "note": "Lighthouse desktop bands green 0–150ms / orange 150–350ms / red > 350ms."
+      },
+      "fcp_ms": {
+        "good": 900,
+        "fail": 1600,
+        "source": "https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint",
+        "checked": "2026-07-23",
+        "note": "Lighthouse desktop bands green 0–0.9s / orange 0.9–1.6s / red > 1.6s."
+      },
+      "inp_ms": {
+        "good": 200,
+        "fail": 500,
+        "measured": false,
+        "source": "https://web.dev/articles/inp",
+        "checked": "2026-07-23",
+        "note": "FIELD-ONLY here — see the mobile entry. No official desktop split; CWV publishes one pair of boundaries for both device classes."
+      }
+    }
+  },
+  "reference": {
+    "_note": "Sourced boundaries the gate does NOT enforce. Recorded so a field/CrUX read can be judged against the same numbers the gate uses, without silently adding a new blocker.",
+    "ttfb_ms": {
+      "good": 800,
+      "fail": 1800,
+      "source": "https://web.dev/articles/ttfb",
+      "checked": "2026-07-23",
+      "note": "Not a Core Web Vital (diagnostic for LCP). Good ≤ 0.8s, poor > 1.8s. No official desktop split. Not enforced: on a Shopify-hosted storefront TTFB is dominated by Shopify's edge, not by anything the theme controls."
+    }
+  },
+  "overrides": {}
+}

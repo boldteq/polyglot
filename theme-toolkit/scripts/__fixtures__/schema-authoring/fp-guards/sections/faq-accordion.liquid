@@ -1,0 +1,46 @@
+{% comment %}
+  Every raw string in this schema is deliberate: each one is a shape that an earlier draft of the
+  gate flagged and must NOT flag. The only blocker this file may produce is label-not-translated.
+{% endcomment %}
+
+<div class="faq-accordion color-{{ section.settings.color_scheme }}">
+  <h2>{{ section.settings.heading }}</h2>
+  <p>{{ section.settings.subheading }}</p>
+  <p>{{ section.settings.fallback_heading }}</p>
+  <a class="faq-accordion__cta faq-accordion__cta--{{ section.settings.ticker_font }}">{{ section.settings.button_label }}</a>
+</div>
+
+{% schema %}
+{
+  "name": "FAQ Accordion",
+  "tag": "section",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.faq-accordion.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "text", "id": "heading", "label": "t:sections.faq-accordion.settings.heading.label" },
+    { "type": "text", "id": "subheading", "label": "t:sections.faq-accordion.settings.subheading.label" },
+    { "type": "text", "id": "fallback_heading", "label": "Fallback heading", "info": "Do not upload files over 2MB." },
+    {
+      "type": "select",
+      "id": "heading_size",
+      "label": "t:sections.faq-accordion.settings.heading_size.label",
+      "options": [
+        { "value": "medium", "label": "t:sections.faq-accordion.settings.heading_size.options__1" },
+        { "value": "large", "label": "t:sections.faq-accordion.settings.heading_size.options__2" }
+      ],
+      "default": "large"
+    },
+    { "type": "text", "id": "button_label", "label": "Button label", "default": "View Menu" },
+    {
+      "type": "select",
+      "id": "ticker_font",
+      "label": "Font",
+      "options": [
+        { "value": "poppins", "label": "Ticker (Poppins)" },
+        { "value": "playfair", "label": "Heading (Playfair)" }
+      ],
+      "default": "poppins"
+    }
+  ],
+  "presets": [{ "name": "t:sections.faq-accordion.presets.name" }]
+}
+{% endschema %}

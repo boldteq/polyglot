@@ -1,0 +1,22 @@
+{{ 'section-site-footer.css' | asset_url | stylesheet_tag }}
+
+{%- comment -%} CLEAN: group-only chrome (tag footer) with settings but no preset → preset-missing exempt. {%- endcomment -%}
+<footer class="site-footer color-{{ section.settings.color_scheme }}">
+  <nav class="site-footer__nav">
+    {%- for link in linklists[section.settings.menu].links -%}
+      <a href="{{ link.url }}" class="site-footer__link">{{ link.title }}</a>
+    {%- endfor -%}
+  </nav>
+</footer>
+
+{% schema %}
+{
+  "name": "t:sections.site-footer.name",
+  "tag": "footer",
+  "class": "section-site-footer",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.site-footer.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "link_list", "id": "menu", "label": "t:sections.site-footer.settings.menu.label", "default": "footer" }
+  ]
+}
+{% endschema %}

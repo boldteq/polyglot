@@ -1,0 +1,11 @@
+{
+  "settings_schema": {
+    "global": {
+      "settings": {
+        "zzz_last": {
+          "label": "Sentinelle"
+        }
+      }
+    }
+  }
+}

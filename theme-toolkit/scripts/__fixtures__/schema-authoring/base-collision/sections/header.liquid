@@ -1,0 +1,16 @@
+<header class="header color-{{ section.settings.color_scheme }}">
+  {%- for link in linklists[section.settings.menu].links -%}
+    <a href="{{ link.url }}">{{ link.title }}</a>
+  {%- endfor -%}
+</header>
+
+{% schema %}
+{
+  "name": "Header",
+  "tag": "header",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "Color scheme", "default": "scheme-1" },
+    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" }
+  ]
+}
+{% endschema %}

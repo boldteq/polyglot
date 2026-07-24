@@ -86,6 +86,29 @@ runnable gate, raising executable rigor for compass/stitch/lattice/loom.
 npm aliases: `pnpm check:briefs` · `check:reuse-map` · `check:schema` · `check:assets`.
 Env knobs: `STORE_BUILD`, `STRICT_LOCALES` (briefs); `BASE_REF`, `REUSE_TARGET`, `ALLOW_REUSE_WAIVER` (reuse-map); `SCHEMA_FILE` (schema); `CSS_BUDGET_KB`, `JS_BUDGET_KB` (asset-budget).
 
+## Scaffold first — never hand-author a new section
+
+```bash
+node toolkit/scripts/new-section.mjs --name story-panel --role "Story panel" [--blocks item] [--image] [--dry-run]
+```
+
+Measured on cravinbyandy: files the team **edited** carried 41–68 `t:` translation keys each; the 16
+sections the team **authored** carried 0, plus ~221 raw English `label` strings — and `shopify theme
+check` passed on all of it. The convention was being copied from whatever file was open, so a blank
+file inherited none of it. `new-section.mjs` puts it in the blank file instead and writes the `t:`
+keys into **every** `locales/*.schema.json` in the same run (a surgical splice — the auto-generated
+banner, key order and indentation of those files are preserved; re-running is a no-op).
+
+Emits correct-by-construction: `{% style %}` padding scoped to `.section-{{ section.id }}-padding`,
+a `color-{{ … }}` scheme wrapper, `!= blank` guards on every text setting, alignment as a modifier
+class driven by a `text_alignment` setting (never an inline style), `image_url` + `image_tag` with a
+`placeholder_svg_tag` empty state, an all-`t:` `{% schema %}`, and `assets/section-<name>.css` with
+no hex / no colour literal / no `font-family`. Refuses a content-specific `--role` ("Meet Andy",
+"Our story") per **STD-NAME-01** — the Add-section picker lists a reusable ROLE, not this store's copy.
+
+Templates live in `templates/section/` (see its README for the placeholder syntax). Exit `0` written
+· `1` refusal/validation · `2` env error. Self-test: `node scripts/__fixtures__/new-section/run-tests.mjs`.
+
 ## Store-operator harness (Porter — Admin API writes)
 
 Porter (`shopify-website` squad) operates the customer's **store data** (not the theme) via the Admin API + the store's custom-app token. Three scripts, same 12-key report + exit 0/1/2, run against the vendored `toolkit/`. **Never touches orders/customers/payments.** Token via `SHOPIFY_ADMIN_API_TOKEN[_<handle>]` (env/1Password — never hardcoded).

@@ -1,0 +1,31 @@
+{{ 'section-detail-panel.css' | asset_url | stylesheet_tag }}
+
+{%- comment -%} FIRES schema.visible_if-invalid (BLOCK): visible_if references section.settings.does_not_exist. ALSO FIRES schema.duplicate-setting-id (BLOCK): "subheading" is declared twice — Shopify keeps only the last, so the first control vanishes (validate_theme misses this; coverage.md 7/9). {%- endcomment -%}
+<div class="detail-panel color-{{ section.settings.color_scheme }}">
+  {%- if section.settings.heading != blank -%}
+    <h2 class="detail-panel__heading">{{ section.settings.heading }}</h2>
+  {%- endif -%}
+  {%- if section.settings.subheading != blank -%}
+    <p class="detail-panel__sub">{{ section.settings.subheading }}</p>
+  {%- endif -%}
+  {%- if section.settings.details_note != blank -%}
+    <p class="detail-panel__note">{{ section.settings.details_note }}</p>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:sections.detail-panel.name",
+  "tag": "section",
+  "class": "section-detail-panel",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.detail-panel.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "text", "id": "heading", "label": "t:sections.detail-panel.settings.heading.label" },
+    { "type": "text", "id": "subheading", "label": "t:sections.detail-panel.settings.subheading.label" },
+    { "type": "text", "id": "subheading", "label": "t:sections.detail-panel.settings.subheading_dupe.label" },
+    { "type": "checkbox", "id": "show_details", "label": "t:sections.detail-panel.settings.show_details.label", "default": true },
+    { "type": "text", "id": "details_note", "label": "t:sections.detail-panel.settings.details_note.label", "visible_if": "{{ section.settings.does_not_exist == true }}" }
+  ],
+  "presets": [{ "name": "t:sections.detail-panel.presets.name" }]
+}
+{% endschema %}

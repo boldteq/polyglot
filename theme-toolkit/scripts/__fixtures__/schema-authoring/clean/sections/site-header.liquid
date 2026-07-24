@@ -1,0 +1,26 @@
+{{ 'section-site-header.css' | asset_url | stylesheet_tag }}
+
+<header class="site-header color-{{ section.settings.color_scheme }}">
+  <nav class="site-header__nav">
+    {%- for link in linklists[section.settings.menu].links -%}
+      <a
+        href="{{ link.url }}"
+        class="site-header__link{% if link.child_active %} site-header__link--active{% endif %}"
+        {% if link.current %}aria-current="page"{% endif %}
+      >{{ link.title }}</a>
+    {%- endfor -%}
+  </nav>
+</header>
+
+{% schema %}
+{
+  "name": "t:sections.site-header.name",
+  "tag": "header",
+  "class": "section-site-header",
+  "settings": [
+    { "type": "color_scheme", "id": "color_scheme", "label": "t:sections.site-header.settings.color_scheme.label", "default": "scheme-1" },
+    { "type": "link_list", "id": "menu", "label": "t:sections.site-header.settings.menu.label", "default": "main-menu" },
+    { "type": "checkbox", "id": "sticky", "label": "t:sections.site-header.settings.sticky.label", "default": true }
+  ]
+}
+{% endschema %}

@@ -11,6 +11,10 @@
 //      (#0.4 discovery, #0.5 foundation, #13 honesty, #18 visual-check, #20 class-d-visual) all exist,
 //      so the eyes/dispatch layer can never silently vanish from the stack (the linchpin class).
 //   D. Orphan produce (WARN) — a non-terminal contract whose event nothing downstream requires.
+//   E. Report identity (BLOCK) — a gate must writeReport() under its manifest name+number (auditReportIdentity).
+//   F. Enforcement graduation (BLOCK) — a warn-capable gate (gates a finding behind an *_ENFORCE flag,
+//      directly or in an absorbed sub-gate) must carry a dated, reasoned `enforcement` object in the
+//      manifest, so "warn-only forever, reporting into a void" is impossible (auditEnforcement).
 //
 // This is the whole-graph companion to check-handoff-contract.mjs (which checks ONE dispatch edge at a
 // time). Registered in theme-gates.mjs + shopify-definition-of-done.md §1. PURE core (auditGraph) is
@@ -213,10 +217,60 @@ export function auditReportIdentity(gates, readSource) {
   return { blockers, warnings }
 }
 
+// F. Enforcement graduation (BLOCK) — warn-only must never be a silent permanent state.
+//
+// A gate is "warn-capable" if it gates a finding behind an *_ENFORCE flag (`SOMETHING_ENFORCE === '1'`)
+// in its own source, OR in a sub-gate it absorbs via runAbsorbed([{ script: 'check-*.mjs' }]) — imagery
+// (check-media-quality) absorbs check-art-direction (ART_DIRECTION_ENFORCE); content-quality
+// (check-placeholder-text) absorbs check-copy-quality (COPY_ENFORCE). Every such gate MUST carry an
+// `enforcement` object in the manifest with a non-empty reason and a since date (YYYY-MM-DD) — a
+// warn-only gate with no recorded, dated reason is a BLOCK (orch.warn-only-unreasoned). This makes
+// "13 gates warn-only forever, reporting into a void" mechanically impossible: the reason has to exist,
+// and re-graduation is a manifest edit that this gate audits.
+//
+// `readSource(script)` returns the gate's source or null (injectable so the fixture drives it hermetically).
+const ENFORCE_FLAG = /_ENFORCE\s*===\s*'1'/
+const SUB_SCRIPT = /script:\s*'(check-[\w-]+\.mjs)'/g
+const SINCE_DATE = /^\d{4}-\d{2}-\d{2}$/
+export function auditEnforcement(gates, readSource) {
+  const blockers = []
+  const warnings = []
+  // warn-capable = this script (or an absorbed sub-script, transitively) reads an *_ENFORCE flag.
+  const warnCapable = (script, seen = new Set()) => {
+    if (!script || seen.has(script)) return false
+    seen.add(script)
+    const raw = readSource(script)
+    if (raw == null) return false
+    const code = stripComments(raw) // never let a flag MENTIONED in a comment count
+    if (ENFORCE_FLAG.test(code)) return true
+    for (const m of code.matchAll(SUB_SCRIPT)) { if (warnCapable(m[1], seen)) return true }
+    return false
+  }
+  for (const g of gates || []) {
+    if (!g || !g.script) continue
+    if (!warnCapable(g.script)) continue
+    const e = g.enforcement
+    if (!e || typeof e !== 'object') {
+      blockers.push({ id: 'orch.warn-only-unreasoned', page: g.script, detail: `gate #${g.number} ${g.name} is warn-capable (a finding is gated behind an *_ENFORCE flag) but its manifest entry declares NO \`enforcement\` object — a warn-only gate with no recorded reason can sit silently un-enforced forever. Add enforcement: { policy:"block"|"warn", provenBuilds, reason, since }.`, evidence: g.script })
+      continue
+    }
+    if (!e.reason || !String(e.reason).trim()) {
+      blockers.push({ id: 'orch.warn-only-unreasoned', page: g.script, detail: `gate #${g.number} ${g.name} carries an \`enforcement\` object with an empty reason — record WHY it is "${e.policy || '?'}" (and, if warn, what would graduate it to block).`, evidence: `policy=${e.policy}` })
+    }
+    if (!e.since || !SINCE_DATE.test(String(e.since))) {
+      blockers.push({ id: 'orch.warn-only-unreasoned', page: g.script, detail: `gate #${g.number} ${g.name} \`enforcement.since\` is missing or not YYYY-MM-DD ("${e.since ?? ''}") — the graduation/keep-warn decision must be dated so it can be revisited.`, evidence: `since=${e.since ?? ''}` })
+    }
+    if (e.policy !== 'block' && e.policy !== 'warn') {
+      warnings.push({ id: 'orch.enforcement-policy-unknown', page: g.script, detail: `gate #${g.number} ${g.name} enforcement.policy="${e.policy}" is neither "block" nor "warn".`, evidence: String(e.policy) })
+    }
+  }
+  return { blockers, warnings }
+}
+
 function liveManifest() {
   try {
     const manifest = JSON.parse(execFileSync(process.execPath, [path.join(HERE, 'theme-gates.mjs'), '--list-json'], { cwd, encoding: 'utf-8' }))
-    return manifest.map(g => ({ number: String(g.number), name: String(g.name), script: g.script }))
+    return manifest.map(g => ({ number: String(g.number), name: String(g.name), script: g.script, enforcement: g.enforcement }))
   } catch (e) {
     return { error: e.message }
   }
@@ -235,11 +289,13 @@ function main() {
     console.error('check-orchestration: ENV-ERROR — manifest'); process.exit(2)
   }
   const { blockers, warnings } = auditGraph(registry, manifest)
-  const ident = auditReportIdentity(manifest, (script) => {
-    try { return fs.readFileSync(path.join(HERE, script), 'utf-8') } catch { return null }
-  })
+  const readSource = (script) => { try { return fs.readFileSync(path.join(HERE, script), 'utf-8') } catch { return null } }
+  const ident = auditReportIdentity(manifest, readSource)
   blockers.push(...ident.blockers)
   warnings.push(...ident.warnings)
+  const enf = auditEnforcement(manifest, readSource)
+  blockers.push(...enf.blockers)
+  warnings.push(...enf.warnings)
   const pass = blockers.length === 0
   writeReport('orchestration', 44, { cwd, pass, blockers, warnings, evidence: { contracts: (registry.contracts || []).length, liveGates: manifest.length }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   console.log(`check-orchestration: ${pass ? 'PASS' : 'BLOCK'} — ${blockers.length} blocker(s), ${warnings.length} warning(s) · ${(registry.contracts || []).length} contracts`)

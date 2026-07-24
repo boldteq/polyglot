@@ -1,0 +1,7 @@
+# BuenaVida — theme-check configuration (extends Shopify's default ruleset).
+extends: :default
+
+OrphanedSnippet:
+  ignore:
+    - snippets/bv-pack-selector.liquid
+    - snippets/bv-pdp-trust.liquid
