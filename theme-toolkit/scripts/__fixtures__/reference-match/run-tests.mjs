@@ -6,8 +6,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
-import { resolveEntry, TYPE_ARCHETYPE } from '../../check-reference-match.mjs'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { resolveEntry, TYPE_ARCHETYPE, resolveSectionKey } from '../../check-reference-match.mjs'
 import { upsertEntry } from '../../reference-ingest.mjs'
 
 let failures = 0
@@ -126,6 +126,104 @@ console.log('case (j) NO false blocks — a valid map + template resolves normal
   const { ids } = runGate({ map: ENTRY, templates: good })
   const fileLevel = [...ids].filter(i => /map-invalid|template-missing|template-invalid/.test(i))
   fileLevel.length === 0 ? ok('a well-formed map + matching template raises none of the three') : bad(`false blocks: ${fileLevel.join(', ')}`)
+}
+
+// ── CB-23: global surfaces (header/footer) live in a section GROUP, not a page template ─────
+function runGateGroups({ map, groups = {}, templates = {} }) {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'refm-'))
+  fs.mkdirSync(path.join(d, 'docs', 'design'), { recursive: true })
+  fs.mkdirSync(path.join(d, 'templates'), { recursive: true })
+  fs.mkdirSync(path.join(d, 'sections'), { recursive: true })
+  fs.writeFileSync(path.join(d, 'docs', 'design', 'reference-map.json'), typeof map === 'string' ? map : JSON.stringify(map))
+  for (const [n, body] of Object.entries(templates)) fs.writeFileSync(path.join(d, 'templates', n), body)
+  for (const [n, body] of Object.entries(groups)) fs.writeFileSync(path.join(d, 'sections', n), body)
+  const reportDir = path.join(d, 'gate-reports')
+  const r = spawnSync(process.execPath, [GATE], { cwd: d, encoding: 'utf-8', env: { ...process.env, REPORT_DIR: reportDir, REFERENCE_MATCH_ENFORCE: '1' } })
+  let rep = null
+  try { rep = JSON.parse(fs.readFileSync(path.join(reportDir, 'reference-match.json'), 'utf-8')) } catch { /* none */ }
+  fs.rmSync(d, { recursive: true, force: true })
+  return { code: r.status, ids: new Set((rep?.blockers || []).map(b => b.id)) }
+}
+const FOOTER_ENTRY = { surfaces: [{ surface: 'footer', sections: [{ order: 1, name: 'footer', archetype: 'rich-text' }] }] }
+
+console.log('case (k) THE REGRESSION — footer lives in a section GROUP, not a page template → resolves, not a permanent block')
+{
+  const group = { 'footer-group.json': JSON.stringify({ type: 'footer-group', sections: { f1: { type: 'rich-text' } }, order: ['f1'] }) }
+  const { ids } = runGateGroups({ map: FOOTER_ENTRY, groups: group })
+  ids.has('ref.template-missing') ? bad(`footer group was not resolved — got [${[...ids].join(', ')}]`) : ok('sections/footer-group.json is found; no permanent template-missing block')
+}
+
+console.log('case (l) a NON-global surface with no page template still blocks (the fix is scoped, not a blanket group lookup)')
+{
+  const { ids } = runGateGroups({ map: ENTRY }) // surface "home" — no templates/index.json, no sections/home-group.json
+  ids.has('ref.template-missing') ? ok('a real missing template for a non-global surface still blocks') : bad(`got [${[...ids].join(', ')}] — the scope leaked to non-global surfaces`)
+}
+
+console.log('case (m) header follows the same rule as footer')
+{
+  const group = { 'header-group.json': JSON.stringify({ type: 'header-group', sections: { h1: { type: 'image-with-text' } }, order: ['h1'] }) }
+  const map = { surfaces: [{ surface: 'header', sections: [{ order: 1, name: 'header', archetype: 'image-with-text' }] }] }
+  const { ids } = runGateGroups({ map, groups: group })
+  ids.has('ref.template-missing') ? bad(`header group was not resolved — got [${[...ids].join(', ')}]`) : ok('sections/header-group.json is found for the header surface too')
+}
+
+// ── CB-24: resolveSectionKey — which template section a reference entry targets, for Lens to scroll to ──
+console.log('case (n) resolveSectionKey — pinned entry resolves by key or type')
+{
+  const sections = [{ key: 'locations', type: 'locations-slider' }, { key: 'hero', type: 'slideshow' }]
+  eq(resolveSectionKey({ section: 'locations' }, sections), 'locations', 'pinned by key')
+  eq(resolveSectionKey({ section: 'locations-slider' }, sections), 'locations', 'pinned by type')
+  eq(resolveSectionKey({ section: 'ghost' }, sections), null, 'pinned but absent → null, never a guess')
+}
+
+console.log('case (o) resolveSectionKey — unpinned entry resolves by first matching archetype')
+{
+  const sections = [{ key: 's1', type: 'rich-text' }, { key: 'hero', type: 'slideshow' }]
+  eq(resolveSectionKey({ archetype: 'slideshow' }, sections), 'hero', 'first section of the declared archetype')
+  eq(resolveSectionKey({ archetype: 'carousel' }, sections), null, 'no section of that archetype, no name match → null')
+  eq(resolveSectionKey({ archetype: 'slideshow' }, []), null, 'no sections at all → null')
+}
+
+console.log('case (o2) resolveSectionKey — unpinned + no archetype match falls back to exact name==key (the realistic all-custom-sections case)')
+{
+  const sections = [{ key: 'locations', type: 'locations-slider' }, { key: 'hero_banner', type: 'slideshow' }]
+  eq(resolveSectionKey({ name: 'locations', archetype: 'carousel' }, sections), 'locations', 'no stock carousel type exists, but "locations" is a real exact key match')
+  eq(resolveSectionKey({ name: 'nope', archetype: 'carousel' }, sections), null, 'no archetype match AND no name match → null, never a fuzzy guess')
+  eq(resolveSectionKey({ name: 'hero_banner', archetype: 'slideshow' }, sections), 'hero_banner', 'archetype match still wins when both would agree')
+}
+
+// ── CB-24: sectionTargetsFor (lens-capture.mjs) — the full read+resolve pipeline, via a fresh subprocess
+// (its cwd-sensitivity can't be faked with process.chdir() in-process — check-reference-match.mjs's
+// templateFor freezes `cwd` at MODULE LOAD, so only a genuinely fresh process proves this end-to-end) ──
+function runSectionTargets({ surface, map, templates = {} }) {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'refm-lens-'))
+  fs.mkdirSync(path.join(d, 'docs', 'design'), { recursive: true })
+  fs.mkdirSync(path.join(d, 'templates'), { recursive: true })
+  if (map !== undefined) fs.writeFileSync(path.join(d, 'docs', 'design', 'reference-map.json'), typeof map === 'string' ? map : JSON.stringify(map))
+  for (const [n, body] of Object.entries(templates)) fs.writeFileSync(path.join(d, 'templates', n), body)
+  const lensCapture = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'lens-capture.mjs')
+  const script = `import(${JSON.stringify(pathToFileURL(lensCapture).href)}).then(m => { process.stdout.write(JSON.stringify(m.sectionTargetsFor(${JSON.stringify(surface)}))) })`
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], { cwd: d, encoding: 'utf-8' })
+  fs.rmSync(d, { recursive: true, force: true })
+  try { return JSON.parse(r.stdout) } catch { return { __error: r.stderr } }
+}
+const HOME_TPL = { 'index.json': JSON.stringify({ sections: { locations: { type: 'locations-slider' }, hero_banner: { type: 'slideshow' } }, order: ['hero_banner', 'locations'] }) }
+
+console.log('case (p) THE FEATURE — a declared entry resolves to its real template section key')
+{
+  const map = { surfaces: [{ surface: 'home', sections: [{ order: 1, name: 'locations', archetype: 'carousel', section: 'locations' }] }] }
+  const out = runSectionTargets({ surface: 'home', map, templates: HOME_TPL })
+  eq(out.locations, 'locations', 'resolves the declared entry to its template section key')
+}
+
+console.log('case (q) NO map / NO template / unresolvable entry → {} (feature is fully additive, never breaks capture)')
+{
+  const empty = (v, m) => (v && Object.keys(v).length === 0 ? ok(m) : bad(`${m} — got ${JSON.stringify(v)}`))
+  empty(runSectionTargets({ surface: 'home', templates: HOME_TPL, map: undefined }), 'no reference-map.json at all → {}')
+  const mapNoTpl = { surfaces: [{ surface: 'home', sections: [{ order: 1, name: 'locations', archetype: 'carousel', section: 'locations' }] }] }
+  empty(runSectionTargets({ surface: 'home', map: mapNoTpl }), 'no template for the surface → {}')
+  const mapGhost = { surfaces: [{ surface: 'home', sections: [{ order: 1, name: 'ghost', archetype: 'accordion' }] }] }
+  empty(runSectionTargets({ surface: 'home', map: mapGhost, templates: HOME_TPL }), 'entry with no matching section → {} (not a guess)')
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} FAILED`)

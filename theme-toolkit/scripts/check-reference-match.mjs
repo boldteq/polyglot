@@ -70,14 +70,20 @@ export const TYPE_ARCHETYPE = {
 const stripJsonComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '')
 const readJson = (p) => JSON.parse(stripJsonComments(fs.readFileSync(p, 'utf-8')))
 
-// surface → template file (Shopify convention: home = index.json, others = page.<surface>.json | <surface>.json)
-function templateFor(surface) {
+// surface → template file (Shopify convention: home = index.json, others = page.<surface>.json | <surface>.json).
+// header/footer are not page templates at all — they live in a section GROUP (sections/<surface>-group.json),
+// which the Shopify Online Store 2.0 schema shapes identically ({sections, order}), so sectionsOf() already
+// reads it unchanged. Without this, registering a global surface produced a PERMANENT ref.template-missing
+// BLOCK (found registering cravinbyandy's footer for REF-VID-2 — CB-23).
+const GLOBAL_SURFACE_GROUPS = ['header', 'footer']
+export function templateFor(surface) {
   const cands = [`templates/${surface === 'home' ? 'index' : surface}.json`, `templates/page.${surface}.json`]
+  if (GLOBAL_SURFACE_GROUPS.includes(surface)) cands.push(`sections/${surface}-group.json`)
   for (const c of cands) { const abs = path.resolve(cwd, c); if (fs.existsSync(abs)) return { rel: c, abs } }
   return null
 }
 
-function sectionsOf(tplAbs) {
+export function sectionsOf(tplAbs) {
   try {
     const j = readJson(tplAbs)
     return Object.entries(j.sections || {}).map(([key, v]) => ({ key, type: (v && v.type) || '' }))
@@ -109,6 +115,29 @@ export function resolveEntry(entry, sections) {
   return { kind: 'block', id: 'ref.archetype-absent', detail: `the reference declares "${entry.name}" as a ${declared}, but this surface has no such section — found: ${known.map(s => `${s.type} (${TYPE_ARCHETYPE[s.type]})`).join(', ')}. ${signalHint(declared)}` }
 }
 
+// Which template section KEY a reference entry corresponds to, for Lens to scroll to and capture a
+// dedicated per-section frame (CB-24). Same matching semantics as resolveEntry's presence check, but
+// returns the key rather than a verdict. Best-effort: an unpinned entry on a surface with more than one
+// section of the same archetype gets the first match — no worse than resolveEntry's own presence check,
+// and a wrong pick only costs a suboptimal frame (falls back to `rest`), never a false gate verdict.
+export function resolveSectionKey(entry, sections) {
+  if (!sections || !sections.length) return null
+  if (entry.section) {
+    const hit = sections.find(s => s.key === entry.section || s.type === entry.section)
+    return hit ? hit.key : null
+  }
+  const known = sections.find(s => TYPE_ARCHETYPE[s.type] === entry.archetype)
+  if (known) return known.key
+  // Most cravinbyandy-shaped stores are ENTIRELY custom sections, so the archetype match above never
+  // fires (a "carousel"/"custom" archetype has no TYPE_ARCHETYPE entry by design — see resolveEntry's
+  // own unknown-type warn path). Exact name==key equality is not a guess: reference-ingest --name is
+  // routinely chosen to describe the section it documents (REF-VID-2: "locations" names the entry AND
+  // is the literal key in templates/index.json), so this only ever fires on a real, exact match — never
+  // a fuzzy one. This affects ONLY which frame gets captured, never the L1 block/warn/pass verdict.
+  const byName = sections.find(s => s.key === entry.name)
+  return byName ? byName.key : null
+}
+
 function signalHint(a) {
   const h = {
     slideshow: 'Pagination dots in a reference mean MORE THAN ONE SLIDE — never a single-image section.',
@@ -120,13 +149,19 @@ function signalHint(a) {
 }
 
 // ── L2 · visual compare (reference image vs rendered Lens frame) ──────────────
-function lensFrameFor(surface, viewport) {
+// `rest` is the top-of-page frame — correct for an above-the-fold section, wrong for anything further
+// down (CB-24: a below-the-fold entry compared against `rest` produced a spurious "section not visible"
+// finding — a frame mismatch, not a real divergence). When lens-capture.mjs has captured a dedicated
+// per-section frame (`section:<name>` — see resolveSectionKey), prefer it; otherwise fall back to `rest`
+// exactly as before, so a repo whose Lens capture predates this feature keeps working unchanged.
+function lensFrameFor(surface, viewport, sectionKey) {
   try {
     const m = readJson(path.join(LENS_DIR, 'lens-manifest.json'))
     const frames = (m.frames || []).filter(f => f.surface === surface && f.frames && f.frames.rest)
     if (!frames.length) return null
     const pick = (viewport && frames.find(f => f.viewport === viewport)) || frames.find(f => f.viewport === 'desktop') || frames[0]
-    return { abs: path.join(LENS_DIR, pick.frames.rest), viewport: pick.viewport }
+    const sectionRel = sectionKey && pick.frames[`section:${sectionKey}`]
+    return { abs: path.join(LENS_DIR, sectionRel || pick.frames.rest), viewport: pick.viewport, usedSectionFrame: Boolean(sectionRel) }
   } catch { return null }
 }
 
@@ -209,7 +244,9 @@ async function main() {
     } else {
       fs.mkdirSync(JUDGE_DIR, { recursive: true })
       for (const e of withImage) {
-        const frame = lensFrameFor(e.surface, e.viewport)
+        const ctx = bySurface.get(e.surface)
+        const sectionKey = ctx && ctx.sections ? resolveSectionKey(e, ctx.sections) : null
+        const frame = lensFrameFor(e.surface, e.viewport, sectionKey)
         if (!frame || !fs.existsSync(frame.abs)) { noFrame += 1; continue }
         const v = await judgeOne(e, path.resolve(cwd, e.reference), frame)
         if (!v) { add(warnings, 'ref.judge-failed', e.surface, `visual compare produced no verdict for "${e.name}"`); continue }

@@ -24,6 +24,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isMain } from './lib/is-main.mjs'
+import { templateFor, sectionsOf, resolveSectionKey } from './check-reference-match.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -84,6 +85,35 @@ export function planCaptures({ surfaces, viewports, locales = ['default'], theme
 }
 // Append ?locale=xx to a surface URL (PURE). Used only for non-default locales.
 export function addLocale(u, locale) { try { const x = new URL(u); x.searchParams.set('locale', locale); return x.toString() } catch { return u } }
+
+// CB-24: gate #46's L2 judge compared every reference against the page's TOP-of-page `rest` frame, so a
+// below-the-fold section (e.g. home/locations) could never match — not a real divergence, a frame
+// mismatch. Best-effort, additive: if docs/design/reference-map.json declares sections for a surface
+// being captured, resolve each one to its template section KEY (same matching resolveEntry already does
+// for L1) so captureVisit can scroll straight to it and shoot a dedicated `section:<key>` frame ALONGSIDE
+// `rest` — one extra image in the same frame-set, not a new judge call. Absent map / unresolvable entry /
+// any read error → returns {}, so a repo with no reference-conformance work is completely unaffected.
+// Reads relative to process.cwd() (the same convention check-reference-match.mjs's own templateFor
+// uses internally, which this reuses — both run from the theme repo root).
+export function sectionTargetsFor(surface) {
+  try {
+    const mapAbs = path.resolve(process.cwd(), 'docs/design/reference-map.json')
+    if (!fs.existsSync(mapAbs)) return {}
+    const map = JSON.parse(fs.readFileSync(mapAbs, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, ''))
+    const s = (map.surfaces || []).find(x => x.surface === surface)
+    if (!s || !s.sections || !s.sections.length) return {}
+    const tpl = templateFor(surface)
+    if (!tpl) return {}
+    const sections = sectionsOf(tpl.abs)
+    if (!sections) return {}
+    const out = {}
+    for (const entry of s.sections) {
+      const key = resolveSectionKey(entry, sections)
+      if (key) out[entry.name] = key
+    }
+    return out
+  } catch { return {} }
+}
 
 class EnvError extends Error {}
 const die = (code, msg) => { console.error(`lens-capture: ${code === 2 ? 'ENV-ERROR' : 'ERROR'} — ${msg}`); process.exit(code) }
@@ -414,6 +444,26 @@ async function main() {
       await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {})
       const hovered = await page.evaluate(() => { const b = document.querySelector('a.button, .button, button[name="add"], [data-hero] a, .banner a, .hero a'); if (b) { b.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return true } return false }).catch(() => false)
       if (hovered) { await page.waitForTimeout(250); imgs.hover = await shot('hover') }
+    }
+    // per-section frames (CB-24) — base visit only, one extra image per declared reference-map entry
+    // resolvable on this surface. Best-effort: a renamed/missing section just skips its dedicated frame
+    // (the judge falls back to `rest`, exactly today's behaviour), never breaks the capture.
+    if (state === 'base') {
+      for (const [, key] of Object.entries(sectionTargetsFor(surface))) {
+        try {
+          // Shopify's rendered wrapper id is prefixed with the template/group's own numeric id
+          // (`shopify-section-template--12345__locations`, `shopify-section-sections--12345__cravin-footer`)
+          // — never the bare JSON key — so match the suffix, not an exact id (verified against a real
+          // cravinbyandy render; an exact-id lookup silently matched nothing on every section).
+          const scrolled = await page.evaluate((k) => {
+            const el = document.querySelector(`[id^="shopify-section-"][id$="__${k}"]`) || document.getElementById(`shopify-section-${k}`)
+            if (!el) return false
+            el.scrollIntoView({ block: 'start' })
+            return true
+          }, key)
+          if (scrolled) { await page.waitForTimeout(400); imgs[`section:${key}`] = await shot(`section-${key}`) }
+        } catch { /* best-effort */ }
+      }
     }
     // scroll-end (lazy content + footer)
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)).catch(() => {})
