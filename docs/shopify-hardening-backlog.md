@@ -750,6 +750,41 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   **Still open:** `theme-gates` should prune reports matching no manifest gate on a **full** run (never
   on `--static-only`/`--pages`, which legitimately leave other reports untouched). Blocked only by that
   file being modified by the concurrent workstream.
+
+- [ ] **CB-22 · Home hero: 3 real divergences from the reference, found by gate #46's L2 judge.**
+  `status: open` (real dev work — loom/ink, no decision needed)
+  Running `check-reference-match.mjs` against the fresh `home/hero` reference (REF-VID-2) and a stale
+  2026-07-22 Lens capture surfaced genuine drift, not tooling noise:
+  1. the **"Connect on Whatsapp" CTA** renders solid amber/orange; the reference shows it outlined in a
+     muted teal-green — a visually prominent hue shift against the nav bar.
+  2. an **unconfirmed subheadline** — *"Stay tuned for our next seasonal special"* — renders below the
+     heading; not legible in the reference at its zoom level, so unclear if it's intended or copy drift.
+  3. an **unconfirmed circular brand-stamp badge** overlaid mid-panel — same visibility caveat.
+  All three are `warning`-severity (L2 is warn-only, RM-2), confidence 78%. Re-run against a **fresh**
+  Lens capture before acting — this judgment is against a day-old frame — then have loom confirm/fix the
+  CTA colour and ink confirm the subheadline copy is intentional.
+
+- [ ] **CB-23 · `check-reference-match` has no notion of global/section-group surfaces.** `status: open`
+  (toolkit gap, small)
+  `templateFor()` only resolves `templates/<surface>.json` / `templates/page.<surface>.json`. A header
+  or footer living in a section GROUP (`sections/footer-group.json`) has no template file, so registering
+  it as a normal surface produces a **permanent** `ref.template-missing` BLOCK — found while trying to
+  register cravinbyandy's footer for REF-VID-2. Worked around by archiving the frame outside
+  `reference-map.json` (`docs/design/references/global/footer.png`); the map itself has no footer entry.
+  Fix: teach `templateFor` to also check `sections/<surface>-group.json` and read its `order`/`sections`
+  the same way, for a small fixed set of global surface names (`header`, `footer`).
+
+- [ ] **CB-24 · Gate #46 L2 only compares the above-the-fold frame — a below-the-fold section can never match.**
+  `status: open` (toolkit gap)
+  `lensFrameFor` picks the per-surface **"rest"** Lens frame (the top-of-page screenshot). For an
+  above-the-fold section (hero) that's correct; for `home/locations` (below the fold) the judge compared
+  the reference against a screenshot that simply doesn't scroll that far, and reported
+  `component-parity: the Locations carousel section... [not visible]` — **not a real divergence**, a
+  frame/section mismatch, flagged `[would BLOCK under REFERENCE_MATCH_ENFORCE=1]`. This is exactly the
+  false-BLOCK class this whole quarter has been fixing, just not yet inside gate #46. Reinforces RM-2's
+  already-ratified decision to keep L2 warn-only. Fix needs a per-section scroll-to-frame in Lens
+  capture, not a quick patch here — logged, not attempted.
+
 - [x] **CB-21-ORIG · (superseded framing) A retired gate's report lingers and inflates every count.** `status: done`
   `theme-gates` clears `gate-reports/<name>.json` only for gates it is **about to run**, so when a gate
   leaves the manifest its last report stays on disk forever. cravinbyandy carried a `repo-hygiene.json`
@@ -879,15 +914,45 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 - [ ] **DEF-4 · Sales.tsx top-20 bugs + DesignLibrary.tsx gap analysis** (Polyglot app, not Shopify).
   Separate workstream. `status: open`
 
-- [ ] **REF-VID-2 · Persist the cravinbyandy walkthrough's key frames as real references.**
-  `status: open` The mechanism now exists (REF-VID-1) but the client repo still has an **empty**
-  reference map. Survey the recording, and for each surface it covers (home hero, about/"Meet Andy",
-  locations carousel, catering, gifting, footer) resolve the archetype from the visible structural
-  signals and persist the frame. **Do not guess an archetype from a blurry canvas view** — prefer the
-  frames where the surface fills the screen, and leave anything ambiguous for Yash rather than
-  registering a wrong archetype (a wrong reference is worse than none: gate #46 would then block the
-  correct build). *Done when:* `reference-ingest.mjs --list` on cravinbyandy shows the surfaces with
-  images present, and `check-reference-match.mjs` runs non-N/A there.
+- [x] **REF-VID-2 · Persist the cravinbyandy walkthrough's key frames as real references.**
+  `status: done` (client `97cc37d`) Surveyed the 413s walkthrough with a 4-sheet contact-sheet scan,
+  then extracted one clean, chrome-free frame per surface. **Every archetype was cross-checked against
+  the LIVE section source before registering — never against the video alone**, per the doctrine below.
+  - `home/hero` → `slideshow`. `templates/index.json`'s `hero_banner` IS the stock Dawn slideshow with
+    3 slide blocks (`1_7.png`/`1_7_1.png`/`1_7_2.png`) — this is the exact archetype the 2026-07-21
+    incident was about, here **provably correct, not assumed**. This does **not** resolve the separate
+    "is the 4-image collage vs single-photo content still right" question already parked for Yash
+    (below) — that's a content question; this reference only asserts the structural archetype.
+  - `home/locations` → `carousel`. `locations-slider.liquid`'s own comment: *"peek-slider... Native
+    scroll-snap + arrow buttons."* Frame shows prev/next arrows + a third card cut off at the edge (the
+    documented carousel disambiguator).
+  - `about/meet-andy` → `image-with-text` (closest vocabulary term; the "Andy's Three C's" stat row is
+    recorded in `must_have` since the generic label doesn't capture it).
+  - `catering/essentials` → `featured-grid`. `catering-services.liquid`'s own comment: *"Grid of image
+    cards (pink label bar + arrow)."*
+  - `gifting/occasions` → `custom`, deliberately. No entry in the fixed `ARCHETYPES` vocabulary
+    describes an occasion-pill cloud; forcing `collection-grid`/`featured-grid` would wrongly imply a
+    product/card matrix. Added the **new signal row** to `reference-archetype-signals.md` (the
+    compounding loop it exists for). Confirms CB-8: the section renders, is not orphaned.
+  - **Footer intentionally NOT registered** in `reference-map.json`: `check-reference-match`'s
+    `templateFor()` only resolves `templates/<surface>.json`/`templates/page.<surface>.json`, and footer
+    lives in `sections/footer-group.json` (a global section group). Registering it under a fake surface
+    would produce a **permanent** `ref.template-missing` BLOCK, not a warn. Archived the frame at
+    `docs/design/references/global/footer.png` instead (REF-VID-1's whole point — don't lose the frame)
+    without corrupting gate #46. **New tooling gap, logged not fixed:** `check-reference-match` has no
+    notion of global/section-group surfaces.
+  **Verified end-to-end, not just registered:** `check-reference-match.mjs` → **PASS, 0 blockers, 9
+  warnings**. All 4 archetype checks came back `ref.archetype-unverifiable` — honest, since every
+  section on this theme is custom by design; not a false pass, not a false block. L2 ran against a
+  **stale** 2026-07-22 Lens capture (found, not planned) and surfaced 3 **real** findings on the hero:
+  the "Connect on Whatsapp" CTA renders solid amber/orange vs. the reference's outlined teal-green, an
+  unconfirmed subheadline, and an unconfirmed brand-stamp badge — genuine drift a design-blind gate
+  stack would never have caught. **Second new tooling gap, logged not fixed:** L2 compares against the
+  per-surface **"rest" (above-the-fold)** Lens frame only, so a below-the-fold section like `locations`
+  can never visually match and produced a `[would BLOCK under ENFORCE=1]` finding that is really *"this
+  frame doesn't scroll here"*, not a real divergence — another argument for RM-2's already-ratified
+  decision to keep L2 warn-only.
+  `reference-ingest --list`: 5/5 surfaces show images present — done per this item's own criteria.
 
 ## Needs Yash (do not guess — guessing is what caused the re-asks)
 
@@ -934,3 +999,11 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   protocol says the floor "flips by theme_base" and does not apply to Dawn; it would have BLOCKED every
   correct custom-first Dawn build on enforce. Floor is now theme-base-conditional. Logged GI-2 (the map
   artifact + a generator that refuses to fabricate the two judgement fields).
+- 2026-07-24 · REF-VID-2 done (client `97cc37d`) — 5 reference frames persisted from the client
+  walkthrough, every archetype cross-checked against live section source before registering (not
+  guessed from the video). `check-reference-match.mjs` PASS, 0 blockers, 9 warnings; L2 against a stale
+  Lens capture found 3 real hero divergences (CTA colour, an unconfirmed subheadline, an unconfirmed
+  badge) — logged as CB-22. Two new toolkit gaps found and logged, not fixed: CB-23 (no
+  global/section-group surface support — footer would have produced a permanent false BLOCK) and CB-24
+  (L2 only compares the above-the-fold frame, so a below-the-fold section like locations can never
+  visually match). Added the "pill cloud" archetype signal to reference-archetype-signals.md.
