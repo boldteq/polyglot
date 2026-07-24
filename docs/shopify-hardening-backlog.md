@@ -770,18 +770,44 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   on `--static-only`/`--pages`, which legitimately leave other reports untouched). Blocked only by that
   file being modified by the concurrent workstream.
 
-- [ ] **CB-22 · Home hero: 3 real divergences from the reference, found by gate #46's L2 judge.**
-  `status: open` (real dev work — loom/ink, no decision needed)
-  Running `check-reference-match.mjs` against the fresh `home/hero` reference (REF-VID-2) and a stale
-  2026-07-22 Lens capture surfaced genuine drift, not tooling noise:
-  1. the **"Connect on Whatsapp" CTA** renders solid amber/orange; the reference shows it outlined in a
-     muted teal-green — a visually prominent hue shift against the nav bar.
-  2. an **unconfirmed subheadline** — *"Stay tuned for our next seasonal special"* — renders below the
-     heading; not legible in the reference at its zoom level, so unclear if it's intended or copy drift.
-  3. an **unconfirmed circular brand-stamp badge** overlaid mid-panel — same visibility caveat.
-  All three are `warning`-severity (L2 is warn-only, RM-2), confidence 78%. Re-run against a **fresh**
-  Lens capture before acting — this judgment is against a day-old frame — then have loom confirm/fix the
-  CTA colour and ink confirm the subheadline copy is intentional.
+- [x] **CB-22 · All 3 findings were stale-frame/degraded-reference artifacts — DISPROVEN, not fixed, on a
+  fresh capture + a fresh live-store screenshot.** `status: done`
+  Did exactly what the item itself asked: took a **fresh** Lens capture of the real live store
+  (`THEME_PREVIEW_URL=https://cravinbyandy.myshopify.com` — read-only screenshot, no push) and re-ran
+  gate #46. Result: **none of the 3 original findings reappeared**, and I did not just trust the silence —
+  checked each against independent ground truth:
+  1. **CTA colour** — the fresh screenshot shows a pale pink pill (`#FFEDF1` bg, dark-green text/arrow),
+     not amber/orange. `git log -p` on `section-cravin-header.css` shows this selector has only ever been
+     `#FFEDF1` or `#e1d4d3` (a dusty rose) — **never** orange, at any point in history. The original
+     finding was a vision-judge misread against a low-quality day-old frame, not a real defect.
+  2. **Subheadline** — *"Stay tuned for our next seasonal special"* is clearly legible in the fresh
+     screenshot, confirmed real and intentional.
+  3. **Brand-stamp badge** — also clearly visible and legible in the fresh screenshot, confirmed real and
+     intentional (a circular "Cravin' The Pantry" seal).
+  **The fresh run surfaced 3 different findings, and all 3 also dissolve under verification** (this
+  matters more than the first round — it shows the fix wasn't luck, the *pattern* was the bug):
+  · *Hero background "lighter sage vs darker olive"* and *"season" set in cursive/italic type* — both
+  are pixels **baked into the client's own supplied slide images** (`shopify://shop_images/1_7*.png`).
+  Confirmed mechanically: `hero_banner`'s 6 slide blocks all carry `heading: ""`, `subheading: ""`,
+  `show_text_box: false` — there is **no live text or color layer** for the judge to be comparing; it
+  was diffing JPEG compression/rasterisation of a photo against a degraded video-frame extraction of the
+  same photo. Nothing in the codebase can "fix" this — matches `design-spec.md`'s own note that this
+  hero was rebuilt to be **fully baked-image**, and separately confirms *"season"* italic is documented
+  intentional design (`design-spec.md:20`), not drift.
+  · *4-image collage content differs from the reference* (cupcakes/pastries vs. bagel/cake/salad) — this
+  is **not new**, it's the same already-tracked "Needs Yash: is the collage still the intended design?"
+  question, now independently reconfirmed with more specific detail by a second judge run. Updated that
+  entry below rather than duplicating it.
+  **Incidental finding, logged not fixed:** `design-system.json`'s `scheme-10` (`#6E7A30`, "HOMEPAGE HERO
+  BAND ONLY", a deliberate Yash brand-kit override from 2026-07-15) is referenced **nowhere** in
+  `sections/`/`assets/`/`templates/` — grep confirms zero uses. It is now orphaned documentation: the
+  hero it was written for was later rebuilt as a fully baked-image slideshow with the colour panel this
+  scheme was meant to drive removed entirely. Low-stakes (nothing renders wrong), but worth a human call
+  on whether to delete the stale spec entry or keep it as history — not touched here.
+  *Proof:* fresh `gate-reports/lens/home/*.png` (6 frames, all viewports) + fresh
+  `gate-reports/lens/reference-judge/{home-hero,home-locations}.json` + `reference-match.json` all
+  committed as evidence (client `968524b`). Toolkit unaffected (no toolkit code changed) — this
+  was a real-store investigation, not a gate-script change.
 
 - [ ] **CB-23 · `check-reference-match` has no notion of global/section-group surfaces.** `status: open`
   (toolkit gap, small)
@@ -996,6 +1022,16 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
 - **Home hero: is the 4-image collage still the intended design?** The 2026-07-21 walkthrough shows a
   collage hero; the current build renders a single-photo hero with 2 pagination dots. Could be slide 2
   of the same slideshow, could be a drift. Not guessing (see REF-VID-2).
+  **2026-07-24 — reconfirmed with more specific detail (CB-22):** gate #46's L2 judge, run twice against
+  two different fresh frames, independently reports the same class of gap both times — the collage's
+  *food subjects* differ from the reference, not just "1 photo vs 4". Reference shows colourful
+  cupcakes/pastries and orange-toned dishes; the live slides show a bagel, a mango cake slice, and a
+  salad. Six real image assets are live (`1_7.png` … `1_7_5.png`) — worth a quick side-by-side once you
+  have a minute, since it may just be "different slide" rather than "wrong photos."
+- **`design-system.json`'s `scheme-10` (`#6E7A30`, the 2026-07-15 brand-kit override "to match the Figma
+  hero") is unused anywhere in the theme** (CB-22) — the hero it was written for was later rebuilt as a
+  fully baked-image slideshow with no live colour panel. Delete the stale spec entry, or keep it as a
+  historical record of the decision? Either is fine; not touched without a call.
 
 ---
 
@@ -1033,3 +1069,11 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   1.2 (1 hit, needs a `shopify://` handle — "Needs Yash") and 1.3 (64 hits, CB-3's colour-ladder
   territory). CB-2 is now fully triaged: zero mechanizable-without-human-input findings remain. Toolkit
   **110/110 in 76s**.
+- 2026-07-24 · CB-22 closed (client `968524b`) — did exactly what the item asked (re-run against a fresh
+  Lens capture before acting) and all 3 original findings failed to reproduce; verified independently
+  (git history, a fresh live screenshot) rather than trusting silence. The fresh run's 3 replacement
+  findings also dissolved: two were pixels baked into the client's own supplied hero images (no live
+  text/colour layer exists there to fix), one is the same already-tracked "Needs Yash" collage-content
+  question, now reconfirmed with more specific detail. Incidental finding logged: `design-system.json`'s
+  `scheme-10` brand-kit override is unused anywhere in the theme (the hero it was written for was later
+  rebuilt as a fully baked-image slideshow) — a human call, not touched.
