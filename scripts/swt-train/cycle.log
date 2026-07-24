@@ -901,3 +901,24 @@ remove the file manually to continue.
 [2026-07-23T19:50:31.972Z] cycle 171 verify: kept 39/49 (dropped 10)
 [2026-07-23T19:54:42.212Z] cycle 171 distributed → 5491 rules · 14/14 agents trained · 0 gate-gaps
 [2026-07-23T19:54:42.213Z] cycle 171 reindex: OK · }
+[2026-07-23T19:54:42.273Z] cycle 171 ✓ +39 FAQs → 5491/6650 (82.6%) · 14/14 agents trained · committed
+[2026-07-23T19:54:47.298Z] cycle 172: slices [cro|new-section, trust-social-proof|new-section, copy-voice|new-section, honesty-claims|new-section, data-binding|new-section, performance-cwv|new-section, seo-structured-data|new-section] → generating 49 FAQs (FAQ-6287…)
+[2026-07-23T20:11:44.271Z] cycle 172 generation FAILED (claude generation failed: timeout after 12min) — failure 1/5; pointer not advanced.
+[2026-07-23T20:11:49.295Z] cycle 172: slices [cro|new-section, trust-social-proof|new-section, copy-voice|new-section, honesty-claims|new-section, data-binding|new-section, performance-cwv|new-section, seo-structured-data|new-section] → generating 49 FAQs (FAQ-6287…)
+[2026-07-23T20:29:43.951Z] cycle 172 generation FAILED (claude generation failed: timeout after 12min) — failure 2/5; pointer not advanced.
+[2026-07-23T20:29:48.981Z] cycle 172: slices [cro|new-section, trust-social-proof|new-section, copy-voice|new-section, honesty-claims|new-section, data-binding|new-section, performance-cwv|new-section, seo-structured-data|new-section] → generating 49 FAQs (FAQ-6287…)
+[2026-07-23T20:32:55.784Z] cycle 172 generation FAILED (claude exit 1: API Error: Unable to connect to API (ConnectionRefused)) — failure 3/5; pointer not advanced.
+[2026-07-23T20:33:00.813Z] cycle 172: slices [cro|new-section, trust-social-proof|new-section, copy-voice|new-section, honesty-claims|new-section, data-binding|new-section, performance-cwv|new-section, seo-structured-data|new-section] → generating 49 FAQs (FAQ-6287…)
+[2026-07-23T20:36:11.599Z] cycle 172 generation FAILED (claude exit 1: API Error: Unable to connect to API (ConnectionRefused)) — failure 4/5; pointer not advanced.
+[2026-07-23T20:36:16.697Z] cycle 172: slices [cro|new-section, trust-social-proof|new-section, copy-voice|new-section, honesty-claims|new-section, data-binding|new-section, performance-cwv|new-section, seo-structured-data|new-section] → generating 49 FAQs (FAQ-6287…)
+[2026-07-23T20:39:25.962Z] cycle 172 generation FAILED (claude exit 1: API Error: Unable to connect to API (ConnectionRefused)) — failure 5/5; pointer not advanced.
+[2026-07-23T20:39:25.971Z] 5 consecutive failures — writing STOP.
+[2026-07-24T03:44:45.708Z] SWT training daemon START — interval 0.08333333333333333min · max 40 cycles · 7 slices/cycle · model inherit · at 5491/6650
+[2026-07-24T03:44:45.713Z] STOP file present — exiting.
+[2026-07-24T03:47:01.657Z] SWT training daemon START — interval 0.08333333333333333min · max 40 cycles · 7 slices/cycle · model inherit · at 5491/6650
+[2026-07-24T03:47:01.661Z] reached MAX_CYCLES=40 — done.
+[2026-07-24T03:50:19.607Z] SWT training daemon START — interval 0.13333333333333333min · max 240 cycles · 7 slices/cycle · model inherit · at 5491/6650
+[2026-07-24T03:50:19.633Z] cycle 172: slices [cro|new-section, trust-social-proof|new-section, copy-voice|new-section, honesty-claims|new-section, data-binding|new-section, performance-cwv|new-section, seo-structured-data|new-section] → generating 49 FAQs (FAQ-6287…)
+[2026-07-24T03:55:33.060Z] cycle 172 verify: kept 37/49 (dropped 12)
+[2026-07-24T04:00:06.032Z] cycle 172 distributed → 5528 rules · 14/14 agents trained · 0 gate-gaps
+[2026-07-24T04:00:06.033Z] cycle 172 reindex: OK · }
