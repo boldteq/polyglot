@@ -42,7 +42,14 @@ package-lock.json
 gate-reports/
 **/gate-reports/
 
-# swt-train runtime process artifacts (state.json/cycle.log/*.md stay tracked)
+# swt-train runtime process artifacts. UNTRACKED 2026-07-24: state.json/cycle.log/rejected-rules.md/
+# store-fix-queue.md/gate-gaps.md were committed every cycle and grew .git to 1.1 GB — they are
+# generated runtime state, not source. Only README.md + the *.sh scripts stay tracked (code/docs).
+scripts/swt-train/state.json
+scripts/swt-train/cycle.log
+scripts/swt-train/rejected-rules.md
+scripts/swt-train/store-fix-queue.md
+scripts/swt-train/gate-gaps.md
 scripts/swt-train/*.out
 scripts/swt-train/STOP
 scripts/swt-train/reindex*.log

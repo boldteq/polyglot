@@ -73,6 +73,16 @@ const PRIORITY_SURFACES = (() => {
   return new Set(list)
 })()
 
+// FREEZE THE TREADMILL (2026-07-24). The loop used to MARCH the synthetic CONCERNS×SURFACES matrix to a
+// numeric TARGET, manufacturing speculative filler FAQs — it ran 669 past its own 5040 target (5709) and
+// ~15% of the repo's commits were mechanical `train(swt)` cycles. It is now GAP-DRIVEN by default: it
+// only generates for a REAL, NAMED gap. Two explicit opt-ins re-enable generation; with neither, it logs
+// and exits clean (frozen — no STOP file, so a later directed/coverage run still works):
+//   • --surfaces <list> / SWT_PRIORITY_SURFACES=…  → a directed fill of EXACTLY those surfaces (bounded)
+//   • --coverage / SWT_COVERAGE_FILL=1             → opt back into the full corpus march (the old default)
+const COVERAGE_FILL = process.argv.includes('--coverage') || process.env.SWT_COVERAGE_FILL === '1'
+const DIRECTED = PRIORITY_SURFACES.size > 0
+
 const CONCERNS = [
   'layout', 'typography', 'color-contrast', 'spacing-rhythm',
   'imagery-art-direction', 'motion', 'mobile', 'a11y', 'cro',
@@ -288,6 +298,32 @@ function buildGapPlan() {
     .map((x) => x.slice)
 }
 
+// The REAL-gap plan (default since 2026-07-24 — freeze the treadmill). Unlike buildGapPlan() it never
+// returns the whole matrix: only under-quota slices for the surfaces a human/agent EXPLICITLY named via
+// --surfaces (the "named gap"). No --surfaces → [] → the loop idles and exits instead of inventing
+// speculative coverage. Reuses countBrainSlices()/buildSlicePlan() so a critic-gutted slice reappears.
+function buildRealGapPlan() {
+  if (!DIRECTED) return []
+  const counts = countBrainSlices()
+  return buildSlicePlan()
+    .filter((slice) => PRIORITY_SURFACES.has(slice.split('|')[1]))
+    .map((slice) => ({ slice, n: counts.get(slice) || 0 }))
+    .filter((x) => x.n < FAQS_PER_SLICE)
+    .sort((a, b) => a.n - b.n)
+    .map((x) => x.slice)
+}
+
+// Count of OPEN gate-gap items (a rule citing a gate that does not exist). Surfaced in the frozen-idle
+// log so a real corpus bug stays visible — it's closed by re-citation in distribute(), not FAQ-gen, so
+// it never produces a slice plan. Matches the "> N open." line the queue writes (0 when "None").
+function openGateGapCount() {
+  try {
+    const md = fs.readFileSync(path.join(STATE_DIR, 'gate-gaps.md'), 'utf8')
+    const m = md.match(/^>\s*(\d+)\s+open/mi)
+    return m ? Number(m[1]) : 0
+  } catch { return 0 }
+}
+
 // ---- claude -p generation ----
 const GEN_TIMEOUT_MS = Number(process.env.SWT_GEN_TIMEOUT_MS || 18 * 60 * 1000) // headroom above the ~4-8min norm
 function callClaude(prompt) {
@@ -475,19 +511,8 @@ function appendLedger(cycle, added, slices, note) {
   atomicWrite(BRAIN, md)
 }
 
-function gitCommit(msg, files) {
-  const add = spawnSync('git', ['add', '--', ...files], { cwd: ROOT, encoding: 'utf8' })
-  if (add.status !== 0) { logLine(`git add warn: ${add.stderr}`); }
-  // PATH-RESTRICTED commit (`-- ...files`) so an unattended 15h loop can NEVER sweep Yash's WIP into
-  // a training commit, even if something else is staged in the index.
-  const ci = spawnSync(
-    'git',
-    ['commit', '-m', msg, '--no-verify', '--', ...files],
-    { cwd: ROOT, encoding: 'utf8' },
-  )
-  if (ci.status !== 0 && !(ci.stdout || '').includes('nothing to commit'))
-    logLine(`git commit warn: ${(ci.stdout || '') + (ci.stderr || '')}`)
-}
+// (gitCommit removed 2026-07-24) The per-cycle commit of state/queue/log/gate-gaps grew .git to 1.1 GB.
+// Those files are now git-ignored runtime state (never re-committed), so the loop writes disk state only.
 
 // ---- store scan (best-effort, READ-ONLY: queue findings, never push live) ----
 function storeScan(cycle) {
@@ -514,7 +539,17 @@ function runCycle(state) {
 
   const cycle = state.cyclesRun + 1
   let slices
-  if (GAP_MODE) {
+  if (!COVERAGE_FILL) {
+    // DEFAULT (frozen): gap-driven. Only a NAMED gap (--surfaces) produces work. No named gap → idle and
+    // exit WITHOUT a STOP file (a STOP would block a later directed/coverage run — see runCycle top).
+    const realPlan = buildRealGapPlan()
+    if (realPlan.length === 0) {
+      const gg = openGateGapCount()
+      logLine(`SWT frozen — no named gap to fill${gg ? ` (${gg} open gate-gap citation(s): fixed by distribute() re-citation, not FAQ-gen)` : ''}. To generate: \`--surfaces <list>\` (a directed gap) or \`--coverage\` (the full corpus march).`)
+      finish(state); process.exit(0)
+    }
+    slices = realPlan.slice(0, SLICES_PER_CYCLE)
+  } else if (GAP_MODE) {
     const gapPlan = buildGapPlan()
     if (gapPlan.length === 0) {
       logLine('gap plan empty — every slice at/above the 7-FAQ quota. Done.')
@@ -597,18 +632,10 @@ function runCycle(state) {
 
   storeScan(cycle)
 
-  // BRAIN, DIGEST + agent .md live in ~/.claude (not a repo) — persisted on disk.
-  // The Polyglot repo commits only its own state/queue/log/gate-gaps.
-  gitCommit(
-    `train(swt): cycle ${cycle} — +${entries.length} FAQs → ${dist ? dist.rules + ' rules in ' + dist.agentsUpdated + '/14 agents' : 'distributed'} (${state.faqCount}/${TARGET})`,
-    [
-      path.relative(ROOT, STATE_F),
-      path.relative(ROOT, QUEUE_F),
-      path.relative(ROOT, LOG_F),
-      path.relative(ROOT, path.join(STATE_DIR, 'gate-gaps.md')),
-    ],
-  )
-  logLine(`cycle ${cycle} ✓ +${entries.length} FAQs → ${state.faqCount}/${TARGET} (${((state.faqCount / TARGET) * 100).toFixed(1)}%)${dist ? ` · ${dist.agentsUpdated}/14 agents trained` : ''} · committed`)
+  // BRAIN, DIGEST + agent .md live in ~/.claude (not a repo) — persisted on disk. The repo state/queue/
+  // log/gate-gaps are now GIT-IGNORED (2026-07-24 untrack — they grew .git to 1.1 GB at one commit/cycle),
+  // so there is no longer a per-cycle repo commit; the loop writes disk state only.
+  logLine(`cycle ${cycle} ✓ +${entries.length} FAQs → ${state.faqCount}/${TARGET} (${((state.faqCount / TARGET) * 100).toFixed(1)}%)${dist ? ` · ${dist.agentsUpdated}/14 agents trained` : ''} · disk state saved (logs untracked)`)
 }
 
 function finish(state) {
