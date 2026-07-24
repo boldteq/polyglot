@@ -556,8 +556,14 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   which brand colour was meant is a *design decision*, not a mechanical substitution, and guessing would
   silently change what the client sees.
   *Proof:* static blockers **816 → 669**, matching the swap count. (Superseded framing below.)
-- [~] **CB-1-ORIG · Colour swap MECHANIZED + a gate-stack contradiction fixed. 201 → 51 measured.**
-  `status: open` (tooling done; application to the client repo is the remaining step)
+- [x] **CB-1-ORIG · (superseded framing) Colour swap MECHANIZED + a gate-stack contradiction fixed.**
+  `status: done` — its own "Remaining" step (run the 3-step chain in the client repo and commit) is
+  exactly what **CB-1** above did for real: `generate-design-system-css.mjs` → wire `theme.liquid` →
+  `snap-colors-to-tokens.mjs --apply`, committed `870ffe9`. Verified 2026-07-24 against live source, not
+  assumed stale: `layout/theme.liquid:310` loads `design-system.css`, the asset exists on disk, and
+  `870ffe9`'s own diff is exactly the described chain. This item's checkbox was left open after CB-1
+  landed — the same "stale status on a completed item" class this backlog keeps finding elsewhere
+  (BRAIN-1, ENV-2). No remaining work; kept for history per the doc's own -ORIG convention.
   Three things had to be true before a single literal could be safely replaced, and none of them were:
   **(1) There was no brand token to bind to.** The cascade generator emitted type/spacing/weight/font
   and skipped `color` entirely, so the PDF-authoritative palette was unreachable from CSS. Now emits
@@ -609,6 +615,19 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   *Next:* land CB-1 first (it does 128 of these for free), then treat CB-2 as the 65 genuine
   merchant-editability gaps. Those need `{{ ... | t }}` keys, `image_url`/settings-backed media, and
   bound alt text — real per-section work, not a sweep.
+  **2026-07-24 re-verified against HEAD (the numbers above had gone stale — same "re-verify before
+  acting" lesson as CB-8) — re-ran `gate-editability-greps.sh` fresh: 1.1 (hardcoded English) is now
+  **0** (the client's own theme pull since resolved it), 1.2 is **1**, 1.3 is **64**, 1.4 was **2**.
+  **Fixed 1.4 (client `f55bd7b`):** both hardcoded `<img alt="...">` fallbacks in
+  `sections/delivery-cta.liquid` (the bundled default banner + food image, shown only when no merchant
+  image is uploaded) are now bound to new `text` settings (`desktop_banner_alt` / `image_alt`), each
+  defaulting to the exact original literal — identity-preserving, same construction as CB-1's colour
+  swap. Verified by re-running the gate: 1.4 **2 → 0**.
+  **Remaining 65 blockers are already tracked elsewhere, not new scope:** 1.2's one hit
+  (`Frame_2147240171.png` hardcoded CDN url in `assets/section-locations-slider.css`) needs a
+  `shopify://` file handle or a staging URL — see "Needs Yash". 1.3's 64 hits are colour literals with
+  no exact brand-token match — CB-3's territory, design decisions, correctly left alone rather than
+  guessed. So CB-2 is now fully triaged: 0 mechanizable-without-human-input findings remain.
 - [ ] **CB-3 · THE LADDER — now a ratifiable proposal, not a blank question.** `status: blocked-by human`
   **The data — RECOMPUTED after CB-10/CB-11 (the earlier figures were stock-inflated and are
   superseded).** Scope is now line-granular, so every number below is drift **we** introduced:
@@ -1007,3 +1026,10 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   global/section-group surface support — footer would have produced a permanent false BLOCK) and CB-24
   (L2 only compares the above-the-fold frame, so a below-the-fold section like locations can never
   visually match). Added the "pill cloud" archetype signal to reference-archetype-signals.md.
+- 2026-07-24 · CB-1-ORIG flipped to `done` (bookkeeping only) — verified its "remaining" application step
+  was already shipped for real under CB-1 (client `870ffe9`); stale-status class caught before it misled
+  a future run. CB-2 re-verified against HEAD (numbers had gone stale): 1.1 now 0, 1.4 fixed 2→0 (client
+  `f55bd7b` — delivery-cta.liquid fallback alt text bound to settings, identity-preserving), leaving only
+  1.2 (1 hit, needs a `shopify://` handle — "Needs Yash") and 1.3 (64 hits, CB-3's colour-ladder
+  territory). CB-2 is now fully triaged: zero mechanizable-without-human-input findings remain. Toolkit
+  **110/110 in 76s**.
