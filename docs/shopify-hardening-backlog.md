@@ -594,7 +594,8 @@ client repo root, never `pnpm <alias>` · a skipped gate is not a passed gate ·
   Held back because it edits ~150 sites across a live client theme — worth one visual check on staging
   first, even though the swap is value-identical by construction.
 - [~] **CB-2 · TRIAGED (the split this item asked for). It is not 269 problems — it is ~65.**
-  `status: open` (triage done; the fix is now mostly CB-1's job)
+  `status: blocked-by human` (fully triaged 2026-07-24 — the one mechanizable-without-Yash finding is
+  fixed; the sole remainder needs a `shopify://` handle, see "Needs Yash". Nothing left to pick up here.)
   **Base-Dawn noise: ZERO.** The gate is diff-scoped — 1.3 greps `git diff base...HEAD` for ADDED lines
   and the file list is "added/modified since base" — so every finding is our own custom work. There is
   no stock-theme noise to subtract.
