@@ -144,6 +144,40 @@ export async function captureItem(type, fields, origin = 'direct', opts = {}) {
   return { id, type, created_at, ...revision }
 }
 
+// D2 (2026-07-24): DRAIN deferred captures into the vector store. A capture made while the embedder was
+// down is saved to <type>s.jsonl but NOT embedded (line ~113) — and reindex.mjs only re-embeds
+// memory/agent/project sources, so its "deferred to the next reindex" promise was NEVER kept for
+// lesson/bug/decision/golden. That silent gap is the measured lesson lag (85 of 138 indexed). This drains
+// it: every ledger item whose id is not already in the store gets embedded + upserted now. Idempotent
+// (skips indexed ids) and Ollama-SPOF-safe (a still-down embedder just leaves the item deferred again).
+export async function reembedCaptures({ log = () => {} } = {}) {
+  const TYPES = ['lesson', 'bug', 'decision', 'golden']
+  const store = getStore()
+  const have = typeof store.ids === 'function' ? store.ids() : new Set()
+  let embedded = 0, deferred = 0, already = 0
+  for (const type of TYPES) {
+    let lines = []
+    try { lines = fs.readFileSync(path.join(DATA_DIR, `${type}s.jsonl`), 'utf-8').trim().split('\n').filter(Boolean) } catch { continue }
+    for (const ln of lines) {
+      let it; try { it = JSON.parse(ln) } catch { continue }
+      if (!it.id) continue
+      if (have.has(it.id)) { already += 1; continue } // already indexed — skip (idempotent)
+      const text = render(type, it)
+      const emb = await embedOneSafe(text)
+      if (!emb.ok) { deferred += 1; continue } // embedder still down → stays deferred, never a bad vector
+      await store.upsert([{
+        id: it.id, source_type: type, source_ref: it.id, chunk_index: 0,
+        chunk_text: text, embedding: emb.vector,
+        metadata: { ...it, title: titleOf(type, it), captured: true, origin: it.origin || 'direct', confidence: it.confidence, verified: it.verified },
+        content_hash: it.id, updated_at: it.created_at || new Date().toISOString(),
+      }])
+      have.add(it.id); embedded += 1
+    }
+  }
+  log(`reembed-captures: +${embedded} embedded · ${already} already indexed · ${deferred} still deferred (embedder down)`)
+  return { embedded, already, deferred }
+}
+
 // read recent captured items of a type (for lookups that aren't semantic)
 export function recentItems(type, limit = 20) {
   try {

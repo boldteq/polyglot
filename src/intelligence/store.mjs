@@ -224,6 +224,8 @@ class LocalStore {
     return out
   }
   stats() { const recs = this._load(); const byType = {}; for (const r of recs.values()) byType[r.source_type] = (byType[r.source_type] || 0) + 1; return { total: recs.size, byType, file: this.file } }
+  // Set of ids currently embedded — lets the capture drain (reembedCaptures) skip already-indexed items.
+  ids() { return new Set(this._load().keys()) }
   writeManifest(m) { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(this.manifestFile, JSON.stringify(m, null, 2)) }
   readManifest() { try { return JSON.parse(fs.readFileSync(this.manifestFile, 'utf-8')) } catch { return null } }
 }

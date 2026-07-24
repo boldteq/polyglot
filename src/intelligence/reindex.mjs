@@ -12,6 +12,7 @@ import { enumerateSources } from './sources.mjs'
 import { chunkMarkdown } from './chunk.mjs'
 import { embed, embedderInfo } from './embedder.mjs'
 import { getStore, storeKind, freshnessStats } from './store.mjs'
+import { reembedCaptures } from './capture.mjs'
 
 /**
  * Reindex the brain (or a scoped subset) into the vector store.
@@ -72,6 +73,12 @@ export async function reindex(opts = {}) {
   if (sources.enumerationErrors) log(`reindex: SKIPPING prune — enumeration INCOMPLETE (${sources.enumerationErrors.length} dir(s) unreadable); refusing to infer deletions`)
   const removed = (!scoped && !sources.enumerationErrors && store.deleteMissing) ? store.deleteMissing(sources.map((s) => s.source_ref)) : 0
   store.flush?.() // single write of the whole index
+  // D2 (2026-07-24): drain deferred captures (lesson/bug/decision/golden). enumerateSources above covers
+  // ONLY memory/agent/project files — a capture made while the embedder was down was saved to
+  // <type>s.jsonl but never embedded, and nothing re-embedded it (the measured 85/138 lesson lag). This
+  // fulfills capture.mjs's "deferred to the next reindex" promise. Skipped on a scoped run (partial view).
+  let reembed = { embedded: 0, already: 0, deferred: 0 }
+  if (!scoped) { try { reembed = await reembedCaptures({ log }) } catch (e) { log(`reembed-captures warn: ${e.message}`) } }
   const stats = await store.stats()
   // Phase E — stamp freshness into the manifest so a silently-stalled reindex is visible.
   let freshness = null
@@ -79,8 +86,8 @@ export async function reindex(opts = {}) {
   store.writeManifest?.({ provider, model, dim, count: stats.total, byType: stats.byType, freshness, updated_at: new Date().toISOString() })
 
   const ms = Date.now() - t0
-  log(`reindex done in ${(ms / 1000).toFixed(1)}s — embedded ${embedded} file(s) (${chunks} chunks), skipped ${skipped} unchanged, pruned ${removed}. dim=${dim}`)
-  return { embedded, skipped, chunks, removed, dim, ms, scoped: scoped ? scoped.size : null, stats }
+  log(`reindex done in ${(ms / 1000).toFixed(1)}s — embedded ${embedded} file(s) (${chunks} chunks), skipped ${skipped} unchanged, pruned ${removed}, captures drained +${reembed.embedded} (${reembed.deferred} still deferred). dim=${dim}`)
+  return { embedded, skipped, chunks, removed, dim, ms, scoped: scoped ? scoped.size : null, reembed, stats }
 }
 
 // ── CLI wrapper (unchanged behavior) ─────────────────────────────────────────
