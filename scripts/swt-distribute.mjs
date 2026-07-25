@@ -97,6 +97,12 @@ const STRATEGIST_MAP = {
 // to emit URLs — which invites a fabricated-but-authoritative-looking link (a real risk: the
 // plausible `api/liquid/filters/t` is a 404) — this maps a rule's own Shopify tokens to a doc URL
 // **verified live on 2026-07-24**. Deterministic, auditable, and incapable of inventing a page.
+//
+// DIVISION OF LABOUR vs the Dev MCP (handbook §5): this map = PROVENANCE for STORED pack rules (lets a
+// rule name its shopify.dev source). It is NOT the anti-hallucination gate — that is the live
+// `@shopify/dev-mcp` validator wired as gates #49 (Liquid `validate_theme`) + #51 (GraphQL
+// `validate_graphql_codeblocks`), which judge GENERATED build code against the real schema. Both are
+// kept, clearly scoped: cite the rule here, validate the code there. Neither replaces the other.
 // Order matters: first match wins, so the most specific token is listed first.
 const DOC_CITES = [
   [/visible_if/i, 'shopify.dev/docs/storefronts/themes/architecture/settings#conditional-settings'],
@@ -109,10 +115,28 @@ const DOC_CITES = [
   [/settings_schema|section\.settings|block\.settings/i, 'shopify.dev/docs/storefronts/themes/architecture/settings'],
   // Liquid data objects/filters — the dominant uncited signal (metafield/metaobject alone was 898 of
   // the 1,244-rule backlog). All verified live 2026-07-24.
-  [/metaobjects?\b/i, 'shopify.dev/docs/api/liquid/objects/metaobject'],
-  [/metafields?\b/i, 'shopify.dev/docs/api/liquid/objects/metafield'],
+  [/metaobjects?/i, 'shopify.dev/docs/api/liquid/objects/metaobject'], // incl. metaobject_reference
+  [/metafields?/i, 'shopify.dev/docs/api/liquid/objects/metafield'],   // incl. metafield_reference
   [/\| *money\b/i, 'shopify.dev/docs/api/liquid/filters/money'],
+  [/\| *t\b|\| *translate\b/i, 'shopify.dev/docs/api/liquid/filters/translate'], // the `t` translation filter (NOT filters/t — that 404s)
   [/paginate/i, 'shopify.dev/docs/api/liquid/tags/paginate'],
+  // routes / collection / predictive-search / content_for + Liquid tags & AJAX endpoints — the uncited
+  // backlog cluster (measured: these mechanisms accounted for the 54 enforced + 99 guideline uncited
+  // rules). All URLs verified live on shopify.dev 2026-07-24. Ordered most-specific-first, and BEFORE the
+  // broad cart/product matchers, so e.g. `routes.cart_url`→routes and a "recommendations.json for products"
+  // rule cites the recommendations endpoint, not the product object. Extending this map (rather than
+  // DELETING the rules) is how the backlog drains WITHOUT losing correct-but-uncited knowledge: on the
+  // next distribute, deriveRule cites these instead of the D1 gate dropping them as unverifiable recall.
+  [/recommendations(\.json|\/products|\b)/i, 'shopify.dev/docs/api/ajax/reference/product-recommendations'],
+  [/predictive[_-]?search|\/search\/suggest/i, 'shopify.dev/docs/api/ajax/reference/predictive-search'],
+  [/\broutes\.[a-z_]+/i, 'shopify.dev/docs/api/liquid/objects/routes'],
+  [/\brequest\.[a-z_]+/i, 'shopify.dev/docs/api/liquid/objects/request'],
+  [/\bcollection\.[a-z_]/i, 'shopify.dev/docs/api/liquid/objects/collection'],
+  [/content_for_header/i, 'shopify.dev/docs/api/liquid/objects/content_for_header'],
+  [/\{%-? *content_for|content_for_layout/i, 'shopify.dev/docs/api/liquid/tags/content_for'],
+  [/\{%-? *render\b/i, 'shopify.dev/docs/api/liquid/tags/render'],
+  [/\{%-? *sections?\b/i, 'shopify.dev/docs/api/liquid/tags/section'],
+  [/\{%-? *style\b|shopify_attributes/i, 'shopify.dev/docs/api/liquid/tags/style'],
   [/\bcart\./i, 'shopify.dev/docs/api/liquid/objects/cart'],
   [/\bproduct\./i, 'shopify.dev/docs/api/liquid/objects/product'],
 ]
@@ -243,6 +267,9 @@ export function updateAgent(agentId, rules) {
     '<!-- SWT-TRAINED:START -->',
     `You own **${owned.length} trained rules** (${enf.length} gate-ENFORCED) across ${surfaces.length} surfaces, distilled from the [[shopify-website-faq-brain]] — the team's accumulated gap→fix learnings.`,
     '',
+    '**HOUSE BRAIN (read first, every build):** `~/.claude/memory/patterns/good/shopify-website-team-handbook.md` — the ONE source of truth for our workflow, code/CSS standards, gate ownership, and Definition of Done. For any Shopify PLATFORM fact (Liquid/schema/Admin/Storefront field), use the Dev MCP (`learn_shopify_api`→`search_docs_chunks`→`validate_theme`/`validate_graphql_codeblocks`) — never model-recall. If your memory conflicts with the Toolkit, the Toolkit wins.',
+    '**PLATFORM TRUTH (dated, outranks recall):** `~/.claude/memory/patterns/good/shopify-platform-truth-2026.md` §A — verified facts (per-component CSS ownership → gate #52, `image_tag` not `img_tag`, `asset_url` self-versions, theme blocks). §B is QUARANTINE — never build on a §B claim without verifying it live first.',
+    '**DESIGN TASTE (why "green gates still looks AI"):** `~/.claude/memory/patterns/good/shopify-design-taste-doctrine.md` — the gates verify correctness, not desirability. Fix the 4 real AI-tells (duplication · thinness · missing institutional signals · borrowed assets), NOT "make it more distinctive": prototypicality is REWARDED (Tuch ηp²=.812). Never penalise a plain/conventional ecom layout, and never chase flourish to fix an AI look.',
     `**Before building any surface:** (1) open your rule pack \`~/.claude/memory/patterns/good/swt-rules/${agentId}.md\` and read the \`## surface: <the surface you're building>\` section; (2) run \`memory_search("<your task>")\`. Treat \`[ENFORCED]\` rules as HARD requirements (a gate blocks them) and \`[guideline]\` rules as strong defaults. Do NOT bulk-load the 12k-line faq-brain — use the pack (scoped) + memory_search (semantic) instead.`,
     `Surfaces you have rules for: ${surfaces.join(', ')}.`,
     '',

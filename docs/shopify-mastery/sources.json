@@ -1,0 +1,948 @@
+{
+  "$schema": "internal://boldteq/shopify-mastery-sources/v1",
+  "packName": "boldteq-shopify-mastery",
+  "packVersion": "1.1.0",
+  "verifiedOn": "2026-07-25",
+  "reverifyEveryDays": 30,
+  "verificationRule": "An entry may enter agent memory only if it resolves to a live URL owned by an officially-maintained publisher (Shopify, W3C, WHATWG, MDN, web.dev, Google Search Central) or to a named-author study with a citable public page. Anything that fails re-verification is quarantined, never silently merged. Facts are citable; third-party prose is not.",
+  "tiers": {
+    "0": "Install now. Official Shopify, executable, zero ambiguity.",
+    "1": "Reference codebases. Read and distil. Never redistribute.",
+    "2": "Official Shopify standards and tooling. The acceptance bar.",
+    "3": "Open web standards. Safe to distil and quote under their licences.",
+    "4": "Design evidence. Cited studies and platform-independent research behind the taste rubric. Facts only unless the licence says otherwise.",
+    "5": "Legal and licensing boundaries. What the system may and may not reuse."
+  },
+  "sources": [
+    {
+      "id": "shopify-dev-mcp",
+      "tier": 0,
+      "title": "@shopify/dev-mcp",
+      "url": "https://www.npmjs.com/package/@shopify/dev-mcp",
+      "publisher": "Shopify",
+      "license": "ISC",
+      "quotable": true,
+      "installTarget": ".mcp.json",
+      "teaches": [
+        "Live Shopify documentation search from inside the agent loop",
+        "Theme validation against the current platform, not against training data",
+        "GraphQL and component code-block validation"
+      ],
+      "tools": [
+        "learn_shopify_api (must be called first; returns conversationId)",
+        "search_docs_chunks",
+        "validate_theme",
+        "validate_theme_codeblocks",
+        "validate_component_codeblocks",
+        "validate_graphql_codeblocks"
+      ],
+      "notes": "The GitHub repo path 404s; npm is the authoritative distribution. Cite npm, not GitHub.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "INGESTIBLE",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "shopify-liquid-skills",
+      "tier": 0,
+      "title": "Shopify/liquid-skills",
+      "url": "https://github.com/Shopify/liquid-skills",
+      "publisher": "Shopify",
+      "license": "none published - all rights reserved",
+      "quotable": false,
+      "installTarget": "Claude Code plugin marketplace",
+      "install": [
+        "/plugin marketplace add Shopify/liquid-skills",
+        "/plugin install liquid-lsp@liquid-skills",
+        "/plugin install liquid-skills@liquid-skills"
+      ],
+      "prerequisite": "npm install -g @shopify/cli",
+      "skills": [
+        "shopify-liquid-themes",
+        "liquid-theme-standards",
+        "liquid-theme-a11y"
+      ],
+      "teaches": [
+        "Shopify's own published Liquid coding standard",
+        "Theme accessibility conventions",
+        "Liquid language server for real-time diagnostics in the editor"
+      ],
+      "notes": "No LICENSE file. Publicly readable, so distil the conventions into our own words. Never paste its prose into our rule packs.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "shopify-agent-skills",
+      "tier": 0,
+      "title": "Shopify/agent-skills",
+      "url": "https://github.com/Shopify/agent-skills",
+      "publisher": "Shopify",
+      "license": "none published - all rights reserved",
+      "quotable": false,
+      "installTarget": "skills directory via the skill CLI",
+      "install": [
+        "npx skill install shopify-liquid",
+        "npx skill install shopify-custom-data",
+        "npx skill install shopify-dev"
+      ],
+      "skillsAvailable": [
+        "shopify-liquid",
+        "shopify-custom-data",
+        "shopify-dev",
+        "shopify-admin",
+        "shopify-storefront-graphql",
+        "shopify-customer",
+        "shopify-partner",
+        "shopify-payments-apps",
+        "shopify-functions",
+        "shopify-hydrogen",
+        "shopify-polaris-admin-extensions",
+        "shopify-polaris-checkout-extensions",
+        "shopify-polaris-customer-account-extensions",
+        "shopify-polaris-app-home",
+        "shopify-pos-ui"
+      ],
+      "teaches": [
+        "Liquid and theme development",
+        "Metafields, metaobjects and custom data modelling",
+        "General Shopify developer documentation search"
+      ],
+      "notes": "15 skills exist. Only the three theme-relevant ones are in scope for the website team. Installing all 15 is clutter.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "shopify-ai-toolkit",
+      "tier": 0,
+      "title": "Shopify/Shopify-AI-Toolkit",
+      "url": "https://github.com/Shopify/Shopify-AI-Toolkit",
+      "publisher": "Shopify",
+      "license": "none published - all rights reserved",
+      "quotable": false,
+      "installTarget": "Claude Code plugin marketplace",
+      "install": [
+        "/plugin marketplace add Shopify/shopify-ai-toolkit",
+        "/plugin install shopify-plugin@shopify-ai-toolkit"
+      ],
+      "teaches": [
+        "Docs and API schema search without leaving the editor",
+        "Validation of GraphQL queries, Liquid templates and UI extensions",
+        "Store management through the CLI"
+      ],
+      "notes": "Overlaps shopify-dev-mcp. Install one or the other first and measure before running both, or the agent gets two doc-search paths and picks inconsistently.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "skeleton-theme",
+      "tier": 1,
+      "title": "Shopify Skeleton theme",
+      "url": "https://shopify.dev/changelog/skeleton-theme-is-now-available",
+      "publisher": "Shopify",
+      "license": "Shopify proprietary licence, same restricted terms as Dawn (Copyright (c) 2018-present Shopify Inc.).",
+      "quotable": false,
+      "teaches": [
+        "The only codebase Shopify approves for Theme Store submissions",
+        "Minimal, unopinionated starting structure for original themes"
+      ],
+      "notes": "Binding for Theme Store work. Not binding for bespoke client stores, which is Boldteq's actual business. SKELETON IS THE ONLY SHOPIFY CODEBASE APPROVED AS A THEME STORE SUBMISSION BASE. Submissions derived from Dawn or Horizon are ineligible.",
+      "verifiedOn": "2026-07-25",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "horizon-theme",
+      "tier": 1,
+      "title": "Shopify/horizon",
+      "url": "https://github.com/Shopify/horizon",
+      "publisher": "Shopify",
+      "license": "Shopify proprietary licence (2025-present) with an explicit anti-circumvention clause naming \"insubstantial changes, reformatting or reorganizing code\" and \"claiming independent creation\".",
+      "quotable": false,
+      "teaches": [
+        "Current first-party theme-block architecture and section-group patterns"
+      ],
+      "notes": "Verified from LICENSE.md 2026-07-24. Rights 'may only be exercised to develop themes that integrate or interoperate with Shopify software or services'. You 'may not submit, list, market, sell, distribute, or otherwise make available any theme that is based on, derived from, or incorporates any portion of the Software' - with a narrow exception for delivering to a merchant inside a service engagement, not as a resold product. Read for patterns. Do not vendor into anything we productise.",
+      "verifiedOn": "2026-07-25",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "dawn-theme",
+      "tier": 1,
+      "title": "Shopify/dawn",
+      "url": "https://github.com/Shopify/dawn",
+      "publisher": "Shopify",
+      "license": "Shopify proprietary licence — NOT MIT. LICENSE.md reads \"Copyright (c) 2021-present Shopify Inc.\"; the string \"MIT License\" does not appear. Rights \"may only be exercised to develop themes that integrate or interoperate with Shopify software or services\". \"All other uses of the Software are strictly prohibited.\"",
+      "quotable": false,
+      "teaches": [
+        "Legacy reference implementation of Online Store 2.0 sections and blocks"
+      ],
+      "notes": "Dawn's own README still recommends it as a starting point. That guidance is stale for Theme Store submissions. Already vendored at .research/dawn but .gitignore excludes .research/, so it is invisible to git.",
+      "verifiedOn": "2026-07-25",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E",
+      "correction": "This entry previously recorded \"MIT / quotable: true\". That was wrong and is corrected here. Dawn source may be read and learned from; it may not be redistributed, relicensed, or presented as the basis of a Theme Store submission."
+    },
+    {
+      "id": "theme-store-requirements",
+      "tier": 2,
+      "title": "Theme Store requirements",
+      "url": "https://shopify.dev/docs/storefronts/themes/store/requirements",
+      "publisher": "Shopify",
+      "license": "Shopify docs terms",
+      "quotable": true,
+      "teaches": [
+        "The binding rule on approved codebases",
+        "Submission quality bar"
+      ],
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "js-and-stylesheet-tags",
+      "tier": 2,
+      "title": "JavaScript and stylesheet tags",
+      "url": "https://shopify.dev/docs/storefronts/themes/best-practices/javascript-and-stylesheet-tags",
+      "publisher": "Shopify",
+      "license": "Shopify docs terms",
+      "quotable": true,
+      "teaches": [
+        "One {% stylesheet %} and one {% javascript %} per file, hard limit",
+        "Liquid is not rendered inside those tags",
+        "How Shopify bundles section, block and snippet assets"
+      ],
+      "notes": "Directly answers the 'CSS is not clean, patterns not good' complaint.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "shopify-changelog-themes",
+      "tier": 2,
+      "title": "Shopify developer changelog, themes filter",
+      "url": "https://shopify.dev/changelog?filter=dev_themes",
+      "publisher": "Shopify",
+      "license": "Shopify docs terms",
+      "quotable": true,
+      "teaches": [
+        "The dated truth feed. Anything older than this contradicts it and loses."
+      ],
+      "notes": "This is the single highest-value recurring input. Poll it on the reverify cadence and diff against rules/01-platform-truth-2026.md.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "theme-check",
+      "tier": 2,
+      "title": "Theme Check (Shopify/theme-tools)",
+      "url": "https://github.com/Shopify/theme-tools",
+      "publisher": "Shopify",
+      "license": "MIT",
+      "quotable": true,
+      "teaches": [
+        "The machine-checkable subset of the theme standard"
+      ],
+      "notes": "Theme Check now lives in the theme-tools monorepo as @shopify/theme-check-common, -node and -browser, alongside the Liquid parser, Prettier plugin and language server. Any rule assuming the old standalone Shopify/theme-check repo is stale. The README does not state a major version, so do not assert one - read it from the installed package.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "INGESTIBLE",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "wcag22",
+      "tier": 3,
+      "title": "WCAG 2.2",
+      "url": "https://www.w3.org/TR/WCAG22/",
+      "publisher": "W3C",
+      "license": "W3C Document Licence",
+      "quotable": true,
+      "teaches": [
+        "The accessibility acceptance criteria the a11y gate must encode"
+      ],
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "INGESTIBLE",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "aria-apg",
+      "tier": 3,
+      "title": "WAI-ARIA Authoring Practices Guide",
+      "url": "https://www.w3.org/WAI/ARIA/apg/",
+      "publisher": "W3C WAI",
+      "license": "W3C Document Licence",
+      "quotable": true,
+      "teaches": [
+        "Correct keyboard and role patterns for menus, dialogs, tabs, carousels, accordions"
+      ],
+      "notes": "Use these patterns verbatim in section markup instead of inventing interaction models.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "INGESTIBLE",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "webdev-cwv",
+      "tier": 3,
+      "title": "web.dev Core Web Vitals",
+      "url": "https://web.dev/articles/vitals",
+      "publisher": "Google",
+      "license": "CC BY 4.0",
+      "quotable": true,
+      "teaches": [
+        "LCP, CLS and INP thresholds and the measurement method"
+      ],
+      "notes": "INP replaced FID. Any rule still targeting FID is dead.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "INGESTIBLE",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "baseline",
+      "tier": 3,
+      "title": "Baseline (WebDX Community Group)",
+      "url": "https://web.dev/baseline",
+      "publisher": "W3C WebDX CG / Google",
+      "license": "CC BY 4.0",
+      "quotable": true,
+      "teaches": [
+        "Whether a CSS or JS feature is actually safe to ship, which spec status alone does not tell you"
+      ],
+      "notes": "Use Baseline status, not W3C REC status, as the production-readiness signal for CSS.",
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "INGESTIBLE",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "mdn",
+      "tier": 3,
+      "title": "MDN Web Docs",
+      "url": "https://developer.mozilla.org/",
+      "publisher": "Mozilla",
+      "license": "CC0 / CC-BY-SA depending on page",
+      "quotable": true,
+      "teaches": [
+        "HTML, CSS and JS semantics and browser support"
+      ],
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "FACTS-ONLY",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "dtcg",
+      "tier": 3,
+      "title": "Design Tokens Community Group format",
+      "url": "https://tr.designtokens.org/format/",
+      "publisher": "W3C DTCG",
+      "license": "W3C CG licence",
+      "quotable": true,
+      "teaches": [
+        "The interchange format the design-system layer should emit so tokens are portable"
+      ],
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "INGESTIBLE",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "google-structured-data",
+      "tier": 3,
+      "title": "Google Search Central structured data",
+      "url": "https://developers.google.com/search/docs/appearance/structured-data/search-gallery",
+      "publisher": "Google",
+      "license": "CC BY 4.0",
+      "quotable": true,
+      "teaches": [
+        "Which JSON-LD types actually earn rich results, and their required fields"
+      ],
+      "verifiedOn": "2026-07-24",
+      "licenceClass": "INGESTIBLE",
+      "evidenceRating": "E"
+    },
+    {
+      "id": "ait-fakeshop-dom",
+      "tier": 4,
+      "title": "Real-Time Detection of Fake-Shops through Machine Learning",
+      "url": "https://publications.ait.ac.at/de/publications/real-time-detection-of-fake-shops-through-machine-learning/",
+      "altUrl": "https://doi.org/10.1109/BigData50022.2020.9378204",
+      "publisher": "AIT Austrian Institute of Technology / IEEE Big Data 2020",
+      "authors": "Beltzung, Lindley, Dinica, Hermann, Lindner",
+      "date": "2020-12-10",
+      "license": "IEEE copyright, all rights reserved. Not open access.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "Fraudulent shops are separable from legitimate ones on source-code STRUCTURE alone, without reading content.",
+        "Template reuse across shops is the discriminating signal.",
+        "Up to 97% accuracy; 48% of fake shops flagged at highest confidence with zero false classifications."
+      ],
+      "usedBy": [
+        "AT-1 structural template duplication",
+        "AT-2 cosmetic-only differentiation"
+      ],
+      "notes": "IEEE Xplore returns a bot challenge to non-browser clients; the AIT institutional record is the fetchable publisher-owned URL. This is the evidence that lets AT-1 REJECT rather than warn.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "shin-dom-subpath-kernel",
+      "tier": 4,
+      "title": "Learning DOM Trees of Web Pages by Subpath Kernel and Detecting Fake e-Commerce Sites",
+      "url": "https://www.mdpi.com/2504-4990/3/1/6",
+      "publisher": "MDPI — Machine Learning and Knowledge Extraction 3(1) 95-122",
+      "authors": "Shin, Ishikawa, Liu, Shepard",
+      "date": "2021-01-14",
+      "license": "CC BY 4.0",
+      "licenceClass": "INGESTIBLE",
+      "quotable": true,
+      "evidenceRating": "E",
+      "teaches": [
+        "DOM-tree structure is more abuse-resistant than content features: text and layout are cheap to change, structural organisation is not.",
+        "Accuracy 0.998 at 1,000 training instances; 0.996 at 100."
+      ],
+      "usedBy": [
+        "AT-1 structural template duplication"
+      ],
+      "notes": "Openly-licensed corroboration of ait-fakeshop-dom. Prefer this one when the claim needs to be quoted rather than merely cited.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "mdpi-fraud-classifier",
+      "tier": 4,
+      "title": "Experimental Evaluation of Possible Feature Combinations for the Detection of Fraudulent Online Shops",
+      "url": "https://www.mdpi.com/2076-3417/14/2/919",
+      "publisher": "MDPI — Applied Sciences 14(2) 919",
+      "authors": "Janavičiūtė, Liutkevičius, Dabužinskas, Morkevičius",
+      "date": "2024-01-22",
+      "license": "CC BY 4.0 (stated verbatim in the article PDF; the HTML dc.rights meta tag erroneously says 3.0 — a known MDPI metadata artefact)",
+      "licenceClass": "INGESTIBLE",
+      "quotable": true,
+      "evidenceRating": "E",
+      "teaches": [
+        "Random Forest reaches 0.9693 accuracy on 13-15 features, 0.9342 on the 4 most significant.",
+        "Most predictive, in order: domain age, money-back/payment options, top-level-domain length, presence of TrustPilot reviews, logo URL presence."
+      ],
+      "usedBy": [
+        "AT-3 fraud-correlated metadata"
+      ],
+      "notes": "These are the features a fraud classifier keys on. A legitimate store must not look like this by accident — that is the whole point of AT-3.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "stanford-web-credibility-2002",
+      "tier": 4,
+      "title": "How Do People Evaluate a Web Site's Credibility?",
+      "url": "https://advocacy.consumerreports.org/research/how-do-people-evaluate-a-web-sites-credibility/",
+      "publisher": "Consumer WebWatch / Consumer Reports; research by Stanford Persuasive Technology Lab",
+      "authors": "Fogg, Soohoo, Danielson, Marable, Stanford, Tauber",
+      "date": "2002-10-29",
+      "license": "All rights reserved (© Consumer Reports, Inc.)",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "2,684 people evaluated two live sites each.",
+        "\"Design look\" was the most-mentioned credibility feature, present in 46.1% of comments — rank 1 of 18."
+      ],
+      "usedBy": [
+        "AT-5 structural credibility gaps"
+      ],
+      "staleness": "MAGNITUDES ARE STALE. Run in 2002 on the 2002 web: pre-broadband, pre-mobile, pre-social, US convenience sample. Cite as historical evidence that visual design dominates first-pass credibility judgement. NEVER quote 46.1% as a current effect size.",
+      "notes": "The Stanford project site credibility.stanford.edu is still live but its own link to the full report is dead; the report now lives on the Consumer Reports advocacy domain. Peer-reviewed companion: Fogg et al., DUX 2003, doi:10.1145/997078.997097.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "fogg-credibility-2001",
+      "tier": 4,
+      "title": "What Makes Web Sites Credible? A Report on a Large Quantitative Study",
+      "url": "https://credibility.stanford.edu/pdf/p61-fogg.pdf",
+      "altUrl": "https://doi.org/10.1145/365024.365037",
+      "publisher": "ACM CHI 2001; Stanford Persuasive Technology Lab",
+      "authors": "Fogg, Marshall, Laraki, Osipovich, Varma, Fang, Paul, Rangnekar, Shon, Swani, Treinen",
+      "date": "2001-04",
+      "license": "ACM copyright, all rights reserved",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "1,410 participants analysed (from 1,441 responses). Response scale is -3 to +3.",
+        "Item means: physical address +1.86; contact phone +1.71; looks professionally designed +1.55; contact e-mail +1.53; typographical error -1.28; domain name does not match company name -1.06; link that doesn't work -1.45."
+      ],
+      "usedBy": [
+        "AT-5 structural credibility gaps"
+      ],
+      "correction": "An earlier draft of rules/05-ai-tells.md recorded n=1,481 on a -2.0 to +2.0 scale with the item means +1.67/+1.56/+1.54/+1.47/-1.26/-1.07/-1.42. All of that was wrong. The numbers above are read from the authors' own PDF on credibility.stanford.edu and supersede it.",
+      "staleness": "Same 2002-era staleness warning applies. The ITEMS survive because they are structural; the MAGNITUDES are 25 years old.",
+      "provenanceNote": "Verified against a single copy (the authors' lab PDF). An independent mirror at inf.utfsm.cl is robots-disallowed and could not be used as a second read. Flagged rather than hidden.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "reinecke-aesthetics-2013",
+      "tier": 4,
+      "title": "Predicting Users' First Impressions of Website Aesthetics With a Quantification of Perceived Visual Complexity and Colorfulness",
+      "url": "https://doi.org/10.1145/2470654.2481281",
+      "altUrl": "https://www.eecs.harvard.edu/~kgajos/papers/2013/reinecke13aesthetics.pdf",
+      "publisher": "ACM CHI '13",
+      "authors": "Reinecke, Yeh, Miratrix, Mardiko, Zhao, Liu, Gajos",
+      "date": "2013-04-27",
+      "license": "ACM copyright, all rights reserved",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "450 websites, 548 participants, 500 ms exposure.",
+        "Colourfulness model r=.88, R²=.78 (adj .77). Visual complexity model r=.80, R²=.65 (adj .64).",
+        "Combined with demographics the two models explain 48% of variance in visual appeal (adj R²=.48)."
+      ],
+      "usedBy": [
+        "04-design-taste §F aesthetic score"
+      ],
+      "evidenceLimit": "~50% of variance is unexplained. Fitted on 2013-era websites. The score is a signal, never a verdict.",
+      "notes": "ACM DL blocks automated fetchers; the Harvard author copy is the fetchable canonical mirror. Chosen over a better-scoring CNN because the features are INTERPRETABLE — we can tell a merchant why a page scored low.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "webthetics-2019",
+      "tier": 4,
+      "title": "Webthetics: Quantifying webpage aesthetics with deep learning",
+      "url": "https://doi.org/10.1016/j.ijhcs.2018.11.006",
+      "publisher": "Elsevier — International Journal of Human-Computer Studies 124, 56-66",
+      "authors": "Dou, Zheng, Sun, Heng",
+      "date": "2019-04",
+      "license": "© 2018 Elsevier Ltd. All rights reserved.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "A transfer-learned CNN predicts human aesthetics ratings at r=0.85, versus r=0.59 for hand-crafted colourfulness+complexity+contrast features."
+      ],
+      "usedBy": [
+        "04-design-taste §F — the reason we know we are trading accuracy for interpretability"
+      ],
+      "correction": "Author list corrected: Dou, Zheng, Sun, Heng. There is no author named Ma.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "kobak-excess-vocab",
+      "tier": 4,
+      "title": "Delving into LLM-assisted writing in biomedical publications through excess vocabulary",
+      "url": "https://doi.org/10.1126/sciadv.adt3813",
+      "altUrl": "https://github.com/berenslab/llm-excess-vocab",
+      "publisher": "Science Advances 11(27) eadt3813",
+      "authors": "Kobak, González-Márquez, Horvát, Lause",
+      "date": "2025-07-04",
+      "license": "Paper: CC BY 4.0. Repo github.com/berenslab/llm-excess-vocab: MIT. arXiv preprint 2406.07016: CC BY-SA 4.0.",
+      "licenceClass": "INGESTIBLE",
+      "quotable": true,
+      "evidenceRating": "E",
+      "teaches": [
+        "Over 15 million PubMed abstracts 2010-2024. At least 13.5% of 2024 abstracts were LLM-processed, up to 40% in some subcorpora.",
+        "The style-word frequency jump is abrupt and measurable — larger than COVID's effect on scientific vocabulary."
+      ],
+      "dataFile": "results/excess_words.csv — 900 annotated excess words, 2013-2024, ~39.9 KB. This is the word list AT-9 uses.",
+      "usedBy": [
+        "AT-9 LLM style vocabulary"
+      ],
+      "ingestRule": "Take the MIT-licensed repo CSV, not the CC BY-SA arXiv text. ShareAlike is viral; MIT is not.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "russell-ai-detection-cues",
+      "tier": 4,
+      "title": "People who frequently use ChatGPT for writing tasks are accurate and robust detectors of AI-generated text",
+      "url": "https://arxiv.org/abs/2501.15654",
+      "publisher": "arXiv (ACL 2025)",
+      "authors": "Russell, Karpinska, Iyyer",
+      "date": "2025-01-26 (v2 2025-05-19)",
+      "license": "CC0 1.0 Universal — the abs page shows \"CC Zero\"",
+      "licenceClass": "INGESTIBLE",
+      "quotable": true,
+      "evidenceRating": "E",
+      "teaches": [
+        "Majority vote of five frequent-LLM-user annotators misclassified only 1 of 300 articles, beating commercial and open-source detectors even under paraphrasing and humanisation.",
+        "Experts use lexical AI-vocabulary cues PLUS higher-order signals: formality, originality, clarity."
+      ],
+      "usedBy": [
+        "AT-9 LLM style vocabulary",
+        "§Z2 why we must not use third-party AI detectors"
+      ],
+      "notes": "Public-domain dedication — the cue taxonomy may be copied into memory verbatim.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "genai-copy-homogenisation",
+      "tier": 4,
+      "title": "Generative AI enhances individual creativity but reduces the collective diversity of novel content",
+      "url": "https://doi.org/10.1126/sciadv.adn5290",
+      "altUrl": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11244532/",
+      "publisher": "Science Advances 10(28) eadn5290",
+      "authors": "Doshi, Hauser",
+      "date": "2024-07-12",
+      "license": "CC BY 4.0",
+      "licenceClass": "INGESTIBLE",
+      "quotable": true,
+      "evidenceRating": "E",
+      "teaches": [
+        "AI ideas raised individual novelty 5.4-8.1% but raised cosine similarity BETWEEN outputs by 8.9-10.7% of the human-only similarity range.",
+        "The homogenisation is measurable, directional and an explicit social dilemma: each store gets better, the set of stores gets more alike."
+      ],
+      "usedBy": [
+        "AT-11 cross-store copy homogenisation"
+      ],
+      "notes": "This is the evidence that per-store quality checks are insufficient. Quality must be measured ACROSS the portfolio, not only within one build.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "baymard-product-descriptions",
+      "tier": 4,
+      "title": "10% of E-Commerce Sites Have Product Descriptions That Are Insufficient for Users' Needs",
+      "url": "https://baymard.com/blog/product-descriptions",
+      "publisher": "Baymard Institute",
+      "date": "2021-03-09",
+      "license": "All rights reserved. Terms §3.4 forbids copying, reproducing AND PARAPHRASING. Limited citation by permission only.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "10% of the largest ecommerce sites fail to maintain a consistently high level of product-description detail, driving abandonment."
+      ],
+      "usedBy": [
+        "AT-4 thin product descriptions"
+      ],
+      "ingestRule": "Store the FACT with attribution and link. Never store Baymard prose, and never paraphrase it into a rule sentence — §3.4 covers paraphrase.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "baymard-product-page-benchmark",
+      "tier": 4,
+      "title": "Product Page UX 2026: 10 Pitfalls and Best Practices",
+      "url": "https://baymard.com/blog/current-state-ecommerce-product-page-ux",
+      "publisher": "Baymard Institute",
+      "date": "2023-10-24, updated 2026-03-18",
+      "license": "All rights reserved. See baymard-product-descriptions.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "52% desktop / 62% mobile / 64% app ecommerce sites have mediocre-or-worse product-page UX. No site scores perfect.",
+        "57% do not use buttons for size selection; 89% do not respond to negative reviews."
+      ],
+      "usedBy": [
+        "AT-4 thin product descriptions",
+        "03-quality-bar"
+      ],
+      "deadUrlWarning": "DO NOT store https://baymard.com/blog/product-page-usability-report-and-benchmark — the old \"82% of sites have severe UX issues\" article. It now 308-redirects to a topic listing page. A naive fetch returns the listing's link text and can be mistaken for the article.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "baymard-payment-form-security",
+      "tier": 4,
+      "title": "Visually Reinforce Your Credit Card Fields (89% Get it Wrong)",
+      "url": "https://baymard.com/blog/visually-reinforce-sensitive-fields",
+      "publisher": "Baymard Institute",
+      "date": "2012-08-21",
+      "license": "All rights reserved. See baymard-product-descriptions.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "Users perceive only PARTS of a checkout page as secure. Card fields must be visually set apart to read as protected.",
+        "As of April 2012, 89% of the top 100 grossing ecommerce sites did not visually reinforce the card fields."
+      ],
+      "usedBy": [
+        "AT-8 unverifiable trust badges"
+      ],
+      "staleness": "The 89% is a 2012 measurement. The mechanism survives; the percentage does not.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "nng-about-us-trust",
+      "tier": 4,
+      "title": "\"About Us\" Information on Websites",
+      "url": "https://www.nngroup.com/articles/about-us-information-on-websites/",
+      "publisher": "Nielsen Norman Group",
+      "authors": "Kaley, Nielsen",
+      "date": "2019-05-26, updated 2019-08-31",
+      "license": "All rights reserved. NN/g permits quoting \"a few words or lines\" with attribution and a link; anything more is licensed for a fee.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": true,
+      "quotableLimit": "A few words or lines only, with attribution and a link back.",
+      "evidenceRating": "E",
+      "teaches": [
+        "70+ users observed, 100 sites tested, 65 reviewed, yielding 85 guidelines.",
+        "Users cross-check About Us claims against third-party reviews; peer reviews emerged as one of the most important criteria for forming an impression of an organisation."
+      ],
+      "usedBy": [
+        "AT-5 structural credibility gaps"
+      ],
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "nng-photos-as-content",
+      "tier": 4,
+      "title": "Photos as Web Content",
+      "url": "https://www.nngroup.com/articles/photos-as-web-content/",
+      "publisher": "Nielsen Norman Group",
+      "authors": "Nielsen",
+      "date": "2010-10-31, updated 2018-08-24",
+      "license": "All rights reserved. Few-words quoting with attribution permitted.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": true,
+      "quotableLimit": "A few words or lines only, with attribution and a link back.",
+      "evidenceRating": "E",
+      "teaches": [
+        "Eyetracking: decorative feel-good images and generic stock people are COMPLETELY IGNORED; information-carrying images of real products and real people are studied closely.",
+        "On an Amazon product page 18% of viewing time went to photos, 82% to text.",
+        "In a bio layout users spent 10% more time on portraits than on biographies, though the bios occupied 316% more space."
+      ],
+      "usedBy": [
+        "AT-6 stock and placeholder imagery"
+      ],
+      "notes": "This is why AT-6 rejects stock imagery on EVIDENCE, not taste. The harm is that the image is ignored, so the slot is wasted.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "nng-ai-prototyping",
+      "tier": 4,
+      "title": "Good from Afar, But Far from Good: AI Prototyping in Real Design Contexts",
+      "url": "https://www.nngroup.com/articles/ai-prototyping/",
+      "publisher": "Nielsen Norman Group",
+      "authors": "Wang, Brown",
+      "date": "2025-10-24, updated 2025-10-27",
+      "license": "All rights reserved. Few-words quoting with attribution permitted.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": true,
+      "quotableLimit": "A few words or lines only, with attribution and a link back.",
+      "evidenceRating": "P",
+      "teaches": [
+        "AI prototyping tools follow a general goal but lack the sophistication to weigh design tradeoffs without extensive human guidance.",
+        "Output looks polished at a glance while missing visual hierarchy, colour contrast and consistent spacing."
+      ],
+      "usedBy": [
+        "AT-15 hierarchy inversion",
+        "AT-14 flat single-elevation",
+        "04-design-taste §A"
+      ],
+      "evidenceLimit": "No participant count is stated on the free page; methodology lives in a separate companion article. Rated P, not E, for that reason.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "nng-vague-prototyping",
+      "tier": 4,
+      "title": "Prompt to Design Interfaces: Why Vague Prompts Fail and How to Fix Them",
+      "url": "https://www.nngroup.com/articles/vague-prototyping/",
+      "publisher": "Nielsen Norman Group",
+      "authors": "Wang",
+      "date": "2025-12-05, updated 2025-12-15",
+      "license": "All rights reserved. Few-words quoting with attribution permitted.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": true,
+      "quotableLimit": "A few words or lines only, with attribution and a link back.",
+      "evidenceRating": "P",
+      "teaches": [
+        "Output quality tracks prompt precision. Vague prompts produce inconsistent, unpredictable results and a \"Frankenstein layout\" that reads as randomly pieced together.",
+        "The fix is precise visual keywords, references, analysis, mock data and code snippets."
+      ],
+      "usedBy": [
+        "04-design-taste §A — this is the mechanism behind the four failure modes"
+      ],
+      "notes": "Distinct from nng-ai-prototyping; this article cites that one as the prior study. Both URLs independently confirmed live. This is the single strongest argument for a written brief before a build.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "uk-stop-think-fraud",
+      "tier": 4,
+      "title": "How to spot a fake website",
+      "url": "https://stopthinkfraud.campaign.gov.uk/how-to-spot-fraud/how-to-spot-a-fake-website/",
+      "publisher": "Stop! Think Fraud — UK Home Office campaign, GOV.UK",
+      "date": "2024-01-19, updated 2024-02-09",
+      "license": "Open Government Licence v3.0",
+      "licenceClass": "INGESTIBLE",
+      "quotable": true,
+      "evidenceRating": "P",
+      "teaches": [
+        "Public-facing fraud signals: bargain prices with urgency language; bank transfer instead of card; lookalike domains; missing padlock; thin About/Contact; missing returns, privacy or terms pages; poor imagery, layout, spelling and grammar.",
+        "Explicit caution that AI now lets criminals produce professional-looking content — so polish alone is not evidence of legitimacy."
+      ],
+      "usedBy": [
+        "AT-3 fraud-correlated metadata",
+        "AT-5 structural credibility gaps",
+        "AT-7 manufactured urgency"
+      ],
+      "notes": "The last line matters in both directions: a beautiful AI-built store no longer reads as automatically legitimate to an informed shopper. That is the commercial reason AT-3 and AT-5 exist.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "which-fake-website",
+      "tier": 4,
+      "title": "How to spot a fake, fraudulent or scam website",
+      "url": "https://www.which.co.uk/consumer-rights/advice/how-to-spot-a-fake-fraudulent-or-scam-website-aUBir8j8C3kZ",
+      "publisher": "Which? Limited",
+      "date": "2026-03-30",
+      "license": "All rights reserved",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "P",
+      "teaches": [
+        "Nine consumer-side signals: lookalike domain and domain age; too-good pricing; bank-transfer-only payment; poor grammar, pixelated images, outdated branding; verifiable phone, email and physical address; shipping/returns/privacy fine print; reviews cross-checked across sources; trust marks verified with the issuing organisation; padlock present but not sufficient."
+      ],
+      "usedBy": [
+        "AT-3 fraud-correlated metadata",
+        "AT-8 unverifiable trust badges"
+      ],
+      "notes": "Current (2026) and consumer-facing, which makes it the freshest available statement of what a shopper actually checks.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "tailwind-default-palette",
+      "tier": 4,
+      "title": "Colors — Core concepts",
+      "url": "https://tailwindcss.com/docs/colors",
+      "publisher": "Tailwind Labs Inc.",
+      "date": "living document; page documents v4.3",
+      "license": "All rights reserved",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "Tailwind v4 publishes its palette in OKLCH, not hex. Stating a hue band without naming the colour space is how this check goes wrong.",
+        "Verified v4.3 defaults: blue-500 oklch(62.3% 0.214 259.815); indigo-500 oklch(58.5% 0.233 277.117); violet-500 oklch(60.6% 0.25 292.717); purple-500 oklch(62.7% 0.265 303.9); sky-500 oklch(68.5% 0.169 237.323); cyan-500 oklch(71.5% 0.143 215.221).",
+        "Converted to sRGB: #2b7fff, #615fff, #8e51ff, #ad46ff, #00a6f4, #00b8db. HSL hues 216.3, 241.0, 260.9, 273.3, 199.3, 189.5.",
+        "The 236-274 degree HSL accent band survives the v3-to-v4 palette change, which is why the BAND is the durable signal and the hex is not."
+      ],
+      "usedBy": [
+        "AT-12 default framework accent hue"
+      ],
+      "correction": "An earlier draft's exact-hex variant held only v3 hexes (#6366f1, #8b5cf6, #a855f7). A detector holding only those silently stops firing on any v4 store. Both generations are now recorded.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "shadcn-theming",
+      "tier": 4,
+      "title": "Theming — shadcn/ui",
+      "url": "https://ui.shadcn.com/docs/theming",
+      "publisher": "shadcn/ui",
+      "date": "living document",
+      "license": "No licence on the docs page. The shadcn/ui codebase is MIT on GitHub.",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "Default (Neutral) base: --primary: oklch(0.205 0 0) in :root and oklch(0.922 0 0) in .dark. Chroma is EXACTLY ZERO in both."
+      ],
+      "usedBy": [
+        "AT-12 default framework accent hue — honesty requirement"
+      ],
+      "honestyRequirement": "The folk claim that AI purple comes from \"Tailwind + shadcn\" is half false. shadcn's default primary is achromatic. Never repeat the shadcn half of that explanation.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "watson-accessible-emoji",
+      "tier": 4,
+      "title": "Accessible emoji",
+      "url": "https://tink.uk/accessible-emoji/",
+      "publisher": "Tink — Léonie Watson",
+      "date": "2016-12-22",
+      "license": "All rights reserved (© Léonie Watson)",
+      "licenceClass": "FACTS-ONLY",
+      "quotable": false,
+      "evidenceRating": "E",
+      "teaches": [
+        "The accessible pattern is role=\"img\" plus aria-label on the wrapping element: <span role=\"img\" aria-label=\"Snowman\">&#9731;</span>.",
+        "A bare emoji character has no accessible name and is announced by its Unicode description or not at all."
+      ],
+      "usedBy": [
+        "AT-13 emoji standing in for an icon set"
+      ],
+      "notes": "This is why AT-13 rejects on ACCESSIBILITY, which is enforceable, rather than on the AI-tell, which is house taste.",
+      "verifiedOn": "2026-07-25"
+    },
+    {
+      "id": "refactoring-ui-tips",
+      "tier": 5,
+      "title": "Refactoring UI",
+      "url": "https://refactoringui.com/",
+      "freeExcerpt": "https://refactoringui.com/previews/building-your-color-palette",
+      "publisher": "Tailwind Labs Inc.",
+      "authors": "Wathan, Schoger",
+      "date": "living document",
+      "license": "Paid commercial product ($99-$149 individual; $399-$2,749 team). All rights reserved.",
+      "licenceClass": "DO-NOT-USE",
+      "quotable": false,
+      "evidenceRating": "P",
+      "teaches": [
+        "Listed so the provenance gate can REJECT it by name. The book's text must never be copied, quoted, paraphrased or distilled into agent memory.",
+        "Only one free preview page is publicly readable and even that is copyrighted."
+      ],
+      "usedBy": [
+        "AT-14 flat single-elevation, AT-15 hierarchy inversion — as INDEPENDENT house-taste rules, not as derivations of this book"
+      ],
+      "ingestRule": "DO NOT INGEST. Where a Polyglot rule happens to agree with this book, the rule must stand on its own stated reasoning and must not cite the book as authority.",
+      "verifiedOn": "2026-07-25"
+    }
+  ],
+  "rejected": [
+    {
+      "pattern": "awesome-shopify style link lists",
+      "reason": "Unmaintained, no dated provenance, majority of links rot. Fails the verification rule."
+    },
+    {
+      "pattern": "Paid research reports (Baymard Premium, NN/g member reports)",
+      "reason": "Licence does not permit ingestion. Free summary pages may be cited for a specific number, never for prose."
+    },
+    {
+      "pattern": "The 48% shipping-cost cart-abandonment figure",
+      "reason": "Could not be verified on any live Baymard page. The verified figure is 39%. SEO and agency blogs repeat the wrong number. Any rule citing 48% is quarantined."
+    },
+    {
+      "pattern": "Liquid snippets from Stack Overflow, Medium or agency blogs",
+      "reason": "No dated shopify.dev backing. Most predate theme blocks and the 2026 parsing changes."
+    },
+    {
+      "pattern": "Any theme derived from Dawn or Horizon presented as Theme-Store-ready",
+      "reason": "Contradicts the binding Theme Store requirement. See theme-store-requirements."
+    },
+    {
+      "pattern": "Any claim that Shopify's Dawn theme is MIT-licensed",
+      "reason": "Verified false. Dawn's LICENSE.md contains no \"MIT License\" string and restricts use to developing themes that interoperate with Shopify. This pack previously recorded it as MIT; that entry is corrected, and the false claim is listed here so it cannot re-enter."
+    },
+    {
+      "pattern": "APCA / SAPC contrast algorithm in shipped code",
+      "reason": "Commercial use is prohibited without a signed agreement, and WCAG 3.0 (Working Draft 2026-03-03) does not name it. Use WCAG 2.2 ratios. APCA may be computed for internal comparison only, never shipped and never quoted to a client as the standard."
+    },
+    {
+      "pattern": "Baymard prose, paraphrased into a rule sentence",
+      "reason": "Baymard Terms §3.4 forbids paraphrasing as well as copying. Only the underlying fact may be stored, with attribution and a link."
+    },
+    {
+      "pattern": "https://baymard.com/blog/product-page-usability-report-and-benchmark",
+      "reason": "Dead article URL. 308-redirects to a topic listing; a naive fetch returns the listing's link text and reads like the old \"82% of sites\" article. Use current-state-ecommerce-product-page-ux instead."
+    },
+    {
+      "pattern": "Em-dash density as an AI detector",
+      "reason": "See rules/05-ai-tells.md §Z1. No validated threshold exists and the false-positive rate on competent human copywriting is unacceptable."
+    },
+    {
+      "pattern": "Third-party AI-content detectors in the gate stack",
+      "reason": "See §Z2. Expert human annotators beat commercial detectors under evasion (russell-ai-detection-cues); the detectors' own error rates make them unusable as a blocking gate."
+    },
+    {
+      "pattern": "Refactoring UI text, quoted or paraphrased",
+      "reason": "Paid commercial book, all rights reserved. Rules that agree with it must stand on their own reasoning."
+    },
+    {
+      "pattern": "Penalising conventional, low-complexity ecommerce layout",
+      "reason": "See §Z3 and 04-design-taste §A. Tuch et al. 2012 and Baughan CHI 2020 show prototypicality dominates complexity in visual-appeal judgement. Penalising \"plain\" would optimise against the evidence."
+    }
+  ],
+  "licenceClasses": {
+    "INGESTIBLE": "Licence permits copying the text into agent memory with attribution. Prose may be distilled and stored.",
+    "FACTS-ONLY": "The finding may be stored as a fact with attribution and a link. The publisher's prose may NOT be copied, stored or paraphrased into memory.",
+    "DO-NOT-USE": "Neither prose nor derived text may enter memory. Listed so the gate can reject it by name instead of rediscovering it."
+  },
+  "evidenceRatings": {
+    "E": "Evidence-backed by a named study or a binding platform rule. A gate may block on it.",
+    "P": "Practitioner consensus from a credible publisher, without a controlled study behind the specific number. A gate may warn only.",
+    "H": "House taste. Note only. Never described to a client as best practice."
+  }
+}

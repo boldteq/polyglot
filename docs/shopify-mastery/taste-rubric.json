@@ -1,0 +1,456 @@
+{
+  "$schema": "internal://boldteq/shopify-taste-rubric/v1",
+  "packName": "boldteq-shopify-mastery",
+  "rubricVersion": "1.1.0",
+  "verifiedOn": "2026-07-25",
+  "reverifyEveryDays": 30,
+  "purpose": "Machine-readable desirability rubric for the Lens vision-judge and static linters. The gate stack already verifies correctness; this file is the only place desirability is scored.",
+  "evidencePolicy": {
+    "E": {
+      "label": "evidence-backed",
+      "maxAction": "reject",
+      "definition": "Dated study, enforced platform requirement, or published measurement traceable to a primary source in sources.json."
+    },
+    "P": {
+      "label": "practitioner-consensus",
+      "maxAction": "warn",
+      "definition": "Named practitioners agree; no measurement exists."
+    },
+    "H": {
+      "label": "house-taste",
+      "maxAction": "note",
+      "definition": "Our opinion. Defensible, unmeasured, never described to a client as best practice."
+    },
+    "actionVocabulary": [
+      "reject",
+      "warn",
+      "note"
+    ],
+    "enforcement": "A check.action MUST be one of actionVocabulary and MUST NOT exceed the maxAction of its tag. Remediation instructions belong in check.remediation, never in check.action. install.sh step 7 enforces this."
+  },
+  "invariant": "A check may never be assigned an action stronger than its evidence tag permits. Raising a tag requires a new primary source added to sources.json in the same commit.",
+  "failureModes": {
+    "note": "Every check must serve exactly one of these four. A check serving none of them is house taste and must be tagged H.",
+    "duplication": "The generator's fingerprint is more legible than the brand.",
+    "thinness": "Copy and imagery cannot answer a purchase question.",
+    "missingSignals": "No address, phone, policies, or real reviews.",
+    "borrowedAssets": "Stock photography, placeholder images, framework-default colour."
+  },
+  "checks": [
+    {
+      "id": "AT-1",
+      "name": "structural-template-duplication",
+      "failureMode": "duplication",
+      "tag": "E",
+      "action": "reject",
+      "surface": "dom",
+      "detect": "TF-IDF cosine over tag+sorted-class token stream per template, plus hash of ordered section schema type list and CSS custom-property block; compare against every prior generation.",
+      "threshold": {
+        "warnAbove": 0.9,
+        "rejectAbove": 0.95
+      },
+      "calibrationRequired": true,
+      "calibrationNote": "Establish the baseline cosine spread among genuinely distinct human-built themes before enforcing. An untuned threshold either never fires or always fires.",
+      "sourceIds": [
+        "ait-fakeshop-dom",
+        "mdpi-fraud-classifier",
+        "shin-dom-subpath-kernel"
+      ],
+      "priority": 1
+    },
+    {
+      "id": "AT-2",
+      "name": "cosmetic-only-differentiation",
+      "failureMode": "duplication",
+      "tag": "E",
+      "action": "reject",
+      "surface": "source",
+      "detect": "Three-level diff vs base theme: (a) section/snippet filenames and schema type values, (b) DOM structure per template, (c) CSS declarations excluding custom-property values. Cosmetic when (a) and (b) are >=90% identical and only (c) values differ.",
+      "threshold": {
+        "structuralIdentityAbove": 0.9
+      },
+      "calibrationRequired": false,
+      "operationalTest": "No two generated stores may be inter-convertible through theme settings alone.",
+      "sourceIds": [
+        "theme-store-requirements"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "AT-3",
+      "name": "fraud-correlated-metadata",
+      "failureMode": "missingSignals",
+      "tag": "E",
+      "action": "reject",
+      "surface": "site",
+      "detect": "Favicon presence and non-default hash; hostname hyphen/dot/digit counts; TLD length; positive payment tokens /\\b(paypal|apple pay|google pay|shop pay)\\b/i vs negative /\\b(bitcoin|usdt|crypto|wire transfer|western union)\\b/i; review-platform link presence.",
+      "threshold": {
+        "requireCustomFavicon": true,
+        "forbidNegativePaymentTokens": true
+      },
+      "calibrationRequired": false,
+      "note": "Domain age is the highest-importance feature but is not ours to change. That is exactly why every other feature must land on the legitimate side when the domain is new.",
+      "sourceIds": [
+        "mdpi-fraud-classifier"
+      ],
+      "priority": 3
+    },
+    {
+      "id": "AT-4",
+      "name": "thin-product-description",
+      "failureMode": "thinness",
+      "tag": "E",
+      "action": "reject",
+      "surface": "rendered",
+      "detect": "Rendered pixel height of description container at 390x844; word count; specs table presence (table, dl, [class*=\"spec\"]); duplicate description text across products.",
+      "threshold": {
+        "minHeightFractionOfMobileViewport": 0.5,
+        "viewport": "390x844",
+        "maxDuplicateProducts": 2
+      },
+      "calibrationRequired": false,
+      "companionCheck": "Assert a[href*=\"return\"], a[href*=\"refund\"] exists on the product page.",
+      "sourceIds": [
+        "baymard-product-descriptions",
+        "baymard-product-page-benchmark"
+      ],
+      "priority": 4
+    },
+    {
+      "id": "AT-5",
+      "name": "structural-credibility-gaps",
+      "failureMode": "missingSignals",
+      "tag": "E",
+      "action": "reject",
+      "surface": "site",
+      "detect": "Count a[href^=\"tel:\"]; a[href^=\"mailto:\"] and whether domain matches /(gmail|hotmail|outlook|yahoo|proton)\\.com/i; street address regex or [itemtype*=\"PostalAddress\"] in footer; policy links; HEAD every internal link; spellcheck visible text excluding brand allowlist.",
+      "threshold": {
+        "minContactSignals": 2,
+        "maxBrokenInternalLinks": 0,
+        "maxSpellingErrors": 0
+      },
+      "calibrationRequired": false,
+      "staleness": "Underlying study is 2002. The ITEMS survive because they are structural; the MAGNITUDES are 24 years old, pre-mobile, and must never be quoted as current.",
+      "sourceIds": [
+        "stanford-web-credibility-2002",
+        "fogg-credibility-2001"
+      ],
+      "priority": 5
+    },
+    {
+      "id": "AT-6",
+      "name": "stock-and-placeholder-imagery",
+      "failureMode": "borrowedAssets",
+      "tag": "E",
+      "action": "reject",
+      "surface": "rendered",
+      "detect": "Test img[src], srcset candidates and CSS background-image URLs against a host blocklist; check naturalWidth on product images and naturalWidth vs clientWidth for upscaling.",
+      "hostBlocklist": [
+        "burst.shopifycdn.com",
+        "images.unsplash.com",
+        "images.pexels.com",
+        "*.shutterstock.com",
+        "*.gettyimages.com",
+        "placehold.co",
+        "via.placeholder.com",
+        "picsum.photos",
+        "loremflickr.com"
+      ],
+      "threshold": {
+        "minProductImageNaturalWidth": 600,
+        "forbidBlocklistOn": [
+          "hero",
+          "about",
+          "trust"
+        ]
+      },
+      "calibrationRequired": false,
+      "tagSplit": {
+        "harmToTrust": "E",
+        "hostBlocklist": "H"
+      },
+      "prohibition": "Never attach a conversion percentage to this check. No primary study measuring custom-vs-stock photography conversion lift is reachable; every such figure traces to agency marketing.",
+      "sourceIds": [
+        "nng-about-us-trust",
+        "nng-photos-as-content",
+        "baymard-product-page-benchmark"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "AT-7",
+      "name": "manufactured-urgency",
+      "failureMode": "missingSignals",
+      "tag": "E",
+      "action": "reject",
+      "surface": "rendered",
+      "detect": "[class*=\"countdown\"], [data-countdown], or a text node matching /\\d{1,2}:\\d{2}:\\d{2}/ that mutates under MutationObserver; visible-text regex /only \\d+ left|hurry|ends (today|soon)|limited time|selling fast|\\d+ (people|others) (are )?viewing/i.",
+      "threshold": {
+        "allowCountdownOnlyWhenBackedByScheduledCampaign": true
+      },
+      "calibrationRequired": false,
+      "sourceIds": [
+        "uk-stop-think-fraud",
+        "which-fake-website"
+      ],
+      "priority": 7
+    },
+    {
+      "id": "AT-8",
+      "name": "unverifiable-trust-badges",
+      "failureMode": "missingSignals",
+      "tag": "P",
+      "action": "warn",
+      "surface": "rendered",
+      "detect": "img whose src/alt/class matches /(trust|secure|badge|seal|guarantee|verified|ssl|norton|mcafee)/i; test whether wrapped in an anchor resolving to a third-party verification host; count total badges.",
+      "threshold": {
+        "requireVerificationLink": true,
+        "maxBadges": 6
+      },
+      "calibrationRequired": false,
+      "doubleEdge": "Testing found a homemade seal outperformed real SSL seals from established vendors except one. Decorative badges can raise naive-user trust while matching a consumer-body fraud heuristic. Warn only; never block.",
+      "sourceIds": [
+        "baymard-payment-form-security",
+        "which-fake-website"
+      ],
+      "priority": 8
+    },
+    {
+      "id": "AT-9",
+      "name": "llm-style-vocabulary",
+      "failureMode": "thinness",
+      "tag": "P",
+      "action": "warn",
+      "surface": "copy",
+      "detect": "Case-insensitive whole-word match against the 407 style-tagged rows of excess_words.csv. DO NOT STEM - the source counts inflections separately. Compute distinct style words per 100 words on blocks of >=100 words.",
+      "threshold": {
+        "maxDistinctStyleWordsPer100": 3
+      },
+      "calibrationRequired": true,
+      "calibrationNote": "The threshold is ours, not sourced. The source method is explicitly corpus-level and states it cannot identify individual documents. Every measurement behind the word list is on ACADEMIC prose; marketing copy has far higher legitimate base rates for elevate, crafted, curated, seamless. Calibrate against our own human-written Shopify corpus before this blocks anything.",
+      "refreshEveryDays": 90,
+      "refreshReason": "Markers decay. 'delve' dropped off sharply during 2025. Log which rules fire so decay is observable.",
+      "sourceIds": [
+        "kobak-excess-vocab"
+      ],
+      "priority": 9
+    },
+    {
+      "id": "AT-10",
+      "name": "cliche-headline-templates",
+      "failureMode": "thinness",
+      "tag": "P",
+      "action": "warn",
+      "surface": "copy",
+      "detect": "Regex tripwires on headline and tagline nodes only.",
+      "patterns": {
+        "negative_parallelism": "(?i)\\b(?:it'?s|it is|this is|we'?re)\\s+not\\s+(?:just|only|merely|simply)\\b[^.!?;]{0,60}?[,\\u2014\\u2013-]{0,3}\\s*(?:it'?s|it is|but)\\b",
+        "not_only_but_also": "(?i)\\bnot\\s+only\\b[^.!?;]{1,80}\\bbut\\s+(?:also\\b)?",
+        "todays_world": "(?i)\\bin\\s+(?:today'?s|a|an|this)\\s+(?:[a-z-]+\\s+){0,2}(?:world|landscape|market|era)\\b",
+        "unlock_power": "(?i)\\bunlock(?:s|ing)?\\s+(?:the\\s+)?(?:power|potential|secret(?:s)?|magic)\\b",
+        "elevate_your": "(?i)\\belevat(?:e|es|ing)\\s+(?:your|the|every)\\b",
+        "meticulously_crafted": "(?i)\\b(?:meticulous|careful|thoughtful|expert|lovingly)(?:ly)?\\s+(?:crafted|curated|designed|sourced)\\b",
+        "more_than_just": "(?i)\\bmore\\s+than\\s+just\\b",
+        "paving_the_way": "(?i)\\bpav(?:e|es|ed|ing)\\s+the\\s+way\\b"
+      },
+      "threshold": {
+        "maxMatchesInHeadline": 0
+      },
+      "calibrationRequired": false,
+      "rationale": "Precision is high because patterns are multi-token. Recall does not matter because we control the generator and can retry.",
+      "sourceIds": [
+        "russell-ai-detection-cues"
+      ],
+      "priority": 10,
+      "remediation": "Regenerate the headline. This is a rewrite instruction, not an enforcement level - a P-tagged check may never block a build.",
+      "correction": "Until 2026-07-25 this check carried action:\"regenerate\", which is not a member of the enforcement vocabulary and exceeded the maxAction its P tag allows. A practitioner-consensus check was able to hard-stop a build. Corrected to warn + remediation."
+    },
+    {
+      "id": "AT-11",
+      "name": "cross-store-copy-homogenisation",
+      "failureMode": "duplication",
+      "tag": "E",
+      "action": "warn",
+      "surface": "portfolio",
+      "detect": "Pairwise similarity across every generated store on four axes: lexical n-gram Jaccard, POS-sequence syntactic, embedding cosine semantic, style.",
+      "threshold": {
+        "warnOnMaxPairwiseAbove": 0.85
+      },
+      "calibrationRequired": true,
+      "caveat": "Source is a working paper, not peer reviewed, and its domain is restaurant social posts, not storefronts. The 0.85 figure is ours.",
+      "sourceIds": [
+        "genai-copy-homogenisation"
+      ],
+      "priority": 11
+    },
+    {
+      "id": "AT-12",
+      "name": "default-framework-accent-hue",
+      "failureMode": "borrowedAssets",
+      "tag": "P",
+      "action": "warn",
+      "surface": "rendered",
+      "detect": "Collect computed color, background-color, border-color and gradient stops; convert to HSL; compute area-weighted dominant chromatic hue excluding S<0.10, L<0.08, L>0.92.",
+      "threshold": "HSL hue 236-274 deg, S>0.70, L 0.52-0.70. In OKLCH the equivalent band is 274-306 deg. Never mix the two numbers.",
+      "exactHexVariant": [
+        "#615fff",
+        "#8e51ff",
+        "#ad46ff",
+        "#6366f1",
+        "#8b5cf6",
+        "#a855f7",
+        "#4f46e5",
+        "#7c3aed",
+        "#9333ea",
+        "#2b7fff",
+        "#3b82f6"
+      ],
+      "calibrationRequired": false,
+      "correction": "Tailwind v4 publishes OKLCH, not hex. A detector holding only v3 hexes silently stops firing on v4 stores. Both generations are recorded. The 236-274 deg HSL band survives the v3-to-v4 palette change.",
+      "honestyRequirement": "The arithmetic is verified; the claim that AI over-produces this hue is folklore with no measurement behind it. And half the folk explanation is false: shadcn/ui's default base is Neutral, --primary: oklch(0.205 0 0), chroma exactly zero. Never repeat the shadcn half.",
+      "sourceIds": [
+        "tailwind-default-palette",
+        "shadcn-theming"
+      ],
+      "priority": 12,
+      "colourSpace": "HSL",
+      "exactOklchVariant": [
+        "oklch(58.5% 0.233 277.117)",
+        "oklch(60.6% 0.25 292.717)",
+        "oklch(62.7% 0.265 303.9)"
+      ]
+    },
+    {
+      "id": "AT-13",
+      "name": "emoji-as-icon-set",
+      "failureMode": "borrowedAssets",
+      "tag": "E",
+      "action": "reject",
+      "surface": "dom",
+      "detect": "Regex /[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{FE0F}\\u{1F900}-\\u{1F9FF}]/u over rendered text nodes; for each hit check for role=\"img\" plus non-empty aria-label, or aria-hidden=\"true\" plus adjacent visible text; count emoji appearing as leading child of repeated siblings.",
+      "threshold": {
+        "requireAccessibleName": true,
+        "forbidInRepeatedStructures": true
+      },
+      "calibrationRequired": false,
+      "tagSplit": {
+        "accessibilityDefect": "E",
+        "aiTell": "H"
+      },
+      "sourceIds": [
+        "watson-accessible-emoji"
+      ],
+      "priority": 13
+    },
+    {
+      "id": "AT-14",
+      "name": "flat-single-elevation",
+      "failureMode": "duplication",
+      "tag": "P",
+      "action": "warn",
+      "surface": "rendered",
+      "detect": "Collect computed box-shadow, normalise whitespace and colour notation, count distinct non-none values; parse y-offset and blur.",
+      "threshold": {
+        "warnWhenSingleShadowSharedByAtLeast": 12,
+        "warnWhenZeroOffsetShadowFraction": 0.8
+      },
+      "calibrationRequired": false,
+      "evidenceLimit": "Expert observation on a single project with no inter-rater statistics. No quantitative link between shadow-token count and perceived quality exists anywhere.",
+      "sourceIds": [
+        "nng-ai-prototyping",
+        "refactoring-ui-tips"
+      ],
+      "priority": 14
+    },
+    {
+      "id": "AT-15",
+      "name": "hierarchy-inversion",
+      "failureMode": "thinness",
+      "tag": "P",
+      "action": "warn",
+      "surface": "rendered",
+      "detect": "Per section compute prominence vector (rendered area, distance from top, max font-size, background contrast vs page) against content-weight proxy (word count, CTA presence, product-data density); flag top-decile-area elements holding a single text node under 4 words; count distinct font-weight and text color values.",
+      "threshold": {
+        "minDistinctFontWeights": 2,
+        "minDistinctTextColors": 3,
+        "maxWordsInTopDecileAreaElement": 4
+      },
+      "calibrationRequired": true,
+      "calibrationNote": "The 2-and-3 numbers are ours. No published basis.",
+      "sourceIds": [
+        "nng-vague-prototyping",
+        "refactoring-ui-tips"
+      ],
+      "priority": 15
+    }
+  ],
+  "aestheticScore": {
+    "id": "PS-2",
+    "tag": "E",
+    "action": "note",
+    "purpose": "Interpretable screenshot-level aesthetic signal for Lens. Report as a signal, never as a verdict.",
+    "complexityFeatures": [
+      "quadtree leaf count by minimum colour/intensity entropy",
+      "symmetry of leaves",
+      "balance of leaves",
+      "equilibrium of leaves",
+      "text group count via modified X-Y cut",
+      "image area count",
+      "text area",
+      "non-text area",
+      "colourfulness",
+      "hue"
+    ],
+    "colourfulnessFeatures": [
+      "HSV mean hue",
+      "HSV mean saturation",
+      "HSV mean value",
+      "percentage of pixels per W3C named colour (16)",
+      "CIELab entropy",
+      "Hasler-Susstrunk colourfulness",
+      "Yendrikhovskij colourfulness"
+    ],
+    "publishedFit": {
+      "complexityR2": 0.65,
+      "colourfulnessR2": 0.78,
+      "aestheticAppealR2": 0.48,
+      "n": 548,
+      "sites": 450,
+      "exposureMs": 500
+    },
+    "mandatoryCaveats": [
+      "Roughly 50 percent of variance is unexplained.",
+      "Models were fitted on 2013-era websites.",
+      "A fine-tuned CNN scores better (r=0.85 vs r=0.59) but is not interpretable; we prefer being able to tell a merchant why a page scored low."
+    ],
+    "sourceIds": [
+      "reinecke-aesthetics-2013",
+      "webthetics-2019"
+    ]
+  },
+  "doNotBuild": [
+    {
+      "id": "Z1",
+      "name": "em-dash-density-as-authorship-signal",
+      "reason": "Measured across 12 models and ~240k words, and the measurement kills the rule. Human baseline 3.23 per 1000 words; GPT-5.4 is 1.43 and Llama is 0.00 - both BELOW humans. Expert annotators coded dash presence as a HUMAN tell. At headline length a 12-word headline expects 0.127 em dashes at the worst model rate vs 0.039 for humans. Acceptable as a brand-voice preference; never as an authorship judgement."
+    },
+    {
+      "id": "Z2",
+      "name": "third-party-ai-text-detectors-on-marketing-copy",
+      "reason": "Published minimum input lengths: Turnitin 300 words, OpenAI ~150-200, Originality.ai 100, GPTZero 50, Pangram 50. Industry floor is 50 words; a Shopify hero headline is 5-20, so any detector call is outside every vendor's stated operating range. Ethical constraint: seven detectors on 91 non-native-English essays produced a 61.22 percent false-positive rate vs ~5.19 percent for native speakers - the mechanism is low perplexity, not AI authorship. Independent testing found all 14 detectors below 80 percent accuracy. Use auditable pattern rules only."
+    },
+    {
+      "id": "Z3",
+      "name": "penalising-conventional-layout",
+      "reason": "Prototypicality is the strongest predictor of first impression (eta-p-squared 0.812), ahead of complexity (0.581), and complexity actively degrades search efficiency and recall. Flagging symmetric centring, three-column feature rows, or low visual complexity optimises AGAINST the evidence. The defensible targets are duplication, thinness, missing signals and borrowed assets."
+    }
+  ],
+  "unestablished": [
+    "There is no study of AI-generated storefronts. Every rule here transfers from an adjacent domain and each transfer is an inference.",
+    "The serious design press has not published an analysis of the AI visual signature. The credible base is two expert-review articles plus a computational-aesthetics literature that predates the phenomenon.",
+    "Expert humans do not agree on 'is this slop' - Cohen's kappa from -0.15 to 0.29 among trained annotators. Prefer an ensemble with a structured rubric over a single scalar verdict.",
+    "These intuitive proxies have NO supporting evidence and are tagged H wherever used: distinct type sizes used vs defined, identical vertical rhythm, identical card radius, gradient count and angle uniformity, saturation clustering, glassmorphism, zero asymmetry, tricolon layouts."
+  ],
+  "sourcesFile": "./sources.json",
+  "sourceResolution": "Every sourceIds value MUST resolve to an id in sources.json. The provenance gate fails the build if any does not."
+}

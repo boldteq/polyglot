@@ -142,3 +142,67 @@ export async function validateTheme(absoluteThemePath, files, opts = {}) {
     try { proc.kill() } catch { /* already gone */ }
   }
 }
+
+// ── GraphQL validation (Conduit/Porter Admin + Storefront queries) ───────────────────────────────
+// Parse validate_graphql_codeblocks markdown. Shape VERIFIED LIVE 2026-07-24 against @shopify/dev-mcp
+// (do NOT guess it — it differs from validate_theme's):
+//   ## Validation Summary … **Overall Status:** ❌ INVALID
+//   ### Code Block 1
+//   **Artifact ID:** artifact-…   **Status:** ✅ SUCCESS   **Details:** Successfully validated…
+//   ### Code Block 2
+//   **Status:** ❌ FAILED   **Details:** GraphQL validation errors: Cannot query field "x" on type "Y".; …
+// blockLabels[i] maps result i → the caller's source label (a file path / operation name), by ORDER.
+export function parseGraphqlReport(md, blockLabels = []) {
+  const out = []
+  if (!md) return out
+  const blocks = md.split(/^###\s+Code Block\s+\d+/im).slice(1)
+  blocks.forEach((b, i) => {
+    const status = (b.match(/\*\*Status:\*\*\s*(.+)/) || [])[1] || ''
+    if (!/FAILED/i.test(status)) return // ✅ SUCCESS or unparseable-but-not-failed → not a finding
+    const message = (b.match(/\*\*Details:\*\*\s*([\s\S]*?)(?:\n\s*\n|\n\*\*|\n###|$)/) || [])[1]
+      ?.trim().replace(/\s+/g, ' ') || 'GraphQL validation failed'
+    const artifact = (b.match(/\*\*Artifact ID:\*\*\s*(\S+)/) || [])[1] || null
+    out.push({ severity: 'error', block: blockLabels[i] || `codeblock ${i + 1}`, message, artifact })
+  })
+  return out
+}
+
+// Run Shopify's GraphQL validator over `codeblocks` ([{ content, label? }]). Handbook §5 mandates this
+// for every Admin/Storefront GraphQL block BEFORE PR (Conduit/Porter/Onyx). `api`: 'storefront-graphql'
+// for theme data queries (default), 'admin' for Porter store-ops mutations. One `api` per call — the
+// caller groups blocks by API. Same offline contract as validateTheme: can't-run ⇒ { unavailable }.
+// → { unavailable:false, findings:[...], scanned:n } | { unavailable:true, reason }
+export async function validateGraphql(codeblocks, opts = {}) {
+  const api = opts.api || 'storefront-graphql'
+  const timeoutMs = Number(opts.timeoutMs || process.env.SHOPIFY_MCP_TIMEOUT_MS || 180000)
+  if (!codeblocks.length) return { unavailable: false, findings: [], scanned: 0 }
+
+  let proc
+  try { proc = startServer() } catch (e) { return { unavailable: true, reason: `could not start ${DEFAULT_PKG}: ${e.message}` } }
+  const { call, notify } = makeRpc(proc, timeoutMs)
+
+  try {
+    await call('initialize', {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'boldteq-theme-toolkit', version: '1.0.0' },
+    })
+    notify('notifications/initialized', {})
+
+    const learn = await call('tools/call', { name: 'learn_shopify_api', arguments: { api } })
+    const conversationId = (textOf(learn).match(UUID_RE) || [])[0]
+    if (!conversationId) return { unavailable: true, reason: 'learn_shopify_api returned no conversationId (offline, or shopify.dev unreachable)' }
+
+    const res = await call('tools/call', {
+      name: 'validate_graphql_codeblocks',
+      arguments: { conversationId, api, codeblocks: codeblocks.map((b) => ({ content: b.content })) },
+    })
+    const md = textOf(res)
+    if (res.result?.isError) return { unavailable: true, reason: `validate_graphql_codeblocks rejected the request: ${md.slice(0, 200)}` }
+    return { unavailable: false, findings: parseGraphqlReport(md, codeblocks.map((b) => b.label)), scanned: codeblocks.length, raw: md }
+  } catch (e) {
+    return { unavailable: true, reason: e.message }
+  } finally {
+    try { proc.kill() } catch { /* already gone */ }
+  }
+}
