@@ -92,6 +92,8 @@ add(false, has('docs/discovery/goals.json'), 'discovery goals seeded (gate #0.4)
   'compass/atrium author docs/discovery/goals.json in-run (auto)')
 add(false, has('docs/design/design-system.json'), 'design-system seeded (gate #0.5)',
   'drape authors docs/design/design-system.json in-run (auto)')
+add(false, has('CLAUDE.md'), 'repo CLAUDE.md present (orients any session/agent — Dev-MCP-first + done-means-green)',
+  'seed it: cp toolkit/templates/repo-CLAUDE.md ./CLAUDE.md   (durable in-repo pointer for hook-less sessions; never clobber an existing one)')
 
 // ── vendored-copy integrity (the drift that made every fix invisible to clients) ──
 {

@@ -2,10 +2,18 @@
   "mcpServers": {
     "boldteq-memory": {
       "command": "node",
-      "args": ["/Users/yashbaldha/Desktop/Boldteq App/Operation/Polyglot/src/intelligence/mcp-server.mjs"],
+      "args": ["./src/intelligence/mcp-server.mjs"],
       "env": {
         "INTEL_STORE": "local",
         "INTEL_EMBED_PROVIDER": "ollama"
+      }
+    },
+    "shopify-dev": {
+      "command": "npx",
+      "args": ["-y", "@shopify/dev-mcp@latest"],
+      "env": {
+        "LIQUID_VALIDATION_MODE": "full",
+        "OPT_OUT_INSTRUMENTATION": "true"
       }
     }
   }

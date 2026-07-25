@@ -16,7 +16,7 @@
 // cannot inherit the builder's blind spots or rubber-stamp.
 //
 // Usage: node lens-judge.mjs [--surfaces a,b] [--concurrency N]
-// Env: REPORT_DIR (gate-reports) · LENS_NICHE · LENS_BRAND · LENS_JUDGE_MODEL (sonnet) ·
+// Env: REPORT_DIR (gate-reports) · LENS_NICHE · LENS_BRAND · LENS_JUDGE_MODEL (claude-sonnet-4-6, pinned) ·
 //      LENS_CONCURRENCY (4) · LENS_RUBRICS (default <toolkit>/lens-rubrics) · CLAUDE_BIN (claude)
 // Exit: 0 = every frame judged · 1 = ≥1 frame failed to produce a verdict · 2 = env error
 
@@ -37,7 +37,12 @@ const NO_CACHE = process.env.LENS_NO_CACHE === '1'
 const MAX_FRESH = Number(process.env.LENS_MAX_FRAMES || 0) // #9: cap fresh judge calls per run (0 = unlimited)
 const RUBRICS_DIR = process.env.LENS_RUBRICS || path.resolve(HERE, '..', 'lens-rubrics')
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
-const MODEL = process.env.LENS_JUDGE_MODEL || 'sonnet'
+// PINNED (2026-07-24): default to a DATED id, not the floating `sonnet` alias, so the load-bearing
+// visual judge is REPRODUCIBLE — Anthropic remapping `sonnet` to a new model would otherwise shift
+// verdicts silently. `v.model` records the concrete id; the frameHash cache keys on it (a change
+// re-judges cleanly). Override with LENS_JUDGE_MODEL to bump the judge. `claude-sonnet-4-6` is a
+// CLI-confirmed full name; the objective Layer-1 facts hard-block regardless of this choice.
+const MODEL = process.env.LENS_JUDGE_MODEL || 'claude-sonnet-4-6'
 const NICHE = process.env.LENS_NICHE || 'general ecommerce'
 const BRAND = process.env.LENS_BRAND || 'this brand'
 

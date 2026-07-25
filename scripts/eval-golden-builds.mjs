@@ -25,6 +25,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.join(HERE, '..')
@@ -65,7 +66,10 @@ export function scoreCase(summary, sections, mustPass) {
   const checks = (mustPass.gates_green || []).length + (mustPass.sections_present || []).length
     + (mustPass.min_pass_rate != null ? 1 : 0) + (mustPass.max_blockers != null ? 1 : 0)
   const score = checks ? +((checks - failures.length) / checks).toFixed(3) : null
-  return { pass: failures.length === 0, score, failures, checks }
+  // buildHealth = the raw gate pass-rate, surfaced SEPARATELY from `score` (bar-satisfaction). A
+  // low-water case (e.g. catalog @ min_pass_rate 0.35) can score 1.0 while the build is only 39% healthy;
+  // reporting both stops "corpus 100%" being misread as "every build is good".
+  return { pass: failures.length === 0, score, buildHealth: passRate == null ? null : +passRate.toFixed(3), failures, checks }
 }
 
 // PURE: roll per-case results into one corpus number (the regression-gate metric).
@@ -86,10 +90,26 @@ function loadCases() {
   try { files = fs.readdirSync(GOLDEN_DIR).filter((f) => f.endsWith('.json') && f !== 'baseline.json' && !f.startsWith('_')) } catch { return [] }
   return files.map((f) => { const c = JSON.parse(fs.readFileSync(path.join(GOLDEN_DIR, f), 'utf-8')); c._file = f; return c })
 }
-function readSummary(buildDir) {
-  try { return JSON.parse(fs.readFileSync(path.join(buildDir, 'gate-reports', 'summary.json'), 'utf-8')) } catch { return null }
+// A real commit sha (not the "capture-on-commit" placeholder or empty) → the reference can be pinned.
+export function isRealSha(sha) { return typeof sha === 'string' && /^[0-9a-f]{7,40}$/i.test(sha.trim()) }
+
+// Reproducibility (2026-07-24): a corpus case scores the PINNED known_good_sha snapshot via `git show`
+// (read-only — never touches the working tree or the store), NOT the live tree — else an uncommitted
+// gate-rerun in the reference repo silently moves the score (observed: cravinbyandy live 88% vs its
+// pinned sha 85%). Falls back to the working tree, flagged `pinned:false`, when the case has no real sha
+// (e.g. mexdynamic has no commits → catalog can't be pinned, and the report says so honestly).
+function readSummary(buildDir, sha) {
+  if (isRealSha(sha)) {
+    const r = spawnSync('git', ['-C', buildDir, 'show', `${sha}:gate-reports/summary.json`], { encoding: 'utf-8' })
+    if (r.status === 0) { try { return { summary: JSON.parse(r.stdout), pinned: true } } catch { /* fall through to live */ } }
+  }
+  try { return { summary: JSON.parse(fs.readFileSync(path.join(buildDir, 'gate-reports', 'summary.json'), 'utf-8')), pinned: false } } catch { return { summary: null, pinned: false } }
 }
-function readSections(buildDir) {
+function readSections(buildDir, sha) {
+  if (isRealSha(sha)) {
+    const r = spawnSync('git', ['-C', buildDir, 'ls-tree', '--name-only', sha, 'sections/'], { encoding: 'utf-8' })
+    if (r.status === 0) return r.stdout.split('\n').filter((n) => n.endsWith('.liquid')).map((n) => path.basename(n, '.liquid'))
+  }
   try { return fs.readdirSync(path.join(buildDir, 'sections')).filter((n) => n.endsWith('.liquid')).map((n) => n.replace(/\.liquid$/, '')) } catch { return [] }
 }
 function resolveRepo(c) {
@@ -105,9 +125,12 @@ function resolveRepo(c) {
 function scoreOneCase(c, buildDirOverride) {
   const dir = buildDirOverride || resolveRepo(c)
   if (!dir || !fs.existsSync(dir)) return { id: c.id, pass: false, score: null, failures: [`reference build not found: ${dir || '(none)'}`], checks: 0, missing: true }
-  const summary = readSummary(dir)
+  // corpus mode (no override) scores the PINNED known_good_sha snapshot for reproducibility; an ad-hoc
+  // <buildDir> (the ratchet minting from a fresh build, or a dev run) scores the live working tree.
+  const sha = buildDirOverride ? null : c.known_good_sha
+  const { summary, pinned } = readSummary(dir, sha)
   if (!summary) return { id: c.id, pass: false, score: null, failures: [`no gate-reports/summary.json in ${dir} — run the gates first`], checks: 0, missing: true }
-  return { id: c.id, ...scoreCase(summary, readSections(dir), c.must_pass || {}) }
+  return { id: c.id, pinned, ...scoreCase(summary, readSections(dir, sha), c.must_pass || {}) }
 }
 
 function main() {
@@ -129,8 +152,13 @@ function main() {
   const results = cases.map((c) => scoreOneCase(c))
   const agg = scoreCorpus(results)
   console.log(`\nGolden build corpus — ${agg.cases} case(s), ${agg.scored} scored, ${agg.passed} passing`)
-  for (const r of results) console.log(`  ${r.pass ? '✓' : r.missing ? '·' : '✗'} ${r.id.padEnd(28)} ${r.score == null ? 'n/a' : (r.score * 100).toFixed(0) + '%'}${r.failures.length ? '  — ' + r.failures[0] : ''}`)
-  console.log(`  AGGREGATE meanScore: ${agg.meanScore == null ? 'n/a' : (agg.meanScore * 100).toFixed(1) + '%'}`)
+  for (const r of results) {
+    const health = r.buildHealth != null ? ` · health ${(r.buildHealth * 100).toFixed(0)}%` : ''
+    const pin = r.missing ? '' : r.pinned ? ' · pinned' : ' · ⚠ UNPINNED (live tree)'
+    console.log(`  ${r.pass ? '✓' : r.missing ? '·' : '✗'} ${r.id.padEnd(28)} score ${r.score == null ? 'n/a' : (r.score * 100).toFixed(0) + '%'}${health}${pin}${r.failures.length ? '  — ' + r.failures[0] : ''}`)
+  }
+  const unpinned = results.filter((r) => !r.missing && !r.pinned).length
+  console.log(`  AGGREGATE meanScore: ${agg.meanScore == null ? 'n/a' : (agg.meanScore * 100).toFixed(1) + '%'}${unpinned ? ` · ⚠ ${unpinned} case(s) UNPINNED — score reflects the live tree, not a fixed commit` : ''}`)
 
   if (argv.includes('--write-baseline')) {
     fs.writeFileSync(BASELINE_F, JSON.stringify({ meanScore: agg.meanScore, passed: agg.passed, cases: agg.cases, at: '(stamp on commit)' }, null, 2) + '\n')

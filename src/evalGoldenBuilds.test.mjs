@@ -2,7 +2,7 @@
 // SCORING math (scoreCase / scoreCorpus) is pure and proven here without a repo or a model.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { scoreCase, scoreCorpus } from '../scripts/eval-golden-builds.mjs';
+import { scoreCase, scoreCorpus, isRealSha } from '../scripts/eval-golden-builds.mjs';
 
 const summaryWith = (gatesObj) => ({ gates: gatesObj });
 const G = (pass, { skipped = false, blockers = 0 } = {}) => ({ pass, skipped, blockers: Array(blockers).fill({ id: 'x' }) });
@@ -59,6 +59,23 @@ test('partial credit: score reflects the FRACTION of criteria met, never a fake 
 test('no criteria → score null (a case that measures nothing is not a perfect score)', () => {
   const r = scoreCase(summaryWith({ a: G(true) }), [], {});
   assert.equal(r.score, null);
+});
+
+test('buildHealth surfaces the RAW pass-rate, separate from the bar score — no rosy 100% hides a weak build', () => {
+  // a low-water case (like catalog): only gate `a` required, min_pass_rate 0.3 — met by a 40%-healthy build
+  const summary = summaryWith({ a: G(true), b: G(false), c: G(false), d: G(false), e: G(true) }); // 2/5 = 40%
+  const r = scoreCase(summary, [], { gates_green: ['a'], min_pass_rate: 0.3 });
+  assert.equal(r.pass, true);
+  assert.equal(r.score, 1);          // meets its (deliberately low) bar
+  assert.equal(r.buildHealth, 0.4);  // …but the build is only 40% healthy — surfaced, not masked
+});
+
+test('isRealSha pins a real commit and rejects the capture-on-commit placeholder', () => {
+  assert.equal(isRealSha('918c45ae6b955a3ac74ba4228c4502611f97eda2'), true);
+  assert.equal(isRealSha('248ccc0'), true);
+  assert.equal(isRealSha('capture-on-commit'), false); // the placeholder → falls back to live tree, flagged UNPINNED
+  assert.equal(isRealSha(''), false);
+  assert.equal(isRealSha(undefined), false);
 });
 
 test('scoreCorpus aggregates only scorable cases and counts passes', () => {

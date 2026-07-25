@@ -228,7 +228,7 @@ for (const file of targets) {
   // like `/* ...no Tailwind, theme vars only */` is documentation, not a Tailwind dependency
   // (Seraphine beauty dogfood 2026-06-19: a "no Tailwind." comment false-fired ds.tailwind).
   const rawNoComments = stripComments(raw)
-  if (/@apply|@tailwind|\btailwind\b/i.test(rawNoComments)) drift('ds.tailwind', file, 'Tailwind/@apply present — one CSS system only (Rule 9); use the theme vars', '')
+  if (/@apply|@tailwind|\btailwind\b/i.test(rawNoComments)) drift('ds.tailwind', file, 'Tailwind/@apply present — one CSS system only (Rule 9); use the base theme\'s own system (Minimog m:* utilities + rgb(var(--color-*)), or Dawn component-*/theme vars)', '')
   // Second token system = an unambiguously bolted-on FOREIGN prefix (Tailwind --tw-*).
   // NOTE: --brand-* is intentionally NOT flagged — many themes expose brand vars as their OWN tokens (Rule-9 compliant).
   //
