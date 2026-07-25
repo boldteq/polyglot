@@ -57,3 +57,6 @@ scripts/swt-train/quality-trend.jsonl
 scripts/swt-train/authoring-fill.log
 dist/
 docs/gepa/
+
+# synthetic-dogfood provisioned fixtures (briefs are tracked; builds are throwaway)
+evals/synthetic-builds/builds/

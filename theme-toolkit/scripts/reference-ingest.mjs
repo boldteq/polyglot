@@ -56,6 +56,30 @@ export const ARCHETYPES = [
   'newsletter', 'announcement', 'rich-text', 'custom',
 ]
 
+// A reference attaches to a PAGE; the hero/about/story/etc. is a SECTION on that page. These are the
+// surfaces check-reference-match.templateFor() can actually resolve to a template (home=index.json,
+// others=<s>.json|page.<s>.json, header/footer=section groups). Keep in lockstep with that resolver.
+export const PAGE_SURFACES = ['home', 'index', 'product', 'collection', 'cart', 'page', 'search', 'blog', 'article', 'list-collections', '404', 'password', 'header', 'footer']
+// Common section-surface NAMES → the page they live on, so a mis-scoped `--surface pdp/plp/…` still
+// resolves. Anything else falls back to `home` (where hero/about/story/marquee sections live).
+const SECTION_SURFACE_HOST = { pdp: 'product', 'product-page': 'product', plp: 'collection', 'collection-page': 'collection', minicart: 'cart' }
+
+// PURE: normalize a `--surface` value so the reference-map is always resolvable by gate #46.
+// synthetic-dogfood round 1 (2026-07-25) caught this: registering the documented-but-ambiguous
+// `--surface hero` wrote surface="hero", so templateFor() looked for templates/hero.json (never exists)
+// → a PERMANENT ref.template-missing BLOCK. The very gate built to catch the hero-banner-vs-slideshow
+// bug could then never run. A real custom page (templates/page.<s>.json present) is kept as-is; a bare
+// section name is remapped to its host page and the caller is told what happened.
+export function resolveSurface(surface, { templateExists } = {}) {
+  const s = String(surface || '').trim().toLowerCase()
+  if (PAGE_SURFACES.includes(s)) return { surface: s, remapped: false }
+  if (templateExists && (templateExists(`templates/${s}.json`) || templateExists(`templates/page.${s}.json`))) {
+    return { surface: s, remapped: false } // a real custom page — not a section name
+  }
+  const host = SECTION_SURFACE_HOST[s] || 'home'
+  return { surface: host, remapped: true, from: s, host }
+}
+
 const die = (msg) => { console.error(`reference-ingest: ${msg}`); process.exit(2) }
 
 // PURE: "90" | "1:30" | "01:30.5" | "00:01:30" → seconds. Returns null when unparseable.
@@ -236,6 +260,14 @@ function main() {
   if (!o.surface || !o.name) die('--surface and --name are required (e.g. --surface home --name hero)')
   if (!o.archetype) die(`--archetype is required. Read the picture FIRST and resolve its structural signals (dots ⇒ slideshow, arrows ⇒ carousel, filter row ⇒ collection-grid …).\n  vocabulary: ${ARCHETYPES.join(' | ')}\n  lookup: ~/.claude/memory/patterns/good/reference-archetype-signals.md`)
   if (!ARCHETYPES.includes(o.archetype)) die(`unknown --archetype "${o.archetype}". Use one of: ${ARCHETYPES.join(' | ')}`)
+
+  // Normalize the surface so gate #46 can always resolve it (a section name like "hero" is not a page).
+  const sr = resolveSurface(o.surface, { templateExists: (rel) => fs.existsSync(path.resolve(cwd, rel)) })
+  if (sr.remapped) {
+    console.log(`reference-ingest: NOTE — "${sr.from}" is a SECTION, not a page. A reference attaches to a PAGE, so registering it on surface "${sr.host}" as section "${o.name}".`)
+    console.log(`  (If "${sr.from}" actually lives on another page, re-run with --surface product|collection|cart|page.<name> --name ${o.name}.)`)
+    o.surface = sr.surface
+  }
 
   // A client walkthrough video is a reference like any other — pull the frame, then persist it.
   let videoRel = null

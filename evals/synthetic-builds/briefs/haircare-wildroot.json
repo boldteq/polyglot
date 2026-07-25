@@ -1,0 +1,29 @@
+{
+  "niche": "haircare",
+  "brand": "Wildroot",
+  "base": "dawn",
+  "surfaces": ["hero", "about", "pdp"],
+  "brief": "Wildroot — premium botanical haircare storefront. Homepage rotating hero, About/brand-story, and a PDP ingredient-forward feature section. Warm, editorial, ingredient-forward. Honest claims only.",
+  "design_system": {
+    "brand": "Wildroot",
+    "typography": { "allowed_px": [56, 42, 32, 24, 20, 16, 14], "fonts": { "heading": "Fraunces", "body": "Inter" } },
+    "spacing": { "scale": [0, 4, 8, 12, 16, 24, 32, 48, 64, 96], "section_rhythm_px": 96 },
+    "radius": { "tokens": { "sm": 6, "md": 12, "lg": 20 } },
+    "color": { "forest": "#2F3D2A", "sage": "#7C8B6F", "cream": "#F6F1E7", "bark": "#3A2E24", "terracotta": "#C06B4E", "ink": "#1F1B16" },
+    "buttons": { "variants": ["btn-primary", "btn-secondary"] }
+  },
+  "goals": {
+    "revenue": { "current_monthly": 42000, "target_monthly": 68000, "horizon_days": 90, "aov_current": 47, "aov_target": 62 },
+    "conversion": { "cvr_current_pct": 1.6, "cvr_target_pct": 2.8, "cart_abandon_current_pct": 74, "cart_abandon_target_pct": 62, "priority_surfaces": ["hero", "pdp", "cart"] },
+    "seo": { "target_keywords": [{ "keyword": "botanical shampoo bar", "market": "en-US", "current_rank": 38, "target_rank": 8 }], "markets": ["en-US"], "organic_traffic_current": 5400, "organic_traffic_target": 14000, "migration_redirects_required": false },
+    "performance": { "lcp_current_s": 3.4, "lcp_target_s": 2.5, "inp_target_ms": 200, "cls_target": 0.1, "lighthouse_perf_target": 90, "measured_on": "mobile (primary) + desktop" },
+    "accessibility": { "target": "WCAG 2.1 AA", "axe_critical_allowed": 0 }
+  },
+  "brand_direction": "# Wildroot — Brand Direction\n\nPremium botanical haircare. Plant-derived, salon-grade formulas made honest and warm.\n\n**Five adjectives:** botanical · restorative · honest · warm · elevated\n\n- **Voice:** confident, plainspoken, never hypey. Substantiated claims only.\n- **Palette:** forest + sage greens, cream base, bark + terracotta accents.\n- **Type:** Fraunces (display serif) for headings, Inter for body.",
+  "products": [
+    { "handle": "rosemary-restore-shampoo-bar", "title": "Rosemary Restore Shampoo Bar", "price": 18, "blurb": "Solid shampoo bar with rosemary + mint. ~60 washes. Sulfate-free.", "ingredients": ["Rosemary oil", "Peppermint", "Coconut-derived cleansers", "Shea butter"] },
+    { "handle": "marula-repair-hair-oil", "title": "Marula Repair Hair Oil", "price": 34, "blurb": "Lightweight marula + argan oil for split ends and frizz. Non-greasy.", "ingredients": ["Marula oil", "Argan oil", "Vitamin E"] },
+    { "handle": "scalp-renewal-serum", "title": "Scalp Renewal Serum", "price": 29, "blurb": "Nightly scalp serum with niacinamide + rosemary to support a balanced scalp.", "ingredients": ["Niacinamide", "Rosemary extract", "Aloe"] }
+  ],
+  "reference": { "surface": "home", "name": "wildroot-hero", "archetype": "slideshow", "must_have": ["pagination dots", "3 rotating messages", "honest copy"] }
+}

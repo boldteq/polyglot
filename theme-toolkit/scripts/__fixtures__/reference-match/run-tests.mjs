@@ -8,7 +8,7 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { resolveEntry, TYPE_ARCHETYPE, resolveSectionKey } from '../../check-reference-match.mjs'
-import { upsertEntry } from '../../reference-ingest.mjs'
+import { upsertEntry, resolveSurface, PAGE_SURFACES } from '../../reference-ingest.mjs'
 
 let failures = 0
 const ok = (m) => console.log('  PASS  ' + m)
@@ -80,6 +80,24 @@ console.log('case (h) reference-ingest upsert keeps one row per (surface,name) a
   eq(home.sections.length, 2, 'no duplicate row for the same section')
   eq(home.sections[0].archetype, 'slideshow', 'a corrected read overwrites the old archetype')
   eq(home.sections[1].name, 'marquee', 'sorted by order')
+}
+
+console.log('case (i) resolveSurface — a section name is remapped to its host page (synthetic-dogfood round 1)')
+{
+  // the exact round-1 defect: `--surface hero` must NOT stay "hero" (→ templates/hero.json → permanent
+  // ref.template-missing). It resolves to home, where the hero section lives.
+  const hero = resolveSurface('hero', { templateExists: () => false })
+  eq(hero.surface, 'home', 'bare "hero" → home')
+  eq(hero.remapped, true, 'flagged as remapped so the caller can tell the user')
+  // real page surfaces pass straight through, untouched
+  eq(resolveSurface('home').remapped, false, 'home is a page surface — not remapped')
+  eq(resolveSurface('product').surface, 'product', 'product passes through')
+  // common mis-scoped section-surfaces route to the right page
+  eq(resolveSurface('pdp', { templateExists: () => false }).surface, 'product', 'pdp → product')
+  eq(resolveSurface('plp', { templateExists: () => false }).surface, 'collection', 'plp → collection')
+  // a REAL custom page (templates/page.about.json exists) is kept, never mistaken for a section
+  eq(resolveSurface('about', { templateExists: (r) => r === 'templates/page.about.json' }).remapped, false, 'a real custom page is preserved')
+  PAGE_SURFACES.includes('home') && PAGE_SURFACES.includes('product') ? ok('PAGE_SURFACES covers the load-bearing pages') : bad('PAGE_SURFACES missing a page')
 }
 
 // ── the gate's FILE-LEVEL blockers (QA-1: these 3 were unproven) ─────────────────────────

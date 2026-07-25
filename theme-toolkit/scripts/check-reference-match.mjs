@@ -40,7 +40,7 @@ const JUDGE_DIR = path.join(LENS_DIR, 'reference-judge')   // NOT judge/ — #18
 const MAP_PATH = 'docs/design/reference-map.json'
 const ENFORCE = process.env.REFERENCE_MATCH_ENFORCE === '1'
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
-const JUDGE_MODEL = process.env.LENS_JUDGE_MODEL || 'sonnet'
+const JUDGE_MODEL = process.env.LENS_JUDGE_MODEL || 'claude-sonnet-4-6' // PINNED dated id (reproducible verdict) — see lens-judge.mjs
 const JUDGE_TIMEOUT_MS = Number(process.env.REFERENCE_MATCH_TIMEOUT_MS || 6 * 60 * 1000)
 
 const blockers = []
@@ -227,7 +227,7 @@ async function main() {
     }
     const ctx = bySurface.get(e.surface)
     const page = ctx ? ctx.tpl.rel : `templates/${e.surface}`
-    if (!ctx) { add(blockers, 'ref.template-missing', page, `no template found for surface "${e.surface}" — the reference declares sections for a page that does not exist`); continue }
+    if (!ctx) { add(blockers, 'ref.template-missing', page, `no template found for surface "${e.surface}" — a reference attaches to a PAGE (home/product/collection/cart), and "${e.surface}" resolves to no template. If it is a SECTION (hero/about/…), re-register it on its page: reference-ingest --surface home --name ${e.name} --archetype ${e.archetype || '<a>'}`); continue }
     if (ctx.sections === null) { add(blockers, 'ref.template-invalid', page, `template JSON could not be parsed`); continue }
     const r = resolveEntry(e, ctx.sections)
     if (r.kind === 'block') add(blockers, r.id, page, r.detail)

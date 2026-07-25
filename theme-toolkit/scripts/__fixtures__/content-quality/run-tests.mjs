@@ -56,6 +56,20 @@ const wIds = (rep) => new Set((rep?.warnings || []).map(w => w.id))
   code === 0 && bIds(rep).size === 0 ? pass('clean content → PASS') : fail(`clean: code ${code} blockers ${[...bIds(rep)]}`)
 }
 {
+  // synthetic-dogfood round 1 (2026-07-25): a scaffolded section writes "Button label" into all 20
+  // locales/*.schema.json (theme-EDITOR labels) by design — those are NOT shipped shopper copy, so the
+  // gate must NOT flag them (its own header says schema defaults are legitimate). Storefront locales
+  // (locales/*.json) + templates still flag an unreplaced default.
+  const schemaOnly = run({ 'locales/en.default.schema.json': '{"sections":{"hero":{"settings":{"button_label":{"label":"Button label"}}}}}' }, { DS_REQUIRE_SCOPE: '1' })
+  schemaOnly.code === 0 && !bIds(schemaOnly.rep).has('placeholder.unreplaced-default')
+    ? pass('"Button label" in *.schema.json (editor label) → NOT flagged')
+    : fail(`schema-locale false-positive: code ${schemaOnly.code} blockers ${[...bIds(schemaOnly.rep)]}`)
+  const storefront = run({ 'locales/en.default.json': '{"general":{"x":"your collection\'s name"}}' }, { DS_REQUIRE_SCOPE: '1' })
+  storefront.code === 1 && bIds(storefront.rep).has('placeholder.unreplaced-default')
+    ? pass('storefront locale (*.json) default still flagged')
+    : fail(`storefront default missed: code ${storefront.code} blockers ${[...bIds(storefront.rep)]}`)
+}
+{
   const { code, rep } = run({ 'README.md': 'not a content surface' })
   code === 0 && wIds(rep).has('placeholder.n-a-no-content') ? pass('no content surfaces → SKIP/PASS') : fail(`n/a: code ${code}`)
 }

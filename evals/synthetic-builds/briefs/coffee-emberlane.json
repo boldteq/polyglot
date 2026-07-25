@@ -1,0 +1,29 @@
+{
+  "niche": "coffee",
+  "brand": "Emberlane",
+  "base": "dawn",
+  "surfaces": ["hero", "about", "pdp"],
+  "brief": "Emberlane — specialty coffee roastery storefront. Homepage hero with the current single-origin, an About/roasting-story section, and a PDP flavour + brew-guide feature. Craft, warm, transparent sourcing. Honest tasting notes only.",
+  "design_system": {
+    "brand": "Emberlane",
+    "typography": { "allowed_px": [52, 40, 30, 24, 20, 16, 14], "fonts": { "heading": "Söhne", "body": "Inter" } },
+    "spacing": { "scale": [0, 4, 8, 12, 16, 24, 32, 48, 64, 80], "section_rhythm_px": 80 },
+    "radius": { "tokens": { "sm": 4, "md": 10, "lg": 16 } },
+    "color": { "espresso": "#2B1D14", "ember": "#B4451F", "kraft": "#E9DFCE", "cream": "#FAF5EC", "ash": "#4A4038", "ink": "#1A130D" },
+    "buttons": { "variants": ["btn-primary", "btn-secondary"] }
+  },
+  "goals": {
+    "revenue": { "current_monthly": 61000, "target_monthly": 95000, "horizon_days": 90, "aov_current": 32, "aov_target": 44 },
+    "conversion": { "cvr_current_pct": 2.1, "cvr_target_pct": 3.4, "cart_abandon_current_pct": 71, "cart_abandon_target_pct": 60, "priority_surfaces": ["hero", "pdp", "cart"] },
+    "seo": { "target_keywords": [{ "keyword": "single origin coffee subscription", "market": "en-US", "current_rank": 24, "target_rank": 6 }], "markets": ["en-US"], "organic_traffic_current": 8800, "organic_traffic_target": 21000, "migration_redirects_required": false },
+    "performance": { "lcp_current_s": 3.1, "lcp_target_s": 2.5, "inp_target_ms": 200, "cls_target": 0.1, "lighthouse_perf_target": 90, "measured_on": "mobile (primary) + desktop" },
+    "accessibility": { "target": "WCAG 2.1 AA", "axe_critical_allowed": 0 }
+  },
+  "brand_direction": "# Emberlane — Brand Direction\n\nSpecialty coffee roastery. Small-batch, single-origin, transparently sourced.\n\n**Five adjectives:** craft · warm · transparent · rooted · exacting\n\n- **Voice:** knowledgeable, unpretentious, specific. Real tasting notes, named origins — never invented awards.\n- **Palette:** espresso + ember, kraft/cream base, ash neutrals.\n- **Type:** Söhne for headings, Inter for body.",
+  "products": [
+    { "handle": "ethiopia-guji-natural", "title": "Ethiopia Guji — Natural", "price": 22, "blurb": "Bright natural-process single origin. Notes of blueberry, jasmine, cocoa nib.", "origin": "Guji, Ethiopia", "roast": "Light", "notes": ["Blueberry", "Jasmine", "Cocoa nib"] },
+    { "handle": "colombia-huila-washed", "title": "Colombia Huila — Washed", "price": 20, "blurb": "Balanced washed lot. Notes of red apple, caramel, orange.", "origin": "Huila, Colombia", "roast": "Medium", "notes": ["Red apple", "Caramel", "Orange"] },
+    { "handle": "ember-house-blend", "title": "Ember House Blend", "price": 18, "blurb": "Everyday espresso blend. Notes of dark chocolate, molasses, toasted almond.", "origin": "Blend", "roast": "Medium-dark", "notes": ["Dark chocolate", "Molasses", "Toasted almond"] }
+  ],
+  "reference": { "surface": "home", "name": "emberlane-hero", "archetype": "image-with-text", "must_have": ["current single-origin", "brew CTA", "honest tasting notes"] }
+}

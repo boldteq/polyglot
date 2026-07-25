@@ -134,8 +134,14 @@ function changedSinceBase(files) {
 }
 
 function main() {
-  // shipped-content surfaces (where seeded shopper-text lives) + rendered Liquid (dev-leftovers only)
-  const shipped = [...walk('templates', ['.json']), ...walk('locales', ['.json'])]
+  // shipped-content surfaces (where seeded shopper-text lives) + rendered Liquid (dev-leftovers only).
+  // EXCLUDE locales/*.schema.json: those are the theme-EDITOR translations (setting labels + schema
+  // `default:`), which legitimately carry generic strings like "Button label" — the gate header says
+  // schema defaults are NOT a leak (only their unchanged appearance in settings_data/templates is). A
+  // scaffolded section (new-section.mjs) writes "Button label" into all 20 *.schema.json by design, so
+  // scanning them here false-flagged every build. Storefront locales (locales/*.json) are still scanned.
+  const storefrontLocales = walk('locales', ['.json']).filter((f) => !f.endsWith('.schema.json'))
+  const shipped = [...walk('templates', ['.json']), ...storefrontLocales]
   if (fs.existsSync(path.resolve(cwd, 'config/settings_data.json'))) shipped.push('config/settings_data.json')
   let rendered = [...walk('sections', ['.liquid']), ...walk('snippets', ['.liquid'])]
   const ours = changedSinceBase(rendered)
