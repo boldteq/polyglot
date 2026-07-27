@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { CheckSquare, Square, Plus, ShieldAlert, Pencil, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { CheckSquare, Square, Plus, ShieldAlert, Pencil, Trash2, Video, Upload } from 'lucide-react'
 import { SkeletonCards } from '../Skeleton'
 import { ErrorState } from '../ErrorState'
 import EmptyState from '../EmptyState'
@@ -11,8 +11,11 @@ import { useBuildSection } from '../../hooks/useBuildSection'
 import {
   getWorkspaceBuildChanges, toggleWorkspaceChange, addWorkspaceChangeItem,
   removeWorkspaceChangeItem, editWorkspaceChangeItem, addWorkspaceChangeWaiver,
-  type ChangesData,
+  extractChangesFromVideo,
+  type ChangesData, type ClarifyItem,
 } from '../../lib/api'
+
+const mmss = (t?: number) => (t == null ? '' : `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`)
 
 // Editable CHANGES.md (Phase A): tick acceptance items, add items, add waivers —
 // the project's acceptance checklist, managed from the panel. Writes are bounded
@@ -27,13 +30,73 @@ export default function ChangesTab({ buildId, reloadKey }: { buildId: string; re
   const [editText, setEditText] = useState('')
   const [addingWaiver, setAddingWaiver] = useState(false)
   const [waiverText, setWaiverText] = useState('')
+  const [extracting, setExtracting] = useState(false)
+  const [clarify, setClarify] = useState<ClarifyItem[]>([])
+  const [clientName, setClientName] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { if (data) setLocal(data) }, [data])
 
   const d = local || data
   if (loading && !d) return <SkeletonCards count={3} />
   if (error) return <ErrorState message={error} />
-  if (!d?.present) return <EmptyState icon={Square} title="No CHANGES.md" description="This build has no changes list yet. Atrium writes one per client ask at intake." />
+
+  const onPickVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (!file) return
+    setExtracting(true)
+    try {
+      const r = await extractChangesFromVideo(buildId, file, { client: clientName.trim(), project: buildId })
+      setLocal(r.changes)
+      setClarify(r.needsClarification || [])
+      toast('success', `${r.added} proposed item(s) added${r.needsClarification?.length ? ` · ${r.needsClarification.length} need clarification` : ''}`)
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Extraction failed')
+    } finally {
+      setExtracting(false)
+    }
+  }
+
+  const videoCard = (
+    <div className="card p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Video className="w-4 h-4 text-accent" />
+        <h4 className="font-semibold text-[13px]">Changes from client video</h4>
+        <InfoIcon label="Upload a 3–5 min screen-recording walkthrough. It is transcribed on-machine (whisper.cpp — no API key, the video never leaves this computer), then each spoken ask becomes a routed, timestamped proposed item. Ambiguous asks are quarantined, never invented." />
+      </div>
+      {extracting ? (
+        <div className="flex items-center gap-2 text-[12px] text-text-muted">
+          <span className="inline-block w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          Transcribing on-machine + extracting… this can take a few minutes for a 3–5 min video.
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap">
+          <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name (optional)" className="input input-sm text-[12px] w-44" />
+          <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={onPickVideo} />
+          <button onClick={() => fileRef.current?.click()} className="btn-primary btn-sm flex items-center gap-1.5"><Upload className="w-3.5 h-3.5" /> Upload video</button>
+          <span className="text-[11px] text-text-muted">Proposed items are added unchecked for you to curate.</span>
+        </div>
+      )}
+      {clarify.length > 0 && (
+        <div className="rounded-lg border border-amber/30 bg-amber/5 p-3">
+          <div className="text-[12px] font-semibold text-amber mb-1.5">Needs clarification ({clarify.length}) — not added; confirm with the client</div>
+          <ul className="space-y-1 text-[12px] text-text-muted">
+            {clarify.map((c, i) => (
+              <li key={i}>• {c.timestamp != null && <span className="text-accent font-medium tabular-nums">{mmss(c.timestamp)} </span>}{c.change || '(unclear ask)'}{c.ambiguity ? <span className="italic"> — {c.ambiguity}</span> : null}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+
+  if (!d?.present) return (
+    <div className="space-y-4">
+      {videoCard}
+      <EmptyState icon={Square} title="No CHANGES.md yet" description="Upload a client video above to generate the first proposed changes list, or Atrium writes one per client ask at intake." />
+    </div>
+  )
 
   const onToggle = async (index: number, checked: boolean) => {
     setBusy(index)
@@ -80,6 +143,7 @@ export default function ChangesTab({ buildId, reloadKey }: { buildId: string; re
 
   return (
     <div className="space-y-4">
+      {videoCard}
       <div className="card p-4">
         <div className="flex items-center justify-between text-[13px] mb-2">
           <span className="font-medium">{d.checked}/{d.total} complete</span>

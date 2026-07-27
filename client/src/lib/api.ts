@@ -239,6 +239,26 @@ export const editWorkspaceChangeItem = (buildId: string, index: number, text: st
 export const addWorkspaceChangeWaiver = (buildId: string, text: string) =>
   request<ChangesData>(`/workspace/builds/${encodeURIComponent(buildId)}/changes/waiver`, { method: 'POST', body: JSON.stringify({ text }) })
 
+export interface ClarifyItem { change?: string; timestamp?: number; quote?: string; ambiguity?: string }
+export interface VideoExtractResult { ok: boolean; project: string; added: number; needsClarification: ClarifyItem[]; changes: ChangesData; reviewRel: string }
+// Stream a client's explainer video → local transcription + extraction → proposed CHANGES.md items.
+// Bespoke fetch (raw file body, not JSON; long timeout — on-machine whisper + extraction runs for minutes).
+export async function extractChangesFromVideo(buildId: string, file: File, meta: { client: string; project: string }, signal?: AbortSignal): Promise<VideoExtractResult> {
+  const res = await fetch(`${BASE}/workspace/builds/${encodeURIComponent(buildId)}/changes/from-video`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+      'x-filename': encodeURIComponent(file.name),
+      'x-client': encodeURIComponent(meta.client || ''),
+      'x-project': encodeURIComponent(meta.project || ''),
+    },
+    body: file,
+    signal,
+  })
+  if (!res.ok) { const d = await res.json().catch(() => ({} as { error?: string })); throw new Error(d.error || `Extraction failed (HTTP ${res.status})`) }
+  return res.json()
+}
+
 export const getWorkspaceBuildAgents = (buildId: string) =>
   request<BuildAgentActivity>(`/workspace/builds/${encodeURIComponent(buildId)}/agents`)
 // Real per-build activity: the dispatches run from the cockpit against this build.

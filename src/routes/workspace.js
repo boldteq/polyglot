@@ -863,6 +863,74 @@ router.post('/workspace/builds/:buildId/changes/waiver', (req, res) => {
   }
 });
 
+// POST …/changes/from-video — a client's 3-5 min explainer video → high-accuracy proposed CHANGES.md items.
+// The video is STREAMED to a temp file (raw body — no multipart dep, memory-safe for large files), then the
+// theme-toolkit changes-from-video.mjs CLI transcribes it LOCALLY (whisper.cpp, no API key) + extracts +
+// routes + self-verifies. Accepted items bootstrap/append the build's CHANGES.md as unchecked proposals
+// (Atrium curates them in the normal ChangesTab); ambiguous asks are returned separately, never auto-added.
+router.post('/workspace/builds/:buildId/changes/from-video', (req, res) => {
+  const fs = require('fs');
+  const os = require('os');
+  const { spawn } = require('child_process');
+  const dir = resolveBuildDir(req.params.buildId);
+  if (!dir) return res.status(404).json({ error: 'build not found' });
+  const dec = (h) => { const v = req.get(h) || ''; try { return decodeURIComponent(v); } catch { return v; } };
+  const client = dec('x-client').slice(0, 200) || '(client)';
+  const project = (dec('x-project') || req.params.buildId).replace(/[^\w .-]/g, '').trim().slice(0, 80) || 'changes';
+  const filename = dec('x-filename').replace(/[^\w.-]/g, '_').slice(0, 120) || 'client-video.mp4';
+  if (Number(req.get('content-length') || 0) > 600 * 1024 * 1024) return res.status(413).json({ error: 'video too large (max 600MB)' });
+
+  const script = fs.existsSync(path.join(dir, 'toolkit/scripts/changes-from-video.mjs'))
+    ? path.join(dir, 'toolkit/scripts/changes-from-video.mjs')
+    : path.resolve(__dirname, '../../theme-toolkit/scripts/changes-from-video.mjs');
+  if (!fs.existsSync(script)) return res.status(500).json({ error: 'changes-from-video.mjs not found (toolkit not vendored)' });
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cfv-upload-'));
+  const cleanup = () => { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* */ } };
+  const tmpVideo = path.join(tmpDir, filename);
+  const ws = fs.createWriteStream(tmpVideo);
+  let aborted = false;
+  req.on('aborted', () => { aborted = true; try { ws.destroy(); } catch { /* */ } cleanup(); });
+  ws.on('error', (e) => { cleanup(); if (!res.headersSent) res.status(400).json({ error: `upload failed: ${e.message}` }); });
+  ws.on('finish', () => {
+    if (aborted) return;
+    const slug = project.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'changes';
+    const outDir = path.join(dir, 'docs/design/changes-intake', slug);
+    const child = spawn('node', [script, '--video', tmpVideo, '--client', client, '--project', project, '--out', outDir], { cwd: dir, env: process.env });
+    let stderr = ''; let stdout = '';
+    child.stdout.on('data', (d) => { stdout += d; });
+    child.stderr.on('data', (d) => { stderr += d; });
+    const killer = setTimeout(() => { try { child.kill('SIGKILL'); } catch { /* */ } }, 12 * 60 * 1000);
+    child.on('error', (e) => { clearTimeout(killer); cleanup(); if (!res.headersSent) res.status(500).json({ error: `spawn failed: ${e.message}` }); });
+    child.on('close', (code) => {
+      clearTimeout(killer); cleanup();
+      try {
+        if (code === 2 || code === null) return res.status(400).json({ error: `extraction failed: ${(stderr || stdout || 'unknown').trim().slice(0, 500)}` });
+        const intakePath = path.join(outDir, 'intake.json');
+        if (!fs.existsSync(intakePath)) return res.status(500).json({ error: `no intake.json produced. ${(stderr || '').trim().slice(0, 300)}` });
+        const intake = JSON.parse(fs.readFileSync(intakePath, 'utf-8'));
+        const accepted = Array.isArray(intake.accepted) ? intake.accepted : [];
+        const needsClarification = Array.isArray(intake.needsClarification) ? intake.needsClarification : [];
+        const buildChanges = path.join(dir, 'CHANGES.md');
+        if (!fs.existsSync(buildChanges)) {
+          const gen = path.join(outDir, 'CHANGES.md');
+          if (fs.existsSync(gen)) fs.copyFileSync(gen, buildChanges); // bootstrap with the proposed items
+        } else {
+          for (const it of accepted) { // append proposed items to the existing list
+            const text = `${it.change} — assignee: ${it.owner || 'atrium'} — acceptance: ${it.acceptance || 'confirm applied'}`;
+            try { addItem(buildChanges, text.slice(0, 1000)); } catch { /* */ }
+          }
+        }
+        const changes = fs.existsSync(buildChanges) ? parseChangesMd(buildChanges) : { present: false, total: 0, checked: 0, rate: 0, waivers: [], items: [] };
+        res.json({ ok: true, project, added: accepted.length, needsClarification, changes, reviewRel: `docs/design/changes-intake/${slug}/review.html` });
+      } catch (e) {
+        if (!res.headersSent) res.status(500).json({ error: e.message });
+      }
+    });
+  });
+  req.pipe(ws);
+});
+
 // GET /api/workspace/builds/:buildId/agents — build-scoped agent activity when
 // cockpit dispatches have been stamped (cost_logs.buildId), else platform-level.
 router.get('/workspace/builds/:buildId/agents', (req, res) => {
