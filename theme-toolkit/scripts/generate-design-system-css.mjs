@@ -57,9 +57,24 @@ if (scale.length) {
 // var holds exactly `#6C6C6C`, so nothing rendered changes. Dawn's `--color-*` scheme vars cannot do
 // this job — they resolve per section scheme, so binding a fixed brand colour to them would change
 // the rendered result wherever a section is used under a different scheme.
-// Keys beginning `_` are documentation (e.g. `_source`), never tokens.
-const colorEntries = Object.entries(j.color || {})
-  .filter(([k, v]) => !k.startsWith('_') && (typeof v === 'string') && v.trim())
+// Keys beginning `_` are documentation (e.g. `_source`), never tokens. A `color` block may nest the
+// actual swatches under `brand_palette` (contract §2, 2026-07 shape) rather than flat string leaves —
+// walk into `brand_palette` for those, and on EITHER shape only accept values that look like a real
+// colour literal (#hex/rgb/hsl). That guards against prose doc strings (`rule`, `wiring_handoff`,
+// `system`) being flattened into `--ds-color-rule: <a paragraph>` — a real regression this generator
+// shipped with once `color` grew documentation fields (found via haircare dogfood, 2026-07-29).
+const COLOR_DOC_KEYS = new Set(['system', 'rule', 'wiring_handoff', 'note', 'max_schemes', 'scheme_count_max_pack', 'schemes'])
+const isColorLiteral = (v) => typeof v === 'string' && /^\s*(#[0-9a-f]{3,8}|rgba?\(|hsla?\()/i.test(v.trim())
+const colorMap = {}
+const collectColorLeaves = (obj) => {
+  for (const [k, v] of Object.entries(obj || {})) {
+    if (k.startsWith('_') || COLOR_DOC_KEYS.has(k)) continue
+    if (isColorLiteral(v)) colorMap[k] = v.trim()
+    else if (k === 'brand_palette' && v && typeof v === 'object') collectColorLeaves(v)
+  }
+}
+collectColorLeaves(j.color)
+const colorEntries = Object.entries(colorMap)
 const kebab = (k) => k.replace(/_/g, '-').replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
 if (colorEntries.length) {
   lines.push('  /* brand colours (bind sections to these — a literal hex is unreachable from the kit) */')
@@ -71,6 +86,13 @@ const radius = j.radius?.tokens || {}
 if (Object.keys(radius).length) {
   lines.push('  /* radius tokens */')
   for (const [name, v] of Object.entries(radius)) push(`--ds-radius-${name}`, typeof v === 'number' ? `${v}px` : String(v))
+}
+
+// ── shadow tokens (named, brand-tinted — never an ad-hoc box-shadow literal) ──
+const shadow = j.shadow?.tokens || {}
+if (Object.keys(shadow).length) {
+  lines.push('  /* shadow tokens (bind box-shadow to these, never an ad-hoc value) */')
+  for (const [name, v] of Object.entries(shadow)) push(`--ds-shadow-${name}`, String(v))
 }
 
 // ── font weights ─────────────────────────────────────────────────────────────

@@ -107,7 +107,10 @@ async function main() {
 
   const gotoAuth = async (url) => {
     await page.goto(url, { waitUntil: 'load', timeout: 45000 })
-    if (/\/password\/?$/.test(new URL(page.url()).pathname) && password) {
+    if (/\/password\/?$/.test(new URL(page.url()).pathname)) {
+      // a locked storefront we can't unlock yields 0 real sections → a false green. Env-error (exit 2)
+      // instead — matching gate-axe / gate-functional — never audit (and pass) the password page itself.
+      if (!password) die(2, 'landed on the storefront /password page but THEME_STORE_PASSWORD/STOREFRONT_PASSWORD is unset — cannot audit a locked store')
       const inp = page.locator('input[name="password"]').first(); await inp.fill(password); await inp.press('Enter'); await page.waitForLoadState('load'); await page.goto(url, { waitUntil: 'load', timeout: 45000 })
     }
     await page.waitForTimeout(1000)

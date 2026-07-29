@@ -80,6 +80,12 @@ function writeSummaryMd(dir, selected, results, summary) {
   if (summary.mode === 'gate-subset') {
     L.push(`> ⚠️ **Partial run** — only ${selected.length} gate(s) were executed. This is NOT a publish-grade verdict and says nothing about the gates that were not run. Run the full stack (\`node toolkit/scripts/theme-gates.mjs\`) before trusting green.`, '')
   }
+  // static-only (no THEME_PREVIEW_URL): the URL + Lens gates never ran, so the RENDERED design was not
+  // authoritatively judged and the taste floor is warn-only. A ✅ here is a code-level pass, NOT "the design
+  // is proper". Making that explicit is the whole point of the honest-header work (2026-07-29 audit #19).
+  if (summary.mode === 'static-only') {
+    L.push(`> ⚠️ **Static-only run** — the URL + Lens gates (functional / perf / a11y / SEO / **visual-truth #18**) were NOT in scope, so the rendered design was **not** authoritatively judged, and the taste floor (#12) is advisory. A ✅ below is a code-level pass, **not** a publish-grade "the design is proper" verdict. Set \`THEME_PREVIEW_URL\` and run \`--require-full\` before trusting green.`, '')
+  }
   if (blocked.length) {
     L.push(`## ❌ Blocked (${blocked.length}) — fix before publish`, '')
     for (const g of blocked) {
@@ -114,6 +120,18 @@ function writeSummaryMd(dir, selected, results, summary) {
 }
 
 const SCRIPTS_DIR = path.dirname(fileURLToPath(import.meta.url))
+// SWT simplification Part A — the 49 gates presented as 14 concern-groups (gate-groups.json). ADDITIVE:
+// the 49 gates still run unchanged; this only powers `--list-groups` + the end-of-run group rollup, so the
+// output reads as 14 groups without touching execution/summary.json. Lossless map is guarded by #57.
+function loadGateGroups() {
+  try { return JSON.parse(fs.readFileSync(path.resolve(SCRIPTS_DIR, '..', 'gate-groups.json'), 'utf-8')).groups || [] } catch { return [] }
+}
+// script filename → group {id,title}; null when the map is absent or the gate isn't mapped.
+function groupIndex(groups) {
+  const idx = new Map()
+  for (const g of groups) for (const m of g.members || []) idx.set(m, { id: g.id, title: g.title })
+  return idx
+}
 const FRESHNESS_ALLOWLIST = ['gate-reports', 'CHANGES.md', 'merchant-editability.md', 'docs']
 // #3 — URL-gate evidence reflects a LIVE render and drifts by wall-clock even at the same SHA, so it
 // expires on a TTL. Static gates are deterministic from the committed tree → no time-TTL (SHA is their
@@ -152,6 +170,9 @@ const GATES = [
   { name: 'graphql-validate', number: 51, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-graphql-validate.mjs', desc: "Shopify's OWN validator (@shopify/dev-mcp validate_graphql_codeblocks) judges the build's Admin/Storefront GraphQL — rejects hallucinated fields/types against the real schema. Sibling to #49 (Liquid). N/A-tolerant: most themes ship zero GraphQL." },
   { name: 'css-ownership', number: 52, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-css-ownership.mjs', desc: "Per-component CSS ownership (platform-truth §A1, Dev-MCP-verified): a class defined in a section/block/snippet's {% stylesheet %} must be rendered by that same component's markup — a cross-file selector can ship unstyled under Shopify's per-component CSS model. Warn in dev, block at publish-grade." },
   { name: 'ai-tells', number: 53, stage: 'quality', category: 'Design Quality', kind: 'static', runner: 'node', script: 'check-ai-tells.mjs', desc: "Mechanical AI-design-tells (design-taste doctrine, from pack 05-ai-tells): AT-10 cliché-headline templates in the build's own headings (diff-scoped, 8 CC0 tripwires → warn/block-at-publish) + AT-5 missing institutional signals (whole-theme: no policy links or no contact affordance → warn). Never penalises plain layout (§Z: prototypicality is rewarded). Correctness gates miss desirability — this covers the two statically-checkable AI-tell axes." },
+  { name: 'structural-differentiation', number: 54, stage: 'quality', category: 'Design Quality', kind: 'static', runner: 'node', script: 'check-structural-differentiation.mjs', desc: "The #1 AI-tell (duplication), enforced (design-taste axis 1). AT-2 cosmetic-only-vs-base: diffs each modified section's STRUCTURE (tag.class token stream + schema type/id signature, not css values) at git base vs HEAD — a recolour of the base with 0 new custom sections is flagged (Shopify Theme-Store rule: cosmetic changes are insufficient). Calibration-free (the base IS the baseline). AT-1 cross-build near-dup: cosine vs a registry of prior builds (>0.95 warn). Warn-first, block cosmetic-only at publish-grade; N/A without a base tag." },
+  { name: 'borrowed-assets', number: 55, stage: 'quality', category: 'Design Quality', kind: 'static', runner: 'node', script: 'check-borrowed-assets.mjs', desc: "AI-tell axis 4 (borrowed assets), static slice. Scans the build's own liquid/css/js/json (base..HEAD) for hardcoded stock-CDN (unsplash/pexels/shutterstock/burst) or placeholder-service (placehold.co/picsum/…) image URLs — borrowed imagery is NN/g's #1 trust-negative and gate #24 checks weight/format but not provenance. Placeholder services BLOCK always; stock CDNs warn-first / block at publish-grade. Low-FP: merchant-settings images, asset_url, cdn.shopify.com never match. N/A without a base tag." },
+  { name: 'handover-pack', number: 56, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-handover-pack.mjs', desc: "The client Handover Pack (client-handover-pack.md §0) must be complete before publish: the 6 fixed artifacts under docs/handover/ (editing-guide, content-model, apps, analytics, performance, support) each exist and are non-thin. Artifact list is read from lib/handover-pack-spec.json (spec-as-data, not hardcoded). N/A before Step 16 (no docs/handover/ yet); at publish-grade a missing/thin artifact BLOCKs — closes the 'mantle refuses publish' rule that was prose + a manual CHANGES.md checkbox only." },
   { name: 'schema-authoring', number: 47, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-schema-authoring.mjs', desc: 'The admin panel a merchant actually gets: every section {% schema %} uses t: translation keys, typed settings (image_picker not a filename), blocks instead of pipe-syntax, role-based names, a colour scheme and dynamic alignment — the whole authoring surface no other gate parses.' },
   { name: 'repo-hygiene', number: 48, stage: 'quality', category: 'Code Quality', kind: 'static', runner: 'node', script: 'check-repo-hygiene.mjs', desc: 'The corpus no rule can see: .theme-check.yml belongs to THIS repo, theme_info is the client\'s not stock Dawn, schema locale keys are complete, and no client photos or third-party brand assets are shipped as theme assets.' },
   // ── QUALITY · Design System ──
@@ -596,6 +617,26 @@ async function runGates(args) {
   console.log(`\n${fmt(header)}`)
   console.log(widths.map(w => '─'.repeat(w)).join('──'))
   for (const row of rows) console.log(fmt(row))
+  // 14-group rollup (ADDITIVE — the 49 gates above are the source of truth; this only makes the result
+  // read as 14 concern-groups so the stack feels less sprawling). Skips silently if gate-groups.json absent.
+  const groups = loadGateGroups()
+  if (groups.length) {
+    const idx = groupIndex(groups)
+    const roll = new Map(groups.map(g => [g.id, { title: g.title, block: 0, warn: 0, skip: 0, total: 0 }]))
+    for (const g of selected) {
+      const grp = idx.get(g.script)
+      if (!grp || !roll.has(grp.id)) continue
+      const r = results[g.name]; const acc = roll.get(grp.id)
+      acc.total += 1
+      if (r.skipped) acc.skip += 1
+      else if (!r.pass && !r.waived) acc.block += 1
+      else acc.warn += r.warnings.length
+    }
+    const active = [...roll.values()].filter(a => a.total > 0)
+    const blocked = active.filter(a => a.block > 0)
+    console.log(`\n14-group view — ${active.length - blocked.length}/${active.length} groups clean${blocked.length ? `, ${blocked.length} blocking:` : ''}`)
+    for (const a of blocked) console.log(`  ✗ ${a.title} — ${a.block} blocking gate(s)`)
+  }
   console.log(`\nmode=${mode} sha=${sha ? sha.slice(0, 7) : 'null'} dirty=${dirty} → ${overallPass ? 'PASS' : 'BLOCK'}`)
   console.log(`summary: ${path.join(reportDirAbs, 'summary.json')}`)
 
@@ -634,6 +675,21 @@ Audit commands (the gates scan the CURRENT directory — run from the theme repo
   pnpm store:preflight        # live-store access + content-quality preflight (needs SHOPIFY_ADMIN_API_TOKEN)
   pnpm gates:verify           # check a PRIOR full run is fresh+passing (publish gate — does NOT run the gates)
 In a client theme repo (toolkit vendored as toolkit/): run \`node toolkit/scripts/theme-gates.mjs --static-only\` from the repo root.`)
+  process.exit(0)
+}
+// --list-groups prints the SIMPLIFIED 14-group view (gate-groups.json) — the same 49 gates, grouped by
+// concern so the stack is easier to reason about. #57 (check-group-coverage) guarantees this is lossless.
+if (process.argv.includes('--list-groups')) {
+  const groups = loadGateGroups()
+  if (!groups.length) { console.error('no gate-groups.json found (theme-toolkit/gate-groups.json)'); process.exit(2) }
+  const byScript = new Map(GATES.map(g => [g.script, g]))
+  console.log(`Boldteq theme gate stack — ${groups.length} groups over ${GATES.length} gates (toolkit ${toolkitVersion()})`)
+  for (const grp of groups) {
+    const members = (grp.members || []).map(m => byScript.get(m)).filter(Boolean)
+    console.log(`\n▸ ${grp.title}  (${members.length})`)
+    for (const g of members) console.log(`     #${String(g.number).padStart(4)} ${g.name.padEnd(24)} ${g.desc || ''}`)
+  }
+  console.log(`\nThe 14 groups run the SAME 49 gates (nothing is dropped) — check-group-coverage.mjs (#57) proves the map is lossless. Full detail: --list. Machine form: --list-json.`)
   process.exit(0)
 }
 const args = parseArgs(process.argv)

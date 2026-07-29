@@ -23,7 +23,7 @@ const POLICIES = [
   ['terms', [/terms_of_service/i, /\/policies\/terms-of-service/i, />\s*terms(\s+of\s+service)?\s*</i]],
   ['refund', [/refund_policy/i, /\/policies\/refund-policy/i, />\s*(refund|returns?)\b/i]],
   ['shipping', [/shipping_policy/i, /\/policies\/shipping-policy/i, />\s*shipping(\s+policy)?\s*</i]],
-  ['contact', [/\/pages\/contact/i, /page\.contact/i, /templates\/page\.contact/i, />\s*contact\s*</i, /routes\.root_url/i]],
+  ['contact', [/\/pages\/contact/i, /page\.contact/i, /templates\/page\.contact/i, />\s*contact\s*</i]],
 ]
 
 const SCAN = ['.liquid', '.json']

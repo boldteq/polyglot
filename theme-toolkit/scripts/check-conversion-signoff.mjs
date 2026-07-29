@@ -97,6 +97,10 @@ function main() {
   // 1. signed
   if (!j.signed_by) add('cro.unsigned', `no signed_by — record who signed off (catalyst)`)
   if (!j.signed_at) add('cro.unsigned', `no signed_at timestamp`)
+  // H2 (2026-07-29): signoff_sha binds the sign-off to the reviewed commit. A field the spec declares but
+  // the gate never reads is theater — require it to be a real git sha when present. (The niche_benchmark
+  // cross-check against the on-disk pack pairs with the Batch-4 pack-benchmark anchoring.)
+  if (j.signoff_sha != null && !/^[a-f0-9]{7,40}$/i.test(String(j.signoff_sha))) add('cro.bad-signoff-sha', `signoff_sha "${j.signoff_sha}" is not a git sha (7–40 hex) — it must bind the sign-off to the reviewed commit`)
 
   // 2. the canonical rule: lift_target = niche_benchmark × multiplier (2.5 normal / 1.5 sparse)
   const benchmark = Number(j.niche_benchmark)

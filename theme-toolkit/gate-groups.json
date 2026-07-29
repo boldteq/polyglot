@@ -1,0 +1,19 @@
+{
+  "$comment": "SWT simplification Part A — 49 gates → 14 concern GROUPS. GROUP, never DELETE: a group is a facade over its member check scripts (they still run + report via runAbsorbed; gate-integrity #45 still sees every sub-scan). check-group-coverage.mjs PROVES union(members) == the live manifest, so '14 gates' is honest, not a coverage cut. Member = the script filename in the live manifest. Added 2026-07-29 (staged; behavior-neutral until theme-gates adopts the facade).",
+  "groups": [
+    { "id": "readiness",        "title": "Readiness",            "members": ["check-discovery.mjs", "check-bootstrap.mjs", "check-secret-scan.mjs"] },
+    { "id": "code-correctness", "title": "Code correctness",     "members": ["gate-theme-check.mjs", "check-shopify-validate.mjs", "check-graphql-validate.mjs", "check-schema-authoring.mjs", "check-css-ownership.mjs", "check-css-layout.mjs", "check-antipatterns.mjs", "gate-editability-greps.sh"] },
+    { "id": "design-system",    "title": "Design system",       "members": ["check-design-system.mjs", "check-consistency.mjs", "check-ds-cascade.mjs", "check-reuse-map.mjs"] },
+    { "id": "design-taste",     "title": "Design taste",         "members": ["check-design-quality.mjs", "check-structural-differentiation.mjs", "check-ai-tells.mjs", "check-section-cohesion.mjs"] },
+    { "id": "visual-truth",     "title": "Visual truth",         "members": ["check-visual-truth.mjs", "gate-class-d-visual.mjs", "check-mobile-layout.mjs"] },
+    { "id": "render-wiring",    "title": "Render wiring",        "members": ["check-render-wiring.mjs", "check-price-binding.mjs"] },
+    { "id": "conversion",       "title": "Conversion",           "members": ["gate-conversion.mjs"] },
+    { "id": "content-honesty",  "title": "Content & honesty",    "members": ["check-honesty.mjs", "check-placeholder-text.mjs", "check-media-quality.mjs"] },
+    { "id": "accessibility",    "title": "Accessibility",        "members": ["gate-axe.mjs", "check-a11y-static.mjs"] },
+    { "id": "seo",              "title": "SEO",                  "members": ["gate-seo.mjs", "check-social-assets.mjs", "check-link-health.mjs", "check-redirects.mjs"] },
+    { "id": "compliance",       "title": "Compliance & tracking","members": ["check-legal-pages.mjs", "check-consent.mjs", "check-app-conflicts.mjs", "check-analytics-wiring.mjs", "check-email-triggers.mjs"] },
+    { "id": "performance",      "title": "Performance",          "members": ["gate-lighthouse.mjs", "gate-functional.mjs"] },
+    { "id": "i18n-reference",   "title": "i18n & reference",     "members": ["check-locale-completeness.mjs", "check-reference-match.mjs", "check-borrowed-assets.mjs"] },
+    { "id": "governance",       "title": "Governance",           "members": ["check-orchestration.mjs", "check-gate-integrity.mjs", "check-rule-pack.mjs", "check-repo-hygiene.mjs", "check-handover-pack.mjs"] }
+  ]
+}

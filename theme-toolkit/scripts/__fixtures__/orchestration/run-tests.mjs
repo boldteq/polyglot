@@ -77,6 +77,16 @@ console.log('case (f) terminal contracts + board/red_team CONSUMED by published 
   const r = auditGraph(reg, LIVE)
   !has(r.warnings, 'orch.orphan-produce') ? ok('terminal + published-consumed contracts do not warn') : bad(`false orphan warn: ${r.warnings.map(w => w.page).join(',')}`) }
 
+console.log('case (g) duplicate gate NUMBER in the manifest → orch.duplicate-gate-number (the gem the 2026-07 audit only alleged)')
+{ // two distinct gates sharing #7 — passes every other check yet corrupts #7 citations / report lookup
+  const dupManifest = [...LIVE, { number: '7', name: 'some-other-gate' }]
+  const r = auditGraph(clean, dupManifest)
+  has(r.blockers, 'orch.duplicate-gate-number') ? ok('a shared gate number is blocked') : bad('missed the duplicate gate number')
+  const b = r.blockers.find(x => x.id === 'orch.duplicate-gate-number')
+  b && /#7/.test(b.detail) && /conversion/.test(b.detail) && /some-other-gate/.test(b.detail) ? ok('names both colliding gates') : bad(`unhelpful detail: ${b?.detail}`)
+  // and the clean manifest (all-unique numbers) must NOT trip it
+  !has(auditGraph(clean, LIVE).blockers, 'orch.duplicate-gate-number') ? ok('all-unique numbers → no false positive') : bad('false duplicate-number flag on a clean manifest') }
+
 console.log('\nreport identity — a gate must write evidence under its MANIFEST name')
 {
   // The defect this exists for: theme-gates reads gate-reports/<manifest-name>.json, so a gate writing

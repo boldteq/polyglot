@@ -303,9 +303,10 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns, opts = {}) {
     }
   } catch { /* eval wiring best-effort */ }
 
-  // 3. Generate PIP + promotion recommendations
+  // 3. Generate PIP + promotion + graduation recommendations
   const pipCandidates = [];
   const promotionCandidates = [];
+  const graduationCandidates = [];
 
   // Lazy-required so hr.js can stay independent in test contexts
   let escalation = null;
@@ -391,6 +392,26 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns, opts = {}) {
         });
       }
     }
+
+    // Graduation (pending → active). A disk-dropped hire defaults to 'pending' (agentSync) and NOTHING
+    // else ever activates it — promoteAgent only lifts 'probation'. Auto-graduate on a PROVEN clean run
+    // history, reusing the exact signals promotion uses, so it is DATA-DRIVEN, never a manual flip.
+    // Thresholds are config-tunable (no magic numbers). A 0-run pending agent can't pass (totalRuns guard),
+    // so it graduates only after it has actually done clean work — prove capability, then activate.
+    if (a.status === 'pending') {
+      const minRuns = configService.getConfig('hr.graduateMinRuns') ?? 3;
+      const minSuccess = configService.getConfig('hr.graduateMinSuccessRate') ?? 0.85;
+      if (stats.totalRuns >= minRuns && successRate >= minSuccess && antipatterns === 0 && !evalBlocksPromo) {
+        graduationCandidates.push({
+          agent: id,
+          signals: [
+            `${stats.totalRuns} runs`,
+            `${Math.round(successRate * 100)}% success`,
+            `${antipatterns} antipatterns`,
+          ],
+        });
+      }
+    }
   }
 
   const evalFlags = Object.entries(evalByAgent)
@@ -403,6 +424,7 @@ function runWitnessSweep(orgModule, experienceModule, agentRuns, opts = {}) {
     runsClassified: classified.length,
     pipCandidates,
     promotionCandidates,
+    graduationCandidates,
     evalFlags,
   };
   dbModule.saveRecommendations(recommendations);
@@ -493,6 +515,24 @@ function closePip(orgModule, agentId, outcome) {
   });
 
   logWitnessEvent({ agent: agentId, classification: 'PIP_CLOSED', meta: { outcome } });
+  return { ok: true, agent: updated };
+}
+
+// Graduate a PENDING agent to ACTIVE (the missing lifecycle transition). Mirrors closePip's status flip.
+// Only touches a `pending` agent — active/probation/pip/retired are left to their own transitions. The
+// data-driven eligibility decision lives in runWitnessSweep (graduationCandidates); this just applies it.
+function graduateAgent(orgModule, agentId) {
+  const record = orgModule.findAgent(agentId);
+  if (!record) return { ok: false, error: 'Agent not found' };
+  if (record.status !== 'pending') return { ok: false, skipped: true, error: `not pending (status: ${record.status})` };
+
+  const updated = orgModule.upsertAgent(agentId, {
+    status: 'active',
+    graduatedAt: new Date().toISOString(),
+    lastReview: new Date().toISOString(),
+  });
+
+  logWitnessEvent({ agent: agentId, classification: 'GRADUATED', meta: { fromStatus: 'pending' } });
   return { ok: true, agent: updated };
 }
 
@@ -741,12 +781,20 @@ function runCadenceReview(orgModule, experienceModule, agentRuns) {
   const recommendations = dbModule.loadRecommendations();
   if (!recommendations.pipCandidates) recommendations.pipCandidates = [];
   if (!recommendations.promotionCandidates) recommendations.promotionCandidates = [];
+  if (!recommendations.graduationCandidates) recommendations.graduationCandidates = [];
 
   // 3. Apply promotions
   const promotions = [];
   for (const cand of recommendations.promotionCandidates || []) {
     const result = promoteAgent(orgModule, experienceModule, cand.agent);
     if (result.ok) promotions.push({ agent: cand.agent, to: result.agent.levelTitle });
+  }
+
+  // 3b. Apply graduations (pending → active on a proven clean run history — never a manual flip)
+  const graduations = [];
+  for (const cand of recommendations.graduationCandidates || []) {
+    const result = graduateAgent(orgModule, cand.agent);
+    if (result.ok) graduations.push({ agent: cand.agent });
   }
 
   // 4. Apply PIPs
@@ -762,6 +810,7 @@ function runCadenceReview(orgModule, experienceModule, agentRuns) {
     reviewedAt,
     director: 'cadence',
     promotions,
+    graduations,
     pipsOpened,
     pipsClosed: [],
     retirements: [],
@@ -778,6 +827,9 @@ function runCadenceReview(orgModule, experienceModule, agentRuns) {
     '',
     `**Promotions:** ${promotions.length}`,
     ...promotions.map((p) => `- ${p.agent} → ${p.to}`),
+    '',
+    `**Graduations (pending → active):** ${graduations.length}`,
+    ...graduations.map((g) => `- ${g.agent}`),
     '',
     `**PIPs opened:** ${pipsOpened.length}`,
     ...pipsOpened.map((p) => `- ${p.agent}`),
@@ -819,6 +871,7 @@ module.exports = {
 
   // cadence decisions
   promoteAgent,
+  graduateAgent,
   openPip,
   closePip,
   retireAgent,

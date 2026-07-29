@@ -20,10 +20,14 @@
 // NOT here (by design): never penalise a plain/conventional layout (doctrine §Z — prototypicality is
 //   rewarded); no em-dash checks; no third-party AI-text detectors on copy. See the doctrine.
 //
-// WARN by default; BLOCK the cliché-headline check at publish-grade (DS_REQUIRE_SCOPE=1). AT-5 is warn-only
-// (a merchant can add policies/contact via settings/admin — never a hard block on the theme repo).
+// WARN-ONLY. AT-10 cliché-headline is practitioner-consensus [P]; the evidence-tier→enforcement-cap
+// (lib/evidence-tier.mjs, enforced by gate #45) forbids a [P] tell from hard-blocking a publish — a
+// stylistic tripwire that can hard-stop a build is a false-BLOCK risk ("as bad as a false pass"). The
+// self-doing loop fixes warnings too, so fix-pressure is kept without that risk. AT-5 institutional-signals
+// [E] is under-claimed to warn (a merchant can add policies/contact via settings/admin). Findings carry
+// `tier` so #45 can enforce the cap; the publish-grade flag no longer escalates AT-10.
 // Usage: node check-ai-tells.mjs   Env: BASE_REF (base) · REPORT_DIR · DS_REQUIRE_SCOPE=1 · AI_TELLS_SCAN_ALL=1
-// Exit: 0 pass · 1 block (publish-grade + cliché headline) · 2 env error
+// Exit: 0 pass · 2 env error (no blockers outside a crash — AT-10 is warn-only [P], see gate #45 tier cap)
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -168,8 +172,8 @@ function main() {
   let allText = themeFiles.join('\n')
   for (const rel of themeFiles) { try { allText += '\n' + fs.readFileSync(path.resolve(cwd, rel), 'utf-8') } catch { /* skip */ } }
   const sig = institutionalSignals(allText)
-  if (!sig.policy) warnings.push({ id: 'ai.missing-policy-links', page: '(theme)', detail: 'no store-policy signal anywhere in the theme (no shop.*_policy reference, no /policies/ link, no policy link text) — "missing institutional signals" is a top AI-tell (design-taste doctrine, axis 3). Wire the footer policy menu / policy links (Dawn & Minimog ship this by default).', evidence: '' })
-  if (!sig.contact) warnings.push({ id: 'ai.missing-contact', page: '(theme)', detail: 'no contact affordance found (no {% form "contact" %}, tel:/mailto: link, shop.email/shop.phone, or contact template/section) — add a contact route so the store carries a real institutional signal.', evidence: '' })
+  if (!sig.policy) warnings.push({ id: 'ai.missing-policy-links', page: '(theme)', tier: 'E', detail: 'no store-policy signal anywhere in the theme (no shop.*_policy reference, no /policies/ link, no policy link text) — "missing institutional signals" is a top AI-tell (design-taste doctrine, axis 3). Wire the footer policy menu / policy links (Dawn & Minimog ship this by default).', evidence: '' })
+  if (!sig.contact) warnings.push({ id: 'ai.missing-contact', page: '(theme)', tier: 'E', detail: 'no contact affordance found (no {% form "contact" %}, tel:/mailto: link, shop.email/shop.phone, or contact template/section) — add a contact route so the store carries a real institutional signal.', evidence: '' })
 
   // ── CHECK A — AT-10 cliché headlines: diff-scoped to the copy this build authored ──
   const { files, scoped, reason } = scopedCopyFiles()
@@ -195,9 +199,10 @@ function main() {
     for (const line of corpus) {
       headlineCount += 1
       for (const h of clicheHits(line)) {
-        const detail = `cliché-headline template "${h.id}" in a heading/tagline: "${h.snippet}" — LLM-default phrasing (design-taste doctrine / AT-10). Rewrite to concrete, brand-specific copy.`
-        if (STRICT) blockers.push({ id: 'ai.cliche-headline', page: rel, detail, evidence: h.id })
-        else warnings.push({ id: 'ai.cliche-headline', page: rel, detail: `${detail} (publish-grade BLOCK; warn in dev)`, evidence: h.id })
+        // AT-10 is practitioner-consensus [P]: the evidence-tier cap (lib/evidence-tier.mjs, enforced by
+        // gate #45) forbids a [P] tell from hard-blocking — always WARN, even at publish-grade. Tagged
+        // tier:'P' so #45 can hold the cap. The self-doing loop fixes warnings, so it still gets rewritten.
+        warnings.push({ id: 'ai.cliche-headline', page: rel, tier: 'P', detail: `cliché-headline template "${h.id}" in a heading/tagline: "${h.snippet}" — LLM-default phrasing (design-taste doctrine / AT-10 [P]). Rewrite to concrete, brand-specific copy.`, evidence: h.id })
       }
     }
   }

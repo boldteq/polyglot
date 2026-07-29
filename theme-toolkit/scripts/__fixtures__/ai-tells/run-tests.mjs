@@ -1,6 +1,7 @@
 // Hermetic fixture for gate #53 ai-tells. PURE core + end-to-end. No MCP, no store, no network.
-// Doctrine: shopify-design-taste-doctrine.md — AT-10 cliché headlines (warn/block-at-publish) + AT-5 missing
-// institutional signals (warn). Never penalises plain layout (§Z). See check-ai-tells.mjs header.
+// Doctrine: shopify-design-taste-doctrine.md — AT-10 cliché headlines (WARN-only, tier [P] — the evidence-
+// tier cap forbids a [P] tell from hard-blocking) + AT-5 missing institutional signals (warn, tier [E]).
+// Never penalises plain layout (§Z). See check-ai-tells.mjs header.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -72,8 +73,12 @@ const footer = '<footer><a href="{{ shop.privacy_policy.url }}">Privacy</a><a hr
   const files = { 'sections/hero.liquid': '<h1>Elevate your everyday ritual</h1>', 'sections/footer.liquid': footer }
   const dev = run(files)
   dev.code === 0 && wIds(dev.rep).has('ai.cliche-headline') ? ok('cliché hero in dev → WARN, exit 0') : bad(`cliché dev: code ${dev.code} w ${[...wIds(dev.rep)]}`)
+  // AT-10 is practitioner-consensus [P] → the evidence-tier cap (gate #45) forbids a hard block. Even at
+  // publish-grade it stays a WARN, tagged tier:'P' so #45 can enforce the cap. Never blocks on a stylistic tell.
   const strict = run(files, { DS_REQUIRE_SCOPE: '1' })
-  strict.code === 1 && bIds(strict.rep).has('ai.cliche-headline') ? ok('cliché hero at publish-grade → BLOCK, exit 1') : bad(`cliché strict: code ${strict.code} b ${[...bIds(strict.rep)]}`)
+  const w = (strict.rep?.warnings || []).find((x) => x.id === 'ai.cliche-headline')
+  strict.code === 0 && w && w.tier === 'P' && !bIds(strict.rep).has('ai.cliche-headline')
+    ? ok('cliché hero at publish-grade → still WARN (tier P), never blocks') : bad(`cliché strict: code ${strict.code} b ${[...bIds(strict.rep)]} tier ${w?.tier}`)
 }
 {
   const { code, rep } = run({ 'sections/hero.liquid': '<h1>Fresh roasted coffee, shipped weekly</h1>' })

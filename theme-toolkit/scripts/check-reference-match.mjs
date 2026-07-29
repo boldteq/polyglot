@@ -90,6 +90,15 @@ export function sectionsOf(tplAbs) {
   } catch { return null }
 }
 
+// The template's RENDER order (Shopify OS 2.0 `order: [sectionKey,…]`). Falls back to sections object-key
+// order when there is no explicit order array. null when the template can't be parsed.
+export function orderOf(tplAbs) {
+  try {
+    const j = readJson(tplAbs)
+    return (Array.isArray(j.order) && j.order.length) ? j.order : Object.keys(j.sections || {})
+  } catch { return null }
+}
+
 // PURE: decide one declared entry against the sections actually present. Conservative:
 // block only on a PROVABLE conflict/absence; unknown custom types are unverifiable → warn.
 export function resolveEntry(entry, sections) {
@@ -136,6 +145,27 @@ export function resolveSectionKey(entry, sections) {
   // a fuzzy one. This affects ONLY which frame gets captured, never the L1 block/warn/pass verdict.
   const byName = sections.find(s => s.key === entry.name)
   return byName ? byName.key : null
+}
+
+// PURE: relative order-conformance — do the surface's declared references, sorted by their reference-map
+// `order`, appear in that same RELATIVE order in the built template's render order? Subsequence-monotonic,
+// so a reference covering only SOME sections still validates; only counts entries that resolve to a real
+// template section. → null (n/a: <2 resolvable ordered entries) | { ok:true } | { ok:false, declaredSeq, builtSeq }
+export function orderConformance(surfaceEntries, sections, order) {
+  if (!sections || !order) return null
+  const resolved = (surfaceEntries || [])
+    .filter(e => e.order != null)
+    .map(e => ({ e, key: resolveSectionKey(e, sections) }))
+    .filter(x => x.key && order.includes(x.key))
+  if (resolved.length < 2) return null
+  const byDeclared = [...resolved].sort((a, b) => a.e.order - b.e.order)
+  const pos = byDeclared.map(x => order.indexOf(x.key))
+  if (pos.every((p, i) => i === 0 || p > pos[i - 1])) return { ok: true }
+  return {
+    ok: false,
+    declaredSeq: byDeclared.map(x => x.e.name).join(' → '),
+    builtSeq: [...resolved].sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key)).map(x => x.e.name).join(' → '),
+  }
 }
 
 function signalHint(a) {
@@ -223,7 +253,7 @@ async function main() {
   for (const e of entries) {
     if (!bySurface.has(e.surface)) {
       const tpl = templateFor(e.surface)
-      bySurface.set(e.surface, tpl ? { tpl, sections: sectionsOf(tpl.abs) } : null)
+      bySurface.set(e.surface, tpl ? { tpl, sections: sectionsOf(tpl.abs), order: orderOf(tpl.abs) } : null)
     }
     const ctx = bySurface.get(e.surface)
     const page = ctx ? ctx.tpl.rel : `templates/${e.surface}`
@@ -233,6 +263,15 @@ async function main() {
     if (r.kind === 'block') add(blockers, r.id, page, r.detail)
     else if (r.kind === 'warn') add(warnings, r.id, page, r.detail)
     else l1Pass += 1
+  }
+
+  // ── L1b · order-conformance (warn) — the client reference's declared section ORDER should hold in the
+  // build. The reference-map already carries a per-section `order` (reference-ingest.upsertEntry); a wrong
+  // order is a real divergence but softer than a missing section, so warn-only. ──
+  for (const [surface, ctx] of bySurface) {
+    if (!ctx) continue
+    const oc = orderConformance(entries.filter(e => e.surface === surface), ctx.sections, ctx.order)
+    if (oc && !oc.ok) add(warnings, 'ref.order-mismatch', ctx.tpl.rel, `section order differs from the client reference — reference implies "${oc.declaredSeq}", the build renders "${oc.builtSeq}". Reorder the template sections to match, or update the reference-map order if the client changed their mind.`)
   }
 
   // ── L2 visual (only for entries with a persisted image + a rendered frame) ──

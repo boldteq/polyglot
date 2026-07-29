@@ -342,7 +342,11 @@ for (const file of targets) {
   for (const file of proofTargets) {
     const abs = path.resolve(cwd, file); if (!fs.existsSync(abs)) continue
     const raw = fs.readFileSync(abs, 'utf-8')
-    if (RE_REAL.test(raw)) continue // file-level honesty:real opt-out
+    // H1 (2026-07-29): a file-level `honesty:real` opt-out let ONE marker anywhere exempt the WHOLE file's
+    // §5/§6 fabrication checks — an FTC-exposure hole. Removed. Each claim now opts out only via a WINDOWED
+    // marker (isWaivedAt, same as §1-4/§6 already do). Every marker used is SURFACED so a reviewer (onyx)
+    // must confirm the exempted claim is real, not a fabrication hidden behind the marker.
+    if (RE_REAL.test(raw)) add(warnings, 'honesty.real-optout', file, `uses a \`honesty:real\` self-attestation marker — onyx/reviewer MUST confirm the exempted claim is genuinely substantiated by real data, not fabrication hidden behind the marker`, '')
     for (const re of [AGG_RATING, AGG_COUNT]) {
       re.lastIndex = 0; let m
       while ((m = re.exec(raw)) !== null) {
@@ -354,12 +358,14 @@ for (const file of targets) {
     }
     // fabricated press — ≥2 publication names as literal copy under an "as seen in"-style frame, no source
     const pubsHit = PUBS.filter(p => new RegExp(`(?:^|[^a-z])${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z]|$)`, 'i').test(raw))
-    if (pubsHit.length >= 2 && /as\s+seen\s+in|featured\s+in|as\s+featured|recognis|recognized|press\s+(strip|mentions)/i.test(raw)) {
+    const pressM = raw.match(/as\s+seen\s+in|featured\s+in|as\s+featured|recognis|recognized|press\s+(strip|mentions)/i)
+    if (pubsHit.length >= 2 && pressM && !isWaivedAt(raw, pressM.index)) {
       add(warnings, 'honesty.fabricated-press', file, `press/"as seen in" strip names ${pubsHit.length} publications (${pubsHit.slice(0, 4).join(', ')}) as literal copy — fabricated press unless the brand truly has these placements; gate logos behind real, sourced placements`, pubsHit.slice(0, 6).join(', '))
     }
     // preset testimonials shipped pre-flagged "verified" — a verified badge on author-written defaults
     const verifiedHits = (raw.match(/["']?verified["']?\s*:\s*true/gi) || []).length
-    if (verifiedHits > 0 && /["'](author|reviewer|name|customer)["']\s*:\s*["'][A-Z]/.test(raw)) {
+    const verM = raw.match(/["']?verified["']?\s*:\s*true/i)
+    if (verifiedHits > 0 && /["'](author|reviewer|name|customer)["']\s*:\s*["'][A-Z]/.test(raw) && !(verM && isWaivedAt(raw, verM.index))) {
       add(warnings, 'honesty.preset-testimonial', file, `${verifiedHits} preset review(s) ship "verified": true + an author name as section defaults — a "Verified buyer" badge on author-written content is fabricated UGC; ship reviews empty or from a real review app`, '')
     }
 

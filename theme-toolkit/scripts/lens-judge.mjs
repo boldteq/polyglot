@@ -43,8 +43,41 @@ const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
 // re-judges cleanly). Override with LENS_JUDGE_MODEL to bump the judge. `claude-sonnet-4-6` is a
 // CLI-confirmed full name; the objective Layer-1 facts hard-block regardless of this choice.
 const MODEL = process.env.LENS_JUDGE_MODEL || 'claude-sonnet-4-6'
-const NICHE = process.env.LENS_NICHE || 'general ecommerce'
-const BRAND = process.env.LENS_BRAND || 'this brand'
+// A2 (2026-07-29): NICHE/BRAND drive the judge's premium baseline + prompt, but nothing ever exported
+// LENS_NICHE — so the visual-truth judge that is meant to catch "looks generic" itself judged against
+// "general ecommerce", niche-blind (the #1 AI-look mechanism). Resolve from the build's OWN artifacts
+// (docs/build-state.json, then the design-spec's dna_pack/niche) when the env isn't set. LABELS ONLY —
+// the niche name + store name, never the design-spec body or build code — so the judge's independence
+// guarantee (§ line 13) is preserved. NICHE_SRC is surfaced in main() so a niche-blind run is VISIBLE.
+const SPEC_PATH = process.env.DESIGN_SPEC || 'docs/design/design-spec.md'
+const BUILD_STATE_PATH = path.resolve(cwd, process.env.BUILD_STATE_DIR || 'docs', 'build-state.json')
+const readJsonSafe = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf-8')) } catch { return null } }
+const specField = (re) => { try { const m = fs.readFileSync(path.resolve(cwd, SPEC_PATH), 'utf-8').match(re); return m ? m[1].trim() : null } catch { return null } }
+// PURE precedence resolver (exported for the fixture): explicit env > build-state > design-spec > default.
+export function pickNiche({ lensNiche, buildStateNiche, specNiche, buildStateNicheEnv } = {}) {
+  if (lensNiche) return { niche: String(lensNiche), src: 'LENS_NICHE env' }
+  if (buildStateNiche) return { niche: String(buildStateNiche), src: 'docs/build-state.json' }
+  if (specNiche) return { niche: String(specNiche), src: 'design-spec (dna_pack)' }
+  if (buildStateNicheEnv) return { niche: String(buildStateNicheEnv), src: 'BUILD_STATE_NICHE env' }
+  return { niche: 'general ecommerce', src: 'DEFAULT (niche-blind — no LENS_NICHE, build-state, or dna_pack)' }
+}
+function resolveNiche() {
+  return pickNiche({
+    lensNiche: process.env.LENS_NICHE,
+    buildStateNiche: readJsonSafe(BUILD_STATE_PATH)?.niche,
+    specNiche: specField(/^\s*(?:dna_pack|niche):\s*["'`]?([A-Za-z0-9 _-]+?)["'`]?\s*$/im),
+    buildStateNicheEnv: process.env.BUILD_STATE_NICHE,
+  })
+}
+function resolveBrand() {
+  if (process.env.LENS_BRAND) return process.env.LENS_BRAND
+  const bs = readJsonSafe(BUILD_STATE_PATH)
+  if (bs && (bs.client || bs.brand)) return String(bs.client || bs.brand)
+  const sb = specField(/^\s*(?:brand|client|store):\s*["'`]?([A-Za-z0-9 ._&'-]+?)["'`]?\s*$/im)
+  return sb || 'this brand'
+}
+const { niche: NICHE, src: NICHE_SRC } = resolveNiche()
+const BRAND = resolveBrand()
 
 const die = (code, msg) => { console.error(`lens-judge: ${code === 2 ? 'ENV-ERROR' : 'ERROR'} — ${msg}`); process.exit(code) }
 
@@ -189,6 +222,8 @@ async function pool(items, n, worker) {
 }
 
 async function main() {
+  // Make the niche the judge is scoring against VISIBLE — a niche-blind fallback is the #1 AI-look cause.
+  console.error(`lens-judge: niche="${NICHE}" · brand="${BRAND}" · niche source: ${NICHE_SRC}`)
   const ver = spawnSync(CLAUDE_BIN, ['--version'], { encoding: 'utf-8' })
   if (ver.error) die(2, `claude CLI not found (${CLAUDE_BIN}) — Lens-judge dispatches headless \`claude -p\`. Install Claude Code or set CLAUDE_BIN.`)
 

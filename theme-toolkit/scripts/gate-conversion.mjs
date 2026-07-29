@@ -443,7 +443,11 @@ function checkDecoderCitations(cwd, { blockers, warnings }) {
       ev.citations += 1
       const cited = m[1].split(/[,;|]/).map(normBrand).filter(Boolean)
       const matchesDeclared = cited.some(b => declaredNorm.has(b))
-      if (onSurface && (matchesDeclared || declaredNorm.size === 0)) {
+      // H3 (2026-07-29): a citation is EVIDENCE only when it matches a brand the design-spec independently
+      // declared — two artifacts must agree, not one self-authored comment. The old `|| declaredNorm.size===0`
+      // free pass let a citation count with nothing to cross-check it against; it was also inert for the
+      // verdict (the no-spec path below reads citation PRESENCE only), so removing it is behavior-preserving.
+      if (onSurface && matchesDeclared) {
         ev.evidenceBacked += 1
         ev.surfaces.push(base)
       }

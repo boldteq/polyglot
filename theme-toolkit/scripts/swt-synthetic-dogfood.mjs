@@ -27,6 +27,7 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { isMain } from './lib/is-main.mjs'
+import { renderBrief } from './brief-intake.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.resolve(HERE, '..', '..')            // theme-toolkit/scripts → repo root
@@ -51,8 +52,24 @@ export function briefToInputs(spec) {
   const changes = ['# CHANGES — ' + spec.brand + ' synthetic build', '']
     .concat(surfaces.map((s) => `- [ ] ${s} section — owner: loom+ink — accept: honest copy, --ds-* tokens, empty-state guarded`))
     .join('\n') + '\n'
+  // The brief spec IS the upfront-intake answers — materialize them into the CANONICAL artifacts the real
+  // intake produces, so the niche actually flows to A2 (Lens judge + design-quality resolve niche from
+  // docs/build-state.json, then the design-spec dna_pack) and the dogfood exercises the niche wiring it is
+  // meant to test. Without these, the synthetic build was niche-blind — the exact production bug this proves.
+  const rev = spec.goals?.revenue || {}
+  const answers = {
+    niche: spec.niche,
+    brand_direction: spec.brand_direction_tag || 'premium-minimal',
+    primary_goal: (rev.aov_target > rev.aov_current) ? 'maximize-aov' : (spec.goals?.conversion ? 'maximize-cvr' : 'maximize-aov'),
+    content_source: spec.content_source || 'real-assets',
+    references: spec.reference_brands || [],
+    must_have_pages: surfaces.map((s) => ({ hero: 'home', pdp: 'product', plp: 'collection' }[s] || s)),
+    constraints: [`theme_base: ${spec.base || 'dawn'}`],
+  }
   return {
     'brief.json': JSON.stringify(brief, null, 2) + '\n',
+    'docs/brief.md': renderBrief(answers, spec.brand),
+    'docs/build-state.json': JSON.stringify({ client: spec.brand, niche: spec.niche }, null, 2) + '\n',
     'docs/design/design-system.json': JSON.stringify(spec.design_system, null, 2) + '\n',
     'docs/discovery/goals.json': JSON.stringify(spec.goals, null, 2) + '\n',
     'docs/design/brand-direction.md': (spec.brand_direction || `# ${spec.brand} — Brand Direction\n`).trimEnd() + '\n',

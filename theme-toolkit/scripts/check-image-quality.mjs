@@ -121,7 +121,9 @@ function main() {
   const dir = process.argv[2] || process.env.IMAGES_DIR || 'assets'
   const maxKB = Number(process.env.MAX_KB || '500')
   const minWidth = Number(process.env.MIN_WIDTH || '800')
-  const STRICT = process.env.IMAGE_QUALITY_STRICT === '1' || process.env.PORTER_REQUIRE_CONTENT === '1'
+  // publish-grade (DS_REQUIRE_SCOPE=1) arms the oversized-image BLOCK — the #1 LCP killer must FAIL the
+  // publish gate, not merely warn (2026-07-29 audit G8). IMAGE_QUALITY_STRICT / PORTER_REQUIRE_CONTENT stay.
+  const STRICT = process.env.IMAGE_QUALITY_STRICT === '1' || process.env.PORTER_REQUIRE_CONTENT === '1' || process.env.DS_REQUIRE_SCOPE === '1'
   const dirAbs = path.resolve(cwd, dir)
   const blockers = []
   const warnings = []

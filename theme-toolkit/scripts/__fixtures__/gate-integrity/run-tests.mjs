@@ -3,6 +3,7 @@
 // (8 gates pass:true while their scan was skipped) BLOCKS, that genuinely-N/A gates only WARN, and
 // that a CHANGES.md waiver exempts a named gate.
 import { auditReports, skippedMarker, emptyScan, orphanReports } from '../../check-gate-integrity.mjs'
+import { capExceeded, TIER_CAP } from '../../lib/evidence-tier.mjs'
 
 let failures = 0
 const eqNull = (v, m) => (v === null ? ok(m) : bad(`${m} — got ${JSON.stringify(v)}`))
@@ -144,6 +145,37 @@ console.log('\nretired gates leave fossils — a report is not evidence if its g
   // contract the filter relies on:
   orphanReports([fossil.name], live).length === 1
     ? ok('so it is excluded from the audit and reported as integrity.orphan-report') : bad('filter contract broken')
+}
+
+console.log('\nevidence-tier → enforcement-cap (mastery-pack evidencePolicy, now runtime-enforced)')
+{
+  // PURE capExceeded: severity may not exceed what the tier allows (E→block, P→warn, H→advise)
+  capExceeded('P', 'block') === true ? ok('[P] at block-severity → exceeds cap') : bad('P+block not caught')
+  capExceeded('P', 'warn') === false ? ok('[P] at warn-severity → within cap') : bad('P+warn misflagged')
+  capExceeded('H', 'warn') === true ? ok('[H] at warn-severity → exceeds cap (H may only advise)') : bad('H+warn not caught')
+  capExceeded('E', 'block') === false ? ok('[E] may block → within cap') : bad('E+block misflagged')
+  capExceeded('p', 'block') === true ? ok('tier is case-insensitive') : bad('lowercase tier not handled')
+  capExceeded(undefined, 'block') === false ? ok('an untagged finding is EXEMPT (opt-in)') : bad('untagged misflagged')
+  TIER_CAP.E === 'block' && TIER_CAP.P === 'warn' && TIER_CAP.H === 'advise' ? ok('cap table matches evidencePolicy') : bad('cap table drift')
+
+  // report-level: a [P] finding sitting in blockers[] → integrity BLOCK (the AT-10 defect class)
+  const viol = auditReports([{ name: 'ai-tells', json: { pass: false, blockers: [{ id: 'ai.cliche-headline', tier: 'P' }], warnings: [] } }])
+  has(viol.blockers, 'integrity.tier-cap-exceeded') ? ok('[P] in blockers[] → integrity.tier-cap-exceeded') : bad('tier-cap violation missed')
+  // the SAME finding as a warning is within cap → no block
+  const okWarn = auditReports([{ name: 'ai-tells', json: { pass: true, blockers: [], warnings: [{ id: 'ai.cliche-headline', tier: 'P' }] } }])
+  !okWarn.blockers.some((b) => b.id === 'integrity.tier-cap-exceeded') ? ok('[P] as a warning is within cap → no block') : bad('P warning false-flagged')
+  // an [E] finding may block → no violation
+  const eBlock = auditReports([{ name: 'struct', json: { pass: false, blockers: [{ id: 'struct.cosmetic-only', tier: 'E' }], warnings: [] } }])
+  !eBlock.blockers.some((b) => b.id === 'integrity.tier-cap-exceeded') ? ok('[E] blocker is within cap → no block') : bad('E blocker false-flagged')
+  // an untagged blocker (every correctness gate) is exempt → no violation
+  const untagged = auditReports([{ name: 'theme-check', json: { pass: false, blockers: [{ id: 'theme-check.SyntaxError' }], warnings: [] } }])
+  !untagged.blockers.some((b) => b.id === 'integrity.tier-cap-exceeded') ? ok('untagged blocker is exempt → no block') : bad('untagged blocker false-flagged')
+  // severity precision: an [H] finding that WARNS exceeds its cap (H may only advise)…
+  const hWarn = auditReports([{ name: 'taste', json: { pass: true, blockers: [], warnings: [{ id: 't.house', tier: 'H' }] } }])
+  has(hWarn.blockers, 'integrity.tier-cap-exceeded') ? ok('[H] at warn-severity → exceeds cap') : bad('H warning not caught')
+  // …but the same [H] finding opted DOWN to severity:advise is within cap → no violation
+  const hAdvise = auditReports([{ name: 'taste', json: { pass: true, blockers: [], warnings: [{ id: 't.house', tier: 'H', severity: 'advise' }] } }])
+  !hAdvise.blockers.some((b) => b.id === 'integrity.tier-cap-exceeded') ? ok('[H] opted down to advise → within cap') : bad('H advise false-flagged')
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} FAILED`)

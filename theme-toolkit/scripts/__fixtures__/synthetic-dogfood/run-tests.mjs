@@ -2,6 +2,7 @@
 //   briefToInputs()      — a brief spec maps to the exact, well-formed input files the SWT agents receive
 //   defectsFromSummary() — a gate summary maps to a flat, owner-attributable defect list (blockers only)
 import { briefToInputs, defectsFromSummary } from '../../swt-synthetic-dogfood.mjs'
+import { parseBrief, missingFields } from '../../brief-intake.mjs'
 
 let failures = 0
 const ok = (m) => console.log('  PASS  ' + m)
@@ -40,6 +41,21 @@ console.log('case (c) briefToInputs tolerates a minimal spec (defaults, never th
   const f = briefToInputs({ niche: 'x', brand: 'B', design_system: { typography: { allowed_px: [16] }, spacing: { scale: [0] } }, goals: {} })
   eq(JSON.parse(f['brief.json']).surfaces.length, 3, 'defaults to hero/about/pdp when surfaces omitted')
   eq(JSON.parse(f['docs/products.json']).length, 0, 'no products → empty catalog, not a crash')
+}
+
+console.log('case (a2) niche-wiring: the brief spec materializes docs/brief.md + docs/build-state.json (A2)')
+{
+  const f = briefToInputs(SPEC)
+  ;('docs/brief.md' in f && 'docs/build-state.json' in f) ? ok('canonical niche artifacts emitted') : bad(`missing niche artifact: ${Object.keys(f)}`)
+  const bs = JSON.parse(f['docs/build-state.json'])
+  eq(bs.niche, 'haircare', 'build-state.json carries the niche (what A2 lens-judge/design-quality read first)')
+  eq(bs.client, 'Wildroot', 'build-state.json carries the client/brand label')
+  const parsed = parseBrief(f['docs/brief.md'])
+  eq(missingFields(parsed).length, 0, 'the materialized docs/brief.md is a COMPLETE intake brief (no missing required field)')
+  eq(parsed.niche, 'haircare', 'brief.md niche matches the spec')
+  // minimal spec must still yield a complete, non-throwing brief
+  const mf = briefToInputs({ niche: 'x', brand: 'B', design_system: { typography: { allowed_px: [16] }, spacing: { scale: [0] } }, goals: {} })
+  eq(missingFields(parseBrief(mf['docs/brief.md'])).length, 0, 'minimal spec still yields a complete brief.md')
 }
 
 console.log('case (d) defectsFromSummary flattens ONLY blockers, attributed to their gate')

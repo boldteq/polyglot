@@ -29,6 +29,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { writeReport } from './lib/report.mjs'
+import { captureStale } from './check-visual-truth.mjs'
 
 const t0 = Date.now()
 const cwd = process.cwd()
@@ -94,6 +95,17 @@ if (!fs.existsSync(manifestPath)) {
 
 let manifest
 try { manifest = readJson(manifestPath) } catch (e) { finish(false, (add(blockers, 'cd.capture-invalid', path.relative(cwd, manifestPath), `lens-manifest.json is unreadable: ${e.message}`), { declared: surfaces, source })) }
+
+// Freshness: stale pixels are not evidence (parity with #18 visual-check, BUG-20 / 2026-07-29 audit G9). A
+// capture older than the TTL blocks — re-run lens:quick. captureStale returns false when there is no
+// capturedAt_ms timestamp (can't judge age), so this never blocks a legitimately-timestampless fixture.
+const CAPTURE_TTL_MS = Number(process.env.LENS_CAPTURE_TTL_MS || 30 * 60_000)
+if (captureStale(manifest, Date.now(), CAPTURE_TTL_MS)) {
+  const ageMin = Math.round((Date.now() - Number(manifest.capturedAt_ms)) / 60_000)
+  for (const s of surfaces) add(blockers, 'cd.capture-stale', s, `Lens capture for "${s}" is ${ageMin}m old (> ${Math.round(CAPTURE_TTL_MS / 60_000)}m TTL) — re-run \`pnpm lens:quick --surfaces ${surfaces.join(',')}\`; stale pixels are not evidence.`, path.relative(cwd, manifestPath))
+  finish(false, { declared: surfaces, source, stale: true })
+}
+
 const frames = Array.isArray(manifest.frames) ? manifest.frames : []
 
 // Judge verdicts, grouped by surface.

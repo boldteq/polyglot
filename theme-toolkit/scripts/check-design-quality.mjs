@@ -179,12 +179,20 @@ function resolvePack(niche, seen = new Set()) {
 }
 
 // design-spec declares the pack: `dna_pack: <niche>` (top-level or inside a ## brand_tokens block).
+// A2 FALLBACK (2026-07-29): if the design-spec omits dna_pack, resolve the niche from docs/build-state.json
+// — the SAME canonical source the Lens judge reads — so taste enforcement is never silently skipped just
+// because drape forgot the dna_pack line. The explicit design-spec declaration always wins.
 function declaredPackNiche() {
   const abs = path.resolve(cwd, DESIGN_SPEC)
-  if (!fs.existsSync(abs)) return null
-  const txt = fs.readFileSync(abs, 'utf-8')
-  const m = txt.match(/^\s*dna_pack:\s*["'`]?([A-Za-z0-9 _-]+?)["'`]?\s*$/im)
-  return m ? m[1].trim() : null
+  if (fs.existsSync(abs)) {
+    const m = fs.readFileSync(abs, 'utf-8').match(/^\s*dna_pack:\s*["'`]?([A-Za-z0-9 _-]+?)["'`]?\s*$/im)
+    if (m) return m[1].trim()
+  }
+  try {
+    const bs = JSON.parse(fs.readFileSync(path.resolve(cwd, 'docs/build-state.json'), 'utf-8'))
+    if (bs && bs.niche) return String(bs.niche)
+  } catch { /* no build-state.json → no fallback */ }
+  return null
 }
 
 // ── CSS scope + extraction (mirrors check-design-system.mjs) ──────────────────
@@ -455,8 +463,14 @@ function main() {
   if (targets.length && rhythm.length) {
     const lo = Math.min(...rhythm) - rtol
     const hi = Math.max(...rhythm) + rtol
-    evidence.rhythm = { band: [Math.min(...rhythm), Math.max(...rhythm)], tolerance: rtol, paddings: sectionPaddings.map(p => p.px) }
+    // C3 (2026-07-29): the rhythm band governs section-to-section BODY rhythm; hero/banner/feature blocks
+    // legitimately stretch past it (cpg-food's own pack: "hero/feature blocks may stretch rhythm to
+    // 125-150px"). Exempt hero-family sections so a spec-compliant tall hero isn't a false rhythm-off block
+    // — resolves the pack's prose-vs-band contradiction without weakening the body-rhythm floor.
+    const isHero = (f) => /hero|banner|slideshow|slider/i.test(path.basename(f))
+    evidence.rhythm = { band: [Math.min(...rhythm), Math.max(...rhythm)], tolerance: rtol, paddings: sectionPaddings.filter(p => !isHero(p.file)).map(p => p.px) }
     for (const { file, px } of sectionPaddings) {
+      if (isHero(file)) continue
       // only judge "section-scale" padding (≥24px) — small inner paddings aren't section rhythm
       if (px >= 24 && (px < lo || px > hi)) {
         measurable('dq.rhythm-off', file, `section padding ${px}px is outside the niche rhythm band ${lo}–${hi}px — vertical rhythm should sit in [${rhythm.join(', ')}] ± ${rtol}`, `${px}px`)
@@ -563,17 +577,25 @@ function main() {
   }
 
   // font-family cross-check (WARNING) — heading_style vs design-system fonts (optional).
+  // C2 (2026-07-29): "sans-serif" CONTAINS "serif", so testing /serif/ on the raw font string treated a
+  // plain sans face as if it carried a serif — a serif-display niche (beauty, jewelry) shipped on a
+  // generic sans passed silently. The old de-sans step (`replace(/serif/g, m=>m)`) was a no-op. Strip the
+  // sans-serif tokens FIRST; a "serif" that survives is a real serif face.
   const dsAbs = path.resolve(cwd, DS)
   if (ts.heading_style && fs.existsSync(dsAbs)) {
     try {
       const dsJson = JSON.parse(fs.readFileSync(dsAbs, 'utf-8'))
       const fonts = JSON.stringify(dsJson.typography?.fonts || dsJson.fonts || dsJson.typography || {}).toLowerCase()
-      const wantsSerif = /serif/.test(ts.heading_style)
-      const hasSerif = /serif/.test(fonts) && !/sans-?serif/.test(fonts.replace(/serif/g, m => m)) // crude: serif present
-      if (fonts && fonts !== '{}' && wantsSerif && !/serif/.test(fonts)) {
-        warnings.push({ id: 'dq.font-family', page: DS, detail: `pack heading_style="${ts.heading_style}" but design-system fonts don't appear to include a serif face`, evidence: '' })
-      } else if (fonts && fonts !== '{}' && !wantsSerif && hasSerif && /serif/.test(fonts) && !/sans/.test(fonts)) {
-        warnings.push({ id: 'dq.font-family', page: DS, detail: `pack heading_style="${ts.heading_style}" (sans) but design-system fonts look serif-led`, evidence: '' })
+      if (fonts && fonts !== '{}') {
+        const deSans = fonts.replace(/sans[-\s]?serif/g, ' ')     // drop sans-serif so a leftover "serif" is a true serif face
+        const hasSerif = /serif/.test(deSans)                     // a real serif face is present
+        const hasSans = /\bsans\b|sans[-\s]?serif/.test(fonts)    // a sans face is present
+        const wantsSerif = /serif/.test(String(ts.heading_style).replace(/sans[-\s]?serif/g, ''))
+        if (wantsSerif && !hasSerif) {
+          warnings.push({ id: 'dq.font-family', page: DS, detail: `pack heading_style="${ts.heading_style}" wants a serif display face but the design-system fonts are sans-only — a serif-led niche shipped on a generic sans reads as an AI/WordPress template`, evidence: '' })
+        } else if (!wantsSerif && hasSerif && !hasSans) {
+          warnings.push({ id: 'dq.font-family', page: DS, detail: `pack heading_style="${ts.heading_style}" (sans) but the design-system fonts look serif-led`, evidence: '' })
+        }
       }
     } catch { /* unparseable DS — skip cross-check */ }
   }

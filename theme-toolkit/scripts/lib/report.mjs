@@ -5,8 +5,8 @@
 //     "gate": "<name>", "gateNumber": <n>, "toolkitVersion": "1.0.0",
 //     "ts": "<iso>", "sha": "<git HEAD|null>", "dirty": <bool>, "url": "<string|null>",
 //     "pass": <bool>,
-//     "blockers": [{ "id", "page", "detail", "evidence" }],
-//     "warnings": [same shape],
+//     "blockers": [{ "id", "page", "detail", "evidence", "severity", "tier"? }],
+//     "warnings": [same shape],   // "tier" (E|P|H) present only when the gate declares it
 //     "evidence": { ...gate-specific compact },
 //     "duration_ms": <n>
 //   }
@@ -71,19 +71,30 @@ export function gitInfo(cwd = process.cwd(), ignore = []) {
 // `severity:'advise'` on the finding (a warning can't opt UP to 'block' — that's what blockers[] is
 // for). The FP-trend dashboard (#2) + governance routing (#39/#40/#50) read severityCounts.
 const SEVERITIES = new Set(['block', 'warn', 'advise'])
+// Evidence tier of the RULE that produced a finding — E (study-backed / platform-binding) · P
+// (practitioner consensus) · H (house taste). Orthogonal to severity: severity is how hard the finding
+// enforces, tier is how strong the evidence is. Preserved here (the schema's single source) so
+// check-gate-integrity (#45) can hold the evidence-tier→enforcement-cap (see lib/evidence-tier.mjs).
+const TIERS = new Set(['E', 'P', 'H'])
 
 function normalizeFindings(list, defaultSeverity, forced = false) {
   if (!Array.isArray(list)) return []
   const allowed = forced
     ? new Set([defaultSeverity])
     : (defaultSeverity === 'warn' ? new Set(['warn', 'advise']) : SEVERITIES)
-  return list.map(f => ({
-    id: String(f.id ?? 'unknown'),
-    page: String(f.page ?? ''),
-    detail: String(f.detail ?? ''),
-    evidence: String(f.evidence ?? ''),
-    severity: allowed.has(f.severity) ? f.severity : defaultSeverity,
-  }))
+  return list.map(f => {
+    const out = {
+      id: String(f.id ?? 'unknown'),
+      page: String(f.page ?? ''),
+      detail: String(f.detail ?? ''),
+      evidence: String(f.evidence ?? ''),
+      severity: allowed.has(f.severity) ? f.severity : defaultSeverity,
+    }
+    // Carry `tier` only when a gate declares a valid one (opt-in; untagged findings stay exempt from the cap).
+    const tier = String(f.tier ?? '').toUpperCase()
+    if (TIERS.has(tier)) out.tier = tier
+    return out
+  })
 }
 
 // Roll findings up into {block, warn, advise} counts. Pure — used in the per-gate report AND the

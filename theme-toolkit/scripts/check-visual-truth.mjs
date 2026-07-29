@@ -226,7 +226,7 @@ function main() {
     for (const fd of (v.findings || [])) {
       allFindings.push({ ...fd, surface: v.surface, viewport: v.viewport, key: v.key })
       const detail = `${at}: ${fd.check} — ${fd.evidence}${fd.fix_owner ? ` (→ ${fd.fix_owner})` : ''}`
-      if (fd.severity === 'blocker' || /broken|overflow|placeholder|missing|error|illegible|cut off|cut-off/i.test(`${fd.check} ${fd.evidence}`) && fd.severity === 'blocker') add(blockers, 'vt.blocker-finding', v.surface, detail, fd.check)
+      if (fd.severity === 'blocker' || /broken|overflow|placeholder|missing|error|illegible|cut off|cut-off/i.test(`${fd.check} ${fd.evidence}`)) add(blockers, 'vt.blocker-finding', v.surface, detail, fd.check)
       else warnings.push({ id: 'vt.finding', page: v.surface, detail, evidence: fd.check })
     }
   }

@@ -1,0 +1,50 @@
+{
+  "$schema_version": "1.0",
+  "niche": "test-jewelry-seed",
+  "reference_brands": ["Mejuri", "Aurate", "Missoma", "Catbird", "Vrai"],
+  "niche_benchmark": 0.06,
+
+  "type_scale": {
+    "ratio": 1.333,
+    "ratio_tolerance": 0.08,
+    "max_sizes_per_page": 6,
+    "heading_style": "serif",
+    "accent_font_role": "none"
+  },
+
+  "spacing_rhythm": {
+    "section_rhythm_px": [80, 128],
+    "rhythm_tolerance_px": 16,
+    "density": "airy"
+  },
+
+  "canonical_components": {
+    "required_min": 4,
+    "list": ["editorial-hero", "product-grid", "story-block", "reviews-module", "trust-badges"]
+  },
+
+  "hero_treatment": {
+    "archetype": "editorial single-focal hero",
+    "carousel_allowed": false
+  },
+
+  "color_roles": {
+    "scheme_count_max": 3,
+    "accent_role": "one refined metallic accent on a restrained neutral base"
+  },
+
+  "imagery": {
+    "product_ratio": "1:1",
+    "hero_ratio": "16:9",
+    "treatment": "editorial custom photography"
+  },
+
+  "human_review": [
+    "Does it read as an intentional, premium jewelry brand — not a generic Shopify demo?"
+  ],
+
+  "_meta": {
+    "calibration": "seed",
+    "note": "FIXTURE seed pack — heading_style:serif to exercise the C2 font-family cross-check (serif niche shipped on a sans-only design-system must WARN). calibration:seed so measurable failures demote to warnings (exit 0)."
+  }
+}

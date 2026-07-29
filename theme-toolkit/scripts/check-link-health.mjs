@@ -41,9 +41,13 @@ if (t404 == null) {
 async function crawl() {
   const origin = url.replace(/\/$/, '')
   const headers = { 'user-agent': 'BoldteqThemeGates/1.0' }
-  if (process.env.THEME_STORE_PASSWORD || process.env.STOREFRONT_PASSWORD) { /* password walls handled by storefront cookie elsewhere */ }
-  let home
-  try { home = await (await fetch(origin, { headers })).text() } catch (e) { return { env: `homepage fetch failed: ${e.message}` } }
+  let res, home
+  try { res = await fetch(origin, { headers }); home = await res.text() } catch (e) { return { env: `homepage fetch failed: ${e.message}` } }
+  // password wall: a locked storefront redirects to /password; a plain fetch can't authenticate, so the
+  // crawl finds 0 real links and would falsely PASS. Return an env-error (out() → exit 2), never green.
+  if (/\/password\/?$/.test(new URL(res.url).pathname) || /<form[^>]+action=["'][^"']*\/password/i.test(home)) {
+    return { env: 'store is password-protected (landed on /password) — a fetch crawl sees no real links; set THEME_STORE_PASSWORD or open the store to run link-health' }
+  }
   const links = [...new Set([...home.matchAll(/href=["'](\/[a-z0-9/_?=&#%.\-]*)["']/gi)].map((m) => m[1]))]
     .filter((h) => /^\/(products|collections|pages|blogs|policies)\//.test(h)).slice(0, 25)
   let broken = 0, checked = 0

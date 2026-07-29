@@ -7,7 +7,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { resolveEntry, TYPE_ARCHETYPE, resolveSectionKey } from '../../check-reference-match.mjs'
+import { resolveEntry, TYPE_ARCHETYPE, resolveSectionKey, orderConformance, orderOf } from '../../check-reference-match.mjs'
 import { upsertEntry, resolveSurface, PAGE_SURFACES } from '../../reference-ingest.mjs'
 
 let failures = 0
@@ -208,6 +208,34 @@ console.log('case (o2) resolveSectionKey — unpinned + no archetype match falls
   eq(resolveSectionKey({ name: 'locations', archetype: 'carousel' }, sections), 'locations', 'no stock carousel type exists, but "locations" is a real exact key match')
   eq(resolveSectionKey({ name: 'nope', archetype: 'carousel' }, sections), null, 'no archetype match AND no name match → null, never a fuzzy guess')
   eq(resolveSectionKey({ name: 'hero_banner', archetype: 'slideshow' }, sections), 'hero_banner', 'archetype match still wins when both would agree')
+}
+
+// ── order-conformance (2026-07-28): the reference-map declares a section order; the build must honour it ──
+console.log('case (r) orderConformance — declared reference order vs built render order')
+{
+  const sections = [{ key: 'hero', type: 'slideshow' }, { key: 'story', type: 'rich-text' }, { key: 'grid', type: 'main-collection-product-grid' }]
+  const entries = [
+    { name: 'hero', archetype: 'slideshow', section: 'hero', order: 1 },
+    { name: 'story', archetype: 'rich-text', section: 'story', order: 2 },
+    { name: 'grid', archetype: 'collection-grid', section: 'grid', order: 3 },
+  ]
+  eq(orderConformance(entries, sections, ['hero', 'story', 'grid']).ok, true, 'matching order → ok')
+  const mm = orderConformance(entries, sections, ['hero', 'grid', 'story'])
+  eq(mm.ok, false, 'reordered build → mismatch')
+  mm.declaredSeq.includes('hero → story → grid') && mm.builtSeq.includes('hero → grid → story') ? ok('reports both sequences for the fixer') : bad(`seqs: ${mm.declaredSeq} | ${mm.builtSeq}`)
+  eq(orderConformance([entries[0], entries[2]], sections, ['hero', 'story', 'grid']).ok, true, 'subsequence-monotonic (hero before grid) → ok')
+  eq(orderConformance([entries[0]], sections, ['hero', 'story', 'grid']), null, 'single ordered entry → n/a')
+  eq(orderConformance(entries, sections, null), null, 'no render order → n/a')
+}
+
+console.log('case (s) orderOf — reads the template render order, falls back to section keys')
+{
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'refm-ord-'))
+  const f1 = path.join(d, 'a.json'); fs.writeFileSync(f1, JSON.stringify({ sections: { x: {}, y: {} }, order: ['y', 'x'] }))
+  eq(JSON.stringify(orderOf(f1)), JSON.stringify(['y', 'x']), 'uses j.order when present')
+  const f2 = path.join(d, 'b.json'); fs.writeFileSync(f2, JSON.stringify({ sections: { x: {}, y: {} } }))
+  eq(JSON.stringify(orderOf(f2)), JSON.stringify(['x', 'y']), 'falls back to section object-key order')
+  fs.rmSync(d, { recursive: true, force: true })
 }
 
 // ── CB-24: sectionTargetsFor (lens-capture.mjs) — the full read+resolve pipeline, via a fresh subprocess

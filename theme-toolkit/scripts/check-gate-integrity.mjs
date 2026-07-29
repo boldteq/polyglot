@@ -24,6 +24,7 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
+import { capExceeded, TIER_CAP } from './lib/evidence-tier.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 
@@ -37,6 +38,7 @@ const SELF = 'gate-integrity'
 
 const SCOPE_SKIP_RE = /(\.scope-unresolved$|base-unresolved$)/
 const NA_RE = /\.n-a-/
+const SEVERITY_LEVELS = new Set(['block', 'warn', 'advise']) // valid finding severities (evidence-tier cap)
 
 // PURE: did this report actually RUN? Returns a human-readable marker when it did not.
 // Handles both shapes: the legacy top-level `skipped` and `evidence.skipped`, which is what every
@@ -144,6 +146,24 @@ export function auditReports(reports, waived = new Set()) {
       add(warnings, 'integrity.gate-not-applicable', name,
         `gate "${name}" was not applicable (${naMarks.join(', ')}) — legitimate when the input genuinely doesn't exist, but it contributes NO quality signal. Confirm that's intended.`)
     }
+    // EVIDENCE-TIER → ENFORCEMENT-CAP (lib/evidence-tier.mjs, from the mastery-pack evidencePolicy): a
+    // finding may not enforce harder than its evidence justifies — E may block, P may only warn, H may only
+    // advise. A [P]/[H] finding sitting in blockers[] is an opinion-grade rule wielding hard-stop power (the
+    // AT-10 defect the mastery-pack audit caught). Same family as skip≠pass: a gate report must not overstate
+    // its own authority. Untagged findings are exempt (opt-in), so most correctness gates are unaffected.
+    for (const [defSev, arr] of [['block', json.blockers], ['warn', json.warnings]]) {
+      for (const f of (arr || [])) {
+        if (!f || !f.tier) continue
+        // Prefer the finding's own severity (a warning can be opted down to 'advise'); fall back to the
+        // array-level default for raw findings that predate the severity field.
+        const sev = SEVERITY_LEVELS.has(f.severity) ? f.severity : defSev
+        if (capExceeded(f.tier, sev)) {
+          const T = String(f.tier).toUpperCase()
+          add(blockers, 'integrity.tier-cap-exceeded', name,
+            `gate "${name}" finding \`${f.id || '(unnamed)'}\` is evidence-tier [${T}] but sits at ${sev}-severity — tier [${T}] may only ${TIER_CAP[T]}. An opinion-grade rule must not enforce harder than its evidence (a false BLOCK is as bad as a false pass). Downgrade the finding's severity, or raise its evidence tier if it is genuinely study/platform-backed.`)
+        }
+      }
+    }
   }
   return { blockers, warnings, audited: reports.length }
 }
@@ -173,6 +193,12 @@ function liveGateNames() {
   } catch { return null }
 }
 
+// G1 (2026-07-29): publish-grade base-tag detection. A missing `base` tag makes the scope-diff cluster
+// n-a-pass having scanned nothing; at publish-grade that must BLOCK. Git-guarded so a non-repo fixture
+// dir (cwd is not a work tree) never trips.
+function inGitRepo() { try { execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd, stdio: 'ignore' }); return true } catch { return false } }
+function baseTagMissing() { try { execFileSync('git', ['rev-parse', '-q', '--verify', 'refs/tags/base'], { cwd, stdio: 'ignore' }); return false } catch { return true } }
+
 function main() {
   const t0 = Date.now()
   const reports = loadReports()
@@ -186,7 +212,16 @@ function main() {
   const live = liveGateNames()
   const orphans = live ? orphanReports(reports.map((r) => r.name), live) : []
   const fresh = orphans.length ? reports.filter((r) => !orphans.includes(r.name)) : reports
-  const { blockers, warnings, audited } = auditReports(fresh, waivedGates())
+  const waived = waivedGates()
+  const { blockers, warnings, audited } = auditReports(fresh, waived)
+  // At PUBLISH-GRADE, a missing `base` tag is itself a BLOCK: the scope-diff cluster diffs against `base`,
+  // so without it those gates emit an *.n-a-* marker and pass having scanned nothing (the 8-gates-green
+  // defect, through the n-a door auditReports only WARNS on). When no gate happened to report the root
+  // cause, detect it here. Publish-grade only (dev stays fast); git-guarded so a non-repo dir never trips.
+  if (process.env.DS_REQUIRE_SCOPE === '1' && !blockers.some((b) => b.id === 'integrity.no-baseline-tag')
+      && !waived.has('gate-integrity') && inGitRepo() && baseTagMissing()) {
+    blockers.push({ id: 'integrity.no-baseline-tag', page: 'git', detail: 'no `base` git tag at publish-grade — the scope-resolving gates diff against `base`, so without it they emit an *.n-a-* marker and pass having scanned nothing (the 8-gates-green defect). Create the baseline: commit the pulled base then `git tag base` (mantle bootstrap), and re-run.', evidence: '' })
+  }
   for (const name of orphans) {
     warnings.push({
       id: 'integrity.orphan-report',

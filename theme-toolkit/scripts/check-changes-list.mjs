@@ -36,7 +36,8 @@ function citesArtifact(s) {
     /\b(?:gate-reports|docs|content|sections|snippets|assets|templates|config|scripts)\/[\w./-]+/i.test(s) ||
     /\.(?:json|md|png|jpe?g|webp|mp4|pdf|csv|liquid)\b/i.test(s) ||
     /\b[a-f0-9]{7,40}\b/.test(s) ||
-    /\b[\w-]+\/[\w./-]+/.test(s) ||
+    // (H4 2026-07-29: the generic `word/word` branch matched "and/or", dates, and the item's own title —
+    // it counted any prose as artifact evidence. Removed; real paths still match the dir + extension branches.)
     /\btheme[- ]check\b/i.test(s)
 }
 
@@ -55,7 +56,8 @@ function parseProse(text) {
   const title = (text.match(/^#\s+(.+)$/m) || [])[1] || (text.match(/\*\*Project:\*\*\s*(.+)$/m) || [])[1] || 'CHANGES'
   const statusLine = (text.match(/\*\*Status:\*\*\s*(.+)$/m) || [])[1] || ''
   let status = null
-  if (/shipped|deployed|live|published/i.test(statusLine)) status = 'shipped'
+  // H8 (2026-07-29): a negated status ("Not deployed yet", "isn't live", "pending") must NOT read as shipped.
+  if (/shipped|deployed|live|published/i.test(statusLine) && !/\b(?:not|isn'?t|never|pending|un(?:shipped|deployed|published))\b|\byet\b/i.test(statusLine)) status = 'shipped'
   else if (/review|uat|staging/i.test(statusLine)) status = 'review'
   else if (/waived/i.test(statusLine)) status = 'waived'
   else if (/in.?progress|wip|building/i.test(statusLine)) status = 'in-progress'

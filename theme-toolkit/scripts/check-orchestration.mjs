@@ -87,6 +87,21 @@ export function auditGraph(registry, manifest) {
     if (!live.has(String(n))) add(blockers, 'orch.critical-gate-missing', 'manifest', `critical eyes/dispatch gate #${n} is absent from the live manifest — the "skip reads as pass" defense could vanish`)
   }
 
+  // G. gate-number uniqueness (BLOCK) — a stable gate number must map to exactly ONE gate. theme-gates
+  //    keys reports by NAME (and `live` above is a Set that silently swallows a repeat), so two gates
+  //    sharing a NUMBER pass every other check yet corrupt every "#N" citation, report lookup and dispatch
+  //    order. Asserted off the LIVE manifest — no hardcoded numbers. (A latent gap a 2026-07 audit alleged
+  //    as an EXISTING defect while none existed; this makes the alleged failure genuinely impossible.)
+  const gatesByNumber = new Map()
+  for (const g of (manifest || [])) {
+    const num = String(g.number)
+    if (!gatesByNumber.has(num)) gatesByNumber.set(num, [])
+    gatesByNumber.get(num).push(String(g.name))
+  }
+  for (const [num, names] of gatesByNumber) {
+    if (names.length > 1) add(blockers, 'orch.duplicate-gate-number', 'manifest', `gate number #${num} is assigned to ${names.length} gates (${names.join(', ')}) — a gate number must be unique. theme-gates keys reports by name, so a shared number silently corrupts #N citations, report lookup and dispatch ordering. Renumber all but one (stable IDs are never reused).`)
+  }
+
   // D. orphan produce (WARN) — a contract event nothing downstream requires (terminal events are OK)
   const requiredEvents = new Set()
   for (const c of contracts) for (const r of (c.requires || [])) if (!isPathish(r)) requiredEvents.add(r)

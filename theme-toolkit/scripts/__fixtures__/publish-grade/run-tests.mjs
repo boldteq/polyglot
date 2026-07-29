@@ -21,6 +21,7 @@ console.log('applyPublishGrade — a full run is publish-grade')
   const full = applyPublishGrade('full', { FOO: 'bar' })
   full.DS_REQUIRE_SCOPE === '1' ? ok('full → DS_REQUIRE_SCOPE=1 (block-eligible warn gates enforce)') : bad(`full DS_REQUIRE_SCOPE=${full.DS_REQUIRE_SCOPE}`)
   full.STRICT_CONVERSION === '1' ? ok('full → STRICT_CONVERSION=1 (fabrication can’t be LENIENT-downgraded)') : bad(`full STRICT_CONVERSION=${full.STRICT_CONVERSION}`)
+  full.BASELINE_ENFORCE === '1' ? ok('full → BASELINE_ENFORCE=1 (design-quality enforces the premium floor for un-tuned niches)') : bad(`full BASELINE_ENFORCE=${full.BASELINE_ENFORCE}`)
   full.FOO === 'bar' ? ok('preserves unrelated env') : bad('dropped unrelated env')
   isPublishGrade(full) ? ok('isPublishGrade(full env) → true') : bad('isPublishGrade should be true for a full run')
 }
@@ -30,6 +31,7 @@ console.log('applyPublishGrade — a partial / static-only run stays warn-grade'
   const partial = applyPublishGrade('partial', {})
   partial.DS_REQUIRE_SCOPE === undefined ? ok('partial → DS_REQUIRE_SCOPE unset (warn gates stay warn for fast dev)') : bad(`partial set DS_REQUIRE_SCOPE=${partial.DS_REQUIRE_SCOPE}`)
   partial.STRICT_CONVERSION === undefined ? ok('partial → STRICT_CONVERSION unset') : bad(`partial set STRICT_CONVERSION=${partial.STRICT_CONVERSION}`)
+  partial.BASELINE_ENFORCE === undefined ? ok('partial → BASELINE_ENFORCE unset (taste stays warn for fast dev)') : bad(`partial set BASELINE_ENFORCE=${partial.BASELINE_ENFORCE}`)
   !isPublishGrade(partial) ? ok('isPublishGrade(partial env) → false') : bad('isPublishGrade should be false for a partial run')
 }
 

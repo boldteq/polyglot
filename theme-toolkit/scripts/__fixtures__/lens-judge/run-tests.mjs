@@ -2,7 +2,7 @@
 // Self-test for #9 (planJudge — fresh/cached/budget partition) + #12 (effectiveChecks — mobile overlay).
 // Run (Node 20): node scripts/__fixtures__/lens-judge/run-tests.mjs · Exit 0 = all pass.
 
-import { planJudge, effectiveChecks } from '../../lens-judge.mjs'
+import { planJudge, effectiveChecks, pickNiche } from '../../lens-judge.mjs'
 
 let failures = 0
 const pass = (m) => console.log(`  PASS  ${m}`)
@@ -27,6 +27,17 @@ console.log('effectiveChecks — #12 mobile overlay merge')
   eq(effectiveChecks(rubric, { width: 375 }).map(c => c.id), ['base', 'tap-target'], 'width ≤600 → mobile (overlay)')
   eq(effectiveChecks(rubric, { viewport: '375x812' }).map(c => c.id), ['base', 'tap-target'], 'dims with 375 → mobile')
   eq(effectiveChecks({ checks: [{ id: 'base' }] }, { viewport: 'mobile' }).map(c => c.id), ['base'], 'no overlay defined → base only on mobile')
+}
+
+console.log('pickNiche — A2 niche-wiring precedence (env > build-state > design-spec > default)')
+{
+  eq(pickNiche({ lensNiche: 'beauty', buildStateNiche: 'apparel', specNiche: 'pet' }).niche, 'beauty', 'LENS_NICHE env wins')
+  eq(pickNiche({ buildStateNiche: 'apparel', specNiche: 'pet' }).niche, 'apparel', 'build-state.json beats design-spec')
+  eq(pickNiche({ specNiche: 'pet' }).niche, 'pet', 'design-spec dna_pack when no env/build-state')
+  eq(pickNiche({ buildStateNicheEnv: 'jewelry' }).niche, 'jewelry', 'BUILD_STATE_NICHE env fallback')
+  const d = pickNiche({})
+  eq(d.niche, 'general ecommerce', 'nothing set → generic default')
+  d.src.includes('niche-blind') ? pass('default src flags the run as niche-blind (visible, not silent)') : fail(`src did not flag niche-blind: ${d.src}`)
 }
 
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)

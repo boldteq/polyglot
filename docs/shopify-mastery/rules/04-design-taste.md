@@ -66,17 +66,24 @@ before enforcing — an untuned threshold will either never fire or always fire.
 
 ---
 
-## C. Platform-binding numbers `[E]`
+## C. Platform numbers — acceptance thresholds `[E]` vs house targets `[house]`
 
-Non-negotiable. Sourced from shopify.dev, re-verified 2026-07-25.
+The **only hard numeric Theme-Store acceptance thresholds Shopify states** are the two Lighthouse floors
+**C1** (performance ≥ 60) and **C2** (accessibility ≥ 90), averaged over home + product + collection
+(shopify.dev, re-verified 2026-07-25). The rows tagged **`[house]`** — **C3** (speed-score formula),
+**C4** (≤ 16 KB JS), **C5** (≤ 2 resource hints) — live on Shopify's *performance best-practices* page
+worded as "should"; they are **house targets we choose to enforce, NOT platform requirements**. Never tell
+a client "Shopify requires" a `[house]` number — that is a misrepresentation (see
+[[shopify-platform-truth-2026]] A8; rule `06-dogfood-protocol.md`). C8/C9 (WCAG 2.2 contrast) and C10–C12
+are Theme-Store checklist items; C13 (Core Web Vitals) is Google, not Shopify-enforced.
 
 | # | Rule | Value |
 |---|---|---|
 | C1 | Lighthouse performance, averaged over home + product + collection, desktop and mobile | **≥ 60** |
 | C2 | Lighthouse accessibility, same pages | **≥ 90** |
-| C3 | Speed-score weighting — the collection page carries the most weight | `[(p × 31) + (c × 33) + (h × 13)] / 77` |
-| C4 | Minified JS bundle | **≤ 16 KB** |
-| C5 | Resource hints per template | **≤ 2** |
+| C3 `[house]` | Speed-score weighting — the collection page carries the most weight | `[(p × 31) + (c × 33) + (h × 13)] / 77` |
+| C4 `[house]` | Minified JS bundle | **≤ 16 KB** |
+| C5 `[house]` | Resource hints per template | **≤ 2** |
 | C6 | Colour settings in `settings_schema.json` | **≥ 4**, every background paired with a foreground |
 | C7 | `color_palette` — one per theme, in `settings_schema.json` only | **2–20 colours** |
 | C8 | Body text contrast | **≥ 4.5:1** |

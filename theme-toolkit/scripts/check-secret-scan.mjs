@@ -25,8 +25,11 @@ const PATTERNS = [
   ['secret.private-key-block', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/, 'embedded private key block'],
   ['secret.generic-bearer', /\b(?:api[_-]?key|secret|access[_-]?token|client[_-]?secret)\s*[:=]\s*["'][A-Za-z0-9_\-]{24,}["']/i, 'hardcoded api_key/secret/token assignment'],
 ]
-// don't flag obvious non-secrets
-const ALLOW = [/\.myshopify\.com/, /your[_-]?(api[_-]?key|secret|token)/i, /example|placeholder|xxxx|<.*>/i, /shpat_xxxx/i]
+// obvious non-secrets — tested against the MATCHED token only, never the whole line. Testing the whole
+// line (with a `<.*>` entry) exempted every line containing an HTML/Liquid tag, so a real token inside
+// markup shipped unscanned (2026-07-29 audit G3). The allowlist now only spares a MATCH that itself
+// reads as a placeholder; `.myshopify.com` was a line-level guard that can't match a secret token.
+const ALLOW = [/your[_-]?(api[_-]?key|secret|token)/i, /example|placeholder|xxxx|dummy|redacted/i, /shpat_xxxx/i]
 
 const SCAN_EXTS = ['.liquid', '.js', '.mjs', '.json', '.css', '.scss', '.md', '.txt', '.yml', '.yaml', '.env']
 // `__fixtures__` holds deliberate test secrets — a fake private key is how the secret-scan fixture
@@ -60,9 +63,10 @@ for (const f of files) {
   const lines = txt.split('\n')
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    if (ALLOW.some((a) => a.test(line))) continue
     for (const [id, re, label] of PATTERNS) {
-      if (re.test(line)) blockers.push({ id, page: `${rel}:${i + 1}`, detail: `${label} — remove the secret + rotate it; never commit credentials to a theme` })
+      const m = line.match(re)
+      if (!m || ALLOW.some((a) => a.test(m[0]))) continue
+      blockers.push({ id, page: `${rel}:${i + 1}`, detail: `${label} — remove the secret + rotate it; never commit credentials to a theme` })
     }
   }
 }

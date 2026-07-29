@@ -1,0 +1,13 @@
+{
+  "_source": "~/.claude/memory/patterns/good/client-handover-pack.md §0 — the canonical Client Handover Pack spec (owner: atrium). This JSON is the single declarative source the gate reads; keep it in sync with the doc.",
+  "dir": "docs/handover",
+  "minBytes": 200,
+  "artifacts": [
+    { "file": "editing-guide.md", "title": "Merchant Editing Guide", "owner": "loom" },
+    { "file": "content-model.md", "title": "Content Model Guide", "owner": "lattice" },
+    { "file": "apps.md", "title": "Apps & Integrations Notes", "owner": "conduit" },
+    { "file": "analytics.md", "title": "Analytics Record", "owner": "conduit+lumen" },
+    { "file": "performance.md", "title": "Performance Baseline", "owner": "lumen" },
+    { "file": "support.md", "title": "Support & SLA", "owner": "atrium", "allowsPlaceholders": true }
+  ]
+}

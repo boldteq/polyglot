@@ -46,6 +46,36 @@ test('promoteAgent is idempotent within the cooldown (no double promote)', () =>
   assert.equal(record.level, 1, 'level NOT double-bumped');
 });
 
+test('graduateAgent flips pending → active, and only pending', () => {
+  // The missing lifecycle transition: a disk-dropped hire defaults to 'pending' and nothing else
+  // activated it. graduateAgent is the applier for runWitnessSweep's data-driven graduationCandidates.
+  let record = { id: 'g', status: 'pending' };
+  const org = {
+    findAgent: () => record,
+    upsertAgent: (_id, fields) => { record = { ...record, ...fields }; return record; },
+  };
+
+  const r1 = hr.graduateAgent(org, 'g');
+  assert.equal(r1.ok, true, 'a pending agent graduates');
+  assert.equal(record.status, 'active', 'status flipped to active');
+  assert.ok(record.graduatedAt, 'graduatedAt stamped');
+
+  // idempotent + scoped: re-running (now active) is a no-op, never re-graduates or corrupts status
+  const r2 = hr.graduateAgent(org, 'g');
+  assert.equal(r2.ok, false, 'a non-pending agent is not graduated');
+  assert.equal(r2.skipped, true, 'and marked skipped');
+  assert.equal(record.status, 'active', 'status unchanged');
+
+  // never touches other lifecycle states
+  for (const status of ['probation', 'pip', 'retired']) {
+    let rec = { id: 'x', status };
+    const o = { findAgent: () => rec, upsertAgent: (_i, f) => { rec = { ...rec, ...f }; return rec; } };
+    const r = hr.graduateAgent(o, 'x');
+    assert.equal(r.ok, false, `${status} is left alone`);
+    assert.equal(rec.status, status, `${status} status unchanged`);
+  }
+});
+
 test('sys-mira-results removed; sys-mira kept', () => {
   const ids = ss.getAllForApi().map((s) => s.id);
   assert.equal(ids.includes('sys-mira-results'), false, 'redundant results schedule removed');

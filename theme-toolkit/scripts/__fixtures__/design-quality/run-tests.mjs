@@ -120,5 +120,38 @@ console.log('case (e) tuned pack + 3 evidence cards → expect NO dq.tuned-evide
   else fail(`expected evidence=3, got ${JSON.stringify(report?.evidence?.evidenceCards)}`)
 }
 
+// ── (f) C2: serif-display niche + sans-only design-system → dq.font-family warning ──
+// The bug this catches: "sans-serif" CONTAINS "serif", so the old check saw a serif face where there
+// was only a sans one — a serif-led niche (jewelry, beauty) on a generic sans passed silently.
+console.log('case (f) serif pack + sans-only design-system → expect dq.font-family warning')
+{
+  const serifDir = path.join(HERE, 'serif-mismatch')
+  const { code, report } = runGate(serifDir)
+  const warn = (report?.warnings || []).find(w => w.id === 'dq.font-family')
+  if (code === 0) pass('exit 0 (seed pack — measurable failures demote, no block)')
+  else fail(`expected exit 0, got ${code}; blockers=${JSON.stringify(report?.blockers?.map(b => b.id))}`)
+  if (warn) pass('warning present: dq.font-family (serif niche shipped on sans)')
+  else fail(`missing dq.font-family warning (saw ${(report?.warnings || []).map(w => w.id).join(', ') || 'none'})`)
+  if (warn && /serif/i.test(warn.detail)) pass('warning names the serif/sans mismatch')
+  else fail(`expected serif mention in detail, got: ${warn?.detail || '(no warning)'}`)
+}
+
+// ── (g) A2 fallback: no design-spec dna_pack → niche resolves from docs/build-state.json ────────────
+// The gap the haircare dogfood surfaced: taste enforcement silently skipped when drape forgot the
+// `dna_pack:` line, even though build-state.json knew the niche. The gate now falls back to it.
+console.log('case (g) no dna_pack in design-spec → niche resolved from docs/build-state.json')
+{
+  const dir = path.join(HERE, 'build-state-fallback')
+  const { code, report } = runGate(dir)
+  if (report?.evidence?.niche === 'test-supplements-seed') pass('niche resolved from build-state.json (design-spec dna_pack absent)')
+  else fail(`expected niche from build-state, got ${JSON.stringify(report?.evidence?.niche)}`)
+  // seed pack → measurable failures demote to warnings → exit 0 (no false block from the fallback)
+  if (code === 0) pass('seed pack via fallback does not block')
+  else fail(`expected exit 0 via seed fallback, got ${code}; blockers=${JSON.stringify(report?.blockers?.map(b => b.id))}`)
+  const warnIds = new Set((report?.warnings || []).map(w => w.id))
+  if (!warnIds.has('dq.pack-missing')) pass('no dq.pack-missing — the pack WAS resolved (not skipped)')
+  else fail('dq.pack-missing fired — fallback did not resolve the pack')
+}
+
 console.log(failures === 0 ? '\nALL CASES PASS' : `\n${failures} ASSERTION(S) FAILED`)
 process.exit(failures === 0 ? 0 : 1)
