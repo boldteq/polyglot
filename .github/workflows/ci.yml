@@ -12,14 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: client/package-lock.json
-      - run: npm ci
+          cache: 'pnpm'
+          cache-dependency-path: client/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
         working-directory: client
-      - run: npx tsc --noEmit
+      - run: pnpm exec tsc --noEmit
         working-directory: client
 
   test:
@@ -54,7 +57,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci
+      # theme-toolkit ships no lockfile — use `npm install` (npm ci requires
+      # a lockfile). Deps are pinned in package.json so the resolve is stable.
+      - run: npm install --no-fund --no-audit
         working-directory: theme-toolkit
       - name: Run all gate fixture suites
         run: SKIP_MCP=1 node scripts/run-all-tests.mjs
@@ -65,9 +70,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm audit --audit-level=high
-      - run: npm audit --audit-level=high
+      # Repo uses pnpm — `npm audit` errors with ENOLOCK against pnpm-lock.yaml.
+      - run: pnpm audit --audit-level=high --prod
+      - run: pnpm audit --audit-level=high --prod
         working-directory: client

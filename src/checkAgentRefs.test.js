@@ -112,7 +112,11 @@ test('unreadable agents dir is an env error, not a pass', () => {
 // Smoke-test against the REAL brain. It reports rather than asserts zero: the 4 pre-existing dead Tier-1
 // refs are a known backlog, and `npm test` going red on them would just get the suite ignored. The
 // blocking verdict lives in `npm run check:agent-refs` (exit 1), which is what CI/the gate runs.
-test('runs against the real agent brain and returns a usable verdict', () => {
+// Skipped when the real agent dir isn't on this host (CI runners, fresh clones) — the check-agent-refs
+// script itself exits with status 2 (env error), which the smoke test then falsely reports as a failure.
+const BRAIN_AGENTS_DIR = path.join(os.homedir(), '.claude', 'agents');
+const brainAvailable = fs.existsSync(BRAIN_AGENTS_DIR);
+test('runs against the real agent brain and returns a usable verdict', { skip: !brainAvailable ? 'no ~/.claude/agents on host — brain-dependent smoke test skipped' : false }, () => {
   const r = spawnSync(process.execPath, [SCRIPT, '--json'], { encoding: 'utf8' });
   assert.notEqual(r.status, 2, `env error: ${r.stderr}`);
   const j = JSON.parse(r.stdout);
