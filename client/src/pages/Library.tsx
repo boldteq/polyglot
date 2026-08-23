@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback, forwardRef } from 'r
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Search, Terminal, Sparkles, Puzzle, Globe, FolderGit2, RefreshCw, X, Copy,
-  Check, ChevronRight, FileText, Star, Play,
+  Check, ChevronRight, FileText, Star, Play, Clock, ChevronDown,
 } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import { ErrorState } from '../components/ErrorState'
@@ -14,8 +14,8 @@ import { statusPill } from '../lib/colors'
 import { STORAGE_KEY_PLAYGROUND_SESSION } from '../lib/constants'
 
 // Commands page — every slash-command and skill on this machine, one clean
-// list. Production-grade: URL state, favorites (persisted), keyboard nav,
-// one-click Run into Playground, sticky filter bar.
+// list. Production-grade: URL state, favorites + recents (persisted), keyboard
+// nav, one-click Run into Playground, sticky filter bar, collapsible groups.
 
 type KindFilter = 'all' | 'command' | 'skill'
 type ScopeFilter = 'all' | 'global' | 'project' | 'plugin'
@@ -23,6 +23,9 @@ const KIND_VALUES = ['all', 'command', 'skill'] as const
 const SCOPE_VALUES = ['all', 'global', 'project', 'plugin'] as const
 
 const FAV_KEY = 'polyglot:command-favorites'
+const RECENTS_KEY = 'polyglot:command-recents'
+const COLLAPSED_KEY = 'polyglot:command-collapsed-groups'
+const MAX_RECENTS = 8
 const MIN_GROUP_SIZE = 3
 
 function titleCase(s: string) {
@@ -56,17 +59,30 @@ function timeAgo(ms: number): string {
   return ''
 }
 
-function loadFavorites(): Set<string> {
+function loadStringSet(key: string): Set<string> {
   try {
-    const raw = localStorage.getItem(FAV_KEY)
+    const raw = localStorage.getItem(key)
     if (!raw) return new Set()
     const arr = JSON.parse(raw)
     return new Set(Array.isArray(arr) ? arr : [])
   } catch { return new Set() }
 }
 
-function saveFavorites(s: Set<string>) {
-  try { localStorage.setItem(FAV_KEY, JSON.stringify(Array.from(s))) } catch { /* quota / disabled */ }
+function saveStringSet(key: string, s: Set<string>) {
+  try { localStorage.setItem(key, JSON.stringify(Array.from(s))) } catch { /* quota / disabled */ }
+}
+
+function loadStringList(key: string): string[] {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return []
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : []
+  } catch { return [] }
+}
+
+function saveStringList(key: string, xs: string[]) {
+  try { localStorage.setItem(key, JSON.stringify(xs)) } catch { /* quota */ }
 }
 
 export default function CommandsPage() {
@@ -98,19 +114,41 @@ export default function CommandsPage() {
 
   const [selected, setSelected] = useState<LibraryItem | null>(null)
   const [copied, setCopied] = useState(false)
-  const [favorites, setFavorites] = useState<Set<string>>(() => loadFavorites())
+  const [favorites, setFavorites] = useState<Set<string>>(() => loadStringSet(FAV_KEY))
+  const [recents, setRecents] = useState<string[]>(() => loadStringList(RECENTS_KEY))
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => loadStringSet(COLLAPSED_KEY))
   const [focusIdx, setFocusIdx] = useState<number>(-1)
+  const [starPulse, setStarPulse] = useState<string | null>(null)
 
   const drawerRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
   const rowRefs = useRef<Array<HTMLButtonElement | null>>([])
 
-  useEffect(() => { saveFavorites(favorites) }, [favorites])
+  useEffect(() => { saveStringSet(FAV_KEY, favorites) }, [favorites])
+  useEffect(() => { saveStringList(RECENTS_KEY, recents) }, [recents])
+  useEffect(() => { saveStringSet(COLLAPSED_KEY, collapsed) }, [collapsed])
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+    setStarPulse(id)
+    window.setTimeout(() => setStarPulse((cur) => (cur === id ? null : cur)), 400)
+  }, [])
+
+  const toggleGroup = useCallback((key: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }, [])
+
+  const trackRecent = useCallback((id: string) => {
+    setRecents((prev) => {
+      const next = [id, ...prev.filter((x) => x !== id)].slice(0, MAX_RECENTS)
       return next
     })
   }, [])
@@ -164,9 +202,18 @@ export default function CommandsPage() {
     return filtered.filter((it) => favorites.has(it.id))
   }, [filtered, favorites])
 
+  // Recents strip — only shown when nothing narrowed AND nothing starred,
+  // so it plays "signal from your last session" without duplicating rows.
+  const recentsList = useMemo(() => {
+    if (recents.length === 0) return []
+    if (q.trim() || kind !== 'all' || scope !== 'all' || plugin !== 'all') return []
+    const byId = new Map(items.map((it) => [it.id, it]))
+    return recents.map((id) => byId.get(id)).filter(Boolean) as LibraryItem[]
+  }, [recents, items, q, kind, scope, plugin])
+
   const nonFavorites = useMemo(
-    () => filtered.filter((it) => !favorites.has(it.id)),
-    [filtered, favorites],
+    () => filtered.filter((it) => !favorites.has(it.id) && !recentsList.some((r) => r.id === it.id)),
+    [filtered, favorites, recentsList],
   )
 
   const groups = useMemo(() => {
@@ -189,10 +236,13 @@ export default function CommandsPage() {
   }, [nonFavorites])
 
   const flatOrder = useMemo(() => {
-    const list: LibraryItem[] = [...favoritesList]
-    for (const g of groups) list.push(...g.items)
+    const list: LibraryItem[] = [...recentsList, ...favoritesList]
+    for (const g of groups) {
+      if (collapsed.has(g.key)) continue
+      list.push(...g.items)
+    }
     return list
-  }, [favoritesList, groups])
+  }, [recentsList, favoritesList, groups, collapsed])
 
   useEffect(() => { rowRefs.current = new Array(flatOrder.length).fill(null) }, [flatOrder.length])
 
@@ -255,8 +305,11 @@ export default function CommandsPage() {
         selectedAgent: '', prompt: `/${it.name}`, output: '',
       }))
     } catch { /* quota / disabled */ }
+    trackRecent(it.id)
     navigate('/playground')
   }
+
+  const clearRecents = useCallback(() => setRecents([]), [])
 
   const hasFilters = q !== '' || kind !== 'all' || scope !== 'all' || plugin !== 'all'
   const clearFilters = useCallback(() => {
@@ -300,7 +353,7 @@ export default function CommandsPage() {
                   ref={searchRef}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search…"
+                  placeholder="Search commands, skills, plugins…"
                   aria-label="Search"
                   className="input pl-9 pr-16 w-full"
                 />
@@ -368,6 +421,40 @@ export default function CommandsPage() {
             </div>
           </div>
 
+          {recentsList.length > 0 && (
+            <div className="card overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle bg-surface-2/40">
+                <Clock className="w-3.5 h-3.5 text-text-muted" aria-hidden="true" />
+                <span className="text-sm font-semibold">Recently used</span>
+                <span className="text-[10px] text-text-muted bg-surface-2 px-1.5 py-0.5 rounded">
+                  {recentsList.length}
+                </span>
+                <button
+                  onClick={clearRecents}
+                  className="ml-auto text-[11px] text-text-muted hover:text-text underline underline-offset-2"
+                  aria-label="Clear recently used"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="divide-y divide-border-subtle">
+                {recentsList.map((it, i) => (
+                  <ItemRow
+                    key={`recent-${it.id}`}
+                    ref={(el) => { rowRefs.current[i] = el }}
+                    it={it}
+                    focused={focusIdx === i}
+                    starred={favorites.has(it.id)}
+                    starPulse={starPulse === it.id}
+                    onOpen={() => setSelected(it)}
+                    onToggleFav={() => toggleFavorite(it.id)}
+                    onRun={() => runInPlayground(it)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {favoritesList.length > 0 && (
             <div className="card overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle bg-accent/5">
@@ -378,19 +465,30 @@ export default function CommandsPage() {
                 </span>
               </div>
               <div className="divide-y divide-border-subtle">
-                {favoritesList.map((it, i) => (
-                  <ItemRow
-                    key={it.id}
-                    ref={(el) => { rowRefs.current[i] = el }}
-                    it={it}
-                    focused={focusIdx === i}
-                    starred
-                    onOpen={() => setSelected(it)}
-                    onToggleFav={() => toggleFavorite(it.id)}
-                    onRun={() => runInPlayground(it)}
-                  />
-                ))}
+                {favoritesList.map((it, i) => {
+                  const idx = recentsList.length + i
+                  return (
+                    <ItemRow
+                      key={it.id}
+                      ref={(el) => { rowRefs.current[idx] = el }}
+                      it={it}
+                      focused={focusIdx === idx}
+                      starred
+                      starPulse={starPulse === it.id}
+                      onOpen={() => setSelected(it)}
+                      onToggleFav={() => toggleFavorite(it.id)}
+                      onRun={() => runInPlayground(it)}
+                    />
+                  )
+                })}
               </div>
+            </div>
+          )}
+
+          {favoritesList.length === 0 && recentsList.length === 0 && !hasFilters && (
+            <div className="card px-4 py-3 flex items-center gap-2 text-[12px] text-text-muted">
+              <Star className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>Star a command to pin it here for one-click access.</span>
             </div>
           )}
 
@@ -407,33 +505,46 @@ export default function CommandsPage() {
           ) : (
             <div className="space-y-4">
               {groups.map((group, gi) => {
-                const startIdx = favoritesList.length +
-                  groups.slice(0, gi).reduce((n, g) => n + g.items.length, 0)
+                const isCollapsed = collapsed.has(group.key)
+                // rowRefs indices: recents → favorites → each open group.
+                const baseIdx = recentsList.length + favoritesList.length +
+                  groups.slice(0, gi).reduce((n, g) => n + (collapsed.has(g.key) ? 0 : g.items.length), 0)
                 return (
                   <div key={group.key} className="card overflow-hidden">
-                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle bg-surface-2/40">
+                    <button
+                      onClick={() => toggleGroup(group.key)}
+                      aria-expanded={!isCollapsed}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle bg-surface-2/40 hover:bg-surface-2/60 transition-colors text-left"
+                    >
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 text-text-muted transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                        aria-hidden="true"
+                      />
                       <span className="text-sm font-semibold">{group.key}</span>
                       <span className="text-[10px] text-text-muted bg-surface-2 px-1.5 py-0.5 rounded">
                         {group.items.length}
                       </span>
-                    </div>
-                    <div className="divide-y divide-border-subtle">
-                      {group.items.map((it, i) => {
-                        const idx = startIdx + i
-                        return (
-                          <ItemRow
-                            key={it.id}
-                            ref={(el) => { rowRefs.current[idx] = el }}
-                            it={it}
-                            focused={focusIdx === idx}
-                            starred={favorites.has(it.id)}
-                            onOpen={() => setSelected(it)}
-                            onToggleFav={() => toggleFavorite(it.id)}
-                            onRun={() => runInPlayground(it)}
-                          />
-                        )
-                      })}
-                    </div>
+                    </button>
+                    {!isCollapsed && (
+                      <div className="divide-y divide-border-subtle">
+                        {group.items.map((it, i) => {
+                          const idx = baseIdx + i
+                          return (
+                            <ItemRow
+                              key={it.id}
+                              ref={(el) => { rowRefs.current[idx] = el }}
+                              it={it}
+                              focused={focusIdx === idx}
+                              starred={favorites.has(it.id)}
+                              starPulse={starPulse === it.id}
+                              onOpen={() => setSelected(it)}
+                              onToggleFav={() => toggleFavorite(it.id)}
+                              onRun={() => runInPlayground(it)}
+                            />
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -455,10 +566,10 @@ export default function CommandsPage() {
           aria-labelledby="cmd-detail-title"
           aria-modal="true"
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelected(null)} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm chat-fade-in" onClick={() => setSelected(null)} />
           <div
             ref={drawerRef}
-            className="relative w-full max-w-xl h-full bg-surface border-l border-border-subtle shadow-pop flex flex-col"
+            className="relative w-full max-w-xl h-full bg-surface border-l border-border-subtle shadow-pop flex flex-col animate-slide-in"
           >
             <div className="px-5 pt-5 pb-4 border-b border-border-subtle shrink-0">
               <div className="flex items-start justify-between gap-3">
@@ -523,7 +634,7 @@ export default function CommandsPage() {
                   aria-label={favorites.has(selected.id) ? 'Remove from favorites' : 'Add to favorites'}
                   title={favorites.has(selected.id) ? 'Unstar' : 'Star'}
                 >
-                  <Star className={`w-4 h-4 ${favorites.has(selected.id) ? 'text-accent fill-accent' : ''}`} />
+                  <Star className={`w-4 h-4 ${favorites.has(selected.id) ? 'text-accent fill-accent' : ''} ${starPulse === selected.id ? 'animate-star-pulse' : ''}`} />
                 </button>
               </div>
 
@@ -546,13 +657,14 @@ interface RowProps {
   it: LibraryItem
   focused: boolean
   starred: boolean
+  starPulse?: boolean
   onOpen: () => void
   onToggleFav: () => void
   onRun: () => void
 }
 
 const ItemRow = forwardRef<HTMLButtonElement, RowProps>(function ItemRow(
-  { it, focused, starred, onOpen, onToggleFav, onRun }, ref,
+  { it, focused, starred, starPulse, onOpen, onToggleFav, onRun }, ref,
 ) {
   const rel = timeAgo(it.updatedAt)
   return (
@@ -599,7 +711,7 @@ const ItemRow = forwardRef<HTMLButtonElement, RowProps>(function ItemRow(
           aria-label={starred ? 'Unstar' : 'Star'}
           title={starred ? 'Unstar' : 'Star'}
         >
-          <Star className={`w-3.5 h-3.5 ${starred ? 'text-accent fill-accent' : ''}`} />
+          <Star className={`w-3.5 h-3.5 ${starred ? 'text-accent fill-accent' : ''} ${starPulse ? 'animate-star-pulse' : ''}`} />
         </button>
       </div>
       <ChevronRight className="relative w-4 h-4 text-text-muted shrink-0 mt-0.5" aria-hidden="true" />
