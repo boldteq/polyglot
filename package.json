@@ -36,7 +36,11 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3"
-    ]
+    ],
+    "overrides": {
+      "shell-quote": ">=1.9.0",
+      "js-yaml": ">=3.15.1 <4"
+    }
   },
   "dependencies": {
     "@boldteq/agents": "file:sdk",
