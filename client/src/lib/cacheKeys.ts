@@ -14,6 +14,7 @@ export const CacheKeys = {
   unifiedAgents: 'unified/agents',
   unifiedCommands: 'unified/commands',
   unifiedRules: 'unified/rules',
+  library: 'library',
   categories: 'categories',
   templates: 'templates',
   config: 'config',

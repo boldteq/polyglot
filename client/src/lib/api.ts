@@ -554,6 +554,42 @@ export const deleteSalesDraft = (id: string) => request<{ ok: boolean }>(`/sales
 export const getUnifiedCommands = () => request<UnifiedCommand[]>('/unified/commands')
 export const getUnifiedRules = () => request<UnifiedRule[]>('/unified/rules')
 
+// Library — every on-disk slash-command + skill (global + project + plugin).
+export interface LibraryItem {
+  id: string
+  name: string
+  kind: 'command' | 'skill'
+  scope: 'global' | 'project' | 'plugin'
+  scopeLabel: string
+  plugin: string | null
+  pluginDisplay: string | null
+  pluginVersion: string | null
+  description: string
+  path: string
+  format: 'md' | 'toml'
+  updatedAt: number
+  prefix: string
+  body: string
+}
+export interface LibraryResponse {
+  items: LibraryItem[]
+  meta: {
+    count: number
+    scannedAt: number
+    cached?: boolean
+    counts: {
+      total: number
+      command: number
+      skill: number
+      global: number
+      project: number
+      plugin: number
+    }
+  }
+}
+export const getLibrary = (fresh = false) =>
+  request<LibraryResponse>(`/library${fresh ? '?fresh=1' : ''}`)
+
 // Categories
 export const getCategories = () => request<Category[]>('/categories')
 export const createCategory = (name: string) =>

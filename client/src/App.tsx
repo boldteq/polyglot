@@ -59,6 +59,7 @@ const Shopify = React.lazy(() => import('./pages/Shopify'))
 const StorePreview = React.lazy(() => import('./pages/StorePreview'))
 const Sales = React.lazy(() => import('./pages/Sales'))
 const DesignLibrary = React.lazy(() => import('./pages/DesignLibrary'))
+const LibraryPage = React.lazy(() => import('./pages/Library'))
 
 // Minimal page-level spinner shown while lazy chunk loads
 function PageLoader() {
@@ -97,7 +98,7 @@ function AnalyticsRedirect() {
 // are distinguishable instead of every page reading a static "Polyglot".
 const TITLE_ALIASES: Record<string, string> = {
   '': 'Dashboard', global: 'Agents', docs: 'Documentation', hr: 'HR', workspace: 'Workspace',
-  'context-hub': 'Context Hub',
+  'context-hub': 'Context Hub', commands: 'Commands',
 }
 function RouteTitle() {
   const { pathname } = useLocation()
@@ -185,6 +186,8 @@ export default function App() {
             <Route path="/studio" element={<Orchestration />} />
             <Route path="/orchestration" element={<Navigate to="/studio" replace />} />
             <Route path="/prompts" element={<Prompts />} />
+            <Route path="/commands" element={<LibraryPage />} />
+            <Route path="/library" element={<Navigate to="/commands" replace />} />
             <Route path="/playground" element={<Playground />} />
             {/* Sales moved into Workspace ("Client Work"); Build removed (the
                 project-scoped Build button + Studio cover it). Old links redirect. */}

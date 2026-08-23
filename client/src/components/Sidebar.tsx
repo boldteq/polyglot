@@ -25,6 +25,7 @@ import {
   Workflow,
   FileText,
   Library,
+  Terminal,
   ListTree,
   Database,
   Gavel,
@@ -239,6 +240,9 @@ export default function Sidebar() {
         </NavLink>
         <NavLink to="/prompts" className={({ isActive }) => navItem(isActive || isPromptsActive)}>
           <FileText className="w-4 h-4" /> Prompts
+        </NavLink>
+        <NavLink to="/commands" className={navLinkClass}>
+          <Terminal className="w-4 h-4" /> Commands
         </NavLink>
 
         <NavSection label="Agents & Teams" />

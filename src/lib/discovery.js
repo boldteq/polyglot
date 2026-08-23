@@ -8,6 +8,31 @@ const { listAgents } = require('./cache');
 
 const HOME = os.homedir();
 
+// Recursive file walker. Returns absolute paths for every file under `dir`
+// whose basename matches `predicate`. Silently ignores unreadable dirs. Depth
+// cap prevents runaway walks on symlink cycles.
+function walkFiles(dir, predicate, maxDepth = 12) {
+  const out = [];
+  if (!fs.existsSync(dir)) return out;
+  const stack = [{ d: dir, depth: 0 }];
+  while (stack.length) {
+    const { d, depth } = stack.pop();
+    if (depth > maxDepth) continue;
+    let entries;
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { continue; }
+    for (const e of entries) {
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) {
+        if (e.name === 'node_modules' || e.name.startsWith('.git')) continue;
+        stack.push({ d: full, depth: depth + 1 });
+      } else if (e.isFile() && predicate(e.name, full)) {
+        out.push(full);
+      }
+    }
+  }
+  return out;
+}
+
 function listMdFiles(dir) {
   try {
     if (!fs.existsSync(dir)) return [];
@@ -69,4 +94,4 @@ function discoverProjects(dirs) {
   return projects;
 }
 
-module.exports = { discoverProjects, listMdFiles };
+module.exports = { discoverProjects, listMdFiles, walkFiles };
