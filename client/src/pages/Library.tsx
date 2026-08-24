@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback, forwardRef, Fragment
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Search, Terminal, Sparkles, Puzzle, Globe, FolderGit2, RefreshCw, X, Copy,
-  Check, ChevronRight, FileText, Star, Play, Clock, ChevronDown,
+  Check, ChevronRight, FileText, Star, Play, Clock, ChevronDown, Pencil,
 } from 'lucide-react'
 import { PageShell } from '../components/PageShell'
 import { ErrorState } from '../components/ErrorState'
@@ -724,9 +724,10 @@ export default function CommandsPage() {
                 <button
                   onClick={() => runInPlayground(selected)}
                   className="btn-primary btn-sm shrink-0"
-                  aria-label="Run in Playground"
+                  aria-label="Open in Playground with prompt pre-filled"
+                  title="Opens Playground with /name pre-filled; hit Send to run"
                 >
-                  <Play className="w-3.5 h-3.5" /> Run
+                  <Play className="w-3.5 h-3.5" /> Open in Playground
                 </button>
                 <button
                   onClick={() => copyInvocation(selected)}
@@ -735,6 +736,16 @@ export default function CommandsPage() {
                 >
                   {copied ? (<><Check className="w-3.5 h-3.5 text-green" /> Copied</>) : (<><Copy className="w-3.5 h-3.5" /> Copy</>)}
                 </button>
+                {selected.scope === 'project' && selected.projectId && (
+                  <button
+                    onClick={() => navigate(`/projects/${selected.projectId}/commands/${selected.name}?from=commands`)}
+                    className="btn-secondary btn-sm shrink-0"
+                    aria-label={`Edit /${selected.name}`}
+                    title="Open the editor"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </button>
+                )}
                 <button
                   onClick={() => toggleFavorite(selected.id)}
                   className="btn-ghost btn-sm shrink-0"
@@ -745,8 +756,13 @@ export default function CommandsPage() {
                 </button>
               </div>
 
-              <div className="text-[11px] text-text-muted font-mono break-all">
+              <div className="text-[11px] text-text-muted font-mono break-all" title={selected.scope === 'global' ? `Edit at ${selected.path}` : undefined}>
                 {selected.path}
+                {selected.scope === 'global' && (
+                  <span className="ml-2 not-italic text-text-muted/70">
+                    · edit in your terminal
+                  </span>
+                )}
               </div>
 
               <pre className="text-[11px] bg-surface-2 border border-border-subtle rounded-lg p-3 whitespace-pre-wrap break-words font-mono max-h-[60vh] overflow-y-auto leading-relaxed">

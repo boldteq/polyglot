@@ -116,7 +116,7 @@ function firstMeaningfulLine(body) {
 }
 
 // Read + parse one item. Returns null if the file can't be read.
-function parseItem(filePath, { kind, scope, scopeLabel, plugin, pluginDisplay, pluginVersion }) {
+function parseItem(filePath, { kind, scope, scopeLabel, plugin, pluginDisplay, pluginVersion, projectId }) {
   const raw = readFileSafe(filePath);
   if (raw === null || raw === undefined) return null;
   let stats;
@@ -154,6 +154,7 @@ function parseItem(filePath, { kind, scope, scopeLabel, plugin, pluginDisplay, p
     plugin: plugin || null,
     pluginDisplay: pluginDisplay || plugin || null,
     pluginVersion: pluginVersion || null,
+    projectId: projectId || null,
     description,
     path: filePath,
     format,
@@ -275,6 +276,7 @@ function scanLibrary() {
         push(parseItem(path.join(dir, entry.name), {
           kind: 'command', scope: 'project', scopeLabel: project.name,
           plugin: null, pluginDisplay: null, pluginVersion: null,
+          projectId: project.id,
         }));
       }
     }

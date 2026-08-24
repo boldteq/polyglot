@@ -564,6 +564,7 @@ export interface LibraryItem {
   plugin: string | null
   pluginDisplay: string | null
   pluginVersion: string | null
+  projectId: string | null
   description: string
   path: string
   format: 'md' | 'toml'
