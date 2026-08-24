@@ -13,6 +13,7 @@ import { toast } from './Toast'
 import { confirmDialog } from '../lib/confirm'
 import { writeToClipboard } from '../lib/clipboard'
 import { MarkdownRenderer } from './MarkdownRenderer'
+import AgentMentionPicker from './AgentMentionPicker'
 
 interface Props {
   open: boolean
@@ -1302,12 +1303,13 @@ export default function AiAssistant({ open, onClose }: Props) {
 
           {/* Input row */}
           <div className="relative bg-surface-2 border border-border rounded-2xl focus-within:border-accent/50 focus-within:ring-2 focus-within:ring-accent/10 transition-all">
+            <AgentMentionPicker value={input} onChange={setInput} inputRef={inputRef} />
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={loading ? 'Claude is thinking...' : 'Message Claude...'}
+              placeholder={loading ? 'Claude is thinking...' : 'Message Claude…  type @ to mention an agent'}
               rows={1}
               disabled={loading}
               className="w-full bg-transparent px-4 pt-3 pb-1.5 text-sm text-text resize-none focus:outline-none placeholder:text-text-muted disabled:opacity-60 max-h-40"
