@@ -46,8 +46,19 @@ export default function CommandEditor() {
     load()
   }, [name, projectId])
 
+  // Two-way binding: every edit writes BOTH content + sourceText so a mode
+  // switch can never leave one state stale. Previous version only synced on
+  // the mode-switch handler, which lost the last source edit if the user
+  // switched-and-saved fast enough for React to not have re-rendered yet.
   const handleBodyChange = useCallback((newContent: string) => {
     setContent(newContent)
+    setSourceText(newContent)
+    setDirty(true)
+  }, [])
+
+  const handleSourceChange = useCallback((next: string) => {
+    setSourceText(next)
+    setContent(next)
     setDirty(true)
   }, [])
 
@@ -82,6 +93,9 @@ export default function CommandEditor() {
     setDirty(false)
   }
 
+  // Kept as safety net for anything that mutates state outside the two-way
+  // handlers, but the primary invariant is: both states stay in sync via
+  // handleBodyChange / handleSourceChange.
   const switchToSource = () => { setSourceText(content); setViewMode('source') }
   const switchToRich = () => { setContent(sourceText); setViewMode('rich') }
 
@@ -182,7 +196,7 @@ export default function CommandEditor() {
         ) : (
           <textarea
             value={sourceText}
-            onChange={e => { setSourceText(e.target.value); setDirty(true) }}
+            onChange={e => handleSourceChange(e.target.value)}
             className="input h-full p-5 font-mono resize-none leading-relaxed"
             placeholder={`# /${name}\n\nDescribe what this command does.\nUse $ARGUMENTS for user-provided input.`}
             spellCheck={false}

@@ -10,6 +10,28 @@ import type { UnifiedCommand } from '../types'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../lib/confirm'
 
+// First useful line for the row's inline preview. Skips YAML frontmatter
+// (`---` fenced block at the top) and markdown headings so a command that
+// starts with `--- description: X ---` still shows the actual first prompt
+// line rather than falling back to `—`.
+function previewOf(content: string): string {
+  if (!content) return ''
+  const lines = content.split('\n')
+  let i = 0
+  if (lines[0]?.trim() === '---') {
+    i = 1
+    while (i < lines.length && lines[i]?.trim() !== '---') i++
+    i++ // skip closing ---
+  }
+  for (; i < lines.length; i++) {
+    const t = lines[i].trim()
+    if (!t) continue
+    if (t.startsWith('#')) continue
+    return t
+  }
+  return ''
+}
+
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime()
   if (diff < 60000) return 'just now'
@@ -193,7 +215,7 @@ export default function AllCommands() {
                   >
                     <span className="text-xs font-mono font-medium text-accent shrink-0">/{cmd.name}</span>
                     <span className="text-[11px] text-text-muted truncate flex-1">
-                      {cmd.content.split('\n').find(l => l.trim() && !l.startsWith('#'))?.trim() || '—'}
+                      {previewOf(cmd.content) || '—'}
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="flex items-center gap-1 text-[10px] text-text-muted">
