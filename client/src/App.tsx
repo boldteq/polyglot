@@ -12,6 +12,7 @@ import { DispatchHost } from './lib/dispatch'
 import { BuildHost } from './lib/build'
 import { PublishHost } from './lib/publish'
 import CommandPalette from './components/CommandPalette'
+import InFlightTray from './components/InFlightTray'
 import { useApi } from './hooks/useApi'
 import { getProjects } from './lib/api'
 import { CacheKeys, initCacheInvalidation } from './lib/cacheKeys'
@@ -248,6 +249,7 @@ export default function App() {
 
       {/* Global overlays — shared across both modes */}
       <CommandPalette />
+      <InFlightTray />
       <ToastContainer />
       <ConfirmHost />
       <DispatchHost />

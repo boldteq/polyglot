@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Activity, CheckCircle, XCircle, Filter, Search, ListTree } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Activity, CheckCircle, XCircle, Filter, Search, ListTree, Star } from 'lucide-react'
 import { getAnalyticsRuns, apiError, type AgentRunEntry } from '../lib/api'
 import { PageShell } from '../components/PageShell'
 import { ErrorState } from '../components/ErrorState'
@@ -9,6 +9,21 @@ import { SOURCE_COLORS } from '../lib/constants'
 import { onOrgChartEvent } from '../lib/sseBus'
 
 const SOURCES = ['all', 'playground', 'orchestration', 'schedule', 'webhook', 'sdk', 'ai-chat', 'project-chat']
+const LIMIT = 50
+const LAST_VISIT_KEY = 'polyglot:tracing-last-visit'
+
+interface Preset {
+  key: string
+  label: string
+  build: () => URLSearchParams
+}
+
+const PRESETS: Preset[] = [
+  { key: 'errors', label: 'Errors', build: () => new URLSearchParams({ status: 'error' }) },
+  { key: 'playground', label: 'Playground', build: () => new URLSearchParams({ source: 'playground' }) },
+  { key: 'orch', label: 'Orchestration', build: () => new URLSearchParams({ source: 'orchestration' }) },
+  { key: 'schedule', label: 'Schedules', build: () => new URLSearchParams({ source: 'schedule' }) },
+]
 
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime()
@@ -17,41 +32,72 @@ function timeAgo(ts: string): string {
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
+
 const fmtDuration = (ms: number) => (ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`)
 
-// LangSmith "Tracing" — run list; each row opens the per-run trace tree.
+// LangSmith "Tracing" — run list. Server-paginated (analytics/runs already
+// supports offset/limit), URL-persisted filters + preset chips ("Errors",
+// "Playground", "Schedules") for the routes Yash actually types by hand daily.
 export default function Tracing() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const source = searchParams.get('source') || 'all'
+  const status = searchParams.get('status') || 'all'
+  const agentSearch = searchParams.get('agent') || ''
+  const offset = parseInt(searchParams.get('offset') || '0', 10) || 0
+
+  const setParam = useCallback((key: string, value: string, def: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (value === def) next.delete(key)
+      else next.set(key, value)
+      // Any filter change resets the page unless the caller explicitly set it.
+      if (key !== 'offset') next.delete('offset')
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
+
   const [runs, setRuns] = useState<AgentRunEntry[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [sourceFilter, setSourceFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [agentSearch, setAgentSearch] = useState('')
-  const [offset, setOffset] = useState(0)
-  const limit = 50
+  const [lastVisit, setLastVisit] = useState<number>(() => {
+    const raw = localStorage.getItem(LAST_VISIT_KEY)
+    return raw ? parseInt(raw, 10) || 0 : 0
+  })
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true)
     setLoadError(null)
-    const params: Record<string, string | number> = { limit: 500 }
-    if (sourceFilter !== 'all') params.source = sourceFilter
-    if (statusFilter !== 'all') params.status = statusFilter
+    const params: Record<string, string | number> = { limit: LIMIT, offset }
+    if (source !== 'all') params.source = source
+    if (status !== 'all') params.status = status
+    if (agentSearch.trim()) params.agent = agentSearch.trim()
     getAnalyticsRuns(params as Record<string, string>)
-      .then(data => setRuns(data.runs))
-      .catch(err => { setLoadError(err instanceof Error ? err.message : 'Failed to load runs'); apiError('Load tracing runs', err) })
+      .then((data) => {
+        setRuns(data.runs || [])
+        setTotal(data.total || 0)
+      })
+      .catch((err) => {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load runs')
+        apiError('Load tracing runs', err)
+      })
       .finally(() => setLoading(false))
-  }
+  }, [source, status, agentSearch, offset])
 
-  useEffect(() => { setOffset(0) }, [sourceFilter, statusFilter, agentSearch])
-  useEffect(() => { load() }, [sourceFilter, statusFilter])
+  useEffect(() => { load() }, [load])
 
-  // Live refresh — load() runs once per filter change with no subscription to
-  // new runs landing elsewhere (orchestration completing, a schedule firing,
-  // playground/project-chat). Debounced: an orchestration executing N nodes
-  // emits agent_run.recorded N times in a burst; one reload after they settle
-  // beats hammering the endpoint per event. Reuses the current filters via the
-  // ref so the reload always requests the SAME view the user is looking at.
+  // Stamp visit — only once on mount so "new since visit" doesn't self-erase
+  // while the user is looking at the list.
+  useEffect(() => {
+    return () => {
+      try { localStorage.setItem(LAST_VISIT_KEY, String(Date.now())) } catch { /* quota */ }
+    }
+  }, [])
+
+  // Live refresh — debounced burst-collapse of `agent_run.recorded`. Reuses
+  // the current filters via a ref so the reload requests the same view.
   const loadRef = useRef(load)
   loadRef.current = load
   useEffect(() => {
@@ -64,26 +110,75 @@ export default function Tracing() {
     return () => { off(); if (timer) clearTimeout(timer) }
   }, [])
 
-  const filtered = useMemo(() => {
-    if (!agentSearch.trim()) return runs
-    const q = agentSearch.toLowerCase()
-    return runs.filter(r => r.agentName.toLowerCase().includes(q))
-  }, [runs, agentSearch])
+  const hasFilters = source !== 'all' || status !== 'all' || agentSearch.trim() !== ''
+  const clearFilters = () => setSearchParams({}, { replace: true })
 
-  const paged = filtered.slice(offset, offset + limit)
-  const hasFilters = sourceFilter !== 'all' || statusFilter !== 'all' || agentSearch.trim() !== ''
-  const clearFilters = () => { setSourceFilter('all'); setStatusFilter('all'); setAgentSearch('') }
+  const applyPreset = (p: Preset) => setSearchParams(p.build(), { replace: true })
+
+  const presetActive = (p: Preset): boolean => {
+    const target = p.build()
+    for (const [k, v] of target.entries()) if ((searchParams.get(k) || '') !== v) return false
+    // No extra filters beyond the preset should be set for it to be "active".
+    for (const [k] of searchParams.entries()) if (k !== 'offset' && !target.has(k)) return false
+    return true
+  }
+
+  const newSinceVisit = lastVisit > 0
+    ? runs.filter((r) => new Date(r.timestamp).getTime() > lastVisit).length
+    : 0
 
   return (
-    <PageShell title="Tracing" subtitle="Every agent run — open one to see its full trace tree (delegations, events, real cost)">
+    <PageShell
+      title="Tracing"
+      subtitle="Every agent run — open one to see its full trace tree (delegations, events, real cost)"
+      actions={
+        newSinceVisit > 0 ? (
+          <button
+            onClick={() => setLastVisit(Date.now())}
+            className="pill bg-accent/10 text-accent text-[11px] hover:bg-accent/20 transition-colors"
+            title="Mark as read — resets the 'new' badge"
+          >
+            <Star className="w-3 h-3 mr-1 inline" /> {newSinceVisit} new
+          </button>
+        ) : undefined
+      }
+    >
       <div className="space-y-5">
+        {/* Preset views */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] text-text-muted">Views:</span>
+          {PRESETS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => applyPreset(p)}
+              aria-pressed={presetActive(p)}
+              className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                presetActive(p)
+                  ? 'bg-accent/10 border-accent/40 text-accent'
+                  : 'bg-surface border-border text-text-muted hover:text-text hover:bg-surface-2/50'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+          {hasFilters && (
+            <button onClick={clearFilters} className="text-[11px] text-text-muted hover:text-text underline underline-offset-2 ml-1">
+              Clear
+            </button>
+          )}
+        </div>
+
         {/* Filters */}
         <div className="flex flex-col gap-3">
           <div className="relative max-w-xs">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted z-10" aria-hidden="true" />
             <input
-              type="text" value={agentSearch} onChange={e => setAgentSearch(e.target.value)}
-              placeholder="Filter by agent name..." aria-label="Filter by agent name" className="input pl-8"
+              type="text"
+              value={agentSearch}
+              onChange={(e) => setParam('agent', e.target.value, '')}
+              placeholder="Filter by agent name…"
+              aria-label="Filter by agent name"
+              className="input pl-8"
             />
           </div>
           <div className="flex items-center gap-4 flex-wrap">
@@ -91,20 +186,34 @@ export default function Tracing() {
               <Filter className="w-3.5 h-3.5 text-text-muted" />
               <span className="text-xs text-text-muted">Source:</span>
               <div className="segmented flex-wrap">
-                {SOURCES.map(s => (
-                  <button key={s} onClick={() => setSourceFilter(s)} className={sourceFilter === s ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}>{s}</button>
+                {SOURCES.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setParam('source', s, 'all')}
+                    className={source === s ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}
+                  >
+                    {s}
+                  </button>
                 ))}
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-text-muted">Status:</span>
               <div className="segmented">
-                {['all', 'success', 'error'].map(s => (
-                  <button key={s} onClick={() => setStatusFilter(s)} className={statusFilter === s ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}>{s}</button>
+                {['all', 'success', 'error'].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setParam('status', s, 'all')}
+                    className={status === s ? 'segmented-btn segmented-btn-active' : 'segmented-btn'}
+                  >
+                    {s}
+                  </button>
                 ))}
               </div>
             </div>
-            <span className="text-xs text-text-muted ml-auto">{filtered.length} runs</span>
+            <span className="text-xs text-text-muted ml-auto">
+              {total.toLocaleString()} runs
+            </span>
           </div>
         </div>
 
@@ -114,7 +223,7 @@ export default function Tracing() {
             <div className="p-8 text-center text-text-muted text-sm">Loading…</div>
           ) : loadError ? (
             <ErrorState message={loadError} onRetry={load} className="h-48" />
-          ) : paged.length === 0 ? (
+          ) : runs.length === 0 ? (
             <div className="p-12 text-center text-text-muted">
               <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden="true" />
               {hasFilters ? (
@@ -138,20 +247,29 @@ export default function Tracing() {
                 </tr>
               </thead>
               <tbody>
-                {paged.map(run => {
+                {runs.map((run) => {
                   const d = formatAgentDisplay({ name: run.agentName, id: run.agentName })
+                  const isNew = lastVisit > 0 && new Date(run.timestamp).getTime() > lastVisit
                   return (
                     <tr
                       key={run.id}
                       onClick={() => navigate(`/tracing/${run.id}`)}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/tracing/${run.id}`) } }}
-                      role="button" tabIndex={0}
+                      role="button"
+                      tabIndex={0}
                       aria-label={`Open trace for ${d.realName}`}
-                      className="border-b border-border/50 hover:bg-surface-2/30 transition-colors cursor-pointer focus:outline-none focus-visible:bg-surface-2/50 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/40"
+                      className={`border-b border-border/50 hover:bg-surface-2/30 transition-colors cursor-pointer focus:outline-none focus-visible:bg-surface-2/50 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/40 ${isNew ? 'bg-accent/5' : ''}`}
                     >
-                      <td className="py-2.5 px-4 font-medium whitespace-nowrap">{d.emoji && <span className="mr-1">{d.emoji}</span>}{d.realName}</td>
-                      <td className="py-2.5 px-4"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${SOURCE_COLORS[run.source] || ''}`}>{run.source}</span></td>
-                      <td className="py-2.5 px-4">{run.status === 'success' ? <CheckCircle className="w-3.5 h-3.5 text-green" /> : <XCircle className="w-3.5 h-3.5 text-red" />}</td>
+                      <td className="py-2.5 px-4 font-medium whitespace-nowrap">
+                        {isNew && <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block mr-2" aria-label="new" />}
+                        {d.emoji && <span className="mr-1">{d.emoji}</span>}{d.realName}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${SOURCE_COLORS[run.source] || ''}`}>{run.source}</span>
+                      </td>
+                      <td className="py-2.5 px-4">
+                        {run.status === 'success' ? <CheckCircle className="w-3.5 h-3.5 text-green" /> : <XCircle className="w-3.5 h-3.5 text-red" />}
+                      </td>
                       <td className="py-2.5 px-4 text-text-muted max-w-[200px] truncate">{run.prompt}</td>
                       <td className="py-2.5 px-4 text-right text-text-muted">{fmtDuration(run.duration)}</td>
                       <td className="py-2.5 px-4 text-right text-text-muted whitespace-nowrap">{timeAgo(run.timestamp)}</td>
@@ -164,11 +282,25 @@ export default function Tracing() {
           )}
         </div>
 
-        {filtered.length > limit && (
+        {total > LIMIT && (
           <div className="flex items-center justify-end gap-2">
-            <button onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0} className="btn-secondary btn-sm">Previous</button>
-            <span className="text-xs text-text-muted">{offset + 1}–{Math.min(offset + limit, filtered.length)} of {filtered.length}</span>
-            <button onClick={() => setOffset(offset + limit)} disabled={offset + limit >= filtered.length} className="btn-secondary btn-sm">Next</button>
+            <button
+              onClick={() => setParam('offset', String(Math.max(0, offset - LIMIT)), '0')}
+              disabled={offset === 0}
+              className="btn-secondary btn-sm"
+            >
+              Previous
+            </button>
+            <span className="text-xs text-text-muted">
+              {offset + 1}–{Math.min(offset + LIMIT, total)} of {total.toLocaleString()}
+            </span>
+            <button
+              onClick={() => setParam('offset', String(offset + LIMIT), '0')}
+              disabled={offset + LIMIT >= total}
+              className="btn-secondary btn-sm"
+            >
+              Next
+            </button>
           </div>
         )}
       </div>
