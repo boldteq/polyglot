@@ -336,9 +336,18 @@ router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
   delete childEnv.CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING;
   delete childEnv.CLAUDE_AGENT_SDK_VERSION;
 
-  const proc = spawn(claudePath, ['-p'], { env: childEnv });
+  // --output-format=stream-json + --verbose makes Claude emit one JSONL event per
+  // line: system init, tool_use, tool_result, text chunks, thinking blocks,
+  // and a final `result`. We parse it line-by-line and re-emit typed events
+  // to the frontend so it can show real-time "reading X.tsx", "running Y",
+  // "thinking…" activity — the way official Claude Code renders progress.
+  //
+  // --input-format=text keeps stdin plain (our concatenated Human/Assistant
+  // prompt), no need to wrap it in JSONL.
+  const proc = spawn(claudePath, ['-p', '--output-format=stream-json', '--verbose', '--input-format=text'], { env: childEnv });
   let fullOutput = '';
   let errOutput = '';
+  let stdoutBuf = '';
 
   // Expose force-stop so the explicit cancel route can end this background run.
   run.kill = () => { try { proc.kill(); } catch { /* already dead */ } };
@@ -363,15 +372,98 @@ router.post('/ai/stream', rateLimit('heavy'), (req, res) => {
   }, AI_RUN_WALL_MS);
   if (wallTimer.unref) wallTimer.unref();
 
+  // Parse stream-json JSONL events. Each newline-delimited line is a JSON
+  // object; the CLI shape (from `claude` docs, 1.x):
+  //   {type:'system', subtype:'init', ...}
+  //   {type:'assistant', message:{content:[{type:'text',text},{type:'tool_use',name,input,id},{type:'thinking',thinking}]}}
+  //   {type:'user',      message:{content:[{type:'tool_result',tool_use_id,content}]}}
+  //   {type:'result',    subtype:'success'|..., result: '<final text>', ...}
+  //
+  // We re-emit as compact `activity` events (kind, label, extra) so the
+  // frontend can render a timeline without re-parsing CLI shape. Text chunks
+  // stay as `type:'chunk'` so the existing streaming text pane keeps working.
+  const summarizeToolInput = (name, input) => {
+    if (!input || typeof input !== 'object') return null;
+    switch (name) {
+      case 'Read':      return input.file_path || null;
+      case 'Write':     return input.file_path || null;
+      case 'Edit':      return input.file_path || null;
+      case 'MultiEdit': return input.file_path || null;
+      case 'Bash':      return typeof input.command === 'string' ? input.command.slice(0, 120) : null;
+      case 'Glob':      return input.pattern || null;
+      case 'Grep':      return typeof input.pattern === 'string' ? `${input.pattern}${input.path ? ` in ${input.path}` : ''}` : null;
+      case 'WebFetch':  return input.url || null;
+      case 'WebSearch': return input.query || null;
+      case 'TodoWrite': return `${(input.todos || []).length} items`;
+      default:          return null;
+    }
+  };
+  const handleEvent = (evt) => {
+    if (!evt || typeof evt !== 'object') return;
+    if (evt.type === 'system' && evt.subtype === 'init') {
+      send({ type: 'activity', kind: 'system', label: `Claude ready · ${evt.model || 'model'}${evt.cwd ? ` · ${evt.cwd.split('/').slice(-2).join('/')}` : ''}` });
+      return;
+    }
+    if (evt.type === 'assistant' && evt.message && Array.isArray(evt.message.content)) {
+      for (const block of evt.message.content) {
+        if (block.type === 'text' && typeof block.text === 'string' && block.text) {
+          fullOutput += block.text;
+          send({ type: 'chunk', content: block.text });
+        } else if (block.type === 'tool_use') {
+          const summary = summarizeToolInput(block.name, block.input);
+          send({ type: 'activity', kind: 'tool', tool: block.name || 'tool', label: summary ? `${block.name} · ${summary}` : block.name, id: block.id || null });
+        } else if (block.type === 'thinking' && typeof block.thinking === 'string') {
+          send({ type: 'activity', kind: 'thinking', label: block.thinking.slice(0, 200) });
+        }
+      }
+      return;
+    }
+    if (evt.type === 'user' && evt.message && Array.isArray(evt.message.content)) {
+      for (const block of evt.message.content) {
+        if (block.type === 'tool_result') {
+          const preview = typeof block.content === 'string' ? block.content.slice(0, 120)
+            : Array.isArray(block.content) ? (block.content.find(x => x && x.type === 'text')?.text || '').slice(0, 120)
+            : null;
+          send({ type: 'activity', kind: 'tool_result', label: preview ? `→ ${preview}` : '→ done', id: block.tool_use_id || null, error: !!block.is_error });
+        }
+      }
+      return;
+    }
+    if (evt.type === 'result') {
+      // The final `result` string is already the accumulated text — no need to
+      // re-send as chunks (frontend has been building `fullOutput` from
+      // assistant/text blocks). The `close` handler will emit the terminal event.
+      if (typeof evt.result === 'string' && !fullOutput) fullOutput = evt.result;
+      return;
+    }
+  };
   proc.stdout.on('data', (data) => {
-    const chunk = data.toString();
-    fullOutput += chunk;
-    send({ type: 'chunk', content: chunk });
+    stdoutBuf += data.toString();
+    const lines = stdoutBuf.split('\n');
+    stdoutBuf = lines.pop() || '';
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t) continue;
+      try {
+        handleEvent(JSON.parse(t));
+      } catch {
+        // Not JSON — surface as plain text so we don't lose CLI diagnostic output.
+        fullOutput += line;
+        send({ type: 'chunk', content: line });
+      }
+    }
   });
 
   proc.stderr.on('data', (data) => { errOutput += data.toString(); });
 
   proc.on('close', (code, signal) => {
+    // Flush any trailing incomplete stdout line — a final JSON event with no
+    // newline would otherwise get dropped on tight close-races.
+    if (stdoutBuf.trim()) {
+      try { handleEvent(JSON.parse(stdoutBuf.trim())); }
+      catch { fullOutput += stdoutBuf; send({ type: 'chunk', content: stdoutBuf }); }
+      stdoutBuf = '';
+    }
     if (code !== 0 || signal) {
       require('../lib/logger').error(`AI stream: claude exited code ${code}`, { category: 'integration', meta: { signal, stderr: errOutput.slice(0, 500) } });
       endStream({ type: 'error', error: `Agent process exited with code ${code}` });
