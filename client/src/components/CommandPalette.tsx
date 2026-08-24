@@ -64,6 +64,7 @@ export default function CommandPalette() {
     { id: 'ask-claude', label: 'Ask Claude', category: 'Actions', icon: Sparkles, action: () => { window.dispatchEvent(new Event('polyglot:open-ai')); setOpen(false) }, keywords: 'ai assistant chat help ⌘j cmd j' },
     { id: 'playground', label: 'Playground', category: 'Pages', icon: FlaskConical, action: () => go('/playground'), keywords: 'test run agent' },
     { id: 'prompts', label: 'Prompts', category: 'Pages', icon: FileText, action: () => go('/prompts'), keywords: 'system prompt agent edit version' },
+    { id: 'commands-directory', label: 'Commands & Skills', category: 'Pages', icon: Terminal, action: () => go('/commands'), keywords: 'slash command skill directory library plugin' },
     { id: 'context-hub', label: 'Context Hub', category: 'Pages', icon: Brain, action: () => go('/context-hub'), keywords: 'memory knowledge notes brain' },
     // Observe
     { id: 'tracing', label: 'Tracing', category: 'Pages', icon: Activity, action: () => go('/tracing'), keywords: 'runs trace history logs spans' },

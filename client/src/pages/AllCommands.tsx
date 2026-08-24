@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Clock, FolderOpen, Search, FileCode } from 'lucide-react'
-import { getUnifiedCommands, deleteProjectCommand, sanitizeName, updateProjectCommand } from '../lib/api'
+import { getUnifiedCommands, deleteProjectCommand, sanitizeName, updateProjectCommand, getProjects } from '../lib/api'
 import { useApi } from '../hooks/useApi'
 import { CacheKeys } from '../lib/cacheKeys'
 import { ErrorState } from '../components/ErrorState'
@@ -20,6 +20,10 @@ function timeAgo(ts: string): string {
 
 export default function AllCommands() {
   const { data: commands, loading, error, refetch } = useApi(getUnifiedCommands, [], CacheKeys.unifiedCommands)
+  // Full projects list — needed so the "New Command" dropdown includes
+  // projects with zero commands (previously derived from commands, so a
+  // fresh project was invisible until it already had one).
+  const { data: allProjects } = useApi(getProjects, [], CacheKeys.projects)
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
@@ -46,8 +50,17 @@ export default function AllCommands() {
     return map
   }, [filtered])
 
-  // Unique projects for new-command form
-  const projects = useMemo(() => [...new Map((commands || []).map(c => [c.projectId, { id: c.projectId, name: c.projectName }])).values()], [commands])
+  // Unique projects for new-command form — union of (a) discovered projects
+  // (so zero-command projects appear) and (b) any project referenced by an
+  // existing command (defensive — a rare drift where a command outlives its
+  // project). Only entries with a real projectId are creatable; globals are
+  // filtered out because there's no create-global-command endpoint here.
+  const projects = useMemo(() => {
+    const m = new Map<string, { id: string; name: string }>()
+    for (const p of allProjects || []) m.set(p.id, { id: p.id, name: p.name })
+    for (const c of commands || []) if (c.projectId) m.set(c.projectId, { id: c.projectId, name: c.projectName })
+    return Array.from(m.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [allProjects, commands])
 
   const handleDelete = async (cmd: UnifiedCommand) => {
     if (!(await confirmDialog({ title: 'Delete command?', message: `"/${cmd.name}" will be permanently deleted.`, danger: true, confirmLabel: 'Delete' }))) return
@@ -182,26 +195,32 @@ export default function AllCommands() {
                     <span className="text-[11px] text-text-muted truncate flex-1">
                       {cmd.content.split('\n').find(l => l.trim() && !l.startsWith('#'))?.trim() || '—'}
                     </span>
-                    <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className="flex items-center gap-1 text-[10px] text-text-muted">
                         <Clock className="w-3 h-3" />
                         {timeAgo(cmd.updatedAt)}
                       </span>
-                      <button
-                        onClick={() => navigate(`/projects/${cmd.projectId}/commands/${cmd.name}`)}
-                        className="text-[10px] text-accent hover:text-accent-hover font-medium transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(cmd)}
-                        disabled={deleting}
-                        title="Delete command"
-                        aria-label={`Delete command /${cmd.name}`}
-                        className="p-1 text-text-muted hover:text-red transition-colors rounded disabled:opacity-50"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      {cmd.projectId ? (
+                        <button
+                          onClick={() => navigate(`/projects/${cmd.projectId}/commands/${cmd.name}?from=commands`)}
+                          className="text-[10px] text-accent hover:text-accent-hover font-medium transition-colors"
+                        >
+                          Edit
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-text-muted italic">global (read-only)</span>
+                      )}
+                      {cmd.projectId && (
+                        <button
+                          onClick={() => handleDelete(cmd)}
+                          disabled={deleting}
+                          title="Delete command"
+                          aria-label={`Delete command /${cmd.name}`}
+                          className="p-1 text-text-muted hover:text-red transition-colors rounded disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 )

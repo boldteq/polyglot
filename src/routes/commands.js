@@ -50,16 +50,23 @@ router.delete('/projects/:id/commands/:name', validateProjectId, validateName, (
   res.json({ ok: true });
 });
 
-// GET /api/unified/commands
+// GET /api/unified/commands — global + every discovered project's commands.
+// Global commands from `~/.claude/commands/*.md` used to be silently missing
+// from this endpoint, so AllCommands showed 0 globals even with dozens on disk.
 router.get('/unified/commands', (req, res) => {
   const config = loadConfig();
   const projects = discoverProjects(config.projectDirs);
   const results = [];
 
+  const globalDir = path.join(HOME, '.claude', 'commands');
+  for (const cmd of listMdFiles(globalDir)) {
+    results.push({ ...cmd, scope: 'global', projectId: null, projectName: 'Global' });
+  }
+
   for (const project of projects) {
     const cmds = listMdFiles(path.join(project.path, '.claude', 'commands'));
     for (const cmd of cmds) {
-      results.push({ ...cmd, projectId: project.id, projectName: project.name });
+      results.push({ ...cmd, scope: 'project', projectId: project.id, projectName: project.name });
     }
   }
 
