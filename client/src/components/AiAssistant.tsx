@@ -174,6 +174,14 @@ export default function AiAssistant({ open, onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [error, setError] = useState('')
+  // Progress signals for the loading indicator — user was seeing 3 minutes of
+  // silent dots while Claude's first-token latency ticked away. Now the
+  // indicator shows elapsed time + a phase label that flips the moment chunks
+  // start arriving, and holds a Stop button inline (used to be buried in the
+  // input row).
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null)
+  const [lastChunkAt, setLastChunkAt] = useState<number | null>(null)
+  const [nowTick, setNowTick] = useState<number>(() => Date.now())
   const streamAbortRef = useRef<AbortController | null>(null)
   // The in-flight run's id. Drives Stop→server-cancel and lets us re-attach to a
   // background generation after a page refresh.
@@ -183,6 +191,15 @@ export default function AiAssistant({ open, onClose }: Props) {
   // we must NOT treat that as a real terminal — otherwise we'd wipe the reattach
   // marker and the reloaded page couldn't reconnect to the still-running gen.
   const unloadingRef = useRef(false)
+
+  // 1Hz tick so the elapsed timer on the loading indicator updates without
+  // hammering the whole tree. Only ticks while loading.
+  useEffect(() => {
+    if (!loading) return
+    setNowTick(Date.now())
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [loading])
 
   // UI state
   const [showHistory, setShowHistory] = useState(false)
@@ -449,6 +466,8 @@ export default function AiAssistant({ open, onClose }: Props) {
     setStreamingText('')
     setError('')
     setEditingIdx(null)
+    setRunStartedAt(Date.now())
+    setLastChunkAt(null)
 
     // Track timestamp for the new user message
     setMessageTimestamps(prev => ({ ...prev, [newMessages.length - 1]: new Date() }))
@@ -483,7 +502,7 @@ export default function AiAssistant({ open, onClose }: Props) {
       const content = await streamAiChat(
         newMessages,
         sys,
-        (chunk) => setStreamingText(prev => prev + chunk),
+        (chunk) => { setStreamingText(prev => prev + chunk); setLastChunkAt(Date.now()) },
         streamAbortRef.current.signal,
         runId,
         currentSessionId,
@@ -515,6 +534,8 @@ export default function AiAssistant({ open, onClose }: Props) {
       }
     } finally {
       setLoading(false)
+      setRunStartedAt(null)
+      setLastChunkAt(null)
       streamAbortRef.current = null
       // Clear the reattach marker ONLY on a REAL terminal AND when we're not
       // unloading. A refresh/navigate leaves it so the reloaded page reconnects.
@@ -1206,33 +1227,55 @@ export default function AiAssistant({ open, onClose }: Props) {
           })}
 
           {/* Streaming / Loading */}
-          {loading && (
-            <div className="flex gap-3 justify-start chat-fade-in">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple to-accent flex items-center justify-center shrink-0 mt-0.5 shadow-soft">
-                <Sparkles className="w-3.5 h-3.5 text-white animate-pulse" />
-              </div>
-              <div className="max-w-[88%] min-w-0 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-text">Claude</span>
-                  <span className="text-[10px] text-text-muted">typing...</span>
+          {loading && (() => {
+            const elapsedMs = runStartedAt ? nowTick - runStartedAt : 0
+            const elapsedS = Math.max(0, Math.floor(elapsedMs / 1000))
+            const streaming = !!streamingText
+            const sinceLastChunkS = lastChunkAt ? Math.floor((nowTick - lastChunkAt) / 1000) : null
+            const stalled = streaming && sinceLastChunkS !== null && sinceLastChunkS > 6
+            const label = streaming
+              ? (stalled ? `streaming · idle ${sinceLastChunkS}s` : 'streaming')
+              : (elapsedS < 5 ? 'waiting for Claude…' : elapsedS < 20 ? `thinking · ${elapsedS}s` : `still thinking · ${elapsedS}s`)
+            const fmtElapsed = elapsedS >= 60 ? `${Math.floor(elapsedS/60)}m ${elapsedS%60}s` : `${elapsedS}s`
+            return (
+              <div className="flex gap-3 justify-start chat-fade-in">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple to-accent flex items-center justify-center shrink-0 mt-0.5 shadow-soft">
+                  <Sparkles className="w-3.5 h-3.5 text-white animate-pulse" />
                 </div>
-                {streamingText ? (
-                  <div className="bg-surface-2 rounded-2xl rounded-tl-md px-4 py-3">
-                    <MarkdownRenderer content={streamingText} />
-                    <span className="inline-block w-0.5 h-4 bg-purple animate-pulse ml-0.5 align-middle rounded-full" />
+                <div className="max-w-[88%] min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold text-text">Claude</span>
+                    <span className="text-[10px] text-text-muted">{label}</span>
+                    <span className="text-[10px] text-text-muted tabular-nums" title="elapsed since send">· {fmtElapsed}</span>
+                    <button
+                      onClick={cancelStream}
+                      className="ml-auto text-[10px] text-red/80 hover:text-red inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-red/10 transition-colors"
+                      title="Stop generating"
+                    >
+                      <Square className="w-2.5 h-2.5" /> Stop
+                    </button>
                   </div>
-                ) : (
-                  <div className="bg-surface-2 rounded-2xl rounded-tl-md px-4 py-3.5">
-                    <div className="flex gap-1.5 items-center">
-                      <span className="w-2 h-2 rounded-full bg-purple/60 animate-bounce [animation-delay:0ms]" />
-                      <span className="w-2 h-2 rounded-full bg-purple/60 animate-bounce [animation-delay:150ms]" />
-                      <span className="w-2 h-2 rounded-full bg-purple/60 animate-bounce [animation-delay:300ms]" />
+                  {streaming ? (
+                    <div className="bg-surface-2 rounded-2xl rounded-tl-md px-4 py-3">
+                      <MarkdownRenderer content={streamingText} />
+                      <span className="inline-block w-0.5 h-4 bg-purple animate-pulse ml-0.5 align-middle rounded-full" />
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="bg-surface-2 rounded-2xl rounded-tl-md px-4 py-3.5">
+                      <div className="flex gap-1.5 items-center">
+                        <span className="w-2 h-2 rounded-full bg-purple/60 animate-bounce [animation-delay:0ms]" />
+                        <span className="w-2 h-2 rounded-full bg-purple/60 animate-bounce [animation-delay:150ms]" />
+                        <span className="w-2 h-2 rounded-full bg-purple/60 animate-bounce [animation-delay:300ms]" />
+                        {elapsedS >= 10 && (
+                          <span className="text-[10px] text-text-muted ml-2">Claude's first-token latency is high on cold starts — usually 20–60s.</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Error */}
           {error && (
