@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Save, ArrowLeft, RotateCcw, Terminal, Info, Eye, Code } from 'lucide-react'
 import { confirmDialog } from '../lib/confirm'
 import { getProjectCommand, updateProjectCommand } from '../lib/api'
@@ -11,6 +11,13 @@ import { projectNameFromId } from '../lib/projectId'
 export default function CommandEditor() {
   const { projectId, name } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  // Entry-point-aware back: `?from=commands` means the user came from the
+  // global /commands directory and Back should return there. Otherwise stay
+  // with the historical default (SaaS project detail).
+  const from = searchParams.get('from')
+  const backTo = from === 'commands' ? '/commands' : `/workspace/saas/${projectId}`
+  const backLabel = from === 'commands' ? 'Commands' : projectNameFromId(projectId || '')
   const [content, setContent] = useState('')
   const [originalContent, setOriginalContent] = useState('')
   const [loading, setLoading] = useState(true)
@@ -78,12 +85,18 @@ export default function CommandEditor() {
   const switchToSource = () => { setSourceText(content); setViewMode('source') }
   const switchToRich = () => { setContent(sourceText); setViewMode('rich') }
 
-  const crumbs: BreadcrumbItem[] = [
-    { label: 'SaaS Projects', to: '/workspace/saas' },
-    { label: projectNameFromId(projectId || ''), to: `/workspace/saas/${projectId}` },
-    { label: 'Commands', to: `/workspace/saas/${projectId}` },
-    { label: name || '' },
-  ]
+  const crumbs: BreadcrumbItem[] = from === 'commands'
+    ? [
+        { label: 'Commands', to: '/commands' },
+        { label: backLabel, to: `/workspace/saas/${projectId}` },
+        { label: name || '' },
+      ]
+    : [
+        { label: 'SaaS Projects', to: '/workspace/saas' },
+        { label: projectNameFromId(projectId || ''), to: `/workspace/saas/${projectId}` },
+        { label: 'Commands', to: `/workspace/saas/${projectId}` },
+        { label: name || '' },
+      ]
 
   if (loading) {
     return (
@@ -101,7 +114,7 @@ export default function CommandEditor() {
           <button
             onClick={async () => {
               if (dirty && !(await confirmDialog({ title: 'Discard unsaved changes?', message: 'You have unsaved changes that will be lost if you leave.', danger: true, confirmLabel: 'Leave' }))) return
-              navigate(`/workspace/saas/${projectId}`)
+              navigate(backTo)
             }}
             aria-label="Go back"
             className="p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
