@@ -4,7 +4,7 @@ import {
   History, Plus, Trash2, FileCode, CheckCircle, Bot, Download, Paperclip,
   ArrowDown, Pencil, Search, MessageSquare, Square,
 } from 'lucide-react'
-import type { AiMessage, AiSession, AppContext } from '../lib/api'
+import type { AiMessage, AiSession, AppContext, AiActivity } from '../lib/api'
 import {
   streamAiChat, getAiHistory, getAiSession,
   saveAiSession, deleteAiSession, getAiContext, applyAiFile, apiError,
@@ -182,6 +182,8 @@ export default function AiAssistant({ open, onClose }: Props) {
   const [runStartedAt, setRunStartedAt] = useState<number | null>(null)
   const [lastChunkAt, setLastChunkAt] = useState<number | null>(null)
   const [nowTick, setNowTick] = useState<number>(() => Date.now())
+  // Rolling activity feed for the current run — cleared on every new send.
+  const [activity, setActivity] = useState<AiActivity[]>([])
   const streamAbortRef = useRef<AbortController | null>(null)
   // The in-flight run's id. Drives Stop→server-cancel and lets us re-attach to a
   // background generation after a page refresh.
@@ -468,6 +470,7 @@ export default function AiAssistant({ open, onClose }: Props) {
     setEditingIdx(null)
     setRunStartedAt(Date.now())
     setLastChunkAt(null)
+    setActivity([])
 
     // Track timestamp for the new user message
     setMessageTimestamps(prev => ({ ...prev, [newMessages.length - 1]: new Date() }))
@@ -506,6 +509,10 @@ export default function AiAssistant({ open, onClose }: Props) {
         streamAbortRef.current.signal,
         runId,
         currentSessionId,
+        // Real-time activity — tool_use / thinking / system events from Claude
+        // CLI's stream-json output. Rendered as a compact timeline in the
+        // loading indicator so the user sees what Claude is actually doing.
+        (act) => setActivity(prev => (prev.length >= 30 ? [...prev.slice(-29), act] : [...prev, act])),
       )
       reachedTerminal = true // streamAiChat resolves only on a real `done` event
       setStreamingText('')
@@ -536,6 +543,7 @@ export default function AiAssistant({ open, onClose }: Props) {
       setLoading(false)
       setRunStartedAt(null)
       setLastChunkAt(null)
+      setActivity([])
       streamAbortRef.current = null
       // Clear the reattach marker ONLY on a REAL terminal AND when we're not
       // unloading. A refresh/navigate leaves it so the reloaded page reconnects.
@@ -582,7 +590,11 @@ export default function AiAssistant({ open, onClose }: Props) {
         if (!t.startsWith('data: ')) return
         try {
           const e = JSON.parse(t.slice(6))
-          if (e.type === 'chunk') { acc += e.content; setStreamingText(acc) }
+          if (e.type === 'chunk') { acc += e.content; setStreamingText(acc); setLastChunkAt(Date.now()) }
+          else if (e.type === 'activity') {
+            const act: AiActivity = { kind: e.kind, label: e.label ?? '', tool: e.tool, id: e.id ?? null, error: !!e.error }
+            setActivity(prev => (prev.length >= 30 ? [...prev.slice(-29), act] : [...prev, act]))
+          }
           else if (e.type === 'done') { reachedTerminal = true; if (typeof e.content === 'string' && e.content) acc = e.content }
           else if (e.type === 'error') {
             reachedTerminal = true
@@ -1255,6 +1267,20 @@ export default function AiAssistant({ open, onClose }: Props) {
                       <Square className="w-2.5 h-2.5" /> Stop
                     </button>
                   </div>
+                  {activity.length > 0 && (
+                    <div className="bg-surface-2/60 border border-border-subtle rounded-xl px-3 py-2 space-y-1 text-[11px]">
+                      {activity.slice(-6).map((a, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className="text-[10px] text-text-muted shrink-0 mt-0.5 w-3 text-center">
+                            {a.kind === 'tool' ? '⚙' : a.kind === 'tool_result' ? (a.error ? '✕' : '✓') : a.kind === 'thinking' ? '…' : '›'}
+                          </span>
+                          <span className={`min-w-0 truncate ${a.error ? 'text-red' : a.kind === 'thinking' ? 'text-text-muted italic' : 'text-text-secondary'}`}>
+                            {a.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {streaming ? (
                     <div className="bg-surface-2 rounded-2xl rounded-tl-md px-4 py-3">
                       <MarkdownRenderer content={streamingText} />
@@ -1266,7 +1292,7 @@ export default function AiAssistant({ open, onClose }: Props) {
                         <span className="w-2 h-2 rounded-full bg-purple/60 animate-bounce [animation-delay:0ms]" />
                         <span className="w-2 h-2 rounded-full bg-purple/60 animate-bounce [animation-delay:150ms]" />
                         <span className="w-2 h-2 rounded-full bg-purple/60 animate-bounce [animation-delay:300ms]" />
-                        {elapsedS >= 10 && (
+                        {elapsedS >= 10 && activity.length === 0 && (
                           <span className="text-[10px] text-text-muted ml-2">Claude's first-token latency is high on cold starts — usually 20–60s.</span>
                         )}
                       </div>

@@ -660,6 +660,14 @@ export const sendAiChat = (messages: AiMessage[], system?: string) =>
     body: JSON.stringify({ messages, system }),
   })
 
+export interface AiActivity {
+  kind: 'system' | 'tool' | 'tool_result' | 'thinking'
+  label: string
+  tool?: string
+  id?: string | null
+  error?: boolean
+}
+
 export async function streamAiChat(
   messages: AiMessage[],
   system: string | undefined,
@@ -669,6 +677,9 @@ export async function streamAiChat(
   // sessionId so a page refresh can find + re-attach to this generation.
   runId?: string,
   sessionId?: string | null,
+  // Fires for each structured activity event from the CLI (tool_use,
+  // tool_result, thinking, system init). Optional — old callers still work.
+  onActivity?: (activity: AiActivity) => void,
 ): Promise<string> {
   const res = await fetch(`${BASE}/ai/stream`, {
     method: 'POST',
@@ -699,6 +710,11 @@ export async function streamAiChat(
         if (event.type === 'chunk') {
           fullContent += event.content
           onChunk(event.content)
+        } else if (event.type === 'activity' && onActivity) {
+          onActivity({
+            kind: event.kind, label: event.label ?? '',
+            tool: event.tool, id: event.id ?? null, error: !!event.error,
+          })
         } else if (event.type === 'done') {
           fullContent = event.content
         } else if (event.type === 'error') {
