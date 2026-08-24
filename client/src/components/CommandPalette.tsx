@@ -4,7 +4,7 @@ import {
   Search, Bot, Sparkles, BarChart3, Clock, Globe, Users, Target,
   FileText, Terminal, ShieldCheck, Brain, FlaskConical, LayoutTemplate,
   Settings, Wrench, BookOpen, Activity,
-  LayoutDashboard,
+  LayoutDashboard, History,
 } from 'lucide-react'
 import { getUnifiedAgents, getSchedules, getWebhooks } from '../lib/api'
 
@@ -17,13 +17,41 @@ interface CommandItem {
   keywords?: string
 }
 
+const MRU_KEY = 'polyglot:palette-mru'
+const MRU_MAX = 8
+
+function loadMRU(): string[] {
+  try {
+    const raw = localStorage.getItem(MRU_KEY)
+    if (!raw) return []
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string').slice(0, MRU_MAX) : []
+  } catch { return [] }
+}
+
+function pushMRU(id: string) {
+  try {
+    const prev = loadMRU()
+    const next = [id, ...prev.filter((x) => x !== id)].slice(0, MRU_MAX)
+    localStorage.setItem(MRU_KEY, JSON.stringify(next))
+  } catch { /* quota / disabled */ }
+}
+
 export default function CommandPalette() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [dynamicItems, setDynamicItems] = useState<CommandItem[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [mruIds, setMruIds] = useState<string[]>(() => loadMRU())
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+
+  const runAction = useCallback((item: CommandItem) => {
+    pushMRU(item.id)
+    setMruIds((prev) => [item.id, ...prev.filter((x) => x !== item.id)].slice(0, MRU_MAX))
+    item.action()
+  }, [])
 
   const go = useCallback((path: string) => { navigate(path); setOpen(false) }, [navigate])
 
@@ -64,9 +92,12 @@ export default function CommandPalette() {
     { id: 'docs', label: 'Documentation', category: 'Help', icon: BookOpen, action: () => go('/docs') },
   ], [go])
 
-  // Load dynamic items (agents, schedules, webhooks)
+  // Load dynamic items (agents, schedules, webhooks) — ONCE per session, on
+  // first open. Subsequent opens hit in-memory state, no network. A SSE
+  // agent:upsert refetch would be a follow-up; for now the palette is a
+  // navigation tool where a fresh page-load-cost is fine.
   useEffect(() => {
-    if (!open) return
+    if (!open || loaded) return
     Promise.all([
       getUnifiedAgents().catch((err) => { console.error('[command-palette] agents load failed:', err?.message || err); return [] }),
       getSchedules().catch((err) => { console.error('[command-palette] schedules load failed:', err?.message || err); return [] }),
@@ -104,22 +135,44 @@ export default function CommandPalette() {
         })
       }
       setDynamicItems(items)
+      setLoaded(true)
     })
-  }, [open, go])
+  }, [open, loaded, go])
 
   const allItems = useMemo(() => [...staticItems, ...dynamicItems], [staticItems, dynamicItems])
 
+  const itemById = useMemo(() => {
+    const m = new Map<string, CommandItem>()
+    for (const it of allItems) m.set(it.id, it)
+    return m
+  }, [allItems])
+
+  // Empty query: show MRU first, then the top of the static list. Filtered
+  // query: rank exact-prefix matches above substring matches.
   const filtered = useMemo(() => {
-    if (!query) return allItems.slice(0, 20)
+    if (!query) {
+      const mru = mruIds
+        .map((id) => itemById.get(id))
+        .filter(Boolean)
+        .map((it) => ({ ...it!, category: 'Recent', icon: History })) as CommandItem[]
+      const seenIds = new Set(mru.map((it) => it.id))
+      const rest = allItems.filter((it) => !seenIds.has(it.id)).slice(0, Math.max(0, 20 - mru.length))
+      return [...mru, ...rest]
+    }
     const q = query.toLowerCase()
     return allItems
-      .filter(item =>
+      .filter((item) =>
         item.label.toLowerCase().includes(q) ||
         item.category.toLowerCase().includes(q) ||
         (item.keywords || '').toLowerCase().includes(q)
       )
-      .slice(0, 15)
-  }, [query, allItems])
+      .sort((a, b) => {
+        const aStarts = a.label.toLowerCase().startsWith(q) ? 0 : 1
+        const bStarts = b.label.toLowerCase().startsWith(q) ? 0 : 1
+        return aStarts - bStarts
+      })
+      .slice(0, 20)
+  }, [query, allItems, mruIds, itemById])
 
   // Keyboard shortcut
   useEffect(() => {
@@ -152,7 +205,7 @@ export default function CommandPalette() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, filtered.length - 1)) }
     if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)) }
-    if (e.key === 'Enter' && filtered[selectedIdx]) { filtered[selectedIdx].action() }
+    if (e.key === 'Enter' && filtered[selectedIdx]) { runAction(filtered[selectedIdx]) }
   }
 
   if (!open) return null
@@ -210,7 +263,7 @@ export default function CommandPalette() {
                     id={`command-option-${item.id}`}
                     role="option"
                     aria-selected={i === selectedIdx}
-                    onClick={() => item.action()}
+                    onClick={() => runAction(item)}
                     onMouseEnter={() => setSelectedIdx(i)}
                     className={`w-full flex items-center gap-3 px-5 py-2.5 text-left border-l-2 transition-colors ${
                       i === selectedIdx ? 'bg-accent/10 text-accent border-accent' : 'text-text border-transparent hover:bg-surface-2'
