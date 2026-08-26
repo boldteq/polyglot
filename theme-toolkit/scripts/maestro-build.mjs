@@ -138,6 +138,24 @@ export function makeRealSteps(opts = {}) {
   }
 }
 
+// ── build.mode (--mode reference|library|hybrid) ────────────────────────────────
+// Persist the chosen mode into docs/build-state.json under `build.mode` (merge; never touch
+// other fields). Env var MAESTRO_BUILD_MODE is the real behavior channel — child processes
+// (theme-gates, gate-autofix, drape/stitch dispatches, check-reference-match, library-search)
+// read the env var to gate their own logic. This write is the audit-trail companion.
+const VALID_MODES = ['reference', 'library', 'hybrid']
+
+function writeBuildMode(dir, buildStateDir, mode) {
+  const p = path.resolve(dir, buildStateDir, 'build-state.json')
+  let obj = {}
+  try { obj = JSON.parse(fs.readFileSync(p, 'utf-8')) } catch { /* create fresh */ }
+  obj.build = { ...(obj.build || {}), mode }
+  try {
+    fs.mkdirSync(path.resolve(dir, buildStateDir), { recursive: true })
+    fs.writeFileSync(p, `${JSON.stringify(obj, null, 2)}\n`)
+  } catch (e) { console.error(`maestro:build: could not write build.mode — ${e.message}`) }
+}
+
 // ── artifact ────────────────────────────────────────────────────────────────────
 function writeReadiness(dir, buildStateDir, result) {
   const ts = process.env.MAESTRO_TS || 'pending'
@@ -214,7 +232,7 @@ export async function maestroBuild({ steps, dir = process.cwd(), buildStateDir =
 
 // ── CLI ───────────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const o = { renderMode: 'dev', surfaces: null, maxRounds: undefined, autoPreview: false, budgetMs: 0, timeouts: {}, heal: true }
+  const o = { renderMode: 'dev', surfaces: null, maxRounds: undefined, autoPreview: false, budgetMs: 0, timeouts: {}, heal: true, mode: 'hybrid' }
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
     if (a === '--render') o.renderMode = argv[++i]
@@ -224,6 +242,8 @@ function parseArgs(argv) {
     else if (a === '--no-heal') o.heal = false  // GAP 1: disable the default-on heal-in-build (report-only)
     else if (a === '--budget') o.budgetMs = Math.max(0, Number(argv[++i]) || 0) * 60_000 // minutes → ms (wall-clock breaker)
     else if (a === '--timeout') { const m = Math.max(0, Number(argv[++i]) || 0) * 60_000; if (m) o.timeouts = { draft: m, render: m, judge: m, record: m } } // minutes → per-step ms
+    else if (a === '--mode') o.mode = argv[++i]                             // reference | library | hybrid (space form)
+    else if (a.startsWith('--mode=')) o.mode = a.slice('--mode='.length)    // reference | library | hybrid (equals form)
     else if (a === '--help' || a === '-h') o.help = true
   }
   return o
@@ -232,14 +252,21 @@ function parseArgs(argv) {
 async function main() {
   const o = parseArgs(process.argv.slice(2))
   if (o.help) {
-    console.log('Usage: THEME_PREVIEW_URL=<url> node maestro-build.mjs [--render dev|push] [--surfaces a,b] [--max-rounds 3] [--auto-preview] [--budget <min>] [--timeout <min>]')
+    console.log('Usage: THEME_PREVIEW_URL=<url> node maestro-build.mjs [--render dev|push] [--surfaces a,b] [--max-rounds 3] [--auto-preview] [--budget <min>] [--timeout <min>] [--mode reference|library|hybrid]')
     console.log('  --auto-preview   start theme:dev for the run + tear it down after (no second terminal; render=dev only)')
     console.log('  --budget <min>   wall-clock budget for the whole loop — once elapsed, remaining surfaces escalate cleanly (unattended cap)')
     console.log('  --timeout <min>  per-subprocess timeout applied to draft/render/judge/record (a hung child is killed → that surface escalates)')
     console.log('  --no-heal        report Lens blockers without auto-healing (default: heal whole-store Lens blockers via lens:autofix, then re-grade once)')
+    console.log('  --mode <mode>    build mode (default: hybrid). Written to docs/build-state.json:build.mode + exported as MAESTRO_BUILD_MODE so children (theme-gates, gate-autofix, drape/stitch, check-reference-match, library-search) act on it.')
+    console.log('                     reference — check-reference-match strictly enforced; library-search runs but the LIBRARY rung is optional')
+    console.log('                     library   — library-search runs FIRST for every non-REUSE frame; ≥50% LIBRARY-rung requirement (P6 assertion)')
+    console.log('                     hybrid    — both active; per-frame decision follows the 5-rule priority hierarchy')
     process.exit(0)
   }
   if (!['dev', 'push'].includes(o.renderMode)) { console.error(`maestro:build: --render must be dev|push (got ${o.renderMode})`); process.exit(2) }
+  if (!VALID_MODES.includes(o.mode)) { console.error(`maestro:build: --mode must be ${VALID_MODES.join('|')} (got ${o.mode})`); process.exit(2) }
+  console.log(`maestro-build: mode=${o.mode}`)
+  process.env.MAESTRO_BUILD_MODE = o.mode  // export so every spawned child inherits it (theme-gates, gate-autofix, drape/stitch dispatches)
   const dir = process.cwd()
   const buildStateDir = process.env.BUILD_STATE_DIR || 'docs'
 
@@ -261,6 +288,11 @@ async function main() {
   } else {
     result = await doBuild()
   }
+
+  // Persist build.mode into docs/build-state.json (merge; other fields untouched). ensureBuildState
+  // has already run inside doBuild, so the file exists; this write is the audit-trail companion to
+  // MAESTRO_BUILD_MODE (the env var is what children actually branch on).
+  writeBuildMode(dir, buildStateDir, o.mode)
 
   // The final output IS the morning snapshot — consolidates the artifacts this run just wrote.
   try { console.log('\n' + formatStatus(status({ dir, buildStateDir }))) }

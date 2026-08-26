@@ -38,7 +38,12 @@ const REPORT_DIR = process.env.REPORT_DIR || 'gate-reports'
 const LENS_DIR = path.resolve(cwd, REPORT_DIR, 'lens')
 const JUDGE_DIR = path.join(LENS_DIR, 'reference-judge')   // NOT judge/ — #18 vacuums that dir
 const MAP_PATH = 'docs/design/reference-map.json'
-const ENFORCE = process.env.REFERENCE_MATCH_ENFORCE === '1'
+// 2026-08-25 (P1 contract-first). Default is now ENFORCE — a declared reference that never got judged
+// used to silently pass (penelope: judged:0/5, pass:true, no home contract). Opt-OUT via
+// REFERENCE_MATCH_LENIENT=1 (dev-only escape hatch). Old REFERENCE_MATCH_ENFORCE=1 still enforces
+// (kept as an explicit opt-in equivalent for callers that already set it).
+const LENIENT = process.env.REFERENCE_MATCH_LENIENT === '1'
+const ENFORCE = !LENIENT
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude'
 const JUDGE_MODEL = process.env.LENS_JUDGE_MODEL || 'claude-sonnet-4-6' // PINNED dated id (reproducible verdict) — see lens-judge.mjs
 const JUDGE_TIMEOUT_MS = Number(process.env.REFERENCE_MATCH_TIMEOUT_MS || 6 * 60 * 1000)
@@ -223,7 +228,7 @@ function judgeOne(entry, refAbs, frame) {
 
 function finish(pass, evidence) {
   writeReport('reference-match', 46, { cwd, pass, blockers, warnings, evidence, duration_ms: Date.now() - t0 }, REPORT_DIR)
-  console.log(`reference-match: ${pass ? 'PASS' : 'BLOCK'} — ${blockers.length} blocker(s), ${warnings.length} warning(s)${ENFORCE ? '' : ' · L2 visual is warn-only (set REFERENCE_MATCH_ENFORCE=1 to enforce)'}`)
+  console.log(`reference-match: ${pass ? 'PASS' : 'BLOCK'} — ${blockers.length} blocker(s), ${warnings.length} warning(s)${ENFORCE ? ' · ENFORCE mode (default)' : ' · LENIENT mode (dev escape) — set nothing / unset REFERENCE_MATCH_LENIENT to enforce'}`)
   for (const b of blockers) console.log(`  BLOCK ${b.id} ${b.page}: ${b.detail}`)
   for (const w of warnings) console.log(`  warn  ${w.id} ${w.page}: ${w.detail}`)
   process.exit(pass ? 0 : 1)
@@ -299,8 +304,32 @@ async function main() {
       }
     }
   }
-  if (noFrame) add(warnings, 'ref.no-rendered-frame', 'gate-reports/lens', `${noFrame} reference(s) had no rendered Lens frame to compare against — run lens-capture (or lens-quick --surfaces <s>) then re-run`)
+  if (noFrame) {
+    const msg = `${noFrame} reference(s) had no rendered Lens frame to compare against — run lens-capture (or lens-quick --surfaces <s>) then re-run`
+    // 2026-08-25 (P1 contract-first): a saved reference with nothing rendered against it means we cannot
+    // prove the build matches. Under enforce mode (default) this is a blocker, not a soft warn.
+    if (ENFORCE) add(blockers, 'ref.no-rendered-frame', 'gate-reports/lens', msg)
+    else add(warnings, 'ref.no-rendered-frame', 'gate-reports/lens', `[would BLOCK without REFERENCE_MATCH_LENIENT=1] ${msg}`)
+  }
   if (!withImage.length) add(warnings, 'ref.no-reference-image', MAP_PATH, `${entries.length} reference(s) declared with no saved image — L1 (archetype) enforced, visual compare unavailable. Save the screenshot via reference-ingest --image, or export the Figma node.`)
+
+  // 2026-08-25 (P1 contract-first): any surface Lens captured MUST have a declared reference contract.
+  // Missing = blocker under enforce. This closes the penelope failure where home was captured 12 times
+  // but never declared, so no gate could ever prove the build matched the client's design.
+  try {
+    const lensManifestPath = path.join(LENS_DIR, 'lens-manifest.json')
+    if (fs.existsSync(lensManifestPath)) {
+      const lensManifest = JSON.parse(fs.readFileSync(lensManifestPath, 'utf-8'))
+      const captured = new Set((lensManifest.frames || []).map(f => f.surface).filter(Boolean))
+      const declared = new Set(entries.map(e => e.surface))
+      for (const s of captured) {
+        if (declared.has(s)) continue
+        const msg = `surface "${s}" was captured by Lens but has NO declared reference in ${MAP_PATH} — register what the client sent: node toolkit/scripts/reference-ingest.mjs --surface ${s} --name <n> --archetype <a> --image <path>`
+        if (ENFORCE) add(blockers, 'ref.contract-missing', s, msg)
+        else add(warnings, 'ref.contract-missing', s, `[would BLOCK without REFERENCE_MATCH_LENIENT=1] ${msg}`)
+      }
+    }
+  } catch { /* manifest parse failure — non-critical, other gates will catch */ }
 
   finish(blockers.length === 0, { declared: entries.length, l1Pass, judged, enforced: ENFORCE })
 }

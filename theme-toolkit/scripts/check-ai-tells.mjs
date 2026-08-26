@@ -71,6 +71,58 @@ export function clicheHits(text) {
   return hits
 }
 
+// 2026-08-25 (P8 slop vocab). Additive vocab-loaded lint over the SAME headline corpus. Categories are
+// hollow verbs / hollow adjectives / padding phrases — all sourced from ~/.claude/memory/content/ai-slop-vocab.md
+// so the whole system stays in lockstep. Word-boundary matches only. Tagged tier:'E' — deterministic
+// dictionary match, not a stylistic judgment. On critical surfaces (hero/PDP) escalates to blocker; on
+// secondary surfaces stays a warning. Absent vocab file → returns empty (no crash, no regression).
+export function loadSlopVocab(mdText) {
+  const s = String(mdText || '')
+  const out = { hollow_verb: [], hollow_adjective: [], padding_phrase: [] }
+  const sections = s.split(/\n##\s+Category\s+\d+/i)
+  const grab = (block, key) => {
+    const code = block.match(/```[\s\S]*?```/)
+    if (!code) return
+    const inner = code[0].replace(/^```\w*\n?|```$/g, '')
+    for (const line of inner.split(/[,\n]/)) {
+      const t = line.trim()
+      if (!t || t.startsWith('#')) continue
+      // strip parenthetical qualifiers like "(allowed when ...)"
+      const clean = t.replace(/\s*\([^)]*\)\s*/g, '').trim()
+      if (clean) out[key].push(clean)
+    }
+  }
+  for (const block of sections) {
+    if (/Hollow verbs/i.test(block)) grab(block, 'hollow_verb')
+    else if (/Hollow adjectives/i.test(block)) grab(block, 'hollow_adjective')
+    else if (/Padding phrases/i.test(block)) grab(block, 'padding_phrase')
+  }
+  return out
+}
+
+export function vocabHits(text, vocab) {
+  const s = String(text || '')
+  const hits = []
+  const check = (list, category) => {
+    for (const term of list || []) {
+      // Padding phrases can contain spaces & are matched as substrings (with word-boundary end where possible).
+      // Single-word verbs/adjectives use \b-\b word boundaries to avoid catching substrings ("premium" in
+      // "premiumship" would fire without \b).
+      const isPhrase = /\s/.test(term)
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const re = isPhrase
+        ? new RegExp(`\\b${escaped}\\b`, 'i')
+        : new RegExp(`\\b${escaped}\\b`, 'i')
+      const m = re.exec(s)
+      if (m) hits.push({ category, matched: term, snippet: s.slice(Math.max(0, m.index - 20), m.index + m[0].length + 20).replace(/\s+/g, ' ').trim() })
+    }
+  }
+  check(vocab?.hollow_verb, 'hollow_verb')
+  check(vocab?.hollow_adjective, 'hollow_adjective')
+  check(vocab?.padding_phrase, 'padding_phrase')
+  return hits
+}
+
 const HEADING_KEY = /head(ing|line)?|title|tagline|subheading|hero|slogan|banner_text/i
 const HTML_HEADING = /<h[12][^>]*>([\s\S]*?)<\/h[12]>/gi
 const STRIP_TAGS = /<[^>]+>/g
@@ -187,8 +239,15 @@ function main() {
     warnings.push({ id: 'ai-tells.n-a-no-copy', page: '.', detail: 'no custom section/template/locale copy in the build — no headline to scan for cliché templates (absence of signal, not a defect).', evidence: '' })
     finish(null, { at5: sig, headlineFiles: 0, headlines: 0, copyFiles: 0, scope: scoped ? 'build-diff' : 'all', cliche: 'n-a' })
   }
+  // Load slop vocab once — absent = graceful skip (0 vocab findings, cliché regex still runs).
+  let vocab = { hollow_verb: [], hollow_adjective: [], padding_phrase: [] }
+  const vocabPath = process.env.SLOP_VOCAB_PATH || path.join(process.env.HOME || '', '.claude/memory/content/ai-slop-vocab.md')
+  try { vocab = loadSlopVocab(fs.readFileSync(vocabPath, 'utf-8')) } catch { /* absent → legacy 8-regex only */ }
+  const vocabTotal = vocab.hollow_verb.length + vocab.hollow_adjective.length + vocab.padding_phrase.length
+
   let headlineFiles = 0
   let headlineCount = 0
+  let slopFindings = 0
   for (const rel of files) {
     let raw
     try { raw = fs.readFileSync(path.resolve(cwd, rel), 'utf-8') } catch { continue }
@@ -204,9 +263,16 @@ function main() {
         // tier:'P' so #45 can hold the cap. The self-doing loop fixes warnings, so it still gets rewritten.
         warnings.push({ id: 'ai.cliche-headline', page: rel, tier: 'P', detail: `cliché-headline template "${h.id}" in a heading/tagline: "${h.snippet}" — LLM-default phrasing (design-taste doctrine / AT-10 [P]). Rewrite to concrete, brand-specific copy.`, evidence: h.id })
       }
+      // 2026-08-25 (P8) — vocab-driven slop lint. Deterministic dictionary match [E] tier. Emits per
+      // category so scorecards can grade separately. Stays WARN for now (rollout safety); can escalate to
+      // BLOCK per critical-surface after 2 dogfood builds confirm zero FPs on real client copy.
+      for (const h of vocabHits(line, vocab)) {
+        slopFindings += 1
+        warnings.push({ id: `ai.slop-${h.category.replace(/_/g, '-')}`, page: rel, tier: 'E', detail: `slop ${h.category.replace(/_/g, ' ')} "${h.matched}" in a heading: "${h.snippet}" — vocab match (~/.claude/memory/content/ai-slop-vocab.md). Replace with a concrete claim: specific ingredient / number / outcome / proof.`, evidence: h.matched })
+      }
     }
   }
-  finish(null, { at5: sig, headlineFiles, headlines: headlineCount, copyFiles: files.length, scope: scoped ? 'build-diff' : 'all', cliche: blockers.length + warnings.filter((w) => w.id === 'ai.cliche-headline').length })
+  finish(null, { at5: sig, headlineFiles, headlines: headlineCount, copyFiles: files.length, scope: scoped ? 'build-diff' : 'all', cliche: blockers.length + warnings.filter((w) => w.id === 'ai.cliche-headline').length, vocabLoaded: vocabTotal, slopFindings })
 }
 
 // CLI only — importable for its pure helpers without running the gate.

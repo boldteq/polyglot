@@ -41,9 +41,19 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { isMain } from './lib/is-main.mjs'
+
+// ── REQ traceability helper (2026-08-25, additive) ────────────────────────────────────────────
+// Deterministic 6-char id — same requirement text always produces the same id — so a reference
+// entry can be linked back to a brief.md must_have_page / constraint bullet without a lookup table.
+// Kept local to this script (mirrors brief-intake.mjs's reqIdFor) — additive, no shared import needed.
+export function reqIdFor(text) {
+  return `REQ-${crypto.createHash('sha1').update(String(text || '').trim().toLowerCase()).digest('hex').slice(0, 6)}`
+}
+const REQ_ID_RE = /^REQ-[a-f0-9]{6}$/i
 
 const cwd = process.cwd()
 const REF_DIR = 'docs/design/references'
@@ -140,6 +150,11 @@ function parseArgs(argv) {
     else if (a === '--viewport') o.viewport = argv[++i]
     else if (a === '--list') o.list = true
     else if (a === '--note') o.note = argv[++i]
+    // 2026-08-25 (REQ traceability): --req takes an explicit REQ-xxxxxx id (matches brief.md);
+    // --req-text hashes a raw requirement string via reqIdFor(). Either way, upsertEntry stores it
+    // as row.req_id with sticky provenance (never cleared by an omitted flag on re-register).
+    else if (a === '--req') o.req = argv[++i]
+    else if (a === '--req-text') o.reqText = argv[++i]
   }
   return o
 }
@@ -168,6 +183,10 @@ export function upsertEntry(map, entry) {
   const figmaFile = keep(entry.figmaFile, prev.figma_file)
   const srcVideo = keep(entry.sourceVideo, prev.source_video)
   const srcAt = keep(entry.sourceAt, prev.source_at)
+  // REQ traceability — same STICKY rule as reference/figma_node/figma_file: only ever overwritten
+  // by a new non-empty value, never cleared by an omitted flag on re-register (2026-08-25).
+  const reqId = keep(entry.reqId, prev.req_id)
+  const reqText = keep(entry.reqText, prev.req_text)
   const row = {
     order: entry.order ?? (i >= 0 ? prev.order : s.sections.length + 1),
     name: entry.name,
@@ -179,6 +198,8 @@ export function upsertEntry(map, entry) {
     ...(figmaFile ? { figma_file: figmaFile } : {}),
     ...(srcVideo ? { source_video: srcVideo } : {}),
     ...(srcAt != null ? { source_at: srcAt } : {}),
+    ...(reqId ? { req_id: reqId } : {}),
+    ...(reqText ? { req_text: reqText } : {}),
     ...(keep(entry.note, prev.note) ? { note: keep(entry.note, prev.note) } : {}),
   }
   if (i >= 0) s.sections[i] = row; else s.sections.push(row)
@@ -301,9 +322,25 @@ function main() {
     console.log(`  drop the screenshot in ${REF_DIR}/${o.surface}/ and re-run with --image, or export the Figma node via get_screenshot.`)
   }
 
+  // 2026-08-25 (REQ traceability) — resolve --req and/or --req-text into row.req_id + row.req_text.
+  // Sticky in upsertEntry: an omitted flag on a later re-register never clears the stored value.
+  let reqId = null
+  let reqText = null
+  if (o.req) {
+    if (!REQ_ID_RE.test(o.req)) die(`--req "${o.req}" is not a REQ-xxxxxx id (6 lowercase hex chars)`)
+    reqId = o.req
+  }
+  if (o.reqText) {
+    const derived = reqIdFor(o.reqText)
+    if (reqId && reqId.toLowerCase() !== derived.toLowerCase()) die(`--req ${reqId} and --req-text hash to different ids (${derived}). Pass one or the other.`)
+    reqId = reqId || derived
+    reqText = o.reqText.trim()
+  }
+
   const map = upsertEntry(readMap(), {
     ...o, mustHave: o.mustHave, reference: refRel,
     sourceVideo: videoRel, sourceAt: atSeconds,
+    reqId, reqText,
   })
   const mapAbs = path.resolve(cwd, MAP_PATH)
   fs.mkdirSync(path.dirname(mapAbs), { recursive: true })

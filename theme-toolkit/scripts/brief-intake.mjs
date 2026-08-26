@@ -18,9 +18,24 @@
 // Exit: 0 = complete / action done · 1 = incomplete (missing required fields) · 2 = usage/env error
 
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { isMain } from './lib/is-main.mjs'
+import { detectNiche } from './lib/detect-niche.mjs'
+
+// ── REQ traceability (2026-08-25, additive) ────────────────────────────────────────────────────
+// Deterministic 6-char id — same requirement text always produces the same id — so downstream
+// gates (done-check, check-reuse-map, reference-ingest) can prove that every must_have_page /
+// constraint bullet actually maps to a real file. Additive: bullets without a REQ still parse.
+export function reqIdFor(text) {
+  return `REQ-${crypto.createHash('sha1').update(String(text || '').trim().toLowerCase()).digest('hex').slice(0, 6)}`
+}
+// Only these list-fields carry REQ ids (must-have work + hard constraints — the shippable set).
+const REQ_BEARING_FIELDS = new Set(['must_have_pages', 'constraints'])
+// Suffix inline on a bullet: "- home  (REQ-a3f2b1)". Stripped by parseBrief; re-added by renderBrief.
+const REQ_INLINE_RE = /^(.*?)\s*\((REQ-[a-f0-9]{6})\)\s*$/i
 
 const cwd = process.cwd()
 const BRIEF_DIR = process.env.BRIEF_DIR || 'docs'
@@ -33,8 +48,18 @@ export const QUESTIONS = [
   {
     field: 'niche', header: 'Niche', required: true,
     question: 'What niche / vertical is this store? (drives the DNA taste pack, the CRO benchmark, and the Lens judge)',
-    recommended: 'infer from the products/brief',
-    options: ['supplements', 'beauty', 'apparel', 'jewelry', 'home-decor', 'cpg-food', 'pet', 'electronics'],
+    // 2026-08-25 (P5): recommended is now `auto-detect` — the loop runs `brief-intake.mjs --detect` after
+    // the brief is filled to score all packs against products/brand-direction/reference OCR and write the
+    // dna_pack field if confidence ≥ 8. Options widened from 8 → 15 to match the actual pack files under
+    // `~/.claude/memory/design/ecom/niche-dna-packs/` (haircare / wellness / baby-kids / meal-kits-fresh /
+    // outdoor-sporting / b2b / supplements-playful were previously invisible to the human picker).
+    recommended: 'auto-detect',
+    options: [
+      'auto-detect',
+      'apparel', 'beauty', 'cpg-food', 'haircare', 'pet', 'supplements',
+      'supplements-playful', 'b2b', 'electronics', 'baby-kids', 'home-decor',
+      'jewelry', 'meal-kits-fresh', 'outdoor-sporting', 'wellness',
+    ],
   },
   {
     field: 'brand_direction', header: 'Brand feel', required: true,
@@ -89,13 +114,26 @@ export function parseBrief(text) {
     if (m && SCALAR.includes(m[1].toLowerCase())) out[m[1].toLowerCase()] = m[2].trim()
   }
   // `## field` bullet blocks
+  // 2026-08-25 (REQ traceability): also peel off any inline "(REQ-xxxxxx)" suffix on each bullet
+  // and record it into a parallel `out.req_ids[field]` array (same index as the bullet). The bullet
+  // text pushed into `out[field]` is always the CLEAN name (no REQ suffix), so existing callers
+  // (--detect, missingFields) keep behaving exactly as before.
+  out.req_ids = {}
   let cur = null
   for (const line of lines) {
     const h = line.match(/^\s*#{1,6}\s+([a-z_]+)\s*$/i)
     if (h) { const f = h[1].toLowerCase(); cur = QUESTIONS.find(q => q.list && q.field === f) ? f : null; if (cur) out[cur] = out[cur] || []; continue }
     if (cur) {
       const b = line.match(/^\s*[-*]\s+(.+?)\s*$/)
-      if (b) out[cur].push(b[1].trim())
+      if (b) {
+        const raw = b[1].trim()
+        const rm = raw.match(REQ_INLINE_RE)
+        const name = rm ? rm[1].trim() : raw
+        const req = rm ? rm[2] : null
+        out[cur].push(name)
+        out.req_ids[cur] = out.req_ids[cur] || []
+        out.req_ids[cur].push(req)
+      }
       else if (line.trim() && !line.startsWith('#')) { /* stray prose under a list heading — ignore */ }
     }
   }
@@ -122,8 +160,17 @@ export function renderBrief(answers = {}, client = '') {
   for (const q of QUESTIONS.filter(x => x.list)) {
     L.push(`## ${q.field}`)
     const vals = Array.isArray(answers[q.field]) ? answers[q.field] : (answers[q.field] ? [answers[q.field]] : [])
-    if (vals.length) for (const v of vals) L.push(`- ${v}`)
-    else L.push(`- ${q.recommended}`)
+    const bullets = vals.length ? vals : [q.recommended]
+    // 2026-08-25 (REQ traceability): must_have_pages + constraints bullets carry a deterministic
+    // "(REQ-xxxxxx)" suffix so every requirement gets an addressable id downstream. Existing bullets
+    // that already carry a REQ suffix are normalized (stripped then re-hashed from the clean text)
+    // so the id always matches reqIdFor(cleanText) — deterministic across re-renders.
+    for (const v of bullets) {
+      const raw = String(v ?? '').trim()
+      const clean = raw.replace(REQ_INLINE_RE, '$1').trim()
+      const suffix = REQ_BEARING_FIELDS.has(q.field) && clean ? `  (${reqIdFor(clean)})` : ''
+      L.push(`- ${clean}${suffix}`)
+    }
     L.push('')
   }
   return L.join('\n')
@@ -161,7 +208,70 @@ function main() {
     process.exit(0)
   }
 
-  console.error(`brief-intake: usage — --check | --questions | --scaffold`)
+  if (arg === '--detect') {
+    // 2026-08-25 (P5): run niche detection over the current brief + brand-direction + reference-map OCR.
+    // On confidence ≥ 8, auto-write the niche into brief.md (or docs/design/design-spec.md's `dna_pack:` line)
+    // so downstream drape / check-design-quality / lens-judge all pick up the taste pack by construction.
+    if (!fs.existsSync(abs)) { console.error(`brief-intake --detect: no ${BRIEF_FILE} — run --scaffold + fill first`); process.exit(1) }
+
+    // Load manifest — packs registry.
+    const homeDir = os.homedir()
+    const manifestPath = path.join(homeDir, '.claude/memory/design/ecom/niche-dna-packs/_manifest.json')
+    let manifest = null
+    try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) } catch (err) {
+      console.error(`brief-intake --detect: ENV — cannot read niche manifest (${manifestPath}): ${err.message}`)
+      process.exit(2)
+    }
+
+    // Parse brief.
+    const briefRaw = fs.readFileSync(abs, 'utf-8')
+    const parsed = parseBrief(briefRaw)
+    const brief = { niche: (parsed.niche && !/^auto-detect$/i.test(parsed.niche)) ? parsed.niche : null, prose: briefRaw }
+    const productLines = parsed.products || parsed.must_have_pages || []
+    const products = Array.isArray(productLines) ? productLines : [String(productLines || '')]
+
+    // Optional brand-direction.md
+    let brandDirection = ''
+    const bdPath = path.resolve(cwd, 'docs/brand/brand-direction.md')
+    if (fs.existsSync(bdPath)) { try { brandDirection = fs.readFileSync(bdPath, 'utf-8') } catch { /* skip */ } }
+
+    // Optional reference-map OCR blob (uses names/must_have as proxy — real OCR is future work)
+    let referenceOcr = ''
+    const refPath = path.resolve(cwd, 'docs/design/reference-map.json')
+    if (fs.existsSync(refPath)) {
+      try {
+        const refMap = JSON.parse(fs.readFileSync(refPath, 'utf-8'))
+        for (const s of refMap.surfaces || []) for (const sec of s.sections || []) {
+          referenceOcr += ` ${sec.name || ''} ${sec.archetype || ''} ${(sec.must_have || []).join(' ')}`
+        }
+      } catch { /* skip */ }
+    }
+
+    const result = detectNiche({ manifest, brief, brandDirection, products, referenceOcr, threshold: 8 })
+    console.log(`brief-intake --detect: ${result.niche ? `✅ ${result.niche} (${result.calibration}, confidence ${result.confidence})` : `❌ no confident match (top ${result.runner_up?.niche || 'none'} @ ${result.confidence})`}`)
+    for (const h of (result.evidence || []).slice(0, 8)) console.log(`  · ${h.signal}: "${h.matched}" (+${h.weight})`)
+
+    if (result.niche) {
+      // Update brief.md `niche:` line (in place; preserve everything else).
+      const updated = briefRaw.replace(/^(\s*niche\s*:\s*).+$/m, `$1${result.niche}`)
+      const finalText = updated === briefRaw ? `${briefRaw.trimEnd()}\nniche: ${result.niche}\n` : updated
+      if (finalText !== briefRaw) { fs.writeFileSync(abs, finalText); console.log(`  → wrote niche="${result.niche}" to ${BRIEF_FILE}`) }
+
+      // Also write dna_pack: <niche> to design-spec.md if it exists (drape's canonical file).
+      const specPath = path.resolve(cwd, 'docs/design/design-spec.md')
+      if (fs.existsSync(specPath)) {
+        const spec = fs.readFileSync(specPath, 'utf-8')
+        const specUpdated = /^dna_pack\s*:/m.test(spec)
+          ? spec.replace(/^(\s*dna_pack\s*:\s*).+$/m, `$1${result.niche}`)
+          : `dna_pack: ${result.niche}\n${spec}`
+        if (specUpdated !== spec) { fs.writeFileSync(specPath, specUpdated); console.log(`  → wrote dna_pack="${result.niche}" to docs/design/design-spec.md`) }
+      }
+      process.exit(0)
+    }
+    process.exit(1)
+  }
+
+  console.error(`brief-intake: usage — --check | --questions | --scaffold | --detect`)
   process.exit(2)
 }
 

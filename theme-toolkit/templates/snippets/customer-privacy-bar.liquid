@@ -1,0 +1,32 @@
+{%- comment -%}
+  customer-privacy-bar — CANONICAL cookie-consent snippet (2026-08-25, P1 cookie-bar rip).
+
+  REPLACES: custom `pn-consent.js` / `pn-consent.css` / `cookie-consent.liquid` per-theme
+  implementations. On penelope these produced 10 of 75 commits and a persistent vision-judge
+  false positive ("chrome-on-brand", ×4 recurrences) that cost ~13% of build time.
+
+  HOW IT WORKS.
+  Shopify's Customer Privacy API renders a compliant consent banner NATIVELY when the merchant
+  enables it in Shopify Admin → Settings → Customer privacy → Cookie banner. The theme does not
+  paint the bar itself; it only exposes the `window.Shopify.customerPrivacy` API for downstream
+  consent-gated features (analytics, marketing pixels).
+
+  ADMIN SETUP (one-time, per store):
+    Shopify Admin → Settings → Customer privacy → Cookie banner → Enable → pick region + style.
+    Docs: https://shopify.dev/docs/api/customer-privacy
+
+  IF YOU NEED consent-gated custom code:
+    document.addEventListener('visitorConsentCollected', (e) => {
+      if (window.Shopify.customerPrivacy.userCanBeTracked()) {
+        // fire analytics / marketing pixels here
+      }
+    });
+
+  ANTI-PATTERN reminder (Yash / ink lesson pack, 2026-08-25):
+    Do NOT hand-roll a consent bar to work around a vision-judge false-positive on the native
+    one. The FP is fixed by re-tuning lens-rubrics/home.json chrome exclusions, not by wrapping
+    Shopify's bar in custom Liquid. Every custom implementation reintroduces the debt.
+
+  RENDERING: this snippet emits NOTHING to the DOM. It exists as a documentation anchor and a
+  placement marker in layout/theme.liquid so a future developer can find the consent setup path.
+{%- endcomment -%}

@@ -8,12 +8,50 @@
 // Exit: 0 = every REQUIRED check green (ready for `/shopify-build`) · 1 = a required gap · advisory items never fail.
 
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { isMain } from './lib/is-main.mjs'
 
 const cwd = process.cwd()
+
+// ── Session lock (2026-08-25, P2). Two concurrent Claude sessions on one repo actively undo each
+// other. Verified on penelope: `saas@boldteq.com` 55 commits + `boldteq@gmail.com` 21, with real
+// commit titles like "Restore two hero copy lines a concurrent session had already fixed". The lock
+// is a per-repo `.claude/session.lock` JSON claim written by the first session; a second session's
+// preflight refuses with the owner's sessionId. Auto-release on stale TTL (default 60 min).
+const SESSION_LOCK_PATH = '.claude/session.lock'
+const SESSION_LOCK_TTL_MS = Number(process.env.CLAUDE_SESSION_LOCK_TTL_MS || 60 * 60_000)
+const OWN_SESSION_ID = process.env.CLAUDE_SESSION_ID || process.env.CLAUDE_CODE_SESSION_ID || `${os.hostname()}-${process.pid}`
+
+export function acquireSessionLock({ now = Date.now(), ttlMs = SESSION_LOCK_TTL_MS, sessionId = OWN_SESSION_ID, force = process.env.CLAUDE_SESSION_LOCK_FORCE === '1' } = {}) {
+  const abs = path.join(cwd, SESSION_LOCK_PATH)
+  const writeClaim = () => {
+    fs.mkdirSync(path.dirname(abs), { recursive: true })
+    const claim = { sessionId, pid: process.pid, machine: os.hostname(), user: os.userInfo().username, startedAt: new Date(now).toISOString(), ttl_ms: ttlMs }
+    fs.writeFileSync(abs, `${JSON.stringify(claim, null, 2)}\n`)
+    return { ok: true, message: `session lock acquired (${sessionId})`, claim, mode: 'acquired' }
+  }
+  if (!fs.existsSync(abs)) return writeClaim()
+  let prev
+  try { prev = JSON.parse(fs.readFileSync(abs, 'utf-8')) } catch {
+    return writeClaim() // corrupt lock → overwrite
+  }
+  if (prev.sessionId === sessionId) return { ok: true, message: `session lock re-owned (${sessionId})`, claim: prev, mode: 'renewed' }
+  const startedAt = Date.parse(prev.startedAt || 0)
+  const stale = Number.isFinite(startedAt) && (now - startedAt) > Number(prev.ttl_ms || ttlMs)
+  if (stale) return writeClaim() // previous session's TTL elapsed → safe to take over
+  if (force) return writeClaim() // explicit override (CLAUDE_SESSION_LOCK_FORCE=1)
+  const ageMin = Math.round((now - startedAt) / 60_000)
+  return {
+    ok: false,
+    mode: 'blocked',
+    claim: prev,
+    message: `session lock held by ${prev.sessionId} (${prev.user || '?'}@${prev.machine || '?'}, ${ageMin}m ago) — a second Claude session on the same repo will silently undo the first one's work.`,
+    fix: `wait for the other session to finish, OR force-release: rm ${SESSION_LOCK_PATH}   OR override: CLAUDE_SESSION_LOCK_FORCE=1 node toolkit/scripts/preflight-repo.mjs`,
+  }
+}
 const has = (p) => fs.existsSync(path.join(cwd, p))
 const bin = (name) => { try { execFileSync(name, ['--version'], { stdio: ['ignore', 'ignore', 'ignore'] }); return true } catch { return false } }
 const isGit = () => { try { execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd, stdio: ['ignore', 'ignore', 'ignore'] }); return true } catch { return false } }
@@ -22,12 +60,24 @@ const hasBaselineTag = () => /(^|\n)(base|baseline|v?0\.)/i.test(git(['tag']) ||
 const uncommitted = () => (git(['status', '--porcelain']) || '').split('\n').filter(Boolean).length
 const changesTracked = () => { try { execFileSync('git', ['ls-files', '--error-unmatch', 'CHANGES.md'], { cwd, stdio: ['ignore', 'ignore', 'ignore'] }); return true } catch { return !has('CHANGES.md') } }
 function dsScalesPopulated() {
-  try {
-    const ds = JSON.parse(fs.readFileSync(path.join(cwd, 'docs/design/design-system.json'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, ''))
-    const nonEmpty = (v) => Array.isArray(v) ? v.length > 0 : (v && typeof v === 'object' ? Object.keys(v).length > 0 : false)
-    return nonEmpty((ds.typography && (ds.typography.allowed_px || ds.typography.scale)) || ds.type_scale)
-      && nonEmpty((ds.spacing && (ds.spacing.scale || ds.spacing.allowed_px)) || ds.space_scale)
-  } catch { return false }
+  // 2026-08-25 (P7 base-tokens inheritance). Merge base under client contract before checking, so a
+  // brand-new client with an empty/absent design-system.json still passes preflight if base-tokens.json
+  // exists at ~/.claude/memory/design/. Client overrides win. Absent client contract = base alone is
+  // sufficient (the whole point of P7 — no re-authoring boilerplate per client).
+  const nonEmpty = (v) => Array.isArray(v) ? v.length > 0 : (v && typeof v === 'object' ? Object.keys(v).length > 0 : false)
+  const deepMerge = (a, b) => {
+    if (a == null) return b; if (b == null) return a
+    if (typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) || Array.isArray(b)) return b
+    const out = { ...a }; for (const k of Object.keys(b)) out[k] = deepMerge(a[k], b[k]); return out
+  }
+  const BASE_PATH = process.env.DS_BASE_TOKENS || path.join(process.env.HOME || '', '.claude/memory/design/base-tokens.json')
+  let base = {}
+  try { base = JSON.parse(fs.readFileSync(BASE_PATH, 'utf-8')); delete base.$metadata; delete base._do_not_inherit; delete base.$schema_version } catch { /* absent → legacy check-client-only */ }
+  let client = {}
+  try { client = JSON.parse(fs.readFileSync(path.join(cwd, 'docs/design/design-system.json'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '')) } catch { /* absent → base-only */ }
+  const ds = deepMerge(base, client)
+  return nonEmpty((ds.typography && (ds.typography.allowed_px || ds.typography.scale)) || ds.type_scale)
+    && nonEmpty((ds.spacing && (ds.spacing.scale || ds.spacing.allowed_px)) || ds.space_scale)
 }
 
 // ── vendored-copy integrity ────────────────────────────────────────────────
@@ -56,6 +106,11 @@ export function versionDrift(localVersion, sourceVersion) {
 
 const checks = []
 const add = (required, ok, label, fix) => checks.push({ required, ok, label, fix })
+
+// ── Session lock (2026-08-25, P2). Must run FIRST — if another Claude session owns this repo, every
+// other check below is moot because that session's writes will race yours. Required in git repos only.
+const lockResult = isGit() ? acquireSessionLock() : { ok: true, mode: 'skip-non-git', message: 'not a git repo — session lock skipped' }
+add(true, lockResult.ok, `session lock (${lockResult.mode || 'ok'}) — ${lockResult.message}`, lockResult.fix || 'n/a')
 
 // ── REQUIRED — the loop cannot run without these ──
 add(true, has('toolkit/scripts/theme-gates.mjs'), 'toolkit vendored at toolkit/',

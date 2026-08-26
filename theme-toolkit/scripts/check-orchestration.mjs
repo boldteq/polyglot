@@ -236,8 +236,10 @@ export function auditReportIdentity(gates, readSource) {
 //
 // A gate is "warn-capable" if it gates a finding behind an *_ENFORCE flag (`SOMETHING_ENFORCE === '1'`)
 // in its own source, OR in a sub-gate it absorbs via runAbsorbed([{ script: 'check-*.mjs' }]) — imagery
-// (check-media-quality) absorbs check-art-direction (ART_DIRECTION_ENFORCE); content-quality
-// (check-placeholder-text) absorbs check-copy-quality (COPY_ENFORCE). Every such gate MUST carry an
+// (check-media-quality) absorbs check-art-direction (ART_DIRECTION_ENFORCE). (Historical note: content-
+// quality used to absorb check-copy-quality/COPY_ENFORCE; on 2026-08-25 the brief-level copy checks
+// moved to check-copy-scorecard.mjs / gate #58, so content-quality no longer absorbs anything.)
+// Every such gate MUST carry an
 // `enforcement` object in the manifest with a non-empty reason and a since date (YYYY-MM-DD) — a
 // warn-only gate with no recorded, dated reason is a BLOCK (orch.warn-only-unreasoned). This makes
 // "13 gates warn-only forever, reporting into a void" mechanically impossible: the reason has to exist,

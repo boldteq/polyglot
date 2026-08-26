@@ -29,7 +29,6 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { isMain } from './lib/is-main.mjs'
 import { writeReport } from './lib/report.mjs'
-import { runAbsorbed } from './lib/merge-spawn.mjs'
 
 // PURE: dev/test leftovers that must NEVER reach a shopper. Returns [{id, match}]. Always block-eligible.
 const DEV_PATTERNS = [
@@ -98,13 +97,10 @@ function walk(dir, exts, acc = []) {
 }
 
 function finish(envError, evidence = {}) {
-  // MERGED #26 copy-quality (hero formula / objection coverage / voice) — folded into proof's findings
-  if (!envError) {
-    try {
-      const m = runAbsorbed([{ script: 'check-copy-quality.mjs', report: 'copy-quality' }], { cwd, env: process.env })
-      blockers.push(...m.blockers); warnings.push(...m.warnings)
-    } catch { /* copy-quality fold best-effort */ }
-  }
+  // Phase 3 REMOVE 1 (2026-08-25): the absorbed #26 copy-quality half (hero formula / objection
+  // coverage / voice) has moved to check-copy-scorecard.mjs (#58) as its own registered gate.
+  // content-quality now owns the placeholder / dev-leftover checks only; brief-level copy quality
+  // is judged by the scorecard gate. No absorption call here.
   const pass = !envError && blockers.length === 0
   writeReport('content-quality', 36, { cwd, pass, blockers, warnings, evidence: { strict: STRICT, reason: envError || undefined, ...evidence }, duration_ms: Date.now() - t0 }, REPORT_DIR)
   const code = envError ? 2 : pass ? 0 : 1

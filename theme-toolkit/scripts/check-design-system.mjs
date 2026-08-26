@@ -71,12 +71,35 @@ if (!fs.existsSync(dsAbs)) {
   add(blockers, 'ds.missing', DS, `design-system-first: ${DS} not found — no section may be designed/built before the design system is locked + vega-ratified`)
   finish(null)
 }
-let contract
+let clientContract
 try {
-  contract = JSON.parse(fs.readFileSync(dsAbs, 'utf-8'))
+  clientContract = JSON.parse(fs.readFileSync(dsAbs, 'utf-8'))
 } catch (err) {
   finish(`${DS} is not valid JSON: ${err.message}`)
 }
+
+// 2026-08-25 (P7 token base contract). Deep-merge canonical base UNDER the client contract so the
+// gate enforces base + client together. Client wins on conflicts. Before this, an empty
+// `typography.allowed_px` or `spacing.scale` was a soft warning — a per-project mistake waiting to
+// happen. With a base, empty-allowlist is IMPOSSIBLE by construction (base always provides one).
+// Base absent = legacy client-only behavior, still works. Override base path via DS_BASE_TOKENS.
+const BASE_PATH = process.env.DS_BASE_TOKENS || path.join(process.env.HOME || '', '.claude/memory/design/base-tokens.json')
+let baseContract = {}
+try { baseContract = JSON.parse(fs.readFileSync(BASE_PATH, 'utf-8')) } catch { /* absent → legacy mode */ }
+if (baseContract && typeof baseContract === 'object') {
+  delete baseContract.$metadata
+  delete baseContract._do_not_inherit
+  delete baseContract.$schema_version
+}
+function dsDeepMerge(a, b) {
+  if (a === undefined || a === null) return b
+  if (b === undefined || b === null) return a
+  if (typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) || Array.isArray(b)) return b
+  const out = { ...a }
+  for (const k of Object.keys(b)) out[k] = dsDeepMerge(a[k], b[k])
+  return out
+}
+const contract = dsDeepMerge(baseContract, clientContract)
 
 const allowedFontPx = new Set((contract.typography?.allowed_px || []).map(Number))
 const allowedSpace = new Set((contract.spacing?.scale || []).map(Number))
@@ -84,8 +107,10 @@ const radiusTokenPx = new Set(Object.values(contract.radius?.tokens || {}).map(N
 const buttonClasses = Object.values(contract.buttons?.variants || {})
   .flatMap(v => String(v.class || '').split('|').flatMap(s => s.trim().split(/\s+/)))
   .filter(Boolean)
-if (allowedFontPx.size === 0) warnings.push({ id: 'ds.no-type-scale', page: DS, detail: 'typography.allowed_px is empty — font-size drift cannot be enforced', evidence: '' })
-if (allowedSpace.size === 0) warnings.push({ id: 'ds.no-space-scale', page: DS, detail: 'spacing.scale is empty — spacing drift cannot be enforced', evidence: '' })
+// Post-P7: these warnings become truly informational — they can only fire when the base is missing
+// AND the client contract also lacks the scale, i.e. someone ran the gate in a genuinely legacy setup.
+if (allowedFontPx.size === 0) warnings.push({ id: 'ds.no-type-scale', page: DS, detail: 'typography.allowed_px is empty in BOTH base and client contract — install base-tokens.json or declare a scale', evidence: '' })
+if (allowedSpace.size === 0) warnings.push({ id: 'ds.no-space-scale', page: DS, detail: 'spacing.scale is empty in BOTH base and client contract — install base-tokens.json or declare a scale', evidence: '' })
 
 // ── 2. Determine scope: the build's custom/extended surface ──────────────────
 const SCAN_DIRS = ['sections', 'snippets', 'assets']

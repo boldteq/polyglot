@@ -80,6 +80,10 @@ function loadBlueprintIndex() {
 }
 const blockers = []
 const warnings = []
+// 2026-08-25 (REQ traceability, additive) — populated in the rung-column loop below.
+// Hoisted to module scope so early `finish(null)` paths (missing map, n-a skips) can also
+// emit `evidence.reuseRows` without hitting a TDZ on this const.
+const reuseRows = []
 const add = (list, id, detail, evidence = '') => list.push({ id, page: REUSE_MAP, detail, evidence })
 
 // New sections/*.liquid added since BASE_REF — drives BOTH the applicability skip (no new
@@ -123,6 +127,9 @@ function finish(envError) {
       reuseMap: REUSE_MAP, baseRef: BASE_REF, themeBase: THEME_BASE,
       reuseTarget: REUSE_TARGET, reuseFloorApplies: REUSE_TARGET != null,
       reason: envError || undefined,
+      // 2026-08-25 — parsed rows with any req_id present. Additive: done-check reads this to
+      // compute REQ coverage; check-reuse-map itself never blocks on a missing req_id.
+      reuseRows,
     },
     duration_ms: Date.now() - t0,
   })
@@ -179,19 +186,48 @@ if (custom > 0) {
 }
 
 // ── Rung column vocabulary ──────────────────────────────────────────────────
+// 2026-08-25 (REQ traceability, additive): also collect the row's name + rung + any
+// `req: REQ-xxxxxx` present on the row (in a `req` column OR anywhere else on the line — e.g.
+// a trailing comment). Threaded into evidence.reuseRows so done-check can prove REQ coverage.
+// Additive: absence never blocks; the existing bad-rung block-check is unchanged.
+const REQ_INLINE_ON_ROW = /\breq:\s*(REQ-[a-f0-9]{6})/i
 const lines = text.split('\n')
 let inTable = false
 let rungIdx = -1
+let nameIdx = -1
+let reqColIdx = -1
 for (const line of lines) {
   if (!line.trim().startsWith('|')) { inTable = false; continue }
   const cells = line.split('|').slice(1, -1).map(c => c.trim())
   const lower = cells.map(c => c.toLowerCase())
-  if (!inTable && lower.includes('rung')) { inTable = true; rungIdx = lower.indexOf('rung'); continue }
+  if (!inTable && lower.includes('rung')) {
+    inTable = true
+    rungIdx = lower.indexOf('rung')
+    // best-guess name column (first of the known names, else col 0)
+    for (const h of ['name', 'section', 'zone']) { const j = lower.indexOf(h); if (j !== -1) { nameIdx = j; break } }
+    if (nameIdx === -1) nameIdx = 0
+    reqColIdx = lower.indexOf('req')
+    continue
+  }
   if (!inTable) continue
   if (/^[-:\s|]+$/.test(line.replace(/\|/g, ''))) continue
   const rung = (cells[rungIdx] || '').toUpperCase().replace(/\s+/g, '')
   if (rung && rung !== 'RUNG' && !VALID_RUNGS.has(rung)) {
     add(blockers, 'reuse-map.bad-rung', `row rung "${cells[rungIdx]}" not in {REUSE, CONFIGURE, EXTEND, CUSTOM} (LIBRARY rows are written CUSTOM)`)
+  }
+  // REQ id: prefer an explicit `req` column, fall back to any inline `req: REQ-xxxxxx` on the line.
+  let req_id = null
+  if (reqColIdx !== -1) {
+    const m = String(cells[reqColIdx] || '').match(/(REQ-[a-f0-9]{6})/i)
+    if (m) req_id = m[1]
+  }
+  if (!req_id) {
+    const m = line.match(REQ_INLINE_ON_ROW)
+    if (m) req_id = m[1]
+  }
+  const name = (cells[nameIdx] || '').trim()
+  if (name && rung && VALID_RUNGS.has(rung)) {
+    reuseRows.push({ name, rung, ...(req_id ? { req_id } : {}) })
   }
 }
 

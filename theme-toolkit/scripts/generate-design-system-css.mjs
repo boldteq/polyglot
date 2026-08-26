@@ -23,8 +23,29 @@ let out = 'assets/design-system.css'
 const argv = process.argv.slice(2)
 for (let i = 0; i < argv.length; i += 1) if (argv[i] === '--out') out = argv[++i]
 
-let j
-try { j = JSON.parse(fs.readFileSync(path.resolve(cwd, DS), 'utf-8')) } catch (e) { die(`cannot read ${DS}: ${e.message}`) }
+// 2026-08-25 (P7 token base contract). Merge canonical base tokens UNDER the client contract so every
+// store inherits the 40+ standard tokens (spacing / radius / shadow / motion / z-index / breakpoints)
+// without re-declaring them. Client wins on conflicts; base fills gaps. Before this, Grafilabel shipped
+// 33 font sizes (Figma dump), Penelope 10, Bunevida 19 — 60-70% overlap was inheritable boilerplate.
+// Base absent = 100% legacy behavior (client-only, still works). Override base path via DS_BASE_TOKENS.
+const BASE_PATH = process.env.DS_BASE_TOKENS || path.join(process.env.HOME || '', '.claude/memory/design/base-tokens.json')
+let base = {}
+try { base = JSON.parse(fs.readFileSync(BASE_PATH, 'utf-8')) } catch { /* absent → legacy mode, no base */ }
+// strip meta before merge — `$metadata` and `_do_not_inherit` are documentation, not tokens
+if (base && typeof base === 'object') { delete base.$metadata; delete base._do_not_inherit; delete base.$schema_version }
+
+function dsDeepMerge(a, b) {
+  if (a === undefined || a === null) return b
+  if (b === undefined || b === null) return a
+  if (typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) || Array.isArray(b)) return b
+  const out = { ...a }
+  for (const k of Object.keys(b)) out[k] = dsDeepMerge(a[k], b[k])
+  return out
+}
+
+let clientDs
+try { clientDs = JSON.parse(fs.readFileSync(path.resolve(cwd, DS), 'utf-8')) } catch (e) { die(`cannot read ${DS}: ${e.message}`) }
+const j = dsDeepMerge(base, clientDs)
 
 const lines = []
 const push = (k, v) => lines.push(`  ${k}: ${v};`)

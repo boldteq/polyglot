@@ -343,13 +343,18 @@ function main() {
     }
   }
 
-  // No pack to score against (and no baseline fallback taken) → original lenient/strict behavior.
+  // No pack to score against (and no baseline fallback taken) → block by default (P5, 2026-08-25).
+  // A build with no niche pack ships "general ecommerce" taste — Yash's explicit requirement is niche-
+  // specific. Auto-injection via `brief-intake.mjs --detect` writes the `dna_pack:` line before this
+  // gate runs, so a missing pack now means the detector failed AND the human popup was skipped.
+  // Escape hatch: NICHE_PACK_OPTIONAL=1 for one-off experiments (or a genuine cross-niche demo).
   if (!pack) {
+    const NICHE_OPTIONAL = process.env.NICHE_PACK_OPTIONAL === '1'
     const msg = niche
       ? `design-spec declares dna_pack "${niche}" but ${nicheToFile(niche)} not found in ${PACKS_DIR} — author the pack or fix the niche name`
-      : `no \`dna_pack:\` declared in ${DESIGN_SPEC} — niche taste scoring skipped (declare a pack or set DS_REQUIRE_SCOPE for publish)`
-    if (REQUIRE_SCOPE) add(blockers, 'dq.pack-missing', DESIGN_SPEC, msg)
-    else warnings.push({ id: 'dq.pack-missing', page: DESIGN_SPEC, detail: msg, evidence: '' })
+      : `no \`dna_pack:\` declared in ${DESIGN_SPEC} — run \`node toolkit/scripts/brief-intake.mjs --detect\` to auto-inject, or set NICHE_PACK_OPTIONAL=1 for a deliberate cross-niche build`
+    if (NICHE_OPTIONAL) warnings.push({ id: 'dq.pack-missing', page: DESIGN_SPEC, detail: `${msg} (NICHE_PACK_OPTIONAL=1 → warn)`, evidence: '' })
+    else add(blockers, 'dq.pack-missing', DESIGN_SPEC, msg)
     finish(null, { niche: niche || null })
   }
 

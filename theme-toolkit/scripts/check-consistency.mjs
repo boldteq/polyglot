@@ -210,8 +210,14 @@ for (const file of targets) {
   if (/\.liquid$/.test(file)) {
     for (const m of raw.matchAll(/class\s*=\s*"([^"]*)"/g)) {
       for (const c of m[1].split(/\s+/)) {
-        if (/\b(btn|button|cta)[a-z0-9_-]*/i.test(c) && !/^(btn|button)$/i.test(c)) buttonClasses.add(c.toLowerCase())
-        if (/card[a-z0-9_-]*/i.test(c)) cardClasses.add(c.toLowerCase())
+        // 2026-08-25 (P0 loop-unblock): the previous regex `\b(btn|button|cta)[a-z0-9_-]*/i` counted Liquid
+        // template fragments as CSS classes — e.g. `%}btn--primary{%`, `settings.button_style`,
+        // `block.settings.card_style` — producing "28 distinct button classes" no human could fix.
+        // The correct match is on an ACTUAL class token shape only, after stripping any Liquid syntax.
+        if (/[{}%]/.test(c)) continue                              // skip Liquid template fragments
+        if (!/^[a-z][a-z0-9_-]*$/i.test(c)) continue               // skip anything that isn't a class token
+        if (/^(btn|button|cta)(--[a-z0-9_-]+)?$/i.test(c) && !/^(btn|button)$/i.test(c)) buttonClasses.add(c.toLowerCase())
+        if (/^card(--[a-z0-9_-]+)?$/i.test(c)) cardClasses.add(c.toLowerCase())
       }
     }
   }

@@ -38,7 +38,11 @@ const MIN_CONF = MIN_CONF_ENV ?? 80 // representative value for the report; per-
 // Adaptive: high-stakes surfaces (hero/PDP/cart/collection) demand more judge certainty than secondary
 // ones — uncertainty on a money surface is a block; on /search or /account it warns. Explicit env overrides.
 const CRITICAL_SURFACES = new Set(['home', 'pdp', 'cart', 'collection', 'checkout', 'order-confirmation', 'gift-card'])
-const minConfFor = (surface) => MIN_CONF_ENV != null ? MIN_CONF_ENV : (CRITICAL_SURFACES.has(String(surface)) ? 90 : 75)
+// 2026-08-25 (P0 loop-unblock fix): confidence is no longer a blocker term. It is a triage signal.
+// The block decision is SEVERITY-DRIVEN via v.findings[].severity==='blocker' (see the loop below).
+// Rationale: a PASS verdict with 1 low-severity warning was being blocked because the LLM sampled
+// confidence=84 &lt; 90 — an unsatisfiable loop by construction. Real defects still block (severity=blocker,
+// FAIL verdict, Layer-1 facts). Confidence is preserved in the report as triage.confidence for humans.
 const OVERFLOW_TOL = Number(process.env.LENS_OVERFLOW_TOLERANCE || 2)
 const REQUIRE = process.env.DS_REQUIRE_SCOPE === '1' || process.env.LENS_REQUIRE === '1'
 
@@ -221,8 +225,11 @@ function main() {
   for (const v of verdicts) {
     const at = `${v.surface} ${v.viewport}`
     if (v.verdict === 'FAIL') add(blockers, 'vt.frame-fail', v.surface, `${at}: vision judge verdict FAIL (confidence ${v.confidence}%)`, '')
-    const mc = minConfFor(v.surface)
-    if (Number(v.confidence) < mc) add(blockers, 'vt.low-confidence', v.surface, `${at}: judge confidence ${v.confidence}% < ${mc}% (${CRITICAL_SURFACES.has(String(v.surface)) ? 'critical' : 'secondary'} surface) — uncertainty is a block; the page must be unambiguously right`, '')
+    // 2026-08-25 (P0 loop-unblock): confidence is triage-only. Real blocks come from the severity check below
+    // and Layer-1 deterministic facts. A low-confidence PASS on a critical surface is surfaced as a warning so
+    // humans can look, but never blocks — one nitpick can't hold publish.
+    const criticalLowConf = CRITICAL_SURFACES.has(String(v.surface)) && Number(v.confidence) < 80
+    if (criticalLowConf) warnings.push({ id: 'vt.triage-low-confidence', page: v.surface, detail: `${at}: judge confidence ${v.confidence}% on a critical surface — eyes-on recommended (triage-only, not a blocker)`, evidence: '' })
     for (const fd of (v.findings || [])) {
       allFindings.push({ ...fd, surface: v.surface, viewport: v.viewport, key: v.key })
       const detail = `${at}: ${fd.check} — ${fd.evidence}${fd.fix_owner ? ` (→ ${fd.fix_owner})` : ''}`

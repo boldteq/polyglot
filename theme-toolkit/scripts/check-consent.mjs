@@ -5,6 +5,13 @@
 // that non-essential third-party scripts are deferred/async (so they can be gated on consent). The
 // "banner must not occlude the primary CTA" half is enforced by Lens (#18). Warn-first; BLOCKS at
 // publish-grade (CONSENT_REQUIRE/DS_REQUIRE_SCOPE). SKIPS when no theme. Exit: 0 · 1 · 2.
+//
+// 2026-08-25 — P1 canonical alignment verified. This gate is MECHANISM-agnostic (category b):
+// the regex below matches `customerPrivacy` / `setTrackingConsent` (Shopify's window.Shopify
+// .customerPrivacy API used by the new P1 `snippets/customer-privacy-bar.liquid` canonical
+// snippet) as well as legacy `cookie-banner` / `consent-banner` / `gdpr` patterns and vetted
+// consent apps that expose `Shopify.loadFeatures`. NO filename check — a theme that renders
+// {% render 'customer-privacy-bar' %} passes cleanly. Do NOT tighten to a specific file.
 
 import fs from 'node:fs'
 import path from 'node:path'

@@ -60,3 +60,6 @@ docs/gepa/
 
 # synthetic-dogfood provisioned fixtures (briefs are tracked; builds are throwaway)
 evals/synthetic-builds/builds/
+
+# theme-toolkit rollout run log (generated per rollout; runtime artifact, not source)
+theme-toolkit/rollout-log.txt

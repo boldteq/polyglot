@@ -197,7 +197,8 @@ const GATES = [
   { name: 'functionality', number: 10, stage: 'quality', category: 'Commerce & Conversion', kind: 'url', runner: 'node', script: 'gate-functional.mjs', freshnessTtlMs: URL_GATE_TTL_MS, desc: 'The store actually works — clicks, add-to-cart, no JS / console errors.' },
   // ── QUALITY · Content & Trust ──
   { name: 'honesty', number: 13, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-honesty.mjs', desc: 'Blocks fake reviews / fabricated scarcity / fake countdowns — trustworthy + legal.' },
-  { name: 'content-quality', number: 36, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-placeholder-text.mjs', enforcement: { policy: 'block', provenBuilds: 1, reason: 'A dev placeholder (lorem / TEST) in shipped copy is a mechanically-certain defect, never advisory. Already BLOCK-eligible on publish-grade runs via DS_REQUIRE_SCOPE; graduated to block on every run so a placeholder can never ship from a static-only VS Code loop. (The absorbed copy-quality half stays warn — COPY_ENFORCE unset.)', since: '2026-07-23' }, desc: 'No dev placeholders (lorem / TEST) + copy meets the quality bar.' },
+  { name: 'content-quality', number: 36, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-placeholder-text.mjs', enforcement: { policy: 'block', provenBuilds: 1, reason: 'A dev placeholder (lorem / TEST) in shipped copy is a mechanically-certain defect, never advisory. Already BLOCK-eligible on publish-grade runs via DS_REQUIRE_SCOPE; graduated to block on every run so a placeholder can never ship from a static-only VS Code loop. (The brief-level copy-quality checks that this gate used to absorb moved to check-copy-scorecard.mjs / gate #58 on 2026-08-25 — Phase 3 REMOVE 1.)', since: '2026-07-23' }, desc: 'No dev placeholders (lorem / TEST) in shipped copy.' },
+  { name: 'copy-scorecard', number: 58, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-copy-scorecard.mjs', enforcement: { policy: 'warn', provenBuilds: 0, reason: 'Quill\'s 9-check scorecard (hero-headline ≤8w, subhead ≤25w, cta ≤4w, FK-grade ≤10, passive <10%, avg sentence ≤20w, avg para ≤3s, banned-word=0, hero has number/unit) + the merged brief-level checks (hero-formula / objection-uncovered / voice-reference) from the retired copy-quality gate. Warn-first until proven false-positive-free on ≥2 stores; COPY_SCORECARD_ENFORCE=1 / COPY_ENFORCE=1 / DS_REQUIRE_SCOPE=1 flips to BLOCK for publish-grade.', since: '2026-08-25' }, desc: 'Copy scorecard (9 checks / surface) + brief-level hero-formula / objection / voice.' },
   { name: 'rule-pack', number: 43, stage: 'quality', category: 'Content & Trust', kind: 'static', runner: 'node', script: 'check-rule-pack.mjs', desc: 'Data-driven rules (team + per-store, JSON) — adds enforcement by appending a rule; auto-grown from real defects.' },
   // ── QUALITY · Localization & Tracking ──
   { name: 'translations', number: 28, stage: 'quality', category: 'Localization & Tracking', kind: 'static', runner: 'node', script: 'check-locale-completeness.mjs', enforcement: { policy: 'block', provenBuilds: 1, reason: 'A text key missing from a locale file ships an untranslated fallback to real customers. Shopify splits storefront (*.json) and schema (*.schema.json) locale files; completeness across every declared locale is mechanically checkable. Already BLOCK-eligible via DS_REQUIRE_SCOPE; graduated to block on every run.', since: '2026-07-23' }, desc: 'Every text key exists in every locale — no untranslated fallbacks.' },
@@ -219,6 +220,7 @@ const GATES = [
 const ENFORCE_ENV = {
   'reference-match': 'REFERENCE_MATCH_ENFORCE',
   'content-quality': 'PLACEHOLDER_ENFORCE',
+  'copy-scorecard': 'COPY_SCORECARD_ENFORCE',
   'mobile': 'MOBILE_ENFORCE',
   'translations': 'LOCALE_ENFORCE',
   'redirects': 'REDIRECTS_ENFORCE',
@@ -249,7 +251,7 @@ const GATE_ALIAS = {
   'ds-cascade': 'brand-sync', 'a11y-static': 'static-a11y', 'locale-completeness': 'translations',
   'lighthouse': 'performance', 'axe': 'accessibility', 'functional': 'functionality',
   'commerce-readiness': 'conversion', 'conversion-signoff': 'conversion', 'art-direction': 'imagery',
-  'image-quality': 'imagery', 'placeholder': 'content-quality', 'copy-quality': 'content-quality',
+  'image-quality': 'imagery', 'placeholder': 'content-quality', 'copy-quality': 'copy-scorecard',
   'design-review-board': 'review-board', 'red-team': 'review-board', 'visual-truth': 'visual-check',
   'visual-quality': 'visual-check',
 }
