@@ -32,17 +32,23 @@ const LOG_PATH = path.join(CLAUDE_DIR, '.backups', 'backup.log');
 const LOCK_STALE_MS = 5 * 60 * 1000; // 5 min — any lock older is abandoned
 
 // Core paths to back up (relative to ~/.claude/)
+//
+// `projects/` and `logs/` were removed 2026-08-09. They hold Claude Code session
+// transcripts and rotating logs — regenerated content, not authored knowledge —
+// and individual .jsonl transcripts reach 100-200 MB. GitHub rejects any blob
+// over 100 MB without LFS, so every push failed with LFS_REQUIRED while the
+// local commits kept accumulating: 3,960 commits and a 55 GB .git, with a
+// re-pack running ~11 min out of every 15 min at 150% CPU. Backing up authored
+// state only keeps this repo small enough to actually push.
 const INCLUDE_PATHS = [
   'agents',
   'memory',
   'rules',
   'commands',
   'templates',
-  'projects',
   'CLAUDE.md',
   'settings.json',
   'history',
-  'logs',
 ];
 
 // Paths to always exclude (written to .gitignore inside backup repo)
@@ -53,6 +59,9 @@ const EXCLUDE_PATTERNS = [
   '*.log.tmp',
   'caches/',
   '.git/',
+  'projects/',         // session transcripts — see INCLUDE_PATHS note
+  'logs/',
+  '*.jsonl',           // hard stop: no transcript can re-enter and break the push
 ];
 
 // Debounce timings
@@ -790,6 +799,14 @@ async function doBackup({ skipPush = false } = {}) {
   if (!cfg || !cfg.enabled) {
     return { ok: false, error: 'Backup not configured or disabled' };
   }
+  // Escape hatch for an unpushable history (2026-08-09). The local repo is ~1000
+  // commits ahead of origin, and those commits carry the >100 MB transcript blobs
+  // that GitHub refuses without LFS — so every push re-packs 55 GB for ~11 min and
+  // then fails. Local commits stay cheap now that transcripts are untracked, so
+  // committing without pushing keeps the safety net while costing nothing.
+  // Clear `backup.pushDisabled` in Polyglot's config.json once the history is
+  // either migrated to LFS or rewritten to drop those blobs.
+  if (cfg.pushDisabled) skipPush = true;
   if (!cfg.repoUrl) {
     return { ok: false, error: 'No repo URL configured' };
   }
